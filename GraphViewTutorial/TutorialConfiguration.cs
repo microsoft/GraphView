@@ -15,9 +15,9 @@ namespace GraphViewTutorial
         private static string yourDBName = "graphViewTest";
         //  Parameters for Azure connection
         private static string yourAzureSQLAddress = "graphview.database.windows.net";
-        private static string yourAzureSQLDBName = "Siqi";
-        private static string yourAzureUserId = "graphTester@graphview";
-        private static string yourAzurePassword = "msraTester!2#";
+        private static string yourAzureSQLDBName = "graphViewTest";
+        private static string yourAzureUserId = "xxx";
+        private static string yourAzurePassword = "xxx";
         #endregion
         /// <summary>
         /// Returns the string for graphviewConnection
