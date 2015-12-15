@@ -88,7 +88,7 @@ License
 --------------
 GraphView is under the [MIT license][MIT].
 
-[manual]:manual_link
+[manual]:http://research.microsoft.com/pubs/259290/GraphView%20User%20Manual.pdf
 [Email]:mailto:graphview@microsoft.com
 [MIT]:LICENSE
 
