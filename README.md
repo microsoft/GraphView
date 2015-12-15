@@ -77,11 +77,11 @@ Please read the user manual for the full language specification, functionality a
 Get Help
 -----------
 
-[`User manual`][manual] GraphView's user manual is the first place to get help. It introduces the full query language, functionality and programming API's. It also includes many code samples. 
+`User manual` GraphView's [user manual][manual] is the first place to get help. It introduces the full query language, functionality and programming API's. It also includes many code samples. 
 
 `GitHub`  The GitHub repository contains a short introduction and a FAQ section. You can use Github's issue tracker to report bugs, suggest features and ask questions.
 
-[`Email`][Email]If you prefer to talk to us in private, write to graphview@microsoft.com
+`Email` If you prefer to talk to us in private, write to graphview@microsoft.com
 
 
 License
