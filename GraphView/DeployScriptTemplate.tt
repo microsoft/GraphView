@@ -1,0 +1,164 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".sql" #>
+<#  
+            var typeDictionary = new Dictionary<string, Tuple<string, string, int>>
+            {
+                {"int", new Tuple<string, string, int>("int", "SqlInt32", 4)},
+                {"long", new Tuple<string, string, int>("bigint", "SqlInt64", 8)},
+                {"double", new Tuple<string, string, int>("float", "SqlDouble", 8)},
+                {"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)}
+            };
+#>
+<# if (Type == 0) {#> 
+CREATE ASSEMBLY <#=AssemblyName#>_Assembly FROM <#=Path#>
+GO
+
+<#foreach (var edge in EdgeList) {
+    var edgeName = edge.Item1;
+	var edgeType = edge.Item2; //The edge has sink and source in the same table or not.
+    var variables = edge.Item3;
+#>
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
+<#for (int i = 0; i < InputCount; i++) {#>
+@array<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
+<#}#>, @dele varbinary(max)) RETURNS TABLE
+( 
+    Sink bigint, EdgeId int<#
+    for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+    WriteLine("");
+#>
+)
+  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
+GO
+
+<#if (edgeType)
+	{#>
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathDecoder(
+@PathVarbinary varbinary(max), @nodeid bigint, @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
+(
+	EdgeId int, Sink bigint<#
+    for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+    WriteLine("");
+#>
+)
+  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>PathDecoder;
+GO
+
+create function <#=AssemblyName#>_<#=edgeName#>_bfs(@source bigint)
+returns table
+as 
+return 
+with  allPath(sink, varPath) as (
+       select @source, CAST(0x as varbinary(max))
+       union all
+       select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId)))
+       from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
+       cross apply <#=AssemblyName#>_<#=edgeName#>_PathDecoder(allPath.varPath,<#=NodeTable#>.GlobalNodeId, <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newpath
+)
+select *
+from allPath
+GO
+<#}#>
+
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Recycle(@src varbinary(max), @toRecycle varbinary(max))
+RETURNS varbinary(max)
+EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Recycle;
+GO
+
+CREATE AGGREGATE <#=AssemblyName#>_<#=edgeName#>_Encoder
+(
+    @Sink bigint<#
+    for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write("    @" + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+    WriteLine(""); 
+#>
+)
+RETURNS varbinary(max)
+EXTERNAL NAME <#=AssemblyName#>_Assembly.<#=edgeName#>Encoder; 
+GO
+
+<#}#>
+<#}#>
+
+
+<# if (Type == 1) {#>
+<#foreach (var edge in EdgeList) {
+    var edgeName = edge.Item1;
+    var variables = edge.Item3;
+#>
+CREATE ASSEMBLY <#=AssemblyName#>_<#=edgeName#>_Assembly FROM <#=Path#>
+GO
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
+<#for (int i = 0; i < InputCount; i++) {#>
+@array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
+<#}#>) RETURNS TABLE
+(
+    Sink bigint, EdgeId int<#
+    for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+    WriteLine("");
+#>
+) 
+  AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
+GO
+<#}#>
+<#}#>
+
+
+<# if (Type == 2) {#>
+CREATE ASSEMBLY <#=AssemblyName#>Assembly FROM <#=Path#>
+GO
+
+CREATE AGGREGATE <#=AssemblyName#>GlobalNodeIdEncoder
+(
+	@SrcId bigint
+)
+RETURNS varbinary(max)
+EXTERNAL NAME <#=AssemblyName#>Assembly.GlobalNodeIdEncoder; 
+GO
+CREATE AGGREGATE <#=AssemblyName#>EdgeIdEncoder
+(
+	@EdgeId int
+)
+RETURNS varbinary(max)
+EXTERNAL NAME <#=AssemblyName#>Assembly.EdgeIdEncoder; 
+GO
+
+CREATE FUNCTION SingletonTable() RETURNS TABLE
+(
+	memoBit bit
+)
+as EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.SingletonTable
+GO
+
+CREATE FUNCTION DownSizeFunction
+(@id int)
+RETURNS INT
+AS
+ EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.DownSizeFunction
+GO
+
+CREATE FUNCTION UpSizeFunction(@topvalue int) RETURNS TABLE
+AS
+RETURN
+	SELECT TOP(@topvalue) * FROM SingletonTable()
+GO
+<#}#>

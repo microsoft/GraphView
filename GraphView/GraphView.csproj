@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{33CADC4A-376F-489B-8357-BE60D8F6186A}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>GraphView</RootNamespace>
+    <AssemblyName>GraphView</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>GraphView.dll.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AttachWhereClauseVisitor.cs" />
+    <Compile Include="BulkInsert.cs" />
+    <Compile Include="CheckTableReferencingVisitor.cs" />
+    <Compile Include="ColumnStatistics.cs" />
+    <Compile Include="ConvertToModificationStatementVisitor.cs" />
+    <Compile Include="DeployScriptTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
+    </Compile>
+    <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="GraphViewCommand.cs" />
+    <Compile Include="GraphViewKeywords.cs" />
+    <Compile Include="MatchComponent.cs" />
+    <Compile Include="MatchGraphInterface.cs" />
+    <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
+    <Compile Include="View.cs" />
+    <Compile Include="MetaGraphViewDefinedFunctionTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MetaGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+    </Compile>
+    <Compile Include="TranslateDataModificationVisitor.cs" />
+    <Compile Include="GetQueryTablesVisitor.cs" />
+    <Compile Include="TableSizeEstimator.cs" />
+    <Compile Include="TranslateMatchClauseVisitor.cs" />
+    <Compile Include="GraphDataModificationAnnotation.cs" />
+    <Compile Include="GraphViewConnection.cs" />
+    <Compile Include="GraphViewException.cs" />
+    <Compile Include="MatchClauseVisitor.cs" />
+    <Compile Include="GraphViewParser.cs" />
+    <Compile Include="MatchGraph.cs" />
+    <None Include="EdgeViewGraphViewDefinedFunctionTemplate.tt">
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+      <LastGenOutput>EdgeViewGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+    </None>
+    <Compile Include="GraphViewDefinedFunctionGenerator.cs" />
+    <Compile Include="EdgeViewGraphViewDefinedFunctionTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>EdgeViewGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+    </Compile>
+    <Compile Include="NodeTableGraphViewDefinedFunctionTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>NodeTableGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+    </Compile>
+    <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
+    <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
+    <Compile Include="TSQL Syntax Tree\WCommonTableExpression .cs" />
+    <Compile Include="TSQL Syntax Tree\WConstraintDefinition.cs" />
+    <Compile Include="TSQL Syntax Tree\WCreateTableStatement.cs" />
+    <Compile Include="CollectVariableVisitor.cs" />
+    <Compile Include="TSQL Syntax Tree\WDropTableStatement.cs" />
+    <Compile Include="TSQL Syntax Tree\WIdentifierOrValueExpression.cs" />
+    <Compile Include="TSQL Syntax Tree\WTableHint.cs" />
+    <Compile Include="TSQL Syntax Tree\WTransactionStatement.cs" />
+    <Compile Include="WSqlFragmentVisitor.cs" />
+    <Compile Include="TSQL Syntax Tree\WGraphTableColumn.cs" />
+    <Compile Include="TSQL Syntax Tree\WDataTypeReference.cs" />
+    <Compile Include="TSQL Syntax Tree\WIdentityOptions.cs" />
+    <Compile Include="TSQL Syntax Tree\WIndexDefinition.cs" />
+    <Compile Include="TSQL Syntax Tree\WSchemaObjectName.cs" />
+    <Compile Include="TSQL Syntax Tree\WTableDefinition.cs" />
+    <Compile Include="WSqlParser.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TSQL Syntax Tree\TsqlFragmentToString.cs" />
+    <Compile Include="TSQL Syntax Tree\WBooleanExpression.cs" />
+    <Compile Include="TSQL Syntax Tree\WClauses.cs" />
+    <Compile Include="TSQL Syntax Tree\WDataModification.cs" />
+    <Compile Include="TSQL Syntax Tree\WGroupingExpression.cs" />
+    <Compile Include="TSQL Syntax Tree\WInsertSources.cs" />
+    <Compile Include="TSQL Syntax Tree\WProcedureStatement.cs" />
+    <Compile Include="TSQL Syntax Tree\WScalarExpression.cs" />
+    <Compile Include="TSQL Syntax Tree\WSelectElement.cs" />
+    <Compile Include="TSQL Syntax Tree\WSelectQuery.cs" />
+    <Compile Include="TSQL Syntax Tree\WSql.cs" />
+    <Compile Include="TSQL Syntax Tree\WTableReference.cs" />
+    <Compile Include="WSqlTableContext.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GraphView.dll.snk" />
+    <None Include="DeployScriptTemplate.tt">
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+      <LastGenOutput>DeployScriptTemplate.cs</LastGenOutput>
+    </None>
+    <None Include="NodeTableGraphViewDefinedFunctionTemplate.tt">
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+      <LastGenOutput>NodeTableGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MetaGraphViewDefinedFunctionTemplate.tt">
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+      <LastGenOutput>MetaGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
