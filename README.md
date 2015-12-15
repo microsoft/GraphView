@@ -64,11 +64,13 @@ try {
   string q1 = "......";
   gdb.ExecuteNonReader(q1);
   string q2 = "......";
-  DataReader dataReader = gdb.ExecuteReader(q2);
+  GraphViewCommand gcmd = new GraphViewCommand(q2, gdb);
+  DataReader dataReader = gcmd.ExecuteReader(q2);
   While (dataReader.Read()) {
     // Retrieve results through DataReader
   }
   dataReader.Close();
+  gcmd.Dispose();
   gdb.Close();
 }
 ```
