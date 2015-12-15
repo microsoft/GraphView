@@ -61,11 +61,9 @@ Once you open a database, you send graph queries through the connector and retri
 ```C#
 try {
   gdb.Open(true);
-  string q1 = "......";
-  gdb.ExecuteNonReader(q1);
-  string q2 = "......";
-  GraphViewCommand gcmd = new GraphViewCommand(q2, gdb);
-  DataReader dataReader = gcmd.ExecuteReader(q2);
+  string queryString = "......";       // A graph query
+  GraphViewCommand gcmd = new GraphViewCommand(queryString, gdb);
+  DataReader dataReader = gcmd.ExecuteReader();
   While (dataReader.Read()) {
     // Retrieve results through DataReader
   }
@@ -74,7 +72,7 @@ try {
   gdb.Close();
 }
 ```
-Please read the user manual for the full language specification, functionality and programming API's. 
+Please read the [user manual][manual] for the full language specification, functionality and programming API's. 
 
 Get Help
 -----------
