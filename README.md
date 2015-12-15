@@ -89,7 +89,6 @@ Get Help
 License
 --------------
 GraphView is under the [MIT license][MIT].
-© 2015 Microsoft Corporation
 
 [manual]:manual_link
 [Email]:mailto:graphview@microsoft.com
