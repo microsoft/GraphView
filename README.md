@@ -13,7 +13,7 @@ GraphView offers the following major features:
 
 - **Data manipulations** GraphView provides an SQL-extended language for graph manipulation, including inserting/deleting nodes and edges. The syntax is similar to INSERT/DELETE statements in SQL, but is extended to accommodate graph semantics.
 
-- **Queries**  GraphView’s query language allows users to match graph patterns against the graph in a graph database. The query language extends the SQL SELECT statement with a MATCH clause, in which the graph pattern is specified. Coupled with loop/iteration statements from T-SQL, the language also allows users to perform iterative computations over the graph. Overall, the query language is sufficiently expressive and easy to use, so that query languages supported by existing native graph databases can easily be expressed. 
+- **Queries**  GraphView's query language allows users to match graph patterns against the graph in a graph database. The query language extends the SQL SELECT statement with a MATCH clause, in which the graph pattern is specified. Coupled with loop/iteration statements from T-SQL, the language also allows users to perform iterative computations over the graph. Overall, the query language is sufficiently expressive and easy to use, so that query languages supported by existing native graph databases can easily be expressed. 
 
 - **Indexes** To accelerate query processing, GraphView also allows users to create indexes. All indexes supported by SQL Server and Azure SQL Database are available, including not only conventional B-tree indexes but also new indexing technologies such as columnstore indexes.
 
