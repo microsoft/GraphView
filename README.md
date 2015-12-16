@@ -74,6 +74,10 @@ try {
 ```
 Please read the [user manual][manual] for the full language specification, functionality and programming API's. 
 
+Dependency
+-----------
+GraphView needs Microsoft SQL Server SDK: Microsoft.SqlServer.TransactSql.ScriptDom.dll. 
+
 Get Help
 -----------
 
