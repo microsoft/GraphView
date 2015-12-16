@@ -24,6 +24,22 @@ GraphView offers the following major features:
   2.  `Replication.` GraphView stores graph data in a SQL Server database. A replication of the database will result in a replication of all graph data.
   3.  `Backup.` GraphView maintains SQL Server databases that are visible to SQL Server administrators. Administrators can apply backup operations to the database explicitly.
 
+Dependency
+-----------
+GraphView needs Microsoft.SqlServer.TransactSql.ScriptDom.dll. Go to [here][datatools] to download and install SQL Server Data Tools.
+
+Build
+-----------
+**Prerequisites** 
+ - Visual Studio, programming languages -> Visual C# -> Common Tools for Visual C#
+ - Install [SQL Server Data Tools][datatools]
+
+**Build**
+ - Clone the source code: git clone https://github.com/Microsoft/GraphView.git
+ - Open GraphView.csproj 
+ - Set the configuration to "release"
+ - Build the project and generate GraphView.dll
+
 Getting Started
 ----------------
 GraphView is a DLL library. You reference the library in your application and open a graph database by instantiating a GraphViewConnection object with the connection string of a SQL database.
@@ -74,13 +90,8 @@ try {
 ```
 Please read the [user manual][manual] for the full language specification, functionality and programming API's. 
 
-Dependency
------------
-GraphView needs Microsoft.SqlServer.TransactSql.ScriptDom.dll. Go to [here][datatools] to download and install SQL Server Data Tools.
-
 Get Help
 -----------
-
 `User manual` GraphView's [user manual][manual] is the first place to get help. It introduces the full query language, functionality and programming API's. It also includes many code samples. 
 
 `GitHub`  The GitHub repository contains a short introduction. You can use Github's issue tracker to report bugs, suggest features and ask questions.
