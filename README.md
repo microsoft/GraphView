@@ -47,9 +47,9 @@ using GraphView;
 var sqlConnectionBuilder = new SqlConnectionStringBuilder();
 sqlConnectionBuilder["Server"]="tcp:graphview.database.windows.net,1433";
 sqlConnectionBuilder["User ID"]="xxx";
-sqlConnectionBuilder[“Password”] = "xxx";
-sqlConnectionBuilder[“Database”] = "GraphTesting";
-GraphViewConnection gdb = new GraphViewConnection(connectionString);
+sqlConnectionBuilder["Password"] = "xxx";
+sqlConnectionBuilder["Database"] = "GraphTesting";
+GraphViewConnection gdb = new GraphViewConnection(sqlConnectionBuilder.ToString());
 try {
   gdb.Open(true);
 }
