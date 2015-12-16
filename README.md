@@ -76,7 +76,7 @@ Please read the [user manual][manual] for the full language specification, funct
 
 Dependency
 -----------
-GraphView needs Microsoft SQL Server SDK: Microsoft.SqlServer.TransactSql.ScriptDom.dll. 
+GraphView needs Microsoft.SqlServer.TransactSql.ScriptDom.dll. Go to [here][datatools] to download and install SQL Server Data Tools.
 
 Get Help
 -----------
@@ -95,4 +95,5 @@ GraphView is under the [MIT license][MIT].
 [manual]:http://research.microsoft.com/pubs/259290/GraphView%20User%20Manual.pdf
 [Email]:mailto:graphview@microsoft.com
 [MIT]:LICENSE
+[datatools]:https://msdn.microsoft.com/en-us/library/mt204009.aspx
 
