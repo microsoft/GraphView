@@ -61,8 +61,8 @@ When the connection string points to an Azure SQL Database instance, you open a 
 using GraphView;
 ......
 var sqlConnectionBuilder = new SqlConnectionStringBuilder();
-sqlConnectionBuilder["Server"]="tcp:graphview.database.windows.net,1433";
-sqlConnectionBuilder["User ID"]="xxx";
+sqlConnectionBuilder["Server"] = "tcp:graphview.database.windows.net,1433";
+sqlConnectionBuilder["User ID"] = "xxx";
 sqlConnectionBuilder["Password"] = "xxx";
 sqlConnectionBuilder["Database"] = "GraphTesting";
 GraphViewConnection gdb = new GraphViewConnection(sqlConnectionBuilder.ToString());
