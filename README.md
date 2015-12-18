@@ -26,7 +26,7 @@ GraphView offers the following major features:
 
 Dependency
 -----------
-GraphView needs Microsoft.SqlServer.TransactSql.ScriptDom.dll. Go to [here][datatools] to download and install SQL Server Data Tools.
+GraphView needs Microsoft.SqlServer.TransactSql.ScriptDom.dll. Download and install [SQL Server Data Tools][datatools].
 
 Build
 -----------
