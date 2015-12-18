@@ -153,6 +153,7 @@ namespace GraphView
             private readonly string _fieldterminator;
             private readonly StreamReader _streamReader;
             private readonly IList<int> _kmp;
+            private readonly bool _skipHeader;
 
             private void PreKmp(string pattern, IList<int> kmp)
             {
@@ -178,7 +179,7 @@ namespace GraphView
             }
 
             public BulkInsertFileDataReader(string fileName, string fieldterminator,
-                string rowterminator, IList<string> datacolumn, IList<string> dataType)
+                string rowterminator, IList<string> datacolumn, IList<string> dataType, bool skipHeader)
             {
                 _streamReader = new StreamReader(fileName);
                 _rowterminator = rowterminator;
@@ -187,6 +188,7 @@ namespace GraphView
                 _dataType = dataType;
                 _dataColumn = datacolumn;
                 _countRow = 1;
+                _skipHeader = skipHeader;
                 _kmp = new List<int>();
                 PreKmp(rowterminator, _kmp);
 
@@ -224,7 +226,7 @@ namespace GraphView
                 {
                     return ConvertStringIntoSqlType(_value[i], _dataType[i]);
                 }
-                catch 
+                catch
                 {
                     throw new BulkInsertNodeException(
                         string.Format("The data in row {0}, column {1} can't be converted into Type\"{2}\".",
@@ -353,7 +355,7 @@ namespace GraphView
                 return false;
             }
 
-            public bool Read()
+            private bool getNextRow()
             {
                 bool getRowTerminator = false;
                 var builder = new StringBuilder();
@@ -364,13 +366,13 @@ namespace GraphView
                 {
                     if (rowTerminatorPosition == -1)
                     {
-                        builder.Append((char) ichar);
+                        builder.Append((char)ichar);
                         ichar = _streamReader.Read();
                         rowTerminatorPosition = 0;
                     }
-                    else if (_rowterminator[rowTerminatorPosition] == (char) ichar)
+                    else if (_rowterminator[rowTerminatorPosition] == (char)ichar)
                     {
-                        builder.Append((char) ichar);
+                        builder.Append((char)ichar);
                         rowTerminatorPosition++;
                         if (rowTerminatorPosition == _rowterminator.Length)
                         {
@@ -408,6 +410,23 @@ namespace GraphView
                     const string error = @"It should be {0} field(s) in the {1} row of data file";
                     throw new BulkInsertNodeException(string.Format(error, FieldCount, _countRow));
                 }
+                return true;
+            }
+
+            public bool Read()
+            {
+                if (!getNextRow())
+                {
+                    return false;
+                }
+
+                if ((_countRow == 1) && _skipHeader)
+                {
+                    if (!getNextRow())
+                    {
+                        return false;
+                    }
+                }
                 _countRow++;
                 return true;
             }
@@ -444,11 +463,11 @@ namespace GraphView
         /// <param name="fieldTerminator"> The field terminator of data file. Default by "\t".</param>
         /// <param name="rowTerminator"> The row terminator of data file. Default by "\r\n".</param>
         public void BulkInsertNode(string dataFileName, string tableName, string tableSchema = "dbo",
-            List<string> dataColumnName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n")
+            List<string> dataColumnName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n", bool skipHeader = false)
         {
             var command = Conn.CreateCommand();
             command.CommandTimeout = 0;
-            
+
             var transaction = Conn.BeginTransaction();
             command.Transaction = transaction;
             try
@@ -660,7 +679,7 @@ namespace GraphView
                 {
                     sqlBulkCopy.BulkCopyTimeout = 0;
                     using (var reader = new BulkInsertFileDataReader(dataFileName, fieldTerminator, rowTerminator, dataColumnName,
-                        columnDataType))
+                        columnDataType, skipHeader))
                     {
                         foreach (var it in dataColumnName)
                         {
@@ -731,23 +750,23 @@ namespace GraphView
         public void BulkInsertEdge(string dataFileName, string tableSchema, string sourceTableName,
             string sourceNodeIdName, string sinkTableName, string sinkNodeIdName, string edgeColumnName,
             List<string> dataEdgeAttributeName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n",
-            bool updateMethod = true)
+            bool updateMethod = true, bool skipHeader = false)
         {
             //Data types mapping from C# into sql and .Net.
             var typeDictionary = new Dictionary<string, Tuple<string, string>>
             {
-                {"int", new Tuple<string, string>("int", "Int32")},
-                {"long", new Tuple<string, string>("bigint", "Int64")},
-                {"double", new Tuple<string, string>("float", "Double")},
-                {"string", new Tuple<string, string>("nvarchar(4000)", "String")}
+                {"int", new Tuple<string, string>("int", "int")},
+                {"long", new Tuple<string, string>("bigint", "bigint")},
+                {"double", new Tuple<string, string>("float", "float")},
+                {"string", new Tuple<string, string>("nvarchar(4000)", "nvarchar")}
             };
-            
+
             //Check validity of input
             if (string.IsNullOrEmpty(sourceTableName))
             {
                 throw new BulkInsertEdgeException("The string of source table name is null or empty.");
             }
-            if (string.IsNullOrEmpty(sinkTableName ))
+            if (string.IsNullOrEmpty(sinkTableName))
             {
                 throw new BulkInsertEdgeException("The string of sink table name is null or empty.");
             }
@@ -779,7 +798,7 @@ namespace GraphView
             {
                 rowTerminator = "\r\n";
             }
-            
+
             var transaction = Conn.BeginTransaction();
             var command = Conn.CreateCommand();
             command.CommandTimeout = 0;
@@ -993,8 +1012,8 @@ namespace GraphView
                 command.ExecuteNonQuery();
 
                 //Bulk insert
-                var  dataColumnName = new List<string>();
-                var  columnDataType = new List<string>();
+                var dataColumnName = new List<string>();
+                var columnDataType = new List<string>();
                 dataColumnName.Add(sourceNodeId.Item3);
                 columnDataType.Add(sourceNodeId.Item2);
 
@@ -1003,17 +1022,17 @@ namespace GraphView
 
                 foreach (var it in userSuppliedEdgeAttributeInfo)
                 {
-                   dataColumnName.Add(it.Item1); 
-                   columnDataType.Add(it.Item2); 
+                    dataColumnName.Add(it.Item1);
+                    columnDataType.Add(typeDictionary[it.Item2.ToLower()].Item2);
                 }
-                
 
-                using (var sqlBulkCopy = new SqlBulkCopy(Conn,SqlBulkCopyOptions.TableLock, transaction))
+
+                using (var sqlBulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.TableLock, transaction))
                 {
                     sqlBulkCopy.BulkCopyTimeout = 0;
                     using (var reader = new BulkInsertFileDataReader(dataFileName, fieldTerminator, rowTerminator,
                             dataColumnName,
-                            columnDataType))
+                            columnDataType, skipHeader))
                     {
                         foreach (var it in dataColumnName)
                         {
@@ -1024,23 +1043,8 @@ namespace GraphView
                     }
                 }
 
-                //Bulk insert edge data into temp table
-                //const string bulkInsertEdge = @"
-                //BULK INSERT {0}
-                //   FROM ""{1}""
-                //   WITH 
-                //      (
-                //         FIELDTERMINATOR = '{2}',
-                //         ROWTERMINATOR = '{3}',
-                //         tablock
-                //      )";
-                //command.Parameters.Clear();
-                //command.CommandText = string.Format(bulkInsertEdge, randomTempTableName, dataFileName, fieldTerminator,
-                //    rowTerminator);
-                //command.ExecuteNonQuery();
-
                 //Create clustered index on sink node in temp table
-                string clusteredIndexName = "sinkIndex_" + RandomString(); 
+                string clusteredIndexName = "sinkIndex_" + RandomString();
                 const string createClusteredIndex = @"
                 create clustered index [{0}] on {1}([{2}])";
                 command.Parameters.Clear();
@@ -1360,7 +1364,8 @@ namespace GraphView
                         ) as [GraphView_InsertEdgeInternalTable]
                         Where [GraphView_InsertEdgeInternalTable].sink = [{0}].[{4}]";
                     command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
-                        randomTempTableName, tableSchema, sinkNodeId.Item1);
+                        randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
+                        sourceNodeId.Item3);
                     command.ExecuteNonQuery();
                 }
 
@@ -1377,4 +1382,4 @@ namespace GraphView
             }
         }
     }
-} 
+}

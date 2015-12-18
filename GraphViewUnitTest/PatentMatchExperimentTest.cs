@@ -9,7 +9,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GraphViewUnitTest
 {
-    [TestClass]
+    //[TestClass]
     public class PatentMatchExperimentTest
     {
         private readonly string _connStr = @"Data Source=4QQBZX12;Integrated Security=True;Database=GraphExperiment";
