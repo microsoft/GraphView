@@ -14,15 +14,14 @@ GraphView offers the following major features:
 - **Data manipulations** GraphView provides an SQL-extended language for graph manipulation, including inserting/deleting nodes and edges. The syntax is similar to INSERT/DELETE statements in SQL, but is extended to accommodate graph semantics.
 
 - **Queries**  GraphView's query language allows users to match graph patterns against the graph in a graph database. The query language extends the SQL SELECT statement with a MATCH clause, in which the graph pattern is specified. Coupled with loop/iteration statements from T-SQL, the language also allows users to perform iterative computations over the graph. Overall, the query language is sufficiently expressive and easy to use, so that query languages supported by existing native graph databases can easily be expressed. 
-
 - **Indexes** To accelerate query processing, GraphView also allows users to create indexes. All indexes supported by SQL Server and Azure SQL Database are available, including not only conventional B-tree indexes but also new indexing technologies such as columnstore indexes.
 
 - **Transactions** All operations in GraphView are transaction-safe. What is more, there is no limit on a transaction’s scope; a transaction can span nodes, edges or even graphs.
 
 - **SQL-related features** GraphView inherits many administration features from SQL Server and Azure SQL Database. Below is a short list of features that are crucial to administration tasks:
   1.  `Access control.` GraphView uses the authentication mechanism of SQL Server to control accesses to graph databases. A user can access a graph database if SQL Server says so.
-  2.  `Replication.` GraphView stores graph data in a SQL Server database. A replication of the database will result in a replication of all graph data.
-  3.  `Backup.` GraphView maintains SQL Server databases that are visible to SQL Server administrators. Administrators can apply backup operations to the database explicitly.
+  2.  `Replication & backup.` GraphView stores graph data in a SQL database. A replication/backup of the database will result in a replication/backup of all graph data.
+  3.  `Cloud-related features.` When using GraphView to connect to Azure SQL Database, you enjoy many features of cloud computing, such as geo-replication and multi-tenancy. 
 
 Dependency
 -----------
