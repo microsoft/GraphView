@@ -12,7 +12,7 @@ namespace GraphViewTutorial
         //  This is a tutorial for GraphView user about how to create SP and execute SP
         //  Using SP is much more faster than call GraphViewConnection.executeNonQuery()
         //  We highly recommend you create SP for the queries
-        //  Please notice that following script will drop all the table in databse when it finished
+        //  Please notice that following script will drop all the table in database when it finished
         
         public static void run()
         {
