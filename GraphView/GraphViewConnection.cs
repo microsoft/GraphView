@@ -1219,7 +1219,7 @@ namespace GraphView
         /// <param name="tableName">Name of table to be updated.</param>
         /// <param name="edgeColumns">Edge columns to be merged</param>
         /// <param name="delReverse">If it is set to true,merge the reversedEdge Column</param>
-        public void MergeDeleteColumn(string tableSchema, string tableName, string[] edgeColumns,
+        public void MergeDelta(string tableSchema, string tableName, string[] edgeColumns,
             SqlTransaction tx = null)
         {
             //var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName);
@@ -1281,7 +1281,7 @@ namespace GraphView
         /// </summary>
         /// <param name="tableSchema">Schema of table to be updated.</param>
         /// <param name="tableName">Name of table to be updated.</param>
-        public void MergeAllDeleteColumn(string tableSchema, string tableName)
+        public void MergeDelta(string tableSchema, string tableName)
         {
             var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName).Select(x => x.Item1).ToArray();
             if (edgeColumns.Length == 0)
@@ -1289,7 +1289,7 @@ namespace GraphView
             SqlTransaction tx = Conn.BeginTransaction();
             try
             {
-                MergeDeleteColumn(tableSchema, tableName, edgeColumns, tx);
+                MergeDelta(tableSchema, tableName, edgeColumns, tx);
                 tx.Commit();
             }
             catch (Exception e)
