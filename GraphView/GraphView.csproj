@@ -64,6 +64,7 @@
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
+    <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />

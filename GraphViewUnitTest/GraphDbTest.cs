@@ -21,6 +21,53 @@ namespace GraphViewUnitTest
                   .ConnectionStrings["GraphViewDbConnectionString"].ConnectionString;
 
         [TestMethod]
+        public void ImportDataTest()
+        {
+            string yourSQLServerName = @"(local)\MS15";
+            string yourDBName = "ForProductTeam";
+            string yourAzureSQLAddress = "graphview.database.windows.net";
+            string yourAzureSQLDBName = "Siqi";
+            string yourAzureUserId = "graphTester@graphview";
+            string yourAzurePassword = "msraTester!2#";
+
+            using (var graph = new GraphViewConnection( "Server=tcp:" + yourAzureSQLAddress
+                    + ";Database=" + yourAzureSQLDBName
+                    + ";User ID=" + yourAzureUserId
+                    + ";Password= " + yourAzurePassword
+                    + ";Trusted_Connection=False;Encrypt=True;Max Pool Size=3000;Connect Timeout=0"))
+            {
+                graph.Open();
+                
+                graph.ClearData();
+                var node = new List<string>() { "AzCluster", "AzMachinePool", "Blade", "DataCenter", "Device", "DeviceSlice", "PhysicalLink", "Rack", "Vlan", "VlanInterface" };
+                node = node.Select(x => x + ".csv").ToList();
+                var edge = new List<string>() { "AzCluster_To_AzCluster", "AzCluster_To_AzMachinePool", "AzMachinePool_To_AzCluster", "AzMachinePool_To_Blade", "Blade_To_AzMachinePool", "Blade_To_Rack", "DataCenter_To_Device", "DataCenter_To_DeviceSlice", "Device_To_PhysicalLink", "Device_To_Rack", "Device_To_VlanInterface", "DeviceSlice_To_Device", "PhysicalLink_To_Device", "Rack_To_Blade", "Rack_To_Device", "Vlan_To_VlanInterface", "VlanInterface_To_Vlan" };
+                edge = edge.Select(x => x + ".csv").ToList();
+                graph.import(node, edge, @"D:\firstCustomer\data", true);  // */
+
+                var rand = new Random();
+
+                var res = graph.ExecuteReader( string.Format(@"SELECT A.name AS name1, B.name AS name2 FROM AzCluster A, AzCluster B
+                                MATCH A-[FCCCLUSTER]->B
+                                WHERE A.ClusterId = {0} ", rand.Next(30) ) );
+                try
+                {
+
+                    while (res.Read())
+                    {
+                        System.Console.WriteLine( res["name1"] + " --------> " + res["name2"].ToString());
+                    }
+                }
+                finally
+                {
+                    if (res != null)
+                        res.Close();
+                }
+
+            }
+        }
+
+        [TestMethod]
         public void TestEstimate()
         {
             TestInitialization.ClearDatabase();
