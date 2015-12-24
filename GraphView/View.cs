@@ -333,7 +333,7 @@ namespace GraphView
                 string updateNodeView = string.Format(@"INSERT INTO {0} VALUES (@nodeviewtableid, @tableid)",
                     MetadataTables[7]);
                 command.Parameters.Clear();
-                command.Parameters.Add("nodeviewtableid", nodeviewTableId);
+                command.Parameters.AddWithValue("nodeviewtableid", nodeviewTableId);
                 command.Parameters.Add("tableid", SqlDbType.NVarChar);
                 command.CommandText = updateNodeView;
                 foreach (var it in nodes)
@@ -889,9 +889,9 @@ namespace GraphView
                 From [{0}] GEA
                 Where [TableSchema] = @schema and [TableName] = @table and [ColumnName] = @column);";
                 command.Parameters.Clear();
-                command.Parameters.Add("schema", tableSchema);
-                command.Parameters.Add("table", supperNode);
-                command.Parameters.Add("column", edgeView);
+                command.Parameters.AddWithValue("schema", tableSchema);
+                command.Parameters.AddWithValue("table", supperNode);
+                command.Parameters.AddWithValue("column", edgeView);
                 command.CommandText = string.Format(dropAttribtueRef, MetadataTables[2], MetadataTables[6]);
                 command.ExecuteNonQuery();
 

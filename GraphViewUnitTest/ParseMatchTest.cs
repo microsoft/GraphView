@@ -122,7 +122,7 @@ namespace GraphViewUnitTest
                 var fragment = parser.Parse(sr, out errors);
                 Assert.Fail();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 //Assert.AreEqual(e.Message, "MATCH clause should exactly follow FROM clause");
             }

@@ -103,10 +103,6 @@ namespace GraphViewUnitTest
         }
 
 
-
-
-
-
         [TestMethod]
         public void BitmapTest()
         {
@@ -508,9 +504,9 @@ namespace GraphViewUnitTest
                 command.ExecuteNonQuery();
 
                 //Run following SQL query can get 8 paths:
-                string query = @"
-                    select *
-                    from dbo.dboClientNodeColleaguesbfs(0);";
+                //string query = @"
+                //    select *
+                //    from dbo.dboClientNodeColleaguesbfs(0);";
                 //graph.ExecuteNonQuery(query);
 
                 const string deleteEdge = @"
@@ -583,4 +579,3 @@ namespace GraphViewUnitTest
     }
 
 }
-

@@ -1292,7 +1292,7 @@ namespace GraphView
                 MergeDeleteColumn(tableSchema, tableName, edgeColumns, tx);
                 tx.Commit();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 tx.Rollback();
                 throw;
