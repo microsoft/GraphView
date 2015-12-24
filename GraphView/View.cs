@@ -254,11 +254,15 @@ namespace GraphView
                     for (int i = 0; i < edgeColumnOffset; i++)
                     {
                         elementList.Add("null as " + edgeNameList[i]);
+                        elementList.Add(string.Format("null as {0}DeleteCol", edgeNameList[i]));
+                        elementList.Add(string.Format("null as {0}OutDegree", edgeNameList[i]));
                     }
 
                     foreach (var variable in edgeList[row])
                     {
                         elementList.Add(variable.Item2 + " as " + variable.Item1 + '_' + variable.Item2);
+                        elementList.Add(string.Format("{0}DeleteCol as {1}DeleteCol",variable.Item2, variable.Item1 + '_' + variable.Item2));
+                        elementList.Add(string.Format("{0}OutDegree as {1}OutDegree", variable.Item2, variable.Item1 + '_' + variable.Item2));
                     }
 
                     edgeColumnOffset += edgeList[row].Count;
@@ -266,6 +270,8 @@ namespace GraphView
                     for (int i = edgeColumnOffset; i < edgeCount; i++)
                     {
                         elementList.Add("null as " + edgeNameList[i]);
+                        elementList.Add(string.Format("null as {0}DeleteCol", edgeNameList[i]));
+                        elementList.Add(string.Format("null as {0}OutDegree", edgeNameList[i]));
                     }
 
                     selectElement = string.Join(",", elementList);

@@ -20,7 +20,6 @@ namespace GraphViewUnitTest
             System.Configuration.ConfigurationManager
                   .ConnectionStrings["GraphViewDbConnectionString"].ConnectionString;
 
-        [TestMethod]
         public void TestEstimate()
         {
             TestInitialization.ClearDatabase();
@@ -444,8 +443,8 @@ namespace GraphViewUnitTest
                 //    }
                 //}
 
-                graph.DropNodeView("dbo", "suppernodetest");
-                graph.DropEdgeView("dbo", "NodeView", "EdgeView");
+                //graph.DropNodeView("dbo", "suppernodetest");
+                //graph.DropEdgeView("dbo", "NodeView", "EdgeView");
             }
         }
 

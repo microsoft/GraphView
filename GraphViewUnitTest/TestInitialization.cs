@@ -12,13 +12,15 @@ namespace GraphViewUnitTest
 {
     public static class TestInitialization
     {
-        private static readonly string _connStr =
+        public static string ConnectionString { get { return ConnStr; } }
+
+        private static readonly string ConnStr =
             System.Configuration.ConfigurationManager
                 .ConnectionStrings["GraphViewDbConnectionString"].ConnectionString;
 
         public static void ClearDatabase()
         {
-            using (var conn = new SqlConnection(_connStr))
+            using (var conn = new SqlConnection(ConnStr))
             {
                 var sr = new StreamReader("ClearDatabase.sql");
 
@@ -43,7 +45,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public static void CreateGraphTable()
         {
-            using (var graph = new GraphViewConnection(_connStr))
+            using (var graph = new GraphViewConnection(ConnStr))
             {
                 graph.Open();
 
@@ -87,7 +89,7 @@ namespace GraphViewUnitTest
 
         public static void GenerateRandomData()
         {
-            using (var graph = new GraphViewConnection(_connStr))
+            using (var graph = new GraphViewConnection(ConnStr))
             {
                 graph.Open();
                 DataGenerator.InsertDataEmployNode(graph.Conn);

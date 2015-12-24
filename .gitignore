@@ -214,3 +214,5 @@ ModelManifest.xml
 #App Config
 [Aa]pp.config
 TestConfiguration.cs
+*.pk
+*.jky

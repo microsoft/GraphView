@@ -1042,6 +1042,14 @@ namespace GraphView
                         {
                             Clustered = false,
                             IsPrimaryKey = false,
+                            ConstraintIdentifier = new Identifier
+                            {
+                                Value = string.Format("{0}_UQ_{1}", (stmt.SchemaObjectName.SchemaIdentifier == null
+                                    ? "dbo"
+                                    : stmt.SchemaObjectName.SchemaIdentifier.Value) +
+                                                                    stmt.SchemaObjectName.BaseIdentifier.Value,
+                                    rawColumnDef[i].ColumnIdentifier.Value)
+                            }
                         });
                         break;
                 }
