@@ -6,6 +6,7 @@ using System.Data.SqlClient;
 using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using GraphView;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -18,11 +19,6 @@ namespace GraphViewUnitTest
         private readonly string _connStr =
             System.Configuration.ConfigurationManager
                   .ConnectionStrings["GraphViewDbConnectionString"].ConnectionString;
-
-        public GraphDbTest()
-        {
-            TestInitialization.Init();
-        }
 
         [TestMethod]
         public void TestEstimate()

@@ -63,7 +63,6 @@
     <Compile Include="DataGenerator.cs" />
     <Compile Include="EdgePropertiesTest.cs" />
     <Compile Include="GraphDbTest.cs" />
-    <Compile Include="LocalTest.cs" />
     <Compile Include="ParseMatchTest.cs" />
     <Compile Include="PatentMatchExperimentTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

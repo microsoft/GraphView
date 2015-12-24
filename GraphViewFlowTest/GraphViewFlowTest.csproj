@@ -54,9 +54,6 @@
     <Compile Include="TripleTriangleMatchTest.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\GraphView\GraphView.csproj">
       <Project>{33cadc4a-376f-489b-8357-be60d8f6186a}</Project>
       <Name>GraphView</Name>
