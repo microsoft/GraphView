@@ -60,7 +60,7 @@ namespace GraphViewUnitTest
                 edges.Add(Tuple.Create("EmployeeNode", "Manager"));
                 var edgeAttribute = new List<string>();
                 var attributeMapping = new List<Tuple<string, List<Tuple<string, string, string>>>>();
-                graph.CreateEdgeView("dbo", "EmployeeNode", "edgeView", edges, edgeAttribute, attributeMapping);
+                graph.CreateEdgeView("dbo", "EmployeeNode", "edgeView", edges, edgeAttribute, null, attributeMapping);
 
                 const string q2 = @"
                     CREATE PROCEDURE SingleEdgeInsert
@@ -376,7 +376,7 @@ namespace GraphViewUnitTest
                 mapping.Add(Tuple.Create("c_new",
                     new List<Tuple<string, string, string>>() {Tuple.Create("ClientNode", "Colleagues", "c")}));
                 mapping.Add(Tuple.Create("d", new List<Tuple<string, string, string>>()));
-                graph.CreateEdgeView("dbo", "NodeView", "EdgeView", Edges, edgeAttribute, mapping);
+                graph.CreateEdgeView("dbo", "NodeView", "EdgeView", Edges, edgeAttribute, null, mapping);
 
 
                 //const string createSupperNode = @"
