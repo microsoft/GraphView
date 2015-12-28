@@ -236,14 +236,14 @@ namespace GraphView
                     }
                 }
 
-                //Product create view string.
-                count = 0;
+                //Generates create view string.
                 var mapping2DArrayTuples = new Tuple<string, string>[nodes.Count()][];
                 for (int i = 0; i < nodes.Count; i++)
                 {
                     mapping2DArrayTuples[i] = new Tuple<string, string>[propertymapping.Count];
                 }
 
+                count = 0;
                 foreach (var it in propertymapping)
                 {
                     foreach (var variable in it.Item2)
@@ -256,6 +256,13 @@ namespace GraphView
                         }
                         mapping2DArrayTuples[_dictionaryTableOffsetId[variable.Item1.ToLower()]][count] =
                             Tuple.Create(variable.Item2, it.Item1);
+                    }
+                    for (int i = 0; i < nodes.Count(); i++)
+                    {
+                        if (mapping2DArrayTuples[i][count] == null)
+                        {
+                            mapping2DArrayTuples[i][count] = Tuple.Create("null", it.Item1);
+                        }
                     }
                     count++;
                 }
@@ -280,7 +287,7 @@ namespace GraphView
                     string selectElement;
                     var elementList =
                         mapping2DArrayTuples[row].Select(
-                            item => (item != null ? item.Item1.ToString() : "null") + " as " + item.Item2).ToList();
+                            item => item.Item1.ToString() + " as " + item.Item2).ToList();
 
                     for (int i = 0; i < edgeColumnOffset; i++)
                     {

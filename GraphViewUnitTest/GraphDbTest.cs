@@ -394,8 +394,16 @@ namespace GraphViewUnitTest
                 var propertymapping = new List<Tuple<string, List<Tuple<string, string>>>>()
                 {
                     Tuple.Create("ClientId",
-                        new List<Tuple<string, string>>(){Tuple.Create("ClientNode", "ClientId"),
-                            Tuple.Create("EmployeeNode", "WorkId")})
+                        new List<Tuple<string, string>>()
+                        {
+                            Tuple.Create("ClientNode", "ClientId"),
+                            Tuple.Create("EmployeeNode", "WorkId")
+                        }),
+                    Tuple.Create("Id",
+                        new List<Tuple<string, string>>()
+                        {
+                            Tuple.Create("ClientNode", "ClientId")
+                        })
                 };
                 graph.createNodeView("dbo", "suppernodetest", new List<string>() {
                 "ClientNode",
