@@ -93,7 +93,7 @@ namespace GraphViewUnitTest
                             Tuple.Create("EmployeeNode", "WorkId")
                         })
                 };
-                graph.createNodeView("dbo", "suppernodetest", new List<string>()
+                graph.CreateNodeView("dbo", "suppernodetest", new List<string>()
                 {
                     "ClientNode",
                     "EmployeeNode"
@@ -401,7 +401,7 @@ namespace GraphViewUnitTest
                         new List<Tuple<string, string>>(){Tuple.Create("ClientNode", "ClientId"),
                             Tuple.Create("EmployeeNode", "WorkId")})
                 };
-                graph.createNodeView("dbo", "suppernodetest", new List<string>() {
+                graph.CreateNodeView("dbo", "suppernodetest", new List<string>() {
                 "ClientNode",
                 "EmployeeNode"
                 },

@@ -56,6 +56,7 @@
     <Compile Include="CheckTableReferencingVisitor.cs" />
     <Compile Include="ColumnStatistics.cs" />
     <Compile Include="ConvertToModificationStatementVisitor.cs" />
+    <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DeployScriptTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -66,6 +67,7 @@
     <Compile Include="GraphViewKeywords.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
+    <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
     <Compile Include="MetaGraphViewDefinedFunctionTemplate.cs">

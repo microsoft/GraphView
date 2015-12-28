@@ -1062,7 +1062,10 @@ namespace GraphView
                     {
                         if (!reader.Read())
                             break;
-                        _tableIdDensity[key] = Convert.ToDouble(reader["Density"]);
+                        double density = Convert.ToDouble(reader["Density"]);
+                        if (Math.Abs(density - 1.0) < 0.0001)
+                            density = ColumnStatistics.DefaultDensity;
+                        _tableIdDensity[key] = density;
                     }
 
                 }

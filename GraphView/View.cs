@@ -69,7 +69,7 @@ namespace GraphView
         /// That is, List<Tuple<nodeViewpropety, List<Tuple<native node table name, native node table propety>>>> 
         /// </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node view will occur.</param>
-        public void createNodeView(string tableSchema, string nodeViewName, List<string> nodes,
+        public void CreateNodeView(string tableSchema, string nodeViewName, List<string> nodes,
             List<Tuple<string, List<Tuple<string, string>>>>  propertymapping,
             SqlTransaction externalTransaction = null)
         {
@@ -249,7 +249,7 @@ namespace GraphView
                     string selectElement;
                     var elementList =
                         mapping2DArrayTuples[row].Select(
-                            item => (item != null ? item.Item1.ToString() : "null") + " as " + item.Item2).ToList();
+                            item => (item != null ? item.Item1.ToString() + " as " + item.Item2 : "null")).ToList();
 
                     for (int i = 0; i < edgeColumnOffset; i++)
                     {
@@ -376,6 +376,33 @@ namespace GraphView
             }
         }
 
+        public void CreateNodeView(string query)
+        {
+            IList<ParseError> errors;
+            var parser = new GraphViewParser();
+            var script = parser.ParseCreateNodeEdgeViewStatement(query, out errors) as WSqlScript;
+            if (errors.Count>0)
+                throw new SyntaxErrorException(errors);
+
+            if (script == null || script.Batches.Count == 0)
+            {
+                throw new SyntaxErrorException("Invalid CREATE VIEW statement.");
+            }
+            
+            var statement = script.Batches[0].Statements[0] as WCreateViewStatement;
+            if (statement == null)
+                throw new SyntaxErrorException("Not a CREATE VIEW statement");
+            var nodeViewObjectName = statement.SchemaObjectName;
+            string schema = nodeViewObjectName.SchemaIdentifier == null
+                ? "dbo"
+                : nodeViewObjectName.SchemaIdentifier.Value;
+            string nodeViewName = nodeViewObjectName.BaseIdentifier.Value;
+            var visitor = new NodeViewSelectStatementVisitor();
+            List<string> tableObjList;
+            List<Tuple<string, List<Tuple<string, string>>>> propertymapping;
+            visitor.Invoke(schema, statement.SelectStatement, out tableObjList, out propertymapping);
+            CreateNodeView(schema, nodeViewName, tableObjList, propertymapping);
+        }
 
         /// <summary>
         /// Drop Edge View
@@ -472,7 +499,7 @@ namespace GraphView
             try
             {
                 CreateEdgeViewDecoder(tableSchema, edgeViewName, edges, edgeAttribute, command, attributeMapping);
-                updateEdgeViewMetaData(tableSchema, edgeViewName, command);
+                UpdateEdgeViewMetaData(tableSchema, edgeViewName, command);
 #if !DEBUG
             transaction.Commit();
 #endif
@@ -481,6 +508,37 @@ namespace GraphView
             {
                 throw new EdgeViewException(error.Message);
             }
+        }
+
+        public void CreateEdgeView(string query)
+        {
+            IList<ParseError> errors;
+            var parser = new GraphViewParser();
+            var script = parser.ParseCreateNodeEdgeViewStatement(query, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                throw new SyntaxErrorException(errors);
+
+            if (script == null || script.Batches.Count == 0)
+            {
+                throw new SyntaxErrorException("Invalid CREATE VIEW statement.");
+            }
+
+            var statement = script.Batches[0].Statements[0] as WCreateViewStatement;
+            if (statement == null)
+                throw new SyntaxErrorException("Not a CREATE VIEW statement");
+            var edgeViewObjectName = statement.SchemaObjectName;
+            string schema = edgeViewObjectName.SchemaIdentifier == null
+                ? "dbo"
+                : edgeViewObjectName.SchemaIdentifier.Value;
+            string edgeViewName = edgeViewObjectName.BaseIdentifier.Value;
+            var visitor = new EdgeViewSelectStatementVisitor();
+            List<Tuple<string, string>> edges;
+            List<string> edgeAttribute;
+            List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping;
+            visitor.Invoke(schema, statement.SelectStatement, out edges, out edgeAttribute, out attributeMapping);
+            //CreateNodeView(schema, edgeViewName, edges, propertymapping);
+            CreateEdgeView(schema, "", edgeViewName, edges, edgeAttribute, attributeMapping);
+
         }
 
         ///  <summary>
@@ -732,7 +790,7 @@ namespace GraphView
         /// <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
         /// <param name="edgeViewName"> The name of supper edge. </param>
         /// <param name="command"> Sql Command </param>
-        private void updateEdgeViewMetaData(string tableSchema, string edgeViewName, SqlCommand command)
+        private void UpdateEdgeViewMetaData(string tableSchema, string edgeViewName, SqlCommand command)
         {
 
                 //Insert edge view message into "_NodeTableColumnCollection" MetaDataTable
