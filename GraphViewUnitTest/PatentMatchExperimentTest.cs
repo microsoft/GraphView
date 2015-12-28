@@ -58,57 +58,57 @@ namespace GraphViewUnitTest
                 //ClearDatabase();
                 graph.Open();
 
-                const string createPatentStr = @"
-                CREATE TABLE [Patent_NT] (
-                    [ColumnRole: ""NodeId""]
-	                patentId INT NOT NULL,
-	                [ColumnRole: ""Property""]
-	                gyear INT,
-	                [ColumnRole: ""Property""]
-	                gdate INT,
-	                [ColumnRole: ""Property""]
-	                ayear INT,
-	                [ColumnRole: ""Property""]
-	                country VARCHAR(10),
-	                [ColumnRole: ""Property""]
-	                postate VARCHAR(10),
-	                [ColumnRole: ""Property""]
-	                assignee INT,
-	                [ColumnRole: ""Property""]
-	                asscode INT,
-	                [ColumnRole: ""Property""]
-	                claims INT,
-	                [ColumnRole: ""Property""]
-	                nclass INT,
-	                [ColumnRole: ""Property""]
-	                cat INT,
-	                [ColumnRole: ""Property""]
-	                subcat INT,
-	                [ColumnRole: ""Property""]
-	                cmade INT,
-	                [ColumnRole: ""Property""]
-	                creceive INT,
-	                [ColumnRole: ""Property""]
-	                ratiocit DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                general DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                original DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                fwdaplag DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                bckgtlag DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                selfctub DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                selfctlb DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                secdupbd DECIMAL(12,5),
-	                [ColumnRole: ""Property""]
-	                secdlwbd DECIMAL(12,5),
-	                [ColumnRole: ""Edge"", Reference: ""Patent_NT""]
-	                adjacencyList varbinary(8000)
-                )";
+                //const string createPatentStr = @"
+                //CREATE TABLE [Patent_NT] (
+                //    [ColumnRole: ""NodeId""]
+	            //    patentId INT NOT NULL,
+	            //    [ColumnRole: ""Property""]
+	            //    gyear INT,
+	            //    [ColumnRole: ""Property""]
+	            //    gdate INT,
+	            //    [ColumnRole: ""Property""]
+	            //    ayear INT,
+	            //    [ColumnRole: ""Property""]
+	            //    country VARCHAR(10),
+	            //    [ColumnRole: ""Property""]
+	            //    postate VARCHAR(10),
+	            //    [ColumnRole: ""Property""]
+	            //    assignee INT,
+	            //    [ColumnRole: ""Property""]
+	            //    asscode INT,
+	            //    [ColumnRole: ""Property""]
+	            //    claims INT,
+	            //    [ColumnRole: ""Property""]
+	            //    nclass INT,
+	            //    [ColumnRole: ""Property""]
+	            //    cat INT,
+	            //    [ColumnRole: ""Property""]
+	            //    subcat INT,
+	            //    [ColumnRole: ""Property""]
+	            //    cmade INT,
+	            //    [ColumnRole: ""Property""]
+	            //    creceive INT,
+	            //    [ColumnRole: ""Property""]
+	            //    ratiocit DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    general DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    original DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    fwdaplag DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    bckgtlag DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    selfctub DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    selfctlb DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    secdupbd DECIMAL(12,5),
+	            //    [ColumnRole: ""Property""]
+	            //    secdlwbd DECIMAL(12,5),
+	            //    [ColumnRole: ""Edge"", Reference: ""Patent_NT""]
+	            //    adjacencyList varbinary(8000)
+                //)";
                 //graph.CreateNodeTable(createPatentStr);
                 //graph.UpdateTableStatistics("dbo", "Patent_NT");
                 //graph.BatchInsertNode(@"D:\GraphView Patter Matching Exp\apat63_99_new.txt", "Patent_NT",null, null, ",", "\n");
