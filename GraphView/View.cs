@@ -619,7 +619,7 @@ namespace GraphView
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping;
             visitor.Invoke(schema, statement.SelectStatement, out edges, out edgeAttribute, out attributeMapping);
             //CreateNodeView(schema, edgeViewName, edges, propertymapping);
-            CreateEdgeView(schema, "", edgeViewName, edges, edgeAttribute, null, attributeMapping);
+            CreateEdgeView(schema, "NodeView", edgeViewName, edges, edgeAttribute, null, attributeMapping);
 
         }
 
@@ -874,7 +874,7 @@ namespace GraphView
                     emptyAttribute[0].Key));
             }
 
-            GraphViewDefinedFunctionGenerator.RegisterEdgeView(tableSchema, edgeViewName, _attributeType,
+            GraphViewDefinedFunctionGenerator.RegisterEdgeView(_supperNode, tableSchema, edgeViewName, _attributeType,
                 edgesAttributeMappingDictionary, Conn, command.Transaction);
                 if (externalTransaction == null)
                 {
@@ -1095,11 +1095,11 @@ namespace GraphView
                 const string dropFunction = @"
                 Drop function [{0}]";
                 command.Parameters.Clear();
-                command.CommandText = string.Format(dropFunction, tableSchema + '_' + edgeView + '_' + "Decoder" );
+                command.CommandText = string.Format(dropFunction, tableSchema + '_' + _supperNode + '_' + edgeView + '_' + "Decoder");
                 command.ExecuteNonQuery();
                 const string dropAssembly = @"
                 Drop Assembly [{0}_Assembly]";
-                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + edgeView);
+                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _supperNode + '_' + edgeView);
                 command.ExecuteNonQuery();
 #if !DEBUG
                 if (externalTransaction == null)
