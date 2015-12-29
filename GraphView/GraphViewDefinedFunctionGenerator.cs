@@ -228,7 +228,7 @@ namespace GraphView
             }
         }
 
-        public static void RegisterEdgeView(string suppernode, string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
+        public static void RegisterEdgeView(string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
             Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
             SqlConnection conn, SqlTransaction tx)
         {
@@ -242,7 +242,8 @@ namespace GraphView
             var result = Compile(code);
             if (result.Errors.Count > 0)
                 throw new GraphViewException("Failed to compile function");
-            var script = GenerateRegisterScript(schema + '_' + suppernode, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
+            //var script = GenerateRegisterScript(schema + '_' + suppernode, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
+            var script = GenerateRegisterScript(schema, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
 
             var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
             var command = conn.CreateCommand();

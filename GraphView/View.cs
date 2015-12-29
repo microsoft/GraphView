@@ -38,7 +38,7 @@ namespace GraphView
 {
     public partial class GraphViewConnection : IDisposable
     {
-        private string supperNode;
+        private string _supperNode;
 
         private Dictionary<string, Int64> _dictionaryTableId; // <Table Name> => <Table Id>
         private Dictionary<string, int> _dictionaryTableOffsetId; // <Table Name> => <Table Offset Id> (counted from 0)
@@ -94,8 +94,8 @@ namespace GraphView
             var transaction = externalTransaction ?? Conn.BeginTransaction();
             try
             {
-                createNodeViewWithoutRecord(tableSchema, nodeViewName, nodes, propertymapping, transaction);
-                updateNodeViewMetatable(tableSchema, nodeViewName, nodes, propertymapping, transaction);
+                CreateNodeViewWithoutRecord(tableSchema, nodeViewName, nodes, propertymapping, transaction);
+                UpdateNodeViewMetatable(tableSchema, nodeViewName, nodes, propertymapping, transaction);
                 transaction.Commit();
             }
             catch (Exception error)
@@ -119,7 +119,7 @@ namespace GraphView
         /// That is, List<Tuple<nodeViewpropety, List<Tuple<native node table name, native node table propety>>>> 
         /// </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node view will occur.</param>
-        private void createNodeViewWithoutRecord(string tableSchema, string nodeViewName, List<string> nodes,
+        private void CreateNodeViewWithoutRecord(string tableSchema, string nodeViewName, List<string> nodes,
             List<Tuple<string, List<Tuple<string, string>>>>  propertymapping,
             SqlTransaction externalTransaction = null)
         {
@@ -357,7 +357,7 @@ namespace GraphView
         /// That is, List<Tuple<nodeViewpropety, List<Tuple<native node table name, native node table propety>>>> 
         /// </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node view will occur.</param>
-        private void updateNodeViewMetatable(string tableSchema, string nodeViewName, List<string> nodes,
+        private void UpdateNodeViewMetatable(string tableSchema, string nodeViewName, List<string> nodes,
             List<Tuple<string, List<Tuple<string, string>>>>  propertymapping,
             SqlTransaction externalTransaction = null)
         {
@@ -568,13 +568,13 @@ namespace GraphView
             List<Tuple<string, string>> edges, List<string> edgeAttribute, SqlTransaction externalTransaction = null,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
-            supperNode = supperNodeName;
+            _supperNode = supperNodeName;
             var transaction = externalTransaction ?? Conn.BeginTransaction();
 
             try
             {
-                createEdgeViewWithoutRecord(tableSchema, edgeViewName, edges, edgeAttribute, transaction, attributeMapping);
-                updateEdgeViewMetaData(tableSchema, edgeViewName, transaction);
+                CreateEdgeViewWithoutRecord(tableSchema, edgeViewName, edges, edgeAttribute, transaction, attributeMapping);
+                UpdateEdgeViewMetaData(tableSchema, edgeViewName, transaction);
 
                 if (externalTransaction == null)
                 {
@@ -640,7 +640,7 @@ namespace GraphView
         ///  user can pass a null or empty parameter of  List<Tuple<string, string, string>>.
         ///  When "attributeMapping" is empty or null, the program will map the atrributes of supper edge
         ///  into all the same-name attributes of all the user-supplied edges.</param>
-        private void createEdgeViewWithoutRecord(string tableSchema, string edgeViewName, List<Tuple<string, string>> edges,
+        private void CreateEdgeViewWithoutRecord(string tableSchema, string edgeViewName, List<Tuple<string, string>> edges,
             List<string> edgeAttribute, SqlTransaction externalTransaction,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
@@ -711,10 +711,11 @@ namespace GraphView
                 where TAbleSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
             command.Parameters.Clear();
             command.Parameters.AddWithValue("schema", tableSchema);
-            command.Parameters.AddWithValue("tablename", supperNode);
+            command.Parameters.AddWithValue("tablename", _supperNode);
             command.Parameters.AddWithValue("columnname", edgeViewName);
             command.Parameters.AddWithValue("role", 3);
-            command.Parameters.AddWithValue("ref", supperNode);
+            command.Parameters.AddWithValue("ref", _supperNode);
+
             command.CommandText = String.Format(checkEdgeViewName, MetadataTables[1]); //_NodeTableColumnCollection
             using (var reader = command.ExecuteReader())
             {
@@ -873,7 +874,7 @@ namespace GraphView
                     emptyAttribute[0].Key));
             }
 
-            GraphViewDefinedFunctionGenerator.RegisterEdgeView(supperNode, tableSchema, edgeViewName, _attributeType,
+            GraphViewDefinedFunctionGenerator.RegisterEdgeView(tableSchema, edgeViewName, _attributeType,
                 edgesAttributeMappingDictionary, Conn, command.Transaction);
                 if (externalTransaction == null)
                 {
@@ -895,7 +896,7 @@ namespace GraphView
         /// <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
         /// <param name="edgeViewName"> The name of supper edge. </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which create edge view will occur.</param>
-        private void updateEdgeViewMetaData(string tableSchema, string edgeViewName, SqlTransaction externalTransaction = null)
+        private void UpdateEdgeViewMetaData(string tableSchema, string edgeViewName, SqlTransaction externalTransaction = null)
         {
             SqlTransaction transaction = externalTransaction ?? Conn.BeginTransaction();
             var command = Conn.CreateCommand();
@@ -910,10 +911,10 @@ namespace GraphView
                 VALUES (@tableshema, @TableName, @columnname, @columnrole, @reference)";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("tableshema", tableSchema);
-                command.Parameters.AddWithValue("tablename", supperNode);
+                command.Parameters.AddWithValue("tablename", _supperNode);
                 command.Parameters.AddWithValue("columnname", edgeViewName);
                 command.Parameters.AddWithValue("columnrole", 3);
-                command.Parameters.AddWithValue("reference", supperNode);
+                command.Parameters.AddWithValue("reference", _supperNode);
 
                 command.CommandText = string.Format(insertGraphEdgeView, MetadataTables[1]);
                 //_NodeTableColumnCollection
@@ -957,7 +958,7 @@ namespace GraphView
                 {
                     command.Parameters.Clear();
                     command.Parameters.AddWithValue("schema", tableSchema);
-                    command.Parameters.AddWithValue("tablename", supperNode);
+                    command.Parameters.AddWithValue("tablename", _supperNode);
                     command.Parameters.AddWithValue("columnname", edgeViewName);
                     command.Parameters.AddWithValue("attributename", it.Key);
                     command.CommandText = string.Format(insertEdgeViewAttribute, MetadataTables[2]);
@@ -1037,7 +1038,7 @@ namespace GraphView
             }
             try
             {
-                supperNode = tableName;
+                _supperNode = tableName;
                 //Check validity of edge view name
                 const string checkViewName = @"
                 select *
@@ -1045,16 +1046,16 @@ namespace GraphView
                 where TAbleSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
-                command.Parameters.AddWithValue("tablename", supperNode);
+                command.Parameters.AddWithValue("tablename", _supperNode);
                 command.Parameters.AddWithValue("columnname", edgeView);
                 command.Parameters.AddWithValue("role", 3);
-                command.Parameters.AddWithValue("ref", supperNode);
+                command.Parameters.AddWithValue("ref", _supperNode);
                 command.CommandText = String.Format(checkViewName, MetadataTables[1]); //_NodeTableColumnCollection
                 using (var reader = command.ExecuteReader())
                 {
                     if (!reader.Read())
                     {
-                        throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.", tableSchema, supperNode,edgeView));
+                        throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.", tableSchema, _supperNode,edgeView));
                     }
                 }
                 const string dropAttribtueRef = @"
@@ -1065,7 +1066,7 @@ namespace GraphView
                 Where [TableSchema] = @schema and [TableName] = @table and [ColumnName] = @column);";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
-                command.Parameters.AddWithValue("table", supperNode);
+                command.Parameters.AddWithValue("table", _supperNode);
                 command.Parameters.AddWithValue("column", edgeView);
                 command.CommandText = string.Format(dropAttribtueRef, MetadataTables[2], MetadataTables[6]);
                 command.ExecuteNonQuery();
@@ -1094,11 +1095,11 @@ namespace GraphView
                 const string dropFunction = @"
                 Drop function [{0}]";
                 command.Parameters.Clear();
-                command.CommandText = string.Format(dropFunction, tableSchema + '_' + supperNode + '_' + edgeView + '_' + "Decoder" );
+                command.CommandText = string.Format(dropFunction, tableSchema + '_' + edgeView + '_' + "Decoder" );
                 command.ExecuteNonQuery();
                 const string dropAssembly = @"
                 Drop Assembly [{0}_Assembly]";
-                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + supperNode + '_' + edgeView);
+                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + edgeView);
                 command.ExecuteNonQuery();
 #if !DEBUG
                 if (externalTransaction == null)
