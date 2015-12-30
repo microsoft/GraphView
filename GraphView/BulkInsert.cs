@@ -398,7 +398,8 @@ namespace GraphView
 
                 builder.Length -= _rowterminator.Length;
                 var rowstring = builder.ToString();
-                _value = rowstring.Split(_fieldterminator.ToCharArray());
+                string[] _term = { _fieldterminator };
+                _value = rowstring.Split(_term,StringSplitOptions.None); // Allow for multi char seperators :   ie MovieLens
                 if (_value == null || _value.Count() != FieldCount)
                 {
                     if (_streamReader.Peek() == -1)
@@ -1050,14 +1051,15 @@ namespace GraphView
                 if (updateMethod)
                 {
                     //Update database
+                    // ToLower due to case senstivity of Contains
                     var hashSetOfUserSuppliedEdgeAttribute =
-                        new HashSet<string>(userSuppliedEdgeAttributeInfo.Select(x => x.Item1));
+                        new HashSet<string>(userSuppliedEdgeAttributeInfo.Select(x => x.Item1.ToLower()));
                     string aggregeteFunctionName = tableSchema + '_' + sourceTableName + '_' + edgeColumnName + '_' + "Encoder";
                     var tempTableForVariable =
                         allEdgeAttributeNameInOrder.Select(
                             x =>
                                 string.Format(", {0}",
-                                    (hashSetOfUserSuppliedEdgeAttribute.Contains(x) ? ("tempTable.[" + x + "]") : "null")));
+                                    (hashSetOfUserSuppliedEdgeAttribute.Contains(x.ToLower()) ? ("tempTable.[" + x + "]") : "null")));
                     var tempStringForVariable = string.Join("", tempTableForVariable);
                     string aggregateFunction = aggregeteFunctionName + "([sinkTable].[GlobalNodeId]" +
                                                tempStringForVariable +
