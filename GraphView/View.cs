@@ -96,7 +96,10 @@ namespace GraphView
             {
                 CreateNodeViewWithoutRecord(tableSchema, nodeViewName, nodes, propertymapping, transaction);
                 UpdateNodeViewMetatable(tableSchema, nodeViewName, nodes, propertymapping, transaction);
-                transaction.Commit();
+                if (externalTransaction == null)
+                {
+                    transaction.Commit();
+                }
             }
             catch (Exception error)
             {
@@ -386,8 +389,9 @@ namespace GraphView
                 string updateTableColumn =
                     string.Format(@"
                     INSERT INTO {0} OUTPUT [Inserted].[ColumnId]
-                    VALUES (@schema, @nodeviewname, @columnname, @columnrole, null)",
+                    VALUES (@tableId, @schema, @nodeviewname, @columnname, @columnrole, null)",
                         MetadataTables[1]);
+                command.Parameters.AddWithValue("tableId", nodeviewTableId);
                 command.Parameters.AddWithValue("columnrole", 4);
                 command.Parameters.Add("columnname", SqlDbType.NVarChar);
                 command.CommandText = updateTableColumn;
@@ -708,7 +712,7 @@ namespace GraphView
             const string checkEdgeViewName = @"
                 select *
                 from {0}
-                where TAbleSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
+                where TableSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
             command.Parameters.Clear();
             command.Parameters.AddWithValue("schema", tableSchema);
             command.Parameters.AddWithValue("tablename", _supperNode);
@@ -904,17 +908,32 @@ namespace GraphView
 
             try
             {
+                Int64 tableId = 0;
+                const string getTableId = @"
+                select TableId 
+                From {0}
+                Where TableSchema = @tableschema and TableName = @tablename";
+                command.CommandText = string.Format(getTableId, MetadataTables[0]);
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("tableschema", tableSchema);
+                command.Parameters.AddWithValue("tablename", _supperNode);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        tableId = Convert.ToInt64(reader["tableId"].ToString());
+                    }
+                }
+
                 //Insert edge view message into "_NodeTableColumnCollection" MetaDataTable
                 const string insertGraphEdgeView = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [ColumnRole], [Reference])
+                INSERT INTO [{0}] ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
                 OUTPUT [Inserted].[ColumnId]
-                VALUES (@tableshema, @TableName, @columnname, @columnrole, @reference)";
-                command.Parameters.Clear();
-                command.Parameters.AddWithValue("tableshema", tableSchema);
-                command.Parameters.AddWithValue("tablename", _supperNode);
+                VALUES (@tableschema, @TableName, @tableid, @columnname, @columnrole, @reference)";
                 command.Parameters.AddWithValue("columnname", edgeViewName);
                 command.Parameters.AddWithValue("columnrole", 3);
                 command.Parameters.AddWithValue("reference", _supperNode);
+                command.Parameters.AddWithValue("tableid", tableId);
 
                 command.CommandText = string.Format(insertGraphEdgeView, MetadataTables[1]);
                 //_NodeTableColumnCollection
@@ -1043,7 +1062,7 @@ namespace GraphView
                 const string checkViewName = @"
                 select *
                 from {0}
-                where TAbleSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
+                where TableSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("tablename", _supperNode);

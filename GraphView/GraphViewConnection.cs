@@ -183,6 +183,7 @@ namespace GraphView
                     command.CommandText = string.Format(@"
                         CREATE TABLE [{0}] (
                             [ColumnId] [bigint] NOT NULL IDENTITY(0, 1),
+                            [TableId] [bigint] NOT NULL,
                             [TableSchema] [nvarchar](128) NOT NULL,
                             [TableName] [nvarchar](128) NOT NULL,
                             [ColumnName] [nvarchar](128) NOT NULL,
@@ -571,6 +572,7 @@ namespace GraphView
             // Persists the node table's meta-data
             try
             {
+                Int64 tableId;
                 using (var command = new SqlCommand(null, Conn))
                 {
                     command.Transaction = tx;
@@ -590,7 +592,8 @@ namespace GraphView
                         {
                             return false;
                         }
-                        var tableId = Convert.ToInt64(reader["TableId"], CultureInfo.CurrentCulture) << 48;
+                        tableId = Convert.ToInt64(reader["TableId"], CultureInfo.CurrentCulture);
+                        var tableIdSeek = tableId << 48;
                         tableIdentitySeed = new WValueExpression(tableId.ToString(CultureInfo.InvariantCulture), false);
                     }
 
@@ -609,11 +612,12 @@ namespace GraphView
                     // insert graph column
                     command.CommandText = string.Format(@"
                     INSERT INTO [{0}]
-                    ([TableSchema], [TableName], [ColumnName], [ColumnRole], [Reference])
-                    VALUES (@tableSchema, @tableName, @columnName, @columnRole, @ref)", MetadataTables[1]);
+                    ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
+                    VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref)", MetadataTables[1]);
 
                     command.Parameters.AddWithValue("@tableSchema", tableSchema);
                     command.Parameters.AddWithValue("@tableName", tableName);
+                    command.Parameters.AddWithValue("@tableid", tableId);
 
                     command.Parameters.Add("@columnName", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@columnRole", SqlDbType.Int);
