@@ -359,6 +359,27 @@ namespace GraphViewUnitTest
                 )";
                 graph.CreateNodeTable(createEmployeeStr2);
 
+                var propertymapping = new List<Tuple<string, List<Tuple<string, string>>>>()
+                {
+                    Tuple.Create("ClientId",
+                        new List<Tuple<string, string>>()
+                        {
+                            Tuple.Create("ClientNode", "ClientId"),
+                            Tuple.Create("EmployeeNode", "WorkId")
+                        }),
+                    Tuple.Create("Id",
+                        new List<Tuple<string, string>>()
+                        {
+                            Tuple.Create("ClientNode", "ClientId")
+                        })
+                };
+                graph.CreateNodeView("dbo", "NodeView", new List<string>() {
+                "ClientNode",
+                "EmployeeNode"
+                },
+                propertymapping);
+
+
                 List<Tuple<string, string>> Edges = new List<Tuple<string, string>>();
                 Edges.Add(Tuple.Create("employeenode", "clients"));
                 Edges.Add(Tuple.Create("ClientNode", "Colleagues"));
@@ -390,26 +411,6 @@ namespace GraphViewUnitTest
                 //)";
                 //command.CommandText = createSupperNode;
                 //command.ExecuteNonQuery();
-
-                var propertymapping = new List<Tuple<string, List<Tuple<string, string>>>>()
-                {
-                    Tuple.Create("ClientId",
-                        new List<Tuple<string, string>>()
-                        {
-                            Tuple.Create("ClientNode", "ClientId"),
-                            Tuple.Create("EmployeeNode", "WorkId")
-                        }),
-                    Tuple.Create("Id",
-                        new List<Tuple<string, string>>()
-                        {
-                            Tuple.Create("ClientNode", "ClientId")
-                        })
-                };
-                graph.CreateNodeView("dbo", "suppernodetest", new List<string>() {
-                "ClientNode",
-                "EmployeeNode"
-                },
-                propertymapping);
 
                 var command = new GraphViewCommand(null, graph);
                 const string insertNode = @"
