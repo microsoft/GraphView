@@ -440,7 +440,7 @@ namespace GraphView
                 }
                 if (_labelColumn != -1)
                 {
-                    while (GetValue(_labelColumn).ToString() != _labelName)
+                    while (GetValue(_labelColumn).ToString().ToLower() != _labelName)
                     {
                         if (!getNextRow())
                         {
