@@ -55,7 +55,24 @@ namespace GraphView
             visitor.Invoke(script);
             // Executes translated SQL 
             return script.ToString(); ;
+        }
+        internal WSqlScript GetScript()
+        {
+            var sr = new StringReader(CommandText);
+            var parser = new GraphViewParser();
+            IList<ParseError> errors;
+            var script = parser.Parse(sr, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                throw new SyntaxErrorException(errors);
 
+            if (errors.Count > 0)
+                throw new SyntaxErrorException(errors);
+
+            // Translation and Check CheckInvisibleColumn
+            var visitor = new TranslateMatchClauseVisitor(Connection.Conn);
+            visitor.Invoke(script);
+            // Executes translated SQL 
+            return script;
         }
 
         public CommandType CommandType
