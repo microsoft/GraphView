@@ -243,6 +243,7 @@ namespace GraphView
             if (result.Errors.Count > 0)
                 throw new GraphViewException("Failed to compile function");
             var script = GenerateRegisterScript(schema + '_' + suppernode, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
+            //var script = GenerateRegisterScript(schema, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
 
             var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
             var command = conn.CreateCommand();

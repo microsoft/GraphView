@@ -15,7 +15,7 @@ namespace GraphViewFlowTest
         static void Main(string[] args)
         {
             //  You should modify your database information in TestConfiguration
-            TestConfiguration.localTest = false;
+            TestConfiguration.localTest = true;
 
             var connection = new GraphViewConnection(TestConfiguration.getConnectionString());
 

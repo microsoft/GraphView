@@ -1042,6 +1042,14 @@ namespace GraphView
                         {
                             Clustered = false,
                             IsPrimaryKey = false,
+                            ConstraintIdentifier = new Identifier
+                            {
+                                Value = string.Format("{0}_UQ_{1}", (stmt.SchemaObjectName.SchemaIdentifier == null
+                                    ? "dbo"
+                                    : stmt.SchemaObjectName.SchemaIdentifier.Value) +
+                                                                    stmt.SchemaObjectName.BaseIdentifier.Value,
+                                    rawColumnDef[i].ColumnIdentifier.Value)
+                            }
                         });
                         break;
                 }
@@ -1116,6 +1124,51 @@ namespace GraphView
             stmt.Definition.ColumnDefinitions.Add(identityCol);
             stmt.Definition.ColumnDefinitions.Add(inDegreeCol);
 
+            return fragment;
+        }
+
+        public WSqlFragment ParseCreateNodeEdgeViewStatement(string query, out IList<ParseError> errors)
+        {
+            var tsqlParser = new TSql110Parser(true);
+            var sr = new StringReader(query);
+            var tokens = new List<TSqlParserToken>(tsqlParser.GetTokenStream(sr, out errors));
+            if (errors.Count > 0)
+            {
+                return null;
+            }
+            int currentToken = 0;
+            int farestError = 0;
+            while (currentToken < tokens.Count)
+            {
+                int nextToken = currentToken;
+                if (ReadToken(tokens, "create", ref nextToken, ref farestError))
+                {
+                    int pos = nextToken;
+                    if (ReadToken(tokens, "node", ref nextToken, ref farestError))
+                    {
+                        tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        tokens[pos].Text = "/*__GRAPHVIEW_CREATE_NODEVIEW*/";
+                    }
+                    else if (ReadToken(tokens, "edge", ref nextToken, ref farestError))
+                    {
+                        tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        tokens[pos].Text = "/*__GRAPHVIEW_CREATE_EDGEVIEW*/";
+                    }
+                    else
+                    {
+                        var error = tokens[farestError];
+                        throw new SyntaxErrorException(error.Line, error.Text);
+                        //errors.Add(new ParseError(0, error.Offset, error.Line, error.Column,
+                        //    string.Format("Incorrect syntax near {0}", error.Text)));
+                    }
+                }
+                currentToken++;
+            }
+
+            var parser = new WSqlParser();
+            var fragment = parser.Parse(tokens, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                return null;
             return fragment;
         }
 
