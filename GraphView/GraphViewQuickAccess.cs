@@ -41,6 +41,8 @@ using Microsoft.Win32.SafeHandles;
 using IsolationLevel = Microsoft.SqlServer.TransactSql.ScriptDom.IsolationLevel;
 using System.Reflection;
 
+/* Following codes are not available now
+
 namespace GraphView
 {
     public class InsEdgeVisitor : WSqlFragmentVisitor
@@ -99,15 +101,15 @@ namespace GraphView
     /// If you're going to call InsEdge(), you should guarantee the Node has been existed and your predicate is precise enough to fetch a unique result.
     /// The field in the class could be null. If it is null, It won't be translated into the statement
     /// 
-    /// For instance, if you have a class [People] in C# like this:
+    /// For example, if you have a class [People] in C#:
     ///     class People
     ///     {
     ///         int id;
     ///         string name;
     ///     }
-    /// The execution like this:
+    /// The execution:
     ///     GraphViewConnection.InsNode( new People(1,"Alice") );
-    /// Or this:
+    /// Or:
     ///     GraphViewConnection.InsNode( new People(1,null) );
     ///     
     /// Is equivalent to following:
@@ -122,7 +124,7 @@ namespace GraphView
     ///     GraphViewConnection.ExecuteNonQuery("Insert EDGE INTO People.Knows SELECT x,y FROM People x , People y WHERE x.id=1 AND x.name='Alice' AND y.id=2 ")
     /// 
     /// 
-    /// 
+    /// For the types of field, it supports only [int] and [string] so far.
     /// </summary>
     public partial class GraphViewConnection : IDisposable
     {
@@ -294,3 +296,5 @@ namespace GraphView
 
     }
 }
+
+*/
