@@ -99,6 +99,7 @@ namespace GraphViewUnitTest
                     "EmployeeNode"
                 },
                     propertymapping);
+                graph.ClearGraphDatabase();
             }
         }
 
