@@ -130,7 +130,7 @@ namespace GraphView
             TableRef = new WNamedTableReference
             {
                 Alias = new Identifier { Value = node.RefAlias},
-                TableObjectName = node.TableObjectName
+                TableObjectName = node.NodeTableObjectName
             };
         }
 
@@ -447,52 +447,118 @@ namespace GraphView
         /// <returns></returns>
         private static WTableReference EdgeToTableReference(MatchEdge edge, string nodeAlias)
         {
-            var edgeColumn = edge.EdgeColumn;
             var edgeIdentifiers = edge.EdgeColumn.MultiPartIdentifier.Identifiers;
-            if (nodeAlias != edgeIdentifiers.First().Value)
+            var edgeColIdentifier = edgeIdentifiers.Last();
+            Identifier srcNodeIdentifier = new Identifier{Value = nodeAlias};
+            
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            // The source is a regular node
+            if (edge.SourceNode.IncludedNodeNames == null)
             {
-                var identifiers = new List<Identifier>(edgeIdentifiers);
-                identifiers.RemoveAt(0);
-                identifiers.Insert(0, new Identifier
+                // The edge is a regular edge
+                if (edge.IncludedEdgeNames == null)
                 {
-                    Value = nodeAlias
-                });
-                edgeColumn = new WColumnReferenceExpression
-                {
-                    MultiPartIdentifier = new WMultiPartIdentifier
+                    parameters.Add(new WColumnReferenceExpression
                     {
-                        Identifiers = identifiers
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(srcNodeIdentifier, edgeColIdentifier)
+                    });
+                    parameters.Add(new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(srcNodeIdentifier,
+                                new Identifier {Value = edgeColIdentifier.Value + "DeleteCol"})
+                    });
+                }
+                // The edge is a edge view
+                else
+                {
+                    foreach (var column in edge.IncludedEdgeNames)
+                    {
+                        Identifier includedEdgeColumnIdentifier = new Identifier{Value = column.Item2};
+                        parameters.Add(new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier =
+                                new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
+                        });
+                        parameters.Add(new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier =
+                                new WMultiPartIdentifier(srcNodeIdentifier,
+                                    new Identifier { Value = includedEdgeColumnIdentifier.Value + "DeleteCol" })
+                        });
                     }
-                };
-                
+                }
             }
-            var columnName = edgeIdentifiers.Last().Value;
-            var deColIdentifiers = new Identifier[]
+            // The source is a node view
+            else
             {
-                edgeColumn.MultiPartIdentifier.Identifiers.First(),
-                new Identifier {Value = columnName + "DeleteCol"}
-            };
+                // The edge is a regular edge
+                if (edge.IncludedEdgeNames == null)
+                {
+                    string srcTableName = edge.BindNodeTableObjName.BaseIdentifier.Value;
+                    Identifier nodeViewEdgeColIdentifier = new Identifier
+                    {
+                        Value = srcTableName + "_" + edgeColIdentifier.Value
+                    };
+                    parameters.Add(new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(srcNodeIdentifier, nodeViewEdgeColIdentifier)
+                    });
+                    parameters.Add(new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(srcNodeIdentifier,
+                                new Identifier { Value = nodeViewEdgeColIdentifier.Value + "DeleteCol" })
+                    });
+                }
+                // The edge is a edge view
+                else
+                {
+                    foreach (var column in edge.IncludedEdgeNames)
+                    {
+                        if (edge.SourceNode.IncludedNodeNames.Contains(column.Item1))
+                        {
+                            Identifier includedEdgeColumnIdentifier = new Identifier
+                            {
+                                Value = column.Item1 + "_" + column.Item2
+                            };
+                            parameters.Add(new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier =
+                                    new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
+                            });
+                            parameters.Add(new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier =
+                                    new WMultiPartIdentifier(srcNodeIdentifier,
+                                        new Identifier {Value = includedEdgeColumnIdentifier.Value + "DeleteCol"})
+                            });
+                        }
+                        else
+                        {
+                            parameters.Add(new WValueExpression{Value = "null"});
+                            parameters.Add(new WValueExpression {Value = "null"});
+                        }
+                    }
+                }
+            }
+
             var decoderFunction = new Identifier
             {
-                Value = edge.SourceNode.TableObjectName.SchemaIdentifier.Value + '_' +
-                        edge.SourceNode.TableObjectName.BaseIdentifier.Value + '_' + 
-                        columnName + '_' +
+                Value = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+                        edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
+                        edgeColIdentifier.Value + '_' +
                         "Decoder",
 
             };
             var tableRef = new WSchemaObjectFunctionTableReference
             {
                 SchemaObject = new WSchemaObjectName(
-                    new Identifier {Value = "dbo"},
+                    new Identifier { Value = "dbo" },
                     decoderFunction),
-                Parameters = new List<WScalarExpression>
-                {
-                    edgeColumn,
-                    new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier = new WMultiPartIdentifier(deColIdentifiers)
-                    }
-                },
+                Parameters = parameters,
                 Alias = new Identifier
                 {
                     Value = edge.EdgeAlias,
@@ -539,7 +605,7 @@ namespace GraphView
         /// <returns></returns>
         public MatchComponent GetNextState(
             OneHeightTree candidateTree, 
-            Dictionary<string, double> densityDict, 
+            MetaData metaData, 
             IMatchJoinStatisticsCalculator statisticsCalculator)
         {
             var newComponent = new MatchComponent(this);
@@ -588,7 +654,7 @@ namespace GraphView
             WTableReference nodeTable = new WNamedTableReference
             {
                 Alias = new Identifier { Value = nodeName },
-                TableObjectName = root.TableObjectName
+                TableObjectName = root.NodeTableObjectName
             };
             WTableReference compTable = newComponent.TableRef;
 
@@ -634,10 +700,10 @@ namespace GraphView
                     //selectivity *= statistics.Selectivity;
                     //newComponent.StatisticsDict[root] = statistics;
 
-                    if (DensityCount.ContainsKey(root.TableObjectName.ToString()))
-                        DensityCount[root.TableObjectName.ToString()]++;
+                    if (DensityCount.ContainsKey(root.NodeTableObjectName.ToString()))
+                        DensityCount[root.NodeTableObjectName.ToString()]++;
                     else
-                        DensityCount[root.TableObjectName.ToString()] = 1;
+                        DensityCount[root.NodeTableObjectName.ToString()] = 1;
                 }
                 // Component unmaterialized edge to root                
                 else
@@ -678,10 +744,10 @@ namespace GraphView
                     }
                     newComponent.StatisticsDict[root] = statistics;
 
-                    if (DensityCount.ContainsKey(root.TableObjectName.ToString()))
-                        DensityCount[root.TableObjectName.ToString()]+=inEdges.Count;
+                    if (DensityCount.ContainsKey(root.NodeTableObjectName.ToString()))
+                        DensityCount[root.NodeTableObjectName.ToString()]+=inEdges.Count;
                     else
-                        DensityCount[root.TableObjectName.ToString()] = inEdges.Count;
+                        DensityCount[root.NodeTableObjectName.ToString()] = inEdges.Count;
                 }
             }
 
@@ -724,10 +790,10 @@ namespace GraphView
                     selectivity *= statistics.Selectivity;
                     newComponent.StatisticsDict[sinkNode] = statistics;
 
-                    if (DensityCount.ContainsKey(sinkNode.TableObjectName.ToString()))
-                        DensityCount[sinkNode.TableObjectName.ToString()]++;
+                    if (DensityCount.ContainsKey(sinkNode.NodeTableObjectName.ToString()))
+                        DensityCount[sinkNode.NodeTableObjectName.ToString()]++;
                     else
-                        DensityCount[sinkNode.TableObjectName.ToString()] = 1;
+                        DensityCount[sinkNode.NodeTableObjectName.ToString()] = 1;
                 }
                 // Leaf to component unmaterialized node
                 else
@@ -821,6 +887,7 @@ namespace GraphView
             }
 
             // Calculate Estimated Join Selectivity & Estimated Node Size
+            var densityDict = metaData.TableIdDensity;
             double estimatedSelectity = 1.0;
             int count = 0;
             bool sinkJoin = false;

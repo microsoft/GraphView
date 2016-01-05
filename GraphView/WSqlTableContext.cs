@@ -50,9 +50,18 @@ namespace GraphView
 
         private Dictionary<string, string> _columnTableAliasMapping;
 
+        private readonly Dictionary<Tuple<string,string>, string> _edgeNodeBinding =
+            new Dictionary<Tuple<string,string>, string>();
+ 
+
         public Dictionary<string, WTableReferenceWithAlias> NodeTableDictionary
         {
             get { return _nodeTableDictionary; }
+        }
+
+        public Dictionary<Tuple<string, string>, string> EdgeNodeBinding
+        {
+            get { return _edgeNodeBinding; }
         }
 
         public Dictionary<string, Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> EdgeDictionary
@@ -84,6 +93,40 @@ namespace GraphView
         public bool CheckTable(string name)
         {
             return this[name] != null;
+        }
+
+        public bool BindEdgeToNode(string schema, string edgeColumn, string nodeTable, MetaData metaData)
+        {
+            var edgeNodeTuple = new Tuple<string, string>(nodeTable, edgeColumn);
+            if (_edgeNodeBinding.ContainsKey(edgeNodeTuple))
+                return true;
+
+            var nodeTuple = new Tuple<string, string>(schema, nodeTable);
+            if (metaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumn))
+            {
+                _edgeNodeBinding[edgeNodeTuple] = nodeTable;
+                return true;
+            }
+            else if (metaData.NodeViewMapping.ContainsKey(nodeTuple))
+            {
+                string resNode = "";
+                foreach (var node in metaData.NodeViewMapping[nodeTuple])
+                {
+                    if (metaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, node)].ContainsKey(edgeColumn))
+                    {
+                        if (string.IsNullOrEmpty(resNode))
+                            resNode = node;
+                        else
+                            return false;
+                    }
+                }
+                _edgeNodeBinding[edgeNodeTuple] = resNode;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public Dictionary<string, string> GetColumnTableMapping(
@@ -121,13 +164,12 @@ namespace GraphView
                 {
 
                     var tuple = kvp.Value;
-                    var sourceTableObjectName = tuple.Item1;
-                    var edgeColumnReference = tuple.Item2;
-                    var soureNodeTableTuple =
-                        WNamedTableReference.SchemaNameToTuple(sourceTableObjectName);
+                    string schema = tuple.Item1.SchemaIdentifier.Value.ToLower();
+                    string sourceTableName = tuple.Item1.BaseIdentifier.Value.ToLower();
+                    string  edgeName = tuple.Item2.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
+                    var bindNodeTableTuple =new Tuple<string, string>(schema, _edgeNodeBinding[new Tuple<string, string>(sourceTableName,edgeName)]);
                     var edgeProperties =
-                        columnsOfNodeTables[soureNodeTableTuple][
-                            edgeColumnReference.MultiPartIdentifier.Identifiers.Last().Value.ToLower()];
+                        columnsOfNodeTables[bindNodeTableTuple][edgeName].EdgeInfo;
                     foreach (var attribute in edgeProperties.ColumnAttributes)
                     {
                         if (!_columnTableAliasMapping.ContainsKey(attribute.ToLower()))

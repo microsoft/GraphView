@@ -141,6 +141,19 @@ namespace GraphView
             return ret;
         }
 
+        internal List<double> GetUnionQueryTableEstimatedRows(string sqlStr)
+        {
+            var xml = GetEstimatedPlanXml(sqlStr);
+            var root = XElement.Parse(xml);
+
+            var tables =
+                from e in root.Descendants("RelOp")
+                where e.Elements().Any(e2 => e2.Name.LocalName == "TableScan" || e2.Name.LocalName == "IndexScan")
+                select e;
+
+            return tables.Select(t => Convert.ToDouble(t.Attribute("EstimateRows").Value, CultureInfo.CurrentCulture)).ToList();
+        }
+
         internal int GetTableRowCount(string tableSchema, string tableName)
         {
             var tableRowCount = 0;

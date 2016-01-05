@@ -455,6 +455,10 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// Creates Node View using CREATE NODE VIEW statement.
+        /// </summary>
+        /// <param name="query"></param>
         public void CreateNodeView(string query)
         {
             IList<ParseError> errors;
@@ -484,7 +488,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Drop Edge View
+        /// Drops Edge View
         /// </summary>
         /// <param name="nodeViewSchema">The name of node view. Default(null or "") by "dbo".</param>
         /// <param name="nodeViewName">The name of node view.</param>
@@ -547,7 +551,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Create view on edges
+        /// Creates view on edges
         /// </summary>
         /// <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
         ///  <param name="supperNodeName"> The name of supper node. </param>
@@ -592,6 +596,10 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// Creates Edge View using CREATE EDGE VIEW statement
+        /// </summary>
+        /// <param name="query"></param>
         public void CreateEdgeView(string query)
         {
             IList<ParseError> errors;
@@ -609,17 +617,26 @@ namespace GraphView
             if (statement == null)
                 throw new SyntaxErrorException("Not a CREATE VIEW statement");
             var edgeViewObjectName = statement.SchemaObjectName;
-            string schema = edgeViewObjectName.SchemaIdentifier == null
+            string schema = edgeViewObjectName.DatabaseIdentifier == null
                 ? "dbo"
-                : edgeViewObjectName.SchemaIdentifier.Value;
+                : edgeViewObjectName.DatabaseIdentifier.Value;
+            if (edgeViewObjectName.SchemaIdentifier == null)
+                throw new SyntaxErrorException("Source node type should be specified. Format: <Node name>.<Edgeview Name>");
+            string nodeName = edgeViewObjectName.SchemaIdentifier.Value;
             string edgeViewName = edgeViewObjectName.BaseIdentifier.Value;
             var visitor = new EdgeViewSelectStatementVisitor();
             List<Tuple<string, string>> edges;
             List<string> edgeAttribute;
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping;
             visitor.Invoke(schema, statement.SelectStatement, out edges, out edgeAttribute, out attributeMapping);
-            //CreateNodeView(schema, edgeViewName, edges, propertymapping);
-            CreateEdgeView(schema, "NodeView", edgeViewName, edges, edgeAttribute, null, attributeMapping);
+            CreateEdgeView(schema, nodeName, edgeViewName, edges, edgeAttribute, null, attributeMapping);
+            statement.SchemaObjectName =
+                new WSchemaObjectName(new Identifier
+                {
+                    Value = string.Format("{0}_{1}_{2}_Sampling", schema, nodeName, edgeViewName)
+                });
+            string a = statement.ToString();
+            ExecuteNonQuery(statement.ToString());
 
         }
 
@@ -929,6 +946,13 @@ namespace GraphView
                     edgeViewId = Convert.ToInt64(reader["ColumnId"], CultureInfo.CurrentCulture);
                 }
 
+                //Insert into edge degree meta table
+                const string insertEdgeViewAveDegree = @"
+                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName])
+                VALUES (@tableshema, @TableName, @columnname)";
+                command.CommandText = string.Format(insertEdgeViewAveDegree, MetadataTables[3]);
+                command.ExecuteNonQuery();
+
                 //Insert the edges's message into "_EdgeViewCollection" MetaDataTable
                 const string insertEdgeViewCollection = @"
                 INSERT INTO [{0}]
@@ -987,6 +1011,9 @@ namespace GraphView
                         command.ExecuteNonQuery();
                     }
                 }
+
+                
+
                 if (externalTransaction == null)
                 {
                     transaction.Commit();
@@ -1071,10 +1098,13 @@ namespace GraphView
                 command.CommandText = string.Format(dropAttribtueRef, MetadataTables[2], MetadataTables[6]);
                 command.ExecuteNonQuery();
 
-                const string dropAttribtue = @"
+                const string dropAttribtueAndDegree = @"
                 Delete From [{0}]
                 Where [TableSchema] = @schema and [TableName] = @table and [ColumnName] = @column;";
-                command.CommandText = string.Format(dropAttribtue, MetadataTables[2]);
+                command.CommandText = string.Format(dropAttribtueAndDegree, MetadataTables[2]);
+                command.ExecuteNonQuery();
+
+                command.CommandText = string.Format(dropAttribtueAndDegree, MetadataTables[3]);
                 command.ExecuteNonQuery();
 
                 const string dropEdgeViewCollection = @"
@@ -1100,6 +1130,11 @@ namespace GraphView
                 const string dropAssembly = @"
                 Drop Assembly [{0}_Assembly]";
                 command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _supperNode + '_' + edgeView);
+                command.ExecuteNonQuery();
+
+                const string dropSamplingView = @"
+                Drop View [{0}_Sampling]";
+                command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _supperNode + '_' + edgeView);
                 command.ExecuteNonQuery();
 #if !DEBUG
                 if (externalTransaction == null)

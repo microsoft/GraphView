@@ -37,10 +37,12 @@ namespace GraphView
     {
         public MatchNode SourceNode { get; set; }
         public WColumnReferenceExpression EdgeColumn { get; set; }
+        public WSchemaObjectName BindNodeTableObjName { get; set; }
         public double AverageDegree { get; set; }
         public MatchNode SinkNode { get; set; }
         public string EdgeAlias { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
+        public IList<Tuple<string, string>> IncludedEdgeNames { get; set; } 
 
         public override int GetHashCode()
         {
@@ -52,10 +54,8 @@ namespace GraphView
     internal class MatchNode
     {
         public string NodeAlias { get; set; }
-        public WSchemaObjectName TableObjectName { get; set; }
-
+        public WSchemaObjectName NodeTableObjectName { get; set; }
         public IList<MatchEdge> Neighbors { get; set; }
-
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         /// <summary>
@@ -65,6 +65,7 @@ namespace GraphView
         public bool External { get; set; }
 
         public IList<WBooleanExpression> Predicates { get; set; }
+        public HashSet<string> IncludedNodeNames { get; set; } 
 
         public string RefAlias
         {

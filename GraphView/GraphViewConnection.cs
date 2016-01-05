@@ -70,6 +70,16 @@ namespace GraphView
 
         private bool _disposed;
 
+        /// <summary>
+        /// 0: _NodeTableCollection,
+        /// 1: _NodeTableColumnCollection,
+        /// 2: _EdgeAttributeCollection,
+        /// 3: _EdgeAverageDegreeCollection,
+        /// 4: _StoredProcedureCollection,
+        /// 5: _NodeViewColumnCollection,
+        /// 6: _EdgeViewAttributeCollection,
+        /// 7: _NodeViewCollection,
+        /// </summary>
         internal static readonly List<string> MetadataTables =
             new List<string>
             {
@@ -223,6 +233,7 @@ namespace GraphView
                             [TableName] [nvarchar](128) NOT NULL,
                             [ColumnName] [nvarchar](128) NOT NULL,
                             [AverageDegree] [float] DEFAULT(5),
+                            [SampleRowCount] [int] DEFAULT(1000)
                             PRIMARY KEY CLUSTERED ([TableName] ASC, [TableSchema] ASC, [ColumnName] ASC)
                         )", MetadataTables[3]);
                     command.ExecuteNonQuery();
@@ -1036,20 +1047,21 @@ namespace GraphView
         /// </summary>
         /// <param name="tableSchema">Schema of table</param>
         /// <param name="tableName">Name of table</param>
-        /// <returns>List of names of edge columns and booleans indicate whether the edge has source and sink in same node table or not</returns>
-        public IList<Tuple<string, bool>> GetGraphEdgeColumns(string tableSchema, string tableName,
+        /// <returns>List of names of edge columns, booleans indicate whether the edge has source and sink in same node table or not, booleans indicate whether it is an edge view</returns>
+        public IList<Tuple<string, bool, bool>> GetGraphEdgeColumns(string tableSchema, string tableName,
             SqlTransaction tx = null)
         {
-            var edgeColumns = new List<Tuple<string, Boolean>>();
+            var edgeColumns = new List<Tuple<string, Boolean, Boolean>>();
             using (var command = Conn.CreateCommand())
             {
                 command.Transaction = tx;
                 command.CommandText = string.Format(
-                    @"SELECT ColumnName, TableName, Reference
+                    @"SELECT ColumnName, TableName, Reference, ColumnRole
                   FROM [{0}]
                   WHERE TableSchema = @tableSchema AND TableName = @tableName
-                  AND ColumnRole = @columnRole", MetadataTables[1]);
+                  AND (ColumnRole = @columnRole or ColumnRole=@columnRole2)", MetadataTables[1]);
                 command.Parameters.AddWithValue("@columnRole", (int) WNodeTableColumnRole.Edge);
+                command.Parameters.AddWithValue("@columnRole2", (int)WNodeTableColumnRole.EdgeView);
                 command.Parameters.AddWithValue("@tableSchema", tableSchema);
                 command.Parameters.AddWithValue("@tableName", tableName);
                 using (var reader = command.ExecuteReader())
@@ -1057,7 +1069,8 @@ namespace GraphView
                     while (reader.Read())
                     {
                         edgeColumns.Add(Tuple.Create(reader["ColumnName"].ToString(),
-                            reader["Reference"].ToString().ToLower() == reader["TableName"].ToString().ToLower()));
+                            reader["Reference"].ToString().ToLower() == reader["TableName"].ToString().ToLower(),
+                            (WNodeTableColumnRole) reader["ColumnRole"] == WNodeTableColumnRole.EdgeView));
                     }
                 }
                 return edgeColumns;
@@ -1098,11 +1111,12 @@ namespace GraphView
             SqlTransaction tx = Conn.BeginTransaction();
             try
             {
-                var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx).Select(x => x.Item1);
+                var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
                 foreach (var edgeColumn in edgeColumns)
                 {
-                    UpdateTableEdgeSampling(tableSchema, tableName, edgeColumn, tx);
-                    UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn, tx);
+                    if (!edgeColumn.Item3)
+                        UpdateTableEdgeSampling(tableSchema, tableName, edgeColumn.Item1, tx);
+                    UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn.Item1, tx);
                 }
                 tx.Commit();
             }
@@ -1130,21 +1144,25 @@ namespace GraphView
                 {
                     command.Transaction = tx;
                     command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
-                    UPDATE [{3}]
-                    SET AverageDegree = (
-                        SELECT ISNULL(AVG(CAST(Cnt AS FLOAT)), 0)
-                        FROM (
-            	            SELECT COUNT(src) Cnt
-            	            FROM [{0}].[{0}_{1}_{2}_Sampling]
-                            GROUP BY src
-              	        ) DEGREE
-                    )
-                    WHERE TableSchema = @tableSchema AND TableName = @tableName AND ColumnName = @edgeColumn",
+                        UPDATE [{3}]
+                        SET AverageDegree = AveCnt, SampleRowCount = RowCnt
+                        FROM
+                        (
+                            SELECT ISNULL(AVG(CAST(Cnt AS FLOAT)), 0) as AveCnt,
+                            ISNULL(SUM(Cnt), 0) as RowCnt
+                            FROM (
+            	                SELECT COUNT(src) Cnt
+            	                FROM [{0}].[{0}_{1}_{2}_Sampling]
+                                GROUP BY src
+              	            ) DEGREE
+                        ) Edge
+                        WHERE TableSchema = @tableSchema AND TableName = @tableName AND ColumnName = @edgeColumn",
                         tableSchema,
                         tableName,
                         edgeColumn,
                         MetadataTables[3]
                         );
+
                     command.Parameters.Add("@tableSchema", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@tableName", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@edgeColumn", SqlDbType.NVarChar, 128);
@@ -1154,7 +1172,6 @@ namespace GraphView
                     command.Parameters["@tableName"].Value = tableName;
                     command.Parameters["@edgeColumn"].Value = edgeColumn;
                     command.Parameters["@GraphDbAverageDegreeSamplingRate"].Value = GraphDbAverageDegreeSamplingRate;
-
                     command.ExecuteNonQuery();
                 }
             }
@@ -1172,7 +1189,7 @@ namespace GraphView
         /// <param name="tableName">Name of the table</param>
         /// <param name="edgeColumn">Name of edge in the table</param>
         /// <param name="tx"></param>
-        public void UpdateTableEdgeSampling(string tableSchema, string tableName, string edgeColumn,
+        public void UpdateTableEdgeSampling(string tableSchema, string tableName, string edgeColumn, 
             SqlTransaction tx = null)
         {
 
