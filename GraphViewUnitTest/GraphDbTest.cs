@@ -469,7 +469,7 @@ namespace GraphViewUnitTest
                     [number] [varchar](32),
                     [ColumnRole: ""Property""]
                     [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double""}]
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""Int""}]
                     [Clients] [varchar](max),
                 )";
                 graph.CreateNodeTable(createEmployeeStr);
@@ -481,7 +481,7 @@ namespace GraphViewUnitTest
                     [number] [bigint],
                     [ColumnRole: ""Property""]
                     [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int""}]
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int"", c:""string"", d:""string""}]
                     [Clients] [varchar](max)
                 )";
                 graph.CreateNodeTable(createEmployeeStr2);
