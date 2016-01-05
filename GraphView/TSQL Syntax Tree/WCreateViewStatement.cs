@@ -66,7 +66,7 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder(1024);
-            sb.AppendFormat("{0}CREATE VIEW [{1}]\r\n", indent, SchemaObjectName);
+            sb.AppendFormat("{0}CREATE VIEW {1} AS\r\n", indent, SchemaObjectName);
             if (Columns != null && Columns.Any())
             {
                 sb.Append(" ");

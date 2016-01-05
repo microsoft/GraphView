@@ -134,6 +134,30 @@ namespace GraphView
                     }
                 }
             }
+            expr.SelectElements.Add(new WSelectScalarExpression
+            {
+                SelectExpr =
+                    new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "Sink"})
+                    }
+            });
+            expr.SelectElements.Add(new WSelectScalarExpression
+            {
+                SelectExpr =
+                    new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "Src" })
+                    }
+            });
+            expr.FromClause.TableReferences[0] = new WNamedTableReference
+            {
+                TableObjectName =
+                    new WSchemaObjectName(new Identifier
+                    {
+                        Value = string.Format("{0}_{1}_{2}_Sampling", schema, tableRefName, edgeName)
+                    })
+            };
         }
 
         public override void Visit(WSelectQueryBlock node)

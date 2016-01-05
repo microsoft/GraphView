@@ -70,6 +70,7 @@
     <Compile Include="GraphInsertDeleteTest.cs" />
     <Compile Include="TestInitialization.cs" />
     <Compile Include="GraphSelectQueryTest.cs" />
+    <Compile Include="ViewTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GraphView\GraphView.csproj">

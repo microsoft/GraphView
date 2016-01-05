@@ -48,13 +48,13 @@ namespace GraphView
         /// Edge column name-> List of the candidate edge alias
         /// </summary>
         private Dictionary<string, List<string>> _edgeTableReferenceDict;
-        
+
         /// <summary>
         /// Column name -> Table alias
         /// </summary>
         //private Dictionary<string, string> _columnTableDict;
 
-        public void Invoke(WSqlFragment node, Dictionary<string, List<string>> edgeTableReferenceDict/*,
+        public void Invoke(WSqlFragment node, Dictionary<string, List<string>> edgeTableReferenceDict /*,
             Dictionary<string, string> columnTableDcit*/)
         {
             _edgeTableReferenceDict = edgeTableReferenceDict;
@@ -117,9 +117,40 @@ namespace GraphView
 
     public class NodeColumns
     {
-        public IList<string> ColumnAttributes;
         public WNodeTableColumnRole Role;
-        public string Reference;
+        public EdgeInfo EdgeInfo;
+    }
+
+    public class EdgeInfo
+    {
+        //public HashSet<string> SourceNodes;
+        public HashSet<string> SinkNodes;
+        public List<Tuple<string, string>> EdgeColumns;
+        public IList<string> ColumnAttributes;
+        public bool IsEdgeView;
+    }
+
+    public class MetaData
+    {
+        /// Columns of each node table. For edge columns, edge attributes are attached.
+        /// (Schema name, Table name) -> (Column name -> Column Info)
+        public readonly Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>> ColumnsOfNodeTables =
+            new Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>>();
+
+        // Node tables included in the node view.
+        // (Schema name, Table name) -> set of the node table name included in the node view
+        public readonly Dictionary<Tuple<string, string>, HashSet<string>> NodeViewMapping =
+            new Dictionary<Tuple<string, string>, HashSet<string>>();
+
+        // Source node tables, sink node tables and edge columns referenced by the edge view.
+        // (Schema name, Edgeview name) -> (EdgeViewInfo:Source node tables, Sink node tables, Edge columns)
+        //public readonly Dictionary<Tuple<string, string>, Dictionary<string,EdgeViewInfo>> EdgeViewMapping =
+        //    new Dictionary<Tuple<string, string>, Dictionary<string, EdgeViewInfo>>();
+
+        /// Density value of the GlobalNodeId Column in each node table.
+        /// Table name -> Density value
+        public readonly Dictionary<string, double> TableIdDensity =
+            new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
     }
 
     /// <summary>
@@ -130,18 +161,19 @@ namespace GraphView
     internal class TranslateMatchClauseVisitor : WSqlFragmentVisitor
     {
         private WSqlTableContext _context;
-        
+
         // A list of variables defined in a GraphView script and used in a SELECT statement.
         // When translating a GraphView SELECT statement, the optimizer sends a T-SQL SELECT query
         // to the SQL engine to estimate table cardinalities. The variables must be defined 
         // at the outset so that the SQL engine is able to parse and estimate the T-SQL SELECT query 
         // successfully. 
         private IList<DeclareVariableElement> _variables;
-        
+
         // Upper Bound of the State number
         private const int MaxStates =
             //1000;
             100;
+
         //5000;
         //8000;
         //10000;
@@ -149,22 +181,16 @@ namespace GraphView
 
         // Upper Bound of the Bucket number
         private const int BucketNum = 200;
-       
+
+        private MetaData _metaData;
+
         // Set Selectivity Calculation Method
         private readonly IMatchJoinStatisticsCalculator _statisticsCalculator = new HistogramCalculator();
-        
+
         // Set Pruning Strategy
         private readonly IMatchJoinPruning _pruningStrategy = new PruneJointEdge();
-        
-        /// Columns of each node table. For edge columns, edge attributes are attached.
-        /// (Schema name, Table name) -> (Column name -> Column Info)
-        private readonly Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>> _columnsOfNodeTables =
-            new Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>>();
 
-        /// Density value of the GlobalNodeId Column in each node table.
-        /// Table name -> Density value
-        private Dictionary<string, double> _tableIdDensity =
-            new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
+
 
         public SqlConnection Conn { get; private set; }
         public WSqlTableContext Context { get; set; }
@@ -180,45 +206,119 @@ namespace GraphView
         /// Retrieve the metadata
         /// </summary>
         /// <param name="conn"></param>
-        public void Init(SqlConnection conn)
+        private void Init(SqlConnection conn)
         {
+            _metaData = new MetaData();
+            var columnsOfNodeTables = _metaData.ColumnsOfNodeTables;
+            var nodeViewMapping = _metaData.NodeViewMapping;
+
             Conn = conn;
             using (var command = Conn.CreateCommand())
             {
                 command.CommandText = string.Format(
                     @"
-                    SELECT [TableSchema], [TableName], [ColumnName], [ColumnRole],[Reference] as RefOrAtr
-                    FROM [{0}] 
+                    SELECT [TableSchema], [TableName], [ColumnName], [ColumnRole], [Reference] as RefOrAtr, null as EdgeViewTable, null as ColumnId
+                    FROM [{0}]
                     UNION ALL
-                    SELECT [TableSchema], [TableName] ,[ColumnName], null, [AttributeName] as RefOrAtr
-                    FROM [{1}]", GraphViewConnection.MetadataTables[1], GraphViewConnection.MetadataTables[2]);
+                    SELECT [TableSchema], [TableName] ,[ColumnName], -1, [AttributeName] as RefOrAtr, null, null
+                    FROM [{1}]
+                    UNION ALL
+                    SELECT [NodeTable1].[TableSchema], [NodeTable1].[TableName], [NodeTable2].[TableName], -2, null, null, null
+                    FROM 
+                        [{2}] as NodeViewMapping
+                        JOIN
+                        [{3}] as NodeTable1
+                        ON NodeViewMapping.NodeViewTableId = NodeTable1.TableId
+                        JOIN 
+                        [{3}] as NodeTable2
+                        ON NodeViewMapping.TableId = NodeTable2.TableId
+                    UNION ALL
+                    SELECT [EdgeViewCol].[TableSchema], [EdgeViewCol].[ColumnName], [EdgeCol].[ColumnName],-3, [EdgeCol].[TableName], [EdgeViewCol].[TableName], [EdgeCol].[ColumnId]
+                          FROM 
+                          [{4}] as [EdgeView]
+                          JOIN
+                          [{0}] as [EdgeViewCol]
+                          ON [EdgeView].[NodeViewColumnId] = [EdgeViewCol].[ColumnId] and [EdgeViewCol].[ColumnRole] = 3
+                          JOIN
+                          [{0}] as [EdgeCol]
+                          ON [EdgeView].[ColumnId] = [EdgeCol].[ColumnId]
+                          ORDER BY [ColumnId]", GraphViewConnection.MetadataTables[1],
+                    GraphViewConnection.MetadataTables[2], GraphViewConnection.MetadataTables[7],
+                    GraphViewConnection.MetadataTables[0], GraphViewConnection.MetadataTables[5]);
 
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        if (reader["ColumnRole"].ToString() != "")
+                        int tag = (int) reader["ColumnRole"];
+                        string tableSchema = reader["TableSchema"].ToString().ToLower(CultureInfo.CurrentCulture);
+                        string tableName = reader["TableName"].ToString().ToLower(CultureInfo.CurrentCulture);
+                        string columnName = reader["ColumnName"].ToString().ToLower(CultureInfo.CurrentCulture);
+                        // Retrieve columns of node tables
+                        if (tag >= 0)
                         {
-                            var columnDict = _columnsOfNodeTables.GetOrCreate(
-                                new Tuple<string, string>(
-                                    reader["TableSchema"].ToString().ToLower(CultureInfo.CurrentCulture),
-                                    reader["TableName"].ToString().ToLower(CultureInfo.CurrentCulture)));
-                            columnDict.Add(reader["ColumnName"].ToString().ToLower(CultureInfo.CurrentCulture),
-                                new NodeColumns
+                            var columnDict = columnsOfNodeTables.GetOrCreate(
+                                new Tuple<string, string>(tableSchema, tableName));
+                            var role = (WNodeTableColumnRole) reader["ColumnRole"];
+                            EdgeInfo edgeInfo = null;
+                            // Edge column
+                            if (role == WNodeTableColumnRole.Edge || role == WNodeTableColumnRole.EdgeView)
+                            {
+                                edgeInfo = new EdgeInfo
                                 {
                                     ColumnAttributes = new List<string>(),
-                                    Role = (WNodeTableColumnRole)reader["ColumnRole"],
-                                    Reference = reader["RefOrAtr"].ToString().ToLower(CultureInfo.CurrentCulture)
+                                    EdgeColumns = new List<Tuple<string, string>>(),
+                                    SinkNodes = role == WNodeTableColumnRole.Edge
+                                        ? new HashSet<string>(StringComparer.CurrentCultureIgnoreCase)
+                                        {
+                                            reader["RefOrAtr"].ToString().ToLower(CultureInfo.CurrentCulture)
+                                        }
+                                        : new HashSet<string>(StringComparer.CurrentCultureIgnoreCase),
+                                    IsEdgeView = false
+                                };
+                               
+                            }
+                            columnDict.Add(columnName,
+                                new NodeColumns
+                                {
+                                    EdgeInfo = edgeInfo,
+                                    Role = (WNodeTableColumnRole) reader["ColumnRole"],
                                 });
                         }
-                        else
+                        // Retrieve edge attributes
+                        else if (tag == -1)
                         {
-                            var columnDict = _columnsOfNodeTables[new Tuple<string, string>(
-                                reader["TableSchema"].ToString().ToLower(CultureInfo.CurrentCulture),
-                                reader["TableName"].ToString().ToLower(CultureInfo.CurrentCulture))];
-                            columnDict[reader["ColumnName"].ToString().ToLower(CultureInfo.CurrentCulture)]
-                                .ColumnAttributes.Add(reader["RefOrAtr"].ToString()
-                                    .ToLower(CultureInfo.CurrentCulture));
+                            var columnDict = columnsOfNodeTables[new Tuple<string, string>(tableSchema, tableName)];
+                            columnDict[columnName].EdgeInfo.ColumnAttributes.Add(reader["RefOrAtr"].ToString()
+                                .ToLower(CultureInfo.CurrentCulture));
+                        }
+                        // Retrieve node view mapping
+                        else if (tag == -2)
+                        {
+                            var nodeTableList =
+                                nodeViewMapping.GetOrCreate(
+                                    new Tuple<string, string>(tableSchema, tableName));
+                            nodeTableList.Add(columnName);
+                        }
+                        // Retrieve edge view mapping
+                        else if (tag == -3)
+                        {
+                            string edgeViewSourceTableName =
+                                reader["EdgeViewTable"].ToString().ToLower(CultureInfo.CurrentCulture);
+                            string sourceTableName = reader["RefOrAtr"].ToString().ToLower(CultureInfo.CurrentCulture);
+                            string sinkTableName =
+                                columnsOfNodeTables[new Tuple<string, string>(tableSchema, sourceTableName)][columnName]
+                                    .EdgeInfo.SinkNodes.First();
+                            var edgeViewInfo =
+                                columnsOfNodeTables[new Tuple<string, string>(tableSchema, edgeViewSourceTableName)][
+                                    tableName].EdgeInfo;
+
+
+                            if (!edgeViewInfo.SinkNodes.Contains(sourceTableName))
+                                edgeViewInfo.SinkNodes.Add(sinkTableName);
+                            edgeViewInfo.EdgeColumns.Add(new Tuple<string, string>(sourceTableName, columnName));
+                            edgeViewInfo.IsEdgeView = true;
+
                         }
                     }
 
@@ -237,6 +337,7 @@ namespace GraphView
         private class UnionFind
         {
             public Dictionary<string, string> Parent;
+
             public string Find(string x)
             {
                 string k, j, r;
@@ -280,7 +381,7 @@ namespace GraphView
                 : "dbo";
             var tableName = namedTable.TableObjectName.BaseIdentifier.Value;
             return
-                _columnsOfNodeTables.Keys.Contains(
+                _metaData.ColumnsOfNodeTables.Keys.Contains(
                     new Tuple<string, string>(tableschema.ToLower(CultureInfo.CurrentCulture),
                         tableName.ToLower(CultureInfo.CurrentCulture)));
         }
@@ -310,48 +411,51 @@ namespace GraphView
                         var table = _context[pathNode.Item1.BaseIdentifier.Value] as WNamedTableReference;
                         var edge =
                             pathNode.Item2.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
-                        var nodeTableKey = WNamedTableReference.SchemaNameToTuple(table.TableObjectName);
+                        var nodeTableTuple = WNamedTableReference.SchemaNameToTuple(table.TableObjectName);
+                        var schema = nodeTableTuple.Item1;
 
-                        if (_columnsOfNodeTables[nodeTableKey].ContainsKey(edge))
-                        {
-                            if (
-                                _columnsOfNodeTables.Keys.Contains(
-                                    new Tuple<string, string>(nodeTableKey.Item1.ToLower(CultureInfo.CurrentCulture),
-                                        _columnsOfNodeTables[nodeTableKey][edge].Reference)))
-                            {
-                                var nextNode = index != count - 1
-                                    ? path.PathNodeList[index + 1].Item1
-                                    : path.Tail;
-                                var getNextTable = _context[nextNode.BaseIdentifier.Value];
-                                if (!IsNodeTable(getNextTable))
-                                    throw new GraphViewException("Node table expected in MATCH clause");
-                                var nextTable = getNextTable as WNamedTableReference;
-                                if (nextTable == null ||
-                                    !String.Equals(nextTable.TableObjectName.BaseIdentifier.Value,
-                                        _columnsOfNodeTables[nodeTableKey][edge].Reference,
-                                        StringComparison.CurrentCultureIgnoreCase))
-                                {
-                                    throw new GraphViewException(String.Format(CultureInfo.CurrentCulture,
-                                        "Wrong Reference Table {0}", nextNode.BaseIdentifier.Value));
-                                }
-                            }
-                            else
-                            {
-                                throw new GraphViewException(String.Format(CultureInfo.CurrentCulture,
-                                    "Node Table Referenced by the Edge {0} not exists", edge));
-                            }
-                        }
-                        else
+                        if (!_context.BindEdgeToNode(schema, edge, nodeTableTuple.Item2, _metaData))
+                            throw new GraphViewException(string.Format("Edge/EdgeView {0} cannot be bind to {1}", edge,
+                                nodeTableTuple.Item1));
+                        var bindNode = _context.EdgeNodeBinding[new Tuple<string, string>(nodeTableTuple.Item2, edge)];
+                        HashSet<string> edgeSinkNodes =
+                            _metaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, bindNode)][edge].EdgeInfo
+                                .SinkNodes;
+
+                        HashSet<string> sinkNodes;
+
+
+                        if (
+                            !edgeSinkNodes.All(
+                                e =>
+                                    _metaData.ColumnsOfNodeTables.ContainsKey(new Tuple<string, string>(
+                                        schema.ToLower(), e))))
+                            throw new GraphViewException(String.Format(CultureInfo.CurrentCulture,
+                                "Node Table Referenced by the Edge {0} not exists", edge));
+
+                        var nextNode = index != count - 1
+                            ? path.PathNodeList[index + 1].Item1
+                            : path.Tail;
+                        var getNextTable = _context[nextNode.BaseIdentifier.Value];
+                        if (!IsNodeTable(getNextTable))
+                            throw new GraphViewException("Node table expected in MATCH clause");
+                        var nextTable = getNextTable as WNamedTableReference;
+                        if (nextTable == null ||
+                            !_metaData.NodeViewMapping.TryGetValue(
+                                WNamedTableReference.SchemaNameToTuple(nextTable.TableObjectName), out sinkNodes))
+                            sinkNodes = new HashSet<string> {nextTable.TableObjectName.BaseIdentifier.Value};
+                        if (sinkNodes.All(e => !edgeSinkNodes.Contains(e)))
                         {
                             throw new GraphViewException(String.Format(CultureInfo.CurrentCulture,
-                                "Edge Column {0} not exists in the Node Table", edge));
+                                "Wrong Reference Table {0}", nextTable.TableObjectName.BaseIdentifier.Value));
                         }
+
                     }
                 }
             }
             else
             {
-                throw new GraphViewException("Node table expected in MATCH clause");
+                throw new GraphViewException("Node table/view expected in MATCH clause");
             }
         }
 
@@ -400,13 +504,15 @@ namespace GraphView
                         var nodeTable = _context[currentNodeExposedName] as WNamedTableReference;
                         if (nodeTable != null)
                         {
-                            node.TableObjectName = nodeTable.TableObjectName;
-                            if (node.TableObjectName.SchemaIdentifier == null)
-                                node.TableObjectName.Identifiers.Insert(0, new Identifier { Value = "dbo" });
-                            var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(node.TableObjectName);
+                            node.NodeTableObjectName = nodeTable.TableObjectName;
+                            if (node.NodeTableObjectName.SchemaIdentifier == null)
+                                node.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
+                            var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(node.NodeTableObjectName);
                             if (!nodeTypes.Contains(nodeTypeTuple))
                                 nodeTypes.Add(nodeTypeTuple);
-
+                            node.IncludedNodeNames = _metaData.NodeViewMapping.ContainsKey(nodeTypeTuple)
+                                ? _metaData.NodeViewMapping[nodeTypeTuple]
+                                : null;
                         }
                     }
 
@@ -419,9 +525,19 @@ namespace GraphView
                         }
                         else
                         {
-                            edgeTableReferenceDict.Add(currentEdgeName, new List<string> { currentEdge.Alias });
+                            edgeTableReferenceDict.Add(currentEdgeName, new List<string> {currentEdge.Alias});
                         }
                     }
+
+                    Identifier edgeIdentifier = currentEdge.MultiPartIdentifier.Identifiers.Last();
+                    string schema = node.NodeTableObjectName.SchemaIdentifier.Value.ToLower();
+                    string nodeTableName = node.NodeTableObjectName.BaseIdentifier.Value;
+                    string bindTableName =
+                        _context.EdgeNodeBinding[
+                            new Tuple<string, string>(nodeTableName.ToLower(), edgeIdentifier.Value.ToLower())].ToLower();
+                    var edgeInfo = _metaData.ColumnsOfNodeTables[
+                        new Tuple<string, string>(schema, bindTableName)][edgeIdentifier.Value.ToLower()]
+                        .EdgeInfo;
                     var edge = new MatchEdge
                     {
                         SourceNode = node,
@@ -432,11 +548,20 @@ namespace GraphView
                                 Identifiers = new List<Identifier>
                                 {
                                     new Identifier {Value = node.NodeAlias},
-                                    currentEdge.MultiPartIdentifier.Identifiers.Last()
+                                    edgeIdentifier
                                 }
                             }
                         },
-                        EdgeAlias = currentEdge.Alias
+                        EdgeAlias = currentEdge.Alias,
+                        BindNodeTableObjName =
+                            new WSchemaObjectName(
+                                new Identifier {Value = schema},
+                                new Identifier {Value = bindTableName}
+                                ),
+                        IncludedEdgeNames =
+                            edgeInfo.IsEdgeView
+                                ? edgeInfo.EdgeColumns
+                                : null
                     };
 
                     if (preEdge != null)
@@ -456,7 +581,7 @@ namespace GraphView
                     node.Neighbors.Add(edge);
 
 
-                    _context.AddEdgeReference(currentEdge.Alias, edge.SourceNode.TableObjectName, currentEdge);
+                    _context.AddEdgeReference(currentEdge.Alias, edge.SourceNode.NodeTableObjectName, currentEdge);
                 }
                 var tailExposedName = path.Tail.BaseIdentifier.Value;
                 var tailNode = nodes.GetOrCreate(tailExposedName);
@@ -467,15 +592,15 @@ namespace GraphView
                     var nodeTable = _context[tailExposedName] as WNamedTableReference;
                     if (nodeTable != null)
                     {
-                        tailNode.TableObjectName = nodeTable.TableObjectName;
-                        if (tailNode.TableObjectName.SchemaIdentifier == null)
-                            tailNode.TableObjectName.Identifiers.Insert(0, new Identifier { Value = "dbo" });
-                        var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(tailNode.TableObjectName);
+                        tailNode.NodeTableObjectName = nodeTable.TableObjectName;
+                        if (tailNode.NodeTableObjectName.SchemaIdentifier == null)
+                            tailNode.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
+                        var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(tailNode.NodeTableObjectName);
                         if (!nodeTypes.Contains(nodeTypeTuple))
                             nodeTypes.Add(nodeTypeTuple);
                     }
                 }
-                if (preEdge != null) 
+                if (preEdge != null)
                     preEdge.SinkNode = tailNode;
             }
 
@@ -510,7 +635,7 @@ namespace GraphView
             // Replace Edge name alias with proper alias in the query
             var replaceTableRefVisitor = new ReplaceTableRefVisitor();
             replaceTableRefVisitor.Invoke(query, edgeTableReferenceDict);
-            
+
 
             // If a table alias in the MATCH clause is defined in an upper-level context, 
             // to be able to translate this MATCH clause, this table alias must be re-materialized 
@@ -553,14 +678,14 @@ namespace GraphView
                         FirstExpr = new WColumnReferenceExpression
                         {
                             MultiPartIdentifier = new WMultiPartIdentifier(
-                                new Identifier { Value = node.Key },
-                                new Identifier { Value = "GlobalNodeId" })
+                                new Identifier {Value = node.Key},
+                                new Identifier {Value = "GlobalNodeId"})
                         },
                         SecondExpr = new WColumnReferenceExpression
                         {
                             MultiPartIdentifier = new WMultiPartIdentifier(
-                                new Identifier { Value = node.Value.RefAlias },
-                                new Identifier { Value = "GlobalNodeId" })
+                                new Identifier {Value = node.Value.RefAlias},
+                                new Identifier {Value = "GlobalNodeId"})
                         },
                     };
                     whereCondiction = WBooleanBinaryExpression.Conjunction(whereCondiction, newWhereCondition);
@@ -570,7 +695,7 @@ namespace GraphView
             {
                 if (query.WhereClause == null)
                 {
-                    query.WhereClause = new WWhereClause { SearchCondition = whereCondiction };
+                    query.WhereClause = new WWhereClause {SearchCondition = whereCondiction};
                 }
                 else
                 {
@@ -632,7 +757,7 @@ namespace GraphView
                             {
                                 foreach (
                                     var column in
-                                        _columnsOfNodeTables[
+                                        _metaData.ColumnsOfNodeTables[
                                             WNamedTableReference.SchemaNameToTuple(namedTable.TableObjectName)].Where(
                                                 e => e.Value.Role != WNodeTableColumnRole.Edge).Select(e => e.Key))
                                 {
@@ -661,20 +786,22 @@ namespace GraphView
                                         var matchNode = subGraph.Nodes[alias];
                                         foreach (var edge in matchNode.Neighbors)
                                         {
-                                            var schemaName = edge.SourceNode.TableObjectName.SchemaIdentifier == null
+                                            var schemaName = edge.SourceNode.NodeTableObjectName.SchemaIdentifier ==
+                                                             null
                                                 ? "dbo"
-                                                : edge.SourceNode.TableObjectName.SchemaIdentifier.Value.ToLower();
+                                                : edge.SourceNode.NodeTableObjectName.SchemaIdentifier.Value.ToLower();
                                             var nodeTuple = new Tuple<string, string>(schemaName,
-                                                edge.SourceNode.TableObjectName.BaseIdentifier.Value.ToLower());
+                                                edge.SourceNode.NodeTableObjectName.BaseIdentifier.Value.ToLower());
                                             var edgeColumnName =
                                                 edge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
-                                            if (!_columnsOfNodeTables[nodeTuple].ContainsKey(edgeColumnName))
+                                            if (!_metaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumnName))
                                             {
                                                 throw new GraphViewException("Invalid Edge Alias");
                                             }
                                             foreach (
                                                 var column in
-                                                    _columnsOfNodeTables[nodeTuple][edgeColumnName].ColumnAttributes)
+                                                    _metaData.ColumnsOfNodeTables[nodeTuple][edgeColumnName].EdgeInfo
+                                                        .ColumnAttributes)
                                             {
                                                 var elementList = starReplacement.GetOrCreate(edge.EdgeAlias);
                                                 elementList.Add(new WSelectScalarExpression
@@ -707,7 +834,7 @@ namespace GraphView
                                 {
                                     Qulifier = new WMultiPartIdentifier
                                     {
-                                        Identifiers = new List<Identifier> { new Identifier { Value = alias } }
+                                        Identifiers = new List<Identifier> {new Identifier {Value = alias}}
                                     }
                                 });
 
@@ -747,8 +874,8 @@ namespace GraphView
             {
                 var toRemove = connectedSubGraph.Nodes.Where(
                     node => node.Value.Neighbors.Count == 0 &&
-                        !visitor.Invoke(query, node.Key, _context,_columnsOfNodeTables)
-                        )
+                            !visitor.Invoke(query, node.Key, _context, _metaData.ColumnsOfNodeTables)
+                    )
                     .ToArray();
                 foreach (var item in toRemove)
                 {
@@ -773,7 +900,7 @@ namespace GraphView
             {
                 RowCount = rowCount
             };
-            var height = (int)(rowCount / BucketNum);
+            var height = (int) (rowCount/BucketNum);
             var popBucketCount = 0;
             var popValueCount = 0;
             var bucketCount = 0;
@@ -816,7 +943,7 @@ namespace GraphView
                 // Advanced Density
                 statistics.Density = bucketCount == popBucketCount
                     ? 0
-                    : 1.0 * (bucketCount - popBucketCount) / bucketCount / (distCount - popValueCount);
+                    : 1.0*(bucketCount - popBucketCount)/bucketCount/(distCount - popValueCount);
             }
 
             // Generate a Height-balanced Histogram
@@ -827,7 +954,7 @@ namespace GraphView
                 int distCount = 1;
                 for (int i = 1; i < rowCount; i++)
                 {
-                    if (i % height == height - 1)
+                    if (i%height == height - 1)
                     {
                         bucketCount++;
                         var curValue = sinkList[i];
@@ -838,7 +965,7 @@ namespace GraphView
                             distCount++;
                             if (count > height)
                             {
-                                popBucketCount += count / height;
+                                popBucketCount += count/height;
                                 popValueCount++;
                             }
                             //count = count == 0 ? height : count;
@@ -850,7 +977,7 @@ namespace GraphView
                 }
                 if (count > height)
                 {
-                    popBucketCount += count / height;
+                    popBucketCount += count/height;
                     popValueCount++;
                 }
                 statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > height));
@@ -860,7 +987,7 @@ namespace GraphView
                 // Advanced Density
                 statistics.Density = bucketCount == popBucketCount
                     ? 0
-                    : 1.0 * (bucketCount - popBucketCount) / bucketCount / (distCount - popValueCount);
+                    : 1.0*(bucketCount - popBucketCount)/bucketCount/(distCount - popValueCount);
             }
             _context.AddEdgeStatistics(edge, statistics);
         }
@@ -880,9 +1007,16 @@ namespace GraphView
                                         TsqlFragmentToString.DataType(parameter.DataType) + "\r\n";
                 }
             }
+
+            // Attach proper parts of the where clause into the Estimiation Query
+            var attachPredicateVisitor = new AttachWhereClauseVisitor();
+            var columnTableMapping = _context.GetColumnTableMapping(_metaData.ColumnsOfNodeTables);
+            attachPredicateVisitor.Invoke(query.WhereClause, graph, columnTableMapping);
+
+            // Attach predicates to nodes and edges
             var estimator = new TableSizeEstimator(Conn);
             bool first = true;
-            var fromQuerySb = new StringBuilder(1024);
+            var selectQuerySb = new StringBuilder(1024);
             foreach (var subGraph in graph.ConnectedSubGraphs)
             {
                 foreach (var node in subGraph.Nodes)
@@ -890,38 +1024,71 @@ namespace GraphView
                     if (first)
                         first = false;
                     else
-                        fromQuerySb.Append(", ");
+                        selectQuerySb.Append("\r\nUNION ALL\r\n");
                     var currentNode = node.Value;
-                    fromQuerySb.AppendFormat("{0} AS [{1}] WITH (ForceScan)", currentNode.TableObjectName,
+                    selectQuerySb.AppendFormat("SELECT GlobalNodeId FROM {0} AS [{1}] WITH (ForceScan)",
+                        currentNode.NodeTableObjectName,
                         currentNode.NodeAlias);
+                    if (currentNode.Predicates != null && currentNode.Predicates.Count > 0)
+                    {
+                        selectQuerySb.AppendFormat("\r\nWHERE {0}", currentNode.Predicates[0]);
+                        for (int i = 1; i < currentNode.Predicates.Count; i++)
+                        {
+                            var predicate = currentNode.Predicates[i];
+                            selectQuerySb.AppendFormat(" AND {0}", predicate);
+                        }
+                    }
                 }
             }
-            // Attach proper parts of the where clause into the Estimiation Query
-            var columnTableMapping = _context.GetColumnTableMapping(_columnsOfNodeTables);
-            var attachWhereClauseVisiter = new AttachNodeEdgePredictesVisitor();
-            var nodeEstimationWhereClause = attachWhereClauseVisiter.Invoke(query.WhereClause, graph, columnTableMapping);
-            string nodeEstimationQuery = string.Format("{0}\r\n SELECT * FROM {1}\r\n", declareParameter,
-                fromQuerySb);
-            if (nodeEstimationWhereClause.SearchCondition != null)
-                nodeEstimationQuery += nodeEstimationWhereClause.ToString();
-            var estimateRows = estimator.GetQueryTableEstimatedRows(nodeEstimationQuery);
 
+            // TODO: Can be distinguished between nodeview and node. E.g.:
+            //             SELECT count(*) FROM [dbo].[EmployeeNode] AS [e1] WITH (ForceScan)
+            //                                  ,[dbo].[EmployeeNode] AS [e2] WITH (ForceScan)
+            //                                  , [dbo].[ClientNode] AS [c1] WITH (ForceScan)
+            //                                  ,[dbo].[ClientNode] AS [c2] WITH (ForceScan)
+            //             WHERE e1.WorkId!=e2.WorkId
+            //             UNION ALL
+            //             SELECT COUNT(*) FROM [dbo].[NV1] AS [NV1] WITH (ForceScan)
+            //              WHERE [NV1].[id] = 10
+
+            string nodeEstimationQuery = string.Format("{0}\r\n {1}\r\n", declareParameter,
+                selectQuerySb);
+            var estimateRows = estimator.GetUnionQueryTableEstimatedRows(nodeEstimationQuery);
+
+            int j = 0;
             foreach (var subGraph in graph.ConnectedSubGraphs)
             {
                 // Update Row Estimation for nodes
                 foreach (var node in subGraph.Nodes)
                 {
                     var currentNode = node.Value;
-                    currentNode.EstimatedRows = estimateRows[node.Key];
-                    var tableSchema = currentNode.TableObjectName.SchemaIdentifier.Value;
-                    var tableName = currentNode.TableObjectName.BaseIdentifier.Value;
-                    currentNode.TableRowCount = estimator.GetTableRowCount(tableSchema, tableName);
+                    var tableSchema = currentNode.NodeTableObjectName.SchemaIdentifier.Value;
+                    var tableName = currentNode.NodeTableObjectName.BaseIdentifier.Value;
+                    var tableTuple = WNamedTableReference.SchemaNameToTuple(currentNode.NodeTableObjectName);
+                    if (_metaData.NodeViewMapping.ContainsKey(tableTuple))
+                    {
+                        var nodeSet = _metaData.NodeViewMapping[tableTuple];
+                        int n = nodeSet.Count;
+                        double nodeViewEstRows = 0.0;
+                        while (n > 0)
+                        {
+                            n--;
+                            nodeViewEstRows += estimateRows[j];
+                            j++;
+                        }
+                        currentNode.EstimatedRows = nodeViewEstRows;
+                        currentNode.TableRowCount = nodeSet.Aggregate(0,
+                            (cur, next) => cur + estimator.GetTableRowCount(tableSchema, next));
+                    }
+                    else
+                    {
+                        currentNode.EstimatedRows = estimateRows[j];
+                        currentNode.TableRowCount = estimator.GetTableRowCount(tableSchema, tableName);
+                        j++;
+                    }
                 }
-                }
+            }
 
-            // Attach predicates to nodes and edges
-            var attachPredicateVisitor = new AttachWhereClauseVisitor();
-            attachPredicateVisitor.Invoke(query.WhereClause, graph, columnTableMapping);
 
         }
 
@@ -947,7 +1114,7 @@ namespace GraphView
             // Calculate the average degree
             var sb = new StringBuilder();
             bool first = true;
-            sb.Append("SELECT [Edge].*, [sysindexes].[rows], [EdgeDegrees].[AverageDegree] FROM");
+            sb.Append("SELECT [Edge].*, [EdgeDegrees].[SampleRowCount], [EdgeDegrees].[AverageDegree] FROM");
             sb.Append("(\n");
             foreach (var edge in graph.ConnectedSubGraphs.SelectMany(subGraph => subGraph.Edges.Values))
             {
@@ -957,7 +1124,11 @@ namespace GraphView
                 {
                     first = false;
                 }
-                var tableObjectName = edge.SourceNode.TableObjectName;
+                var tableObjectName = edge.SourceNode.NodeTableObjectName;
+                string schema = tableObjectName.SchemaIdentifier.Value.ToLower();
+                string tableName = tableObjectName.BaseIdentifier.Value.ToLower();
+                string edgeName = edge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
+                string bindTableName = _context.EdgeNodeBinding[new Tuple<string, string>(tableName, edgeName)];
                 sb.Append(
                     string.Format(@"
                             SELECT '{0}' as TableSchema, 
@@ -965,9 +1136,9 @@ namespace GraphView
                                    '{2}' as ColumnName,
                                    '{3}' as Alias, 
                                     [dbo].[GraphViewUDFGlobalNodeIdEncoder](Sink) as Sink
-                            FROM [{0}_{1}_{2}_Sampling] as [{3}]", tableObjectName.SchemaIdentifier.Value,
-                        tableObjectName.BaseIdentifier.Value,
-                        edge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value,
+                            FROM [{0}_{1}_{2}_Sampling] as [{3}]", schema,
+                        bindTableName,
+                        edgeName,
                         edge.EdgeAlias));
                 if (edge.Predicates != null)
                 {
@@ -986,11 +1157,7 @@ namespace GraphView
                 }
             }
             sb.Append("\n) as Edge \n");
-            sb.Append(String.Format(@"INNER JOIN 
-                            [sysindexes] 
-                        ON 
-                            [id] = OBJECT_ID([TableSchema] + '_' + [TableName] + '_' + [ColumnName] + '_' + 'Sampling') 
-                            and [indid]<2
+            sb.Append(String.Format(@"
                         INNER JOIN
                             [{0}] as [EdgeDegrees]
                         ON 
@@ -999,19 +1166,23 @@ namespace GraphView
                         AND [EdgeDegrees].[ColumnName] = [Edge].[ColumnName]", GraphViewConnection.MetadataTables[3]));
 
             // Retrieve density value for each node table
-            _tableIdDensity.Clear();
+            var tableIdDensity = _metaData.TableIdDensity;
+            tableIdDensity.Clear();
             string tempTableName = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
             var dbccDensityQuery = new StringBuilder();
             dbccDensityQuery.Append(string.Format(@"CREATE TABLE #{0} (Density float, Len int, Col sql_variant);
                                                     INSERT INTO #{0} EXEC('", tempTableName));
             foreach (var nodeTable in graph.NodeTypesSet)
             {
-                _tableIdDensity[string.Format("[{0}].[{1}]", nodeTable.Item1, nodeTable.Item2)] =
+                tableIdDensity[string.Format("[{0}].[{1}]", nodeTable.Item1, nodeTable.Item2)] =
                     ColumnStatistics.DefaultDensity;
-                dbccDensityQuery.Append(string.Format(
-                    "DBCC SHOW_STATISTICS (\"{0}.{1}\", [{0}{1}_PK_GlobalNodeId]) with DENSITY_VECTOR;\n",
-                    nodeTable.Item1,
-                    nodeTable.Item2));
+                if (
+                    !_metaData.NodeViewMapping.ContainsKey(new Tuple<string, string>(nodeTable.Item1.ToLower(),
+                        nodeTable.Item2.ToLower())))
+                    dbccDensityQuery.Append(string.Format(
+                        "DBCC SHOW_STATISTICS (\"{0}.{1}\", [{0}{1}_PK_GlobalNodeId]) with DENSITY_VECTOR;\n",
+                        nodeTable.Item1,
+                        nodeTable.Item2));
             }
             dbccDensityQuery.Append("');\n");
             dbccDensityQuery.Append(string.Format("SELECT Density FROM #{0} WHERE Col = 'GlobalNodeId'", tempTableName));
@@ -1048,12 +1219,12 @@ namespace GraphView
                             sinkList.Add(sink);
                         }
                         UpdateEdgeHistogram(edge, sinkList);
-                        edge.AverageDegree = Convert.ToDouble(reader["AverageDegree"]) * sinkList.Count * 1.0 /
-                                             Convert.ToInt64(reader["rows"]);
+                        edge.AverageDegree = Convert.ToDouble(reader["AverageDegree"])*sinkList.Count*1.0/
+                                             Convert.ToInt64(reader["SampleRowCount"]);
                     }
                 }
 
-                var tableKey = _tableIdDensity.Keys.ToArray();
+                var tableKey = tableIdDensity.Keys.ToArray();
                 command.CommandText = dbccDensityQuery.ToString();
                 using (var reader = command.ExecuteReader())
                 {
@@ -1065,12 +1236,12 @@ namespace GraphView
                         double density = Convert.ToDouble(reader["Density"]);
                         if (Math.Abs(density - 1.0) < 0.0001)
                             density = ColumnStatistics.DefaultDensity;
-                        _tableIdDensity[key] = density;
+                        tableIdDensity[key] = density;
                     }
 
                 }
             }
-            _tableIdDensity = _tableIdDensity.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
+            tableIdDensity = tableIdDensity.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
         }
 
         // TODO: Use Heap O(logN)
@@ -1084,15 +1255,15 @@ namespace GraphView
             int index = 0;
             int edgeCount = components[0].EdgeMaterilizedDict.Count;
             edgeCount = edgeCount == 0 ? 1 : edgeCount;
-            double maxValue = components[0].Cost / edgeCount;
+            double maxValue = components[0].Cost/edgeCount;
             for (int i = 1; i < components.Count; i++)
             {
                 edgeCount = components[i].EdgeMaterilizedDict.Count;
                 edgeCount = edgeCount == 0 ? 1 : edgeCount;
-                if (components[i].Cost / edgeCount > maxValue)
+                if (components[i].Cost/edgeCount > maxValue)
                 {
                     index = i;
-                    maxValue = components[i].Cost / edgeCount;
+                    maxValue = components[i].Cost/edgeCount;
                 }
             }
             return new Tuple<int, double>(index, maxValue);
@@ -1107,7 +1278,7 @@ namespace GraphView
         /// <param name="graph"></param>
         /// <param name="component"></param>
         /// <returns></returns>
-        public IEnumerable<Tuple<OneHeightTree,bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
+        public IEnumerable<Tuple<OneHeightTree, bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
         {
             var nodes = graph.Nodes;
             foreach (var node in nodes.Values.Where(e => !graph.IsTailNode[e]))
@@ -1149,7 +1320,8 @@ namespace GraphView
                     }, false);
 
                 // Single node edge
-                else if (nodeUnpopulatedEdges.Count > 0 && component.MaterializedNodeSplitCount.Count > 1 && component.MaterializedNodeSplitCount.ContainsKey(node))
+                else if (nodeUnpopulatedEdges.Count > 0 && component.MaterializedNodeSplitCount.Count > 1 &&
+                         component.MaterializedNodeSplitCount.ContainsKey(node))
                 {
                     yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
                     {
@@ -1189,23 +1361,23 @@ namespace GraphView
             {
                 if (!subGraph.IsTailNode[node.Value])
                 {
-                // Enumerate on each edge for a node to generate the intial states
-                var edgeCount = node.Value.Neighbors.Count;
-                int eNum = (int) Math.Pow(2, edgeCount) - 1;
-                while (eNum > 0)
-                {
-                    var nodeInitialEdges = new List<MatchEdge>();
-                    for (int i = 0; i < edgeCount; i++)
+                    // Enumerate on each edge for a node to generate the intial states
+                    var edgeCount = node.Value.Neighbors.Count;
+                    int eNum = (int) Math.Pow(2, edgeCount) - 1;
+                    while (eNum > 0)
                     {
-                        int index = (1 << i);
-                        if ((eNum & index) != 0)
+                        var nodeInitialEdges = new List<MatchEdge>();
+                        for (int i = 0; i < edgeCount; i++)
                         {
-                            nodeInitialEdges.Add(node.Value.Neighbors[i]);
+                            int index = (1 << i);
+                            if ((eNum & index) != 0)
+                            {
+                                nodeInitialEdges.Add(node.Value.Neighbors[i]);
+                            }
                         }
-                    }
                         componentStates.Add(new MatchComponent(node.Value, nodeInitialEdges, _context));
-                    eNum--;
-                }
+                        eNum--;
+                    }
                 }
             }
 
@@ -1249,7 +1421,7 @@ namespace GraphView
                         }
 
                         // TODO : redundant work if newSize>maxvalue
-                        var newComponent = curComponent.GetNextState(candidateUnit, _tableIdDensity, _statisticsCalculator);
+                        var newComponent = curComponent.GetNextState(candidateUnit, _metaData, _statisticsCalculator);
                         if (nextCompnentStates.Count >= MaxStates)
                         {
                             if (maxIndex < 0)
@@ -1262,7 +1434,7 @@ namespace GraphView
                             {
                                 int edgeCount = newComponent.EdgeMaterilizedDict.Count;
                                 edgeCount = edgeCount == 0 ? 1 : edgeCount;
-                                if (newComponent.Cost / edgeCount < maxValue)
+                                if (newComponent.Cost/edgeCount < maxValue)
                                 {
                                     var temp = nextCompnentStates[maxIndex];
                                     nextCompnentStates[maxIndex] = newComponent;
@@ -1305,9 +1477,9 @@ namespace GraphView
                             {
                                 CallTarget = new WMultiPartIdentifierCallTarget
                                 {
-                                    Identifiers = new WMultiPartIdentifier(new Identifier { Value = "dbo" })
+                                    Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
                                 },
-                                FunctionName = new Identifier { Value = "DownSizeFunction" },
+                                FunctionName = new Identifier {Value = "DownSizeFunction"},
                                 Parameters = new List<WScalarExpression>
                                 {
                                     new WColumnReferenceExpression
@@ -1316,7 +1488,7 @@ namespace GraphView
                                         {
                                             Identifiers = new List<Identifier>
                                             {
-                                                new Identifier{Value = joinTableTuple.Item2},
+                                                new Identifier {Value = joinTableTuple.Item2},
                                                 new Identifier {Value = "LocalNodeid"}
                                             }
                                         }
@@ -1329,13 +1501,13 @@ namespace GraphView
 
                 // Update from clause
                 node.FromClause.TableReferences.Add(component.TableRef);
-              
+
                 // Add predicates for split nodes
                 var component1 = component;
                 foreach (
                     var compNode in
                         component.MaterializedNodeSplitCount.Where(
-                            e => e.Value>0 && e.Key.Predicates != null && e.Key.Predicates.Any()))
+                            e => e.Value > 0 && e.Key.Predicates != null && e.Key.Predicates.Any()))
                 {
                     var matchNode = compNode.Key;
 
@@ -1417,7 +1589,7 @@ namespace GraphView
         public override void Visit(WSelectQueryBlock node)
         {
             var checkVarVisitor = new CollectVariableVisitor();
-            var currentContext = checkVarVisitor.Invoke(node.FromClause, _columnsOfNodeTables.Keys);
+            var currentContext = checkVarVisitor.Invoke(node.FromClause, _metaData.ColumnsOfNodeTables.Keys);
             currentContext.UpperLevel = _context;
             _context = currentContext;
 
@@ -1437,7 +1609,7 @@ namespace GraphView
                 var components = new List<MatchComponent>();
                 foreach (var subGraph in graph.ConnectedSubGraphs)
                 {
-                    
+
 
                     components.Add(ConstructComponent(subGraph));
 #if DEBUG
