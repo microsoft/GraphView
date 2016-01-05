@@ -25,10 +25,12 @@
 // 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -39,10 +41,15 @@ namespace GraphView
     public partial class GraphViewConnection : IDisposable
     {
         private string _nodeName;
+        private string _tableSet;
 
         private Dictionary<string, Int64> _dictionaryTableId; // <Table Name> => <Table Id>
         private Dictionary<string, int> _dictionaryTableOffsetId; // <Table Name> => <Table Offset Id> (counted from 0)
-        private Dictionary<Tuple<string, string>, Int64> _dictionaryColumnId; // <Table Name, Column Name> => <Column Id>
+
+        private Dictionary<Tuple<string, string>, Int64> _dictionaryColumnId;
+            // <Table Name, Column Name> => <Column Id>
+
+        private List<Tuple<string, List<Tuple<string, string>>>> _propertymapping;
 
         private static readonly List<string> ColumnList =
             new List<string>
@@ -70,7 +77,7 @@ namespace GraphView
         /// </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node view will occur.</param>
         public void CreateNodeView(string tableSchema, string nodeViewName, List<string> nodes,
-            List<Tuple<string, List<Tuple<string, string>>>>  propertymapping,
+            List<Tuple<string, List<Tuple<string, string>>>> propertymapping = null,
             SqlTransaction externalTransaction = null)
         {
             //Check validity of input
@@ -86,16 +93,17 @@ namespace GraphView
             {
                 throw new EdgeViewException("The list of nodes is null or empty.");
             }
-            if (propertymapping == null || !propertymapping.Any())
-            {
-                throw new EdgeViewException("The list of property mapping is null or empty.");
-            }
 
             var transaction = externalTransaction ?? Conn.BeginTransaction();
             try
             {
+                bool byDefault = propertymapping == null;
                 CreateNodeViewWithoutRecord(tableSchema, nodeViewName, nodes, propertymapping, transaction);
-                UpdateNodeViewMetatable(tableSchema, nodeViewName, nodes, propertymapping, transaction);
+                UpdateNodeViewMetatable(tableSchema, nodeViewName, nodes, _propertymapping, transaction);
+                if (byDefault)
+                {
+                    createEdgeViewByDefault(tableSchema, nodeViewName, transaction);
+                }
                 if (externalTransaction == null)
                 {
                     transaction.Commit();
@@ -123,7 +131,7 @@ namespace GraphView
         /// </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node view will occur.</param>
         private void CreateNodeViewWithoutRecord(string tableSchema, string nodeViewName, List<string> nodes,
-            List<Tuple<string, List<Tuple<string, string>>>>  propertymapping,
+            List<Tuple<string, List<Tuple<string, string>>>> propertymapping = null,
             SqlTransaction externalTransaction = null)
         {
             var transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -133,220 +141,309 @@ namespace GraphView
 
             _dictionaryTableId = new Dictionary<string, long>(); //Also for searching table record in meta table
             _dictionaryTableOffsetId = new Dictionary<string, int>(); //Also for searching user-given node table
-            _dictionaryColumnId = new Dictionary<Tuple<string, string>, long>(); //Also for searching user-given node view's property
+            _dictionaryColumnId = new Dictionary<Tuple<string, string>, long>();
+                //Also for searching user-given node view's property
 
-            try
+            //try
+            //{
+            _tableSet = "#" + RandomString();
+            if (propertymapping == null)
             {
-                //Check validity of the list of node tables and get their table ID.
-                const string getTableId = @"
-            Select TableName, TableId
-            From [dbo].{0}
-            Where TableSchema = @schema";
-                command.CommandText = String.Format(getTableId, MetadataTables[0]); //GraphTable
-                command.Parameters.Add("schema", SqlDbType.NVarChar, 128);
-                command.Parameters["schema"].Value = tableSchema;
+                var columnToType = new Dictionary<string, Tuple<string, string>>(); //column => <datatype, length>
+                var columnToColumns = new Dictionary<string, List<string>>(); //column => <table>
+                string createTempTable = @"create table {0} (TableName varchar(4000))";
+                command.Parameters.Clear();
+                command.CommandText = string.Format(createTempTable, _tableSet);
+                command.ExecuteNonQuery();
 
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var tableName = reader["TableName"].ToString().ToLower();
-                        var tableId = Convert.ToInt64(reader["TableId"].ToString());
-                        if (nodes.Exists(x => (x.ToLower() == tableName)))
-                        {
-                            _dictionaryTableId[tableName] = tableId;
-                        }
-                    }
-                }
-                if (_dictionaryTableId.Count() != nodes.Count())
-                {
-                    foreach (var it in nodes)
-                    {
-                        if (!_dictionaryTableId.ContainsKey(it))
-                        {
-                            throw new NodeViewException(string.Format("The graph table [{0}].[{1}] is not found",
-                                tableSchema, it));
-                        }
-                    }
-                }
+                DataTable table = new DataTable(_tableSet); //_NodeViewColumnCollection
+                DataColumn column;
+                DataRow row;
+                column = new DataColumn("TableName", Type.GetType("System.String"));
+                table.Columns.Add(column);
 
-                var count = 0;
                 foreach (var it in nodes)
                 {
-                    if (_dictionaryTableOffsetId.ContainsKey(it.ToLower()))
-                    {
-                        throw new NodeViewException(string.Format("Node table {0} is given twice", it));
-                    }
-                    _dictionaryTableOffsetId[it.ToLower()] = count;
-                    count++;
+                    row = table.NewRow();
+                    row["TableName"] = it;
+                    table.Rows.Add(row);
                 }
 
-                //Check validity of the proper mapping and get their column ID.
-                foreach (var it in propertymapping)
+                using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
                 {
-                    foreach (var VARIABLE in it.Item2)
-                    {
-                        _dictionaryColumnId[Tuple.Create(VARIABLE.Item1.ToLower(), VARIABLE.Item2.ToLower())] = -1;
-                    }
+                    bulkCopy.DestinationTableName = _tableSet;
+                    bulkCopy.WriteToServer(table);
                 }
 
-                const string getColumnId = @"
-                Select ColumnId, TableName, ColumnName, ColumnRole
-                From {0}
-                Where TableSchema = @schema";
-                command.CommandText = string.Format(getColumnId, MetadataTables[1]); //_NodeTableColumnCollection
+                const string getColumnList = @"
+                    Select TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
+                    From {0} NTC
+                    Join {1} NTCC
+                    On NTC.TableId = NTCC.TableId
+                    Join INFORMATION_SCHEMA.COLUMNS IC
+                    On IC.TABLE_SCHEMA = NTC.TableSchema and IC.TABLE_NAME = NTC.TableName and IC.COLUMN_NAME = NTCC.ColumnName
+                    Join {2} Temp 
+                    On TABLE_NAME = Temp.TableName
+                    Where NTC.TableSchema = @schema and (ColumnRole = @role1 or ColumnRole = @role2)";
 
-                var edgeCount = 0;
-                var edgeList = new List<Tuple<string, string>>[nodes.Count];
-                for (int i = 0; i < nodes.Count; i++)
-                {
-                    edgeList[i] = new List<Tuple<string, string>>();
-                }
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("schema", tableSchema);
+                command.Parameters.AddWithValue("role1", 0);
+                command.Parameters.AddWithValue("role2", 2);
+                command.CommandText = string.Format(getColumnList, MetadataTables[0], MetadataTables[1], _tableSet);
 
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        var tableName = reader["TableName"].ToString().ToLower();
-                        var columnId = Convert.ToInt64(reader["ColumnId"].ToString());
-                        var columnName = reader["ColumnName"].ToString().ToLower();
-                        var columnRole = Convert.ToInt32(reader["ColumnRole"].ToString());
-
-                        if (columnRole == 2 || columnRole == 0)
+                        var tableName = reader["TABLE_NAME"].ToString().ToLower();
+                        var columnName = reader["COLUMN_NAME"].ToString().ToLower();
+                        var dataType = reader["DATA_TYPE"].ToString().ToLower();
+                        var maximumLength = reader["CHARACTER_MAXIMUM_LENGTH"].ToString();
+                        var type = Tuple.Create(dataType, maximumLength);
+                        if (columnToType.ContainsKey(columnName))
                         {
-                            var columnTuple = Tuple.Create(tableName, columnName);
-                            if (_dictionaryColumnId.ContainsKey(columnTuple))
+                            if (columnToType[columnName].Equals(type))
                             {
-                                _dictionaryColumnId[columnTuple] = columnId;
+                                columnToType[columnName] = Tuple.Create("wrong", "wrong");
+                                columnToColumns[columnName].Clear();
+                                columnToColumns[columnName].Add("wrong");
+                                var warning =
+                                    new WarningException(
+                                        string.Format(
+                                            "Warning: Ignores the column \"{0}\" in node view since it has different datatypes in at least two base tables",
+                                            columnName));
+                                Console.WriteLine(warning.Message);
+                                continue;
                             }
                         }
                         else
                         {
-                            if (columnRole == 1 && _dictionaryTableOffsetId.ContainsKey(tableName))
-                            {
-                                edgeList[_dictionaryTableOffsetId[tableName]].Add(Tuple.Create(tableName, columnName));
-                                edgeCount++;
-                            }
+                            columnToType[columnName] = type;
+                            columnToColumns[columnName] = new List<string>();
                         }
+                        columnToColumns[columnName].Add(tableName);
                     }
                 }
-                foreach (var it in _dictionaryColumnId)
-                {
-                    if (it.Value == -1)
-                    {
-                        throw new EdgeViewException(string.Format("The column [{0}].[{1}].[{2}] is not found.",
-                            tableSchema, it.Key.Item1, it.Key.Item2));
-                    }
-                }
+                propertymapping =
+                    columnToColumns.Where(x => x.Value[0] != "wrong")
+                        .Select(x => Tuple.Create(x.Key, x.Value.Select(y => Tuple.Create(y, x.Key)).ToList()))
+                        .ToList();
+            }
 
-                //Generates create view string.
-                var mapping2DArrayTuples = new Tuple<string, string>[nodes.Count()][];
-                for (int i = 0; i < nodes.Count; i++)
-                {
-                    mapping2DArrayTuples[i] = new Tuple<string, string>[propertymapping.Count];
-                }
+            //Check validity of the list of node tables and get their table ID.
+            const string getTableId = @"
+                Select TableName, TableId
+                From [dbo].{0}
+                Where TableSchema = @schema";
+            command.Parameters.Clear();
+            command.CommandText = String.Format(getTableId, MetadataTables[0]); //GraphTable
+            command.Parameters.Add("schema", SqlDbType.NVarChar, 128);
+            command.Parameters["schema"].Value = tableSchema;
 
-                count = 0;
-                foreach (var it in propertymapping)
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
                 {
-                    foreach (var variable in it.Item2)
+                    var tableName = reader["TableName"].ToString().ToLower();
+                    var tableId = Convert.ToInt64(reader["TableId"].ToString());
+                    if (nodes.Exists(x => (x.ToLower() == tableName)))
                     {
-                        if (!_dictionaryTableOffsetId.ContainsKey(variable.Item1.ToLower()))
-                        {
-                            throw new Exception(
-                                string.Format("The table column [{0}].[{1}] in propety mapping is not found.",
-                                    tableSchema, variable.Item1));
-                        }
-                        mapping2DArrayTuples[_dictionaryTableOffsetId[variable.Item1.ToLower()]][count] =
-                            Tuple.Create(variable.Item2, it.Item1);
-                    }
-                    for (int i = 0; i < nodes.Count(); i++)
-                    {
-                        if (mapping2DArrayTuples[i][count] == null)
-                        {
-                            mapping2DArrayTuples[i][count] = Tuple.Create("null", it.Item1);
-                        }
-                    }
-                    count++;
-                }
-                var selectStringList = new string[nodes.Count];
-                const string selectTemplate = "Select GlobalNodeId, InDegree, LocalNodeId{0}\n" +
-                                              "From {1}\n";
-                int edgeColumnOffset = 0;
-                var edgeNameList = new string[edgeCount];
-                edgeCount = 0;
-                for (int i = 0; i < nodes.Count; i++)
-                {
-                    foreach (var it in edgeList[i])
-                    {
-                        edgeNameList[edgeCount] = it.Item1 + "_" + it.Item2;
-                        edgeCount++;
+                        _dictionaryTableId[tableName] = tableId;
                     }
                 }
-
-                int row = 0;
+            }
+            if (_dictionaryTableId.Count() != nodes.Count())
+            {
                 foreach (var it in nodes)
                 {
-                    string selectElement;
-                    var elementList =
-                        mapping2DArrayTuples[row].Select(
-                            item => item.Item1.ToString() + " as " + item.Item2).ToList();
-
-                    for (int i = 0; i < edgeColumnOffset; i++)
+                    if (!_dictionaryTableId.ContainsKey(it))
                     {
-                        elementList.Add("null as " + edgeNameList[i]);
-                        elementList.Add(string.Format("null as {0}DeleteCol", edgeNameList[i]));
-                        elementList.Add(string.Format("null as {0}OutDegree", edgeNameList[i]));
+                        throw new NodeViewException(string.Format("The graph table [{0}].[{1}] is not found",
+                            tableSchema, it));
                     }
-
-                    foreach (var variable in edgeList[row])
-                    {
-                        elementList.Add(variable.Item2 + " as " + variable.Item1 + '_' + variable.Item2);
-                        elementList.Add(string.Format("{0}DeleteCol as {1}DeleteCol", variable.Item2,
-                            variable.Item1 + '_' + variable.Item2));
-                        elementList.Add(string.Format("{0}OutDegree as {1}OutDegree", variable.Item2,
-                            variable.Item1 + '_' + variable.Item2));
-                    }
-
-                    edgeColumnOffset += edgeList[row].Count;
-
-                    for (int i = edgeColumnOffset; i < edgeCount; i++)
-                    {
-                        elementList.Add("null as " + edgeNameList[i]);
-                        elementList.Add(string.Format("null as {0}DeleteCol", edgeNameList[i]));
-                        elementList.Add(string.Format("null as {0}OutDegree", edgeNameList[i]));
-                    }
-
-                    selectElement = string.Join(",", elementList);
-                    if (!string.IsNullOrEmpty(selectElement))
-                    {
-                        selectElement = ", " + selectElement;
-                    }
-                    selectStringList[row] = string.Format(selectTemplate, selectElement, it);
-                    row++;
-                }
-
-
-                const string createView = "Create View {0} as(\n" +
-                                          "{1}" +
-                                          ")\n";
-                command.Parameters.Clear();
-                command.CommandText = string.Format(createView, nodeViewName,
-                    string.Join("Union all\n", selectStringList));
-                command.ExecuteNonQuery();
-                if (externalTransaction == null)
-                {
-                    transaction.Commit();
                 }
             }
-            catch (Exception e)
+
+            var count = 0;
+            foreach (var it in nodes)
             {
-                if (externalTransaction == null)
+                if (_dictionaryTableOffsetId.ContainsKey(it.ToLower()))
                 {
-                    transaction.Rollback();
+                    throw new NodeViewException(string.Format("Node table {0} is given twice", it));
                 }
-               throw new NodeViewException(e.Message); 
+                _dictionaryTableOffsetId[it.ToLower()] = count;
+                count++;
             }
+
+            //Check validity of the proper mapping and get their column ID.
+            foreach (var it in propertymapping)
+            {
+                foreach (var VARIABLE in it.Item2)
+                {
+                    _dictionaryColumnId[Tuple.Create(VARIABLE.Item1.ToLower(), VARIABLE.Item2.ToLower())] = -1;
+                }
+            }
+
+            const string getColumnId = @"
+                Select ColumnId, TableName, ColumnName, ColumnRole
+                From {0}
+                Where TableSchema = @schema";
+            command.CommandText = string.Format(getColumnId, MetadataTables[1]); //_NodeTableColumnCollection
+
+            var edgeCount = 0;
+            var edgeList = new List<Tuple<string, string>>[nodes.Count];
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                edgeList[i] = new List<Tuple<string, string>>();
+            }
+
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var tableName = reader["TableName"].ToString().ToLower();
+                    var columnId = Convert.ToInt64(reader["ColumnId"].ToString());
+                    var columnName = reader["ColumnName"].ToString().ToLower();
+                    var columnRole = Convert.ToInt32(reader["ColumnRole"].ToString());
+
+                    if (columnRole == 2 || columnRole == 0)
+                    {
+                        var columnTuple = Tuple.Create(tableName, columnName);
+                        if (_dictionaryColumnId.ContainsKey(columnTuple))
+                        {
+                            _dictionaryColumnId[columnTuple] = columnId;
+                        }
+                    }
+                    else
+                    {
+                        if (columnRole == 1 && _dictionaryTableOffsetId.ContainsKey(tableName))
+                        {
+                            edgeList[_dictionaryTableOffsetId[tableName]].Add(Tuple.Create(tableName, columnName));
+                            edgeCount++;
+                        }
+                    }
+                }
+            }
+            foreach (var it in _dictionaryColumnId)
+            {
+                if (it.Value == -1)
+                {
+                    throw new EdgeViewException(string.Format("The column [{0}].[{1}].[{2}] is not found.",
+                        tableSchema, it.Key.Item1, it.Key.Item2));
+                }
+            }
+
+            //Generates create view string.
+            var mapping2DArrayTuples = new Tuple<string, string>[nodes.Count()][];
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                mapping2DArrayTuples[i] = new Tuple<string, string>[propertymapping.Count];
+            }
+
+            count = 0;
+            foreach (var it in propertymapping)
+            {
+                foreach (var variable in it.Item2)
+                {
+                    if (!_dictionaryTableOffsetId.ContainsKey(variable.Item1.ToLower()))
+                    {
+                        throw new Exception(
+                            string.Format("The table column [{0}].[{1}] in propety mapping is not found.",
+                                tableSchema, variable.Item1));
+                    }
+                    mapping2DArrayTuples[_dictionaryTableOffsetId[variable.Item1.ToLower()]][count] =
+                        Tuple.Create(variable.Item2, it.Item1);
+                }
+                for (int i = 0; i < nodes.Count(); i++)
+                {
+                    if (mapping2DArrayTuples[i][count] == null)
+                    {
+                        mapping2DArrayTuples[i][count] = Tuple.Create("null", it.Item1);
+                    }
+                }
+                count++;
+            }
+            var selectStringList = new string[nodes.Count];
+            const string selectTemplate = "Select GlobalNodeId, InDegree, LocalNodeId{0}\n" +
+                                          "From {1}\n";
+            int edgeColumnOffset = 0;
+            var edgeNameList = new string[edgeCount];
+            edgeCount = 0;
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                foreach (var it in edgeList[i])
+                {
+                    edgeNameList[edgeCount] = it.Item1 + "_" + it.Item2;
+                    edgeCount++;
+                }
+            }
+
+            int rowCount = 0;
+            foreach (var it in nodes)
+            {
+                string selectElement;
+                var elementList =
+                    mapping2DArrayTuples[rowCount].Select(
+                        item => item.Item1.ToString() + " as " + item.Item2).ToList();
+
+                for (int i = 0; i < edgeColumnOffset; i++)
+                {
+                    elementList.Add("null as " + edgeNameList[i]);
+                    elementList.Add(string.Format("null as {0}DeleteCol", edgeNameList[i]));
+                    elementList.Add(string.Format("null as {0}OutDegree", edgeNameList[i]));
+                }
+
+                foreach (var variable in edgeList[rowCount])
+                {
+                    elementList.Add(variable.Item2 + " as " + variable.Item1 + '_' + variable.Item2);
+                    elementList.Add(string.Format("{0}DeleteCol as {1}DeleteCol", variable.Item2,
+                        variable.Item1 + '_' + variable.Item2));
+                    elementList.Add(string.Format("{0}OutDegree as {1}OutDegree", variable.Item2,
+                        variable.Item1 + '_' + variable.Item2));
+                }
+
+                edgeColumnOffset += edgeList[rowCount].Count;
+
+                for (int i = edgeColumnOffset; i < edgeCount; i++)
+                {
+                    elementList.Add("null as " + edgeNameList[i]);
+                    elementList.Add(string.Format("null as {0}DeleteCol", edgeNameList[i]));
+                    elementList.Add(string.Format("null as {0}OutDegree", edgeNameList[i]));
+                }
+
+                selectElement = string.Join(",", elementList);
+                if (!string.IsNullOrEmpty(selectElement))
+                {
+                    selectElement = ", " + selectElement;
+                }
+                selectStringList[rowCount] = string.Format(selectTemplate, selectElement, it);
+                rowCount++;
+            }
+
+
+            const string createView = "Create View {0} as(\n" +
+                                      "{1}" +
+                                      ")\n";
+            command.Parameters.Clear();
+            command.CommandText = string.Format(createView, nodeViewName,
+                string.Join("Union all\n", selectStringList));
+            command.ExecuteNonQuery();
+
+            _propertymapping = propertymapping;
+            if (externalTransaction == null)
+            {
+                transaction.Commit();
+            }
+            //}
+            //catch (Exception e)
+            //{
+            //    if (externalTransaction == null)
+            //    {
+            //        transaction.Rollback();
+            //    }
+            //   throw new NodeViewException(e.Message); 
+            //}
         }
 
         /// <summary>
@@ -361,7 +458,7 @@ namespace GraphView
         /// </param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node view will occur.</param>
         private void UpdateNodeViewMetatable(string tableSchema, string nodeViewName, List<string> nodes,
-            List<Tuple<string, List<Tuple<string, string>>>>  propertymapping,
+            List<Tuple<string, List<Tuple<string, string>>>> propertymapping,
             SqlTransaction externalTransaction = null)
         {
             var transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -420,33 +517,14 @@ namespace GraphView
                     command.ExecuteNonQuery();
                 }
 
-                //string updateNodeViewcolumn = string.Format(@"INSERT INTO {0} VALUES (@nodeviewcolumnid, @columnid)",
-                //    MetadataTables[5]);
-                //command.Parameters.Clear();
-                //command.Parameters.Add("nodeviewcolumnid", SqlDbType.BigInt);
-                //command.Parameters.Add("columnid", SqlDbType.BigInt);
-                //command.CommandText = updateNodeViewcolumn;
-                //int posi = 0;
-                //foreach (var it in propertymapping)
-                //{
-                //    command.Parameters["nodeviewcolumnid"].Value = nodeViewPropertycolumnId[posi];
-                //    foreach (var variable in it.Item2)
-                //    {
-                //        var columnTuple = Tuple.Create(variable.Item1.ToLower(), variable.Item2.ToLower());
-                //        command.Parameters["columnid"].Value = _dictionaryColumnId[columnTuple];
-                //        command.ExecuteNonQuery();
-                //    }
-                //    posi++;
-                //}
-
-                DataTable table = new DataTable(MetadataTables[5]);//_NodeViewColumnCollection
+                DataTable table = new DataTable(MetadataTables[5]); //_NodeViewColumnCollection
                 DataColumn column;
                 DataRow row;
                 column = new DataColumn("NodeViewColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
                 column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
-                
+
                 int posi = 0;
                 foreach (var it in propertymapping)
                 {
@@ -462,7 +540,7 @@ namespace GraphView
                 }
                 using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
                 {
-                    bulkCopy.DestinationTableName = MetadataTables[5];//_NodeViewColumnCollection
+                    bulkCopy.DestinationTableName = MetadataTables[5]; //_NodeViewColumnCollection
                     bulkCopy.WriteToServer(table);
                 }
 
@@ -480,6 +558,72 @@ namespace GraphView
                 throw new NodeViewException(e.Message);
             }
         }
+
+
+        private void createEdgeViewByDefault(string tableSchema, string nodeViewName,
+            SqlTransaction externalTransaction = null)
+        {
+            var transaction = externalTransaction ?? Conn.BeginTransaction();
+
+            try
+            {
+                using (var command = Conn.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    //Creates edge view bydefault
+                    var edgeToEdges = new Dictionary<string, List<string>>(); //edge view => list<table>
+                    const string getEdgeColumnName = @"
+                    Select NTC.TableName, ColumnName
+                    From {0} NTC
+                    Join {1} NTCC
+                    On NTC.TableId = NTCC.TableId
+                    Join {2} Temp
+                    On NTC.TableName = Temp.TableName
+                    Where NTC.TableSchema = @schema and NTCC.ColumnRole = @role";
+                    command.Parameters.Clear();
+                    command.Parameters.AddWithValue("schema", tableSchema);
+                    command.Parameters.AddWithValue("role", 1);
+                    command.CommandText = string.Format(getEdgeColumnName, MetadataTables[0], MetadataTables[1],
+                        _tableSet);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var tableName = reader["TableName"].ToString().ToLower();
+                            var columnName = reader["columnName"].ToString().ToLower();
+                            if (edgeToEdges.ContainsKey(columnName))
+                            {
+                                edgeToEdges[columnName].Add(tableName);
+                            }
+                            else
+                            {
+                                edgeToEdges[columnName] = new List<string>();
+                                edgeToEdges[columnName].Add(tableName);
+                            }
+                        }
+                    }
+
+                    foreach (var it in edgeToEdges)
+                    {
+                        CreateEdgeView(tableSchema, nodeViewName, it.Key,
+                            it.Value.Select(x => Tuple.Create(x, it.Key)).ToList(), null, transaction);
+                    }
+                }
+                if (externalTransaction == null)
+                {
+                    transaction.Commit();
+                }
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                {
+                    transaction.Rollback();
+                }
+                throw new EdgeViewException(e.Message);
+            }
+        }
+
 
         public void CreateNodeView(string query)
         {
@@ -586,12 +730,14 @@ namespace GraphView
         ///  Type is List<Tuple<string, List<Tuple<string, string, string>>>>.
         ///  That is, every attribute in supper edge is mapped into a list of attributes,
         ///  with the message of <node table name, edge column name, attribute name>
-        ///  If one attribute in supper edge need to be mapped into all the user-supplied edges's same-name attributes,
-        ///  user can pass a null or empty parameter of  List<Tuple<string, string, string>>.
-        ///  When "attributeMapping" is empty or null, the program will map the atrributes of supper edge
-        ///  into all the same-name attributes of all the user-supplied edges.</param>
+        ///
+        ///  When "attributeMapping" is empty or null, the program will map the atrributes of edge view
+        ///  to all the same-name attributes of all the user-supplied edges.
+        ///  When "attributeMapping" is empty or null and "edgeAttribute" is null,
+        ///  the program will map all the attributes of edges into edge View(merging attributes with same name)
+        ///  </param>
         public void CreateEdgeView(string tableSchema, string nodeName, string edgeViewName, 
-            List<Tuple<string, string>> edges, List<string> edgeAttribute, SqlTransaction externalTransaction = null,
+            List<Tuple<string, string>> edges, List<string> edgeAttribute = null, SqlTransaction externalTransaction = null,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
             var transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -662,12 +808,14 @@ namespace GraphView
         ///  Type is List<Tuple<string, List<Tuple<string, string, string>>>>.
         ///  That is, every attribute in supper edge is mapped into a list of attributes,
         ///  with the message of <node table name, edge column name, attribute name>
-        ///  If one attribute in supper edge need to be mapped into all the user-supplied edges's same-name attributes,
-        ///  user can pass a null or empty parameter of  List<Tuple<string, string, string>>.
-        ///  When "attributeMapping" is empty or null, the program will map the atrributes of supper edge
-        ///  into all the same-name attributes of all the user-supplied edges.</param>
+        ///
+        ///  When "attributeMapping" is empty or null, the program will map the atrributes of edge view
+        ///  to all the same-name attributes of all the user-supplied edges.
+        ///  When "attributeMapping" is empty or null and "edgeAttribute" is null,
+        ///  the program will map all the attributes of edges into edge View(merging attributes with same name)
+        ///  </param>
         private void CreateEdgeViewWithoutRecord(string tableSchema, string nodeName, string edgeViewName, List<Tuple<string, string>> edges,
-            List<string> edgeAttribute, SqlTransaction externalTransaction,
+            List<string> edgeAttribute = null, SqlTransaction externalTransaction = null,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
             _nodeName = nodeName;
@@ -684,9 +832,9 @@ namespace GraphView
             {
                 throw new EdgeViewException("The list of edges is null or empty.");
             }
-            if (edgeAttribute == null)
+            if (edgeAttribute == null && (attributeMapping != null && attributeMapping.Any()))
             {
-                edgeAttribute = new List<string>();
+                throw  new EdgeViewException("The edgeattribute is null but attributeMapping function is not empty.");
             }
 
             SqlTransaction transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -698,7 +846,7 @@ namespace GraphView
             {
                 //Checke the validity of node and edge.
                 const string checkNodeTableName =
-                    @"SELECT [TableId], [TableName], [TableRole] 
+                  @"SELECT [TableId], [TableName], [TableRole] 
                   FROM [{0}]
                   where TableSchema = @schema;";
                 command.Parameters.Clear();
@@ -742,40 +890,42 @@ namespace GraphView
                         }
                     }
                 }
-                if (tableToRole[_nodeName.ToLower()] == 1)
-                {
-                    string checkBaseTable = @"
-                    Select ColumnName
-                    From {0} 
-                    Join {1} NVC
-                    On _NodeTableCollection.TableName = @name and _NodeTableCollection.TableSchema = @schema and _NodeTableCollection.TableId = NVC.NodeViewTableId
-                    Join {2} NTC
-                    On NVC.TableId = NTC.TableId
-                    Where ColumnRole = @role1 or ColumnRole = @role2;";
-                    command.Parameters.Clear();
-                    command.Parameters.AddWithValue("role1", 1);
-                    command.Parameters.AddWithValue("role2", 4);
-                    command.Parameters.AddWithValue("name", nodeName);
-                    command.Parameters.AddWithValue("schema", tableSchema);
-                    command.CommandText = string.Format(checkBaseTable, MetadataTables[0], MetadataTables[7], MetadataTables[1]);
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var edgeName = reader["ColumnName"].ToString().ToLower();
-                            if (edgeName == edgeViewName.ToLower())
-                            {
-                                throw new EdgeViewException(string.Format("The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
-                            }
-                        }
-                    }
-                }
+
+                //if (tableToRole[_nodeName.ToLower()] == 1)
+                //{
+                //    string checkBaseTable = @"
+                //    Select ColumnName
+                //    From {0} 
+                //    Join {1} NVC
+                //    On _NodeTableCollection.TableName = @name and _NodeTableCollection.TableSchema = @schema and _NodeTableCollection.TableId = NVC.NodeViewTableId
+                //    Join {2} NTC
+                //    On NVC.TableId = NTC.TableId
+                //    Where ColumnRole = @role1 or ColumnRole = @role2;";
+                //    command.Parameters.Clear();
+                //    command.Parameters.AddWithValue("role1", 1);
+                //    command.Parameters.AddWithValue("role2", 4);
+                //    command.Parameters.AddWithValue("name", nodeName);
+                //    command.Parameters.AddWithValue("schema", tableSchema);
+                //    command.CommandText = string.Format(checkBaseTable, MetadataTables[0], MetadataTables[7], MetadataTables[1]);
+                //    using (var reader = command.ExecuteReader())
+                //    {
+                //        while (reader.Read())
+                //        {
+                //            var edgeName = reader["ColumnName"].ToString().ToLower();
+                //            if (edgeName == edgeViewName.ToLower())
+                //            {
+                //                throw new EdgeViewException(string.Format("The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
+                //            }
+                //        }
+                //    }
+                //}
 
                 _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
                     //<NodeTable, Edge> => ColumnId
                 _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
                 //<NodeTable, Edge> => ColumnId
 
+                //todo: just check sub-edge.
                 //Check validity of table name in metaDataTable and get table's column id
                 command.Parameters.Clear();
                 const string checkEdgeColumn = @"
@@ -830,6 +980,11 @@ namespace GraphView
                     }
                 }
 
+                if (edgeAttribute == null)
+                {
+                    const string findEdgeAttribute = @"";
+                }
+
                 //Get the attribute's ids which refer to user-supplied attribute in meta data table
                 _dictionaryAttribute = edgeAttribute.ToDictionary(x => x.ToLower(), x => new List<Int64>());
                 //<EdgeViewAttributeName> => List<AttributeId>
@@ -878,10 +1033,17 @@ namespace GraphView
                                     }
                                     else if (_attributeType[attributeName] != type)
                                     {
-                                        throw new EdgeViewException(
-                                            string.Format(
-                                                "There exist two edge attributes \"{0}\" with different type in different edges.",
-                                                attributeName));
+                                        //throw new EdgeViewException(
+                                        //    string.Format(
+                                        //        "There exist two edge attributes \"{0}\" with different type in different edges.",
+                                        //        attributeName));
+                                        var warning =
+                                            new WarningException(
+                                                string.Format(
+                                                    "Warning: Ignores the edge attribute \"{0}\" in edge view since it has different datatypes in at least two edges",
+                                                    attributeName));
+                                        Console.WriteLine(warning.Message);
+                                        continue;
                                     }
                                     attributeMappingTo = attributeName;
                                 }
@@ -995,6 +1157,7 @@ namespace GraphView
                 throw new EdgeViewException("An error occurred when clearing data \n", e);
             }
         }
+
         /// <summary>
         /// Updates metatable when creating edge view.
         /// </summary>
@@ -1050,14 +1213,14 @@ namespace GraphView
                 }
 
                 //Insert the edges's message into "_NodeViewColumnCollection" MetaDataTable
-                DataTable table = new DataTable(MetadataTables[5]);//_EdgeViewCollection
+                DataTable table = new DataTable(MetadataTables[5]); //_EdgeViewCollection
                 DataColumn column;
                 DataRow row;
                 column = new DataColumn("NodeViewTableId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
                 column = new DataColumn("TableId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
-                
+
                 foreach (var it in _dictionaryEdges)
                 {
                     row = table.NewRow();
@@ -1067,53 +1230,9 @@ namespace GraphView
                 }
                 using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
                 {
-                    bulkCopy.DestinationTableName = MetadataTables[5];//_NodeViewColumnCollection
+                    bulkCopy.DestinationTableName = MetadataTables[5]; //_NodeViewColumnCollection
                     bulkCopy.WriteToServer(table);
                 }
-
-                //Insert the edge view's attribute's message into "_EdgeAttributeCollection" MetaDataTable
-                //Insert the message of edges which refer to user-supplied attribute into "_EdgeViewAttributeCollection" MetaDataTable
-                //const string insertEdgeViewAttribute = @"
-                //INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [AttributeName], [AttributeType], [AttributeEdgeId])
-                //OUTPUT [Inserted].[AttributeId]
-                //VALUES (@schema, @tablename, @columnname, @attributename, @type, @edgeid)";
-                //const string insertEdgeViewAttributeReference = @"
-                //INSERT INTO [{0}] ([EdgeViewAttributeId], [EdgeAttributeId])
-                //VALUES (@EdgeViewAttributeId, @EdgeAttributeId)";
-                //int count = 0;
-                //foreach (var it  in _dictionaryAttribute)
-                //{
-                //    command.Parameters.Clear();
-                //    command.Parameters.AddWithValue("schema", tableSchema);
-                //    command.Parameters.AddWithValue("tablename", _nodeName);
-                //    command.Parameters.AddWithValue("columnname", edgeViewName);
-                //    command.Parameters.AddWithValue("attributename", it.Key);
-                //    command.CommandText = string.Format(insertEdgeViewAttribute, MetadataTables[2]);
-
-                //    //_EdgeAttributeCollection
-                //    command.Parameters.AddWithValue("type", _attributeType[it.Key].ToLower());
-                //    command.Parameters.AddWithValue("edgeid", count++);
-                //    Int64 edgeViewAttributeId;
-                //    using (var reader = command.ExecuteReader())
-                //    {
-                //        if (!reader.Read())
-                //        {
-                //            throw new EdgeViewException("MetaDataTable \"Edge View AttributeId \" can not be inserted");
-                //        }
-                //        edgeViewAttributeId = Convert.ToInt64(reader["AttributeId"], CultureInfo.CurrentCulture);
-                //    }
-                //    command.Parameters.Clear();
-                //    command.Parameters.AddWithValue("EdgeViewAttributeId", edgeViewAttributeId);
-                //    command.Parameters.Add("EdgeAttributeId", SqlDbType.BigInt);
-                //    command.CommandText = string.Format(insertEdgeViewAttributeReference, MetadataTables[6]);
-
-                //    //_EdgeViewAttributeCollection
-                //    foreach (var variable in it.Value)
-                //    {
-                //        command.Parameters["EdgeAttributeId"].Value = variable;
-                //        command.ExecuteNonQuery();
-                //    }
-                //}
 
                 //Insert the edge view's attribute's message into "_EdgeAttributeCollection" MetaDataTable
                 //Insert the message of edges which refer to user-supplied attribute into "_EdgeViewAttributeCollection" MetaDataTable
@@ -1175,7 +1294,7 @@ namespace GraphView
                     transaction.Rollback();
                 }
                 throw new NodeViewException(e.Message);
-                }
+            }
         }
 
         /// <summary>

@@ -334,7 +334,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void EdgeViewTest()
+        public void ViewTest()
         {
             TestInitialization.ClearDatabase();
             using (var graph = new GraphViewConnection(_connStr))
@@ -451,6 +451,43 @@ namespace GraphViewUnitTest
 
                 //graph.DropNodeView("dbo", "suppernodetest");
                 //graph.DropEdgeView("dbo", "NodeView", "EdgeView");
+            }
+        }
+
+        [TestMethod]
+        public void ViewByDefaultTest()
+        {
+            TestInitialization.ClearDatabase();
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+                const string createEmployeeStr = @"
+                CREATE TABLE [EmployeeNode] (
+                    [ColumnRole: ""NodeId""]
+                    [WorkId] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [number] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [name] [varchar](32),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double""}]
+                    [Clients] [varchar](max),
+                )";
+                graph.CreateNodeTable(createEmployeeStr);
+                const string createEmployeeStr2 = @"
+                CREATE TABLE [ClientNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [number] [bigint],
+                    [ColumnRole: ""Property""]
+                    [name] [varchar](32),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int""}]
+                    [Clients] [varchar](max)
+                )";
+                graph.CreateNodeTable(createEmployeeStr2);
+                graph.CreateNodeView("dbo", "NodeView", new List<string>() {
+                "ClientNode",
+                "EmployeeNode"});
             }
         }
 
