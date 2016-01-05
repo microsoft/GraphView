@@ -71,7 +71,6 @@ namespace GraphViewUnitTest
                     [ClientId] [varchar](32),
                     [ColumnRole: ""Property""]
                     [name] [varchar](32),
-                    --[ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {credit: ""int""} ]
                     [ColumnRole: ""Edge"", Reference: ""ClientNode""]
                     [Colleagues] [varchar](max)
                 )";

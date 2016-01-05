@@ -407,7 +407,6 @@ namespace GraphView
                     }
                 }
 
-
                 string updateNodeView = string.Format(@"INSERT INTO {0} VALUES (@nodeviewtableid, @tableid)",
                     MetadataTables[7]);
                 command.Parameters.Clear();
@@ -1053,16 +1052,16 @@ namespace GraphView
                 DataTable table = new DataTable(MetadataTables[5]);//_EdgeViewCollection
                 DataColumn column;
                 DataRow row;
-                column = new DataColumn("NodeViewTableId", Type.GetType("System.Int64"));
+                column = new DataColumn("NodeViewColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
-                column = new DataColumn("TableId", Type.GetType("System.Int64"));
+                column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
                 
                 foreach (var it in _dictionaryEdges)
                 {
                     row = table.NewRow();
-                    row["NodeViewTableId"] = edgeViewId;
-                    row["TableId"] = it.Value;
+                    row["NodeViewColumnId"] = edgeViewId;
+                    row["ColumnId"] = it.Value;
                     table.Rows.Add(row);
                 }
                 using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
@@ -1118,9 +1117,9 @@ namespace GraphView
                 //Insert the edge view's attribute's message into "_EdgeAttributeCollection" MetaDataTable
                 //Insert the message of edges which refer to user-supplied attribute into "_EdgeViewAttributeCollection" MetaDataTable
                 const string insertEdgeViewAttribute = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [AttributeName], [AttributeType], [AttributeEdgeId])
+                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
                 OUTPUT [Inserted].[AttributeId]
-                VALUES (@schema, @tablename, @columnname, @attributename, @type, @edgeid)";
+                VALUES (@schema, @tablename, @columnname, @columnid, @attributename, @type, @edgeid)";
                 int count = 0;
                 foreach (var it  in _dictionaryAttribute)
                 {
@@ -1129,6 +1128,7 @@ namespace GraphView
                     command.Parameters.AddWithValue("tablename", _nodeName);
                     command.Parameters.AddWithValue("columnname", edgeViewName);
                     command.Parameters.AddWithValue("attributename", it.Key);
+                    command.Parameters.AddWithValue("columnid", edgeViewId);
                     command.CommandText = string.Format(insertEdgeViewAttribute, MetadataTables[2]);
 
                     //_EdgeAttributeCollection

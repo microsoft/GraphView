@@ -208,6 +208,7 @@ namespace GraphView
                     command.CommandText = string.Format(@"
                         CREATE TABLE [{0}] (
                             [AttributeId] [bigint] NOT NULL IDENTITY(0, 1),
+                            [ColumnId] [bigint] NOT NULL,
                             [TableSchema] [nvarchar](128) NOT NULL,
                             [TableName] [nvarchar](128) NOT NULL,
                             [ColumnName] [nvarchar](128) NOT NULL,
@@ -223,6 +224,7 @@ namespace GraphView
                             [TableSchema] [nvarchar](128) NOT NULL,
                             [TableName] [nvarchar](128) NOT NULL,
                             [ColumnName] [nvarchar](128) NOT NULL,
+                            [ColumnId] [bigint] NOT NULL,
                             [AverageDegree] [float] DEFAULT(5),
                             PRIMARY KEY CLUSTERED ([TableName] ASC, [TableSchema] ASC, [ColumnName] ASC)
                         )", MetadataTables[3]);
@@ -606,6 +608,7 @@ namespace GraphView
                     command.ExecuteNonQuery();
                 }
 
+                var edgeColumnNameToColumnId = new Dictionary<string, int>(); 
                 using (var command = new SqlCommand(null, Conn))
                 {
                     command.Transaction = tx;
@@ -613,6 +616,7 @@ namespace GraphView
                     command.CommandText = string.Format(@"
                     INSERT INTO [{0}]
                     ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
+                    OUTPUT [Inserted].[ColumnId]
                     VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref)", MetadataTables[1]);
 
                     command.Parameters.AddWithValue("@tableSchema", tableSchema);
@@ -622,12 +626,6 @@ namespace GraphView
                     command.Parameters.Add("@columnName", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@columnRole", SqlDbType.Int);
                     command.Parameters.Add("@ref", SqlDbType.NVarChar, 128);
-
-                    //command.Parameters["@columnName"].Value = "NodeId";
-                    //command.Parameters["@columnRole"].Value = (int) WGraphTableColumnRole.NodeId;
-                    //command.Parameters["@ref"].Value = SqlChars.Null;
-                    //command.ExecuteNonQuery();
-
 
                     foreach (var column in columns)
                     {
@@ -644,17 +642,30 @@ namespace GraphView
                             command.Parameters["@ref"].Value = SqlChars.Null;
                         }
 
-                        command.ExecuteNonQuery();
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                return false;
+                            }
+                            if ((int) column.ColumnRole == 1)
+                            {
+                                edgeColumnNameToColumnId[column.ColumnName.Value] = Convert.ToInt32(reader["ColumnId"].ToString());
+                            }
+                        }
                     }
 
                     command.CommandText = string.Format(@"
                     INSERT INTO [{0}]
-                    ([TableSchema], [TableName], [ColumnName], [AverageDegree])
-                    VALUES (@tableSchema, @tableName, @columnName, @AverageDegree)", MetadataTables[3]);
+                    ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                    VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
                     command.Parameters.Add("@AverageDegree", SqlDbType.Int);
                     command.Parameters["@AverageDegree"].Value = 5;
+                    command.Parameters.Add("@columnid", SqlDbType.Int);
+
                     foreach (var column in columns.OfType<WGraphTableEdgeColumn>())
                     {
+                        command.Parameters["@columnid"].Value = edgeColumnNameToColumnId[column.ColumnName.Value];
                         command.Parameters["@columnName"].Value = column.ColumnName.Value;
                         command.ExecuteNonQuery();
                     }
@@ -666,8 +677,8 @@ namespace GraphView
                     command.Transaction = tx;
                     command.CommandText = string.Format(@"
                     INSERT INTO [{0}]
-                    ([TableSchema], [TableName], [ColumnName], [AttributeName], [AttributeType], [AttributeEdgeId])
-                    VALUES (@tableSchema, @tableName, @columnName, @attrName, @attrType, @attrId)", MetadataTables[2]);
+                    ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
+                    VALUES (@tableSchema, @tableName, @columnName, @columnid, @attrName, @attrType, @attrId)", MetadataTables[2]);
                     command.Parameters.AddWithValue("@tableSchema", tableSchema);
                     command.Parameters.AddWithValue("@tableName", tableName);
 
@@ -675,6 +686,7 @@ namespace GraphView
                     command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@attrId", SqlDbType.Int);
+                    command.Parameters.Add("@columnid", SqlDbType.Int);
 
                     var createOrder = 1;
                     foreach (var column in columns.OfType<WGraphTableEdgeColumn>())
@@ -685,6 +697,7 @@ namespace GraphView
                             command.Parameters["@attrName"].Value = attr.Item1.Value;
                             command.Parameters["@attrType"].Value = attr.Item2.ToString();
                             command.Parameters["@attrId"].Value = (createOrder++).ToString();
+                            command.Parameters["@columnid"].Value = edgeColumnNameToColumnId[column.ColumnName.Value];
                             command.ExecuteNonQuery();
                         }
                     }
