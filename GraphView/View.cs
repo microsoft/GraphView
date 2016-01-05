@@ -38,7 +38,7 @@ namespace GraphView
 {
     public partial class GraphViewConnection : IDisposable
     {
-        private string _supperNode;
+        private string _nodeName;
 
         private Dictionary<string, Int64> _dictionaryTableId; // <Table Name> => <Table Id>
         private Dictionary<string, int> _dictionaryTableOffsetId; // <Table Name> => <Table Offset Id> (counted from 0)
@@ -96,7 +96,10 @@ namespace GraphView
             {
                 CreateNodeViewWithoutRecord(tableSchema, nodeViewName, nodes, propertymapping, transaction);
                 UpdateNodeViewMetatable(tableSchema, nodeViewName, nodes, propertymapping, transaction);
+                if (externalTransaction == null)
+                {
                 transaction.Commit();
+            }
             }
             catch (Exception error)
             {
@@ -386,8 +389,9 @@ namespace GraphView
                 string updateTableColumn =
                     string.Format(@"
                     INSERT INTO {0} OUTPUT [Inserted].[ColumnId]
-                    VALUES (@schema, @nodeviewname, @columnname, @columnrole, null)",
+                    VALUES (@tableId, @schema, @nodeviewname, @columnname, @columnrole, null)",
                         MetadataTables[1]);
+                command.Parameters.AddWithValue("tableId", nodeviewTableId);
                 command.Parameters.AddWithValue("columnrole", 4);
                 command.Parameters.Add("columnname", SqlDbType.NVarChar);
                 command.CommandText = updateTableColumn;
@@ -403,7 +407,6 @@ namespace GraphView
                     }
                 }
 
-
                 string updateNodeView = string.Format(@"INSERT INTO {0} VALUES (@nodeviewtableid, @tableid)",
                     MetadataTables[7]);
                 command.Parameters.Clear();
@@ -416,28 +419,50 @@ namespace GraphView
                     command.ExecuteNonQuery();
                 }
 
+                //string updateNodeViewcolumn = string.Format(@"INSERT INTO {0} VALUES (@nodeviewcolumnid, @columnid)",
+                //    MetadataTables[5]);
+                //command.Parameters.Clear();
+                //command.Parameters.Add("nodeviewcolumnid", SqlDbType.BigInt);
+                //command.Parameters.Add("columnid", SqlDbType.BigInt);
+                //command.CommandText = updateNodeViewcolumn;
+                //int posi = 0;
+                //foreach (var it in propertymapping)
+                //{
+                //    command.Parameters["nodeviewcolumnid"].Value = nodeViewPropertycolumnId[posi];
+                //    foreach (var variable in it.Item2)
+                //    {
+                //        var columnTuple = Tuple.Create(variable.Item1.ToLower(), variable.Item2.ToLower());
+                //        command.Parameters["columnid"].Value = _dictionaryColumnId[columnTuple];
+                //        command.ExecuteNonQuery();
+                //    }
+                //    posi++;
+                //}
 
-                string updateNodeViewcolumn = string.Format(@"INSERT INTO {0} VALUES (@nodeviewcolumnid, @columnid)",
-                    MetadataTables[5]);
-                command.Parameters.Clear();
-                command.Parameters.Add("nodeviewcolumnid", SqlDbType.BigInt);
-                command.Parameters.Add("columnid", SqlDbType.BigInt);
-                command.CommandText = updateNodeViewcolumn;
+                DataTable table = new DataTable(MetadataTables[5]);//_NodeViewColumnCollection
+                DataColumn column;
+                DataRow row;
+                column = new DataColumn("NodeViewColumnId", Type.GetType("System.Int64"));
+                table.Columns.Add(column);
+                column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
+                table.Columns.Add(column);
+                
                 int posi = 0;
                 foreach (var it in propertymapping)
                 {
-                    command.Parameters["nodeviewcolumnid"].Value = nodeViewPropertycolumnId[posi];
                     foreach (var variable in it.Item2)
                     {
+                        row = table.NewRow();
+                        row["NodeViewColumnId"] = nodeViewPropertycolumnId[posi];
                         var columnTuple = Tuple.Create(variable.Item1.ToLower(), variable.Item2.ToLower());
-                        command.Parameters["columnid"].Value = _dictionaryColumnId[columnTuple];
-                        command.ExecuteNonQuery();
+                        row["ColumnId"] = _dictionaryColumnId[columnTuple];
+                        table.Rows.Add(row);
                     }
                     posi++;
                 }
-                if (externalTransaction == null)
+                using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
                 {
-                    transaction.Commit();
+                    bulkCopy.DestinationTableName = MetadataTables[5];//_NodeViewColumnCollection
+                    bulkCopy.WriteToServer(table);
                 }
 
                 if (externalTransaction == null)
@@ -554,7 +579,7 @@ namespace GraphView
         /// Creates view on edges
         /// </summary>
         /// <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
-        ///  <param name="supperNodeName"> The name of supper node. </param>
+        ///  <param name="nodeName"> The name of supper node. </param>
         /// <param name="edgeViewName"> The name of supper edge. </param>
         /// <param name="edges"> The list of message of edges for merging.
         /// The message is stored in tuple, containing (node table name, edge column name).</param>
@@ -568,16 +593,15 @@ namespace GraphView
         ///  user can pass a null or empty parameter of  List<Tuple<string, string, string>>.
         ///  When "attributeMapping" is empty or null, the program will map the atrributes of supper edge
         ///  into all the same-name attributes of all the user-supplied edges.</param>
-        public void CreateEdgeView(string tableSchema, string supperNodeName, string edgeViewName, 
+        public void CreateEdgeView(string tableSchema, string nodeName, string edgeViewName, 
             List<Tuple<string, string>> edges, List<string> edgeAttribute, SqlTransaction externalTransaction = null,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
-            _supperNode = supperNodeName;
             var transaction = externalTransaction ?? Conn.BeginTransaction();
 
             try
             {
-                CreateEdgeViewWithoutRecord(tableSchema, edgeViewName, edges, edgeAttribute, transaction, attributeMapping);
+                CreateEdgeViewWithoutRecord(tableSchema, nodeName, edgeViewName, edges, edgeAttribute, transaction, attributeMapping);
                 UpdateEdgeViewMetaData(tableSchema, edgeViewName, transaction);
 
                 if (externalTransaction == null)
@@ -644,6 +668,7 @@ namespace GraphView
         ///  Edge View:create edge view decoder function
         ///  </summary>
         ///  <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
+        ///  <param name="nodeName"> The name of supper node. </param>
         ///  <param name="edgeViewName"> The name of supper edge. </param>
         ///  <param name="edges"> The list of message of edges for merging.
         ///  The message is stored in tuple, containing (node table name, edge column name).</param>
@@ -657,10 +682,11 @@ namespace GraphView
         ///  user can pass a null or empty parameter of  List<Tuple<string, string, string>>.
         ///  When "attributeMapping" is empty or null, the program will map the atrributes of supper edge
         ///  into all the same-name attributes of all the user-supplied edges.</param>
-        private void CreateEdgeViewWithoutRecord(string tableSchema, string edgeViewName, List<Tuple<string, string>> edges,
+        private void CreateEdgeViewWithoutRecord(string tableSchema, string nodeName, string edgeViewName, List<Tuple<string, string>> edges,
             List<string> edgeAttribute, SqlTransaction externalTransaction,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
+            _nodeName = nodeName;
             //Check validity of input
             if (string.IsNullOrEmpty(tableSchema))
             {
@@ -686,8 +712,85 @@ namespace GraphView
 
             try
             {
+                //Checke the validity of node and edge.
+                const string checkNodeTableName =
+                    @"SELECT [TableId], [TableName], [TableRole] 
+                  FROM [{0}]
+                  where TableSchema = @schema;";
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("schema", tableSchema);
+                command.CommandText = string.Format(checkNodeTableName, MetadataTables[0]);
+                var tableToRole = new Dictionary<string, int>();
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var tableName = reader["TableName"].ToString().ToLower();
+                        var tableRole = Convert.ToInt32(reader["TableRole"].ToString());
+                        tableToRole[tableName] = tableRole;
+                    }
+                }
+                if (!tableToRole.ContainsKey(_nodeName.ToLower()))
+                {
+                    throw new EdgeViewException(
+                        string.Format("Cannot find the node or node view \"{0}\" in schame \"{1}\".", _nodeName,
+                            tableSchema));
+                }
+
+                const string checkEdge = @"
+                Select ColumnName
+                From _NodeTableColumnCollection
+                Where (ColumnRole = @role1 or ColumnRole = @role2) and TableSchema = @schema and TableName = @name";
+                command.CommandText = checkEdge;
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("schema", tableSchema);
+                command.Parameters.AddWithValue("name", nodeName);
+                command.Parameters.AddWithValue("role1", 1);
+                command.Parameters.AddWithValue("role2", 4);
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var edgeName = reader["ColumnName"].ToString().ToLower();
+                        if (edgeName == edgeViewName.ToLower())
+                        {
+                            throw new EdgeViewException(string.Format("The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
+                        }
+                    }
+                }
+                if (tableToRole[_nodeName.ToLower()] == 1)
+                {
+                    string checkBaseTable = @"
+                    Select ColumnName
+                    From {0} 
+                    Join {1} NVC
+                    On _NodeTableCollection.TableName = @name and _NodeTableCollection.TableSchema = @schema and _NodeTableCollection.TableId = NVC.NodeViewTableId
+                    Join {2} NTC
+                    On NVC.TableId = NTC.TableId
+                    Where ColumnRole = @role1 or ColumnRole = @role2;";
+                    command.Parameters.Clear();
+                    command.Parameters.AddWithValue("role1", 1);
+                    command.Parameters.AddWithValue("role2", 4);
+                    command.Parameters.AddWithValue("name", nodeName);
+                    command.Parameters.AddWithValue("schema", tableSchema);
+                    command.CommandText = string.Format(checkBaseTable, MetadataTables[0], MetadataTables[7], MetadataTables[1]);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var edgeName = reader["ColumnName"].ToString().ToLower();
+                            if (edgeName == edgeViewName.ToLower())
+                            {
+                                throw new EdgeViewException(string.Format("The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
+                            }
+                        }
+                    }
+                }
+
             _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
             //<NodeTable, Edge> => ColumnId
+                _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
+                //<NodeTable, Edge> => ColumnId
 
             //Check validity of table name in metaDataTable and get table's column id
             command.Parameters.Clear();
@@ -725,13 +828,13 @@ namespace GraphView
             const string checkEdgeViewName = @"
                 select *
                 from {0}
-                where TAbleSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
+                where TableSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
             command.Parameters.Clear();
             command.Parameters.AddWithValue("schema", tableSchema);
-            command.Parameters.AddWithValue("tablename", _supperNode);
+                command.Parameters.AddWithValue("tablename", _nodeName);
             command.Parameters.AddWithValue("columnname", edgeViewName);
             command.Parameters.AddWithValue("role", 3);
-            command.Parameters.AddWithValue("ref", _supperNode);
+                command.Parameters.AddWithValue("ref", _nodeName);
 
             command.CommandText = String.Format(checkEdgeViewName, MetadataTables[1]); //_NodeTableColumnCollection
             using (var reader = command.ExecuteReader())
@@ -891,7 +994,8 @@ namespace GraphView
                     emptyAttribute[0].Key));
             }
 
-            GraphViewDefinedFunctionGenerator.RegisterEdgeView(_supperNode, tableSchema, edgeViewName, _attributeType,
+                GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
+                    _attributeType,
                 edgesAttributeMappingDictionary, Conn, command.Transaction);
                 if (externalTransaction == null)
                 {
@@ -921,17 +1025,32 @@ namespace GraphView
 
             try
             {
+                Int64 tableId = 0;
+                const string getTableId = @"
+                select TableId 
+                From {0}
+                Where TableSchema = @tableschema and TableName = @tablename";
+                command.CommandText = string.Format(getTableId, MetadataTables[0]);
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("tableschema", tableSchema);
+                command.Parameters.AddWithValue("tablename", _nodeName);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        tableId = Convert.ToInt64(reader["tableId"].ToString());
+                    }
+                }
+
                 //Insert edge view message into "_NodeTableColumnCollection" MetaDataTable
                 const string insertGraphEdgeView = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [ColumnRole], [Reference])
+                INSERT INTO [{0}] ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
                 OUTPUT [Inserted].[ColumnId]
-                VALUES (@tableshema, @TableName, @columnname, @columnrole, @reference)";
-                command.Parameters.Clear();
-                command.Parameters.AddWithValue("tableshema", tableSchema);
-                command.Parameters.AddWithValue("tablename", _supperNode);
+                VALUES (@tableschema, @TableName, @tableid, @columnname, @columnrole, @reference)";
                 command.Parameters.AddWithValue("columnname", edgeViewName);
                 command.Parameters.AddWithValue("columnrole", 3);
-                command.Parameters.AddWithValue("reference", _supperNode);
+                command.Parameters.AddWithValue("reference", _nodeName);
+                command.Parameters.AddWithValue("tableid", tableId);
 
                 command.CommandText = string.Format(insertGraphEdgeView, MetadataTables[1]);
                 //_NodeTableColumnCollection
@@ -948,43 +1067,97 @@ namespace GraphView
 
                 //Insert into edge degree meta table
                 const string insertEdgeViewAveDegree = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName])
-                VALUES (@tableshema, @TableName, @columnname)";
+                INSERT INTO [{0}] ([ColumnId], [TableSchema], [TableName], [ColumnName])
+                VALUES (@columnId, @tableschema, @TableName, @columnname)";
                 command.CommandText = string.Format(insertEdgeViewAveDegree, MetadataTables[3]);
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("tableschema", tableSchema);
+                command.Parameters.AddWithValue("tablename", _nodeName);
+                command.Parameters.AddWithValue("columnname", edgeViewName);
+                command.Parameters.AddWithValue("columnId", edgeViewId);
                 command.ExecuteNonQuery();
 
-                //Insert the edges's message into "_EdgeViewCollection" MetaDataTable
-                const string insertEdgeViewCollection = @"
-                INSERT INTO [{0}]
-                VALUES (@NodeViewColumnId, @ColumnId)";
-                command.Parameters.Clear();
-                command.Parameters.Add("NodeViewColumnId", SqlDbType.BigInt);
-                command.Parameters["NodeViewColumnId"].Value = edgeViewId;
-                command.Parameters.Add("ColumnId", SqlDbType.BigInt);
-                command.CommandText = string.Format(insertEdgeViewCollection, MetadataTables[5]); //_EdgeViewCollection
+                //Insert the edges's message into "_NodeViewColumnCollection" MetaDataTable
+                DataTable table = new DataTable(MetadataTables[5]);//_EdgeViewCollection
+                DataColumn column;
+                DataRow row;
+                column = new DataColumn("NodeViewColumnId", Type.GetType("System.Int64"));
+                table.Columns.Add(column);
+                column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
+                table.Columns.Add(column);
+                
                 foreach (var it in _dictionaryEdges)
                 {
-                    command.Parameters["ColumnId"].Value = it.Value;
-                    command.ExecuteNonQuery();
+                    row = table.NewRow();
+                    row["NodeViewColumnId"] = edgeViewId;
+                    row["ColumnId"] = it.Value;
+                    table.Rows.Add(row);
+                }
+                using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
+                {
+                    bulkCopy.DestinationTableName = MetadataTables[5];//_NodeViewColumnCollection
+                    bulkCopy.WriteToServer(table);
                 }
 
                 //Insert the edge view's attribute's message into "_EdgeAttributeCollection" MetaDataTable
                 //Insert the message of edges which refer to user-supplied attribute into "_EdgeViewAttributeCollection" MetaDataTable
+                //const string insertEdgeViewAttribute = @"
+                //INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [AttributeName], [AttributeType], [AttributeEdgeId])
+                //OUTPUT [Inserted].[AttributeId]
+                //VALUES (@schema, @tablename, @columnname, @attributename, @type, @edgeid)";
+                //const string insertEdgeViewAttributeReference = @"
+                //INSERT INTO [{0}] ([EdgeViewAttributeId], [EdgeAttributeId])
+                //VALUES (@EdgeViewAttributeId, @EdgeAttributeId)";
+                //int count = 0;
+                //foreach (var it  in _dictionaryAttribute)
+                //{
+                //    command.Parameters.Clear();
+                //    command.Parameters.AddWithValue("schema", tableSchema);
+                //    command.Parameters.AddWithValue("tablename", _nodeName);
+                //    command.Parameters.AddWithValue("columnname", edgeViewName);
+                //    command.Parameters.AddWithValue("attributename", it.Key);
+                //    command.CommandText = string.Format(insertEdgeViewAttribute, MetadataTables[2]);
+
+                //    //_EdgeAttributeCollection
+                //    command.Parameters.AddWithValue("type", _attributeType[it.Key].ToLower());
+                //    command.Parameters.AddWithValue("edgeid", count++);
+                //    Int64 edgeViewAttributeId;
+                //    using (var reader = command.ExecuteReader())
+                //    {
+                //        if (!reader.Read())
+                //        {
+                //            throw new EdgeViewException("MetaDataTable \"Edge View AttributeId \" can not be inserted");
+                //        }
+                //        edgeViewAttributeId = Convert.ToInt64(reader["AttributeId"], CultureInfo.CurrentCulture);
+                //    }
+                //    command.Parameters.Clear();
+                //    command.Parameters.AddWithValue("EdgeViewAttributeId", edgeViewAttributeId);
+                //    command.Parameters.Add("EdgeAttributeId", SqlDbType.BigInt);
+                //    command.CommandText = string.Format(insertEdgeViewAttributeReference, MetadataTables[6]);
+
+                //    //_EdgeViewAttributeCollection
+                //    foreach (var variable in it.Value)
+                //    {
+                //        command.Parameters["EdgeAttributeId"].Value = variable;
+                //        command.ExecuteNonQuery();
+                //    }
+                //}
+
+                //Insert the edge view's attribute's message into "_EdgeAttributeCollection" MetaDataTable
+                //Insert the message of edges which refer to user-supplied attribute into "_EdgeViewAttributeCollection" MetaDataTable
                 const string insertEdgeViewAttribute = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [AttributeName], [AttributeType], [AttributeEdgeId])
+                INSERT INTO [{0}] ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
                 OUTPUT [Inserted].[AttributeId]
-                VALUES (@schema, @tablename, @columnname, @attributename, @type, @edgeid)";
-                const string insertEdgeViewAttributeReference = @"
-                INSERT INTO [{0}] ([EdgeViewAttributeId], [EdgeAttributeId])
-                VALUES (@EdgeViewAttributeId, @EdgeAttributeId)";
+                VALUES (@schema, @tablename, @columnname, @columnid, @attributename, @type, @edgeid)";
                 int count = 0;
                 foreach (var it  in _dictionaryAttribute)
                 {
                     command.Parameters.Clear();
                     command.Parameters.AddWithValue("schema", tableSchema);
-                    command.Parameters.AddWithValue("tablename", _supperNode);
+                    command.Parameters.AddWithValue("tablename", _nodeName);
                     command.Parameters.AddWithValue("columnname", edgeViewName);
                     command.Parameters.AddWithValue("attributename", it.Key);
+                    command.Parameters.AddWithValue("columnid", edgeViewId);
                     command.CommandText = string.Format(insertEdgeViewAttribute, MetadataTables[2]);
 
                     //_EdgeAttributeCollection
@@ -999,16 +1172,24 @@ namespace GraphView
                         }
                         edgeViewAttributeId = Convert.ToInt64(reader["AttributeId"], CultureInfo.CurrentCulture);
                     }
-                    command.Parameters.Clear();
-                    command.Parameters.AddWithValue("EdgeViewAttributeId", edgeViewAttributeId);
-                    command.Parameters.Add("EdgeAttributeId", SqlDbType.BigInt);
-                    command.CommandText = string.Format(insertEdgeViewAttributeReference, MetadataTables[6]);
+                    table = new DataTable(MetadataTables[6]);
+                    column = new DataColumn("EdgeViewAttributeId", Type.GetType("System.Int64"));
+                    table.Columns.Add(column);
+                    column = new DataColumn("EdgeAttributeId", Type.GetType("System.Int64"));
+                    table.Columns.Add(column);
 
                     //_EdgeViewAttributeCollection
                     foreach (var variable in it.Value)
                     {
-                        command.Parameters["EdgeAttributeId"].Value = variable;
-                        command.ExecuteNonQuery();
+                        row = table.NewRow();
+                        row["EdgeAttributeId"] = variable;
+                        row["EdgeViewAttributeId"] = edgeViewAttributeId;
+                        table.Rows.Add(row);
+                    }
+                    using (SqlBulkCopy bulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.Default, transaction))
+                    {
+                        bulkCopy.DestinationTableName = MetadataTables[6]; //_EdgeViewAttributeCollection
+                        bulkCopy.WriteToServer(table);
                     }
                 }
 
@@ -1065,24 +1246,24 @@ namespace GraphView
             }
             try
             {
-                _supperNode = tableName;
+                _nodeName = tableName;
                 //Check validity of edge view name
                 const string checkViewName = @"
                 select *
                 from {0}
-                where TAbleSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
+                where TableSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
-                command.Parameters.AddWithValue("tablename", _supperNode);
+                command.Parameters.AddWithValue("tablename", _nodeName);
                 command.Parameters.AddWithValue("columnname", edgeView);
                 command.Parameters.AddWithValue("role", 3);
-                command.Parameters.AddWithValue("ref", _supperNode);
+                command.Parameters.AddWithValue("ref", _nodeName);
                 command.CommandText = String.Format(checkViewName, MetadataTables[1]); //_NodeTableColumnCollection
                 using (var reader = command.ExecuteReader())
                 {
                     if (!reader.Read())
                     {
-                        throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.", tableSchema, _supperNode,edgeView));
+                        throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.", tableSchema, _nodeName,edgeView));
                     }
                 }
                 const string dropAttribtueRef = @"
@@ -1093,7 +1274,7 @@ namespace GraphView
                 Where [TableSchema] = @schema and [TableName] = @table and [ColumnName] = @column);";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
-                command.Parameters.AddWithValue("table", _supperNode);
+                command.Parameters.AddWithValue("table", _nodeName);
                 command.Parameters.AddWithValue("column", edgeView);
                 command.CommandText = string.Format(dropAttribtueRef, MetadataTables[2], MetadataTables[6]);
                 command.ExecuteNonQuery();
@@ -1125,17 +1306,18 @@ namespace GraphView
                 const string dropFunction = @"
                 Drop function [{0}]";
                 command.Parameters.Clear();
-                command.CommandText = string.Format(dropFunction, tableSchema + '_' + _supperNode + '_' + edgeView + '_' + "Decoder");
+                command.CommandText = string.Format(dropFunction, tableSchema + '_' + _nodeName + '_' + edgeView + '_' + "Decoder");
                 command.ExecuteNonQuery();
                 const string dropAssembly = @"
                 Drop Assembly [{0}_Assembly]";
-                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _supperNode + '_' + edgeView);
+                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);
                 command.ExecuteNonQuery();
 
-                const string dropSamplingView = @"
-                Drop View [{0}_Sampling]";
-                command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _supperNode + '_' + edgeView);
-                command.ExecuteNonQuery();
+                // TODO: drop sampling view
+                //const string dropSamplingView = @"
+                //Drop View [{0}_Sampling]";
+                //command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
+                //command.ExecuteNonQuery();
 #if !DEBUG
                 if (externalTransaction == null)
                     transaction.Commit();
