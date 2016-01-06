@@ -320,30 +320,30 @@ namespace GraphView
             command.Transaction = transaction;
             try
             {
-                //dropEdgeView
-                const string dropEdgeView = @"
-                SELECT TableSchema, TableName, ColumnName
-                FROM [dbo].[{0}]
-                WHERE ColumnRole = 3";
-                command.CommandText = string.Format(dropEdgeView, MetadataTables[1]);
+                //Drops EdgeView
+                //const string dropEdgeView = @"
+                //SELECT TableSchema, TableName, ColumnName
+                //FROM [dbo].[{0}]
+                //WHERE ColumnRole = 3";
+                //command.CommandText = string.Format(dropEdgeView, MetadataTables[1]);
 
-                var edgeViewList = new List<Tuple<string, string, string>>();
-                //The list of procedure with schema, table and Column name
-                using (var reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        var tableSchema = reader["TableSchema"].ToString();
-                        var tableName = reader["TableName"].ToString();
-                        var columnName = reader["ColumnName"].ToString();
-                        edgeViewList.Add(Tuple.Create(tableSchema, tableName, columnName));
-                    }
-                }
+                //var edgeViewList = new List<Tuple<string, string, string>>();
+                ////The list of procedure with schema, table and Column name
+                //using (var reader = command.ExecuteReader())
+                //{
+                //    while (reader.Read())
+                //    {
+                //        var tableSchema = reader["TableSchema"].ToString();
+                //        var tableName = reader["TableName"].ToString();
+                //        var columnName = reader["ColumnName"].ToString();
+                //        edgeViewList.Add(Tuple.Create(tableSchema, tableName, columnName));
+                //    }
+                //}
 
-                foreach (var it in edgeViewList)
-                {
-                    DropEdgeView(it.Item1, it.Item2, it.Item3, transaction);
-                }
+                //foreach (var it in edgeViewList)
+                //{
+                //    DropEdgeView(it.Item1, it.Item2, it.Item3, transaction);
+                //}
 
                 //Drops node view
                 const string dropNodeTable = @"

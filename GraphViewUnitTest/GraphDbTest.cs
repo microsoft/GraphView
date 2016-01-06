@@ -449,7 +449,7 @@ namespace GraphViewUnitTest
                 //    }
                 //}
 
-                //graph.DropNodeView("dbo", "suppernodetest");
+                graph.DropNodeView("dbo", "NodeView");
                 //graph.DropEdgeView("dbo", "NodeView", "EdgeView");
             }
         }
@@ -488,6 +488,8 @@ namespace GraphViewUnitTest
                 graph.CreateNodeView("dbo", "NodeView", new List<string>() {
                 "ClientNode",
                 "EmployeeNode"});
+                graph.ClearGraphDatabase();
+                //graph.DropNodeView("dbo", "NodeView");
             }
         }
 

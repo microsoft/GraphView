@@ -653,7 +653,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Drops Edge View
+        /// Drops node view with edge view on it
         /// </summary>
         /// <param name="nodeViewSchema">The name of node view. Default(null or "") by "dbo".</param>
         /// <param name="nodeViewName">The name of node view.</param>
@@ -665,8 +665,34 @@ namespace GraphView
             command.Transaction = transaction;
             try
             {
+                const string getSubEdgeView= @"
+                Select ColumnName
+                From {0} NTC
+                join {1} NTCC
+                on NTC.TableId = NTCC.TableId
+                Where NTC.TableSchema = @schema and NTC.TableName = @nodeview and NTCC.ColumnRole = @role;";
+                command.Parameters.AddWithValue("schema", nodeViewSchema);
+                command.Parameters.AddWithValue("nodeview", nodeViewName);
+                command.Parameters.AddWithValue("role", 3);
+                command.CommandText = string.Format(getSubEdgeView, MetadataTables[0], MetadataTables[1]);
+
+                var edgeViewList = new List<string>();
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                       edgeViewList.Add(reader["columnName"].ToString().ToLower());
+                    }
+                }
+
+                foreach (var it in edgeViewList)
+                {
+                    DropEdgeView(nodeViewSchema, nodeViewName, it, transaction);
+                }
+
                 //drop view
                 const string dropView = @"drop view [{0}]";
+                command.Parameters.Clear();
                 command.CommandText = string.Format(dropView, nodeViewName);
                 command.ExecuteNonQuery();
 
@@ -700,6 +726,7 @@ namespace GraphView
                 command.Parameters["role"].Value = 1;
                 command.CommandText = string.Format(deleteNodeView, MetadataTables[7], MetadataTables[0]);
                 command.ExecuteNonQuery();
+
                 if (externalTransaction == null)
                 {
                     transaction.Commit();
@@ -1301,7 +1328,7 @@ namespace GraphView
                 table.Columns.Add(column);
                 column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
-                
+
                 foreach (var it in _dictionaryEdges)
                 {
                     row = table.NewRow();
@@ -1365,7 +1392,7 @@ namespace GraphView
                     }
                 }
 
-                
+
 
                 if (externalTransaction == null)
                 {
@@ -1379,7 +1406,7 @@ namespace GraphView
                     transaction.Rollback();
                 }
                 throw new NodeViewException(e.Message);
-                }
+            }
         }
 
         /// <summary>
