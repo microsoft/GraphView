@@ -414,14 +414,16 @@ namespace GraphView
                         var nodeTableTuple = WNamedTableReference.SchemaNameToTuple(table.TableObjectName);
                         var schema = nodeTableTuple.Item1;
 
-                        if (!_context.BindEdgeToNode(schema, edge, nodeTableTuple.Item2, _metaData))
-                            throw new GraphViewException(string.Format("Edge/EdgeView {0} cannot be bind to {1}", edge,
-                                nodeTableTuple.Item1));
-                        var bindNode = _context.EdgeNodeBinding[new Tuple<string, string>(nodeTableTuple.Item2, edge)];
+                        // Bind edge/edge view to node/node view and check validity
+                        string bindNode = _context.BindEdgeToNode(schema, edge, nodeTableTuple.Item2, _metaData);
+                        if (string.IsNullOrEmpty(bindNode))
+                            throw new GraphViewException(string.Format("Edge/EdgeView {0} cannot be bind to {1}.{2}", edge,
+                                nodeTableTuple.Item1, nodeTableTuple.Item2));
+
+
                         HashSet<string> edgeSinkNodes =
                             _metaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, bindNode)][edge].EdgeInfo
                                 .SinkNodes;
-
                         HashSet<string> sinkNodes;
 
 
@@ -1516,14 +1518,19 @@ namespace GraphView
                     {
                         newExpression = WBooleanBinaryExpression.Conjunction(newExpression, predicate);
                     }
-                    string predicateString = newExpression.ToString().ToLower();
+                    string predicateString = newExpression.ToString();
                     var nodeCount = component1.MaterializedNodeSplitCount[matchNode];
 
                     while (nodeCount > 0)
                     {
                         newWhereString += " AND ";
-                        newWhereString += predicateString.Replace(string.Format("[{0}]", matchNode.RefAlias.ToLower()),
-                            string.Format("[{0}_{1}]", matchNode.RefAlias, nodeCount));
+                        string tempStr = predicateString.Replace(string.Format("[{0}]", matchNode.RefAlias.ToUpper()),
+                            string.Format("[{0}_{1}]", matchNode.RefAlias.ToUpper(), nodeCount));
+                        tempStr = tempStr.Replace(string.Format("[{0}]", matchNode.RefAlias.ToLower()),
+                            string.Format("[{0}_{1}]", matchNode.RefAlias.ToLower(), nodeCount));
+                        newWhereString += tempStr;
+                        //newWhereString += predicateString.Replace(string.Format("[{0}]", matchNode.RefAlias.ToLower()),
+                        //    string.Format("[{0}_{1}]", matchNode.RefAlias, nodeCount));
                         nodeCount--;
                     }
                 }

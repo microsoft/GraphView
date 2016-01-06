@@ -35,7 +35,7 @@ namespace GraphViewUnitTest
                 FROM EmployeeNode e1, EmployeeNode e2, EmployeeNode e3, EmployeeNode e4, EmployeeNode e5, EmployeeNode e6
                 MATCH e1-[Colleagues as a]->e2, e1-[Colleagues as b]->e3, e1-[Colleagues as c]->e4, e1-[Colleagues as d]->e5,
                       e6-[Colleagues as e]->e2, e6-[Colleagues as f]->e3, e6-[Colleagues as g]->e4, e6-[Colleagues as h]->e5
-                WHERE a.sink<5 and b.sink<5 and c.sink<5 and d.sink<5 and e.sink<5 and f.sink<5 and g.sink<5 and h.sink<5
+                WHERE a.sink<5 and b.sink<5 and c.sink<5 and d.sink<5 and e.sink<5 and f.sink<5 and g.sink<5 and h.sink<5 and E1.name = 'Abc'
                 --WHERE a.edgeId<5 and b.edgeId<5 and b.edgeId<5 and c.edgeId<5 and d.edgeId<5 and e.edgeId<5 and f.edgeId<5 and g.edgeid<5 and h.edgeid<5";
                 using (var command = new GraphView.GraphViewCommand(q2, graph))
                 {

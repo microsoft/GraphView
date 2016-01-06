@@ -95,21 +95,30 @@ namespace GraphView
             return this[name] != null;
         }
 
-        public bool BindEdgeToNode(string schema, string edgeColumn, string nodeTable, MetaData metaData)
+        /// <summary>
+        /// Bind edge/edge view to node/node view
+        /// </summary>
+        /// <param name="schema"></param>
+        /// <param name="edgeColumn"></param>
+        /// <param name="nodeTable"></param>
+        /// <param name="metaData"></param>
+        /// <returns>Return null when there not exists the binding node/node view, 
+        /// otherwise return name of the node/node view bound to the edge/edge view</returns>
+        public string BindEdgeToNode(string schema, string edgeColumn, string nodeTable, MetaData metaData)
         {
             var edgeNodeTuple = new Tuple<string, string>(nodeTable, edgeColumn);
-            if (_edgeNodeBinding.ContainsKey(edgeNodeTuple))
-                return true;
+            string resNode;
+            if (_edgeNodeBinding.TryGetValue(edgeNodeTuple, out resNode))
+                return resNode;
 
             var nodeTuple = new Tuple<string, string>(schema, nodeTable);
             if (metaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumn))
             {
                 _edgeNodeBinding[edgeNodeTuple] = nodeTable;
-                return true;
+                return nodeTable;
             }
             else if (metaData.NodeViewMapping.ContainsKey(nodeTuple))
             {
-                string resNode = "";
                 foreach (var node in metaData.NodeViewMapping[nodeTuple])
                 {
                     if (metaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, node)].ContainsKey(edgeColumn))
@@ -117,15 +126,15 @@ namespace GraphView
                         if (string.IsNullOrEmpty(resNode))
                             resNode = node;
                         else
-                            return false;
+                            return null;
                     }
                 }
                 _edgeNodeBinding[edgeNodeTuple] = resNode;
-                return true;
+                return resNode;
             }
             else
             {
-                return false;
+                return null;
             }
         }
 
