@@ -827,11 +827,44 @@ namespace GraphView
                         var tableSchema = obj.SchemaIdentifier != null
                             ? obj.SchemaIdentifier.Value
                             : "dbo";
-                        var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tran);
-
                         command.Parameters.AddWithValue("@tableName", tableName);
                         command.Parameters.AddWithValue("@tableSchema", tableSchema);
 
+                        var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tran);
+                        if (edgeColumns.Count > 0)
+                        {
+                            var assemblyName = tableSchema + '_' + tableName;
+                            foreach (var edgeColumn in edgeColumns)
+                            {
+                                if (edgeColumn.Item3)
+                                    DropEdgeView(tableSchema, tableName, edgeColumn.Item1, tran);
+                                else
+                                {
+                                    command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
+                                        DROP TABLE [{0}_{1}_{2}_Sampling]",
+                                        tableSchema, tableName, edgeColumn.Item1);
+                                    command.ExecuteNonQuery();
+                                    command.CommandText = string.Format(
+                                        @"DROP FUNCTION [{0}_{1}_Decoder];
+                                          DROP FUNCTION [{0}_{1}_Recycle];
+                                          DROP AGGREGATE [{0}_{1}_Encoder];",
+                                        assemblyName,
+                                        edgeColumn.Item1);
+                                    command.ExecuteNonQuery();                         
+                                    if (edgeColumn.Item2)
+                                    {
+                                        command.CommandText = string.Format(
+                                        @"DROP FUNCTION [{0}_{1}_PathDecoder];
+                                          DROP FUNCTION [{0}_{1}_bfs];",
+                                        assemblyName,
+                                        edgeColumn.Item1);
+                                        command.ExecuteNonQuery();                         
+                                    }
+                                }
+                            }
+                            command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
+                            command.ExecuteNonQuery();
+                        }
                         foreach (var table in MetadataTables)
                         {
                             if (table == MetadataTables[4] || table == MetadataTables[5] || table == MetadataTables[6] ||
@@ -842,46 +875,6 @@ namespace GraphView
                             WHERE [TableName] = @tableName AND [TableSchema] = @tableSchema", table);
                             command.ExecuteNonQuery();
                         }
-
-                        foreach (var edgeColumn in edgeColumns)
-                        {
-                            command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
-                                DROP TABLE [{0}_{1}_{2}_Sampling]",
-                                tableSchema, tableName, edgeColumn.Item1);
-                            command.ExecuteNonQuery();
-                        }
-
-                        var assemblyName = tableSchema + '_' + tableName;
-                        foreach (var edgeColumn in edgeColumns)
-                        {
-                            if (edgeColumn.Item2)
-                            {
-                                command.CommandText = string.Format(
-                                    @"DROP FUNCTION [{0}_{1}_Decoder];
-                                  DROP FUNCTION [{0}_{1}_Recycle];
-                                  DROP FUNCTION [{0}_{1}_PathDecoder];
-                                  DROP FUNCTION [{0}_{1}_bfs];
-                                  DROP AGGREGATE [{0}_{1}_Encoder];",
-                                    assemblyName,
-                                    edgeColumn.Item1);
-                            }
-                            else
-                            {
-                                command.CommandText = string.Format(
-                                    @"DROP FUNCTION [{0}_{1}_Decoder];
-                                  DROP FUNCTION [{0}_{1}_Recycle];
-                                  DROP AGGREGATE [{0}_{1}_Encoder];",
-                                    assemblyName,
-                                    edgeColumn.Item1);
-                            }
-                            command.ExecuteNonQuery();
-                        }
-
-                        if (edgeColumns.Count == 0)
-                            continue;
-                        command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
-                        command.ExecuteNonQuery();
-
                     }
 
                     // drop node table

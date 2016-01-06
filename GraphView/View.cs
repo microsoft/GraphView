@@ -102,7 +102,7 @@ namespace GraphView
                 UpdateNodeViewMetatable(tableSchema, nodeViewName, nodes, _propertymapping, transaction);
                 if (byDefault)
                 {
-                    createEdgeViewByDefault(tableSchema, nodeViewName, transaction);
+                    CreateEdgeViewByDefault(tableSchema, nodeViewName, transaction);
                 }
                 if (externalTransaction == null)
                 {
@@ -559,7 +559,7 @@ namespace GraphView
         }
 
 
-        private void createEdgeViewByDefault(string tableSchema, string nodeViewName,
+        private void CreateEdgeViewByDefault(string tableSchema, string nodeViewName,
             SqlTransaction externalTransaction = null)
         {
             var transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -925,7 +925,8 @@ namespace GraphView
                         var edgeName = reader["ColumnName"].ToString().ToLower();
                         if (edgeName == edgeViewName.ToLower())
                         {
-                            throw new EdgeViewException(string.Format("The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
+                            throw new EdgeViewException(string.Format(
+                                "The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
                         }
                     }
                 }
@@ -961,8 +962,6 @@ namespace GraphView
 
                 _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
                     //<NodeTable, Edge> => ColumnId
-                _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
-                //<NodeTable, Edge> => ColumnId
 
                 //Check validity of table name in metaDataTable and get table's column id
                 command.Parameters.Clear();
@@ -1243,6 +1242,39 @@ namespace GraphView
                 {
                     transaction.Commit();
                 }
+
+                // TODO: Edge View Sampling
+//                string createEdgeSamplineView = @"
+//                CREATE VIEW {0}_{1}_{2}_Sampling as
+//                (
+//                    {3}
+//                )
+//                ";
+//                var selectEdgeSampling = new StringBuilder(1024);
+//                if (attributeMapping == null || !attributeMapping.Any())
+//                {
+                    
+//                }
+//                else
+//                {
+//                    foreach (var edge in edges)
+//                    {
+//                        string selectTemplate = @"SELECT Src, Sink {0} FROM {1}_{2}_{3}_Sampling";
+//                        string selectElements = "";
+//                        foreach (var tuple in attributeMapping)
+//                        {
+//                            if (
+//                                edgesAttributeMappingDictionary[
+//                                    new Tuple<string, string>(edge.Item1.ToLower(), edge.Item2.ToLower())].Any(
+//                                        e => e.Item2.ToLower() == tuple.Item1.ToLower()))
+//                            {
+//                                selectElements += "," + tuple.Item1;
+//                            }
+//                        }
+                        
+//                    }
+                    
+//                }
             }
             catch (SqlException e)
             {
@@ -1512,7 +1544,7 @@ namespace GraphView
                 command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);
                 command.ExecuteNonQuery();
 
-                // TODO: drop sampling view
+                // TODO: Edge View Sampling
                 //const string dropSamplingView = @"
                 //Drop View [{0}_Sampling]";
                 //command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
