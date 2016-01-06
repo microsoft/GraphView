@@ -43,14 +43,6 @@ namespace GraphView
         private string _nodeName;
         private string _tableSet;
 
-        private Dictionary<string, Int64> _dictionaryTableId; // <Table Name> => <Table Id>
-        private Dictionary<string, int> _dictionaryTableOffsetId; // <Table Name> => <Table Offset Id> (counted from 0)
-
-        private Dictionary<Tuple<string, string>, Int64> _dictionaryColumnId;
-            // <Table Name, Column Name> => <Column Id>
-
-        private List<Tuple<string, List<Tuple<string, string>>>> _propertymapping;
-
         private static readonly List<string> ColumnList =
             new List<string>
             {
@@ -59,6 +51,17 @@ namespace GraphView
                 "ReversedEdgeDeleteCol"
             };
 
+        //For node View
+        private Dictionary<string, Int64> _dictionaryTableId; // <Table Name> => <Table Id>
+        private Dictionary<string, int> _dictionaryTableOffsetId; // <Table Name> => <Table Offset Id> (counted from 0)
+
+        private Dictionary<Tuple<string, string>, Int64> _dictionaryColumnId;
+            // <Table Name, Column Name> => <Column Id>
+
+        private List<Tuple<string, List<Tuple<string, string>>>> _propertymapping;
+
+
+        //For edge view
         private Dictionary<Tuple<string, string>, int> _dictionaryEdges; //<NodeTable, Edge> => ColumnId
         private Dictionary<string, List<long>> _dictionaryAttribute; //<EdgeViewAttributeName> => List<AttributeId>
         private Dictionary<string, string> _attributeType; //<EdgeViewAttribute> => <Type>
@@ -829,7 +832,7 @@ namespace GraphView
                     Value = string.Format("{0}_{1}_{2}_Sampling", schema, nodeName, edgeViewName)
                 });
             string a = statement.ToString();
-            ExecuteNonQuery(statement.ToString());
+            //ExecuteNonQuery(statement.ToString());
 
         }
 
@@ -1074,9 +1077,10 @@ namespace GraphView
                 command.CommandText = String.Format(getAttributeId, MetadataTables[2]); //_EdgeAttributeCollection
 
                 //User supplies attribute mapping or not.
-                if (attributeMapping == null || !attributeMapping.Any())
+                if (attributeMapping == null)
                 {
                     var ignoreAttribute = new HashSet<string>();
+                    var attributeMappingDict = new Dictionary<string, List<Tuple<string, string, string>>>();
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -1118,9 +1122,18 @@ namespace GraphView
                                     attributeMappingTo = attributeName.ToLower();
                                 }
                                 edgesAttributeMappingDictionary[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
+                                if (!attributeMappingDict.ContainsKey(attributeMappingTo))
+                                {
+                                    attributeMappingDict[attributeMappingTo] = new List<Tuple<string, string, string>>();
                             }
+                                attributeMappingDict[attributeMappingTo].Add(Tuple.Create(tableName, edgeColumnName,
+                                    attributeName));
                         }
                     }
+                    }
+                    attributeMapping =
+                        attributeMappingDict.Select(x => Tuple.Create(x.Key, x.Value))
+                            .Where(x => !ignoreAttribute.Contains(x.Item1.ToLower())).ToList();
 
                     var temp = new List<int>();
                     foreach (var it in edgesAttributeMappingDictionary)
@@ -1168,7 +1181,7 @@ namespace GraphView
                                             "The attribute \"{0}.{1}.{2}\" maps into edge view's attribute twice.",
                                             itAttributeRef.Item1, itAttributeRef.Item2, itAttributeRef.Item3));
                                 }
-                                attributeMappingIntoDictionary[tempAttributeRef] = it.Item1;
+                                attributeMappingIntoDictionary[tempAttributeRef] = it.Item1.ToLower();
                             }
                         }
                         else
@@ -1185,7 +1198,7 @@ namespace GraphView
                                             "The attribute \"{0}.{1}.{2}\" maps into edge view's attribute twice.",
                                             itAttributeRef.Item1, itAttributeRef.Item2, it.Item1));
                                 }
-                                attributeMappingIntoDictionary[tempAttributeRef] = it.Item1;
+                                attributeMappingIntoDictionary[tempAttributeRef] = it.Item1.ToLower();
                             }
                         }
                     }
@@ -1238,6 +1251,73 @@ namespace GraphView
                 GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
                     _attributeType,
                     edgesAttributeMappingDictionary, Conn, command.Transaction);
+
+                //Create sampling table
+                var samplingTableName = tableSchema + "_" + nodeName + "_" + edgeViewName + "_Sampling";
+                Dictionary<string, int> attributeToColumnOffset =
+                    _attributeType.Select(x => x.Key).Select((x, i) => new {x, i}).ToDictionary(x => x.x, x => x.i);
+                Dictionary<Tuple<string, string>, int> edgeColumnToRowOffset =
+                    edges.Select((x, i) => new {x, i})
+                        .ToDictionary(x => Tuple.Create(x.x.Item1.ToLower(), x.x.Item2.ToLower()), x => x.i);
+                var attributeView2DArray = new string[edges.Count][];
+                for (int i = 0; i < edges.Count; i++)
+                {
+                    attributeView2DArray[i] = new string[_attributeType.Count];
+                }
+
+                foreach (var it in attributeMapping)
+                {
+                    string edgeViewAttribute = it.Item1.ToLower();
+                    int columnOffset = attributeToColumnOffset[edgeViewAttribute];
+                    foreach (var iterator in it.Item2)
+                    {
+                        int rowOffset =
+                            edgeColumnToRowOffset[Tuple.Create(iterator.Item1.ToLower(), iterator.Item2.ToLower())];
+                        attributeView2DArray[rowOffset][columnOffset] = iterator.Item3;
+                    }
+                }
+
+                const string createEdgeSampling = @"
+                CREATE VIEW {0} as
+                (
+                    {1}
+                )";
+                const string selectTemplate = @"
+                Select Src, Sink{0}
+                From {1} ";
+                
+                var subQueryList = new List<string>();
+
+                int rowCount = 0;
+                foreach (var it in edges)
+                {
+                    var array = attributeView2DArray[rowCount];
+                    int i = 0;
+                    foreach (var VARIABLE in _attributeType)
+                    {
+                        if (string.IsNullOrEmpty(array[i]))
+                        {
+                            array[i] = "null";
+                        }
+                        array[i] = array[i] + " as " + VARIABLE.Key;
+                        i++;
+                    }
+                    string elementlist = string.Join(", ", array);
+                    if (!string.IsNullOrEmpty(elementlist))
+                    {
+                        elementlist = ", " + elementlist;
+                    }
+                    string subQuery = string.Format(selectTemplate, elementlist,
+                        tableSchema + "_" + it.Item1 + "_" + it.Item2 + "_Sampling");
+                    subQueryList.Add(subQuery);
+                    rowCount++;
+                }
+
+                command.Parameters.Clear();
+                command.CommandText = string.Format(createEdgeSampling, samplingTableName,
+                    string.Join("UNION ALL\n", subQueryList));
+                command.ExecuteNonQuery();
+
                 if (externalTransaction == null)
                 {
                     transaction.Commit();
@@ -1282,7 +1362,7 @@ namespace GraphView
                 {
                     transaction.Rollback();
                 }
-                throw new EdgeViewException("An error occurred when clearing data \n", e);
+                throw new EdgeViewException(e.Message);
             }
         }
 
@@ -1544,11 +1624,10 @@ namespace GraphView
                 command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);
                 command.ExecuteNonQuery();
 
-                // TODO: Edge View Sampling
-                //const string dropSamplingView = @"
-                //Drop View [{0}_Sampling]";
-                //command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
-                //command.ExecuteNonQuery();
+                const string dropSamplingView = @"
+                Drop View [{0}_Sampling]";
+                command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
+                command.ExecuteNonQuery();
 #if !DEBUG
                 if (externalTransaction == null)
                     transaction.Commit();

@@ -449,7 +449,7 @@ namespace GraphViewUnitTest
                 //    }
                 //}
 
-                graph.DropNodeView("dbo", "NodeView");
+                //graph.DropNodeView("dbo", "NodeView");
                 //graph.DropEdgeView("dbo", "NodeView", "EdgeView");
             }
         }
