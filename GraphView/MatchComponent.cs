@@ -255,6 +255,7 @@ namespace GraphView
         /// <param name="componentTable"></param>
         /// <param name="joinCondition"></param>
         /// <param name="nodeDegrees"></param>
+        /// <param name="joinSelectivity"></param>
         /// <param name="estimatedNodeUnitSize"></param>
         /// <param name="estimatedSelectivity"></param>
         /// <returns></returns>
@@ -599,8 +600,7 @@ namespace GraphView
         /// Transit from current component to the new component in the next state given the Node Unit
         /// </summary>
         /// <param name="candidateTree"></param>
-        /// <param name="densityDict"></param>
-        /// <param name="subGraph"></param>
+        /// <param name="metaData"></param>
         /// <param name="statisticsCalculator"></param>
         /// <returns></returns>
         public MatchComponent GetNextState(

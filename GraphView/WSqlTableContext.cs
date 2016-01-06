@@ -114,7 +114,7 @@ namespace GraphView
             var nodeTuple = new Tuple<string, string>(schema, nodeTable);
             if (metaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumn))
             {
-                _edgeNodeBinding[edgeNodeTuple] = nodeTable;
+                _edgeNodeBinding[edgeNodeTuple] = nodeTable.ToLower();
                 return nodeTable;
             }
             else if (metaData.NodeViewMapping.ContainsKey(nodeTuple))
