@@ -1248,18 +1248,17 @@ namespace GraphView
                         emptyAttribute[0].Key));
                 }
 
-                GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
-                    _attributeType,
-                    edgesAttributeMappingDictionary, Conn, command.Transaction);
+                //GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
+                //    _attributeType,
+                //    edgesAttributeMappingDictionary, Conn, command.Transaction);
 
-                //Create sampling table
-                var samplingTableName = tableSchema + "_" + nodeName + "_" + edgeViewName + "_Sampling";
+                //Prepares the select element 2D array
                 Dictionary<string, int> attributeToColumnOffset =
                     _attributeType.Select(x => x.Key).Select((x, i) => new {x, i}).ToDictionary(x => x.x, x => x.i);
                 Dictionary<Tuple<string, string>, int> edgeColumnToRowOffset =
                     edges.Select((x, i) => new {x, i})
                         .ToDictionary(x => Tuple.Create(x.x.Item1.ToLower(), x.x.Item2.ToLower()), x => x.i);
-                var attributeView2DArray = new string[edges.Count][];
+                string[][] attributeView2DArray = new string[edges.Count][];
                 for (int i = 0; i < edges.Count; i++)
                 {
                     attributeView2DArray[i] = new string[_attributeType.Count];
@@ -1277,19 +1276,8 @@ namespace GraphView
                     }
                 }
 
-                const string createEdgeSampling = @"
-                CREATE VIEW {0} as
-                (
-                    {1}
-                )";
-                const string selectTemplate = @"
-                Select Src, Sink{0}
-                From {1} ";
-                
-                var subQueryList = new List<string>();
-
                 int rowCount = 0;
-                foreach (var it in edges)
+                for (rowCount = 0; rowCount < edges.Count; rowCount++)
                 {
                     var array = attributeView2DArray[rowCount];
                     int i = 0;
@@ -1302,6 +1290,60 @@ namespace GraphView
                         array[i] = array[i] + " as " + VARIABLE.Key;
                         i++;
                     }
+                }
+
+                //Create Edge View decode function
+                string createEdgeviewDecoder = @"
+                    CREATE FUNCTION {0} ({1})
+                    RETURNS TABLE
+                    AS
+                    RETURN 
+                    (
+                        {2}
+                    )";
+                string selectTemplate = @"
+                    Select Sink{0}
+                    From {1}({2}, {3})";
+                string decoderFunctionName = tableSchema + "_" + nodeName + "_" + edgeViewName + "_Decoder";
+                string parameterList = string.Join(", ",
+                    edges.Select((x, i) => "@edge" + i + " varbinary(max), " + "@del" + i + " varbinary(max)"));
+                var subQueryList = new List<string>();
+                rowCount = 0;
+                foreach (var it in edges)
+                {
+                    var array = attributeView2DArray[rowCount];
+                    string elementlist = string.Join(", ", array);
+                    if (!string.IsNullOrEmpty(elementlist))
+                    {
+                        elementlist = ", " + elementlist;
+                    }
+                    string subQuery = string.Format(selectTemplate, elementlist,
+                        tableSchema + "_" + it.Item1 + "_" + it.Item2 + "_Decoder", "@edge" + rowCount, "@del" + rowCount);
+                    subQueryList.Add(subQuery);
+                    rowCount++;
+                }
+                command.Parameters.Clear();
+                command.CommandText = string.Format(createEdgeviewDecoder, decoderFunctionName, parameterList,
+                    string.Join("UNION ALL\n", subQueryList));
+                command.ExecuteNonQuery();
+
+                //Create sampling table
+                var samplingTableName = tableSchema + "_" + nodeName + "_" + edgeViewName + "_Sampling";
+                const string createEdgeSampling = @"
+                CREATE VIEW {0} as
+                (
+                    {1}
+                )";
+                selectTemplate = @"
+                Select Src, Sink{0}
+                From {1} ";
+                
+                subQueryList = new List<string>();
+
+                rowCount = 0;
+                foreach (var it in edges)
+                {
+                    var array = attributeView2DArray[rowCount];
                     string elementlist = string.Join(", ", array);
                     if (!string.IsNullOrEmpty(elementlist))
                     {
@@ -1322,39 +1364,6 @@ namespace GraphView
                 {
                     transaction.Commit();
                 }
-
-                // TODO: Edge View Sampling
-//                string createEdgeSamplineView = @"
-//                CREATE VIEW {0}_{1}_{2}_Sampling as
-//                (
-//                    {3}
-//                )
-//                ";
-//                var selectEdgeSampling = new StringBuilder(1024);
-//                if (attributeMapping == null || !attributeMapping.Any())
-//                {
-                    
-//                }
-//                else
-//                {
-//                    foreach (var edge in edges)
-//                    {
-//                        string selectTemplate = @"SELECT Src, Sink {0} FROM {1}_{2}_{3}_Sampling";
-//                        string selectElements = "";
-//                        foreach (var tuple in attributeMapping)
-//                        {
-//                            if (
-//                                edgesAttributeMappingDictionary[
-//                                    new Tuple<string, string>(edge.Item1.ToLower(), edge.Item2.ToLower())].Any(
-//                                        e => e.Item2.ToLower() == tuple.Item1.ToLower()))
-//                            {
-//                                selectElements += "," + tuple.Item1;
-//                            }
-//                        }
-                        
-//                    }
-                    
-//                }
             }
             catch (SqlException e)
             {
@@ -1619,10 +1628,10 @@ namespace GraphView
                 command.Parameters.Clear();
                 command.CommandText = string.Format(dropFunction, tableSchema + '_' + _nodeName + '_' + edgeView + '_' + "Decoder");
                 command.ExecuteNonQuery();
-                const string dropAssembly = @"
-                Drop Assembly [{0}_Assembly]";
-                command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);
-                command.ExecuteNonQuery();
+                //const string dropAssembly = @"
+                //Drop Assembly [{0}_Assembly]";
+                //command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);
+                //command.ExecuteNonQuery();
 
                 const string dropSamplingView = @"
                 Drop View [{0}_Sampling]";

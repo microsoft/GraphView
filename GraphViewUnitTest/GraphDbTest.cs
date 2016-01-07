@@ -441,7 +441,7 @@ namespace GraphViewUnitTest
 
                 //const string querrySupperEdge = @"
                 //    select *
-                //    from suppernodetest cross apply dboNodeViewEdgeViewDecoder(clients, clientsDeleteCol,  colleagues, colleaguesDeleteCol) as a;";
+                //    from nodeview cross apply dbo_NodeView_EdgeView_Decoder(clients, clientsDeleteCol,  colleagues, colleaguesDeleteCol) as a;";
                 //using (var reader = graph.ExecuteReader(querrySupperEdge))
                 //{
                 //    while (reader.Read())
@@ -449,8 +449,8 @@ namespace GraphViewUnitTest
                 //    }
                 //}
 
-                //graph.DropNodeView("dbo", "NodeView");
                 //graph.DropEdgeView("dbo", "NodeView", "EdgeView");
+                //graph.DropNodeView("dbo", "NodeView");
             }
         }
 
