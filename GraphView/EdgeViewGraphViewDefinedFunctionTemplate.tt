@@ -95,7 +95,7 @@
 		if (<#=dele#> != null && !<#=dele#>.IsNull) 
 		{
 			//var brdele = new BinaryReader(new MemoryStream(<#=dele#>.Value));
-			var brdele = new BinaryReader(<#=dele#>.Stream));
+			var brdele = new BinaryReader(<#=dele#>.Stream);
 			while (brdele.BaseStream.Position != brdele.BaseStream.Length)
 			{
 				deleDict[brdele.ReadInt32()] = true;
