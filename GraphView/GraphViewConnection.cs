@@ -770,6 +770,8 @@ namespace GraphView
                         command.ExecuteNonQuery();
                     }
                 }
+                updateGlobalNodeView(tableSchema, tx);
+
                 if (externalTransaction == null)
                 {
                     tx.Commit();
@@ -820,6 +822,7 @@ namespace GraphView
                 // delete metadata
                 using (var command = new SqlCommand(null, Conn, tran))
                 {
+                    var schameSet = new HashSet<string>();
 
                     foreach (var obj in statement.Objects)
                     {
@@ -827,6 +830,10 @@ namespace GraphView
                         var tableSchema = obj.SchemaIdentifier != null
                             ? obj.SchemaIdentifier.Value
                             : "dbo";
+                        if (!schameSet.Contains(tableSchema.ToLower()))
+                        {
+                            schameSet.Add(tableSchema.ToLower());
+                        }
                         command.Parameters.AddWithValue("@tableName", tableName);
                         command.Parameters.AddWithValue("@tableSchema", tableSchema);
 
@@ -880,6 +887,10 @@ namespace GraphView
                     // drop node table
                     command.CommandText = sqlStr;
                     command.ExecuteNonQuery();
+                    foreach (var it in schameSet)
+                    {
+                        updateGlobalNodeView(it, tran);
+                    }
                     if (externalTransaction == null)
                     {
                         tran.Commit();
