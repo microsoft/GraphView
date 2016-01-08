@@ -206,7 +206,7 @@ namespace GraphView
                             var type = Tuple.Create(dataType, maximumLength);
                             if (columnToType.ContainsKey(columnName))
                             {
-                                if (columnToType[columnName].Equals(type))
+                                if (!columnToType[columnName].Equals(type))
                                 {
                                     columnToType[columnName] = Tuple.Create("wrong", "wrong");
                                     columnToColumns[columnName].Clear();
@@ -607,8 +607,11 @@ namespace GraphView
 
                     foreach (var it in edgeToEdges)
                     {
-                        CreateEdgeView(tableSchema, nodeViewName, it.Key,
-                            it.Value.Select(x => Tuple.Create(x, it.Key)).ToList(), null, transaction);
+                        if (it.Value.Count >= 2)
+                        {
+                            CreateEdgeView(tableSchema, nodeViewName, it.Key,
+                                it.Value.Select(x => Tuple.Create(x, it.Key)).ToList(), null, transaction);
+                        }
                     }
                 }
                 if (externalTransaction == null)

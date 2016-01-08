@@ -355,6 +355,8 @@ namespace GraphViewUnitTest
                 CREATE TABLE [ClientNode] (
                     [ColumnRole: ""NodeId""]
                     [ClientId] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [name] [varchar](32),
                     [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int"", c:""string"", d:""int"", e:""double""}]
                     [Colleagues] [varchar](max)
                 )";
@@ -471,6 +473,8 @@ namespace GraphViewUnitTest
                     [name] [varchar](32),
                     [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""Int""}]
                     [Clients] [varchar](max),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""Int""}]
+                    [Colleagues] [varchar](max),
                 )";
                 graph.CreateNodeTable(createEmployeeStr);
                 const string createEmployeeStr2 = @"
@@ -485,10 +489,10 @@ namespace GraphViewUnitTest
                     [Clients] [varchar](max)
                 )";
                 graph.CreateNodeTable(createEmployeeStr2);
-                graph.CreateNodeView("dbo", "NodeView", new List<string>() {
-                "ClientNode",
-                "EmployeeNode"});
-                graph.ClearGraphDatabase();
+                //graph.CreateNodeView("dbo", "NodeView", new List<string>() {
+                //"ClientNode",
+                //"EmployeeNode"});
+                //graph.ClearGraphDatabase();
                 //graph.DropNodeView("dbo", "NodeView");
             }
         }
