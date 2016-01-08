@@ -1292,7 +1292,6 @@ namespace GraphView
             var nodes = graph.Nodes;
             foreach (var node in nodes.Values.Where(e => !graph.IsTailNode[e]))
             {
-                //var newJoinUnitList = new List<MatchJoinUnit>()
                 bool joint = false;
                 var jointEdges = new List<MatchEdge>();
                 var nodeEdgeDict = node.Neighbors.ToDictionary(e => e,

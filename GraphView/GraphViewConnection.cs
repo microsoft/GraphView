@@ -607,7 +607,7 @@ namespace GraphView
                         }
                         tableId = Convert.ToInt64(reader["TableId"], CultureInfo.CurrentCulture);
                         var tableIdSeek = tableId << 48;
-                        tableIdentitySeed = new WValueExpression(tableId.ToString(CultureInfo.InvariantCulture), false);
+                        tableIdentitySeed = new WValueExpression(tableIdSeek.ToString(CultureInfo.InvariantCulture), false);
                     }
 
                     // create graph table

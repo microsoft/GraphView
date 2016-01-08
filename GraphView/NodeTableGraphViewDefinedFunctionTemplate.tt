@@ -77,8 +77,8 @@ foreach (var edge in EdgeList) {
 		var deleDict =  new Dictionary<Int32, bool>();
 		if (deleteEdge != null && !deleteEdge.IsNull)
 		{	
-			var ms = new MemoryStream(deleteEdge.Value);
-			var delebr = new BinaryReader(ms);
+			//var ms = new MemoryStream(deleteEdge.Value);
+			var delebr = new BinaryReader(deleteEdge.Stream);
 			while (delebr.BaseStream.Position != delebr.BaseStream.Length)
 			{
 				deleDict[delebr.ReadInt32()] = true;
@@ -86,7 +86,8 @@ foreach (var edge in EdgeList) {
 		}
         if (array == null || array.IsNull)
             yield break;
-		var br = new BinaryReader(new MemoryStream(array.Value));
+		//var br = new BinaryReader(new MemoryStream(array.Value));
+		var br = new BinaryReader(array.Stream);
 		var edgeid = (Int32)0;
         while (br.BaseStream.Position != br.BaseStream.Length)
         {
@@ -166,7 +167,8 @@ foreach (var edge in EdgeList) {
     {
         if (array == null || array.IsNull)
             yield break;
-		var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
+		//var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
+		Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
 		var brPath = new BinaryReader(PathMemory);
 		var PathDict =  new Dictionary<Tuple<long, Int32>, bool>();
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
@@ -226,10 +228,11 @@ foreach (var edge in EdgeList) {
 		}
 
 
-        using (var srcMs = new MemoryStream(src.Value))
-        {
-            using (var br = new BinaryReader(srcMs))
-            {
+        //using (var srcMs = new MemoryStream(src.Value))
+        //{
+            //using (var br = new BinaryReader(srcMs))
+            using (var br = new BinaryReader(src.Stream))
+			{
                 using (var resultMs = new MemoryStream())
                 {
                     using (var bw = new BinaryWriter(resultMs))
@@ -285,7 +288,7 @@ foreach (var edge in EdgeList) {
                 }
             }
         }
-        }
+        //}
 
     }
 	<# }#>

@@ -112,6 +112,10 @@ namespace GraphView
                 return false;
 
             nextToken = currentToken;
+            List<Literal> literalList = null;
+            if (ParseLiteralList(tokens, ref currentToken, ref literalList, ref farestError))
+            { }
+
             var spiltEdgeIdentifier = edgeIdentifier.Value.Split(' ');
             string alias = null;
             if (spiltEdgeIdentifier.Length > 1)
