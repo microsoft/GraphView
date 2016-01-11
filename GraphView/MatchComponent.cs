@@ -207,8 +207,16 @@ namespace GraphView
             }
             else if (sizeFactor*size < estimatedSize)
             {
-                estimatedSize /= shrinkSize;
-                component.EstimateSize /= shrinkSize;
+                if (estimatedSize < shrinkSize)
+                {
+                    component.EstimateSize /= estimatedSize;
+                    estimatedSize = 1;
+                }
+                else
+                {
+                    component.EstimateSize /= shrinkSize;
+                    estimatedSize /= shrinkSize;
+                }
                 component.FatherListofDownSizeTable.Add(joinTableTuple);
                 estimateFactor = (int) Math.Ceiling(size/estimatedSize);
             }
@@ -292,29 +300,29 @@ namespace GraphView
             // If the node is already in the component, then only multiply the degree to get the size
             double nodeUnitActualSize;
 
-
+            double newCompEstSize;
             if (component.MaterializedNodeSplitCount[node] > 0)
             {
                 nodeUnitActualSize = nodeDegrees;
-                var cEstEdge = Math.Pow(1000, component.EdgeMaterilizedDict.Count(e=>!e.Value));
-                var cSize = component.EstimateSize/cEstEdge;
+                var cEstEdge = Math.Pow(1000, component.EdgeMaterilizedDict.Count(e => !e.Value));
+                var cSize = component.EstimateSize / cEstEdge;
                 var nSize = node.EstimatedRows;
                 if (nSize > cSize)
                 {
-                    component.EstimateSize = estimatedNodeUnitSize*cEstEdge*estimatedSelectivity;
+                    newCompEstSize = estimatedNodeUnitSize * cEstEdge * estimatedSelectivity;
                 }
                 else
                 {
-                    component.EstimateSize = component.EstimateSize*Math.Pow(1000, nodeUnitCandidate.UnmaterializedEdges.Count)*
-                                             estimatedSelectivity;
+                    newCompEstSize = component.EstimateSize * Math.Pow(1000, nodeUnitCandidate.UnmaterializedEdges.Count) * estimatedSelectivity;
                 }
             }
             else
             {
                 nodeUnitActualSize = nodeUnitSize;
-                component.EstimateSize *= estimatedNodeUnitSize * estimatedSelectivity;                
+                newCompEstSize = component.EstimateSize * estimatedNodeUnitSize * estimatedSelectivity;
             }
 
+            component.EstimateSize = newCompEstSize < 0 ? 1.0 : newCompEstSize;
            
 
             //Update Size
