@@ -31,6 +31,7 @@ using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -152,8 +153,8 @@ namespace GraphView
                 _tableSet = "#" + RandomString();
                 if (propertymapping == null)
                 {
-                    var columnToType = new Dictionary<string, Tuple<string, string>>(); //column => <datatype, length>
-                    var columnToColumns = new Dictionary<string, List<string>>(); //column => <table>
+                    var columnToType = new Dictionary<string, Tuple<string, string>>(); //node view column => <datatype, length>
+                    var columnToColumns = new Dictionary<string, List<Tuple<string, string>>>(); //node view column => <table, column>
                     string createTempTable = @"create table {0} (TableName varchar(4000))";
                     command.Parameters.Clear();
                     command.CommandText = string.Format(createTempTable, _tableSet);
@@ -195,6 +196,7 @@ namespace GraphView
                     command.Parameters.AddWithValue("role2", 2);
                     command.CommandText = string.Format(getColumnList, MetadataTables[0], MetadataTables[1], _tableSet);
 
+                    Tuple<string, string> wrongTuple = Tuple.Create("wrong", "wrong");
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -204,33 +206,53 @@ namespace GraphView
                             var dataType = reader["DATA_TYPE"].ToString().ToLower();
                             var maximumLength = reader["CHARACTER_MAXIMUM_LENGTH"].ToString();
                             var type = Tuple.Create(dataType, maximumLength);
+                            var newColumnName = columnName;
                             if (columnToType.ContainsKey(columnName))
                             {
                                 if (!columnToType[columnName].Equals(type))
                                 {
-                                    columnToType[columnName] = Tuple.Create("wrong", "wrong");
-                                    columnToColumns[columnName].Clear();
-                                    columnToColumns[columnName].Add("wrong");
-                                    var warning =
-                                        new WarningException(
-                                            string.Format(
-                                                "Warning: Ignores the column \"{0}\" in node view since it has different datatypes in at least two base tables",
-                                                columnName));
-                                    Console.WriteLine(warning.Message);
-                                    continue;
+                                    if (!columnToType[columnName].Equals(wrongTuple))
+                                    {
+                                        var tempType = columnToType[columnName];
+                                        newColumnName = columnName + "_" + tempType.Item1 + (string.IsNullOrEmpty(tempType.Item2)
+                                        ? ""
+                                        : ("_" + (tempType.Item2 == "-1" ? "max" : tempType.Item2)));
+;
+                                        columnToColumns[newColumnName] = columnToColumns[columnName];
+                                        columnToType[newColumnName] = tempType;
+
+                                        columnToType[columnName] = Tuple.Create("wrong", "wrong");
+                                        columnToColumns[columnName] = new List<Tuple<string, string>>();
+                                        columnToColumns[columnName].Add(wrongTuple);
+                                    }
+                                    var typeName = type.Item1 + (string.IsNullOrEmpty(maximumLength)
+                                        ? ""
+                                        : ("_" + (maximumLength == "-1" ? "max" : maximumLength)));
+                                    newColumnName = columnName + "_" + typeName;
+                                    if (!columnToType.ContainsKey(newColumnName))
+                                    {
+                                        columnToType[newColumnName] = type;
+                                        columnToColumns[newColumnName] = new List<Tuple<string, string>>();
+                                    }
+                                    //var warning =
+                                    //    new WarningException(
+                                    //        string.Format(
+                                    //            "Warning: The column \"{0}\" in node view has different datatypes in at least two base tables",
+                                    //            columnName));
+                                    //Console.WriteLine(warning.Message);
                                 }
                             }
                             else
                             {
-                                columnToType[columnName] = type;
-                                columnToColumns[columnName] = new List<string>();
+                                columnToType[newColumnName] = type;
+                                columnToColumns[newColumnName] = new List<Tuple<string, string>>();
                             }
-                            columnToColumns[columnName].Add(tableName);
+                            columnToColumns[newColumnName].Add(Tuple.Create(tableName, columnName));
                         }
                     }
                     propertymapping =
-                        columnToColumns.Where(x => x.Value[0] != "wrong")
-                            .Select(x => Tuple.Create(x.Key, x.Value.Select(y => Tuple.Create(y, x.Key)).ToList()))
+                        columnToColumns.Where(x => x.Value[0] != wrongTuple)
+                            .Select(x => Tuple.Create(x.Key, x.Value.Select(y => Tuple.Create(y.Item1, y.Item2)).ToList()))
                             .ToList();
                 }
 
@@ -1070,7 +1092,7 @@ namespace GraphView
                 _attributeType = edgeAttribute.ToDictionary(x => x.ToLower(), x => "");
                 //<EdgeViewAttribute> => <Type>
 
-                var edgesAttributeMappingDictionary =
+                var edgeColumnToTypeAndAttributes =
                     edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()),
                         x => new List<Tuple<string, string>>());
                 //<nodeTable, edgeName> => list<Tuple<Type, EdgeViewAttributeName>>
@@ -1107,6 +1129,8 @@ namespace GraphView
                                 {
                                     var attributeId = Convert.ToInt64(reader["AttributeId"].ToString());
                                     _dictionaryAttribute[attributeName].Add(attributeId);
+                                    attributeMappingTo = attributeName;
+
                                     if (_attributeType[attributeName] == "")
                                     {
                                         _attributeType[attributeName] = type;
@@ -1117,20 +1141,30 @@ namespace GraphView
                                         //    string.Format(
                                         //        "There exist two edge attributes \"{0}\" with different type in different edges.",
                                         //        attributeName));
-                                        var warning =
-                                            new WarningException(
-                                                string.Format(
-                                                    "Warning: Ignores the edge attribute \"{0}\" in edge view since it has different datatypes in at least two edges",
-                                                    attributeName));
-                                        Console.WriteLine(warning.Message);
-                                        if (!ignoreAttribute.Contains(attributeName.ToLower()))
+                                        //var warning =
+                                        //    new WarningException(
+                                        //        string.Format(
+                                        //            "Warning: There exist two edge attributes \"{0}\" with different type in different edges.",
+                                        //            attributeName));
+                                        //Console.WriteLine(warning.Message);
+
+                                        if (!ignoreAttribute.Contains(attributeName))
                                         {
+                                            var newType = _attributeType[attributeName];
+                                            var newAttributeName = attributeName + "_" + newType;
+
+                                            edgeColumnToTypeAndAttributes[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
+                                            _attributeType[newAttributeName] = _attributeType[attributeName];
+                                            _attributeType[attributeName] = "wrong";
+
                                             ignoreAttribute.Add(attributeName.ToLower());
                                         }
+
+                                        attributeMappingTo = attributeMappingTo + "_" + type;
+                                        _attributeType[attributeMappingTo] = type;
                                     }
-                                    attributeMappingTo = attributeName.ToLower();
                                 }
-                                edgesAttributeMappingDictionary[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
+                                edgeColumnToTypeAndAttributes[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
                                 if (!attributeMappingDict.ContainsKey(attributeMappingTo))
                                 {
                                     attributeMappingDict[attributeMappingTo] = new List<Tuple<string, string, string>>();
@@ -1145,7 +1179,7 @@ namespace GraphView
                             .Where(x => !ignoreAttribute.Contains(x.Item1.ToLower())).ToList();
 
                     var temp = new List<int>();
-                    foreach (var it in edgesAttributeMappingDictionary)
+                    foreach (var it in edgeColumnToTypeAndAttributes)
                     {
                         int count = 0;
                         temp.Clear();
@@ -1159,15 +1193,15 @@ namespace GraphView
                         }
                         foreach (var VARIABLE in temp)
                         {
-                            it.Value[VARIABLE] = Tuple.Create(it.Value[VARIABLE].Item1, "");
+                            it.Value[VARIABLE] = Tuple.Create(it.Value[VARIABLE].Item1, it.Value[VARIABLE].Item2 + "_" + it.Value[VARIABLE].Item1);
                         }
                     }
                     _attributeType =
                         _attributeType.Where(x => !ignoreAttribute.Contains(x.Key.ToLower()))
                             .ToDictionary(x => x.Key, x => x.Value);
                     _dictionaryAttribute =
-                        edgeAttribute.Where(x => !ignoreAttribute.Contains(x.ToLower()))
-                            .ToDictionary(x => x.ToLower(), x => new List<Int64>());
+                        _attributeType.Where(x => !ignoreAttribute.Contains(x.Key.ToLower()))
+                            .ToDictionary(x => x.Key.ToLower(), x => new List<Int64>());
                 }
                 else
                 {
@@ -1211,6 +1245,8 @@ namespace GraphView
                             }
                         }
                     }
+
+                    //Records information for metadatatable
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -1245,7 +1281,7 @@ namespace GraphView
                                     }
                                     attributeMappingTo = attributeMappingIntoDictionary[attributeTuple];
                                 }
-                                edgesAttributeMappingDictionary[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
+                                edgeColumnToTypeAndAttributes[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
                             }
                         }
                     }
@@ -1259,7 +1295,7 @@ namespace GraphView
 
                 GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
                     _attributeType,
-                    edgesAttributeMappingDictionary, Conn, command.Transaction);
+                    edgeColumnToTypeAndAttributes, Conn, command.Transaction);
 
                 //Prepares the select element 2D array
                 Dictionary<string, int> attributeToColumnOffset =
@@ -1675,14 +1711,18 @@ namespace GraphView
             try
             {
                 string globalViewName = "GlobalNodeView";
-                //todo:
                 const string checkGlobalView = @"
-                Select name
-                From {0} VIEWS
-                Where  VIEWS.name = @name";
+                select VIEWS.name
+                from {0} SCH
+                join {1} OBJ
+                on SCH.schema_id = OBJ.schema_id
+                join {2} VIEWS
+                on OBJ.object_id = VIEWS.object_id
+                where SCH.name = @schema and VIEWS.name = @name";
                 bool delete = false;
-                command.CommandText = string.Format(checkGlobalView, "sys.all_views");
+                command.CommandText = string.Format(checkGlobalView,"sys.schemas", "sys.objects", "sys.all_views");
                 command.Parameters.AddWithValue("name", globalViewName);
+                command.Parameters.AddWithValue("schema", schema);
                 using (var reader = command.ExecuteReader())
                 {
                     if (reader.Read())
