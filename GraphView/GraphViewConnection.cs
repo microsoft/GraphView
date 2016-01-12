@@ -44,22 +44,23 @@ using IsolationLevel = Microsoft.SqlServer.TransactSql.ScriptDom.IsolationLevel;
 namespace GraphView
 {
     /// <summary>
-    /// Graph Database class, providing framework with basic operations on database.
+    /// Connector to a graph database. The class inherits most functions of SqlConnection, 
+    /// and provides a number of GraphView-specific functions. 
     /// </summary>
     public partial class GraphViewConnection : IDisposable
     {
         /// <summary>
-        /// Sampling percent for checking average degree. Set to 100 by default.
+        /// Sampling rate for checking average degree. Set to 100 by default.
         /// </summary>
         public double GraphDbAverageDegreeSamplingRate { get; set; }
 
         /// <summary>
-        /// Sampling percent for edge columns. Set to 100 by default.
+        /// Sampling rate for edge columns. Set to 100 by default.
         /// </summary>
         public double GraphDbEdgeColumnSamplingRate { get; set; }
 
         /// <summary>
-        /// Connection to database
+        /// Connection to a SQL database
         /// </summary>
         public SqlConnection Conn { get; private set; }
 
@@ -180,7 +181,8 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Initialize a graph database, including table ID, graph column and edge attribute information.
+        /// Initializes a graph database and creates meta-data, 
+        /// including table ID, graph column and edge attribute information.
         /// </summary>
         internal void CreateMetadata()
         {
@@ -309,7 +311,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Clears all the node table data in GraphView.
+        /// Clears all node tables in the graph database.
         /// Can be used for initialzing an empty graph.
         /// </summary>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which clear data will occur.</param>
@@ -515,9 +517,9 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Validates graph database by checking if metadata table exists.
+        /// Validates the graph database by checking if metadata tables exist.
         /// </summary>
-        /// <returns>true if graph database is valid; otherwise false.</returns>
+        /// <returns>True, if graph database is valid; otherwise, false.</returns>
         private bool CheckDatabase()
         {
             var tableString = String.Join(", ", MetadataTables.Select(x => "'" + x + "'"));
@@ -546,11 +548,11 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Creates node table and inserts related metadata.
+        /// Creates a node table in the graph database.
         /// </summary>
-        /// <param name="sqlStr">A CREATE TABLE statement with metadata.</param>
+        /// <param name="sqlStr">A CREATE TABLE statement with annotations.</param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node table will occur.</param>
-        /// <returns>Returns true if the statement is successfully executed.</returns>
+        /// <returns>True, if the statement is successfully executed.</returns>
         public bool CreateNodeTable(string sqlStr, SqlTransaction externalTransaction = null)
         {
             // get syntax tree of CREATE TABLE command
@@ -909,11 +911,11 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Create procedure and related metadata.
+        /// Creates a stored procedure.
         /// </summary>
-        /// <param name="sqlStr"> A create procedure statement with metadata.</param>
-        /// <param name="externalTransaction">An existing SqlTransaction instance under which the create procedure will occur.</param>
-        /// <returns>Returns true if the statement is successfully executed.</returns>
+        /// <param name="sqlStr"> A create procedure script</param>
+        /// <param name="externalTransaction">A SqlTransaction instance under which the create procedure will occur.</param>
+        /// <returns>True, if the statement is successfully executed.</returns>
         public bool CreateProcedure(string sqlStr, SqlTransaction externalTransaction = null)
         {
             // get syntax tree of CREATE Procedure command
@@ -995,11 +997,11 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Drops procedure and related metadata.
+        /// Drops a stored procedure
         /// </summary>
-        /// <param name="sqlStr"> Name of procedure to be dropped.</param>
-        /// <param name="externalTransaction">An existing SqlTransaction instance under which the drop procedure will occur.</param>
-        /// <returns>Returns true if the statement is successfully executed.</returns>
+        /// <param name="sqlStr">The script that drops the stored procedure</param>
+        /// <param name="externalTransaction">A SqlTransaction instance under which the drop procedure will occur.</param>
+        /// <returns>True, if the statement is successfully executed.</returns>
         public bool DropProcedure(string sqlStr, SqlTransaction externalTransaction = null)
         {
             // get syntax tree of DROP TABLE command
@@ -1064,12 +1066,14 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Gets names of edge columns of a table
+        /// Gets a list a table's edge columns
         /// </summary>
-        /// <param name="tableSchema">Schema of table</param>
-        /// <param name="tableName">Name of table</param>
-        /// <returns>List of names of edge columns, booleans indicate whether the edge has source and sink in same node table or not, booleans indicate whether it is an edge view</returns>
-        public IList<Tuple<string, bool, bool>> GetGraphEdgeColumns(string tableSchema, string tableName,
+        /// <param name="tableSchema">The schema of the target table</param>
+        /// <param name="tableName">The table name</param>
+        /// <returns>A list of string-boolean-boolean triples, with the first field being the edge column name, 
+        /// the second field indicating whether or not the edge points to the nodes in the same node table, 
+        /// and the third field indicating whether or not this edge is an edge view</returns>
+        internal IList<Tuple<string, bool, bool>> GetGraphEdgeColumns(string tableSchema, string tableName,
             SqlTransaction tx = null)
         {
             var edgeColumns = new List<Tuple<string, Boolean, Boolean>>();
@@ -1099,9 +1103,9 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Get all node tables in the graph database.
+        /// Gets all node tables in the graph database.
         /// </summary>
-        /// <returns>List of tuples of table schema and table name.</returns>
+        /// <returns>A list of tuples of table schema and table name.</returns>
         public IList<Tuple<string, string>> GetNodeTables()
         {
             var tables = new List<Tuple<string, string>>();
@@ -1123,10 +1127,10 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Update table Statistics
+        /// Updates a node table's statistics
         /// </summary>
-        /// <param name="tableSchema">Schema of table to be updated.</param>
-        /// <param name="tableName">Name of table to be updated.</param>
+        /// <param name="tableSchema">The schema of the table to be updated.</param>
+        /// <param name="tableName">The name of the table to be updated.</param>
         public void UpdateTableStatistics(string tableSchema, string tableName)
         {
             SqlTransaction tx = Conn.BeginTransaction();
@@ -1136,7 +1140,7 @@ namespace GraphView
                 foreach (var edgeColumn in edgeColumns)
                 {
                     if (!edgeColumn.Item3)
-                        UpdateTableEdgeSampling(tableSchema, tableName, edgeColumn.Item1, tx);
+                        UpdateEdgeSampling(tableSchema, tableName, edgeColumn.Item1, tx);
                     UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn.Item1, tx);
                 }
                 tx.Commit();
@@ -1150,11 +1154,11 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Updates table edges average degree statistics
+        /// Updates the average degree of an edge column in a node table
         /// </summary>
-        /// <param name="tableSchema">Schema of the table</param>
-        /// <param name="tableName">Name of the table</param>
-        /// <param name="edgeColumn">Name of edge in the table</param>
+        /// <param name="tableSchema">The schema of the table</param>
+        /// <param name="tableName">The table name</param>
+        /// <param name="edgeColumn">The edge name</param>
         /// <param name="tx"></param>
         public void UpdateEdgeAverageDegree(string tableSchema, string tableName, string edgeColumn,
             SqlTransaction tx = null)
@@ -1198,19 +1202,19 @@ namespace GraphView
             }
             catch (SqlException e)
             {
-                throw new SqlExecutionException("An error occurred when updating statistics on edge average degree", e);
+                throw new SqlExecutionException("An error occurred when updating edges' average degrees.", e);
             }
 
         }
 
         /// <summary>
-        /// Updates table edges average degree statistics
+        /// Updates an edge sample
         /// </summary>
-        /// <param name="tableSchema">Schema of the table</param>
-        /// <param name="tableName">Name of the table</param>
-        /// <param name="edgeColumn">Name of edge in the table</param>
+        /// <param name="tableSchema">The schema of the table</param>
+        /// <param name="tableName">The table name</param>
+        /// <param name="edgeColumn">The edge name in the table</param>
         /// <param name="tx"></param>
-        public void UpdateTableEdgeSampling(string tableSchema, string tableName, string edgeColumn, 
+        public void UpdateEdgeSampling(string tableSchema, string tableName, string edgeColumn, 
             SqlTransaction tx = null)
         {
 
@@ -1251,12 +1255,14 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Merge Specific Delete Columns in a table
+        /// Merges the "delta" of an edge column to the edge's original column and frees the space. 
+        /// When an adjacency list is modified, the modification is not applied to the list directly,
+        /// but is logged in the list's "delta" column. This method is to merge the delta to the original
+        /// edge column and free the space. 
         /// </summary>
-        /// <param name="tableSchema">Schema of table to be updated.</param>
-        /// <param name="tableName">Name of table to be updated.</param>
-        /// <param name="edgeColumns">Edge columns to be merged</param>
-        /// <param name="delReverse">If it is set to true,merge the reversedEdge Column</param>
+        /// <param name="tableSchema">The schema of table to be updated.</param>
+        /// <param name="tableName">The table name.</param>
+        /// <param name="edgeColumns">The edge columns to be merged</param>
         public void MergeDeleteColumn(string tableSchema, string tableName, string[] edgeColumns,
             SqlTransaction tx = null)
         {
@@ -1315,10 +1321,10 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Merge All Delete Columns in a table
+        /// Merges all "delta" columns in a node table and frees the space.
         /// </summary>
-        /// <param name="tableSchema">Schema of table to be updated.</param>
-        /// <param name="tableName">Name of table to be updated.</param>
+        /// <param name="tableSchema">The schema of the table to be updated</param>
+        /// <param name="tableName">The table name</param>
         public void MergeAllDeleteColumn(string tableSchema, string tableName)
         {
             var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName).Select(x => x.Item1).ToArray();
