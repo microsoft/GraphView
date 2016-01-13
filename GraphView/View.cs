@@ -63,7 +63,7 @@ namespace GraphView
 
 
         //For edge view
-        private Dictionary<Tuple<string, string>, int> _dictionaryEdges; //<NodeTable, Edge> => ColumnId
+        private Dictionary<Tuple<string, string>, long> _edgeColumnToColumnId; //<NodeTable, Edge> => ColumnId
         private Dictionary<string, List<long>> _dictionaryAttribute; //<EdgeViewAttributeName> => List<AttributeId>
         private Dictionary<string, string> _attributeType; //<EdgeViewAttribute> => <Type>
 
@@ -941,10 +941,12 @@ namespace GraphView
                 }
 
                 const string checkEdge = @"
-                Select ColumnName
-                From _NodeTableColumnCollection
-                Where (ColumnRole = @role1 or ColumnRole = @role2) and TableSchema = @schema and TableName = @name";
-                command.CommandText = checkEdge;
+                Select NTCC.ColumnName
+                From {0} NTC
+                Join {1} NTCC
+                on NTC.TableId = NTCC.TableId
+                Where (NTCC.ColumnRole = @role1 or NTCC.ColumnRole = @role2) and NTC.TableSchema = @schema and NTC.TableName = @name";
+                command.CommandText = string.Format(checkEdge, MetadataTables[0], MetadataTables[1]);
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("name", nodeName);
@@ -992,16 +994,18 @@ namespace GraphView
                 //    }
                 //}
 
-                _dictionaryEdges = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => -1);
+                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => (long)-1);
                 //<NodeTable, Edge> => ColumnId
 
                 //Check validity of table name in metaDataTable and get table's column id
                 command.Parameters.Clear();
                 const string checkEdgeColumn = @"
-                select *
-                from {0}
-                where TableSchema = @tableschema and ColumnRole = @role";
-                command.CommandText = string.Format(checkEdgeColumn, MetadataTables[1]); //_NodeTableColumnCollection
+                Select *
+                From {0} NTC
+                Join {1} NTCC
+                on NTC.TableId = NTCC.TableId
+                where NTC.TableSchema = @tableschema and NTCC.ColumnRole = @role";
+                command.CommandText = string.Format(checkEdgeColumn, MetadataTables[0], MetadataTables[1]); //_NodeTableColumnCollection
                 command.Parameters.Add("tableschema", SqlDbType.NVarChar, 128);
                 command.Parameters["tableschema"].Value = tableSchema;
                 command.Parameters.Add("role", SqlDbType.Int);
@@ -1014,13 +1018,13 @@ namespace GraphView
                         var edgeColumnName = reader["ColumnName"].ToString().ToLower();
                         int columnId = Convert.ToInt32(reader["ColumnId"].ToString());
                         var edgeTuple = Tuple.Create(tableName, edgeColumnName);
-                        if (_dictionaryEdges.ContainsKey(edgeTuple))
+                        if (_edgeColumnToColumnId.ContainsKey(edgeTuple))
                         {
-                            _dictionaryEdges[edgeTuple] = columnId;
+                            _edgeColumnToColumnId[edgeTuple] = columnId;
                         }
                     }
                 }
-                var edgeNotInMetaTable = _dictionaryEdges.Where(x => x.Value == -1).Select(x => x.Key).ToArray();
+                var edgeNotInMetaTable = _edgeColumnToColumnId.Where(x => x.Value == -1).Select(x => x.Key).ToArray();
                 if (edgeNotInMetaTable.Any())
                 {
                     throw new EdgeViewException(string.Format("There doesn't exist edge column \"{0}.{1}\"",
@@ -1029,9 +1033,12 @@ namespace GraphView
 
                 //Check validity of edge view name
                 const string checkEdgeViewName = @"
-                select *
-                from {0}
-                where TableSchema = @schema and TableName = @tablename and ColumnName = @columnname and ColumnRole = @role and Reference = @ref";
+                Select *
+                From {0} NTC
+                Join {1} NTCC
+                on NTC.TableId = NTCC.TableId
+                where NTC.TableSchema = @schema and NTC.TableName = @tablename and NTCC.ColumnName = @columnname and NTCC.ColumnRole = @role and NTCC.Reference = @ref";
+
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("tablename", _nodeName);
@@ -1039,7 +1046,7 @@ namespace GraphView
                 command.Parameters.AddWithValue("role", 3);
                 command.Parameters.AddWithValue("ref", _nodeName);
 
-                command.CommandText = String.Format(checkEdgeViewName, MetadataTables[1]); //_NodeTableColumnCollection
+                command.CommandText = String.Format(checkEdgeViewName, MetadataTables[0], MetadataTables[1]); //_NodeTableColumnCollection
                 using (var reader = command.ExecuteReader())
                 {
                     if (reader.Read())
@@ -1092,20 +1099,24 @@ namespace GraphView
                 _attributeType = edgeAttribute.ToDictionary(x => x.ToLower(), x => "");
                 //<EdgeViewAttribute> => <Type>
 
-                var edgeColumnToTypeAndAttributes =
+                var edgeColumnToAttributeInfo =
                     edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()),
                         x => new List<Tuple<string, string>>());
                 //<nodeTable, edgeName> => list<Tuple<Type, EdgeViewAttributeName>>
 
                 const string getAttributeId = @"
                 Select *
-                From {0}
-                Where TableSchema = @schema
+                From {0} NTC
+                Join {1} NTCC
+                on NTC.TableId = NTCC.TableId
+                Join {2} EAC
+                on EAC.ColumnId = NTCC.ColumnId
+                Where NTC.TableSchema = @schema
                 Order by AttributeEdgeId";
                 command.Parameters.Clear();
                 command.Parameters.Add("schema", SqlDbType.NVarChar, 128);
                 command.Parameters["schema"].Value = tableSchema;
-                command.CommandText = String.Format(getAttributeId, MetadataTables[2]); //_EdgeAttributeCollection
+                command.CommandText = String.Format(getAttributeId, MetadataTables[0], MetadataTables[1], MetadataTables[2]); //_EdgeAttributeCollection
 
                 //User supplies attribute mapping or not.
                 if (attributeMapping == null)
@@ -1119,7 +1130,7 @@ namespace GraphView
                             var tableName = reader["TableName"].ToString().ToLower();
                             var edgeColumnName = reader["ColumnName"].ToString().ToLower();
                             var edgeTuple = Tuple.Create(tableName, edgeColumnName);
-                            if (_dictionaryEdges.ContainsKey(edgeTuple))
+                            if (_edgeColumnToColumnId.ContainsKey(edgeTuple))
                             {
                                 var type = reader["AttributeType"].ToString().ToLower();
                                 var attributeMappingTo = "";
@@ -1153,7 +1164,7 @@ namespace GraphView
                                             var newType = _attributeType[attributeName];
                                             var newAttributeName = attributeName + "_" + newType;
 
-                                            edgeColumnToTypeAndAttributes[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
+                                            edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
                                             _attributeType[newAttributeName] = _attributeType[attributeName];
                                             _attributeType[attributeName] = "wrong";
 
@@ -1164,7 +1175,7 @@ namespace GraphView
                                         _attributeType[attributeMappingTo] = type;
                                     }
                                 }
-                                edgeColumnToTypeAndAttributes[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
+                                edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
                                 if (!attributeMappingDict.ContainsKey(attributeMappingTo))
                                 {
                                     attributeMappingDict[attributeMappingTo] = new List<Tuple<string, string, string>>();
@@ -1179,7 +1190,7 @@ namespace GraphView
                             .Where(x => !ignoreAttribute.Contains(x.Item1.ToLower())).ToList();
 
                     var temp = new List<int>();
-                    foreach (var it in edgeColumnToTypeAndAttributes)
+                    foreach (var it in edgeColumnToAttributeInfo)
                     {
                         int count = 0;
                         temp.Clear();
@@ -1255,7 +1266,7 @@ namespace GraphView
                             var edgeColumnName = reader["ColumnName"].ToString().ToLower();
                             var edgeTuple = Tuple.Create(tableName, edgeColumnName);
 
-                            if (_dictionaryEdges.ContainsKey(edgeTuple))
+                            if (_edgeColumnToColumnId.ContainsKey(edgeTuple))
                             {
                                 var type = reader["AttributeType"].ToString().ToLower();
                                 var attributeMappingTo = "";
@@ -1281,7 +1292,7 @@ namespace GraphView
                                     }
                                     attributeMappingTo = attributeMappingIntoDictionary[attributeTuple];
                                 }
-                                edgeColumnToTypeAndAttributes[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
+                                edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(type, attributeMappingTo));
                             }
                         }
                     }
@@ -1295,7 +1306,7 @@ namespace GraphView
 
                 GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
                     _attributeType,
-                    edgeColumnToTypeAndAttributes, Conn, command.Transaction);
+                    edgeColumnToAttributeInfo, _edgeColumnToColumnId, Conn, command.Transaction);
 
                 //Prepares the select element 2D array
                 Dictionary<string, int> attributeToColumnOffset =
@@ -1497,7 +1508,7 @@ namespace GraphView
                 column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
 
-                foreach (var it in _dictionaryEdges)
+                foreach (var it in _edgeColumnToColumnId)
                 {
                     row = table.NewRow();
                     row["NodeViewColumnId"] = edgeViewId;

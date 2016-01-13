@@ -26,6 +26,7 @@
     private class <#=EdgeName#>DecoderResult
     {
 		public long Sink { get; set; }
+		public long ColumnId { get; set; }
 		public Int32 EdgeId{ get; set; }
 <#foreach (var variable in AttributeTypeDict) {#>
 		public Sql<#=typeDictionary[variable.Value].Item2#> <#=variable.Key#> { get; set; }
@@ -34,7 +35,7 @@
 
     public static void <#=EdgeName#>Decoder_FillRow(
     object tableTypeObject,
-    out SqlInt64 sink, out SqlInt32 edgeid<#
+    out SqlInt64 sink, out SqlInt64 ColumnId,out SqlInt32 edgeid<#
     var indent = "        ";
     foreach (var variable in AttributeTypeDict) {
         WriteLine(",");
@@ -43,6 +44,7 @@
     {
         var decoderResult = (<#=EdgeName#>DecoderResult)tableTypeObject;
         sink = decoderResult.Sink;
+        ColumnId = decoderResult.ColumnId;
         edgeid = decoderResult.EdgeId;
 <#foreach (var variable in AttributeTypeDict) {#>
 		<#=variable.Key#> = decoderResult.<#=variable.Key#>;
@@ -51,7 +53,7 @@
 
     [SqlFunction(
     DataAccess = DataAccessKind.None,
-    TableDefinition = "Sink bigint, EdgeId int<#
+    TableDefinition = "Sink bigint, ColumnId bigint, EdgeId int<#
     foreach(var variable in AttributeTypeDict)
     Write(", " + variable.Key + " " + typeDictionary[variable.Value].Item1);
 #>",
@@ -84,6 +86,7 @@
 		var dele = "dele" + calc.ToString();
         calc++;
         var variables = it.Value;
+		var columnId = ColumnId[it.Key];
         var attributeSize = variables.Count();
         var byteSize = (attributeSize - 1) / 8 + 1; 
         if (attributeSize == 0) {
@@ -132,7 +135,7 @@
 			if (!deleDict.ContainsKey(edgeid)) {
 				yield return new <#=EdgeName#>DecoderResult
 				{
-					Sink = sink, EdgeId = edgeid,
+					Sink = sink, ColumnId = <#=columnId#>, EdgeId = edgeid,
 <#
 					foreach (var variable in AttributeTypeDict)
 					{
@@ -153,6 +156,7 @@
     {
         public int EdgeId{get; set;}
         public long SinkId{get; set;}
+        public long ColumnId{get; set;}
 <#foreach (var variable in AttributeTypeDict) {#>
         public Sql<#=typeDictionary[variable.Value].Item2#> <#=variable.Key#> { get; set; }
 <#}#>
@@ -160,7 +164,7 @@
 
     public static void <#=EdgeName#>PathDecoder_FillRow(
         object tableTypeObject,
-        out SqlInt32 EdgeId, out SqlInt64 SinkId <#
+        out SqlInt32 EdgeId, out SqlInt64 ColumnId, out SqlInt64 SinkId <#
 
 		foreach (var variable in AttributeTypeDict) {
             WriteLine(",");
@@ -170,6 +174,7 @@
     {
         var decoderResult = (<#=EdgeName#>PathDecoderResult)tableTypeObject;
         EdgeId = decoderResult.EdgeId;
+        ColumnId = decoderResult.ColumnId;
         SinkId = decoderResult.SinkId;
 <#foreach (var variable in  AttributeTypeDict) {#>
       <#=variable.Key#> = decoderResult.<#=variable.Key#>;
@@ -178,7 +183,7 @@
     
         [SqlFunction(
         DataAccess = DataAccessKind.None,
-        TableDefinition = "EdgeId int, SinkId bigint",
+        TableDefinition = "EdgeId int, ColumnId bigint, SinkId bigint",
         FillRowMethodName = "<#=EdgeName#>PathDecoder_FillRow",
         IsDeterministic = true,
         IsPrecise = false
@@ -234,6 +239,7 @@
                 yield return new <#=EdgeName#>PathDecoderResult
                 {
                     EdgeId = adjacent.EdgeId,
+					ColumnId = adjacent.ColumnId,
                     SinkId = adjacent.Sink,
 <#
 					indent += "        ";

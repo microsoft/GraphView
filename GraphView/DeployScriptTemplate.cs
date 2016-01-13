@@ -296,7 +296,7 @@ with  allPath(sink, varPath) as (
             #line 75 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
    	   Write("and (");
-   	   Write("@" + it.Item1 + " = null or ");
+   	   Write("@" + it.Item1 + " is null or ");
    	   WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
    	   }
             
@@ -471,7 +471,7 @@ for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
-            this.Write(") RETURNS TABLE\r\n(\r\n    Sink bigint, EdgeId int");
+            this.Write(") RETURNS TABLE\r\n(\r\n    Sink bigint, ColumnId bigint, EdgeId int");
             
             #line 122 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 

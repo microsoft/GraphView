@@ -57,6 +57,7 @@ namespace GraphView
         public string EdgeName { get; set; }
         public Dictionary<string, string> AttributeTypeDict { get; set; }
         public Dictionary<Tuple<string, string>, List<Tuple<string, string>>> Mapping { get; set; }
+        public Dictionary<Tuple<string, string>, long> ColumnId;
     }
 
     partial class DeployScriptTemplate
@@ -99,13 +100,14 @@ namespace GraphView
         }
 
         private static string GenerateEdgeViewGraphViewDefinedEdgeFunction(string edgeViewName, Dictionary<string, string> attributetypeDictionary,
-            Dictionary<Tuple<string, string>, List<Tuple<string, string>>>  edgesAttributeMappingDictionary)
+            Dictionary<Tuple<string, string>, List<Tuple<string, string>>>  edgesAttributeMappingDictionary, Dictionary<Tuple<string, string>, long> edgeColumnToColumnId)
         {
             var template = new EdgeViewGraphViewDefinedFunctionTemplate
             {
                 EdgeName = edgeViewName,
                 AttributeTypeDict = attributetypeDictionary,
-                Mapping = edgesAttributeMappingDictionary
+                Mapping = edgesAttributeMappingDictionary,
+                ColumnId = edgeColumnToColumnId
             };
             return template.TransformText();
         }
@@ -229,19 +231,20 @@ namespace GraphView
         }
 
         public static void RegisterEdgeView(string suppernode, string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
-            Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
+            Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary, Dictionary<Tuple<string, string>, long> edgeColumnToColumnId,
             SqlConnection conn, SqlTransaction tx)
         {
+
+            var code = GenerateEdgeViewGraphViewDefinedEdgeFunction(edgeViewName, attributetypeDictionary,
+                edgesAttributeMappingDictionary, edgeColumnToColumnId);
+            var result = Compile(code);
+            if (result.Errors.Count > 0)
+                throw new GraphViewException("Failed to compile function");
+
             var edgeDictionary = new List<Tuple<string, long, List<Tuple<string, string>>>>
             {
                 new Tuple<string, long, List<Tuple<string, string>>>(edgeViewName, 0, attributetypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
             };
-
-            var code = GenerateEdgeViewGraphViewDefinedEdgeFunction(edgeViewName, attributetypeDictionary,
-                edgesAttributeMappingDictionary);
-            var result = Compile(code);
-            if (result.Errors.Count > 0)
-                throw new GraphViewException("Failed to compile function");
             var script = GenerateRegisterScript(schema + '_' + suppernode, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
             //var script = GenerateRegisterScript(schema, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
 
