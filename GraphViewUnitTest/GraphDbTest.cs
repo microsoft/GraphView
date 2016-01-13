@@ -463,6 +463,18 @@ namespace GraphViewUnitTest
             using (var graph = new GraphViewConnection(_connStr))
             {
                 graph.Open();
+                const string createEmployeeStr2 = @"
+                CREATE TABLE [ClientNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [number] [bigint],
+                    [ColumnRole: ""Property""]
+                    [name] [varchar](32),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int"", c:""string"", d:""string""}]
+                    [Clients] [varchar](max)
+                )";
+                graph.CreateNodeTable(createEmployeeStr2);
                 const string createEmployeeStr = @"
                 CREATE TABLE [EmployeeNode] (
                     [ColumnRole: ""NodeId""]
@@ -477,18 +489,6 @@ namespace GraphViewUnitTest
                     [Colleagues] [varchar](max),
                 )";
                 graph.CreateNodeTable(createEmployeeStr);
-                const string createEmployeeStr2 = @"
-                CREATE TABLE [ClientNode] (
-                    [ColumnRole: ""NodeId""]
-                    [ClientId] [varchar](32),
-                    [ColumnRole: ""Property""]
-                    [number] [bigint],
-                    [ColumnRole: ""Property""]
-                    [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int"", c:""string"", d:""string""}]
-                    [Clients] [varchar](max)
-                )";
-                graph.CreateNodeTable(createEmployeeStr2);
                 //graph.CreateNodeView("dbo", "NodeView", new List<string>() {
                 //"ClientNode",
                 //"EmployeeNode"});
@@ -559,7 +559,7 @@ namespace GraphViewUnitTest
                 //Run following SQL query can get 8 paths:
                 //string query = @"
                 //    select *
-                //    from dbo.dboClientNodeColleaguesbfs(0);";
+                //    from dbo.dbo_ClientNode_Colleaguesbfs(0);";
                 //graph.ExecuteNonQuery(query);
 
                 const string deleteEdge = @"
@@ -572,7 +572,7 @@ namespace GraphViewUnitTest
                 //Run following SQL query can get 6 paths:
                 //graph.ExecuteNonQuery(query);
 
-                graph.DropNodeTable(@"drop table clientnode");
+                //graph.DropNodeTable(@"drop table clientnode");
             }
         }
 

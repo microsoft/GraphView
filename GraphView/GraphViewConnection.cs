@@ -621,7 +621,7 @@ namespace GraphView
                     command.ExecuteNonQuery();
                 }
 
-                var edgeColumnNameToColumnId = new Dictionary<string, int>(); 
+                var edgeColumnNameToColumnId = new Dictionary<string, long>(StringComparer.CurrentCultureIgnoreCase); 
                 using (var command = new SqlCommand(null, Conn))
                 {
                     command.Transaction = tx;
@@ -743,10 +743,8 @@ namespace GraphView
                     columns.OfType<WGraphTableEdgeColumn>()
                         .Select(
                             col =>
-                                new Tuple<string, bool, List<Tuple<string, string>>>(col.ColumnName.Value,
-                                    String.Equals(tableName,
-                                        (col.TableReference as WNamedTableReference).ExposedName.Value,
-                                        StringComparison.CurrentCultureIgnoreCase),
+                                new Tuple<string, long, List<Tuple<string, string>>>(col.ColumnName.Value,
+                                    edgeColumnNameToColumnId[col.ColumnName.Value],
                                     col.Attributes.Select(
                                         x =>
                                             new Tuple<string, string>(x.Item1.Value,
@@ -786,7 +784,7 @@ namespace GraphView
                 {
                     tx.Rollback();
                 }
-                throw new SqlExecutionException("An error occurred when creating the node table.", e);
+                throw new SqlExecutionException("An error occurred when creating the node table.\n" + e.Message, e);
             }
         }
 
@@ -859,16 +857,13 @@ namespace GraphView
                                           DROP AGGREGATE [{0}_{1}_Encoder];",
                                         assemblyName,
                                         edgeColumn.Item1);
-                                    command.ExecuteNonQuery();                         
-                                    if (edgeColumn.Item2)
-                                    {
-                                        command.CommandText = string.Format(
+                                    command.ExecuteNonQuery();
+                                    command.CommandText = string.Format(
                                         @"DROP FUNCTION [{0}_{1}_PathDecoder];
                                           DROP FUNCTION [{0}_{1}_bfs];",
                                         assemblyName,
                                         edgeColumn.Item1);
-                                        command.ExecuteNonQuery();                         
-                                    }
+                                    command.ExecuteNonQuery();
                                 }
                             }
                             command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";

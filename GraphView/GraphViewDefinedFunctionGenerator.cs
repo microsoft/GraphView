@@ -49,7 +49,7 @@ namespace GraphView
         /// the value stores list of edge properties. Each property consists of two strings, indicating
         /// its name and type respectively.
         /// </summary>
-        public List<Tuple<string, bool, List<Tuple<string, string>>>> EdgeList { get; set; }
+        public List<Tuple<string, long, List<Tuple<string, string>>>> EdgeList { get; set; }
     }
 
     partial class EdgeViewGraphViewDefinedFunctionTemplate
@@ -70,7 +70,7 @@ namespace GraphView
         /// the value stores list of edge properties. Each property consists of two strings, indicating
         /// its name and type respectively.
         /// </summary>
-        public List<Tuple<string, bool, List<Tuple<string, string>>>> EdgeList { get; set; }
+        public List<Tuple<string, long, List<Tuple<string, string>>>> EdgeList { get; set; }
 
         public int InputCount { get; set; }
 
@@ -89,7 +89,7 @@ namespace GraphView
             return template.TransformText();
         }
 
-        private static string GenerateNodeTableGraphViewDefinedFunction(List<Tuple<string, bool, List<Tuple<string, string>>>> edgeList)
+        private static string GenerateNodeTableGraphViewDefinedFunction(List<Tuple<string, long, List<Tuple<string, string>>>> edgeList)
         {
             var template = new NodeTableGraphViewDefinedFunctionTemplate
             {
@@ -138,7 +138,7 @@ namespace GraphView
         }
 
         private static string GenerateRegisterScript(string assemblyName, string path, int type, string nodeTable = null,
-            List<Tuple<string, bool, List<Tuple<string, string>>>> edgeList = null,  int inputCount = 1)
+            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = null,  int inputCount = 1)
         {
             var template = new DeployScriptTemplate
             {
@@ -202,7 +202,7 @@ namespace GraphView
 
         public static void NodeTableRegister(
             string assemblyName, string nodeTable,
-            List<Tuple<string, bool, List<Tuple<string, string>>>> edgeList,
+            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList,
             SqlConnection conn,
             SqlTransaction tx
             )
@@ -232,9 +232,9 @@ namespace GraphView
             Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
             SqlConnection conn, SqlTransaction tx)
         {
-            var edgeDictionary = new List<Tuple<string, bool, List<Tuple<string, string>>>>
+            var edgeDictionary = new List<Tuple<string, long, List<Tuple<string, string>>>>
             {
-                new Tuple<string, bool, List<Tuple<string, string>>>(edgeViewName, false, attributetypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
+                new Tuple<string, long, List<Tuple<string, string>>>(edgeViewName, 0, attributetypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
             };
 
             var code = GenerateEdgeViewGraphViewDefinedEdgeFunction(edgeViewName, attributetypeDictionary,

@@ -27,7 +27,7 @@ public partial class UserDefinedFunctions
 <#
 foreach (var edge in EdgeList) {
     var edgeName = edge.Item1;
-	var edgeType = edge.Item2; //The edge has sink and source in the same table or not.
+	var edgeColumnId = edge.Item2; //The edge has sink and source in the same table or not.
     var variables = edge.Item3;
 	var attributeSize = variables.Count();
 	var byteSize = (attributeSize - 1) / 8 + 1; 
@@ -127,11 +127,11 @@ foreach (var edge in EdgeList) {
     }
     }
 
-<#if (edgeType) {#>
 	//Path Decoder
 	private class <#=edgeName#>PathDecoderResult 
 	{
 		public int EdgeId{get; set;}
+		public long EdgeColumnId {get; set;}
 		public long SinkId{get; set;}
 <#foreach (var variable in variables) {#>
         public Sql<#=typeDictionary[variable.Item2].Item2#> <#=variable.Item1#> { get; set; }
@@ -140,7 +140,7 @@ foreach (var edge in EdgeList) {
 
 	public static void <#=edgeName#>PathDecoder_FillRow(
         object tableTypeObject,
-        out SqlInt32 EdgeId, out SqlInt64 SinkId <#
+        out SqlInt32 EdgeId, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId <#
 		for (var i = 0; i < variables.Count; ++i)
 		{
 			WriteLine(",");
@@ -150,6 +150,7 @@ foreach (var edge in EdgeList) {
     {
         var decoderResult = (<#=edgeName#>PathDecoderResult)tableTypeObject;
         EdgeId = decoderResult.EdgeId;
+		EdgeColumnId =  decoderResult.EdgeColumnId;
         SinkId = decoderResult.SinkId;
 <#foreach (var variable in variables) {#>
       <#=variable.Item1 #> = decoderResult.<#=variable.Item1 #>;
@@ -158,7 +159,7 @@ foreach (var edge in EdgeList) {
 	
       	[SqlFunction(
         DataAccess = DataAccessKind.None,
-        TableDefinition = "EdgeId int, SinkId bigint",
+        TableDefinition = "EdgeId int, EdgeColumnId bigint, SinkId bigint",
         FillRowMethodName = "<#=edgeName#>PathDecoder_FillRow",
         IsDeterministic = true,
         IsPrecise = false
@@ -170,11 +171,11 @@ foreach (var edge in EdgeList) {
 		//var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
 		Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
 		var brPath = new BinaryReader(PathMemory);
-		var PathDict =  new Dictionary<Tuple<long, Int32>, bool>();
+		var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
 			while (brPath.BaseStream.Position != brPath.BaseStream.Length)
 			{
-				var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt32());
+				var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
 				PathDict[Edgeid] = true;
 			}
 		}
@@ -182,12 +183,13 @@ foreach (var edge in EdgeList) {
 		foreach (var it in <#=edgeName#>Decoder(array, dele))
 		{
 			var  adjacent = it as <#=edgeName#>DecoderResult;
-            var EdgeId = Tuple.Create(nodeid.Value, adjacent.EdgeId);
+            var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
             if (!PathDict.ContainsKey(EdgeId))
             {
             	yield return new <#=edgeName#>PathDecoderResult
             	{
 					EdgeId = adjacent.EdgeId,
+					EdgeColumnId = <#=edgeColumnId#>,
             		SinkId = adjacent.Sink, <#
 					for (var i = 0; i < variables.Count; ++i)
 					{
@@ -199,7 +201,7 @@ foreach (var edge in EdgeList) {
 		}
 		yield break;
     }
-<#}#>
+
     [Microsoft.SqlServer.Server.SqlFunction(
         DataAccess = DataAccessKind.None,
         IsDeterministic = true,
