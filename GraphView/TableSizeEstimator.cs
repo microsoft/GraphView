@@ -145,13 +145,20 @@ namespace GraphView
         {
             var xml = GetEstimatedPlanXml(sqlStr);
             var root = XElement.Parse(xml);
-
-            var tables =
-                from e in root.Descendants("RelOp")
-                where e.Elements().Any(e2 => e2.Name.LocalName == "TableScan" || e2.Name.LocalName == "IndexScan")
-                select e;
-
-            return tables.Select(t => Convert.ToDouble(t.Attribute("EstimateRows").Value, CultureInfo.CurrentCulture)).ToList();
+            var res = new List<double>();
+            foreach (var element in root.Descendants("Concat").First().Elements("RelOp"))
+            {
+                if (element.Attribute("PhysicalOp").Value == "Concatenation")
+                {
+                    var xElement = element.Element("Concat");
+                    if (xElement != null)
+                        res.AddRange(from sElement in xElement.Elements("RelOp")
+                            select Convert.ToDouble(sElement.Attribute("EstimateRows").Value));
+                }
+                else
+                    res.Add(Convert.ToDouble(element.Attribute("EstimateRows").Value));
+            }
+            return res;
         }
 
         internal int GetTableRowCount(string tableSchema, string tableName)

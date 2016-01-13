@@ -282,10 +282,8 @@ namespace GraphView
             var componentSize = component.Size;
             var estimatedCompSize = component.EstimateSize;
             var cost = nodeUnitSize + componentSize;
-            //var joinSelectivity =
-            //    nodeWithJoinMapping.SelectivityProduct;
-                //nodeWithJoinMapping.ExponentialSelevtivityProduct;
             
+            // Sets to leaf deep hash join by default
             WQualifiedJoin joinTable = new WQualifiedJoin
             {
                 FirstTableRef = componentTable,
@@ -299,7 +297,6 @@ namespace GraphView
 
             // If the node is already in the component, then only multiply the degree to get the size
             double nodeUnitActualSize;
-
             double newCompEstSize;
             if (component.MaterializedNodeSplitCount[node] > 0)
             {
@@ -321,8 +318,7 @@ namespace GraphView
                 nodeUnitActualSize = nodeUnitSize;
                 newCompEstSize = component.EstimateSize * estimatedNodeUnitSize * estimatedSelectivity;
             }
-
-            component.EstimateSize = newCompEstSize < 0 ? 1.0 : newCompEstSize;
+            component.EstimateSize = newCompEstSize < 1.0 ? 1.0 : newCompEstSize;
            
 
             //Update Size
@@ -330,6 +326,97 @@ namespace GraphView
 
             // Update Cost
             component.Cost += cost;
+
+            bool firstJoin = component.MaterializedNodeSplitCount.Count == 2 &&
+                             component.MaterializedNodeSplitCount.All(e => e.Value == 0);
+
+            // Update TableRef
+            double loopJoinOuterThreshold = 1e4;//1e6;
+            double sizeFactor = 5;//1000;
+            double maxMemory = 1e8;
+
+            // Loop Join
+            if (
+                nodeUnitCandidate.MaterializedEdges.Count == 0 && // the joins are purely leaf to sink join
+                (
+                    componentSize < loopJoinOuterThreshold ||     // the outer table is relatively small
+                    (component.DeltaMemory + componentSize > maxMemory && component.DeltaMemory + nodeUnitSize > maxMemory) // memory is in pressure
+                ) 
+               )
+            {
+                if (firstJoin)
+                {
+                    component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
+                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
+                }
+                component.TotalMemory = component.DeltaMemory;
+                component.EstimateTotalMemory = component.EstimateDeltaMemory;
+                joinTable.JoinHint = JoinHint.Loop;
+                component.EstimateSize = estimatedCompSize * estimatedNodeUnitSize /
+                                         nodeUnitCandidate.TreeRoot.TableRowCount;
+            }
+            // Hash Join
+            else
+            {
+                if (firstJoin)
+                {
+                    var nodeInComp = component.MaterializedNodeSplitCount.Keys.First(e => e != node);
+                    if (nodeUnitSize < componentSize)
+                    {
+                        joinTable.FirstTableRef = nodeTable;
+                        joinTable.SecondTableRef = componentTable;
+                        component.TotalMemory = component.DeltaMemory = nodeUnitSize;
+                        component.EstimateTotalMemory = component.EstimateDeltaMemory = estimatedNodeUnitSize;
+                        component.RightestTableRefSize = nodeInComp.EstimatedRows;
+                        component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable,
+                            component.GetNodeRefName(nodeInComp));
+                        AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
+                            nodeUnitCandidate.TreeRoot.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node)));
+                    }
+                    else
+                    {
+                        component.TotalMemory = component.DeltaMemory = componentSize;
+                        component.EstimateTotalMemory = component.EstimateDeltaMemory = component.EstimateSize;
+                        component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
+                        component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
+                        AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
+                            nodeInComp.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(nodeInComp)));
+                    }
+                }
+                // Left Deep
+                else if (componentSize*sizeFactor < nodeUnitSize)
+                {
+                    var curDeltaMemory = componentSize;
+                    component.TotalMemory = component.DeltaMemory + curDeltaMemory;
+                    component.DeltaMemory = curDeltaMemory;
+                    var curDeltaEstimateMemory = component.EstimateSize;
+                    component.EstimateTotalMemory = component.EstimateDeltaMemory + curDeltaEstimateMemory;
+                    component.EstimateDeltaMemory = curDeltaEstimateMemory;
+
+                    // Adjust estimation in sql server
+                    AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
+                        component.RightestTableRefSize, component.FatherOfRightestTableRef);
+                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, string>(joinTable,
+                        component.GetNodeRefName(node));
+                    component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
+
+                }
+                // Right Deep
+                else
+                {
+                    joinTable.FirstTableRef = nodeTable;
+                    joinTable.SecondTableRef = componentTable;
+
+                    AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
+                        node.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node)));
+
+                    component.TotalMemory += nodeUnitSize;
+                    component.DeltaMemory = component.TotalMemory;
+                    component.EstimateTotalMemory += estimatedNodeUnitSize;
+                    component.EstimateDeltaMemory = component.EstimateTotalMemory;
+                }
+            }
+
 
             // Debug
 #if DEBUG
@@ -352,95 +439,6 @@ namespace GraphView
             //}
             //Trace.WriteLine("");
 #endif
-
-            
-
-            // Update TableRef
-            // Only consider the size in the first join
-            if (component.MaterializedNodeSplitCount.Count == 2 && component.MaterializedNodeSplitCount.All(e => e.Value == 0))
-            {
-                var nodeInComp = component.MaterializedNodeSplitCount.Keys.First(e => e != node);
-                if (nodeUnitSize < componentSize)
-                {
-                    joinTable.FirstTableRef = nodeTable;
-                    joinTable.SecondTableRef = componentTable;
-                    component.TotalMemory = component.DeltaMemory = nodeUnitSize;
-                    component.EstimateTotalMemory = component.EstimateDeltaMemory = estimatedNodeUnitSize;
-                    component.RightestTableRefSize = nodeInComp.EstimatedRows;
-                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable,
-                        component.GetNodeRefName(nodeInComp));
-                    AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
-                        nodeUnitCandidate.TreeRoot.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node)));
-                }
-                else
-                {
-                    component.TotalMemory = component.DeltaMemory = componentSize;
-                    component.EstimateTotalMemory = component.EstimateDeltaMemory = component.EstimateSize;
-                    component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
-                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
-                    AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
-                        nodeInComp.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(nodeInComp)));
-
-                }
-            }
-            else
-            {
-                double sizeFactor = 5;//1000;
-                double maxMemory = 1e8;
-                double loopJoinInnerThreshold = 10000;
-                double loopJoinOuterThreshold = 1000000;
-
-
-                // Left Deep
-                if (componentSize*sizeFactor < nodeUnitSize)
-                {
-                    var curDeltaMemory = componentSize;
-                    component.TotalMemory = component.DeltaMemory + curDeltaMemory;
-                    component.DeltaMemory = curDeltaMemory;
-                    var curDeltaEstimateMemory = component.EstimateSize;
-                    component.EstimateTotalMemory = component.EstimateDeltaMemory + curDeltaEstimateMemory;
-                    component.EstimateDeltaMemory = curDeltaEstimateMemory;
-
-                    // Adjust estimation in sql server
-                    AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
-                        component.RightestTableRefSize, component.FatherOfRightestTableRef);
-                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node));
-                    component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
-
-                }
-                else
-                {
-                    // Loop Join
-                    if (
-                        //((nodeUnitSize < loopJoinInnerThreshold /*&& componentSize < loopJoinOuterThreshold*/) || component.DeltaMemory + componentSize > maxMemory / 100) &&
-                        ((nodeUnitSize < loopJoinInnerThreshold && componentSize < loopJoinOuterThreshold) ||
-                         component.DeltaMemory + componentSize > maxMemory) &&
-                        nodeUnitCandidate.MaterializedEdges.Count==0)
-                    {
-                        component.TotalMemory = component.DeltaMemory;
-                        component.EstimateTotalMemory = component.EstimateDeltaMemory;
-                        joinTable.JoinHint = JoinHint.Loop;
-                        component.EstimateSize = estimatedCompSize*estimatedNodeUnitSize/
-                                                 nodeUnitCandidate.TreeRoot.TableRowCount;
-
-                    }
-                    // Right Deep
-                    else
-                    {
-                        joinTable.FirstTableRef = nodeTable;
-                        joinTable.SecondTableRef = componentTable;
-
-                        AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
-                            node.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node)));
-
-                        component.TotalMemory += nodeUnitSize;
-                        component.DeltaMemory = component.TotalMemory;
-                        component.EstimateTotalMemory += estimatedNodeUnitSize;
-                        component.EstimateDeltaMemory = component.EstimateTotalMemory;
-
-                    }
-                }
-            }
 
             return new WParenthesisTableReference
             {
