@@ -557,7 +557,7 @@ namespace GraphView
             if (!ParseDataType(tokens, ref currentToken, ref dataType, ref farestError))
                 return false;
 
-            HashSet<string> metaDataFields = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase)
+            HashSet<string> metaDataFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "columnrole",
                 "reference",

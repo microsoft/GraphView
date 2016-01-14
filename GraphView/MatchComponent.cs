@@ -717,7 +717,7 @@ namespace GraphView
             // Updates join conditions
             double selectivity = 1.0;
             double degrees = 1.0;
-            var DensityCount = new Dictionary<string, int>(StringComparer.CurrentCultureIgnoreCase);
+            var DensityCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
             List<MatchEdge> inEdges;
             if (newComponent.UnmaterializedNodeMapping.TryGetValue(root, out inEdges))

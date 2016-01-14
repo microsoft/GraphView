@@ -621,7 +621,7 @@ namespace GraphView
                     command.ExecuteNonQuery();
                 }
 
-                var edgeColumnNameToColumnId = new Dictionary<string, long>(StringComparer.CurrentCultureIgnoreCase); 
+                var edgeColumnNameToColumnId = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase); 
                 using (var command = new SqlCommand(null, Conn))
                 {
                     command.Transaction = tx;

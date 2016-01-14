@@ -72,7 +72,7 @@ namespace GraphView
             var schema = tableRef.TableObjectName.DatabaseIdentifier == null
                 ? "dbo"
                 : tableRef.TableObjectName.DatabaseIdentifier.Value;
-            if (string.Compare(schema, _schema, StringComparison.CurrentCultureIgnoreCase) != 0)
+            if (string.Compare(schema, _schema, StringComparison.OrdinalIgnoreCase) != 0)
                 throw new NodeViewException("All the node tables should be in the same schema as the node view");
 
             var tableRefName = tableRef.TableObjectName.SchemaIdentifier.Value;
@@ -200,7 +200,7 @@ namespace GraphView
             var schema = tableRef.TableObjectName.SchemaIdentifier == null
                 ? "dbo"
                 : tableRef.TableObjectName.SchemaIdentifier.Value;
-            if (string.Compare(schema, _schema, StringComparison.CurrentCultureIgnoreCase) != 0)
+            if (string.Compare(schema, _schema, StringComparison.OrdinalIgnoreCase) != 0)
                 throw new NodeViewException("All the node tables should be in the same schema as the node view");
             
             var tableRefName = tableRef.TableObjectName.BaseIdentifier.Value;

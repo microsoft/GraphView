@@ -1531,7 +1531,7 @@ namespace GraphView
                 foreach (var iterator in FileHeader)
                 {
                     count++;
-                    if (String.Equals(iterator, ":label", StringComparison.CurrentCultureIgnoreCase))
+                    if (String.Equals(iterator, ":label", StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -1628,7 +1628,7 @@ namespace GraphView
                 foreach (var iterator in FileHeader)
                 {
                     count++;
-                    if (String.Equals(iterator, ":type", StringComparison.CurrentCultureIgnoreCase))
+                    if (String.Equals(iterator, ":type", StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -1750,7 +1750,7 @@ namespace GraphView
                         }
                         else
                         {
-                            if (!String.Equals(y[it.Value], it.Key, StringComparison.CurrentCultureIgnoreCase))
+                            if (!String.Equals(y[it.Value], it.Key, StringComparison.OrdinalIgnoreCase))
                             {
                                 return false;
                             }

@@ -46,10 +46,10 @@ namespace GraphView
             new Dictionary<MatchEdge, Dictionary<string, string>>();
 
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
-            new Dictionary<string, WTableReferenceWithAlias>(StringComparer.CurrentCultureIgnoreCase);
+            new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
 
         private readonly Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> _edgeDictionary =
-            new Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>>(StringComparer.CurrentCultureIgnoreCase);
+            new Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>>(StringComparer.OrdinalIgnoreCase);
 
         private Dictionary<string, string> _columnTableAliasMapping;
 
@@ -151,7 +151,7 @@ namespace GraphView
         {
             if (_columnTableAliasMapping == null)
             {
-                _columnTableAliasMapping = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
+                _columnTableAliasMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 var duplicateColumns = new HashSet<string>();
                 foreach (var kvp in NodeTableDictionary)
                 {
@@ -211,7 +211,7 @@ namespace GraphView
         {
             var currentContext = UpperLevel;
             var upperTableDictionary =
-                new Dictionary<string, WTableReferenceWithAlias>(StringComparer.CurrentCultureIgnoreCase);
+                new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
             while (currentContext != null)
             {
                 foreach (var table in currentContext.NodeTableDictionary)

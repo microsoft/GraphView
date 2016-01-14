@@ -124,7 +124,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Creates node view without updating metatable.
+        /// Creates node view without updating metadatatable.
         /// </summary>
         /// <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
         ///  <param name="nodeViewName"> The name of supper node. </param>
@@ -278,6 +278,7 @@ namespace GraphView
                         }
                     }
                 }
+
                 if (_dictionaryTableId.Count() != nodes.Count())
                 {
                     foreach (var it in nodes)
@@ -1024,6 +1025,10 @@ namespace GraphView
                         }
                     }
                 }
+                //sort it
+                _edgeColumnToColumnId = _edgeColumnToColumnId.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
+                edges = edges.OrderBy(x => _edgeColumnToColumnId[Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())]).ToList();
+
                 var edgeNotInMetaTable = _edgeColumnToColumnId.Where(x => x.Value == -1).Select(x => x.Key).ToArray();
                 if (edgeNotInMetaTable.Any())
                 {
@@ -1069,7 +1074,8 @@ namespace GraphView
                     on NTC.TableId = NTCC.TableId
                     join {2} EAC
                     on EAC.columnid = NTCC.ColumnId
-                    where NTC.TableSchema = @schema and columnRole = @role";
+                    where NTC.TableSchema = @schema and columnRole = @role
+                    order by EAC.AttributeId";
                     command.CommandText = string.Format(findEdgeAttribute, MetadataTables[0], MetadataTables[1],
                         MetadataTables[2]);
                     command.Parameters.Clear();
@@ -1304,6 +1310,7 @@ namespace GraphView
                         emptyAttribute[0].Key));
                 }
 
+                
                 GraphViewDefinedFunctionGenerator.EdgeViewRegister(_nodeName, tableSchema, edgeViewName,
                     _attributeType,
                     edgeColumnToAttributeInfo, _edgeColumnToColumnId, Conn, command.Transaction);

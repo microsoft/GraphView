@@ -37,7 +37,7 @@ namespace GraphView
     /// </summary>
     internal static class GraphViewKeywords
     {
-        public static readonly HashSet<string> _keywords = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase)
+        public static readonly HashSet<string> _keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
 #if !DEBUG
                 "globalnodeid",
