@@ -859,7 +859,7 @@ namespace GraphView
                                         edgeColumn.Item1);
                                     command.ExecuteNonQuery();
                                     command.CommandText = string.Format(
-                                        @"DROP FUNCTION [{0}_{1}_PathDecoder];
+                                        @"DROP FUNCTION [{0}_{1}_ExclusiveEdgeGenerator];
                                           DROP FUNCTION [{0}_{1}_bfs];",
                                         assemblyName,
                                         edgeColumn.Item1);

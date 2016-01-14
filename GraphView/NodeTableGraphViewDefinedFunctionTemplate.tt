@@ -128,7 +128,7 @@ foreach (var edge in EdgeList) {
     }
 
 	//Path Decoder
-	private class <#=edgeName#>PathDecoderResult 
+	private class <#=edgeName#>ExclusiveEdgeGeneratorResult 
 	{
 		public int EdgeId{get; set;}
 		public long EdgeColumnId {get; set;}
@@ -138,7 +138,7 @@ foreach (var edge in EdgeList) {
 <#}#>
 	}
 
-	public static void <#=edgeName#>PathDecoder_FillRow(
+	public static void <#=edgeName#>ExclusiveEdgeGenerator_FillRow(
         object tableTypeObject,
         out SqlInt32 EdgeId, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId <#
 		for (var i = 0; i < variables.Count; ++i)
@@ -148,7 +148,7 @@ foreach (var edge in EdgeList) {
 		}#>
 		)
     {
-        var decoderResult = (<#=edgeName#>PathDecoderResult)tableTypeObject;
+        var decoderResult = (<#=edgeName#>ExclusiveEdgeGeneratorResult)tableTypeObject;
         EdgeId = decoderResult.EdgeId;
 		EdgeColumnId =  decoderResult.EdgeColumnId;
         SinkId = decoderResult.SinkId;
@@ -160,11 +160,11 @@ foreach (var edge in EdgeList) {
       	[SqlFunction(
         DataAccess = DataAccessKind.None,
         TableDefinition = "EdgeId int, EdgeColumnId bigint, SinkId bigint",
-        FillRowMethodName = "<#=edgeName#>PathDecoder_FillRow",
+        FillRowMethodName = "<#=edgeName#>ExclusiveEdgeGenerator_FillRow",
         IsDeterministic = true,
         IsPrecise = false
         )]
-    public static IEnumerable <#=edgeName#>PathDecoder(SqlBytes  PathVarbinary, SqlInt64 nodeid, SqlBytes array, SqlBytes dele)
+    public static IEnumerable <#=edgeName#>ExclusiveEdgeGenerator(SqlBytes  PathVarbinary, SqlInt64 nodeid, SqlBytes array, SqlBytes dele)
     {
         if (array == null || array.IsNull)
             yield break;
@@ -186,7 +186,7 @@ foreach (var edge in EdgeList) {
             var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
             if (!PathDict.ContainsKey(EdgeId))
             {
-            	yield return new <#=edgeName#>PathDecoderResult
+            	yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
             	{
 					EdgeId = adjacent.EdgeId,
 					EdgeColumnId = <#=edgeColumnId#>,

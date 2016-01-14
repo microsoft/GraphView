@@ -1304,7 +1304,7 @@ namespace GraphView
                         emptyAttribute[0].Key));
                 }
 
-                GraphViewDefinedFunctionGenerator.RegisterEdgeView(_nodeName, tableSchema, edgeViewName,
+                GraphViewDefinedFunctionGenerator.EdgeViewRegister(_nodeName, tableSchema, edgeViewName,
                     _attributeType,
                     edgeColumnToAttributeInfo, _edgeColumnToColumnId, Conn, command.Transaction);
 
@@ -1687,8 +1687,12 @@ namespace GraphView
                 Drop function [{0}]";
                 command.Parameters.Clear();
                 command.CommandText = string.Format(dropFunction,
+                    tableSchema + '_' + _nodeName + '_' + edgeView + '_' + "ExclusiveEdgeGenerator");
+                command.ExecuteNonQuery();
+                command.CommandText = string.Format(dropFunction,
                     tableSchema + '_' + _nodeName + '_' + edgeView + '_' + "Decoder");
                 command.ExecuteNonQuery();
+
                 const string dropAssembly = @"
                 Drop Assembly [{0}_Assembly]";
                 command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);

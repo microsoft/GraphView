@@ -557,10 +557,18 @@ namespace GraphViewUnitTest
                 command.ExecuteNonQuery();
 
                 //Run following SQL query can get 8 paths:
-                //string query = @"
-                //    select *
-                //    from dbo.dbo_ClientNode_Colleaguesbfs(0);";
-                //graph.ExecuteNonQuery(query);
+                string query = @"
+                select *
+				from ClientNode cross apply dbo_ClientNode_Colleagues_bfs(ClientNode.GlobalNodeId,
+				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, 0, -1, null)
+				where ClientNode.ClientId = 0";
+                command.CommandText = query;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                    }
+                }
 
                 const string deleteEdge = @"
                     DELETE EDGE [Cn1]-[Colleagues]->[Cn2]
@@ -569,8 +577,13 @@ namespace GraphViewUnitTest
                 command.CommandText = deleteEdge;
                 command.ExecuteNonQuery();
 
-                //Run following SQL query can get 6 paths:
-                //graph.ExecuteNonQuery(query);
+                //Run following SQL query can get 7 paths:
+                //using (var reader = command.ExecuteReader())
+                //{
+                //    while (reader.Read())
+                //    {
+                //    }
+                //}
 
                 //graph.DropNodeTable(@"drop table clientnode");
             }

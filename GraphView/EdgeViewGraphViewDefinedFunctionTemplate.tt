@@ -152,7 +152,7 @@
 
 
    //Path Decoder
-    private class <#=EdgeName#>PathDecoderResult 
+    private class <#=EdgeName#>ExclusiveEdgeGeneratorResult 
     {
         public int EdgeId{get; set;}
         public long SinkId{get; set;}
@@ -162,7 +162,7 @@
 <#}#>
     }
 
-    public static void <#=EdgeName#>PathDecoder_FillRow(
+    public static void <#=EdgeName#>ExclusiveEdgeGenerator_FillRow(
         object tableTypeObject,
         out SqlInt32 EdgeId, out SqlInt64 ColumnId, out SqlInt64 SinkId <#
 
@@ -172,7 +172,7 @@
 		}#>
         )
     {
-        var decoderResult = (<#=EdgeName#>PathDecoderResult)tableTypeObject;
+        var decoderResult = (<#=EdgeName#>ExclusiveEdgeGeneratorResult)tableTypeObject;
         EdgeId = decoderResult.EdgeId;
         ColumnId = decoderResult.ColumnId;
         SinkId = decoderResult.SinkId;
@@ -184,11 +184,11 @@
         [SqlFunction(
         DataAccess = DataAccessKind.None,
         TableDefinition = "EdgeId int, ColumnId bigint, SinkId bigint",
-        FillRowMethodName = "<#=EdgeName#>PathDecoder_FillRow",
+        FillRowMethodName = "<#=EdgeName#>ExclusiveEdgeGenerator_FillRow",
         IsDeterministic = true,
         IsPrecise = false
         )]
-    public static IEnumerable <#=EdgeName#>PathDecoder(
+    public static IEnumerable <#=EdgeName#>ExclusiveEdgeGenerator(
 		SqlBytes  PathVarbinary,
 		SqlInt64 nodeid,
 <#
@@ -236,7 +236,7 @@
             var EdgeId = Tuple.Create(nodeid.Value, adjacent.EdgeId);
             if (!PathDict.ContainsKey(EdgeId))
             {
-                yield return new <#=EdgeName#>PathDecoderResult
+                yield return new <#=EdgeName#>ExclusiveEdgeGeneratorResult
                 {
                     EdgeId = adjacent.EdgeId,
 					ColumnId = adjacent.ColumnId,

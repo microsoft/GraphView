@@ -230,7 +230,7 @@ namespace GraphView
             }
         }
 
-        public static void RegisterEdgeView(string suppernode, string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
+        public static void EdgeViewRegister(string suppernode, string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
             Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary, Dictionary<Tuple<string, string>, long> edgeColumnToColumnId,
             SqlConnection conn, SqlTransaction tx)
         {

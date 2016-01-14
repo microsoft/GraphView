@@ -39,7 +39,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
   AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
 GO
 
-CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathDecoder(
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @PathVarbinary varbinary(max), @nodeid bigint, @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
 (
 	EdgeId int, EdgeColumnId bigint, Sink bigint<#
@@ -51,11 +51,12 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathDecoder(
     WriteLine("");
 #>
 )
-  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>PathDecoder;
+  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator;
 GO
 
-create function <#=AssemblyName#>_<#=edgeName#>_bfs(@source bigint,
- @depth bigint<#foreach (var it in variables) {
+create function <#=AssemblyName#>_<#=edgeName#>_bfs(@source bigint, @edgeColumn varbinary(max), @Del varbinary(max),
+@minlength bigint,
+@maxlength bigint<#foreach (var it in variables) {
 		WriteLine(", ");
 		Write("@" + it.Item1);
 		Write(" " + typeDictionary[it.Item2].Item1);
@@ -65,13 +66,23 @@ returns table
 as 
 return 
 with  allPath(sink, varPath) as (
-       select @source, CAST(0x as varbinary(max))
+       select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
+	   convert(binary(8), reverse(convert(binary(8), 3))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
+       from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
+	   Where (@maxlength != 0)
+   	   <#foreach (var it in variables) {
+   	   Write("and (");
+   	   Write("@" + it.Item1 + " is null or ");
+   	   WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+   	   }#>
+
        union all
+
        select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
 	   convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path
        from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
-       cross apply <#=AssemblyName#>_<#=edgeName#>_PathDecoder(allPath.varPath,<#=NodeTable#>.GlobalNodeId, <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-	   Where (@depth = -1 or DATALENGTH(allPath.varPath) <= (@depth - 1) * 20)
+       cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId, <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
+	   Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
    	   <#foreach (var it in variables) {
    	   Write("and (");
    	   Write("@" + it.Item1 + " is null or ");
@@ -79,8 +90,12 @@ with  allPath(sink, varPath) as (
    	   }#>
 
 )
+select @source as sink, CAST(0x as varbinary(max)) as varPath
+where @minlength = 0
+union
 select *
 from allPath
+where DATALENGTH(allPath.varPath) >= @minlength * 20
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Recycle(@src varbinary(max), @toRecycle varbinary(max))
@@ -129,6 +144,24 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 #>
 ) 
   AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
+GO
+
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
+@PathVarbinary varbinary(max), @nodeid bigint, 
+<#for (int i = 0; i < InputCount; i++) {#>
+@array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
+<#}#>) RETURNs TABLE
+(
+	EdgeId int, EdgeColumnId bigint, Sink bigint<#
+    for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+    WriteLine("");
+#>
+)
+  AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator; 
 GO
 <#}#>
 <#}#>

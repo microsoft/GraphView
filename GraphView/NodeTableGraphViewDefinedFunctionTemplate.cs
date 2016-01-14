@@ -270,8 +270,8 @@ if (byteSize != 0) {
             
             #line default
             #line hidden
-            this.Write("PathDecoderResult \r\n\t{\r\n\t\tpublic int EdgeId{get; set;}\r\n\t\tpublic long EdgeColumnI" +
-                    "d {get; set;}\r\n\t\tpublic long SinkId{get; set;}\r\n");
+            this.Write("ExclusiveEdgeGeneratorResult \r\n\t{\r\n\t\tpublic int EdgeId{get; set;}\r\n\t\tpublic long " +
+                    "EdgeColumnId {get; set;}\r\n\t\tpublic long SinkId{get; set;}\r\n");
             
             #line 136 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 foreach (var variable in variables) {
@@ -306,8 +306,8 @@ foreach (var variable in variables) {
             
             #line default
             #line hidden
-            this.Write("PathDecoder_FillRow(\r\n        object tableTypeObject,\r\n        out SqlInt32 EdgeI" +
-                    "d, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId ");
+            this.Write("ExclusiveEdgeGenerator_FillRow(\r\n        object tableTypeObject,\r\n        out Sql" +
+                    "Int32 EdgeId, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId ");
             
             #line 143 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 
@@ -326,9 +326,9 @@ foreach (var variable in variables) {
             
             #line default
             #line hidden
-            this.Write("PathDecoderResult)tableTypeObject;\r\n        EdgeId = decoderResult.EdgeId;\r\n\t\tEdg" +
-                    "eColumnId =  decoderResult.EdgeColumnId;\r\n        SinkId = decoderResult.SinkId;" +
-                    "\r\n");
+            this.Write("ExclusiveEdgeGeneratorResult)tableTypeObject;\r\n        EdgeId = decoderResult.Edg" +
+                    "eId;\r\n\t\tEdgeColumnId =  decoderResult.EdgeColumnId;\r\n        SinkId = decoderRes" +
+                    "ult.SinkId;\r\n");
             
             #line 155 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 foreach (var variable in variables) {
@@ -365,15 +365,15 @@ foreach (var variable in variables) {
             
             #line default
             #line hidden
-            this.Write("PathDecoder_FillRow\",\r\n        IsDeterministic = true,\r\n        IsPrecise = false" +
-                    "\r\n        )]\r\n    public static IEnumerable ");
+            this.Write("ExclusiveEdgeGenerator_FillRow\",\r\n        IsDeterministic = true,\r\n        IsPrec" +
+                    "ise = false\r\n        )]\r\n    public static IEnumerable ");
             
             #line 167 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
-            this.Write(@"PathDecoder(SqlBytes  PathVarbinary, SqlInt64 nodeid, SqlBytes array, SqlBytes dele)
+            this.Write(@"ExclusiveEdgeGenerator(SqlBytes  PathVarbinary, SqlInt64 nodeid, SqlBytes array, SqlBytes dele)
     {
         if (array == null || array.IsNull)
             yield break;
@@ -418,8 +418,8 @@ foreach (var variable in variables) {
             
             #line default
             #line hidden
-            this.Write("PathDecoderResult\r\n            \t{\r\n\t\t\t\t\tEdgeId = adjacent.EdgeId,\r\n\t\t\t\t\tEdgeColum" +
-                    "nId = ");
+            this.Write("ExclusiveEdgeGeneratorResult\r\n            \t{\r\n\t\t\t\t\tEdgeId = adjacent.EdgeId,\r\n\t\t\t" +
+                    "\t\tEdgeColumnId = ");
             
             #line 192 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
