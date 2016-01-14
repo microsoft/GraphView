@@ -42,12 +42,19 @@ namespace GraphView
         public MatchNode SinkNode { get; set; }
         public string EdgeAlias { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
-        public IList<Tuple<string, string>> IncludedEdgeNames { get; set; } 
+        public IList<Tuple<string, string>> IncludedEdgeNames { get; set; }
+        public int MinLength { get; set; }
+        public int MaxLength { get; set; }
 
         public override int GetHashCode()
         {
             return EdgeAlias.GetHashCode();
-    }
+        }
+
+        public bool IsPath
+        {
+            get { return !(MinLength == 1 && MaxLength == 1); }
+        }
 
     }
 

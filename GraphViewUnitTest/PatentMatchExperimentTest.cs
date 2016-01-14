@@ -12,7 +12,7 @@ namespace GraphViewUnitTest
     //[TestClass]
     public class PatentMatchExperimentTest
     {
-        private readonly string _connStr = @"Data Source=4QQBZX12;Integrated Security=True;Database=GraphExperiment";
+        private readonly string _connStr = @"Data Source=4QQBZX12;Integrated Security=True;Database=graphviewflowtest";
 
         private void ClearDatabase()
         {

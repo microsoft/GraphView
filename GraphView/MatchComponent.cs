@@ -100,6 +100,8 @@ namespace GraphView
 
         public WSqlTableContext Context { get; set; }
 
+        public GraphMetaData MetaData { get; set; }
+
         
         public MatchComponent()
         {
@@ -161,11 +163,13 @@ namespace GraphView
             RightestTableRefSize = component.RightestTableRefSize;
             FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>(component.FatherListofDownSizeTable);
             Context = component.Context;
+            MetaData = component.MetaData;
         }
 
-        public MatchComponent(MatchNode node, List<MatchEdge> populatedEdges, WSqlTableContext context) : this(node)
+        public MatchComponent(MatchNode node, List<MatchEdge> populatedEdges, WSqlTableContext context, GraphMetaData metaData) : this(node)
         {
             Context = context;
+            MetaData = metaData;
             foreach (var edge in populatedEdges)
             {
                 TableRef = SpanTableRef(TableRef, edge, node.RefAlias);
@@ -281,7 +285,7 @@ namespace GraphView
             var nodeUnitSize = nodeUnitCandidate.TreeRoot.EstimatedRows * nodeDegrees;
             var componentSize = component.Size;
             var estimatedCompSize = component.EstimateSize;
-            var cost = nodeUnitSize + componentSize;
+            //var cost = nodeUnitSize + componentSize;
             
             // Sets to leaf deep hash join by default
             WQualifiedJoin joinTable = new WQualifiedJoin
@@ -324,8 +328,7 @@ namespace GraphView
             //Update Size
             component.Size *= nodeUnitActualSize * joinSelectivity;
 
-            // Update Cost
-            component.Cost += cost;
+            
 
             bool firstJoin = component.MaterializedNodeSplitCount.Count == 2 &&
                              component.MaterializedNodeSplitCount.All(e => e.Value == 0);
@@ -334,6 +337,7 @@ namespace GraphView
             double loopJoinOuterThreshold = 1e4;//1e6;
             double sizeFactor = 5;//1000;
             double maxMemory = 1e8;
+            double cost;
 
             // Loop Join
             if (
@@ -354,10 +358,13 @@ namespace GraphView
                 joinTable.JoinHint = JoinHint.Loop;
                 component.EstimateSize = estimatedCompSize * estimatedNodeUnitSize /
                                          nodeUnitCandidate.TreeRoot.TableRowCount;
+                cost = 2*componentSize;
+                //cost = componentSize + nodeUnitSize;
             }
             // Hash Join
             else
             {
+                cost = componentSize + nodeUnitSize;
                 if (firstJoin)
                 {
                     var nodeInComp = component.MaterializedNodeSplitCount.Keys.First(e => e != node);
@@ -417,6 +424,9 @@ namespace GraphView
                 }
             }
 
+            // Update Cost
+            component.Cost += cost;
+
 
             // Debug
 #if DEBUG
@@ -452,7 +462,7 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="nodeAlias"></param>
         /// <returns></returns>
-        private static WTableReference EdgeToTableReference(MatchEdge edge, string nodeAlias)
+        private WTableReference EdgeToTableReference(MatchEdge edge, string nodeAlias)
         {
             var edgeIdentifiers = edge.EdgeColumn.MultiPartIdentifier.Identifiers;
             var edgeColIdentifier = edgeIdentifiers.Last();
@@ -519,6 +529,7 @@ namespace GraphView
                             new WMultiPartIdentifier(srcNodeIdentifier,
                                 new Identifier { Value = nodeViewEdgeColIdentifier.Value + "DeleteCol" })
                     });
+                    
                 }
                 // The edge is a edge view
                 else
@@ -552,14 +563,54 @@ namespace GraphView
                 }
             }
 
-            var decoderFunction = new Identifier
+            string decoderFunctionName;
+            if (edge.IsPath)
             {
-                Value = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-                        edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
-                        edgeColIdentifier.Value + '_' +
-                        "Decoder",
+                decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+                                      edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
+                                      edgeColIdentifier.Value + '_' +
+                                      "bfs";
+                parameters.Insert(0,new WValueExpression { Value = edge.MaxLength.ToString() });
+                parameters.Insert(0,new WValueExpression { Value = edge.MinLength.ToString() });
+                parameters.Insert(0,
+                    new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(new[] {srcNodeIdentifier, new Identifier {Value = "GlobalNodeId"},})
+                    });
+                
+                var attributes =
+                        MetaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(edge.BindNodeTableObjName)][
+                            edgeColIdentifier.Value.ToLower()].EdgeInfo.ColumnAttributes;
+                if (edge.Predicates == null)
+                {
+                    WValueExpression nullExpression = new WValueExpression {Value = "null"};
+                    for (int i = 0; i < attributes.Count; i++)
+                        parameters.Add(nullExpression);
+                }
+                else
+                {
+                    var attrDict = Context.GetPathPredicatesValueDict(edge);
+                    foreach (var attribute in attributes)
+                    {
+                        string value;
+                        var valueExpression = new WValueExpression
+                        {
+                            Value = attrDict.TryGetValue(attribute, out value) ? value : "null"
+                        };
 
-            };
+                        parameters.Add(valueExpression);
+                    }
+                }
+            }
+            else
+            {
+                decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+                                      edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
+                                      edgeColIdentifier.Value + '_' +
+                                      "Decoder";
+            }
+            var decoderFunction = new Identifier {Value = decoderFunctionName};
             var tableRef = new WSchemaObjectFunctionTableReference
             {
                 SchemaObject = new WSchemaObjectName(
@@ -581,7 +632,7 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="nodeAlias"></param>
         /// <returns></returns>
-        public static WTableReference SpanTableRef(WTableReference tableRef, MatchEdge edge, string nodeAlias)
+        public WTableReference SpanTableRef(WTableReference tableRef, MatchEdge edge, string nodeAlias)
         {
             tableRef = new WUnqualifiedJoin
             {
@@ -606,12 +657,11 @@ namespace GraphView
         /// Transit from current component to the new component in the next state given the Node Unit
         /// </summary>
         /// <param name="candidateTree"></param>
-        /// <param name="metaData"></param>
+        /// <param name="graphMetaData"></param>
         /// <param name="statisticsCalculator"></param>
         /// <returns></returns>
         public MatchComponent GetNextState(
             OneHeightTree candidateTree, 
-            MetaData metaData, 
             IMatchJoinStatisticsCalculator statisticsCalculator)
         {
             var newComponent = new MatchComponent(this);
@@ -893,7 +943,7 @@ namespace GraphView
             }
 
             // Calculate Estimated Join Selectivity & Estimated Node Size
-            var densityDict = metaData.TableIdDensity;
+            var densityDict = MetaData.TableIdDensity;
             double estimatedSelectity = 1.0;
             int count = 0;
             bool sinkJoin = false;

@@ -139,19 +139,20 @@ namespace GraphView
             }
             var starCount = edgeInfo.Count(e => e == '*');
             string edgeNames;
+            int maxLen = 1;
+            int minLen = 1;
             switch (starCount)
             {
                 case 0:
                 {
                     edgeNames = edgeInfo;
-                    result = new WSingleEdgeColumnReferenceExpression();
                     break;
                 }
                 case 1:
                 {
                     var splitPathInfo = edgeInfo.Split('*');
-                    int maxLen = -1;
-                    int minLen = -1;
+                    maxLen = -1;
+                    minLen = 0;
                     edgeNames = splitPathInfo.First();
                     string lenStr = splitPathInfo.Last();
                     if (!string.IsNullOrEmpty(lenStr))
@@ -164,7 +165,6 @@ namespace GraphView
                         if (!int.TryParse(lenInfo.Last(), out maxLen))
                             throw new SyntaxErrorException(line, lenInfo.Last(), "Min length should be an integer");
                     }
-                    result = new WPathColumnReferenceExpression { MaxLength = maxLen, MinLength = minLen };
                     break;
                 }
                 default:
@@ -177,10 +177,16 @@ namespace GraphView
             if (edgeMatchCollection.Count != 1)
                 throw new SyntaxErrorException(line, edgeInfo, "Invalid edge name. Remove the unecessary spaces and try again.");
             edgeIdentifier.Value = edgeMatchCollection[0].Value;
-            result.Alias = alias;
-            result.ColumnType = ColumnType.Regular;
-            result.MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier);
-            result.FirstTokenIndex = result.LastTokenIndex = currentToken - 1;
+            result = new WEdgeColumnReferenceExpression
+            {
+                ColumnType = ColumnType.Regular,
+                Alias = alias,
+                LastTokenIndex = currentToken - 1,
+                FirstTokenIndex = currentToken - 1,
+                MaxLength = maxLen,
+                MinLength = minLen,
+                MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier)
+            };
             return true;
         }
 

@@ -123,15 +123,11 @@ namespace GraphView
 
     public abstract partial class WPrimaryExpression : WScalarExpression { }
 
-    public enum AliasType
-    {
-        Default,
-        UserSpecified
-    }
-
-    public abstract partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
+    public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
     {
         internal string Alias;
+        internal int MinLength { get; set; }
+        internal int MaxLength { get; set; }
     }
     //public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
     //{
@@ -139,15 +135,15 @@ namespace GraphView
     //    internal AliasType AliasRole { get; set; }
     //}
 
-    public partial class WSingleEdgeColumnReferenceExpression : WEdgeColumnReferenceExpression
-    {
-    }
+    //public partial class WSingleEdgeColumnReferenceExpression : WEdgeColumnReferenceExpression
+    //{
+    //}
 
-    public partial class WPathColumnReferenceExpression : WEdgeColumnReferenceExpression
-    {
-        internal int MinLength { get; set; }
-        internal int MaxLength { get; set; }
-    }
+    //public partial class WPathColumnReferenceExpression : WEdgeColumnReferenceExpression
+    //{
+    //    internal int MinLength { get; set; }
+    //    internal int MaxLength { get; set; }
+    //}
 
     /// <summary>
     /// A reference to a column. 
@@ -376,8 +372,6 @@ namespace GraphView
                 visitor.Visit(this);
         }
     }
-
-    //public partial class WVariableReference : WValueExpression { }
 
     public partial class WParenthesisExpression : WPrimaryExpression
     {

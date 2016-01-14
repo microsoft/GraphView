@@ -42,6 +42,9 @@ namespace GraphView
         private readonly Dictionary<MatchEdge, ColumnStatistics> _edgeStatisticses =
             new Dictionary<MatchEdge, ColumnStatistics>();
 
+        private readonly Dictionary<MatchEdge, Dictionary<string, string>> _pathPredicatesValueDictionary =
+            new Dictionary<MatchEdge, Dictionary<string, string>>();
+
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
             new Dictionary<string, WTableReferenceWithAlias>(StringComparer.CurrentCultureIgnoreCase);
 
@@ -74,6 +77,11 @@ namespace GraphView
             return _edgeStatisticses[edge];
         }
 
+        public Dictionary<string, string> GetPathPredicatesValueDict(MatchEdge edge)
+        {
+            return _pathPredicatesValueDictionary[edge];
+        }
+
         public WTableReferenceWithAlias this[string name]
         {
             get
@@ -101,10 +109,10 @@ namespace GraphView
         /// <param name="schema"></param>
         /// <param name="edgeColumn"></param>
         /// <param name="nodeTable"></param>
-        /// <param name="metaData"></param>
+        /// <param name="graphMetaData"></param>
         /// <returns>Return null when there not exists the binding node/node view, 
         /// otherwise return name of the node/node view bound to the edge/edge view</returns>
-        public string BindEdgeToNode(string schema, string edgeColumn, string nodeTable, MetaData metaData)
+        public string BindEdgeToNode(string schema, string edgeColumn, string nodeTable, GraphMetaData graphMetaData)
         {
             var edgeNodeTuple = new Tuple<string, string>(nodeTable, edgeColumn);
             string resNode;
@@ -112,16 +120,16 @@ namespace GraphView
                 return resNode;
 
             var nodeTuple = new Tuple<string, string>(schema, nodeTable);
-            if (metaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumn))
+            if (graphMetaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumn))
             {
                 _edgeNodeBinding[edgeNodeTuple] = nodeTable.ToLower();
                 return nodeTable;
             }
-            else if (metaData.NodeViewMapping.ContainsKey(nodeTuple))
+            else if (graphMetaData.NodeViewMapping.ContainsKey(nodeTuple))
             {
-                foreach (var node in metaData.NodeViewMapping[nodeTuple])
+                foreach (var node in graphMetaData.NodeViewMapping[nodeTuple])
                 {
-                    if (metaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, node)].ContainsKey(edgeColumn))
+                    if (graphMetaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, node)].ContainsKey(edgeColumn))
                     {
                         if (string.IsNullOrEmpty(resNode))
                             resNode = node;
@@ -234,6 +242,15 @@ namespace GraphView
         public void AddEdgeStatistics(MatchEdge edge, ColumnStatistics statistics)
         {
             _edgeStatisticses.Add(edge, statistics);
+        }
+
+        public void AddPathPredicateValue(MatchEdge path, string attribute, string value)
+        {
+            var attrDict = _pathPredicatesValueDictionary.GetOrCreate(path);
+            if (attrDict.ContainsKey(attribute.ToLower()))
+                throw new GraphViewException(string.Format(
+                    "Only one value can be specified for the given attribute {0}", attribute));
+            attrDict.Add(attribute, value);
         }
     }
 }
