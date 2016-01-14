@@ -526,16 +526,19 @@ namespace GraphView
                         }
                     }
 
-                    if (currentEdge.AliasRole == AliasType.Default)
+                    string edgeAlias = currentEdge.Alias;
+                    if (edgeAlias == null)
                     {
                         var currentEdgeName = currentEdge.MultiPartIdentifier.Identifiers.Last().Value;
+                        edgeAlias = string.Format("{0}_{1}_{2}", currentNodeExposedName, currentEdgeName,
+                            nextNodeExposedName);
                         if (edgeTableReferenceDict.ContainsKey(currentEdgeName))
                         {
-                            edgeTableReferenceDict[currentEdgeName].Add(currentEdge.Alias);
+                            edgeTableReferenceDict[currentEdgeName].Add(edgeAlias);
                         }
                         else
                         {
-                            edgeTableReferenceDict.Add(currentEdgeName, new List<string> {currentEdge.Alias});
+                            edgeTableReferenceDict.Add(currentEdgeName, new List<string> { edgeAlias });
                         }
                     }
 
@@ -557,12 +560,11 @@ namespace GraphView
                             {
                                 Identifiers = new List<Identifier>
                                 {
-                                    new Identifier {Value = node.NodeAlias},
                                     edgeIdentifier
                                 }
                             }
                         },
-                        EdgeAlias = currentEdge.Alias,
+                        EdgeAlias = edgeAlias,
                         BindNodeTableObjName =
                             new WSchemaObjectName(
                                 new Identifier {Value = schema},
@@ -591,7 +593,7 @@ namespace GraphView
                     node.Neighbors.Add(edge);
 
 
-                    _context.AddEdgeReference(currentEdge.Alias, edge.SourceNode.NodeTableObjectName, currentEdge);
+                    _context.AddEdgeReference(edge);
                 }
                 var tailExposedName = path.Tail.BaseIdentifier.Value;
                 var tailNode = nodes.GetOrCreate(tailExposedName);

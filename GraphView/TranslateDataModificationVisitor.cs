@@ -945,7 +945,7 @@ namespace GraphView
             // Wraps the select statement in a common table expression
             WTableReference sinkTable, sourceTable;
             var deleteCommonTableExpr = ConstructDeleteEdgeSelect(node.SelectDeleteExpr,
-                node.EdgeColumn.Alias, deleteEdgeTempTable,
+                node.EdgeColumn, deleteEdgeTempTable,
                 out sinkTable, out sourceTable);
             var sourceNameTable = sourceTable as WNamedTableReference;
             if (sourceNameTable == null)
@@ -1650,18 +1650,20 @@ namespace GraphView
 
         }
 
-        private WCommonTableExpression ConstructDeleteEdgeSelect(WSelectQueryBlock node, string edgeAlias, string tempTableName
+        private WCommonTableExpression ConstructDeleteEdgeSelect(WSelectQueryBlock node, WEdgeColumnReferenceExpression edgeCol, string tempTableName
             ,out WTableReference sinkTable, out WTableReference sourceTable)
         {
             sourceTable = null;
             sinkTable = null;
+            string sourceTableName = null;
+            string sinkTableName = null;
             var sourceTableScalar = node.SelectElements[0] as WSelectScalarExpression;
             if (sourceTableScalar == null)
                 return null;
             var sourceTableColumn = sourceTableScalar.SelectExpr as WColumnReferenceExpression;
             if (sourceTableColumn == null)
                 return null;
-            var sourceTableName = sourceTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
+            sourceTableName = sourceTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
 
             var sourceNodeIdExpr = new WColumnReferenceExpression();
             foreach (var identifier in sourceTableColumn.MultiPartIdentifier.Identifiers)
@@ -1690,7 +1692,7 @@ namespace GraphView
                     if (sinkTableColumn == null)
                         return null;
 
-                    var sinkTableName = sinkTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
+                    sinkTableName = sinkTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
                     sinkTable = context[sinkTableName];
 
                     sinkNodeIdExpr = new WColumnReferenceExpression();
@@ -1717,7 +1719,7 @@ namespace GraphView
                     MultiPartIdentifier = new WMultiPartIdentifier(
                         new Identifier[]
                         {
-                            new Identifier {Value = edgeAlias},
+                            new Identifier {Value = edgeCol.Alias??string.Format("{0}_{1}_{2}",sourceTableName,edgeCol.MultiPartIdentifier.Identifiers.Last().Value,sinkTableName)},
                             new Identifier {Value = "Edgeid"}
                         }
                         )

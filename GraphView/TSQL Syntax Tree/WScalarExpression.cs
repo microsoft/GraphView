@@ -129,10 +129,24 @@ namespace GraphView
         UserSpecified
     }
 
-    public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
+    public abstract partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
     {
-        internal string Alias { get; set; }
-        internal AliasType AliasRole { get; set; }
+        internal string Alias;
+    }
+    //public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
+    //{
+    //    internal string Alias { get; set; }
+    //    internal AliasType AliasRole { get; set; }
+    //}
+
+    public partial class WSingleEdgeColumnReferenceExpression : WEdgeColumnReferenceExpression
+    {
+    }
+
+    public partial class WPathColumnReferenceExpression : WEdgeColumnReferenceExpression
+    {
+        internal int MinLength { get; set; }
+        internal int MaxLength { get; set; }
     }
 
     /// <summary>

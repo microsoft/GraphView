@@ -182,14 +182,14 @@ namespace GraphViewUnitTest
                     byte[] w = new byte[1];
                     w[0] = 7;
                     br.Write(w);
-                    br.Write(next64 + (Convert.ToInt64(1) << 48));
+                    br.Write(next64 + (Convert.ToInt64(2) << 48));
                     br.Write(next);
                     br.Write(rd.NextDouble());
                     br.Write(RandomString());
                 }
                 else if (type == Edge.ClientColleagues)
                 {
-                    br.Write(next64 + (Convert.ToInt64(1) << 48));
+                    br.Write(next64 + (Convert.ToInt64(2) << 48));
                 }
                 else
                 {

@@ -45,8 +45,8 @@ namespace GraphView
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
             new Dictionary<string, WTableReferenceWithAlias>(StringComparer.CurrentCultureIgnoreCase);
 
-        private readonly Dictionary<string, Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> _edgeDictionary =
-            new Dictionary<string, Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>(StringComparer.CurrentCultureIgnoreCase);
+        private readonly Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> _edgeDictionary =
+            new Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>>(StringComparer.CurrentCultureIgnoreCase);
 
         private Dictionary<string, string> _columnTableAliasMapping;
 
@@ -64,7 +64,7 @@ namespace GraphView
             get { return _edgeNodeBinding; }
         }
 
-        public Dictionary<string, Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> EdgeDictionary
+        public Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> EdgeDictionary
         {
             get { return _edgeDictionary; }
         }
@@ -175,7 +175,7 @@ namespace GraphView
                     var tuple = kvp.Value;
                     string schema = tuple.Item1.SchemaIdentifier.Value.ToLower();
                     string sourceTableName = tuple.Item1.BaseIdentifier.Value.ToLower();
-                    string  edgeName = tuple.Item2.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
+                    string edgeName = tuple.Item2.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
                     var bindNodeTableTuple =new Tuple<string, string>(schema, _edgeNodeBinding[new Tuple<string, string>(sourceTableName,edgeName)]);
                     var edgeProperties =
                         columnsOfNodeTables[bindNodeTableTuple][edgeName].EdgeInfo;
@@ -220,12 +220,15 @@ namespace GraphView
             _nodeTableDictionary.Add(name, tableName);
         }
 
-        public void AddEdgeReference(string name, WSchemaObjectName sourceNodeName, WEdgeColumnReferenceExpression edgeReference)
+        //public void AddEdgeReference(string name, WSchemaObjectName sourceNodeName, WEdgeColumnReferenceExpression edgeReference)
+        public void AddEdgeReference(MatchEdge edge)
         {
-            if (_nodeTableDictionary.ContainsKey(name) || _edgeDictionary.ContainsKey(name))
+            var edgeAlias = edge.EdgeAlias;
+            if (_nodeTableDictionary.ContainsKey(edgeAlias) || _edgeDictionary.ContainsKey(edgeAlias))
                 throw new GraphViewException("Duplicate Alias");
-            _edgeDictionary.Add(name,
-                new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(sourceNodeName, edgeReference));
+            _edgeDictionary.Add(edgeAlias,
+                new Tuple<WSchemaObjectName, WColumnReferenceExpression>(edge.SourceNode.NodeTableObjectName,
+                    edge.EdgeColumn));
         }
 
         public void AddEdgeStatistics(MatchEdge edge, ColumnStatistics statistics)

@@ -32,6 +32,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Schema;
 
 namespace GraphView
 {
@@ -112,29 +113,74 @@ namespace GraphView
                 return false;
 
             nextToken = currentToken;
-            List<Literal> literalList = null;
-            if (ParseLiteralList(tokens, ref currentToken, ref literalList, ref farestError))
-            { }
-
-            var spiltEdgeIdentifier = edgeIdentifier.Value.Split(' ');
+            int line = tokens[currentToken].Line;
+            string edgeInfo;
             string alias = null;
-            if (spiltEdgeIdentifier.Length > 1)
+            var getAliasDelimiter = Regex.Matches(edgeIdentifier.Value, @"\s+as\s+", RegexOptions.IgnoreCase);
+            switch (getAliasDelimiter.Count)
             {
-                alias = spiltEdgeIdentifier.Last();
-                if (GraphViewKeywords._keywords.Contains(alias))
-                    throw new SyntaxErrorException(string.Format("System restricted Name {0} cannot be used",
-                        alias));
-                edgeIdentifier.Value = spiltEdgeIdentifier.First();
+                case 0:
+                {
+                    edgeInfo = edgeIdentifier.Value;
+                    break;
+                }
+                case 1:
+                {
+                    var spiltEdgeIdentifier = Regex.Split(edgeIdentifier.Value, @"\s+as\s+",RegexOptions.IgnoreCase);
+                    edgeInfo = spiltEdgeIdentifier.First();
+                    alias = spiltEdgeIdentifier.Last();
+                    break;
+                }
+                default:
+                {
+                    throw new SyntaxErrorException(line, getAliasDelimiter[0].Value,
+                        "Multiple 'as'");
+                }
             }
-            result = new WEdgeColumnReferenceExpression
+            var starCount = edgeInfo.Count(e => e == '*');
+            string edgeNames;
+            switch (starCount)
             {
-                ColumnType = ColumnType.Regular,
-                MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier),
-                FirstTokenIndex = currentToken - 1,
-                LastTokenIndex = currentToken - 1,
-                Alias = alias,
-                AliasRole = AliasType.UserSpecified
-            };
+                case 0:
+                {
+                    edgeNames = edgeInfo;
+                    result = new WSingleEdgeColumnReferenceExpression();
+                    break;
+                }
+                case 1:
+                {
+                    var splitPathInfo = edgeInfo.Split('*');
+                    int maxLen = -1;
+                    int minLen = -1;
+                    edgeNames = splitPathInfo.First();
+                    string lenStr = splitPathInfo.Last();
+                    if (!string.IsNullOrEmpty(lenStr))
+                    {
+                        var lenInfo = Regex.Split(lenStr, @"\s*\.{2}\s*");
+                        if (lenInfo.Length!=2)
+                            throw new SyntaxErrorException(line, lenInfo.First());
+                        if (!int.TryParse(lenInfo.First(), out minLen))
+                            throw new SyntaxErrorException(line, lenInfo.First(), "Min length should be an integer");
+                        if (!int.TryParse(lenInfo.Last(), out maxLen))
+                            throw new SyntaxErrorException(line, lenInfo.Last(), "Min length should be an integer");
+                    }
+                    result = new WPathColumnReferenceExpression { MaxLength = maxLen, MinLength = minLen };
+                    break;
+                }
+                default:
+                {
+                    throw new SyntaxErrorException(line, edgeInfo,
+                        "Multiple '*'");
+                }
+            }
+            var edgeMatchCollection = Regex.Matches(edgeNames, @"[a-zA-Z_][a-zA-Z0-9_]*");
+            if (edgeMatchCollection.Count != 1)
+                throw new SyntaxErrorException(line, edgeInfo, "Invalid edge name. Remove the unecessary spaces and try again.");
+            edgeIdentifier.Value = edgeMatchCollection[0].Value;
+            result.Alias = alias;
+            result.ColumnType = ColumnType.Regular;
+            result.MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier);
+            result.FirstTokenIndex = result.LastTokenIndex = currentToken - 1;
             return true;
         }
 
@@ -182,20 +228,6 @@ namespace GraphView
             Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> tuple = null;
             while (ParseMatchPathPart(tokens, ref currentToken, ref tuple, ref farestError))
             {
-                if (nodeList.Count > 0)
-                {
-                    var preTuple = nodeList.Last();
-                    if (preTuple.Item2.Alias == null)
-                    {
-                        preTuple.Item2.Alias = String.Format(CultureInfo.CurrentCulture, "{0}_{1}_{2}",
-                            preTuple.Item1.BaseIdentifier.Value,
-                            preTuple.Item2.MultiPartIdentifier.Identifiers.Last().Value,
-                            tuple.Item1.BaseIdentifier.Value);
-                        preTuple.Item2.AliasRole = AliasType.Default;
-                    }
-
-                    
-                }
                 nodeList.Add(tuple);
             }
 
@@ -207,13 +239,7 @@ namespace GraphView
             if (!ParseSchemaObjectName(tokens, ref currentToken, ref tail, ref farestError))
                 return false;
 
-            var lastTuple = nodeList.Last();
-            if (lastTuple.Item2.Alias == null)
-            {
-                lastTuple.Item2.Alias = String.Format(CultureInfo.CurrentCulture, "{0}_{1}_{2}", lastTuple.Item1.BaseIdentifier.Value,
-                        lastTuple.Item2.MultiPartIdentifier.Identifiers.Last().Value, tail.BaseIdentifier.Value);
-                lastTuple.Item2.AliasRole = AliasType.Default;
-            }
+           
 
             result = new WMatchPath
             {
