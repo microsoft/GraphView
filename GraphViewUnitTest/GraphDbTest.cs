@@ -557,18 +557,38 @@ namespace GraphViewUnitTest
                 command.ExecuteNonQuery();
 
                 //Run following SQL query can get 8 paths:
+                int cnt = 0;
                 string query = @"
                 select *
-				from ClientNode cross apply dbo_ClientNode_Colleagues_bfs(ClientNode.GlobalNodeId,
-				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, 0, -1, null)
+				from ClientNode cross apply dbo_ClientNode_Colleagues_bfs(ClientNode.GlobalNodeId,0,-1,
+				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null)
 				where ClientNode.ClientId = 0";
                 command.CommandText = query;
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
+                        cnt++;
                     }
                 }
+                if (cnt!=8) Assert.Fail();
+
+                // Run following GraphView query can get 8 paths:
+                cnt = 0;
+                string gvQuery = @"
+                select *
+				from ClientNode as c1, ClientNode as c2
+				match c1-[colleagues*]->c2
+                where c1.ClientId = 0";
+                using (var reader = graph.ExecuteReader(gvQuery))
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                    }
+                }
+                if (cnt != 8) Assert.Fail();
+
 
                 const string deleteEdge = @"
                     DELETE EDGE [Cn1]-[Colleagues]->[Cn2]
