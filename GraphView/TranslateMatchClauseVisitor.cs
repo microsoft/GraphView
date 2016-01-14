@@ -145,7 +145,7 @@ namespace GraphView
         /// Density value of the GlobalNodeId Column in each node table.
         /// Table name -> Density value
         public Dictionary<string, double> TableIdDensity =
-            new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
+            new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -260,7 +260,7 @@ namespace GraphView
                             Dictionary<string, NodeColumns> columnDict;
                             if (!columnsOfNodeTables.TryGetValue(tableTuple, out columnDict))
                             {
-                                columnDict = new Dictionary<string, NodeColumns>(StringComparer.CurrentCultureIgnoreCase);
+                                columnDict = new Dictionary<string, NodeColumns>(StringComparer.OrdinalIgnoreCase);
                                 columnsOfNodeTables.Add(tableTuple, columnDict);
                             }
                             var role = (WNodeTableColumnRole) tag;
@@ -273,11 +273,11 @@ namespace GraphView
                                     ColumnAttributes = new List<string>(),
                                     EdgeColumns = new List<Tuple<string, string>>(),
                                     SinkNodes = role == WNodeTableColumnRole.Edge
-                                        ? new HashSet<string>(StringComparer.CurrentCultureIgnoreCase)
+                                        ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                                         {
                                             reader["Name3"].ToString().ToLower(CultureInfo.CurrentCulture)
                                         }
-                                        : new HashSet<string>(StringComparer.CurrentCultureIgnoreCase),
+                                        : new HashSet<string>(StringComparer.OrdinalIgnoreCase),
                                     IsEdgeView = false
                                 };
 
@@ -302,7 +302,7 @@ namespace GraphView
                             HashSet<string> nodeTableSet;
                             if (!nodeViewMapping.TryGetValue(tableTuple, out nodeTableSet))
                             {
-                                nodeTableSet = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+                                nodeTableSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                                 nodeViewMapping.Add(tableTuple, nodeTableSet);
                             }
                             nodeTableSet.Add(name2);
@@ -482,12 +482,12 @@ namespace GraphView
             var unionFind = new UnionFind();
             if (query.MatchClause == null)
                 return null;
-            var edgeTableReferenceDict = new Dictionary<string, List<string>>(StringComparer.CurrentCultureIgnoreCase);
+            var edgeTableReferenceDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var matchClause = query.MatchClause;
-            var nodes = new Dictionary<string, MatchNode>(StringComparer.CurrentCultureIgnoreCase);
+            var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
             var connectedSubGraphs = new List<ConnectedComponent>();
-            var subGrpahMap = new Dictionary<string, ConnectedComponent>(StringComparer.CurrentCultureIgnoreCase);
-            var parent = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
+            var subGrpahMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
+            var parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             unionFind.Parent = parent;
             HashSet<Tuple<string, string>> nodeTypes = new HashSet<Tuple<string, string>>();
 
@@ -654,7 +654,7 @@ namespace GraphView
             // in the FROM clause of the current context and joined with the corresponding table
             // in the upper-level context. 
             var tableRefs = query.FromClause.TableReferences;
-            var tableSet = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var tableSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var newTableRefs = new List<WTableReference>();
             for (int index = 0; index < tableRefs.Count; ++index)
             {
@@ -759,7 +759,7 @@ namespace GraphView
                     if (starReplacement == null)
                     {
                         starReplacement =
-                            new Dictionary<string, List<WSelectElement>>(StringComparer.CurrentCultureIgnoreCase);
+                            new Dictionary<string, List<WSelectElement>>(StringComparer.OrdinalIgnoreCase);
                         // Fetch table in order
                         foreach (var table in _context.NodeTableDictionary)
                         {

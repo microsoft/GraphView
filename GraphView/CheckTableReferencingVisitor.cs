@@ -80,13 +80,13 @@ namespace GraphView
                 case 1:
                     if (_columnTableMapping.ContainsKey(columnName) &&
                         String.Equals(_columnTableMapping[columnName], _tableName,
-                            StringComparison.CurrentCultureIgnoreCase))
+                            StringComparison.OrdinalIgnoreCase))
                         _tableExists = true;
                     break;
                 // column referencd by exposed name
                 case 2:
                     var tableExposedName = columnIdentifiers[0].Value;
-                    if (String.Equals(tableExposedName, _tableName, StringComparison.CurrentCultureIgnoreCase))
+                    if (String.Equals(tableExposedName, _tableName, StringComparison.OrdinalIgnoreCase))
                         _tableExists = true;
                     break;
                 // column referencd by complete table name
@@ -97,7 +97,7 @@ namespace GraphView
                     for (; index1 >= 0 && index2 >= 0; --index1, --index2)
                     {
                         if (String.Equals(columnIdentifiers[index1].Value, _tableRef.TableObjectName[index2].Value,
-                            StringComparison.CurrentCultureIgnoreCase))
+                            StringComparison.OrdinalIgnoreCase))
                             continue;
                         flag = false;
                         break;

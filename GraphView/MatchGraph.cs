@@ -88,8 +88,8 @@ namespace GraphView
 
         public ConnectedComponent()
         {
-            Nodes = new Dictionary<string, MatchNode>(StringComparer.CurrentCultureIgnoreCase);
-            Edges = new Dictionary<string, MatchEdge>(StringComparer.CurrentCultureIgnoreCase);
+            Nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
+            Edges = new Dictionary<string, MatchEdge>(StringComparer.OrdinalIgnoreCase);
             IsTailNode = new Dictionary<MatchNode, bool>();
         }
     }

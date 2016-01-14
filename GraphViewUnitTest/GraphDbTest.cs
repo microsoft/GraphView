@@ -384,8 +384,8 @@ namespace GraphViewUnitTest
 
 
                 List<Tuple<string, string>> Edges = new List<Tuple<string, string>>();
-                Edges.Add(Tuple.Create("employeenode", "clients"));
                 Edges.Add(Tuple.Create("ClientNode", "Colleagues"));
+                Edges.Add(Tuple.Create("employeenode", "clients"));
                 List<string> edgeAttribute = new List<string>() {"a", "b", "c_new", "d"};
                 List<Tuple<string, List<Tuple<string, string, string>>>> mapping =
                     new List<Tuple<string, List<Tuple<string, string, string>>>>();

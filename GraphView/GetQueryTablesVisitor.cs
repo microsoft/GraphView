@@ -47,8 +47,8 @@ namespace GraphView
             out HashSet<string> tables,
             out HashSet<string> unboundColumns)
         {
-            _tables = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-            _unboundColumns = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            _tables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            _unboundColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             tables = _tables;
             unboundColumns = _unboundColumns;
             node.Accept(this);

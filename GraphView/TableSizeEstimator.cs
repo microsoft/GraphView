@@ -127,7 +127,7 @@ namespace GraphView
                 where e.Elements().Any(e2 => e2.Name.LocalName == "TableScan" || e2.Name.LocalName == "IndexScan")
                 select e;
 
-            var ret = new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
+            var ret = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             foreach (var t in tables)
             {
                 QuoteType quote;
