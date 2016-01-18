@@ -1,0 +1,101 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".sql" #>
+
+
+<#  
+	var typeDictionary = new Dictionary<string, Tuple<string, string, int>>
+	{
+		{"int", new Tuple<string, string, int>("int", "SqlInt32", 4)},
+		{"long", new Tuple<string, string, int>("bigint", "SqlInt64", 8)},
+		{"double", new Tuple<string, string, int>("float", "SqlDouble", 8)},
+		{"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)}
+	};
+	var Name = Schema + "_" + NodeName + "_" + EdgeName;
+	var columnNull = Tuple.Create("", "");
+#>
+
+create function <#=Name#>_bfs(
+		@source bigint, 
+		@minlength bigint,
+		@maxlength bigint<#
+	for (int i = 0; i < EdgeColumn.Count; i++)
+	{
+		WriteLine(", ");
+		Write("		");
+		Write("@edge" + i.ToString() + " varbinary(max)");
+		WriteLine(", ");
+		Write("		");
+		Write("@del" + i.ToString() + " varbinary(max)");
+	}
+	foreach (var it in Attribute) {
+		WriteLine(", ");
+		Write("@" + it.Item1);
+		Write(" " + typeDictionary[it.Item2].Item1);
+	}#>
+)
+returns table
+as 
+return 
+with  allPath(sink, varPath) as (
+		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
+		convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
+		from <#=Name#>_Decoder(
+		<#for (int i = 0; i < EdgeColumn.Count; i++)
+		{
+			if (i != 0) 
+			{
+				WriteLine(", ");
+				Write("		");
+			}
+			Write("@edge" + i.ToString());
+			WriteLine(", ");
+			Write("		");
+			Write("@del" + i.ToString());
+		}#>) as newpath
+		Where (@maxlength != 0)
+<#foreach (var it in Attribute) {
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}#>
+
+		union all
+
+		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
+		convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path
+		from (allPath join <#=Name#>_SubView on  allPath.sink = <#=Name#>_SubView.GlobalNodeId)
+		cross apply <#=Name#>_ExclusiveEdgeGenerator(allPath.varPath, <#=Name#>_SubView.GlobalNodeId<#
+			foreach (var it in EdgeColumn){
+			if (it.Equals(columnNull)) 
+			{
+				WriteLine(",");
+				Write("		");
+				Write("null, null");
+			}
+			else
+			{
+				WriteLine(",");
+				Write("		");
+				Write(Name + "_SubView." + it.Item1 + "_" + it.Item2 + ",");
+				Write(Name + "_SubView." + it.Item1 + "_" + it.Item2 + "DeleteCol");
+			}
+		  }#>) as newPath
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
+<#foreach (var it in Attribute) {
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}#>
+)
+select @source as sink, CAST(0x as varbinary(max)) as varPath
+where @minlength = 0
+union
+select *
+from allPath
+where DATALENGTH(allPath.varPath) >= @minlength * 20

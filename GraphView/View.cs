@@ -67,6 +67,15 @@ namespace GraphView
         private Dictionary<string, List<long>> _dictionaryAttribute; //<EdgeViewAttributeName> => List<AttributeId>
         private Dictionary<string, string> _attributeType; //<EdgeViewAttribute> => <Type>
 
+        //For dropping edge view
+        private static readonly List<string> EdgeViewFunctionList =
+            new List<string>()
+            {
+                "Decoder",
+                "ExclusiveEdgeGenerator",
+                "bfs"
+            };
+
         /// <summary>
         /// Creates node view.
         /// This operation creates view on nodes, mapping native node table propeties into node view 
@@ -995,13 +1004,16 @@ namespace GraphView
                 //    }
                 //}
 
-                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()), x => (long)-1);
+                edges = edges.Select(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())).ToList();
+                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2), x => (long)-1);
                 //<NodeTable, Edge> => ColumnId
+
+                var subViewToEdges = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase); //Subview is made up of the tables with non-zero indegree. <table name> => list<edge column>
 
                 //Check validity of table name in metaDataTable and get table's column id
                 command.Parameters.Clear();
                 const string checkEdgeColumn = @"
-                Select *
+                Select NTC.TableName, NTCC.ColumnName, NTCC.ColumnId, NTCC.Reference
                 From {0} NTC
                 Join {1} NTCC
                 on NTC.TableId = NTCC.TableId
@@ -1018,16 +1030,23 @@ namespace GraphView
                         var tableName = reader["TableName"].ToString().ToLower();
                         var edgeColumnName = reader["ColumnName"].ToString().ToLower();
                         int columnId = Convert.ToInt32(reader["ColumnId"].ToString());
+                        var reference = reader["Reference"].ToString();
+
                         var edgeTuple = Tuple.Create(tableName, edgeColumnName);
                         if (_edgeColumnToColumnId.ContainsKey(edgeTuple))
                         {
                             _edgeColumnToColumnId[edgeTuple] = columnId;
+                            if (!subViewToEdges.ContainsKey(reference))
+                            {
+                                subViewToEdges[reference] = new List<string>();
+                            }
                         }
                     }
                 }
+
                 //sort it
                 _edgeColumnToColumnId = _edgeColumnToColumnId.OrderBy(x => x.Value).ToDictionary(x => x.Key, x => x.Value);
-                edges = edges.OrderBy(x => _edgeColumnToColumnId[Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())]).ToList();
+                edges = edges.OrderBy(x => _edgeColumnToColumnId[Tuple.Create(x.Item1, x.Item2)]).ToList();
 
                 var edgeNotInMetaTable = _edgeColumnToColumnId.Where(x => x.Value == -1).Select(x => x.Key).ToArray();
                 if (edgeNotInMetaTable.Any())
@@ -1038,7 +1057,7 @@ namespace GraphView
 
                 //Check validity of edge view name
                 const string checkEdgeViewName = @"
-                Select *
+                Select * 
                 From {0} NTC
                 Join {1} NTCC
                 on NTC.TableId = NTCC.TableId
@@ -1066,7 +1085,7 @@ namespace GraphView
                     edgeAttribute = new List<string>();
                     var edgeColumnSet =
                         new HashSet<Tuple<string, string>>(
-                            edges.Select(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())));
+                            edges.Select(x => Tuple.Create(x.Item1, x.Item2)));
                     const string findEdgeAttribute = @"
                     select NTC.TableName, NTCC.ColumnName, EAC.AttributeName
                     from {0} NTC
@@ -1099,14 +1118,13 @@ namespace GraphView
                 }
 
                 //Get the attribute's ids which refer to user-supplied attribute in meta data table
-                _dictionaryAttribute = edgeAttribute.ToDictionary(x => x.ToLower(), x => new List<Int64>());
-                //<EdgeViewAttributeName> => List<AttributeId>
+                _dictionaryAttribute = edgeAttribute.ToDictionary(x => x.ToLower(), x => new List<Int64>()); //<EdgeViewAttributeName> => List<AttributeId>
 
                 _attributeType = edgeAttribute.ToDictionary(x => x.ToLower(), x => "");
                 //<EdgeViewAttribute> => <Type>
 
                 var edgeColumnToAttributeInfo =
-                    edges.ToDictionary(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower()),
+                    edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2),
                         x => new List<Tuple<string, string>>());
                 //<nodeTable, edgeName> => list<Tuple<Type, EdgeViewAttributeName>>
 
@@ -1147,7 +1165,6 @@ namespace GraphView
                                     var attributeId = Convert.ToInt64(reader["AttributeId"].ToString());
                                     _dictionaryAttribute[attributeName].Add(attributeId);
                                     attributeMappingTo = attributeName;
-
                                     if (_attributeType[attributeName] == "")
                                     {
                                         _attributeType[attributeName] = type;
@@ -1310,10 +1327,75 @@ namespace GraphView
                         emptyAttribute[0].Key));
                 }
 
-                
+                //Creates subview
+                foreach (var it in edges)
+                {
+                    if (subViewToEdges.ContainsKey(it.Item1))
+                    {
+                        subViewToEdges[it.Item1].Add(it.Item2);
+                    }
+                }
+
+                int offset = 0;
+                var subViewColumn = new List<Tuple<string, string>>();
+                foreach (var it in subViewToEdges)
+                {
+                    foreach (var item in it.Value)
+                    {
+                       subViewColumn.Add(Tuple.Create(it.Key.ToLower(), item.ToLower()));
+                    }
+                }
+
+                int columnCal = subViewColumn.Count;
+                var subQueryList = new List<string>();
+                var subQuerytemplate = @"
+                Select GlobalNodeId, {0}
+                From {1}";
+                var elementList = new List<string>(); 
+                foreach (var it in subViewToEdges)
+                {
+                    elementList.Clear();
+                    int i;
+                    for (i = 0; i < offset; i++)
+                    {
+                        elementList.Add("null as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2);
+                        elementList.Add("null as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2 + "DeleteCol");
+                    }
+                    foreach (var item in it.Value)
+                    {
+                        elementList.Add(item + " as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2);
+                        elementList.Add(item + " as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2 + "DeleteCol");
+                        i++;
+                        offset++;
+                    }
+                    for (; i < columnCal; i++)
+                    {
+                        elementList.Add("null as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2);
+                        elementList.Add("null as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2 + "DeleteCol");
+                    }
+                    subQueryList.Add(String.Format(subQuerytemplate, string.Join(", ", elementList), it.Key));
+                }
+                const string createSubView = @"
+                create view [{0}].[{1}] as (
+                    {2}
+                )";
+                command.Parameters.Clear();
+                command.CommandText = string.Format(createSubView, tableSchema,
+                    tableSchema + "_" + nodeName + "_" + edgeViewName + "_SubView", string.Join("\nUNION ALL\n", subQueryList));
+                command.ExecuteNonQuery();
+
+                //Registers function
                 GraphViewDefinedFunctionGenerator.EdgeViewRegister(_nodeName, tableSchema, edgeViewName,
                     _attributeType,
                     edgeColumnToAttributeInfo, _edgeColumnToColumnId, Conn, command.Transaction);
+                
+                var subViewEdgeColumnSet = subViewColumn.ToLookup(x => x);
+                var nullValue = Tuple.Create("", "");
+                var edgeColumnForBfs = edges.Select(x => subViewEdgeColumnSet.Contains(x) ? x : nullValue).ToList();
+                GraphViewDefinedFunctionGenerator.EdgeViewBfsRegister(tableSchema, nodeName, edgeViewName,
+                    _attributeType.Select(x => Tuple.Create(x.Key, x.Value)).ToList(), edgeColumnForBfs, Conn,
+                    transaction);
+
 
                 //Prepares the select element 2D array
                 Dictionary<string, int> attributeToColumnOffset =
@@ -1402,7 +1484,7 @@ namespace GraphView
                 Select Src, Sink{0}
                 From {1} ";
 
-                var subQueryList = new List<string>();
+                subQueryList = new List<string>();
 
                 rowCount = 0;
                 foreach (var it in edges)
@@ -1693,12 +1775,13 @@ namespace GraphView
                 const string dropFunction = @"
                 Drop function [{0}]";
                 command.Parameters.Clear();
-                command.CommandText = string.Format(dropFunction,
-                    tableSchema + '_' + _nodeName + '_' + edgeView + '_' + "ExclusiveEdgeGenerator");
-                command.ExecuteNonQuery();
-                command.CommandText = string.Format(dropFunction,
-                    tableSchema + '_' + _nodeName + '_' + edgeView + '_' + "Decoder");
-                command.ExecuteNonQuery();
+
+                foreach (var it in EdgeViewFunctionList)
+                {
+                    command.CommandText = string.Format(dropFunction,
+                        tableSchema + '_' + _nodeName + '_' + edgeView + '_' + it);
+                    command.ExecuteNonQuery();
+                }
 
                 const string dropAssembly = @"
                 Drop Assembly [{0}_Assembly]";
@@ -1706,7 +1789,8 @@ namespace GraphView
                 command.ExecuteNonQuery();
 
                 const string dropSamplingView = @"
-                Drop View [{0}_Sampling]";
+                Drop View [{0}_Sampling]
+                Drop View [{0}_SubView]";
                 command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
                 command.ExecuteNonQuery();
 #if !DEBUG

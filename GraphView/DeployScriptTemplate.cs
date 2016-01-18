@@ -200,15 +200,16 @@ for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
-            this.Write("_bfs(@source bigint, \r\n@minlength bigint, @maxlength bigint,\r\n@edgeColumn varbina" +
-                    "ry(max), @Del varbinary(max)\r\n");
+            this.Write("_bfs(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t@edgeColumn var" +
+                    "binary(max), @Del varbinary(max)\r\n");
             
             #line 60 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
 		WriteLine(", ");
+		Write("		");
 		Write("@" + it.Item1);
 		Write(" " + typeDictionary[it.Item2].Item1);
-	}
+}
             
             #line default
             #line hidden
@@ -217,115 +218,117 @@ returns table
 as 
 return 
 with  allPath(sink, varPath) as (
-       select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-	   convert(binary(8), reverse(convert(binary(8), 3))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
-       from ");
+		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
+		convert(binary(8), reverse(convert(binary(8), 3))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
+		from ");
             
-            #line 72 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 73 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 72 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 73 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
-            this.Write("_Decoder(@edgeColumn, @Del) as newpath\r\n\t   Where (@maxlength != 0)\r\n   \t   ");
+            this.Write("_Decoder(@edgeColumn, @Del) as newpath\r\n\t\tWhere (@maxlength != 0)\r\n");
             
-            #line 74 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 75 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
-   	   Write("and (");
-   	   Write("@" + it.Item1 + " is null or ");
-   	   WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
-   	   }
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}
             
             #line default
             #line hidden
-            this.Write("\r\n       union all\r\n\r\n       select newpath.Sink, allpath.varPath + convert(binar" +
-                    "y(8), reverse(convert(binary(8), allpath.sink))) + \r\n\t   convert(binary(8), reve" +
-                    "rse(convert(binary(8), ");
+            this.Write("\r\n\t\tunion all\r\n\r\n\t\tselect newpath.Sink, allpath.varPath + convert(binary(8), reve" +
+                    "rse(convert(binary(8), allpath.sink))) + \r\n\t\tconvert(binary(8), reverse(convert(" +
+                    "binary(8), ");
             
-            #line 83 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 85 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
             
             #line default
             #line hidden
-            this.Write("))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path\r\n    " +
-                    "   from (allPath join ");
+            this.Write("))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path\r\n\t\tfr" +
+                    "om (allPath join ");
             
-            #line 84 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 86 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(NodeTable));
             
             #line default
             #line hidden
             this.Write(" on  allPath.sink = ");
             
-            #line 84 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 86 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(NodeTable));
             
             #line default
             #line hidden
-            this.Write(".GlobalNodeId)\r\n       cross apply ");
+            this.Write(".GlobalNodeId)\r\n\t\tcross apply ");
             
-            #line 85 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 87 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 85 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 87 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_ExclusiveEdgeGenerator(allPath.varPath,");
             
-            #line 85 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 87 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(NodeTable));
             
             #line default
             #line hidden
-            this.Write(".GlobalNodeId,\r\n\t\t\t");
+            this.Write(".GlobalNodeId,\r\n\t\t \t");
             
-            #line 86 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 88 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(NodeTable));
             
             #line default
             #line hidden
             this.Write(".");
             
-            #line 86 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 88 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write(", ");
             
-            #line 86 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 88 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(NodeTable));
             
             #line default
             #line hidden
             this.Write(".");
             
-            #line 86 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 88 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
-            this.Write("DeleteCol) as newPath\r\n\t   Where (@maxlength = -1 or DATALENGTH(allPath.varPath) " +
-                    "<= (@maxlength - 1) * 20)\r\n   \t   ");
+            this.Write("DeleteCol) as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <=" +
+                    " (@maxlength - 1) * 20)\r\n");
             
-            #line 88 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 90 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
-   	   Write("and (");
-   	   Write("@" + it.Item1 + " is null or ");
-   	   WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
-   	   }
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}
             
             #line default
             #line hidden
@@ -333,14 +336,14 @@ foreach (var it in variables) {
                     "h = 0\r\nunion\r\nselect *\r\nfrom allPath\r\nwhere DATALENGTH(allPath.varPath) >= @minl" +
                     "ength * 20\r\nGO\r\n\r\nCREATE FUNCTION ");
             
-            #line 102 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 105 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 102 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 105 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -348,35 +351,35 @@ foreach (var it in variables) {
             this.Write("_Recycle(@src varbinary(max), @toRecycle varbinary(max))\r\nRETURNS varbinary(max)\r" +
                     "\nEXTERNAL NAME ");
             
-            #line 104 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 107 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_Assembly.UserDefinedFunctions.");
             
-            #line 104 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 107 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("Recycle;\r\nGO\r\n\r\nCREATE AGGREGATE ");
             
-            #line 107 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 110 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 107 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 110 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_Encoder\r\n(\r\n    @Sink bigint");
             
-            #line 109 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 112 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 
     for (var i = 0; i < variables.Count; ++i)
     {
@@ -390,40 +393,40 @@ foreach (var it in variables) {
             #line hidden
             this.Write(")\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME ");
             
-            #line 119 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 122 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_Assembly.");
             
-            #line 119 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 122 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("Encoder; \r\nGO\r\n\r\n");
             
-            #line 122 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 125 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             
-            #line 123 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 126 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\r\n\r\n");
             
-            #line 126 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 129 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
  if (Type == 1) {
             
             #line default
             #line hidden
             
-            #line 127 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 130 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var edge in EdgeList) {
     var edgeName = edge.Item1;
     var variables = edge.Item3;
@@ -433,76 +436,76 @@ foreach (var edge in EdgeList) {
             #line hidden
             this.Write("CREATE ASSEMBLY ");
             
-            #line 131 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 134 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 131 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 134 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_Assembly FROM ");
             
-            #line 131 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 134 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Path));
             
             #line default
             #line hidden
             this.Write("\r\nGO\r\nCREATE FUNCTION ");
             
-            #line 133 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 136 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 133 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 136 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_Decoder(\r\n");
             
-            #line 134 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 137 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
             this.Write("@array");
             
-            #line 135 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 138 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(i));
             
             #line default
             #line hidden
             this.Write(" varbinary(max), @dele");
             
-            #line 135 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 138 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(i));
             
             #line default
             #line hidden
             this.Write(" varbinary(max)");
             
-            #line 135 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 138 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
  if (i != InputCount - 1) WriteLine(","); 
             
             #line default
             #line hidden
             
-            #line 136 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 139 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
-            this.Write(") RETURNS TABLE\r\n(\r\n    Sink bigint, ColumnId bigint, EdgeId int");
+            this.Write(") RETURNS TABLE\r\n(\r\n    Sink bigint, EdgeColumnId bigint, EdgeId int");
             
-            #line 138 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 141 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 
     for (var i = 0; i < variables.Count; ++i)
     {
@@ -516,76 +519,76 @@ for (int i = 0; i < InputCount; i++) {
             #line hidden
             this.Write(") \r\n  AS EXTERNAL NAME ");
             
-            #line 147 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 150 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 147 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 150 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_Assembly.UserDefinedFunctions.");
             
-            #line 147 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 150 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("Decoder; \r\nGO\r\n\r\nCREATE FUNCTION ");
             
-            #line 150 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 153 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 150 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 153 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_ExclusiveEdgeGenerator(\r\n@PathVarbinary varbinary(max), @nodeid bigint, \r\n");
             
-            #line 152 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 155 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
             this.Write("@array");
             
-            #line 153 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 156 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(i));
             
             #line default
             #line hidden
             this.Write(" varbinary(max), @dele");
             
-            #line 153 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 156 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(i));
             
             #line default
             #line hidden
             this.Write(" varbinary(max)");
             
-            #line 153 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 156 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
  if (i != InputCount - 1) WriteLine(","); 
             
             #line default
             #line hidden
             
-            #line 154 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 157 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write(") RETURNs TABLE\r\n(\r\n\tEdgeId int, EdgeColumnId bigint, Sink bigint");
             
-            #line 156 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 159 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 
     for (var i = 0; i < variables.Count; ++i)
     {
@@ -599,62 +602,62 @@ for (int i = 0; i < InputCount; i++) {
             #line hidden
             this.Write(")\r\n  AS EXTERNAL NAME ");
             
-            #line 165 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 168 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("_");
             
-            #line 165 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 168 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_Assembly.UserDefinedFunctions.");
             
-            #line 165 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 168 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("ExclusiveEdgeGenerator; \r\nGO\r\n");
             
-            #line 167 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 170 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             
-            #line 168 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 171 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\r\n\r\n");
             
-            #line 171 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 174 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
  if (Type == 2) {
             
             #line default
             #line hidden
             this.Write("CREATE ASSEMBLY ");
             
-            #line 172 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 175 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("Assembly FROM ");
             
-            #line 172 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 175 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Path));
             
             #line default
             #line hidden
             this.Write("\r\nGO\r\n\r\nCREATE AGGREGATE ");
             
-            #line 175 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 178 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -662,21 +665,21 @@ for (int i = 0; i < InputCount; i++) {
             this.Write("GlobalNodeIdEncoder\r\n(\r\n\t@SrcId bigint\r\n)\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME " +
                     "");
             
-            #line 180 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 183 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("Assembly.GlobalNodeIdEncoder; \r\nGO\r\nCREATE AGGREGATE ");
             
-            #line 182 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 185 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("EdgeIdEncoder\r\n(\r\n\t@EdgeId int\r\n)\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME ");
             
-            #line 187 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 190 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -684,7 +687,7 @@ for (int i = 0; i < InputCount; i++) {
             this.Write("Assembly.EdgeIdEncoder; \r\nGO\r\n\r\nCREATE FUNCTION SingletonTable() RETURNS TABLE\r\n(" +
                     "\r\n\tmemoBit bit\r\n)\r\nas EXTERNAL NAME ");
             
-            #line 194 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 197 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -692,7 +695,7 @@ for (int i = 0; i < InputCount; i++) {
             this.Write("Assembly.UserDefinedFunctions.SingletonTable\r\nGO\r\n\r\nCREATE FUNCTION DownSizeFunct" +
                     "ion\r\n(@id int)\r\nRETURNS INT\r\nAS\r\n EXTERNAL NAME ");
             
-            #line 201 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 204 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -701,7 +704,7 @@ for (int i = 0; i < InputCount; i++) {
                     "ion(@topvalue int) RETURNS TABLE\r\nAS\r\nRETURN\r\n\tSELECT TOP(@topvalue) * FROM Sing" +
                     "letonTable()\r\nGO\r\n");
             
-            #line 209 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 212 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default

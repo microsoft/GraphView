@@ -34,6 +34,7 @@ using System.IO;
 using System.Globalization;
 using System.Linq;
 using System.Security.Authentication.ExtendedProtection;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -79,6 +80,16 @@ namespace GraphView
 
         public string NodeTable { get; set; }
     }
+
+    partial class EdgeViewBfsScriptTemplate
+    {
+        public string Schema { get; set; }
+        public string NodeName { get; set; }
+        public string EdgeName { get; set; }
+        public IList<Tuple<string, string>> Attribute { get; set; }//Edge view attribute list <name, type>
+        public List<Tuple<string, string>> EdgeColumn { get; set;}//Edge column list <table, edge column> 
+    }
+
 
     public static class GraphViewDefinedFunctionGenerator
     {
@@ -150,6 +161,20 @@ namespace GraphView
                 InputCount = inputCount,
                 Type = type,
                 NodeTable = nodeTable
+            };
+            return template.TransformText();
+        }
+
+        private static string GenerateEdgeViewBFSRegisterScript(string schema, string tableName, string edge,
+            IList<Tuple<string, string>> attribute, List<Tuple<string, string>> edgeColumn)
+        {
+            var template = new EdgeViewBfsScriptTemplate()
+            {
+                Schema = schema,
+                NodeName = tableName,
+                EdgeName = edge,
+                Attribute = attribute,
+                EdgeColumn = edgeColumn,
             };
             return template.TransformText();
         }
@@ -262,6 +287,19 @@ namespace GraphView
                 command.ExecuteNonQuery();
                 i++;
             }
+        }
+
+        public static void EdgeViewBfsRegister(string schema, string tableName, string edge,
+            IList<Tuple<string, string>> attribute, List<Tuple<string, string>> edgeColumn,
+            SqlConnection conn, SqlTransaction tx)
+        {
+            
+            var script = GenerateEdgeViewBFSRegisterScript(schema, tableName, edge, attribute, edgeColumn);
+            var command = conn.CreateCommand();
+            command.Connection = conn;
+            command.Transaction = tx;
+            command.CommandText = script;
+            command.ExecuteNonQuery();
         }
     }
 }

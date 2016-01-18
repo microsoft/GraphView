@@ -63,6 +63,11 @@
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="EdgeViewBfsScriptTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>EdgeViewBfsScriptTemplate.tt</DependentUpon>
+    </Compile>
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
     <Compile Include="GraphViewQuickAccess.cs" />
@@ -154,6 +159,12 @@
     <None Include="MetaGraphViewDefinedFunctionTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>MetaGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="EdgeViewBfsScriptTemplate.tt">
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+      <LastGenOutput>EdgeViewBfsScriptTemplate.cs</LastGenOutput>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
