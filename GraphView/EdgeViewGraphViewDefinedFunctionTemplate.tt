@@ -212,11 +212,11 @@
         //var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
         Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
 		var brPath = new BinaryReader(PathMemory);
-        var PathDict =  new Dictionary<Tuple<long, Int32>, bool>();
+        var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
         if (PathVarbinary != null && !PathVarbinary.IsNull) {
             while (brPath.BaseStream.Position != brPath.BaseStream.Length)
             {
-                var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt32());
+                var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
                 PathDict[Edgeid] = true;
             }
         }
@@ -237,7 +237,7 @@
 }#>))
         {
             var  adjacent = it as <#=EdgeName#>DecoderResult;
-            var EdgeId = Tuple.Create(nodeid.Value, adjacent.EdgeId);
+            var EdgeId = Tuple.Create(nodeid.Value, adjacent.ColumnId, adjacent.EdgeId);
             if (!PathDict.ContainsKey(EdgeId))
             {
                 yield return new <#=EdgeName#>ExclusiveEdgeGeneratorResult

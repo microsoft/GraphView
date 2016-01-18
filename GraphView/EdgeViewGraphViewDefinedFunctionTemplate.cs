@@ -494,11 +494,11 @@ foreach (var variable in  AttributeTypeDict) {
         //var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
         Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
 		var brPath = new BinaryReader(PathMemory);
-        var PathDict =  new Dictionary<Tuple<long, Int32>, bool>();
+        var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
         if (PathVarbinary != null && !PathVarbinary.IsNull) {
             while (brPath.BaseStream.Position != brPath.BaseStream.Length)
             {
-                var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt32());
+                var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
                 PathDict[Edgeid] = true;
             }
         }
@@ -536,9 +536,9 @@ foreach (var variable in  AttributeTypeDict) {
             
             #line default
             #line hidden
-            this.Write("DecoderResult;\r\n            var EdgeId = Tuple.Create(nodeid.Value, adjacent.Edge" +
-                    "Id);\r\n            if (!PathDict.ContainsKey(EdgeId))\r\n            {\r\n           " +
-                    "     yield return new ");
+            this.Write("DecoderResult;\r\n            var EdgeId = Tuple.Create(nodeid.Value, adjacent.Colu" +
+                    "mnId, adjacent.EdgeId);\r\n            if (!PathDict.ContainsKey(EdgeId))\r\n       " +
+                    "     {\r\n                yield return new ");
             
             #line 243 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
