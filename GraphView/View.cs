@@ -1384,7 +1384,7 @@ namespace GraphView
                     foreach (var item in it.Value)
                     {
                         elementList.Add(item + " as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2);
-                        elementList.Add(item + " as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2 + "DeleteCol");
+                        elementList.Add(item + "DeleteCol" + " as " + subViewColumn[i].Item1 + "_" + subViewColumn[i].Item2 + "DeleteCol");
                         i++;
                         offset++;
                     }

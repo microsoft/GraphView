@@ -33,6 +33,7 @@ create function <#=Name#>_bfs(
 	}
 	foreach (var it in Attribute) {
 		WriteLine(", ");
+		Write("		");
 		Write("@" + it.Item1);
 		Write(" " + typeDictionary[it.Item2].Item1);
 	}#>
