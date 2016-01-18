@@ -332,11 +332,11 @@ namespace GraphViewUnitTest
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 conn.Open();
-                conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId, c1.ClientId, c2.ClientId, NV1.id, NV2.id
-                FROM 
-                 EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
-                MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2
-                WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
+                //conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId, c1.ClientId, c2.ClientId, NV1.id, NV2.id
+                //FROM 
+                // EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
+                //MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2
+                //WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
             }
         }
 

@@ -138,7 +138,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 @array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
 <#}#>) RETURNS TABLE
 (
-    Sink bigint, EdgeColumnId bigint, EdgeId int<#
+    Sink bigint, EdgeColumnId bigint, EdgeId int, _EdgeType nvarchar(max)<#
     for (var i = 0; i < variables.Count; ++i)
     {
         WriteLine(",");
@@ -156,7 +156,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
 <#}#>) RETURNs TABLE
 (
-	EdgeId int, EdgeColumnId bigint, Sink bigint<#
+	EdgeId int, EdgeColumnId bigint, Sink bigint, _EdgeType nvarchar(max)<#
     for (var i = 0; i < variables.Count; ++i)
     {
         WriteLine(",");

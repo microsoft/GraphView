@@ -503,7 +503,8 @@ for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
-            this.Write(") RETURNS TABLE\r\n(\r\n    Sink bigint, EdgeColumnId bigint, EdgeId int");
+            this.Write(") RETURNS TABLE\r\n(\r\n    Sink bigint, EdgeColumnId bigint, EdgeId int, _EdgeType n" +
+                    "varchar(max)");
             
             #line 141 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 
@@ -586,7 +587,8 @@ for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
-            this.Write(") RETURNs TABLE\r\n(\r\n\tEdgeId int, EdgeColumnId bigint, Sink bigint");
+            this.Write(") RETURNs TABLE\r\n(\r\n\tEdgeId int, EdgeColumnId bigint, Sink bigint, _EdgeType nvar" +
+                    "char(max)");
             
             #line 159 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 

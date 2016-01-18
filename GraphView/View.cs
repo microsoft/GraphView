@@ -27,6 +27,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
@@ -48,10 +49,9 @@ namespace GraphView
             new List<string>
             {
                 "GlobalNodeId",
-                "ReversedEdge",
-                "ReversedEdgeDeleteCol"
+                "InDegree",
+                "LocalNodeId"
             };
-
         //For node View
         private Dictionary<string, Int64> _dictionaryTableId; // <Table Name> => <Table Id>
         private Dictionary<string, int> _dictionaryTableOffsetId; // <Table Name> => <Table Offset Id> (counted from 0)
@@ -160,6 +160,7 @@ namespace GraphView
             try
             {
                 _tableSet = "#" + RandomString();
+                //Deal with the null propertymapping
                 if (propertymapping == null)
                 {
                     var columnToType = new Dictionary<string, Tuple<string, string>>(); //node view column => <datatype, length>
@@ -326,6 +327,7 @@ namespace GraphView
                 Where TableSchema = @schema";
                 command.CommandText = string.Format(getColumnId, MetadataTables[1]); //_NodeTableColumnCollection
 
+                var nodeTableToUserId = new Dictionary<string, string>();
                 var edgeCount = 0;
                 var edgeList = new List<Tuple<string, string>>[nodes.Count];
                 for (int i = 0; i < nodes.Count; i++)
@@ -358,8 +360,13 @@ namespace GraphView
                                 edgeCount++;
                             }
                         }
+                        if (columnRole == 2)
+                        {
+                            nodeTableToUserId[tableName] = columnName;
+                        }
                     }
                 }
+
                 foreach (var it in _dictionaryColumnId)
                 {
                     if (it.Value == -1)
@@ -400,8 +407,8 @@ namespace GraphView
                     count++;
                 }
                 var selectStringList = new string[nodes.Count];
-                const string selectTemplate = "Select GlobalNodeId, InDegree, LocalNodeId{0}\n" +
-                                              "From {1}\n";
+                const string selectTemplate = "Select {0}, {1} {2}\n" +
+                                              "From {3}\n";
                 int edgeColumnOffset = 0;
                 var edgeNameList = new string[edgeCount];
                 edgeCount = 0;
@@ -415,9 +422,10 @@ namespace GraphView
                 }
 
                 int rowCount = 0;
+                string appendColumn;//Edge type and user id 
+                string selectElement;
                 foreach (var it in nodes)
                 {
-                    string selectElement;
                     var elementList =
                         mapping2DArrayTuples[rowCount].Select(
                             item => item.Item1.ToString() + " as " + item.Item2).ToList();
@@ -452,7 +460,19 @@ namespace GraphView
                     {
                         selectElement = ", " + selectElement;
                     }
-                    selectStringList[rowCount] = string.Format(selectTemplate, selectElement, it);
+
+                    string userId = nodeTableToUserId.ContainsKey(it) ? nodeTableToUserId[it] : null;
+                    appendColumn = "'" + it + "' as _NodeType,";
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        appendColumn += "convert(nvarchar(max), " + userId + ") as _UserId";
+                    }
+                    else
+                    {
+                        appendColumn += "convert(nvarchar(max), null) as _UserId";
+                    }
+                    selectStringList[rowCount] = string.Format(selectTemplate, string.Join(", ", ColumnList),
+                        appendColumn, selectElement, it);
                     rowCount++;
                 }
 
