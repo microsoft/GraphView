@@ -35,22 +35,32 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    /// <summary>
+    /// A query context that records the definitions of node/edge variables. 
+    /// </summary>
     internal class WSqlTableContext
     {
-        public WSqlTableContext UpperLevel { get; set; }
+        public WSqlTableContext ParentContext { get; set; }
 
         private readonly Dictionary<MatchEdge, ColumnStatistics> _edgeStatisticses =
             new Dictionary<MatchEdge, ColumnStatistics>();
 
+        // Predicates associated with the path constructs in the current context. 
+        // Note that path predicates are defined as a part of path constructs, rather than
+        // defined in the WHERE clause. The current supported predicates are only equality comparison,
+        // and a predicate is in a pair of <edge_attribute, attribute_value>.
         private readonly Dictionary<MatchEdge, Dictionary<string, string>> _pathPredicatesValueDictionary =
             new Dictionary<MatchEdge, Dictionary<string, string>>();
 
+        // A collection of node table variables
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
             new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
 
+        // A collection of edge variables
         private readonly Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> _edgeDictionary =
             new Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>>(StringComparer.OrdinalIgnoreCase);
 
+        // A collection of mappings from columns to table aliases
         private Dictionary<string, string> _columnTableAliasMapping;
 
         private readonly Dictionary<Tuple<string,string>, string> _edgeNodeBinding =
@@ -92,7 +102,7 @@ namespace GraphView
                     WTableReferenceWithAlias value;
                     if (currentContext.NodeTableDictionary.TryGetValue(name, out value))
                         return value;
-                    currentContext = currentContext.UpperLevel;
+                    currentContext = currentContext.ParentContext;
                 }
                 return null;
             }
@@ -209,14 +219,14 @@ namespace GraphView
 
         public Dictionary<string, WTableReferenceWithAlias> GetUpperTableDictionary()
         {
-            var currentContext = UpperLevel;
+            var currentContext = ParentContext;
             var upperTableDictionary =
                 new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
             while (currentContext != null)
             {
                 foreach (var table in currentContext.NodeTableDictionary)
                     upperTableDictionary.Add(table.Key, table.Value);
-                currentContext = currentContext.UpperLevel;
+                currentContext = currentContext.ParentContext;
             }
             return upperTableDictionary;
         }
