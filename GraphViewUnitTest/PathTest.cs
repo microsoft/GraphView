@@ -12,35 +12,11 @@ namespace GraphViewUnitTest
     public class PathTest
     {
 
-        private void CreateTestTable()
+        private void Init()
         {
             TestInitialization.ClearDatabase();
-            using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
-            {
-                graph.Open();
-                const string createEmployeeStr = @"
-                CREATE TABLE [EmployeeNode] (
-                    [ColumnRole: ""NodeId""]
-                    [WorkId] [varchar](32),
-                    [ColumnRole: ""Property""]
-                    [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""int""}]
-                    [Clients] [varchar](max),
-                    [ColumnRole: ""Edge"", Reference: ""EmployeeNode"", Attributes: {a:""int"", c:""string"", d:""int"", e:""double""}]
-                    [Colleagues] [varchar](max)
-                )";
-                graph.CreateNodeTable(createEmployeeStr);
-                const string createEmployeeStr2 = @"
-                CREATE TABLE [ClientNode] (
-                    [ColumnRole: ""NodeId""]
-                    [ClientId] [varchar](32),
-                    [ColumnRole: ""Property""]
-                    [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int"", c:""string"", d:""int"", e:""double""}]
-                    [Colleagues] [varchar](max)
-                )";
-                graph.CreateNodeTable(createEmployeeStr2);
-            }
+            TestInitialization.CreateTableAndProc();
+            TestInitialization.InsertDataByProc(50);
         }
         [TestMethod]
         public void ParsePathTest()
@@ -64,7 +40,17 @@ namespace GraphViewUnitTest
 
                     SELECT *
                     FROM EmployeeNode as E1,EmployeeNode as E2
-                    MATCH [E1]-[Colleagues * 0 .. 5]->[E2]";
+                    MATCH [E1]-[Colleagues * 0 .. 5]->[E2]
+                    
+                    SELECT e1.WorkId, e2.WorkId
+                    FROM 
+                     EmployeeNode AS e1, EmployeeNode AS e2
+                    MATCH [e1]-[Colleagues as c {a:1, c:""str""}]->[e2]
+
+                    SELECT e1.WorkId, e2.WorkId
+                    FROM 
+                     EmployeeNode AS e1, EmployeeNode AS e2
+                    MATCH [e1]-[Colleagues*1..5 as c {a:1, c:""str""}]->[e2]";
 
             var parser = new GraphViewParser();
             IList<ParseError> errors;
@@ -73,42 +59,83 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void PathTranslationTest()
         {
-            CreateTestTable();
+            Init();
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 conn.Open();
+                conn.CreateNodeView(@"
+                    CREATE NODE VIEW NV1 AS
+                    SELECT Workid as id, name
+                    FROM EmployeeNode
+                    UNION ALL
+                    SELECT Clientid as id, null
+                    FROM ClientNode
+                    ");
+                conn.CreateNodeView(@"
+                    CREATE NODE VIEW NV2 AS
+                    SELECT Workid as id, name
+                    FROM EmployeeNode
+                    WHERE Workid = 'A'");
+                conn.CreateEdgeView(@"
+                    CREATE EDGE VIEW NV1.EV1 AS
+                    SELECT a, b, null as c_new, d as d
+                    FROM EmployeeNode.Clients
+                    UNION ALL
+                    SELECT a as a, null, c, d
+                    FROM ClientNode.Colleagues
+                    ");
+
+                conn.CreateEdgeView(@"
+                    CREATE EDGE VIEW EmployeeNode.EV2 AS
+                    SELECT a, b, null as c_new, d as d
+                    FROM EmployeeNode.Clients
+                    UNION ALL
+                    SELECT a as a, null, c, d
+                    FROM EmployeeNode.Colleagues
+                    ");
+                conn.UpdateTableStatistics("dbo", "NV1");
+                conn.UpdateTableStatistics("dbo", "EmployeeNode");
+                conn.UpdateTableStatistics("dbo", "GlobalNodeView");
+
                 var command = conn.CreateCommand();
                 command.CommandText = @" 
                     SELECT e1.WorkId, e2.WorkId
                     FROM 
                      EmployeeNode AS e1, EmployeeNode AS e2
                     MATCH [e1]-[Colleagues* as c]->[e2]
-                    WHERE c.a = 1 and c.c = '123' and c.e = 0.5;
                     
                     SELECT e1.WorkId, e2.WorkId
                     FROM 
                      EmployeeNode AS e1, EmployeeNode AS e2
-                    MATCH [e1]-[Colleagues*1..5 as c]->[e2]
-                    WHERE c.a = 1 and c.c = '123' and c.e = 0.5
+                    MATCH [e1]-[Colleagues*1..5 as c {a:1, c:""str""}]->[e2]
+
+                    SELECT e1.WorkId, e2.WorkId
+                    FROM 
+                     EmployeeNode AS e1, EmployeeNode AS e2
+                    MATCH [e1]-[EV2* as c {a:1, c_new:'str'}]->[e2]
+
+                    SELECT e1.WorkId, e2.WorkId
+                    FROM 
+                     EmployeeNode AS e1, EmployeeNode AS e2
+                    MATCH [e1]-[EV2* as c]->[e2]
                     
                     SELECT e1.WorkId, e2.WorkId
                     FROM 
                      EmployeeNode AS e1, EmployeeNode AS e2
-                    MATCH [e1]-[Colleagues*1..1 as c]->[e2]
-                    WHERE c.a > 1 and c.c = '123' and c.e = 0.5
+                    MATCH [e1]-[Colleagues * 1 .. 1 as c]->[e2]
                     
                     SELECT e1.name, e2.name
                     FROM 
                      GlobalNodeView AS e1, GlobalNodeView AS e2
                     MATCH [e1]-[Colleagues* as c]->[e2]
-                    WHERE c.a = 1 and c.c = '123' and c.e = 0.5
                     
                     SELECT e1.name, e2.name
                     FROM 
                      GlobalNodeView AS e1, GlobalNodeView AS e2
                     MATCH [e1]-[Colleagues*1..1 as c]->[e2]
-                    WHERE c.a > 1 and c.c = '123' and c.e = 0.5";
+                    ";
                 Trace.WriteLine(command.GetTsqlQuery());
+
             }
         }
 

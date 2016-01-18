@@ -187,96 +187,96 @@ namespace GraphView
         {
         }
     }
-
-    internal class CheckBooleanEqualExpersion : WSqlFragmentVisitor
-    {
-        private WSqlTableContext _context;
-        private MatchEdge _curPath;
-        public void Invoke(MatchGraph graph, WSqlTableContext context)
-        {
-            _context = context;
-            foreach (
-                var path in
-                    graph.ConnectedSubGraphs.SelectMany(
-                        e =>e.Edges.Values.Where(
-                                ee => ee.Predicates != null && ee.IsPath)))
-            {
-                _curPath = path;
-                foreach (var predicate in path.Predicates)
-                {
-                    predicate.Accept(this);
-                }
-            }
-        }
-        public override void Visit(WBooleanBinaryExpression node)
-        {
-            if (node.BooleanExpressionType != BooleanBinaryExpressionType.And)
-            {
-                throw new GraphViewException("Only conjunction is allowed in path predicates");
-            }
-            base.Visit(node);
-
-        }
-
-        public override void Visit(WBooleanComparisonExpression node)
-        {
-            if (node.ComparisonType!=BooleanComparisonType.Equals)
-                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
-            WValueExpression valueExpression = node.FirstExpr as WValueExpression;
-            WColumnReferenceExpression columnReferenceExpression;
-            if (valueExpression==null)
-            {
-                valueExpression = node.SecondExpr as WValueExpression;
-                if (valueExpression == null)
-                    throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
-                columnReferenceExpression = node.FirstExpr as WColumnReferenceExpression;
-                if (columnReferenceExpression == null)
-                    throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
-            }
-            else
-            {
-                columnReferenceExpression = node.SecondExpr as WColumnReferenceExpression;
-                if (columnReferenceExpression == null)
-                    throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
-            }
-            string attributeName = columnReferenceExpression.MultiPartIdentifier.Identifiers.Last().Value;
-            string value = valueExpression.ToString();
-            _context.AddPathPredicateValue(_curPath, attributeName, value);
-        }
-
-        public override void Visit(WBooleanIsNullExpression node)
-        {
-            throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
-        }
-
-        public override void Visit(WBetweenExpression node)
-        {
-            throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
-        }
-
-        public override void Visit(WLikePredicate node)
-        {
-            throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
-        }
-
-        public override void Visit(WInPredicate node)
-        {
-            throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
-        }
-
-        public override void Visit(WSubqueryComparisonPredicate node)
-        {
-            throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
-        }
-
-        public override void Visit(WExistsPredicate node)
-        {
-            throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
-        }
-    }
-
-
 #region comment codes
+    //internal class CheckBooleanEqualExpersion : WSqlFragmentVisitor
+    //{
+    //    private WSqlTableContext _context;
+    //    private MatchEdge _curPath;
+    //    public void Invoke(MatchGraph graph, WSqlTableContext context)
+    //    {
+    //        _context = context;
+    //        foreach (
+    //            var path in
+    //                graph.ConnectedSubGraphs.SelectMany(
+    //                    e =>e.Edges.Values.Where(
+    //                            ee => ee.Predicates != null && ee.IsPath)))
+    //        {
+    //            _curPath = path;
+    //            foreach (var predicate in path.Predicates)
+    //            {
+    //                predicate.Accept(this);
+    //            }
+    //        }
+    //    }
+    //    public override void Visit(WBooleanBinaryExpression node)
+    //    {
+    //        if (node.BooleanExpressionType != BooleanBinaryExpressionType.And)
+    //        {
+    //            throw new GraphViewException("Only conjunction is allowed in path predicates");
+    //        }
+    //        base.Visit(node);
+
+    //    }
+
+    //    public override void Visit(WBooleanComparisonExpression node)
+    //    {
+    //        if (node.ComparisonType!=BooleanComparisonType.Equals)
+    //            throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //        WValueExpression valueExpression = node.FirstExpr as WValueExpression;
+    //        WColumnReferenceExpression columnReferenceExpression;
+    //        if (valueExpression==null)
+    //        {
+    //            valueExpression = node.SecondExpr as WValueExpression;
+    //            if (valueExpression == null)
+    //                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //            columnReferenceExpression = node.FirstExpr as WColumnReferenceExpression;
+    //            if (columnReferenceExpression == null)
+    //                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //        }
+    //        else
+    //        {
+    //            columnReferenceExpression = node.SecondExpr as WColumnReferenceExpression;
+    //            if (columnReferenceExpression == null)
+    //                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //        }
+    //        string attributeName = columnReferenceExpression.MultiPartIdentifier.Identifiers.Last().Value;
+    //        string value = valueExpression.ToString();
+    //        _context.AddPathPredicateValue(_curPath, attributeName, value);
+    //    }
+
+    //    public override void Visit(WBooleanIsNullExpression node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WBetweenExpression node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WLikePredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WInPredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WSubqueryComparisonPredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WExistsPredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+    //}
+
+
+
     //internal class CheckNodeEdgeReferenceVisitor : WSqlFragmentVisitor
     //{
     //    private bool _referencedByNodeAndEdge;

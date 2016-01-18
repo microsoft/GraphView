@@ -588,7 +588,8 @@ namespace GraphView
                                 ? edgeInfo.EdgeColumns
                                 : null,
                         MinLength = currentEdge.MinLength,
-                        MaxLength = currentEdge.MaxLength
+                        MaxLength = currentEdge.MaxLength,
+                        AttributeValueDict = currentEdge.AttributeValueDict
                     };
 
                     if (preEdge != null)
@@ -920,9 +921,35 @@ namespace GraphView
             var columnTableMapping = _context.GetColumnTableMapping(_graphMetaData.ColumnsOfNodeTables);
             attachPredicateVisitor.Invoke(whereClause, graph, columnTableMapping);
 
-            // Check validity for path predicates
-            var checkPathPredicate = new CheckBooleanEqualExpersion();
-            checkPathPredicate.Invoke(graph, _context);
+            //// Attach edge attribute predicates in the match clause
+            //foreach (var edge in graph.ConnectedSubGraphs.SelectMany(e=>e.Edges.Values))
+            //{
+            //    if (edge.AttributeValueDict != null)
+            //    {
+            //        if (edge.Predicates == null)
+            //            edge.Predicates = new List<WBooleanExpression>();
+            //        foreach (var tuple in edge.AttributeValueDict)
+            //        {
+            //            string attrName = tuple.Key;
+            //            string attrValue = tuple.Value;
+            //            edge.Predicates.Add(new WBooleanComparisonExpression
+            //            {
+            //                ComparisonType = BooleanComparisonType.Equals,
+            //                FirstExpr = new WColumnReferenceExpression()
+            //                {
+            //                    MultiPartIdentifier =
+            //                        new WMultiPartIdentifier(new Identifier {Value = edge.EdgeAlias},
+            //                            new Identifier {Value = attrName})
+            //                },
+            //                SecondExpr = new WValueExpression {Value = attrValue}
+            //            });
+            //        }
+            //    }
+            //}
+
+            //// Check validity for path predicates
+            //var checkPathPredicate = new CheckBooleanEqualExpersion();
+            //checkPathPredicate.Invoke(graph, _context);
         }
 
         /// <summary>
@@ -1180,19 +1207,35 @@ namespace GraphView
                         bindTableName,
                         edgeName,
                         edge.EdgeAlias));
-                if (edge.Predicates != null)
+                if (edge.Predicates != null || edge.AttributeValueDict!=null)
                 {
                     sb.Append("\n WHERE ");
                     bool fisrtPre = true;
-                    foreach (var predicate in edge.Predicates)
+                    if (edge.Predicates != null)
                     {
-                        if (fisrtPre)
-                            fisrtPre = false;
-                        else
+                        foreach (var predicate in edge.Predicates)
                         {
-                            sb.Append(" AND ");
+                            if (fisrtPre)
+                                fisrtPre = false;
+                            else
+                            {
+                                sb.Append(" AND ");
+                            }
+                            sb.Append(predicate);
                         }
-                        sb.Append(predicate);
+                    }
+                    if (edge.AttributeValueDict != null)
+                    {
+                        foreach (var tuple in edge.AttributeValueDict)
+                        {
+                            if (fisrtPre)
+                                fisrtPre = false;
+                            else
+                            {
+                                sb.Append(" AND ");
+                            }
+                            sb.AppendFormat("{0}.{1} = {2}", edge.EdgeAlias, tuple.Key, tuple.Value);
+                        }
                     }
                 }
             }
@@ -1506,33 +1549,47 @@ namespace GraphView
                 foreach (var joinTableTuple in component.FatherListofDownSizeTable)
                 {
                     var joinTable = joinTableTuple.Item1;
-                    joinTable.JoinCondition = WBooleanBinaryExpression.Conjunction(joinTable.JoinCondition,
-                        new WBooleanComparisonExpression
+                    var downSizeFunctionCall = new WFunctionCall
+                    {
+                        CallTarget = new WMultiPartIdentifierCallTarget
                         {
-                            ComparisonType = BooleanComparisonType.Equals,
-                            FirstExpr = new WFunctionCall
+                            Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
+                        },
+                        FunctionName = new Identifier {Value = "DownSizeFunction"},
+                        Parameters = new List<WScalarExpression>
+                        {
+                            new WColumnReferenceExpression
                             {
-                                CallTarget = new WMultiPartIdentifierCallTarget
+                                MultiPartIdentifier = new WMultiPartIdentifier
                                 {
-                                    Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
-                                },
-                                FunctionName = new Identifier {Value = "DownSizeFunction"},
-                                Parameters = new List<WScalarExpression>
-                                {
-                                    new WColumnReferenceExpression
+                                    Identifiers = new List<Identifier>
                                     {
-                                        MultiPartIdentifier = new WMultiPartIdentifier
-                                        {
-                                            Identifiers = new List<Identifier>
-                                            {
-                                                new Identifier {Value = joinTableTuple.Item2},
-                                                new Identifier {Value = "LocalNodeid"}
-                                            }
-                                        }
+                                        new Identifier {Value = joinTableTuple.Item2},
+                                        new Identifier {Value = "LocalNodeid"}
                                     }
                                 }
-                            },
-                            SecondExpr = new WValueExpression("1", false)
+                            }
+                        }
+                    };
+                    joinTable.JoinCondition = WBooleanBinaryExpression.Conjunction(joinTable.JoinCondition,
+                        new WBooleanParenthesisExpression
+                        {
+                            Expression = new WBooleanBinaryExpression
+                            {
+                                BooleanExpressionType = BooleanBinaryExpressionType.Or,
+                                FirstExpr = new WBooleanComparisonExpression
+                                {
+                                    ComparisonType = BooleanComparisonType.Equals,
+                                    FirstExpr = downSizeFunctionCall,
+                                    SecondExpr = new WValueExpression("1", false)
+                                },
+                                SecondExpr = new WBooleanComparisonExpression
+                                {
+                                    ComparisonType = BooleanComparisonType.Equals,
+                                    FirstExpr = downSizeFunctionCall,
+                                    SecondExpr = new WValueExpression("2", false)
+                                }
+                            }
                         });
                 }
 

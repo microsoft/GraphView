@@ -211,6 +211,7 @@ namespace GraphView
             }
             else if (sizeFactor*size < estimatedSize)
             {
+                shrinkSize = 1.0/(1 - Math.Pow((1 - 1.0/shrinkSize), 1.5));
                 if (estimatedSize < shrinkSize)
                 {
                     component.EstimateSize /= estimatedSize;
@@ -358,7 +359,10 @@ namespace GraphView
                 joinTable.JoinHint = JoinHint.Loop;
                 component.EstimateSize = estimatedCompSize * estimatedNodeUnitSize /
                                          nodeUnitCandidate.TreeRoot.TableRowCount;
-                cost = 2*componentSize;
+                
+                //cost = componentSize*Math.Log10(nodeUnitSize);
+                cost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
+                //cost = 2*componentSize;
                 //cost = componentSize + nodeUnitSize;
             }
             // Hash Join
@@ -424,31 +428,23 @@ namespace GraphView
                 }
             }
 
-            // Update Cost
-            component.Cost += cost;
 
 
             // Debug
 #if DEBUG
-            //Trace.Write(component.NodeUnits.Count+" ");
-            //foreach (var n in component.NodeUnits.Where(e => e.Key != node.Node.ExposedName))
+            //foreach (var item in component.MaterializedNodeSplitCount.Where(e => e.Key != node))
             //{
-            //    Trace.Write(n.Value.NodeRefName);
+            //    Trace.Write(item.Key.RefAlias + ",");
             //}
-            //Trace.Write(component.NodeUnits[node.Node.ExposedName].NodeRefName+" ");
-            //Trace.Write(" "+(long)component.Cost+"   "+(long)component.Size);
-            //Trace.Write("   ");
-            //foreach (var item in component.PopulatedEdgesName)
-            //{
-            //    Trace.Write(item + " ");
-            //}
-            //Trace.Write("; ");
-            //foreach (var unpopulatedEdge in component.UnpopulatedEdges)
-            //{
-            //    Trace.Write(unpopulatedEdge.Alias + " ");
-            //}
-            //Trace.WriteLine("");
+            //Trace.Write(node.RefAlias);
+            //Trace.Write(" Size:" + component.Size + " Cost:" +
+            //                (componentSize + nodeUnitSize));
+            //Trace.WriteLine(" --> Total Cost:" + component.Cost);
 #endif
+
+
+            // Update Cost
+            component.Cost += cost;
 
             return new WParenthesisTableReference
             {
@@ -582,7 +578,7 @@ namespace GraphView
                 var attributes =
                         MetaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(edge.BindNodeTableObjName)][
                             edgeColIdentifier.Value.ToLower()].EdgeInfo.ColumnAttributes;
-                if (edge.Predicates == null)
+                if (edge.AttributeValueDict == null)
                 {
                     WValueExpression nullExpression = new WValueExpression {Value = "null"};
                     for (int i = 0; i < attributes.Count; i++)
@@ -590,13 +586,12 @@ namespace GraphView
                 }
                 else
                 {
-                    var attrDict = Context.GetPathPredicatesValueDict(edge);
                     foreach (var attribute in attributes)
                     {
                         string value;
                         var valueExpression = new WValueExpression
                         {
-                            Value = attrDict.TryGetValue(attribute, out value) ? value : "null"
+                            Value = edge.AttributeValueDict.TryGetValue(attribute, out value) ? value : "null"
                         };
 
                         parameters.Add(valueExpression);

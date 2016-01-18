@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Schema;
@@ -112,71 +113,91 @@ namespace GraphView
             if (!ParseQuotedIdentifier(tokens, ref currentToken, ref edgeIdentifier, ref farestError))
                 return false;
 
-            nextToken = currentToken;
             int line = tokens[currentToken].Line;
+            nextToken = currentToken;
             string edgeInfo;
             string alias = null;
-            var getAliasDelimiter = Regex.Matches(edgeIdentifier.Value, @"\s+as\s+", RegexOptions.IgnoreCase);
-            switch (getAliasDelimiter.Count)
-            {
-                case 0:
-                {
-                    edgeInfo = edgeIdentifier.Value;
-                    break;
-                }
-                case 1:
-                {
-                    var spiltEdgeIdentifier = Regex.Split(edgeIdentifier.Value, @"\s+as\s+",RegexOptions.IgnoreCase);
-                    edgeInfo = spiltEdgeIdentifier.First();
-                    alias = spiltEdgeIdentifier.Last();
-                    break;
-                }
-                default:
-                {
-                    throw new SyntaxErrorException(line, getAliasDelimiter[0].Value,
-                        "Multiple 'as'");
-                }
-            }
-            var starCount = edgeInfo.Count(e => e == '*');
-            string edgeNames;
             int maxLen = 1;
             int minLen = 1;
-            switch (starCount)
+
+            string errorKey = "";
+            var edgeTokens = LexicalAnalyzer.Tokenize(edgeIdentifier.Value, ref errorKey);
+            if (!string.IsNullOrEmpty(errorKey))
+                throw new SyntaxErrorException(line, errorKey);
+            int curEdgeToken = 0;
+            int edgeFareastError = 0;
+            string edgeName = null;
+            string strValue = null;
+            Dictionary<string, string> attributeValueDict = null;
+
+
+            // Gets edge name
+            if (!ReadToken(edgeTokens, AnnotationTokenType.NameToken, ref curEdgeToken, ref edgeName, ref edgeFareastError))
+                throw new SyntaxErrorException(line, edgeTokens[edgeFareastError].value);
+            edgeIdentifier.Value = edgeName;
+
+            // Gets path info
+            if (ReadToken(edgeTokens, "*", ref curEdgeToken, ref strValue, ref edgeFareastError))
             {
-                case 0:
+                string lengStr = "";
+
+                // Gets path minimal length
+                if (ReadToken(edgeTokens, AnnotationTokenType.Integer, ref curEdgeToken, ref lengStr,
+                    ref edgeFareastError))
                 {
-                    edgeNames = edgeInfo;
-                    break;
-                }
-                case 1:
-                {
-                    var splitPathInfo = edgeInfo.Split('*');
-                    maxLen = -1;
-                    minLen = 0;
-                    edgeNames = splitPathInfo.First();
-                    string lenStr = splitPathInfo.Last();
-                    if (!string.IsNullOrEmpty(lenStr))
+                    if (!int.TryParse(lengStr, out minLen) || minLen<0)
+                        throw new SyntaxErrorException(line, lengStr, "Min length should be an integer no less than zero");
+                    for (int i = 0; i < 2; i++)
                     {
-                        var lenInfo = Regex.Split(lenStr, @"\s*\.{2}\s*");
-                        if (lenInfo.Length!=2)
-                            throw new SyntaxErrorException(line, lenInfo.First());
-                        if (!int.TryParse(lenInfo.First(), out minLen))
-                            throw new SyntaxErrorException(line, lenInfo.First(), "Min length should be an integer");
-                        if (!int.TryParse(lenInfo.Last(), out maxLen))
-                            throw new SyntaxErrorException(line, lenInfo.Last(), "Min length should be an integer");
+                        if (!ReadToken(edgeTokens, ".", ref curEdgeToken, ref strValue,
+                            ref edgeFareastError))
+                            throw new SyntaxErrorException(line, lengStr,
+                                "Two dots should be followed by the minimal length integer");
                     }
-                    break;
+
+                    // Gets path maximal length
+                    if (!ReadToken(edgeTokens, AnnotationTokenType.Integer, ref curEdgeToken, ref lengStr,
+                        ref edgeFareastError) || !int.TryParse(lengStr, out maxLen) || maxLen < minLen)
+                        throw new SyntaxErrorException(line, lengStr,
+                            "Max length should be an integer no less than the min length");
                 }
-                default:
+                else
                 {
-                    throw new SyntaxErrorException(line, edgeInfo,
-                        "Multiple '*'");
+                    minLen = 0;
+                    maxLen = -1;
+                }
+                // Gets edge alias
+                if (ReadToken(edgeTokens, "as", ref curEdgeToken, ref strValue, ref edgeFareastError))
+                {
+                    if (!ReadToken(edgeTokens, AnnotationTokenType.NameToken, ref curEdgeToken, ref alias, ref edgeFareastError))
+                        throw new SyntaxErrorException(line, edgeTokens[edgeFareastError].value);
+                }
+
+                // Gets predicates on attributes
+                NestedObject jsonNestedObject = null;
+                int braceToken = curEdgeToken;
+                if (ReadToken(edgeTokens, AnnotationTokenType.LeftBrace, ref curEdgeToken, ref strValue,
+                    ref edgeFareastError))
+                {
+                    if (!ParseNestedObject(edgeTokens, ref braceToken, ref jsonNestedObject, ref edgeFareastError, true))
+                        throw new SyntaxErrorException(line, "{", "Invalid json string");
+                    else
+                        attributeValueDict =
+                            (jsonNestedObject as CollectionObject).Collection.ToDictionary(e => e.Key.ToLower(),
+                                e =>
+                                    (e.Value is StringObject)
+                                        ? "'" + ((StringObject) e.Value).Value + "'"
+                                        : (e.Value as NormalObject).Value);
                 }
             }
-            var edgeMatchCollection = Regex.Matches(edgeNames, @"[a-zA-Z_][a-zA-Z0-9_]*");
-            if (edgeMatchCollection.Count != 1)
-                throw new SyntaxErrorException(line, edgeInfo, "Invalid edge name. Remove the unecessary spaces and try again.");
-            edgeIdentifier.Value = edgeMatchCollection[0].Value;
+
+            // Gets edge alias
+            if (ReadToken(edgeTokens, "as", ref curEdgeToken, ref strValue, ref edgeFareastError))
+            {
+                if (!ReadToken(edgeTokens, AnnotationTokenType.NameToken, ref curEdgeToken, ref alias, ref edgeFareastError))
+                    throw new SyntaxErrorException(line, edgeTokens[edgeFareastError].value);
+            }
+
             result = new WEdgeColumnReferenceExpression
             {
                 ColumnType = ColumnType.Regular,
@@ -185,7 +206,8 @@ namespace GraphView
                 FirstTokenIndex = currentToken - 1,
                 MaxLength = maxLen,
                 MinLength = minLen,
-                MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier)
+                MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier),
+                AttributeValueDict = attributeValueDict
             };
             return true;
         }
@@ -702,6 +724,11 @@ namespace GraphView
             public string Value { get; set; }
         }
 
+        private class NormalObject: NestedObject
+        {
+            public string Value { get; set; }
+        }
+
         private class CollectionObject : NestedObject
         {
             public IDictionary<string, NestedObject> Collection { get; set; }
@@ -845,11 +872,37 @@ namespace GraphView
             }
         }
 
+        private static bool ReadToken(
+            List<AnnotationToken> tokens,
+            string text,
+            ref int nextToken,
+            ref string tokenValue,
+            ref int fareastError)
+        {
+            if (tokens.Count == nextToken)
+            {
+                fareastError = nextToken;
+                return false;
+            }
+            else if (string.Equals(tokens[nextToken].value, text, StringComparison.OrdinalIgnoreCase))
+            {
+                tokenValue = tokens[nextToken].value;
+                nextToken++;
+                return true;
+            }
+            else
+            {
+                fareastError = Math.Max(fareastError, nextToken);
+                return false;
+            }
+        }
+
         private static bool ParseNestedObject(
             List<AnnotationToken> tokenList, 
             ref int nextToken, 
             ref NestedObject result,
-            ref int fareastError)
+            ref int fareastError,
+            bool supportMoreFieldType = false)
         {
             int currentToken = nextToken;
             string tokenStr = null;
@@ -867,7 +920,7 @@ namespace GraphView
                 if ((ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref fieldName, ref fareastError) || 
                     ReadToken(tokenList, AnnotationTokenType.NameToken, ref currentToken, ref fieldName, ref fareastError)) &&
                     ReadToken(tokenList, AnnotationTokenType.Colon, ref currentToken, ref tokenStr, ref fareastError) &&
-                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError))
+                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError, supportMoreFieldType))
                 {
                     collectionObj.Collection[fieldName.ToLower()] = fieldValue;
                 }
@@ -880,7 +933,7 @@ namespace GraphView
                     (ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref fieldName, ref fareastError) || 
                     ReadToken(tokenList, AnnotationTokenType.NameToken, ref currentToken, ref fieldName, ref fareastError)) &&
                     ReadToken(tokenList, AnnotationTokenType.Colon, ref currentToken, ref tokenStr, ref fareastError) &&
-                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError))
+                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError, supportMoreFieldType))
                 {
                     collectionObj.Collection[fieldName.ToLower()] = fieldValue;
                 }
@@ -894,7 +947,10 @@ namespace GraphView
                 nextToken = currentToken;
                 return true;
             }
-            else if (ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref tokenStr, ref fareastError))
+            else if (
+                ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref tokenStr,
+                    ref fareastError)
+                )
             {
                 StringObject stringObj = new StringObject()
                 {
@@ -902,6 +958,24 @@ namespace GraphView
                 };
 
                 result = stringObj;
+                nextToken = currentToken;
+                return true;
+            }
+            else if (supportMoreFieldType &&
+                 (ReadToken(tokenList, AnnotationTokenType.Integer, ref currentToken, ref tokenStr,
+                     ref fareastError) ||
+                  ReadToken(tokenList, AnnotationTokenType.Double, ref currentToken, ref tokenStr,
+                      ref fareastError) ||
+                  ReadToken(tokenList, AnnotationTokenType.Binary, ref currentToken, ref tokenStr,
+                      ref fareastError) ||
+                  ReadToken(tokenList, AnnotationTokenType.SingleQuotedString, ref currentToken, ref tokenStr,
+                      ref fareastError)))
+            {
+                NormalObject normalObject = new NormalObject
+                {
+                    Value = tokenStr
+                };
+                result = normalObject;
                 nextToken = currentToken;
                 return true;
             }

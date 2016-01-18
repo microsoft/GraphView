@@ -45,6 +45,7 @@ namespace GraphView
         public IList<Tuple<string, string>> IncludedEdgeNames { get; set; }
         public int MinLength { get; set; }
         public int MaxLength { get; set; }
+        public Dictionary<string, string> AttributeValueDict { get; set; }
 
         public override int GetHashCode()
         {

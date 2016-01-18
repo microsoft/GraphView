@@ -16,258 +16,8 @@ namespace GraphViewUnitTest
         private void Init()
         {
             TestInitialization.ClearDatabase();
-            CreateTableAndProc();
-            InsertData();
-        }
-
-        private void CreateTableAndProc()
-        {
-            using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
-            {
-                graph.Open();
-                const string createEmployeeStr = @"
-                CREATE TABLE [EmployeeNode] (
-                    [ColumnRole: ""NodeId""]
-                    [WorkId] [varchar](32),
-                    [ColumnRole: ""Property""]
-                    [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""int""}]
-                    [Clients] [varchar](max),
-                    [ColumnRole: ""Edge"", Reference: ""EmployeeNode"", Attributes: {a:""int"", c:""string"", d:""int"", e:""double""}]
-                    [Colleagues] [varchar](max)
-                )";
-                graph.CreateNodeTable(createEmployeeStr);
-                const string createEmployeeStr2 = @"
-                CREATE TABLE [ClientNode] (
-                    [ColumnRole: ""NodeId""]
-                    [ClientId] [varchar](32),
-                    [ColumnRole: ""Property""]
-                    [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a:""int"", c:""string"", d:""int"", e:""double""}]
-                    [Colleagues] [varchar](max)
-                )";
-                graph.CreateNodeTable(createEmployeeStr2);
-
-                graph.CreateProcedure(@"
-                    CREATE PROCEDURE InsertNode @id varchar(32), @name varchar(32)
-                    as
-                    BEGIN
-                    INSERT NODE INTO ClientNode (ClientId, name) VALUES (@id,@name);
-                    INSERT NODE INTO EmployeeNode (WorkId, name) VALUES (@id,@name);
-                    END
-                    ");
-
-                graph.CreateProcedure(@"
-                    CREATE PROCEDURE InsertEmployeeNodeClients @src varchar(32),@sink varchar(32),@a int, @b float, @d int
-                    as
-                    BEGIN
-                    INSERT EDGE INTO EmployeeNode.Clients
-                    SELECT En, Cn, @a, @b, @d
-                    FROM EmployeeNode En, ClientNode Cn
-                    WHERE En.Workid = @src AND Cn.ClientId = @sink;
-                    END
-                    ");
-
-                graph.CreateProcedure(@"
-                    CREATE PROCEDURE InsertEmployeeNodeColleagues @src varchar(32),@sink varchar(32),@a int, @c nvarchar(4000), @d int, @e float
-                    as
-                    BEGIN
-                    INSERT EDGE INTO EmployeeNode.Colleagues
-                    SELECT En, Cn, @a, @c, @d, @e
-                    FROM EmployeeNode En, EmployeeNode Cn
-                    WHERE En.Workid = @src AND Cn.Workid = @sink;
-                    END
-                    ");
-
-                graph.CreateProcedure(@"
-                    CREATE PROCEDURE InsertClientNodeColleagues @src varchar(32),@sink varchar(32),@a int, @c nvarchar(4000), @d int, @e float
-                    as
-                    BEGIN
-                    INSERT EDGE INTO ClientNode.Colleagues
-                    SELECT En, Cn, @a, @c, @d, @e
-                    FROM ClientNode En, ClientNode Cn
-                    WHERE En.ClientId = @src AND Cn.ClientId = @sink;
-                    END
-                    ");
-            }
-        }
-
-        private void InsertData()
-        {
-            using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
-            {
-                graph.Open();
-                using (var command = graph.CreateCommand())
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.CommandText = "InsertNode";
-                    command.Parameters.Add("@id", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@name", SqlDbType.VarChar, 32);
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@id"].Value = i;
-                        command.Parameters["@name"].Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
-                        command.ExecuteNonQuery();
-                    }
-
-                    command.CommandText = "InsertEmployeeNodeClients";
-                    command.Parameters.Clear();
-                    command.Parameters.Add("@src", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@sink", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@a", SqlDbType.Int);
-                    command.Parameters.Add("@b", SqlDbType.Float);
-                    command.Parameters.Add("@d", SqlDbType.Int);
-                    var rnd = new Random();
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@src"].Value = i;
-                        for (int j = 0; j < NodeDegree; j++)
-                        {
-                            command.Parameters["@sink"].Value = rnd.Next(0, NodeNum - 1);
-                            command.Parameters["@a"].Value = rnd.Next();
-                            command.Parameters["@b"].Value = rnd.NextDouble();
-                            command.Parameters["@d"].Value = rnd.Next();
-                            command.ExecuteNonQuery();
-                        }
-                    }
-
-                    command.CommandText = "InsertEmployeeNodeColleagues";
-                    command.Parameters.Clear();
-                    command.Parameters.Add("@src", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@sink", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@a", SqlDbType.Int);
-                    command.Parameters.Add("@c", SqlDbType.NVarChar, 4000);
-                    command.Parameters.Add("@d", SqlDbType.Int);
-                    command.Parameters.Add("@e", SqlDbType.Float);
-
-                    rnd = new Random();
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@src"].Value = i;
-                        for (int j = 0; j < NodeDegree; j++)
-                        {
-                            command.Parameters["@sink"].Value = rnd.Next(0, NodeNum - 1);
-                            command.Parameters["@a"].Value = rnd.Next();
-                            command.Parameters["@e"].Value = rnd.NextDouble();
-                            command.Parameters["@d"].Value = rnd.Next();
-                            command.Parameters["@c"].Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
-                            command.ExecuteNonQuery();
-                        }
-                    }
-
-                    command.CommandText = "InsertClientNodeColleagues";
-                    command.Parameters.Clear();
-                    command.Parameters.Add("@src", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@sink", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@a", SqlDbType.Int);
-                    command.Parameters.Add("@c", SqlDbType.NVarChar, 4000);
-                    command.Parameters.Add("@d", SqlDbType.Int);
-                    command.Parameters.Add("@e", SqlDbType.Float);
-
-                    rnd = new Random();
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@src"].Value = i;
-                        for (int j = 0; j < NodeDegree; j++)
-                        {
-                            command.Parameters["@sink"].Value = rnd.Next(0, NodeNum - 1);
-                            command.Parameters["@a"].Value = rnd.Next();
-                            command.Parameters["@e"].Value = rnd.NextDouble();
-                            command.Parameters["@d"].Value = rnd.Next();
-                            command.Parameters["@c"].Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
-                            command.ExecuteNonQuery();
-                        }
-                    }
-                }
-                graph.UpdateTableStatistics("dbo", "employeenode");
-                graph.UpdateTableStatistics("dbo", "clientnode");
-            }
-        }
-
-        private void InsertData2()
-        {
-            using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
-            {
-                graph.Open();
-                using (var command = graph.CreateCommand())
-                {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.CommandText = "InsertNode";
-                    command.Parameters.Add("@id", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@name", SqlDbType.VarChar, 32);
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@id"].Value = i;
-                        command.Parameters["@name"].Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
-                        command.ExecuteNonQuery();
-                    }
-
-                    command.CommandText = "InsertEmployeeNodeClients";
-                    command.Parameters.Clear();
-                    command.Parameters.Add("@src", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@sink", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@a", SqlDbType.Int);
-                    command.Parameters.Add("@b", SqlDbType.Float);
-                    command.Parameters.Add("@d", SqlDbType.Int);
-                    var rnd = new Random();
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@src"].Value = i;
-                        command.Parameters["@sink"].Value = (i + 1) % NodeNum;
-                        command.Parameters["@a"].Value = rnd.Next();
-                        command.Parameters["@b"].Value = rnd.NextDouble();
-                        command.Parameters["@d"].Value = rnd.Next();
-                        command.ExecuteNonQuery();
-                    }
-
-                    command.CommandText = "InsertEmployeeNodeColleagues";
-                    command.Parameters.Clear();
-                    command.Parameters.Add("@src", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@sink", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@a", SqlDbType.Int);
-                    command.Parameters.Add("@c", SqlDbType.NVarChar, 4000);
-                    command.Parameters.Add("@d", SqlDbType.Int);
-                    command.Parameters.Add("@e", SqlDbType.Float);
-
-                    rnd = new Random();
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@src"].Value = i;
-
-                        command.Parameters["@sink"].Value = (i + 1) % NodeNum;
-                        command.Parameters["@a"].Value = rnd.Next();
-                        command.Parameters["@e"].Value = rnd.NextDouble();
-                        command.Parameters["@d"].Value = rnd.Next();
-                        command.Parameters["@c"].Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
-                        command.ExecuteNonQuery();
-
-                    }
-
-                    command.CommandText = "InsertClientNodeColleagues";
-                    command.Parameters.Clear();
-                    command.Parameters.Add("@src", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@sink", SqlDbType.VarChar, 32);
-                    command.Parameters.Add("@a", SqlDbType.Int);
-                    command.Parameters.Add("@c", SqlDbType.NVarChar, 4000);
-                    command.Parameters.Add("@d", SqlDbType.Int);
-                    command.Parameters.Add("@e", SqlDbType.Float);
-
-                    rnd = new Random();
-                    for (int i = 0; i < NodeNum; i++)
-                    {
-                        command.Parameters["@src"].Value = i;
-                        command.Parameters["@sink"].Value = (i + 1) % NodeNum;
-                        command.Parameters["@a"].Value = rnd.Next();
-                        command.Parameters["@e"].Value = rnd.NextDouble();
-                        command.Parameters["@d"].Value = rnd.Next();
-                        command.Parameters["@c"].Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
-                        command.ExecuteNonQuery();
-
-                    }
-                }
-                graph.UpdateTableStatistics("dbo", "employeenode");
-                graph.UpdateTableStatistics("dbo", "clientnode");
-            }
+            TestInitialization.CreateTableAndProc();
+            TestInitialization.InsertDataByProc(NodeNum,NodeDegree);
         }
 
         [TestMethod]
@@ -332,11 +82,11 @@ namespace GraphViewUnitTest
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 conn.Open();
-                //conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId, c1.ClientId, c2.ClientId, NV1.id, NV2.id
-                //FROM 
-                // EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
-                //MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2
-                //WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
+                conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId, c1.ClientId, c2.ClientId, NV1.id, NV2.id
+                FROM 
+                 EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
+                MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2, e2-[ev2]->e1
+                WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
             }
         }
 
@@ -344,8 +94,8 @@ namespace GraphViewUnitTest
         public void GlobalViewTest()
         {
             TestInitialization.ClearDatabase();
-            CreateTableAndProc();
-            InsertData2();
+            TestInitialization.CreateTableAndProc();
+            TestInitialization.InsertDataByProc(NodeNum,1);
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 conn.Open();
