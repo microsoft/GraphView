@@ -1630,7 +1630,7 @@ namespace GraphView
         {
             var checkVarVisitor = new CollectVariableVisitor();
             var currentContext = checkVarVisitor.Invoke(node.FromClause, _graphMetaData.ColumnsOfNodeTables.Keys);
-            currentContext.UpperLevel = _context;
+            currentContext.ParentContext = _context;
             _context = currentContext;
 
             base.Visit(node);
@@ -1675,7 +1675,7 @@ namespace GraphView
                 node.MatchClause = null;
             }
 
-            _context = _context.UpperLevel;
+            _context = _context.ParentContext;
         }
 
     }
