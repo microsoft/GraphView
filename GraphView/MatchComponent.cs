@@ -73,7 +73,7 @@ namespace GraphView
         public Dictionary<MatchNode, List<MatchEdge>> UnmaterializedNodeMapping { get; set; }
 
         // Store the statistics of the nodes in the component for further joins
-        public Dictionary<MatchNode, ColumnStatistics> StatisticsDict { get; set; }
+        public Dictionary<MatchNode, EdgeStatistics> StatisticsDict { get; set; }
 
         // Used memory of the component in total
         public double TotalMemory { get; set; }
@@ -109,7 +109,7 @@ namespace GraphView
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
-            StatisticsDict = new Dictionary<MatchNode, ColumnStatistics>();
+            StatisticsDict = new Dictionary<MatchNode, EdgeStatistics>();
             Size = 1.0;
             Cost = 0.0;
             TotalMemory = 0.0;
@@ -125,7 +125,7 @@ namespace GraphView
         {
             Nodes.Add(node);
             MaterializedNodeSplitCount[node] = 0;
-            StatisticsDict[node] = new ColumnStatistics{Selectivity = 1.0/node.TableRowCount};
+            StatisticsDict[node] = new EdgeStatistics{Selectivity = 1.0/node.TableRowCount};
 
             Size *= node.EstimatedRows;
             EstimateSize *= node.EstimatedRows;
@@ -150,7 +150,7 @@ namespace GraphView
             {
                 UnmaterializedNodeMapping[nodeMapping.Key] = new List<MatchEdge>(nodeMapping.Value);
             }
-            StatisticsDict = new Dictionary<MatchNode, ColumnStatistics>(component.StatisticsDict);
+            StatisticsDict = new Dictionary<MatchNode, EdgeStatistics>(component.StatisticsDict);
             TableRef = component.TableRef;
             Size = component.Size;
             Cost = component.Cost;
@@ -697,7 +697,7 @@ namespace GraphView
                 nodeName = root.RefAlias;
                 newComponent.Nodes.Add(root);
                 newComponent.MaterializedNodeSplitCount[root] = 0;
-                newComponent.StatisticsDict[root] = new ColumnStatistics {Selectivity = 1.0/root.TableRowCount};
+                newComponent.StatisticsDict[root] = new EdgeStatistics {Selectivity = 1.0/root.TableRowCount};
 
             }
 
@@ -759,7 +759,7 @@ namespace GraphView
                 // Component unmaterialized edge to root                
                 else
                 {
-                    ColumnStatistics statistics = null;
+                    EdgeStatistics statistics = null;
                     foreach (var edge in inEdges)
                     {
                         // Update component table
@@ -787,7 +787,7 @@ namespace GraphView
                                 },
                                 ComparisonType = BooleanComparisonType.Equals
                             });
-                        statistics = ColumnStatistics.UpdateHistogram(statistics,
+                        statistics = EdgeStatistics.UpdateHistogram(statistics,
                             newComponent.Context.GetEdgeStatistics(edge));
                         selectivity *= statistics.Selectivity;
 
@@ -836,7 +836,7 @@ namespace GraphView
                             },
                             ComparisonType = BooleanComparisonType.Equals
                         });
-                    var statistics = ColumnStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
+                    var statistics = EdgeStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
                         newComponent.Context.GetEdgeStatistics(jointEdge));
                     selectivity *= statistics.Selectivity;
                     newComponent.StatisticsDict[sinkNode] = statistics;
@@ -879,7 +879,7 @@ namespace GraphView
                             });
 
                         sinkToSinkCount++;
-                        var statistics = ColumnStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
+                        var statistics = EdgeStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
                             newComponent.Context.GetEdgeStatistics(jointEdge));
                         selectivity *= statistics.Selectivity;
                         newComponent.StatisticsDict[sinkNode] = statistics;
@@ -887,7 +887,7 @@ namespace GraphView
                     // Leaf to unmaterialized leaf
                     else
                     {
-                        ColumnStatistics compSinkNodeStatistics = null;
+                        EdgeStatistics compSinkNodeStatistics = null;
                         foreach (var inEdge in inEdges)
                         {
                             compTable = SpanTableRef(compTable, inEdge, newComponent.GetNodeRefName(inEdge.SourceNode));
@@ -918,7 +918,7 @@ namespace GraphView
                             var leafToLeafStatistics = statisticsCalculator.GetLeafToLeafStatistics(jointEdge, inEdge);
                             selectivity *= leafToLeafStatistics.Selectivity;
                             compSinkNodeStatistics =
-                                ColumnStatistics.UpdateHistogram(compSinkNodeStatistics,
+                                EdgeStatistics.UpdateHistogram(compSinkNodeStatistics,
                                     newComponent.Context.GetEdgeStatistics(inEdge));
                         }
                         newComponent.StatisticsDict[sinkNode] = compSinkNodeStatistics;
@@ -938,7 +938,7 @@ namespace GraphView
             }
 
             // Calculate Estimated Join Selectivity & Estimated Node Size
-            var densityDict = MetaData.TableIdDensity;
+            var densityDict = MetaData.GlobalNodeIdDensity;
             double estimatedSelectity = 1.0;
             int count = 0;
             bool sinkJoin = false;
@@ -947,9 +947,9 @@ namespace GraphView
                 var density = item.Value;
                 var curJoinCount = DensityCount[item.Key];
                 var curJoinSelectitivy = Math.Pow(density, 2 - Math.Pow(2, 1 - curJoinCount));
-                if (!sinkJoin && ColumnStatistics.DefaultDensity < density)
+                if (!sinkJoin && EdgeStatistics.DefaultDensity < density)
                 {
-                    var curSinkJoinSelectivity = Math.Pow(ColumnStatistics.DefaultDensity,
+                    var curSinkJoinSelectivity = Math.Pow(EdgeStatistics.DefaultDensity,
                         2 - Math.Pow(2, 1 - sinkToSinkCount));
                     estimatedSelectity *= Math.Pow(curSinkJoinSelectivity, Math.Pow(2, -count));
                     count += sinkToSinkCount;

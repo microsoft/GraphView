@@ -42,8 +42,8 @@ namespace GraphView
     {
         public WSqlTableContext ParentContext { get; set; }
 
-        private readonly Dictionary<MatchEdge, ColumnStatistics> _edgeStatisticses =
-            new Dictionary<MatchEdge, ColumnStatistics>();
+        private readonly Dictionary<MatchEdge, EdgeStatistics> _edgeStatisticses =
+            new Dictionary<MatchEdge, EdgeStatistics>();
 
         // Predicates associated with the path constructs in the current context. 
         // Note that path predicates are defined as a part of path constructs, rather than
@@ -82,7 +82,7 @@ namespace GraphView
             get { return _edgeDictionary; }
         }
 
-        public ColumnStatistics GetEdgeStatistics(MatchEdge edge)
+        public EdgeStatistics GetEdgeStatistics(MatchEdge edge)
         {
             return _edgeStatisticses[edge];
         }
@@ -249,7 +249,7 @@ namespace GraphView
                     edge.EdgeColumn));
         }
 
-        public void AddEdgeStatistics(MatchEdge edge, ColumnStatistics statistics)
+        public void AddEdgeStatistics(MatchEdge edge, EdgeStatistics statistics)
         {
             _edgeStatisticses.Add(edge, statistics);
         }

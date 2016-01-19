@@ -72,6 +72,12 @@ namespace GraphView
         /// </summary>
         public bool External { get; set; }
 
+        /// <summary>
+        /// The density value of the GlobalNodeId Column of the corresponding node table.
+        /// This value is used to estimate the join selectivity of A-->B. 
+        /// </summary>
+        public double GlobalNodeIdDensity;
+
         public IList<WBooleanExpression> Predicates { get; set; }
         public HashSet<string> IncludedNodeNames { get; set; } 
 

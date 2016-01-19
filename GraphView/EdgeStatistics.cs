@@ -31,11 +31,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class ColumnStatistics
+    internal class EdgeStatistics
     {
         public const double DefaultDensity = 0.0316228;
 
-        public ColumnStatistics()
+        public EdgeStatistics()
         {
             Histogram = new Dictionary<long, Tuple<double, bool>>();
             Selectivity = 1.0;
@@ -57,7 +57,7 @@ namespace GraphView
         /// <param name="newStatistics"></param>
         /// <param name="currentJoin"></param>
         /// <returns></returns>
-        internal static ColumnStatistics UpdateHistogram(ColumnStatistics curStatistics, ColumnStatistics newStatistics)
+        internal static EdgeStatistics UpdateHistogram(EdgeStatistics curStatistics, EdgeStatistics newStatistics)
         {
             if (curStatistics == null)
                 return newStatistics;
@@ -68,7 +68,7 @@ namespace GraphView
             var newHistogram = newStatistics.Histogram;
             if (!curHistogram.Any())
             {
-                return new ColumnStatistics
+                return new EdgeStatistics
                 {
                     Density = newStatistics.Density,
                     Histogram = newHistogram,
@@ -77,7 +77,7 @@ namespace GraphView
             }
             if (!newHistogram.Any())
             {
-                return new ColumnStatistics
+                return new EdgeStatistics
                 {
                     Density = curStatistics.Density,
                     Histogram = curHistogram,
@@ -198,7 +198,7 @@ namespace GraphView
                 }
             }
 
-            return new ColumnStatistics
+            return new EdgeStatistics
             {
                 Histogram = resHistogram,
                 Density = density < 0 ? Math.Max(curStatistics.Density, newStatistics.Density) : density,

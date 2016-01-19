@@ -121,29 +121,29 @@ namespace GraphView
     {
         WSqlTableContext Context { get; set; }
 
-        ColumnStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
+        EdgeStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
 
 
     }
 
     internal class HistogramCalculator : IMatchJoinStatisticsCalculator
     {
-        public Dictionary<Tuple<string, string>, ColumnStatistics> LeafToLeafSelectivity { get; set; }
+        public Dictionary<Tuple<string, string>, EdgeStatistics> LeafToLeafSelectivity { get; set; }
 
         public HistogramCalculator()
         {
-            LeafToLeafSelectivity = new Dictionary<Tuple<string, string>, ColumnStatistics>(new MatchEdgeTupleEqualityComparer());
+            LeafToLeafSelectivity = new Dictionary<Tuple<string, string>, EdgeStatistics>(new MatchEdgeTupleEqualityComparer());
         }
 
         public WSqlTableContext Context { get; set; }
-        public ColumnStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
+        public EdgeStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
         {
             var edgeTuple = new Tuple<string, string>(nodeEdge.EdgeAlias, componentEdge.EdgeAlias);
 
             if (LeafToLeafSelectivity.ContainsKey(edgeTuple))
                 return LeafToLeafSelectivity[edgeTuple];
 
-            var mergedStatistics = ColumnStatistics.UpdateHistogram(Context.GetEdgeStatistics(nodeEdge), Context.GetEdgeStatistics(componentEdge));
+            var mergedStatistics = EdgeStatistics.UpdateHistogram(Context.GetEdgeStatistics(nodeEdge), Context.GetEdgeStatistics(componentEdge));
             LeafToLeafSelectivity[edgeTuple] = mergedStatistics;
             return mergedStatistics;
         }

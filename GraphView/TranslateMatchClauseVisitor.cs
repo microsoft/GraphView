@@ -142,9 +142,9 @@ namespace GraphView
         public readonly Dictionary<Tuple<string, string>, HashSet<string>> NodeViewMapping =
             new Dictionary<Tuple<string, string>, HashSet<string>>();
 
-        /// Density value of the GlobalNodeId Column in each node table.
+        /// 
         /// Table name -> Density value
-        public Dictionary<string, double> TableIdDensity =
+        public Dictionary<string, double> GlobalNodeIdDensity =
             new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -957,7 +957,7 @@ namespace GraphView
         {
             sinkList.Sort();
             var rowCount = sinkList.Count;
-            var statistics = new ColumnStatistics
+            var statistics = new EdgeStatistics
             {
                 RowCount = rowCount,
                 Selectivity = edge.IsPath?edge.SourceNode.EstimatedRows/edge.SourceNode.TableRowCount:1.0,
@@ -1154,7 +1154,7 @@ namespace GraphView
         /// Send sa query to retrieve the varbinary of the sink in the edge sampling table with edge predicates,
         /// then generates the statistics histogram for each edge
         /// </summary>
-        private void EstimateAverageDegree(MatchGraph graph)
+        private void RetrieveStatistics(MatchGraph graph)
         {
             if (graph == null) throw new ArgumentNullException("graph");
             // Declare the parameters if any
@@ -1257,7 +1257,7 @@ namespace GraphView
                         var sinkBytes = reader["Sink"] as byte[];
                         if (sinkBytes == null)
                         {
-                            _context.AddEdgeStatistics(edge, new ColumnStatistics
+                            _context.AddEdgeStatistics(edge, new EdgeStatistics
                             {
                                 Density = 0,
                                 Histogram = new Dictionary<long, Tuple<double, bool>>(),
@@ -1283,7 +1283,7 @@ namespace GraphView
                 }
 
                 // Retrieves density value for each node table
-                var tableIdDensity = _graphMetaData.TableIdDensity;
+                var tableIdDensity = _graphMetaData.GlobalNodeIdDensity;
                 tableIdDensity.Clear();
                 string tempTableName = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
                 var dbccDensityQuery = new StringBuilder();
@@ -1292,7 +1292,7 @@ namespace GraphView
                 foreach (var nodeTable in graph.NodeTypesSet)
                 {
                     tableIdDensity[string.Format("[{0}].[{1}]", nodeTable.Item1, nodeTable.Item2)] =
-                        ColumnStatistics.DefaultDensity;
+                        EdgeStatistics.DefaultDensity;
                     if (
                         !_graphMetaData.NodeViewMapping.ContainsKey(new Tuple<string, string>(nodeTable.Item1.ToLower(),
                             nodeTable.Item2.ToLower())))
@@ -1314,12 +1314,12 @@ namespace GraphView
                             break;
                         double density = Convert.ToDouble(reader["Density"]);
                         if (Math.Abs(density - 1.0) < 0.0001)
-                            density = ColumnStatistics.DefaultDensity;
+                            density = EdgeStatistics.DefaultDensity;
                         tableIdDensity[key] = density;
                     }
 
                 }
-                _graphMetaData.TableIdDensity = tableIdDensity.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
+                _graphMetaData.GlobalNodeIdDensity = tableIdDensity.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
             }
         }
 
@@ -1696,7 +1696,7 @@ namespace GraphView
                 OptimizeTail(node, graph);
                 AttachPredicates(node.WhereClause,graph);
                 EstimateRows(node, graph);
-                EstimateAverageDegree(graph);
+                RetrieveStatistics(graph);
 
                 var components = new List<MatchComponent>();
                 foreach (var subGraph in graph.ConnectedSubGraphs)
