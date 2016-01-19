@@ -48,6 +48,8 @@ namespace GraphView
         public double AverageDegree { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
 
+        public EdgeStatistics Statistics { get; set; }
+
         public int MinLength { get; set; }
         public int MaxLength { get; set; }
         public IList<Tuple<string, string>> IncludedEdgeNames { get; set; }
@@ -85,7 +87,7 @@ namespace GraphView
         /// The density value of the GlobalNodeId Column of the corresponding node table.
         /// This value is used to estimate the join selectivity of A-->B. 
         /// </summary>
-        public double GlobalNodeIdDensity;
+        public double GlobalNodeIdDensity { get;set; }
 
         public IList<WBooleanExpression> Predicates { get; set; }
         public HashSet<string> IncludedNodeNames { get; set; } 
@@ -126,8 +128,6 @@ namespace GraphView
     {
         // Full connected components in the graph pattern 
         public IList<ConnectedComponent> ConnectedSubGraphs { get; set; }
-        // Node types in the graph pattern (Tuple<table schema, base table name>)
-        public HashSet<Tuple<string, string>> NodeTypesSet { get; set; }
 
         public bool ContainsNode(string key)
         {

@@ -42,9 +42,6 @@ namespace GraphView
     {
         public WSqlTableContext ParentContext { get; set; }
 
-        private readonly Dictionary<MatchEdge, EdgeStatistics> _edgeStatisticses =
-            new Dictionary<MatchEdge, EdgeStatistics>();
-
         // A collection of node table variables
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
             new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
@@ -76,11 +73,6 @@ namespace GraphView
         public Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> EdgeDictionary
         {
             get { return _edgeDictionary; }
-        }
-
-        public EdgeStatistics GetEdgeStatistics(MatchEdge edge)
-        {
-            return _edgeStatisticses[edge];
         }
 
         public WTableReferenceWithAlias this[string name]
@@ -228,11 +220,6 @@ namespace GraphView
             _edgeDictionary.Add(edgeAlias,
                 new Tuple<WSchemaObjectName, WColumnReferenceExpression>(edge.SourceNode.NodeTableObjectName,
                     edge.EdgeColumn));
-        }
-
-        public void AddEdgeStatistics(MatchEdge edge, EdgeStatistics statistics)
-        {
-            _edgeStatisticses.Add(edge, statistics);
         }
     }
 }

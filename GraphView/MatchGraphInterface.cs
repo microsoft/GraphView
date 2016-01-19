@@ -119,11 +119,7 @@ namespace GraphView
 
     internal interface IMatchJoinStatisticsCalculator
     {
-        WSqlTableContext Context { get; set; }
-
         EdgeStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
-
-
     }
 
     internal class HistogramCalculator : IMatchJoinStatisticsCalculator
@@ -143,7 +139,7 @@ namespace GraphView
             if (LeafToLeafSelectivity.ContainsKey(edgeTuple))
                 return LeafToLeafSelectivity[edgeTuple];
 
-            var mergedStatistics = EdgeStatistics.UpdateHistogram(Context.GetEdgeStatistics(nodeEdge), Context.GetEdgeStatistics(componentEdge));
+            var mergedStatistics = EdgeStatistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics);
             LeafToLeafSelectivity[edgeTuple] = mergedStatistics;
             return mergedStatistics;
         }

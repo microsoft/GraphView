@@ -142,10 +142,6 @@ namespace GraphView
         public readonly Dictionary<Tuple<string, string>, HashSet<string>> NodeViewMapping =
             new Dictionary<Tuple<string, string>, HashSet<string>>();
 
-        /// 
-        /// Table name -> Density value
-        public Dictionary<string, double> GlobalNodeIdDensity =
-            new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -174,8 +170,7 @@ namespace GraphView
         //10000;
         //int.MaxValue;
 
-        // Upper Bound of the Bucket number
-        private const int BucketNum = 200;
+
 
         private GraphMetaData _graphMetaData;
 
@@ -498,7 +493,6 @@ namespace GraphView
             var subGrpahMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
             var parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             unionFind.Parent = parent;
-            HashSet<Tuple<string, string>> nodeTypes = new HashSet<Tuple<string, string>>();
 
             //Constructs Graph from Match Pattern
             foreach (var path in matchClause.Paths)
@@ -527,8 +521,6 @@ namespace GraphView
                             if (node.NodeTableObjectName.SchemaIdentifier == null)
                                 node.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
                             var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(node.NodeTableObjectName);
-                            if (!nodeTypes.Contains(nodeTypeTuple))
-                                nodeTypes.Add(nodeTypeTuple);
                             node.IncludedNodeNames = _graphMetaData.NodeViewMapping.ContainsKey(nodeTypeTuple)
                                 ? _graphMetaData.NodeViewMapping[nodeTypeTuple]
                                 : null;
@@ -620,8 +612,6 @@ namespace GraphView
                         if (tailNode.NodeTableObjectName.SchemaIdentifier == null)
                             tailNode.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
                         var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(tailNode.NodeTableObjectName);
-                        if (!nodeTypes.Contains(nodeTypeTuple))
-                            nodeTypes.Add(nodeTypeTuple);
                     }
                 }
                 if (preEdge != null)
@@ -656,6 +646,12 @@ namespace GraphView
                 }
             }
 
+            var graph = new MatchGraph
+            {
+                ConnectedSubGraphs = connectedSubGraphs,
+            };
+            unionFind.Parent = null;
+
             // Replaces Edge name alias with proper alias in the query
             var replaceTableRefVisitor = new ReplaceTableRefVisitor();
             replaceTableRefVisitor.Invoke(query, edgeTableReferenceDict);
@@ -676,8 +672,7 @@ namespace GraphView
                     newTableRefs.Add(tableRefs[index]);
                     continue;
                 }
-                var tableTuple = WNamedTableReference.SchemaNameToTuple(table.TableObjectName);
-                if (!nodeTypes.Contains(tableTuple))
+                if (!graph.ContainsNode(table.ExposedName.Value))
                 {
                     newTableRefs.Add(table);
                 }
@@ -745,12 +740,7 @@ namespace GraphView
                 }
             }
 
-            var graph = new MatchGraph
-            {
-                ConnectedSubGraphs = connectedSubGraphs,
-                NodeTypesSet = nodeTypes,
-            };
-            unionFind.Parent = null;
+            
             return graph;
         }
 
@@ -916,144 +906,9 @@ namespace GraphView
             var attachPredicateVisitor = new AttachWhereClauseVisitor();
             var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
             attachPredicateVisitor.Invoke(whereClause, graph, columnTableMapping);
-
-            //// Attach edge attribute predicates in the match clause
-            //foreach (var edge in graph.ConnectedSubGraphs.SelectMany(e=>e.Edges.Values))
-            //{
-            //    if (edge.AttributeValueDict != null)
-            //    {
-            //        if (edge.Predicates == null)
-            //            edge.Predicates = new List<WBooleanExpression>();
-            //        foreach (var tuple in edge.AttributeValueDict)
-            //        {
-            //            string attrName = tuple.Key;
-            //            string attrValue = tuple.Value;
-            //            edge.Predicates.Add(new WBooleanComparisonExpression
-            //            {
-            //                ComparisonType = BooleanComparisonType.Equals,
-            //                FirstExpr = new WColumnReferenceExpression()
-            //                {
-            //                    MultiPartIdentifier =
-            //                        new WMultiPartIdentifier(new Identifier {Value = edge.EdgeAlias},
-            //                            new Identifier {Value = attrName})
-            //                },
-            //                SecondExpr = new WValueExpression {Value = attrValue}
-            //            });
-            //        }
-            //    }
-            //}
-
-            //// Check validity for path predicates
-            //var checkPathPredicate = new CheckBooleanEqualExpersion();
-            //checkPathPredicate.Invoke(graph, _context);
         }
 
-        /// <summary>
-        /// Updates the statistics histogram for the edge given the sink id list.
-        /// Bucket size is pre-defined
-        /// </summary>
-        /// <param name="edge"></param>
-        /// <param name="sinkList">sink id of the edge sampling</param>
-        private void UpdateEdgeHistogram(MatchEdge edge, List<long> sinkList)
-        {
-            sinkList.Sort();
-            var rowCount = sinkList.Count;
-            var statistics = new EdgeStatistics
-            {
-                RowCount = rowCount,
-                Selectivity = /*edge.IsPath?edge.SourceNode.EstimatedRows/edge.SourceNode.TableRowCount:*/1.0,
-            };
-            var height = (int) (rowCount/BucketNum);
-            var popBucketCount = 0;
-            var popValueCount = 0;
-            var bucketCount = 0;
-            // If number in each bucket is very small, then generate a Frequency Histogram
-            if (height < 2)
-            {
-                bucketCount = rowCount;
-                long preValue = sinkList[0];
-                int count = 1;
-                int distCount = 1;
-                for (int i = 1; i < rowCount; i++)
-                {
-                    var curValue = sinkList[i];
-                    if (curValue == preValue)
-                    {
-                        count++;
-                    }
-                    else
-                    {
-                        if (count > 1)
-                        {
-                            popBucketCount += count;
-                            popValueCount++;
-                        }
-                        statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > 1));
-                        count = 1;
-                        preValue = curValue;
-                        distCount++;
-                    }
-                }
-                if (count > 1)
-                {
-                    popBucketCount += count;
-                    popValueCount++;
-                }
-                statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > 1));
-                statistics.MaxValue = preValue;
-                // Simple Denstity
-                //statistics.Density = 1.0 / distCount;
-                // Advanced Density
-                statistics.Density = bucketCount == popBucketCount
-                    ? 0
-                    : 1.0*(bucketCount - popBucketCount)/bucketCount/(distCount - popValueCount);
-            }
-
-            // Generates a Height-balanced Histogram
-            else
-            {
-                long preValue = sinkList[0];
-                int count = 0;
-                int distCount = 1;
-                for (int i = 1; i < rowCount; i++)
-                {
-                    if (i%height == height - 1)
-                    {
-                        bucketCount++;
-                        var curValue = sinkList[i];
-                        if (curValue == preValue)
-                            count += height;
-                        else
-                        {
-                            distCount++;
-                            if (count > height)
-                            {
-                                popBucketCount += count/height;
-                                popValueCount++;
-                            }
-                            //count = count == 0 ? height : count;
-                            statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > height));
-                            preValue = curValue;
-                            count = height;
-                        }
-                    }
-                }
-                if (count > height)
-                {
-                    popBucketCount += count/height;
-                    popValueCount++;
-                }
-                statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > height));
-                statistics.MaxValue = preValue;
-                // Simple Density
-                //statistics.Density = 1.0 / distCount;
-                // Advanced Density
-                statistics.Density = bucketCount == popBucketCount
-                    ? 0
-                    : 1.0*(bucketCount - popBucketCount)/bucketCount/(distCount - popValueCount);
-            }
-            _context.AddEdgeStatistics(edge, statistics);
-        }
+        
 
 
         /// <summary>
@@ -1258,14 +1113,14 @@ namespace GraphView
                         var sinkBytes = reader["Sink"] as byte[];
                         if (sinkBytes == null)
                         {
-                            _context.AddEdgeStatistics(edge, new EdgeStatistics
+                            edge.Statistics = new EdgeStatistics
                             {
                                 Density = 0,
                                 Histogram = new Dictionary<long, Tuple<double, bool>>(),
                                 MaxValue = 0,
                                 RowCount = 0,
                                 Selectivity = 1.0
-                            });
+                            };
                             continue;
                         }
                         List<long> sinkList = new List<long>();
@@ -1276,7 +1131,7 @@ namespace GraphView
                             cursor += 8;
                             sinkList.Add(sink);
                         }
-                        UpdateEdgeHistogram(edge, sinkList);
+                        EdgeStatistics.UpdateEdgeHistogram(edge, sinkList);
                         edge.AverageDegree = Convert.ToDouble(reader["AverageDegree"])*sinkList.Count*1.0/
                                              Convert.ToInt64(reader["SampleRowCount"]);
                         if (edge.IsPath)
@@ -1297,43 +1152,59 @@ namespace GraphView
                 }
 
                 // Retrieves density value for each node table
-                var tableIdDensity = _graphMetaData.GlobalNodeIdDensity;
-                tableIdDensity.Clear();
                 string tempTableName = Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
                 var dbccDensityQuery = new StringBuilder();
                 dbccDensityQuery.Append(string.Format(@"CREATE TABLE #{0} (Density float, Len int, Col sql_variant);
                                                     INSERT INTO #{0} EXEC('", tempTableName));
-                foreach (var nodeTable in graph.NodeTypesSet)
+                Dictionary<Tuple<string, string>, List<MatchNode>> schemaTableToNodeListMapping =
+                    new Dictionary<Tuple<string, string>, List<MatchNode>>();
+                foreach (var subGraph in graph.ConnectedSubGraphs)
                 {
-                    tableIdDensity[string.Format("[{0}].[{1}]", nodeTable.Item1, nodeTable.Item2)] =
-                        EdgeStatistics.DefaultDensity;
-                    if (
-                        !_graphMetaData.NodeViewMapping.ContainsKey(new Tuple<string, string>(nodeTable.Item1.ToLower(),
-                            nodeTable.Item2.ToLower())))
-                        dbccDensityQuery.Append(string.Format(
-                            "DBCC SHOW_STATISTICS (\"{0}.{1}\", [{0}{1}_PK_GlobalNodeId]) with DENSITY_VECTOR;\n",
-                            nodeTable.Item1,
-                            nodeTable.Item2));
+                    foreach (var node in subGraph.Nodes.Values)
+                    {
+                        var tableTuple = WNamedTableReference.SchemaNameToTuple(node.NodeTableObjectName);
+                        if (_graphMetaData.NodeViewMapping.ContainsKey(tableTuple))
+                        {
+                            node.GlobalNodeIdDensity = EdgeStatistics.DefaultDensity;
+                        }
+                        else
+                        {
+                            var nodeList = schemaTableToNodeListMapping.GetOrCreate(tableTuple);
+                            nodeList.Add(node);
+                        }
+                        
+                    }
+                }
+                foreach (var tableTuple in schemaTableToNodeListMapping.Keys)
+                {
+                    dbccDensityQuery.Append(string.Format(
+                        "DBCC SHOW_STATISTICS (\"{0}.{1}\", [{0}{1}_PK_GlobalNodeId]) with DENSITY_VECTOR;\n",
+                        tableTuple.Item1,
+                        tableTuple.Item2));
                 }
                 dbccDensityQuery.Append("');\n");
                 dbccDensityQuery.Append(string.Format("SELECT Density FROM #{0} WHERE Col = 'GlobalNodeId'", tempTableName));
-                var tableKey = tableIdDensity.Keys.ToArray();
                 command.CommandText = dbccDensityQuery.ToString();
                 using (var reader = command.ExecuteReader())
                 {
-
-                    foreach (var key in tableKey)
+                    foreach (var item in schemaTableToNodeListMapping)
                     {
+                        double density;
                         if (!reader.Read())
-                            break;
-                        double density = Convert.ToDouble(reader["Density"]);
-                        if (Math.Abs(density - 1.0) < 0.0001)
                             density = EdgeStatistics.DefaultDensity;
-                        tableIdDensity[key] = density;
+                        else
+                        {
+                            density = Convert.ToDouble(reader["Density"]);
+                            if (Math.Abs(density - 1.0) < 0.0001)
+                                density = EdgeStatistics.DefaultDensity;
+                        }
+                        
+                        foreach (var node in item.Value)
+                        {
+                            node.GlobalNodeIdDensity = density;
+                        }
                     }
-
                 }
-                _graphMetaData.GlobalNodeIdDensity = tableIdDensity.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
             }
         }
 
@@ -1700,7 +1571,6 @@ namespace GraphView
 
             base.Visit(node);
 
-            _statisticsCalculator.Context = _context;
             CheckValidity(node);
             var graph = ConstructGraph(node);
             //ChangeSelectStarExpression(node, graph);

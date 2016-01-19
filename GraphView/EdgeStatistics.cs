@@ -34,6 +34,8 @@ namespace GraphView
     internal class EdgeStatistics
     {
         public const double DefaultDensity = 0.0316228;
+        // Upper Bound of the Bucket number
+        private const int BucketNum = 200; 
 
         public EdgeStatistics()
         {
@@ -49,6 +51,7 @@ namespace GraphView
         public Double Density;
         public Double Selectivity;
         public long MaxValue;
+
 
         /// <summary>
         /// Merger Two Histograms
@@ -206,6 +209,113 @@ namespace GraphView
                 RowCount = resRowCount,
                 Selectivity = resRowCount / (curStatistics.RowCount * newStatistics.RowCount),
             };
+        }
+
+        /// <summary>
+        /// Updates the statistics histogram for the edge given the sink id list.
+        /// Bucket size is pre-defined
+        /// </summary>
+        /// <param name="edge"></param>
+        /// <param name="sinkList">sink id of the edge sampling</param>
+        internal static void UpdateEdgeHistogram(MatchEdge edge, List<long> sinkList)
+        {
+            sinkList.Sort();
+            var rowCount = sinkList.Count;
+            var statistics = new EdgeStatistics
+            {
+                RowCount = rowCount,
+                Selectivity = /*edge.IsPath?edge.SourceNode.EstimatedRows/edge.SourceNode.TableRowCount:*/1.0,
+            };
+            var height = (int)(rowCount / BucketNum);
+            var popBucketCount = 0;
+            var popValueCount = 0;
+            var bucketCount = 0;
+            // If number in each bucket is very small, then generate a Frequency Histogram
+            if (height < 2)
+            {
+                bucketCount = rowCount;
+                long preValue = sinkList[0];
+                int count = 1;
+                int distCount = 1;
+                for (int i = 1; i < rowCount; i++)
+                {
+                    var curValue = sinkList[i];
+                    if (curValue == preValue)
+                    {
+                        count++;
+                    }
+                    else
+                    {
+                        if (count > 1)
+                        {
+                            popBucketCount += count;
+                            popValueCount++;
+                        }
+                        statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > 1));
+                        count = 1;
+                        preValue = curValue;
+                        distCount++;
+                    }
+                }
+                if (count > 1)
+                {
+                    popBucketCount += count;
+                    popValueCount++;
+                }
+                statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > 1));
+                statistics.MaxValue = preValue;
+                // Simple Denstity
+                //statistics.Density = 1.0 / distCount;
+                // Advanced Density
+                statistics.Density = bucketCount == popBucketCount
+                    ? 0
+                    : 1.0 * (bucketCount - popBucketCount) / bucketCount / (distCount - popValueCount);
+            }
+
+            // Generates a Height-balanced Histogram
+            else
+            {
+                long preValue = sinkList[0];
+                int count = 0;
+                int distCount = 1;
+                for (int i = 1; i < rowCount; i++)
+                {
+                    if (i % height == height - 1)
+                    {
+                        bucketCount++;
+                        var curValue = sinkList[i];
+                        if (curValue == preValue)
+                            count += height;
+                        else
+                        {
+                            distCount++;
+                            if (count > height)
+                            {
+                                popBucketCount += count / height;
+                                popValueCount++;
+                            }
+                            //count = count == 0 ? height : count;
+                            statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > height));
+                            preValue = curValue;
+                            count = height;
+                        }
+                    }
+                }
+                if (count > height)
+                {
+                    popBucketCount += count / height;
+                    popValueCount++;
+                }
+                statistics.Histogram.Add(preValue, new Tuple<double, bool>(count, count > height));
+                statistics.MaxValue = preValue;
+                // Simple Density
+                //statistics.Density = 1.0 / distCount;
+                // Advanced Density
+                statistics.Density = bucketCount == popBucketCount
+                    ? 0
+                    : 1.0 * (bucketCount - popBucketCount) / bucketCount / (distCount - popValueCount);
+            }
+            edge.Statistics = statistics;
         }
     }
 }

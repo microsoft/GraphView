@@ -97,7 +97,13 @@ namespace GraphViewUnitTest
                 DataGenerator.InsertDataEmployNode(graph.Conn);
                 DataGenerator.InsertDataClientNode(graph.Conn);
                 foreach (var table in graph.GetNodeTables())
+                {
                     graph.UpdateTableStatistics(table.Item1, table.Item2);
+                }
+                graph.ExecuteNonQuery(string.Format("UPDATE STATISTICS {0}.{1} {0}{1}_PK_GlobalNodeId", "dbo",
+                    "ClientNode"));
+                graph.ExecuteNonQuery(string.Format("UPDATE STATISTICS {0}.{1} {0}{1}_PK_GlobalNodeId", "dbo",
+                    "EmployeeNode"));
             }
         }
 

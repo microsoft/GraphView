@@ -174,7 +174,7 @@ namespace GraphView
             {
                 TableRef = SpanTableRef(TableRef, edge, node.RefAlias);
                 EdgeMaterilizedDict[edge] = true;
-                StatisticsDict[edge.SinkNode] = Context.GetEdgeStatistics(edge);
+                StatisticsDict[edge.SinkNode] = edge.Statistics;
                 var edgeList = UnmaterializedNodeMapping.GetOrCreate(edge.SinkNode);
                 edgeList.Add(edge);
                 Nodes.Add(edge.SinkNode);
@@ -649,7 +649,6 @@ namespace GraphView
         /// Transit from current component to the new component in the next state given the Node Unit
         /// </summary>
         /// <param name="candidateTree"></param>
-        /// <param name="graphMetaData"></param>
         /// <param name="statisticsCalculator"></param>
         /// <returns></returns>
         public MatchComponent GetNextState(
@@ -695,7 +694,6 @@ namespace GraphView
                 newComponent.Nodes.Add(root);
                 newComponent.MaterializedNodeSplitCount[root] = 0;
                 newComponent.StatisticsDict[root] = new EdgeStatistics {Selectivity = 1.0/root.TableRowCount};
-
             }
 
             // Constructs table reference
@@ -709,7 +707,7 @@ namespace GraphView
             // Updates join conditions
             double selectivity = 1.0;
             double degrees = 1.0;
-            var DensityCount = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            List<double> densityList = new List<double>();
 
             List<MatchEdge> inEdges;
             if (newComponent.UnmaterializedNodeMapping.TryGetValue(root, out inEdges))
@@ -743,15 +741,7 @@ namespace GraphView
                         ComparisonType = BooleanComparisonType.Equals
                     });
 
-                    //var statistics = ColumnStatistics.UpdateHistogram(newComponent.StatisticsDict[root],
-                    //    new ColumnStatistics {Selectivity = 1.0/root.TableRowCount});
-                    //selectivity *= statistics.Selectivity;
-                    //newComponent.StatisticsDict[root] = statistics;
-
-                    if (DensityCount.ContainsKey(root.NodeTableObjectName.ToString()))
-                        DensityCount[root.NodeTableObjectName.ToString()]++;
-                    else
-                        DensityCount[root.NodeTableObjectName.ToString()] = 1;
+                    densityList.Add(root.GlobalNodeIdDensity);
                 }
                 // Component unmaterialized edge to root                
                 else
@@ -785,22 +775,17 @@ namespace GraphView
                                 ComparisonType = BooleanComparisonType.Equals
                             });
                         statistics = EdgeStatistics.UpdateHistogram(statistics,
-                            newComponent.Context.GetEdgeStatistics(edge));
+                            edge.Statistics);
                         selectivity *= statistics.Selectivity;
-
-                        
+                        densityList.Add(root.GlobalNodeIdDensity);
                     }
                     newComponent.StatisticsDict[root] = statistics;
 
-                    if (DensityCount.ContainsKey(root.NodeTableObjectName.ToString()))
-                        DensityCount[root.NodeTableObjectName.ToString()]+=inEdges.Count;
-                    else
-                        DensityCount[root.NodeTableObjectName.ToString()] = inEdges.Count;
                 }
+
             }
 
             var jointEdges = candidateTree.MaterializedEdges;
-            int sinkToSinkCount = 0;
             foreach (var jointEdge in jointEdges)
             {
                 // Update node table
@@ -834,14 +819,11 @@ namespace GraphView
                             ComparisonType = BooleanComparisonType.Equals
                         });
                     var statistics = EdgeStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
-                        newComponent.Context.GetEdgeStatistics(jointEdge));
+                        jointEdge.Statistics);
                     selectivity *= statistics.Selectivity;
                     newComponent.StatisticsDict[sinkNode] = statistics;
 
-                    if (DensityCount.ContainsKey(sinkNode.NodeTableObjectName.ToString()))
-                        DensityCount[sinkNode.NodeTableObjectName.ToString()]++;
-                    else
-                        DensityCount[sinkNode.NodeTableObjectName.ToString()] = 1;
+                    densityList.Add(sinkNode.GlobalNodeIdDensity);
                 }
                 // Leaf to component unmaterialized node
                 else
@@ -875,9 +857,10 @@ namespace GraphView
                                 ComparisonType = BooleanComparisonType.Equals
                             });
 
-                        sinkToSinkCount++;
+                        densityList.Add(EdgeStatistics.DefaultDensity);
+
                         var statistics = EdgeStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
-                            newComponent.Context.GetEdgeStatistics(jointEdge));
+                            jointEdge.Statistics);
                         selectivity *= statistics.Selectivity;
                         newComponent.StatisticsDict[sinkNode] = statistics;
                     }
@@ -911,12 +894,13 @@ namespace GraphView
                                 ComparisonType = BooleanComparisonType.Equals
                             });
 
-                            sinkToSinkCount++;
+                            densityList.Add(EdgeStatistics.DefaultDensity);
+
                             var leafToLeafStatistics = statisticsCalculator.GetLeafToLeafStatistics(jointEdge, inEdge);
                             selectivity *= leafToLeafStatistics.Selectivity;
                             compSinkNodeStatistics =
                                 EdgeStatistics.UpdateHistogram(compSinkNodeStatistics,
-                                    newComponent.Context.GetEdgeStatistics(inEdge));
+                                    inEdge.Statistics);
                         }
                         newComponent.StatisticsDict[sinkNode] = compSinkNodeStatistics;
                     }
@@ -935,25 +919,11 @@ namespace GraphView
             }
 
             // Calculate Estimated Join Selectivity & Estimated Node Size
-            var densityDict = MetaData.GlobalNodeIdDensity;
             double estimatedSelectity = 1.0;
-            int count = 0;
-            bool sinkJoin = false;
-            foreach (var item in densityDict.Where(e => DensityCount.ContainsKey(e.Key)))
+            densityList.Sort();
+            for (int i = densityList.Count-1; i >=0; i--)
             {
-                var density = item.Value;
-                var curJoinCount = DensityCount[item.Key];
-                var curJoinSelectitivy = Math.Pow(density, 2 - Math.Pow(2, 1 - curJoinCount));
-                if (!sinkJoin && EdgeStatistics.DefaultDensity < density)
-                {
-                    var curSinkJoinSelectivity = Math.Pow(EdgeStatistics.DefaultDensity,
-                        2 - Math.Pow(2, 1 - sinkToSinkCount));
-                    estimatedSelectity *= Math.Pow(curSinkJoinSelectivity, Math.Pow(2, -count));
-                    count += sinkToSinkCount;
-                    sinkJoin = true;
-                }
-                estimatedSelectity *= Math.Pow(curJoinSelectitivy, Math.Pow(2, -count));
-                count += curJoinCount;
+                estimatedSelectity *= Math.Sqrt(estimatedSelectity)*densityList[i];
             }
 
             var estimatedNodeUnitSize = root.EstimatedRows*
