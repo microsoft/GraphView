@@ -146,45 +146,32 @@ namespace GraphView
                 if (errors.Count > 0)
                     throw new SyntaxErrorException(errors);
 
-                bool externalTransaction = true;
                 if (Tx == null)
                 {
-                    Tx = Connection.BeginTransaction();
-                    externalTransaction = false;
+                    using(SqlConnection translationConnection = new SqlConnection(Connection.Conn.ConnectionString))
+                    {
+                        using (SqlTransaction translationTx = translationConnection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
+                        {
+                            var visitor = new TranslateMatchClauseVisitor(translationTx);
+                            visitor.Invoke(script);
+
+                            // Executes translated SQL 
+                            Command.CommandText = script.ToString();
+                            var reader = Command.ExecuteReader();
+                            translationTx.Commit();
+                            return reader;
+                        }
+                    }
                 }
-
-                var visitor = new TranslateMatchClauseVisitor(Tx);
-                visitor.Invoke(script);
-                // Executes translated SQL 
-                Command.CommandText = script.ToString();
-#if DEBUG
-                // For debugging
-                OutputResult(CommandText, Command.CommandText);
-                // For debugging
-                //if (!File.Exists(@"D:\GraphView Patter Matching Exp\SqlScript\Test.sql"))
-                //{
-                //    File.Create(@"D:\GraphView Patter Matching Exp\SqlScript\Test.sql");
-                //}
-                //FileStream file = new FileStream(@"D:\GraphView Patter Matching Exp\SqlScript\Test.sql", FileMode.Append, FileAccess.Write);
-                //StreamWriter sw = new StreamWriter(file, Encoding.UTF8, 20480);
-                //sw.WriteLine();
-                //sw.WriteLine("go");
-                //sw.Flush();
-                //sw.WriteLine(cmd.CommandText);
-                //sw.WriteLine();
-                //sw.Flush();
-
-
-                //throw new GraphViewException("No Execution");
-#endif
-                var reader = Command.ExecuteReader();
-
-                if (!externalTransaction)
+                else
                 {
-                    Tx.Commit();
+                    var visitor = new TranslateMatchClauseVisitor(Tx);
+                    visitor.Invoke(script);
+                    // Executes translated SQL 
+                    Command.CommandText = script.ToString();
+                    var reader = Command.ExecuteReader();
+                    return reader;
                 }
-                
-                return reader;
             }
             catch (SqlException e)
             {
