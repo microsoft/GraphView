@@ -580,7 +580,8 @@ namespace GraphViewUnitTest
 				from ClientNode as c1, ClientNode as c2
 				match c1-[colleagues*]->c2
                 where c1.ClientId = 0";
-                using (var reader = graph.ExecuteReader(gvQuery))
+                command.CommandText = gvQuery;
+                using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {

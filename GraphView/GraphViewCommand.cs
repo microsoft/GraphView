@@ -86,6 +86,7 @@ namespace GraphView
 
         internal SqlTransaction Tx { get; private set; }
 
+
         public GraphViewCommand()
         {
         }
@@ -107,7 +108,7 @@ namespace GraphView
             CommandText = commandText;
             Connection = connection;
             Command = Connection.Conn.CreateCommand();
-            Command.Transaction = transaction;
+            Tx = transaction;
         }
 
         public void CreateParameter()
@@ -135,6 +136,10 @@ namespace GraphView
             {
                 if (CommandType == CommandType.StoredProcedure)
                 {
+                    if (Tx != null)
+                    {
+                        Command.Transaction = Tx;
+                    }
                     Command.CommandText = CommandText;
                     return Command.ExecuteReader();
                 }
@@ -150,6 +155,7 @@ namespace GraphView
                 {
                     using(SqlConnection translationConnection = new SqlConnection(Connection.Conn.ConnectionString))
                     {
+                        translationConnection.Open();
                         using (SqlTransaction translationTx = translationConnection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
                         {
                             var visitor = new TranslateMatchClauseVisitor(translationTx);
@@ -157,6 +163,10 @@ namespace GraphView
 
                             // Executes translated SQL 
                             Command.CommandText = script.ToString();
+#if DEBUG
+                            // For debugging
+                            OutputResult(CommandText, Command.CommandText);
+#endif
                             var reader = Command.ExecuteReader();
                             translationTx.Commit();
                             return reader;
@@ -169,6 +179,10 @@ namespace GraphView
                     visitor.Invoke(script);
                     // Executes translated SQL 
                     Command.CommandText = script.ToString();
+#if DEBUG
+                    // For debugging
+                    OutputResult(CommandText, Command.CommandText);
+#endif
                     var reader = Command.ExecuteReader();
                     return reader;
                 }
@@ -185,6 +199,10 @@ namespace GraphView
             {
                 if (CommandType == CommandType.StoredProcedure)
                 {
+                    if (Tx != null)
+                    {
+                        Command.Transaction = Tx;
+                    }
                     Command.CommandText = CommandText;
                     return Command.ExecuteNonQuery();
                 }
@@ -210,17 +228,19 @@ namespace GraphView
                 matchVisitor.Invoke(script);
 
                 Command.CommandText = script.ToString();
+                Command.Transaction = Tx;
 #if DEBUG
                 // For debugging
                 OutputResult(CommandText, Command.CommandText);
 #endif
+                int res = Command.ExecuteNonQuery();
                 if (!externalTransaction)
                 {
                     Tx.Commit();
                     Tx.Dispose();
+                    Tx = null;
                 }
-
-                return Command.ExecuteNonQuery();
+                return res;
             }
             catch (SqlException e)
             {

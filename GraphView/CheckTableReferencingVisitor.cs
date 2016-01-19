@@ -54,7 +54,7 @@ namespace GraphView
             _tableExists = false;
             _tableName = tableName;
             _tableRef = context[tableName] as WNamedTableReference;
-            _columnTableMapping = context.GetColumnTableMapping(columnsOfNodeTables);
+            _columnTableMapping = context.GetColumnToAliasMapping(columnsOfNodeTables);
             node.Accept(this);
             return _tableExists;
         }

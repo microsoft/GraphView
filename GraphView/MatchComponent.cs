@@ -360,10 +360,7 @@ namespace GraphView
                 component.EstimateSize = estimatedCompSize * estimatedNodeUnitSize /
                                          nodeUnitCandidate.TreeRoot.TableRowCount;
                 
-                //cost = componentSize*Math.Log10(nodeUnitSize);
                 cost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
-                //cost = 2*componentSize;
-                //cost = componentSize + nodeUnitSize;
             }
             // Hash Join
             else
@@ -465,11 +462,11 @@ namespace GraphView
             Identifier srcNodeIdentifier = new Identifier{Value = nodeAlias};
             
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            // The source is a regular node
-            if (edge.SourceNode.IncludedNodeNames == null)
+            // The source is a physical node
+            if (!edge.SourceNode.IsView)
             {
-                // The edge is a regular edge
-                if (edge.IncludedEdgeNames == null)
+                // The edge is a physical edge
+                if (!edge.IsView)
                 {
                     parameters.Add(new WColumnReferenceExpression
                     {
@@ -483,7 +480,7 @@ namespace GraphView
                                 new Identifier {Value = edgeColIdentifier.Value + "DeleteCol"})
                     });
                 }
-                // The edge is a edge view
+                // The edge is an edge view
                 else
                 {
                     foreach (var column in edge.IncludedEdgeNames)
@@ -506,8 +503,8 @@ namespace GraphView
             // The source is a node view
             else
             {
-                // The edge is a regular edge
-                if (edge.IncludedEdgeNames == null)
+                // The edge is a physical edge
+                if (!edge.IsView)
                 {
                     string srcTableName = edge.BindNodeTableObjName.BaseIdentifier.Value;
                     Identifier nodeViewEdgeColIdentifier = new Identifier
@@ -527,7 +524,7 @@ namespace GraphView
                     });
                     
                 }
-                // The edge is a edge view
+                // The edge is an edge view
                 else
                 {
                     foreach (var column in edge.IncludedEdgeNames)

@@ -16,7 +16,7 @@ namespace GraphViewUnitTest
         {
             TestInitialization.ClearDatabase();
             TestInitialization.CreateTableAndProc();
-            TestInitialization.InsertDataByProc(50);
+            TestInitialization.InsertDataByProc(10);
         }
         [TestMethod]
         public void ParsePathTest()
@@ -107,7 +107,12 @@ namespace GraphViewUnitTest
                     SELECT e1.WorkId, e2.WorkId
                     FROM 
                      EmployeeNode AS e1, EmployeeNode AS e2
-                    MATCH [e1]-[Colleagues*1..5 as c {a:1, c:""str""}]->[e2]
+                    MATCH [e1]-[Colleagues*1..5 as c {a:1, c:""str""}]->[e2];
+
+                    SELECT e1.WorkId, e2.WorkId
+                    FROM 
+                     EmployeeNode AS e1, EmployeeNode AS e2
+                    MATCH [e1]-[Colleagues*1..5 as c]->[e2]
 
                     SELECT e1.WorkId, e2.WorkId
                     FROM 
@@ -127,15 +132,15 @@ namespace GraphViewUnitTest
                     SELECT e1.name, e2.name
                     FROM 
                      GlobalNodeView AS e1, GlobalNodeView AS e2
-                    MATCH [e1]-[Colleagues* as c]->[e2]
+                    MATCH [e1]-[Colleagues* as c]->[e2];
                     
                     SELECT e1.name, e2.name
                     FROM 
                      GlobalNodeView AS e1, GlobalNodeView AS e2
                     MATCH [e1]-[Colleagues*1..1 as c]->[e2]
                     ";
-                Trace.WriteLine(command.GetTsqlQuery());
-
+                command.ExecuteNonQuery();
+                //Trace.WriteLine(command.GetTsqlQuery());
             }
         }
 

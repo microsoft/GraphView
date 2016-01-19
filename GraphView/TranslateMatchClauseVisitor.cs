@@ -190,13 +190,14 @@ namespace GraphView
         public TranslateMatchClauseVisitor(SqlTransaction tx)
         {
             this.Tx = tx;
+            Init();
         }
 
         /// <summary>
         /// Retrieve the metadata
         /// </summary>
         /// <param name="conn"></param>
-        private void Init(SqlConnection conn)
+        private void Init()
         {
             _graphMetaData = new GraphMetaData();
             var columnsOfNodeTables = _graphMetaData.ColumnsOfNodeTables;
@@ -913,7 +914,7 @@ namespace GraphView
         {
             // Attaches proper parts of the where clause into the Estimiation Query
             var attachPredicateVisitor = new AttachWhereClauseVisitor();
-            var columnTableMapping = _context.GetColumnTableMapping(_graphMetaData.ColumnsOfNodeTables);
+            var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
             attachPredicateVisitor.Invoke(whereClause, graph, columnTableMapping);
 
             //// Attach edge attribute predicates in the match clause
@@ -960,7 +961,7 @@ namespace GraphView
             var statistics = new EdgeStatistics
             {
                 RowCount = rowCount,
-                Selectivity = edge.IsPath?edge.SourceNode.EstimatedRows/edge.SourceNode.TableRowCount:1.0,
+                Selectivity = /*edge.IsPath?edge.SourceNode.EstimatedRows/edge.SourceNode.TableRowCount:*/1.0,
             };
             var height = (int) (rowCount/BucketNum);
             var popBucketCount = 0;
@@ -1278,6 +1279,19 @@ namespace GraphView
                         UpdateEdgeHistogram(edge, sinkList);
                         edge.AverageDegree = Convert.ToDouble(reader["AverageDegree"])*sinkList.Count*1.0/
                                              Convert.ToInt64(reader["SampleRowCount"]);
+                        if (edge.IsPath)
+                        {
+                            if (edge.AverageDegree>1)
+                                if (edge.MaxLength != -1)
+                                {
+                                    edge.AverageDegree = Math.Pow(edge.AverageDegree, edge.MaxLength) -
+                                                         (edge.MinLength > 0
+                                                             ? Math.Pow(edge.AverageDegree, edge.MinLength - 1)
+                                                             : 0);
+                                }
+                                else
+                                    edge.AverageDegree = double.MaxValue;
+                        }
 
                     }
                 }

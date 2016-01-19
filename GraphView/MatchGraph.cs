@@ -37,26 +37,35 @@ namespace GraphView
     {
         public MatchNode SourceNode { get; set; }
         public WColumnReferenceExpression EdgeColumn { get; set; }
+        public string EdgeAlias { get; set; }
+        public MatchNode SinkNode { get; set; }
+
+        /// <summary>
+        /// Schema Object of the node table/node view which the edge is bound to.
+        /// It is an instance in the syntax tree.
+        /// </summary>
         public WSchemaObjectName BindNodeTableObjName { get; set; }
         public double AverageDegree { get; set; }
-        public MatchNode SinkNode { get; set; }
-        public string EdgeAlias { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
-        public IList<Tuple<string, string>> IncludedEdgeNames { get; set; }
+
         public int MinLength { get; set; }
         public int MaxLength { get; set; }
+        public IList<Tuple<string, string>> IncludedEdgeNames { get; set; }
         public Dictionary<string, string> AttributeValueDict { get; set; }
 
         public override int GetHashCode()
         {
             return EdgeAlias.GetHashCode();
         }
-
         public bool IsPath
         {
             get { return !(MinLength == 1 && MaxLength == 1); }
         }
 
+        public bool IsView
+        {
+            get { return IncludedEdgeNames != null && IncludedEdgeNames.Any(); }
+        }
     }
 
     internal class MatchNode
@@ -89,6 +98,11 @@ namespace GraphView
         public override int GetHashCode()
         {
             return NodeAlias.GetHashCode();
+        }
+
+        public bool IsView
+        {
+            get { return IncludedNodeNames != null && IncludedNodeNames.Any(); }
         }
 
     }

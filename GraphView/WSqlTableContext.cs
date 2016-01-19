@@ -45,13 +45,6 @@ namespace GraphView
         private readonly Dictionary<MatchEdge, EdgeStatistics> _edgeStatisticses =
             new Dictionary<MatchEdge, EdgeStatistics>();
 
-        // Predicates associated with the path constructs in the current context. 
-        // Note that path predicates are defined as a part of path constructs, rather than
-        // defined in the WHERE clause. The current supported predicates are only equality comparison,
-        // and a predicate is in a pair of <edge_attribute, attribute_value>.
-        private readonly Dictionary<MatchEdge, Dictionary<string, string>> _pathPredicatesValueDictionary =
-            new Dictionary<MatchEdge, Dictionary<string, string>>();
-
         // A collection of node table variables
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
             new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
@@ -60,9 +53,12 @@ namespace GraphView
         private readonly Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> _edgeDictionary =
             new Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>>(StringComparer.OrdinalIgnoreCase);
 
-        // A collection of mappings from columns to table aliases
-        private Dictionary<string, string> _columnTableAliasMapping;
+        // A caching collection of a mapping from unbound node properties to node table aliases 
+        // & unbound edge attributes to edge aliases in the current context.
+        private Dictionary<string, string> _columnToAliasMapping;
 
+        // A mapping from edges referenced by node/node view in the query context to the physical node table/node view name which the edges are bound to
+        // (node table/node view name, edge column name) -> node table/node view name which the edges are bound to
         private readonly Dictionary<Tuple<string,string>, string> _edgeNodeBinding =
             new Dictionary<Tuple<string,string>, string>();
  
@@ -85,11 +81,6 @@ namespace GraphView
         public EdgeStatistics GetEdgeStatistics(MatchEdge edge)
         {
             return _edgeStatisticses[edge];
-        }
-
-        public Dictionary<string, string> GetPathPredicatesValueDict(MatchEdge edge)
-        {
-            return _pathPredicatesValueDictionary[edge];
         }
 
         public WTableReferenceWithAlias this[string name]
@@ -156,12 +147,19 @@ namespace GraphView
             }
         }
 
-        public Dictionary<string, string> GetColumnTableMapping(
+        /// <summary>
+        /// Retrieves the mapping from ubound node properties to noda table aliases and edge attributes to edge aliases.
+        /// If the caching dictionary is empty, updates the cache using columns information in the metatable.
+        /// Otherwise, returns the caching dictionary.
+        /// </summary>
+        /// <param name="columnsOfNodeTables"></param>
+        /// <returns></returns>
+        public Dictionary<string, string> GetColumnToAliasMapping(
             Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>> columnsOfNodeTables)
         {
-            if (_columnTableAliasMapping == null)
+            if (_columnToAliasMapping == null)
             {
-                _columnTableAliasMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                _columnToAliasMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 var duplicateColumns = new HashSet<string>();
                 foreach (var kvp in NodeTableDictionary)
                 {
@@ -175,9 +173,9 @@ namespace GraphView
                                 columnsOfNodeTables[nodeTableTuple].Where(e => e.Value.Role != WNodeTableColumnRole.Edge)
                                     .Select(e => e.Key))
                         {
-                            if (!_columnTableAliasMapping.ContainsKey(property.ToLower()))
+                            if (!_columnToAliasMapping.ContainsKey(property.ToLower()))
                             {
-                                _columnTableAliasMapping[property.ToLower()] = kvp.Key;
+                                _columnToAliasMapping[property.ToLower()] = kvp.Key;
                             }
                             else
                             {
@@ -186,10 +184,8 @@ namespace GraphView
                         }
                     }
                 }
-
                 foreach (var kvp in EdgeDictionary)
                 {
-
                     var tuple = kvp.Value;
                     string schema = tuple.Item1.SchemaIdentifier.Value.ToLower();
                     string sourceTableName = tuple.Item1.BaseIdentifier.Value.ToLower();
@@ -199,9 +195,9 @@ namespace GraphView
                         columnsOfNodeTables[bindNodeTableTuple][edgeName].EdgeInfo;
                     foreach (var attribute in edgeProperties.ColumnAttributes)
                     {
-                        if (!_columnTableAliasMapping.ContainsKey(attribute.ToLower()))
+                        if (!_columnToAliasMapping.ContainsKey(attribute.ToLower()))
                         {
-                            _columnTableAliasMapping[attribute.ToLower()] = kvp.Key;
+                            _columnToAliasMapping[attribute.ToLower()] = kvp.Key;
                         }
                         else
                         {
@@ -212,23 +208,9 @@ namespace GraphView
 
                 }
                 foreach (var col in duplicateColumns)
-                    _columnTableAliasMapping.Remove(col);
+                    _columnToAliasMapping.Remove(col);
             }
-            return _columnTableAliasMapping;
-        }
-
-        public Dictionary<string, WTableReferenceWithAlias> GetUpperTableDictionary()
-        {
-            var currentContext = ParentContext;
-            var upperTableDictionary =
-                new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
-            while (currentContext != null)
-            {
-                foreach (var table in currentContext.NodeTableDictionary)
-                    upperTableDictionary.Add(table.Key, table.Value);
-                currentContext = currentContext.ParentContext;
-            }
-            return upperTableDictionary;
+            return _columnToAliasMapping;
         }
 
         public void AddNodeTable(string name, WTableReferenceWithAlias tableName)
@@ -238,7 +220,6 @@ namespace GraphView
             _nodeTableDictionary.Add(name, tableName);
         }
 
-        //public void AddEdgeReference(string name, WSchemaObjectName sourceNodeName, WEdgeColumnReferenceExpression edgeReference)
         public void AddEdgeReference(MatchEdge edge)
         {
             var edgeAlias = edge.EdgeAlias;
@@ -252,15 +233,6 @@ namespace GraphView
         public void AddEdgeStatistics(MatchEdge edge, EdgeStatistics statistics)
         {
             _edgeStatisticses.Add(edge, statistics);
-        }
-
-        public void AddPathPredicateValue(MatchEdge path, string attribute, string value)
-        {
-            var attrDict = _pathPredicatesValueDictionary.GetOrCreate(path);
-            if (attrDict.ContainsKey(attribute.ToLower()))
-                throw new GraphViewException(string.Format(
-                    "Only one value can be specified for the given attribute {0}", attribute));
-            attrDict.Add(attribute, value);
         }
     }
 }
