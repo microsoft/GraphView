@@ -36,13 +36,13 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    class TranslateDataModificationVisitor : WSqlFragmentVisitor
+    internal class TranslateDataModificationVisitor : WSqlFragmentVisitor
     {
-        SqlConnection _conn;
+        public SqlTransaction Tx { get; private set; }
 
-        public TranslateDataModificationVisitor(SqlConnection conn)
+        public TranslateDataModificationVisitor(SqlTransaction tx)
         {
-            _conn = conn;
+            this.Tx = tx;
         }
         public void Invoke(WSqlFragment fragment)
         {
@@ -143,8 +143,9 @@ namespace GraphView
                         ? "dbo"
                         : table.TableObjectName.SchemaIdentifier.Value;
                     var tableName = table.TableObjectName.BaseIdentifier.Value;
-                    using (var command = _conn.CreateCommand())
+                    using (var command = Tx.Connection.CreateCommand())
                     {
+                        command.Transaction = Tx;
                         command.CommandText = string.Format(
                             @"SELECT [TableSchema], [TableName], [ColumnName] FROM [{3}] WHERE TableSchema = '{0}' and [TableName]='{1}' and ColumnRole={2}",
                             tableSchema, tableName, 1, GraphViewConnection.MetadataTables[1]);
@@ -200,8 +201,9 @@ namespace GraphView
                             }
                         };
                     }
-                    using (var command = _conn.CreateCommand())
+                    using (var command = Tx.Connection.CreateCommand())
                     {
+                        command.Transaction = Tx;
                         command.CommandText = string.Format("SELECT InDegree FROM {0}.{1} {2}", tableSchema, tableName,
                             checkDeleteNode.ToString());
                         using (var reader = command.ExecuteReader())

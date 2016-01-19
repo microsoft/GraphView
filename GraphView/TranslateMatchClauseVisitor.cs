@@ -185,16 +185,11 @@ namespace GraphView
         // Set Pruning Strategy
         private readonly IMatchJoinPruning _pruningStrategy = new PruneJointEdge();
 
+        public SqlTransaction Tx { get; private set; }
 
-
-        public SqlConnection Conn { get; private set; }
-        public WSqlTableContext Context { get; set; }
-
-
-        public TranslateMatchClauseVisitor(SqlConnection conn)
+        public TranslateMatchClauseVisitor(SqlTransaction tx)
         {
-
-            Init(conn);
+            this.Tx = tx;
         }
 
         /// <summary>
@@ -207,9 +202,9 @@ namespace GraphView
             var columnsOfNodeTables = _graphMetaData.ColumnsOfNodeTables;
             var nodeViewMapping = _graphMetaData.NodeViewMapping;
 
-            Conn = conn;
-            using (var command = Conn.CreateCommand())
+            using (var command = Tx.Connection.CreateCommand())
             {
+                command.Transaction = Tx;
                 command.CommandText = string.Format(
                     @"
                     SELECT [TableSchema] as [Schema], [TableName] as [Name1], [ColumnName] as [Name2], 
@@ -1077,10 +1072,8 @@ namespace GraphView
                          TsqlFragmentToString.DataType(parameter.DataType) + "\r\n"));
             }
 
-           
-
             // Attaches predicates to nodes and edges
-            var estimator = new TableSizeEstimator(Conn);
+            var estimator = new TableSizeEstimator(Tx);
             bool first = true;
             var selectQuerySb = new StringBuilder(1024);
             foreach (var subGraph in graph.ConnectedSubGraphs)
@@ -1250,8 +1243,9 @@ namespace GraphView
 
             
 
-            using (var command = Conn.CreateCommand())
+            using (var command = Tx.Connection.CreateCommand())
             {
+                command.Transaction = Tx;
                 command.CommandText = declareParameter + sb.ToString();
                 using (var reader = command.ExecuteReader())
                 {

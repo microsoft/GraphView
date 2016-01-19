@@ -5,6 +5,7 @@ using System.IO;
 using GraphView;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Data.SqlClient;
 
 namespace GraphViewUnitTest
 {
@@ -130,8 +131,11 @@ namespace GraphViewUnitTest
                 var sr = new StringReader(selectStr);
                 var script = parser.Parse(sr, out errors) as WSqlScript;
                 Assert.IsNotNull(script);
-                var visitor = new TranslateMatchClauseVisitor(graph.Conn);
-                visitor.Invoke(script);
+                using (SqlTransaction tx = graph.BeginTransaction())
+                {
+                    var visitor = new TranslateMatchClauseVisitor(tx);
+                    visitor.Invoke(script);
+                }
             }
         }
 

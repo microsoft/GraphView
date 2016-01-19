@@ -77,6 +77,15 @@ namespace GraphView
     }
 
     [Serializable]
+    public class QueryCompilationException : GraphViewException
+    {
+        public QueryCompilationException() { }
+        public QueryCompilationException(string message) : base(message) { }
+        public QueryCompilationException(string message, Exception innerException) :
+            base(message, innerException) { }
+    }
+
+    [Serializable]
     public class SqlExecutionException : GraphViewException
     {
         public SqlExecutionException() { }

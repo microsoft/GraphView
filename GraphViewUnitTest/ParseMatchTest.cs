@@ -319,15 +319,18 @@ CREATE TABLE [dbo].[ClientNode](
             using (var conn = new SqlConnection(_connStr))
             {
                 conn.Open();
-                var visitor = new TranslateMatchClauseVisitor(conn);
-                try
+                using (SqlTransaction tx = conn.BeginTransaction())
                 {
-                    visitor.Invoke(script);
-                    Assert.Fail();
-                }
-                catch (Exception e)
-                {
-                    Assert.IsNotNull(e);
+                    var visitor = new TranslateMatchClauseVisitor(tx);
+                    try
+                    {
+                        visitor.Invoke(script);
+                        Assert.Fail();
+                    }
+                    catch (Exception e)
+                    {
+                        Assert.IsNotNull(e);
+                    }
                 }
             }
         }

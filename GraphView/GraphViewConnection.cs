@@ -921,10 +921,13 @@ namespace GraphView
             if (errors.Count > 0)
                 throw new SyntaxErrorException(errors);
 
+            
+
+            SqlTransaction tran = externalTransaction == null ? Conn.BeginTransaction() : externalTransaction;
             // Translation
-            var modVisitor = new TranslateDataModificationVisitor(Conn);
+            var modVisitor = new TranslateDataModificationVisitor(tran);
             modVisitor.Invoke(script);
-            var matchVisitor = new TranslateMatchClauseVisitor(Conn);
+            var matchVisitor = new TranslateMatchClauseVisitor(tran);
             matchVisitor.Invoke(script);
             if (script == null)
                 return false;
@@ -933,18 +936,9 @@ namespace GraphView
                 return false;
             var procName = statement.ProcedureReference.Name;
             if (procName.SchemaIdentifier == null)
-                procName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
+                procName.Identifiers.Insert(0, new Identifier { Value = "dbo" });
             bool exists = false;
 
-            SqlTransaction tran;
-            if (externalTransaction == null)
-            {
-                tran = Conn.BeginTransaction();
-            }
-            else
-            {
-                tran = externalTransaction;
-            }
             try
             {
                 using (var cmd = Conn.CreateCommand())
