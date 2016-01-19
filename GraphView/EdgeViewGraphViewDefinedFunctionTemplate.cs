@@ -18,7 +18,7 @@ namespace GraphView
     /// Class to produce the template output
     /// </summary>
     
-    #line 1 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+    #line 1 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
     public partial class EdgeViewGraphViewDefinedFunctionTemplate : EdgeViewGraphViewDefinedFunctionTemplateBase
     {
@@ -35,7 +35,7 @@ namespace GraphView
             this.Write("    ");
             this.Write("\r\n");
             
-            #line 8 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 8 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
     var typeDictionary = new Dictionary<string, Tuple<string, string>> 
 { 
@@ -59,7 +59,7 @@ namespace GraphView
 	{
     private class ");
             
-            #line 26 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 26 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -68,35 +68,35 @@ namespace GraphView
                     "get; set; }\r\n\t\tpublic Int32 EdgeId{ get; set; }\r\n\t\tpublic string _EdgeType {get;" +
                     " set;}\r\n");
             
-            #line 32 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 32 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 foreach (var variable in AttributeTypeDict) {
             
             #line default
             #line hidden
             this.Write("\t\tpublic Sql");
             
-            #line 33 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 33 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variable.Value].Item2));
             
             #line default
             #line hidden
             this.Write(" ");
             
-            #line 33 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 33 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Key));
             
             #line default
             #line hidden
             this.Write(" { get; set; }\r\n");
             
-            #line 34 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 34 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t}\r\n\r\n    public static void ");
             
-            #line 37 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 37 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -104,7 +104,7 @@ foreach (var variable in AttributeTypeDict) {
             this.Write("Decoder_FillRow(\r\n    object tableTypeObject,\r\n    out SqlInt64 sink, out SqlInt6" +
                     "4 columnId, out SqlInt32 edgeid, out SqlString _EdgeType");
             
-            #line 39 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 39 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
     var indent = "        ";
     foreach (var variable in AttributeTypeDict) {
@@ -116,7 +116,7 @@ foreach (var variable in AttributeTypeDict) {
             #line hidden
             this.Write(")\r\n    {\r\n        var decoderResult = (");
             
-            #line 46 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 46 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -125,28 +125,28 @@ foreach (var variable in AttributeTypeDict) {
                     "nId = decoderResult.ColumnId;\r\n        edgeid = decoderResult.EdgeId;\r\n\t\t_EdgeTy" +
                     "pe = new SqlString(decoderResult._EdgeType);\r\n");
             
-            #line 51 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 51 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 foreach (var variable in AttributeTypeDict) {
             
             #line default
             #line hidden
             this.Write("\t\t");
             
-            #line 52 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 52 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Key));
             
             #line default
             #line hidden
             this.Write(" = decoderResult.");
             
-            #line 52 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 52 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Key));
             
             #line default
             #line hidden
             this.Write(";\r\n");
             
-            #line 53 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 53 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
@@ -154,7 +154,7 @@ foreach (var variable in AttributeTypeDict) {
             this.Write("    }\r\n\r\n    [SqlFunction(\r\n    DataAccess = DataAccessKind.None,\r\n    TableDefin" +
                     "ition = \"Sink bigint, ColumnId bigint, EdgeId int, _EdgeType string");
             
-            #line 58 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 58 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
     foreach(var variable in AttributeTypeDict)
     Write(", " + variable.Key + " " + typeDictionary[variable.Value].Item1);
@@ -164,7 +164,7 @@ foreach (var variable in AttributeTypeDict) {
             #line hidden
             this.Write("\",\r\n    FillRowMethodName = \"");
             
-            #line 62 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 62 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -172,14 +172,14 @@ foreach (var variable in AttributeTypeDict) {
             this.Write("Decoder_FillRow\",\r\n    IsDeterministic = true,\r\n    IsPrecise = false\r\n    )]\r\n\r\n" +
                     "\tpublic static IEnumerable ");
             
-            #line 67 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 67 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
             #line hidden
             this.Write("Decoder(\r\n");
             
-            #line 68 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 68 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
     if (Mapping.Count() != 0){
         Write(indent + "SqlBytes array0");
@@ -198,7 +198,7 @@ foreach (var variable in AttributeTypeDict) {
             this.Write(")\r\n    {\r\n        var edgeid = (Int32)0;\r\n\t\tvar deleDict = new Dictionary<Int32, " +
                     "bool>();\r\n");
             
-            #line 83 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 83 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
     var calc = 0;
 	indent += "    ";
@@ -219,28 +219,28 @@ foreach (var variable in AttributeTypeDict) {
             #line hidden
             this.Write("\t\tedgeid = 0;\r\n\t\tdeleDict.Clear();\r\n\t\tif (");
             
-            #line 100 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 100 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(dele));
             
             #line default
             #line hidden
             this.Write(" != null && !");
             
-            #line 100 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 100 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(dele));
             
             #line default
             #line hidden
             this.Write(".IsNull) \r\n\t\t{\r\n\t\t\t//var brdele = new BinaryReader(new MemoryStream(");
             
-            #line 102 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 102 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(dele));
             
             #line default
             #line hidden
             this.Write(".Value));\r\n\t\t\tvar brdele = new BinaryReader(");
             
-            #line 103 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 103 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(dele));
             
             #line default
@@ -248,28 +248,28 @@ foreach (var variable in AttributeTypeDict) {
             this.Write(".Stream);\r\n\t\t\twhile (brdele.BaseStream.Position != brdele.BaseStream.Length)\r\n\t\t\t" +
                     "{\r\n\t\t\t\tdeleDict[brdele.ReadInt32()] = true;\r\n\t\t\t}\r\n\t\t}\r\n\t\tif (");
             
-            #line 109 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 109 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(array));
             
             #line default
             #line hidden
             this.Write(" != null && !");
             
-            #line 109 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 109 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(array));
             
             #line default
             #line hidden
             this.Write(".IsNull)\r\n\t\t{\r\n        //var br = new BinaryReader(new MemoryStream(");
             
-            #line 111 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 111 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(array));
             
             #line default
             #line hidden
             this.Write(".Value));\r\n        var br = new BinaryReader(");
             
-            #line 112 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 112 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(array));
             
             #line default
@@ -277,28 +277,28 @@ foreach (var variable in AttributeTypeDict) {
             this.Write(".Stream);\r\n        while (br.BaseStream.Position != br.BaseStream.Length)\r\n      " +
                     "  {\r\n            edgeid++;\r\n");
             
-            #line 116 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 116 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("            byte[] bitmap = br.ReadBytes(");
             
-            #line 117 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 117 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
             #line hidden
             this.Write(");\r\n");
             
-            #line 118 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 118 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("            var sink = br.ReadInt64();\r\n            object temp;\r\n");
             
-            #line 121 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 121 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
             var count = 0;
             foreach (var iterator in AttributeTypeDict) {
@@ -320,28 +320,28 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\tif (!deleDict.ContainsKey(edgeid)) {\r\n\t\t\t\tyield return new ");
             
-            #line 138 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 138 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
             #line hidden
             this.Write("DecoderResult\r\n\t\t\t\t{\r\n\t\t\t\t\tSink = sink, ColumnId = ");
             
-            #line 140 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 140 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(columnId));
             
             #line default
             #line hidden
             this.Write(", EdgeId = edgeid, _EdgeType = \"");
             
-            #line 140 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
-            this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
+            #line 140 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(it.Key));
             
             #line default
             #line hidden
             this.Write("\",\r\n");
             
-            #line 141 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 141 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
 					foreach (var variable in AttributeTypeDict)
 					{
@@ -353,14 +353,14 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\t\t};\r\n\t\t\t}\r\n        }\r\n\t\t}\r\n");
             
-            #line 151 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 151 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\tyield break;\r\n    }\r\n\r\n\r\n   //Path Decoder\r\n    private class ");
             
-            #line 157 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 157 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -369,35 +369,35 @@ if (byteSize != 0) {
                     "   public long SinkId{get; set;}\r\n        public long ColumnId{get; set;}\r\n     " +
                     "   public string _EdgeType {get; set;}\r\n");
             
-            #line 163 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 163 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 foreach (var variable in AttributeTypeDict) {
             
             #line default
             #line hidden
             this.Write("        public Sql");
             
-            #line 164 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 164 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variable.Value].Item2));
             
             #line default
             #line hidden
             this.Write(" ");
             
-            #line 164 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 164 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Key));
             
             #line default
             #line hidden
             this.Write(" { get; set; }\r\n");
             
-            #line 165 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 165 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("    }\r\n\r\n    public static void ");
             
-            #line 168 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 168 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -406,7 +406,7 @@ foreach (var variable in AttributeTypeDict) {
                     "Int32 EdgeId, out SqlInt64 ColumnId, out SqlInt64 SinkId, out SqlString _EdgeTyp" +
                     "e");
             
-            #line 170 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 170 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
 
 		foreach (var variable in AttributeTypeDict) {
@@ -418,7 +418,7 @@ foreach (var variable in AttributeTypeDict) {
             #line hidden
             this.Write("        )\r\n    {\r\n        var decoderResult = (");
             
-            #line 178 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 178 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -427,28 +427,28 @@ foreach (var variable in AttributeTypeDict) {
                     "eId;\r\n        ColumnId = decoderResult.ColumnId;\r\n\t\t_EdgeType = decoderResult._E" +
                     "dgeType;\r\n        SinkId = decoderResult.SinkId;\r\n");
             
-            #line 183 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 183 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 foreach (var variable in  AttributeTypeDict) {
             
             #line default
             #line hidden
             this.Write("      ");
             
-            #line 184 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 184 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Key));
             
             #line default
             #line hidden
             this.Write(" = decoderResult.");
             
-            #line 184 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 184 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Key));
             
             #line default
             #line hidden
             this.Write(";\r\n");
             
-            #line 185 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 185 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
@@ -457,7 +457,7 @@ foreach (var variable in  AttributeTypeDict) {
                     "      TableDefinition = \"EdgeId int, ColumnId bigint, SinkId bigint, _EdgeType S" +
                     "tring\",\r\n        FillRowMethodName = \"");
             
-            #line 191 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 191 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -465,14 +465,14 @@ foreach (var variable in  AttributeTypeDict) {
             this.Write("ExclusiveEdgeGenerator_FillRow\",\r\n        IsDeterministic = true,\r\n        IsPrec" +
                     "ise = false\r\n        )]\r\n    public static IEnumerable ");
             
-            #line 195 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 195 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
             #line hidden
             this.Write("ExclusiveEdgeGenerator(\r\n\t\tSqlBytes  PathVarbinary,\r\n\t\tSqlInt64 nodeid,\r\n");
             
-            #line 198 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 198 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
 	indent = "        ";
     if (Mapping.Count() != 0){
@@ -505,14 +505,14 @@ foreach (var variable in  AttributeTypeDict) {
         
         foreach (var it in ");
             
-            #line 224 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 224 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
             #line hidden
             this.Write("Decoder(\r\n");
             
-            #line 225 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 225 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
 	indent += "    ";
     if (Mapping.Count() != 0){
@@ -531,7 +531,7 @@ foreach (var variable in  AttributeTypeDict) {
             #line hidden
             this.Write("))\r\n        {\r\n            var  adjacent = it as ");
             
-            #line 239 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 239 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -540,7 +540,7 @@ foreach (var variable in  AttributeTypeDict) {
                     "mnId, adjacent.EdgeId);\r\n            if (!PathDict.ContainsKey(EdgeId))\r\n       " +
                     "     {\r\n                yield return new ");
             
-            #line 243 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 243 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
             
             #line default
@@ -549,7 +549,7 @@ foreach (var variable in  AttributeTypeDict) {
                     "acent.EdgeId,\r\n\t\t\t\t\tColumnId = adjacent.ColumnId,\r\n                    SinkId = " +
                     "adjacent.Sink,\r\n\t\t\t\t\t_EdgeType = adjacent._EdgeType,\r\n");
             
-            #line 249 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            #line 249 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
 
 					indent += "        ";
 					foreach (var variable in AttributeTypeDict) {

@@ -995,35 +995,6 @@ namespace GraphView
                     }
                 }
 
-                //if (tableToRole[_nodeName.ToLower()] == 1)
-                //{
-                //    string checkBaseTable = @"
-                //    Select ColumnName
-                //    From {0} 
-                //    Join {1} NVC
-                //    On _NodeTableCollection.TableName = @name and _NodeTableCollection.TableSchema = @schema and _NodeTableCollection.TableId = NVC.NodeViewTableId
-                //    Join {2} NTC
-                //    On NVC.TableId = NTC.TableId
-                //    Where ColumnRole = @role1 or ColumnRole = @role2;";
-                //    command.Parameters.Clear();
-                //    command.Parameters.AddWithValue("role1", 1);
-                //    command.Parameters.AddWithValue("role2", 4);
-                //    command.Parameters.AddWithValue("name", nodeName);
-                //    command.Parameters.AddWithValue("schema", tableSchema);
-                //    command.CommandText = string.Format(checkBaseTable, MetadataTables[0], MetadataTables[7], MetadataTables[1]);
-                //    using (var reader = command.ExecuteReader())
-                //    {
-                //        while (reader.Read())
-                //        {
-                //            var edgeName = reader["ColumnName"].ToString().ToLower();
-                //            if (edgeName == edgeViewName.ToLower())
-                //            {
-                //                throw new EdgeViewException(string.Format("The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
-                //            }
-                //        }
-                //    }
-                //}
-
                 edges = edges.Select(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())).ToList();
                 _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2), x => (long)-1);
                 //<NodeTable, Edge> => ColumnId
@@ -1374,6 +1345,10 @@ namespace GraphView
                 var elementList = new List<string>(); 
                 foreach (var it in subViewToEdges)
                 {
+                    if (it.Value.Count == 0)
+                    {
+                        continue;
+                    }
                     elementList.Clear();
                     int i;
                     for (i = 0; i < offset; i++)
@@ -1400,8 +1375,16 @@ namespace GraphView
                     {2}
                 )";
                 command.Parameters.Clear();
-                command.CommandText = string.Format(createSubView, tableSchema,
-                    tableSchema + "_" + nodeName + "_" + edgeViewName + "_SubView", string.Join("\nUNION ALL\n", subQueryList));
+                if (subQueryList.Count != 0)
+                {
+                    command.CommandText = string.Format(createSubView, tableSchema,
+                        tableSchema + "_" + nodeName + "_" + edgeViewName + "_SubView", string.Join("\nUNION ALL\n", subQueryList));
+                }
+                else
+                {
+                    command.CommandText = string.Format(createSubView, tableSchema,
+                        tableSchema + "_" + nodeName + "_" + edgeViewName + "_SubView", "select -1 as globalnodeid");
+                }
                 command.ExecuteNonQuery();
 
                 //Registers function

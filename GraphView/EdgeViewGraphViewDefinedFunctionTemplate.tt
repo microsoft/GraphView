@@ -137,7 +137,7 @@
 			if (!deleDict.ContainsKey(edgeid)) {
 				yield return new <#=EdgeName#>DecoderResult
 				{
-					Sink = sink, ColumnId = <#=columnId#>, EdgeId = edgeid, _EdgeType = "<#=EdgeName#>",
+					Sink = sink, ColumnId = <#=columnId#>, EdgeId = edgeid, _EdgeType = "<#=it.Key#>",
 <#
 					foreach (var variable in AttributeTypeDict)
 					{

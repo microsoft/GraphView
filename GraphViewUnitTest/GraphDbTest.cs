@@ -334,6 +334,30 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void EmptySubViewTest()
+        {
+            TestInitialization.ClearDatabase();
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+
+                const string createEmployeeStr = @"
+                CREATE TABLE [EmployeeNode] (
+                    [ColumnRole: ""NodeId""]
+                    [WorkId] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [name] [varchar](32),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""int""}]
+                    [Clients] [varchar](max),
+                )";
+                graph.CreateNodeTable(createEmployeeStr);
+                var edges = new List<Tuple<string, string>>() {Tuple.Create("employeeNode", "CLients")};
+                graph.CreateEdgeView("dbo", "Employeenode", "edgeview", edges);
+                graph.DropEdgeView("dbo", "Employeenode", "edgeview");
+            }
+        }
+
+        [TestMethod]
         public void ViewTest()
         {
             TestInitialization.ClearDatabase();
@@ -508,7 +532,7 @@ namespace GraphViewUnitTest
                     CREATE TABLE [ClientNode] (
                     [ColumnRole: ""NodeId""]
                     [ClientId] [int],
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int""}]
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int"", ""mouth"":""string"", ""time"":""double""}]
                     [Colleagues] [varchar](max),
                     [ColumnRole: ""Edge"", Reference: ""ClientNode""]
                     [Colleagues2] [varchar](max)
@@ -530,27 +554,27 @@ namespace GraphViewUnitTest
 
                 const string insertEdge = @"
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 1
+                SELECT Cn1, Cn2, 1, 'Jan', 1.1
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 0 AND Cn2.ClientId = 1;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 2 
+                SELECT Cn1, Cn2, 2, 'Feb', 2.2 
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 2;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 3
+                SELECT Cn1, Cn2, 3, 'Mar', 3.3
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 3;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 4 
+                SELECT Cn1, Cn2, 4, 'Apr', 4.4
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 3 AND Cn2.ClientId = 1;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 5 
+                SELECT Cn1, Cn2, 5, 'May', 5.5 
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 4;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 6 
+                SELECT Cn1, Cn2, 6, 'June', 6.6
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 5;";
                 command.CommandText = insertEdge;
@@ -561,7 +585,7 @@ namespace GraphViewUnitTest
                 string query = @"
                 select *
 				from ClientNode cross apply dbo_ClientNode_Colleagues_bfs(ClientNode.GlobalNodeId,0,-1,
-				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null)
+				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null)
 				where ClientNode.ClientId = 0";
                 command.CommandText = query;
                 using (var reader = command.ExecuteReader())
@@ -571,7 +595,7 @@ namespace GraphViewUnitTest
                         cnt++;
                     }
                 }
-                if (cnt!=8) Assert.Fail();
+                if (cnt!=8) Assert.Fail(cnt.ToString());
 
                 // Run following GraphView query can get 8 paths:
                 cnt = 0;
@@ -588,7 +612,7 @@ namespace GraphViewUnitTest
                         cnt++;
                     }
                 }
-                if (cnt != 8) Assert.Fail();
+                if (cnt != 8) Assert.Fail(cnt.ToString());
 
 
                 const string deleteEdge = @"
@@ -598,13 +622,17 @@ namespace GraphViewUnitTest
                 command.CommandText = deleteEdge;
                 command.ExecuteNonQuery();
 
+                cnt = 0;
                 //Run following SQL query can get 7 paths:
-                //using (var reader = command.ExecuteReader())
-                //{
-                //    while (reader.Read())
-                //    {
-                //    }
-                //}
+                command.CommandText = gvQuery;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                    }
+                }
+                if (cnt != 7) Assert.Fail(cnt.ToString());
 
                 //graph.DropNodeTable(@"drop table clientnode");
             }
