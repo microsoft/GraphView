@@ -5,50 +5,50 @@
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".sql" #>
 <#  
-            var typeDictionary = new Dictionary<string, Tuple<string, string, int>>
-            {
-                {"int", new Tuple<string, string, int>("int", "SqlInt32", 4)},
-                {"long", new Tuple<string, string, int>("bigint", "SqlInt64", 8)},
-                {"double", new Tuple<string, string, int>("float", "SqlDouble", 8)},
-                {"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)}
-            };
+			var typeDictionary = new Dictionary<string, Tuple<string, string, int>>
+			{
+				{"int", new Tuple<string, string, int>("int", "SqlInt32", 4)},
+				{"long", new Tuple<string, string, int>("bigint", "SqlInt64", 8)},
+				{"double", new Tuple<string, string, int>("float", "SqlDouble", 8)},
+				{"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)}
+			};
 #>
 <# if (Type == 0) {#> 
 CREATE ASSEMBLY <#=AssemblyName#>_Assembly FROM <#=Path#>
 GO
 
 <#foreach (var edge in EdgeList) {
-    var edgeName = edge.Item1;
+	var edgeName = edge.Item1;
 	var edgeColumnId = edge.Item2; //The edge has sink and source in the same table or not.
-    var variables = edge.Item3;
+	var variables = edge.Item3;
 #>
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
-<#for (int i = 0; i < InputCount; i++) {#>
-@array<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
-<#}#>, @dele varbinary(max)) RETURNS TABLE
-( 
-    Sink bigint, EdgeId int<#
-    for (var i = 0; i < variables.Count; ++i)
-    {
-        WriteLine(",");
-        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
-    }
-    WriteLine("");
-#>
-)
-  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
+	@array varbinary(max),
+	@dele varbinary(max))
+	RETURNS TABLE
+	( 
+		Sink bigint, EdgeId int<#
+		for (var i = 0; i < variables.Count; ++i)
+		{
+			WriteLine(",");
+			Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+		}
+		WriteLine("");
+	#>
+	)
+AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @PathVarbinary varbinary(max), @nodeid bigint, @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
 (
 	EdgeId int, EdgeColumnId bigint, Sink bigint<#
-    for (var i = 0; i < variables.Count; ++i)
-    {
-        WriteLine(",");
-        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
-    }
-    WriteLine("");
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+	}
+	WriteLine("");
 #>
 )
   AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator;
@@ -85,7 +85,7 @@ with  allPath(sink, varPath) as (
 		convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
-		 	<#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
+		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
 		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
 <#foreach (var it in variables) {
 		Write("		");
@@ -102,6 +102,93 @@ from allPath
 where DATALENGTH(allPath.varPath) >= @minlength * 20
 GO
 
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(
+	@nodeType nvarchar(max), @id nvarchar(max),
+	@edgeType nvarchar(max)<#for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write("	@" + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+	}
+#>)
+RETURNS varbinary(max)
+AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>_PathMessageEncoder; 
+GO
+
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageDecoder(
+	@array varbinary(max), @nodeType nvarchar(max),
+	@id nvarchar(max))
+RETURNS nvarchar(max)
+AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>_PathMessageDecoder; 
+GO
+
+create function <#=AssemblyName#>_<#=edgeName#>_bfs2(@source bigint, 
+		@minlength bigint, @maxlength bigint,
+		@nodeType nvarchar(max), @id nvarchar(max),
+		@edgeColumn varbinary(max), @Del varbinary(max)
+<#foreach (var it in variables) {
+		WriteLine(", ");
+		Write("		");
+		Write("@" + it.Item1);
+		Write(" " + typeDictionary[it.Item2].Item1);
+}#>
+)
+returns table
+as 
+return 
+with  allPath(sink, varPath, PathMessage) as (
+		select newpath.sink,  
+		CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
+			convert(binary(8), reverse(convert(binary(8), 3))) + 
+			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max)) as varPath,
+		dbo.<#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(@nodeType, @id, '<#=edgeName#>'
+			<#foreach (var it in variables) {#>
+				,newpath.<#=it.Item1#>
+			<#}#>) as PathMessage
+		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
+		Where (@maxlength != 0)
+<#foreach (var it in variables) {
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}#>
+
+		union all
+
+		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
+			convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + 
+			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varPath,
+		(allPath.PathMessage +
+		dbo.<#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder('<#=NodeTable#>',
+			<#if (String.IsNullOrEmpty(UserId)) {#>
+				null
+			<#} else {#>
+				<#=NodeTable#>.<#=UserId#>
+			<#}#>
+				, '<#=edgeName#>'
+			<#foreach (var it in variables) {#>
+				, newpath.<#=it.Item1#>
+			<#}#>)) as PathMessage
+
+		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
+		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
+		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
+<#foreach (var it in variables) {
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}#>
+)
+select @source as sink, CAST(0x as varbinary(max)) as varPath, CAST(0x as varbinary(max)) as PathMessage
+where @minlength = 0
+union
+select *
+from allPath
+where DATALENGTH(allPath.varPath) >= @minlength * 20
+GO
+
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Recycle(@src varbinary(max), @toRecycle varbinary(max))
 RETURNS varbinary(max)
 EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Recycle;
@@ -109,13 +196,13 @@ GO
 
 CREATE AGGREGATE <#=AssemblyName#>_<#=edgeName#>_Encoder
 (
-    @Sink bigint<#
-    for (var i = 0; i < variables.Count; ++i)
-    {
-        WriteLine(",");
-        Write("    @" + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
-    }
-    WriteLine(""); 
+	@Sink bigint<#
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write("    @" + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+	}
+	WriteLine(""); 
 #>
 )
 RETURNS varbinary(max)
@@ -128,8 +215,8 @@ GO
 
 <# if (Type == 1) {#>
 <#foreach (var edge in EdgeList) {
-    var edgeName = edge.Item1;
-    var variables = edge.Item3;
+	var edgeName = edge.Item1;
+	var variables = edge.Item3;
 #>
 CREATE ASSEMBLY <#=AssemblyName#>_<#=edgeName#>_Assembly FROM <#=Path#>
 GO
@@ -138,13 +225,13 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 @array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
 <#}#>) RETURNS TABLE
 (
-    Sink bigint, EdgeColumnId bigint, EdgeId int, _EdgeType nvarchar(max)<#
-    for (var i = 0; i < variables.Count; ++i)
-    {
-        WriteLine(",");
-        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
-    }
-    WriteLine("");
+	Sink bigint, EdgeColumnId bigint, EdgeId int, _EdgeType nvarchar(max)<#
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+	}
+	WriteLine("");
 #>
 ) 
   AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>Decoder; 
@@ -157,12 +244,12 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 <#}#>) RETURNs TABLE
 (
 	EdgeId int, EdgeColumnId bigint, Sink bigint, _EdgeType nvarchar(max)<#
-    for (var i = 0; i < variables.Count; ++i)
-    {
-        WriteLine(",");
-        Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
-    }
-    WriteLine("");
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write("    " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+	}
+	WriteLine("");
 #>
 )
   AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator; 

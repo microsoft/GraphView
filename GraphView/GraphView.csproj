@@ -54,14 +54,14 @@
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BulkInsert.cs" />
     <Compile Include="CheckTableReferencingVisitor.cs" />
-    <Compile Include="EdgeStatistics.cs" />
-    <Compile Include="ConvertToModificationStatementVisitor.cs" />
-    <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DeployScriptTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
+    <Compile Include="EdgeStatistics.cs" />
+    <Compile Include="ConvertToModificationStatementVisitor.cs" />
+    <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="EdgeViewBfsScriptTemplate.cs">
       <AutoGen>True</AutoGen>

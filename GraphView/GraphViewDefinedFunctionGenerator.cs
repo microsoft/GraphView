@@ -79,6 +79,8 @@ namespace GraphView
         public int Type;
 
         public string NodeTable { get; set; }
+
+        public string UserId { get; set; }
     }
 
     partial class EdgeViewBfsScriptTemplate
@@ -151,7 +153,7 @@ namespace GraphView
         }
 
         private static string GenerateRegisterScript(string assemblyName, string path, int type, string nodeTable = null,
-            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = null,  int inputCount = 1)
+            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = null, int inputCount = 1, string userId = null)
         {
             var template = new DeployScriptTemplate
             {
@@ -160,7 +162,8 @@ namespace GraphView
                 Path = ObtainHexStringOfAssembly(path),
                 InputCount = inputCount,
                 Type = type,
-                NodeTable = nodeTable
+                NodeTable = nodeTable,
+                UserId = userId
             };
             return template.TransformText();
         }
@@ -230,6 +233,7 @@ namespace GraphView
         public static void NodeTableRegister(
             string assemblyName, string nodeTable,
             List<Tuple<string, long, List<Tuple<string, string>>>> edgeList,
+            string userId,
             SqlConnection conn,
             SqlTransaction tx
             )
@@ -239,7 +243,7 @@ namespace GraphView
             var result = Compile(code);
             if (result.Errors.Count > 0)
                 throw new GraphViewException("Failed to compile nodetable Graph View defined function");
-            var script = GenerateRegisterScript(assemblyName, result.PathToAssembly, 0, nodeTable, edgeList);
+            var script = GenerateRegisterScript(assemblyName, result.PathToAssembly, 0, nodeTable, edgeList, 1, userId);
 
             var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
             var command = conn.CreateCommand();
@@ -271,7 +275,6 @@ namespace GraphView
                 new Tuple<string, long, List<Tuple<string, string>>>(edgeViewName, 0, attributetypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
             };
             var script = GenerateRegisterScript(schema + '_' + suppernode, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
-            //var script = GenerateRegisterScript(schema, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
 
             var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
             var command = conn.CreateCommand();

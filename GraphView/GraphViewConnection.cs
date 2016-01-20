@@ -23,6 +23,7 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -31,14 +32,10 @@ using System.Data.SqlTypes;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
-
-// For debugging
-using System.Diagnostics;
-using System.Security.Authentication.ExtendedProtection;
 using System.Text;
-using Microsoft.Win32.SafeHandles;
-using IsolationLevel = Microsoft.SqlServer.TransactSql.ScriptDom.IsolationLevel;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
+using IsolationLevel = System.Data.IsolationLevel;
+// For debugging
 
 
 namespace GraphView
@@ -91,7 +88,7 @@ namespace GraphView
                 "_StoredProcedureCollection",
                 "_NodeViewColumnCollection",
                 "_EdgeViewAttributeCollection",
-                "_NodeViewCollection",
+                "_NodeViewCollection"
             };
 
         private static readonly string Version = "VERSION";
@@ -150,7 +147,7 @@ namespace GraphView
         /// <param name="level"></param>
         /// <param name="tranName"></param>
         /// <returns></returns>
-        public SqlTransaction BeginTransaction(System.Data.IsolationLevel level, string tranName)
+        public SqlTransaction BeginTransaction(IsolationLevel level, string tranName)
         {
             return Conn.BeginTransaction(level, tranName);
         }
@@ -160,7 +157,7 @@ namespace GraphView
         /// </summary>
         /// <param name="level"></param>
         /// <returns></returns>
-        public SqlTransaction BeginTransaction(System.Data.IsolationLevel level)
+        public SqlTransaction BeginTransaction(IsolationLevel level)
         {
             return Conn.BeginTransaction(level);
         }
@@ -750,10 +747,12 @@ namespace GraphView
                                             new Tuple<string, string>(x.Item1.Value,
                                                 x.Item2.ToString().ToLower(CultureInfo.CurrentCulture)))
                                         .ToList())).ToList();
+                var userIdColumn = columns.Where(e => e.ColumnRole == WNodeTableColumnRole.NodeId).ToList();
+                string userId = (userIdColumn.Count == 0) ? "" : userIdColumn[0].ColumnName.Value;
                 if (edgeDict.Count > 0)
                 {
                     var assemblyName = tableSchema + '_' + tableName;
-                    GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableName, edgeDict, Conn, tx);
+                    GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableName, edgeDict, userId, Conn, tx);
                 }
                 using (var command = new SqlCommand(null, Conn))
                 {
@@ -860,9 +859,12 @@ namespace GraphView
                                     command.ExecuteNonQuery();
                                     command.CommandText = string.Format(
                                         @"DROP FUNCTION [{0}_{1}_ExclusiveEdgeGenerator];
-                                          DROP FUNCTION [{0}_{1}_bfs];",
+                                          DROP FUNCTION [{0}_{1}_bfs];
+                                          DROP FUNCTION [{0}_{1}_bfs2];
+                                          DROP FUNCTION [{0}_{1}_PathMessageEncoder];
+                                          DROP FUNCTION [{0}_{1}_PathMessageDecoder];",
                                         assemblyName,
-                                        edgeColumn.Item1);
+										edgeColumn.Item1);
                                     command.ExecuteNonQuery();
                                 }
                             }
