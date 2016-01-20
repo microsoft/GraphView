@@ -271,7 +271,7 @@ namespace GraphView
 
             result = new WMatchPath
             {
-                PathNodeList = nodeList,
+                PathEdgeList = nodeList,
                 Tail = tail,
                 FirstTokenIndex = firstToken,
                 LastTokenIndex = currentToken - 1
@@ -1398,7 +1398,7 @@ namespace GraphView
                             errors.Add(new ParseError(0, error.Offset, error.Line, error.Column, ""));
                             return null;
                         }
-                        else if (path.PathNodeList.Count != 1)
+                        else if (path.PathEdgeList.Count != 1)
                         {
                             var error = _tokens[nextToken];
                             errors.Add(new ParseError(0, error.Offset, error.Line, error.Column, 
@@ -1415,7 +1415,7 @@ namespace GraphView
                         _tokens[currentToken].Text = "SELECT";
 
                         _tokens[pos].TokenType = TSqlTokenType.Identifier;
-                        _tokens[pos].Text = path.PathNodeList[0].Item1.BaseIdentifier.Value;
+                        _tokens[pos].Text = path.PathEdgeList[0].Item1.BaseIdentifier.Value;
 
                         _tokens[pos + 1].TokenType = TSqlTokenType.Comma;
                         _tokens[pos + 1].Text = ",";

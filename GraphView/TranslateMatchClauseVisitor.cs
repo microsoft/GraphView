@@ -39,26 +39,21 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphView
 {
     /// <summary>
-    /// Add Table name into the column reference with only column name & 
-    /// Replace edge column name with internal edge alias (if any)
+    /// When an edge in the MATCH clause is not given an alias, this edge can still be referenced 
+    /// by the edge column name. During translation, an edge without an explicit alias will be
+    /// assigned a default alias, and as a result, the edge column name must be replaced by 
+    /// the assigned alias. 
     /// </summary>
-    internal class ReplaceTableRefVisitor : WSqlFragmentVisitor
+    internal class ReplaceEdgeReferenceVisitor : WSqlFragmentVisitor
     {
         /// <summary>
         /// Edge column name-> List of the candidate edge alias
         /// </summary>
         private Dictionary<string, List<string>> _edgeTableReferenceDict;
 
-        /// <summary>
-        /// Column name -> Table alias
-        /// </summary>
-        //private Dictionary<string, string> _columnTableDict;
-
-        public void Invoke(WSqlFragment node, Dictionary<string, List<string>> edgeTableReferenceDict /*,
-            Dictionary<string, string> columnTableDcit*/)
+        public void Invoke(WSqlFragment node, Dictionary<string, List<string>> edgeTableReferenceDict)
         {
             _edgeTableReferenceDict = edgeTableReferenceDict;
-            //_columnTableDict = columnTableDcit;
             node.Accept(this);
         }
 
@@ -77,14 +72,7 @@ namespace GraphView
                     column[column.Count - 2].Value = _edgeTableReferenceDict[columnName].First();
                 }
             }
-            //else
-            //{
-            //    var columnName = column.Last().Value;
-            //    if (_columnTableDict.ContainsKey(columnName))
-            //    {
-            //        column.Insert(0, new Identifier { Value = _columnTableDict[columnName] });
-            //    }
-            //}
+            
             base.Visit(node);
         }
     }
@@ -387,16 +375,20 @@ namespace GraphView
 
 
         /// <summary>
-        /// Check validity of the match clause
+        /// Checks the validity of the MATCH clause, including 
+        /// (1) an edge is bound to a node table or node view, 
+        /// (2) the source and the sink of an edeg in a path expression are bound to corresponding node tables, 
+        ///     as specified when node tables are created, and 
+        /// (3) The length constraint for a path construct is valid 
         /// </summary>
-        /// <param name="node"></param>
+        /// <param name="node">True, if the MATCH clause passes the test; false, otherwise.</param>
         private void CheckValidity(WSelectQueryBlock node)
         {
             if (node.MatchClause == null)
                 return;
             // Checks validity of the source node/node view
             if (node.MatchClause.Paths.All(
-                path => path.PathNodeList.All(
+                path => path.PathEdgeList.All(
                     part => _context.CheckTable(part.Item1.BaseIdentifier.Value) &&
                             IsNodeTable(_context[part.Item1.BaseIdentifier.Value])
                     )
@@ -405,9 +397,9 @@ namespace GraphView
                 foreach (var path in node.MatchClause.Paths)
                 {
                     var index = 0;
-                    for (var count = path.PathNodeList.Count; index < count; ++index)
+                    for (var count = path.PathEdgeList.Count; index < count; ++index)
                     {
-                        var pathNode = path.PathNodeList[index];
+                        var pathNode = path.PathEdgeList[index];
                         var table = _context[pathNode.Item1.BaseIdentifier.Value] as WNamedTableReference;
                         var edgeCol = pathNode.Item2;
                         var edge =
@@ -449,7 +441,7 @@ namespace GraphView
 
                         // Checks validity of sink node(s)
                         var nextNode = index != count - 1
-                            ? path.PathNodeList[index + 1].Item1
+                            ? path.PathEdgeList[index + 1].Item1
                             : path.Tail;
                         var getNextTable = _context[nextNode.BaseIdentifier.Value];
                         if (!IsNodeTable(getNextTable))
@@ -502,38 +494,38 @@ namespace GraphView
             {
                 var index = 0;
                 MatchEdge preEdge = null;
-                for (var count = path.PathNodeList.Count; index < count; ++index)
+                for (var count = path.PathEdgeList.Count; index < count; ++index)
                 {
-                    var currentNode = path.PathNodeList[index].Item1;
-                    var currentEdge = path.PathNodeList[index].Item2;
-                    var currentNodeExposedName = currentNode.BaseIdentifier.Value;
-                    var nextNode = index != count - 1
-                        ? path.PathNodeList[index + 1].Item1
+                    var currentNodeTableRef = path.PathEdgeList[index].Item1;
+                    var currentEdgeColumnRef = path.PathEdgeList[index].Item2;
+                    var currentNodeExposedName = currentNodeTableRef.BaseIdentifier.Value;
+                    var nextNodeTableRef = index != count - 1
+                        ? path.PathEdgeList[index + 1].Item1
                         : path.Tail;
-                    var nextNodeExposedName = nextNode.BaseIdentifier.Value;
-                    var node = nodes.GetOrCreate(currentNodeExposedName);
-                    if (node.NodeAlias == null)
+                    var nextNodeExposedName = nextNodeTableRef.BaseIdentifier.Value;
+                    var patternNode = nodes.GetOrCreate(currentNodeExposedName);
+                    if (patternNode.NodeAlias == null)
                     {
-                        node.NodeAlias = currentNodeExposedName;
-                        node.Neighbors = new List<MatchEdge>();
-                        node.External = false;
+                        patternNode.NodeAlias = currentNodeExposedName;
+                        patternNode.Neighbors = new List<MatchEdge>();
+                        patternNode.External = false;
                         var nodeTable = _context[currentNodeExposedName] as WNamedTableReference;
                         if (nodeTable != null)
                         {
-                            node.NodeTableObjectName = nodeTable.TableObjectName;
-                            if (node.NodeTableObjectName.SchemaIdentifier == null)
-                                node.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
-                            var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(node.NodeTableObjectName);
-                            node.IncludedNodeNames = _graphMetaData.NodeViewMapping.ContainsKey(nodeTypeTuple)
+                            patternNode.NodeTableObjectName = nodeTable.TableObjectName;
+                            if (patternNode.NodeTableObjectName.SchemaIdentifier == null)
+                                patternNode.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
+                            var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(patternNode.NodeTableObjectName);
+                            patternNode.IncludedNodeNames = _graphMetaData.NodeViewMapping.ContainsKey(nodeTypeTuple)
                                 ? _graphMetaData.NodeViewMapping[nodeTypeTuple]
                                 : null;
                         }
                     }
 
-                    string edgeAlias = currentEdge.Alias;
+                    string edgeAlias = currentEdgeColumnRef.Alias;
                     if (edgeAlias == null)
                     {
-                        var currentEdgeName = currentEdge.MultiPartIdentifier.Identifiers.Last().Value;
+                        var currentEdgeName = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
                         edgeAlias = string.Format("{0}_{1}_{2}", currentNodeExposedName, currentEdgeName,
                             nextNodeExposedName);
                         if (edgeTableReferenceDict.ContainsKey(currentEdgeName))
@@ -546,9 +538,9 @@ namespace GraphView
                         }
                     }
 
-                    Identifier edgeIdentifier = currentEdge.MultiPartIdentifier.Identifiers.Last();
-                    string schema = node.NodeTableObjectName.SchemaIdentifier.Value.ToLower();
-                    string nodeTableName = node.NodeTableObjectName.BaseIdentifier.Value;
+                    Identifier edgeIdentifier = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last();
+                    string schema = patternNode.NodeTableObjectName.SchemaIdentifier.Value.ToLower();
+                    string nodeTableName = patternNode.NodeTableObjectName.BaseIdentifier.Value;
                     string bindTableName =
                         _context.EdgeNodeBinding[
                             new Tuple<string, string>(nodeTableName.ToLower(), edgeIdentifier.Value.ToLower())].ToLower();
@@ -557,7 +549,7 @@ namespace GraphView
                         .EdgeInfo;
                     var edge = new MatchEdge
                     {
-                        SourceNode = node,
+                        SourceNode = patternNode,
                         EdgeColumn = new WColumnReferenceExpression
                         {
                             MultiPartIdentifier = new WMultiPartIdentifier
@@ -578,14 +570,14 @@ namespace GraphView
                             edgeInfo.IsEdgeView
                                 ? edgeInfo.EdgeColumns
                                 : null,
-                        MinLength = currentEdge.MinLength,
-                        MaxLength = currentEdge.MaxLength,
-                        AttributeValueDict = currentEdge.AttributeValueDict
+                        MinLength = currentEdgeColumnRef.MinLength,
+                        MaxLength = currentEdgeColumnRef.MaxLength,
+                        AttributeValueDict = currentEdgeColumnRef.AttributeValueDict
                     };
 
                     if (preEdge != null)
                     {
-                        preEdge.SinkNode = node;
+                        preEdge.SinkNode = patternNode;
                     }
                     preEdge = edge;
 
@@ -597,7 +589,7 @@ namespace GraphView
                     unionFind.Union(currentNodeExposedName, nextNodeExposedName);
 
 
-                    node.Neighbors.Add(edge);
+                    patternNode.Neighbors.Add(edge);
 
 
                     _context.AddEdgeReference(edge);
@@ -655,8 +647,10 @@ namespace GraphView
             };
             unionFind.Parent = null;
 
-            // Replaces Edge name alias with proper alias in the query
-            var replaceTableRefVisitor = new ReplaceTableRefVisitor();
+            // When an edge in the MATCH clause is not associated with an alias, 
+            // assigns to it a default alias: sourceAlias_EdgeColumnName_sinkAlias. 
+            // Also rewrites edge attributes anywhere in the query that can be bound to this default alias. 
+            var replaceTableRefVisitor = new ReplaceEdgeReferenceVisitor();
             replaceTableRefVisitor.Invoke(query, edgeTableReferenceDict);
 
 

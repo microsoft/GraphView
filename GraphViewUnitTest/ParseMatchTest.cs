@@ -48,7 +48,7 @@ namespace GraphViewUnitTest
             Assert.IsNotNull(queryBlock);
             Assert.IsNotNull(queryBlock.MatchClause);
             Assert.AreEqual(queryBlock.MatchClause.Paths.Count, 1);
-            Assert.AreEqual(queryBlock.MatchClause.Paths[0].PathNodeList.Count, 1);
+            Assert.AreEqual(queryBlock.MatchClause.Paths[0].PathEdgeList.Count, 1);
             Assert.IsNotNull(queryBlock.MatchClause.Paths[0].Tail);
         }
 
