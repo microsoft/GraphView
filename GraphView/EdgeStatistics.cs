@@ -33,6 +33,7 @@ namespace GraphView
 {
     internal class EdgeStatistics
     {
+        // Default density value used by SQL Server in column statistics
         public const double DefaultDensity = 0.0316228;
         // Upper Bound of the Bucket number
         private const int BucketNum = 200; 
@@ -44,7 +45,12 @@ namespace GraphView
         }
 
         /// <summary>
-        /// GlobalNodeid -> (Count, IsPopular)
+        /// The height-balanced histograms. 
+        /// The kay of each entry is the sampled value of GlobalNodeId column,
+        /// the value is a tuple (Count, IsPopular) representing the count of 
+        /// the sampled value and whether the sampled value is popular.
+        /// Popular sampled value means that the sampled value has been chosen
+        /// more than once (Count > 1).
         /// </summary>
         public Dictionary<long, Tuple<double, bool>> Histogram;
         public Double RowCount;
@@ -224,7 +230,7 @@ namespace GraphView
             var statistics = new EdgeStatistics
             {
                 RowCount = rowCount,
-                Selectivity = /*edge.IsPath?edge.SourceNode.EstimatedRows/edge.SourceNode.TableRowCount:*/1.0,
+                Selectivity = 1.0,
             };
             var height = (int)(rowCount / BucketNum);
             var popBucketCount = 0;

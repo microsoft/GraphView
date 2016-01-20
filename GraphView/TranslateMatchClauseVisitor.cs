@@ -150,7 +150,6 @@ namespace GraphView
         private const int MaxStates =
             //1000;
             100;
-
         //5000;
         //8000;
         //10000;
@@ -477,7 +476,7 @@ namespace GraphView
                 return null;
 
             var unionFind = new UnionFind();
-            var edgeTableReferenceDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var matchClause = query.MatchClause;
             var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
             var connectedSubGraphs = new List<ConnectedComponent>();
@@ -511,7 +510,6 @@ namespace GraphView
                             patternNode.NodeTableObjectName = nodeTable.TableObjectName;
                             if (patternNode.NodeTableObjectName.SchemaIdentifier == null)
                                 patternNode.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
-                            var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(patternNode.NodeTableObjectName);
                         }
                     }
 
@@ -521,13 +519,13 @@ namespace GraphView
                         var currentEdgeName = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
                         edgeAlias = string.Format("{0}_{1}_{2}", currentNodeExposedName, currentEdgeName,
                             nextNodeExposedName);
-                        if (edgeTableReferenceDict.ContainsKey(currentEdgeName))
+                        if (edgeColumnToAliasesDict.ContainsKey(currentEdgeName))
                         {
-                            edgeTableReferenceDict[currentEdgeName].Add(edgeAlias);
+                            edgeColumnToAliasesDict[currentEdgeName].Add(edgeAlias);
                         }
                         else
                         {
-                            edgeTableReferenceDict.Add(currentEdgeName, new List<string> { edgeAlias });
+                            edgeColumnToAliasesDict.Add(currentEdgeName, new List<string> { edgeAlias });
                         }
                     }
 
@@ -537,9 +535,6 @@ namespace GraphView
                     string bindTableName =
                         _context.EdgeNodeBinding[
                             new Tuple<string, string>(nodeTableName.ToLower(), edgeIdentifier.Value.ToLower())].ToLower();
-                    //var edgeInfo = _graphMetaData.ColumnsOfNodeTables[
-                    //    new Tuple<string, string>(schema, bindTableName)][edgeIdentifier.Value.ToLower()]
-                    //    .EdgeInfo;
                     MatchEdge edge;
                     if (currentEdgeColumnRef.MinLength == 1 && currentEdgeColumnRef.MaxLength == 1)
                     {
@@ -622,7 +617,6 @@ namespace GraphView
                         tailNode.NodeTableObjectName = nodeTable.TableObjectName;
                         if (tailNode.NodeTableObjectName.SchemaIdentifier == null)
                             tailNode.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
-                        var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(tailNode.NodeTableObjectName);
                     }
                 }
                 if (preEdge != null)
@@ -667,7 +661,7 @@ namespace GraphView
             // assigns to it a default alias: sourceAlias_EdgeColumnName_sinkAlias. 
             // Also rewrites edge attributes anywhere in the query that can be bound to this default alias. 
             var replaceTableRefVisitor = new ReplaceEdgeReferenceVisitor();
-            replaceTableRefVisitor.Invoke(query, edgeTableReferenceDict);
+            replaceTableRefVisitor.Invoke(query, edgeColumnToAliasesDict);
 
 
             // If a table alias in the MATCH clause is defined in an upper-level context, 
@@ -905,9 +899,7 @@ namespace GraphView
                 {
                     connectedSubGraph.IsTailNode[item.Value] = true;
                 }
-
             }
-
         }
 
         private void AttachPredicates(WWhereClause whereClause, MatchGraph graph)
@@ -917,10 +909,7 @@ namespace GraphView
             var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
             attachPredicateVisitor.Invoke(whereClause, graph, columnTableMapping);
         }
-
         
-
-
         /// <summary>
         /// Estimates number of rows of node table in graph.
         /// </summary>
@@ -1078,8 +1067,6 @@ namespace GraphView
                             [EdgeDegrees].[TableSchema] = [Edge].[TableSchema] 
                         AND [EdgeDegrees].[TableName] = [Edge].[TableName] 
                         AND [EdgeDegrees].[ColumnName] = [Edge].[ColumnName]", GraphViewConnection.MetadataTables[3]));
-
-            
 
             using (var command = Tx.Connection.CreateCommand())
             {
@@ -1481,8 +1468,6 @@ namespace GraphView
                         tempStr = tempStr.Replace(string.Format("[{0}]", matchNode.RefAlias.ToLower()),
                             string.Format("[{0}_{1}]", matchNode.RefAlias.ToLower(), nodeCount));
                         newWhereString += tempStr;
-                        //newWhereString += predicateString.Replace(string.Format("[{0}]", matchNode.RefAlias.ToLower()),
-                        //    string.Format("[{0}_{1}]", matchNode.RefAlias, nodeCount));
                         nodeCount--;
                     }
                 }
