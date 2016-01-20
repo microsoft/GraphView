@@ -124,23 +124,21 @@ namespace GraphView
 
     internal class HistogramCalculator : IMatchJoinStatisticsCalculator
     {
-        public Dictionary<Tuple<string, string>, EdgeStatistics> LeafToLeafSelectivity { get; set; }
+        private readonly Dictionary<Tuple<string, string>, EdgeStatistics> _leafToLeafSelectivity;
 
         public HistogramCalculator()
         {
-            LeafToLeafSelectivity = new Dictionary<Tuple<string, string>, EdgeStatistics>(new MatchEdgeTupleEqualityComparer());
+            _leafToLeafSelectivity = new Dictionary<Tuple<string, string>, EdgeStatistics>(new MatchEdgeTupleEqualityComparer());
         }
-
-        public WSqlTableContext Context { get; set; }
         public EdgeStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
         {
             var edgeTuple = new Tuple<string, string>(nodeEdge.EdgeAlias, componentEdge.EdgeAlias);
 
-            if (LeafToLeafSelectivity.ContainsKey(edgeTuple))
-                return LeafToLeafSelectivity[edgeTuple];
+            if (_leafToLeafSelectivity.ContainsKey(edgeTuple))
+                return _leafToLeafSelectivity[edgeTuple];
 
             var mergedStatistics = EdgeStatistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics);
-            LeafToLeafSelectivity[edgeTuple] = mergedStatistics;
+            _leafToLeafSelectivity[edgeTuple] = mergedStatistics;
             return mergedStatistics;
         }
 

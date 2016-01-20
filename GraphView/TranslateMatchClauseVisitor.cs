@@ -123,17 +123,15 @@ namespace GraphView
 
     public class EdgeInfo
     {
-        //public HashSet<string> SourceNodes;
         public HashSet<string> SinkNodes;
         public List<Tuple<string, string>> EdgeColumns;
         public IList<string> ColumnAttributes;
-        public bool IsEdgeView;
     }
 
     public class GraphMetaData
     {
-        /// Columns of each node table. For edge columns, edge attributes are attached.
-        /// (Schema name, Table name) -> (Column name -> Column Info)
+        // Columns of each node table. For edge columns, edge attributes are attached.
+        // (Schema name, Table name) -> (Column name -> Column Info)
         public readonly Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>> ColumnsOfNodeTables =
             new Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>>();
 
@@ -262,14 +260,12 @@ namespace GraphView
                                 edgeInfo = new EdgeInfo
                                 {
                                     ColumnAttributes = new List<string>(),
-                                    EdgeColumns = new List<Tuple<string, string>>(),
                                     SinkNodes = role == WNodeTableColumnRole.Edge
                                         ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                                         {
                                             reader["Name3"].ToString().ToLower(CultureInfo.CurrentCulture)
                                         }
                                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase),
-                                    IsEdgeView = false
                                 };
 
                             }
@@ -313,9 +309,9 @@ namespace GraphView
 
                             if (!edgeViewInfo.SinkNodes.Contains(sourceTableName))
                                 edgeViewInfo.SinkNodes.Add(sinkTableName);
+                            if (edgeViewInfo.EdgeColumns == null)
+                                edgeViewInfo.EdgeColumns = new List<Tuple<string, string>>();
                             edgeViewInfo.EdgeColumns.Add(new Tuple<string, string>(sourceTableName, name2));
-                            edgeViewInfo.IsEdgeView = true;
-
                         }
                     }
 
@@ -524,9 +520,9 @@ namespace GraphView
                             if (node.NodeTableObjectName.SchemaIdentifier == null)
                                 node.NodeTableObjectName.Identifiers.Insert(0, new Identifier {Value = "dbo"});
                             var nodeTypeTuple = WNamedTableReference.SchemaNameToTuple(node.NodeTableObjectName);
-                            node.IncludedNodeNames = _graphMetaData.NodeViewMapping.ContainsKey(nodeTypeTuple)
-                                ? _graphMetaData.NodeViewMapping[nodeTypeTuple]
-                                : null;
+                            //node.IncludedNodeNames = _graphMetaData.NodeViewMapping.ContainsKey(nodeTypeTuple)
+                            //    ? _graphMetaData.NodeViewMapping[nodeTypeTuple]
+                            //    : null;
                         }
                     }
 
@@ -552,36 +548,59 @@ namespace GraphView
                     string bindTableName =
                         _context.EdgeNodeBinding[
                             new Tuple<string, string>(nodeTableName.ToLower(), edgeIdentifier.Value.ToLower())].ToLower();
-                    var edgeInfo = _graphMetaData.ColumnsOfNodeTables[
-                        new Tuple<string, string>(schema, bindTableName)][edgeIdentifier.Value.ToLower()]
-                        .EdgeInfo;
-                    var edge = new MatchEdge
+                    //var edgeInfo = _graphMetaData.ColumnsOfNodeTables[
+                    //    new Tuple<string, string>(schema, bindTableName)][edgeIdentifier.Value.ToLower()]
+                    //    .EdgeInfo;
+                    MatchEdge edge;
+                    if (currentEdge.MinLength == 1 && currentEdge.MaxLength == 1)
                     {
-                        SourceNode = node,
-                        EdgeColumn = new WColumnReferenceExpression
+                        edge = new MatchEdge
                         {
-                            MultiPartIdentifier = new WMultiPartIdentifier
+                            SourceNode = node,
+                            EdgeColumn = new WColumnReferenceExpression
                             {
-                                Identifiers = new List<Identifier>
+                                MultiPartIdentifier = new WMultiPartIdentifier
                                 {
-                                    edgeIdentifier
+                                    Identifiers = new List<Identifier>
+                                    {
+                                        edgeIdentifier
+                                    }
                                 }
-                            }
-                        },
-                        EdgeAlias = edgeAlias,
-                        BindNodeTableObjName =
-                            new WSchemaObjectName(
-                                new Identifier {Value = schema},
-                                new Identifier {Value = bindTableName}
-                                ),
-                        IncludedEdgeNames =
-                            edgeInfo.IsEdgeView
-                                ? edgeInfo.EdgeColumns
-                                : null,
-                        MinLength = currentEdge.MinLength,
-                        MaxLength = currentEdge.MaxLength,
-                        AttributeValueDict = currentEdge.AttributeValueDict
-                    };
+                            },
+                            EdgeAlias = edgeAlias,
+                            BindNodeTableObjName =
+                                new WSchemaObjectName(
+                                    new Identifier {Value = schema},
+                                    new Identifier {Value = bindTableName}
+                                    ),
+                        };
+                    }
+                    else
+                    {
+                        edge = new MatchPath
+                        {
+                            SourceNode = node,
+                            EdgeColumn = new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier = new WMultiPartIdentifier
+                                {
+                                    Identifiers = new List<Identifier>
+                                    {
+                                        edgeIdentifier
+                                    }
+                                }
+                            },
+                            EdgeAlias = edgeAlias,
+                            BindNodeTableObjName =
+                                new WSchemaObjectName(
+                                    new Identifier {Value = schema},
+                                    new Identifier {Value = bindTableName}
+                                    ),
+                            MinLength = currentEdge.MinLength,
+                            MaxLength = currentEdge.MaxLength,
+                            AttributeValueDict = currentEdge.AttributeValueDict
+                        };
+                    }
 
                     if (preEdge != null)
                     {
@@ -689,35 +708,32 @@ namespace GraphView
                 TableReferences = newTableRefs,
             };
             WBooleanExpression whereCondiction = null;
-            foreach (var node in nodes)
+            foreach (var node in nodes.Where(node => !tableSet.Contains(node.Key)))
             {
-                if (!tableSet.Contains(node.Key))
+                node.Value.External = true;
+                var newWhereCondition = new WBooleanComparisonExpression
                 {
-                    node.Value.External = true;
-                    var newWhereCondition = new WBooleanComparisonExpression
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression
                     {
-                        ComparisonType = BooleanComparisonType.Equals,
-                        FirstExpr = new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier(
-                                new Identifier {Value = node.Key},
-                                new Identifier {Value = "GlobalNodeId"})
-                        },
-                        SecondExpr = new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier(
-                                new Identifier {Value = node.Value.RefAlias},
-                                new Identifier {Value = "GlobalNodeId"})
-                        },
-                    };
-                    whereCondiction = WBooleanBinaryExpression.Conjunction(whereCondiction, newWhereCondition);
-                }
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                            new Identifier { Value = node.Key },
+                            new Identifier { Value = "GlobalNodeId" })
+                    },
+                    SecondExpr = new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                            new Identifier { Value = node.Value.RefAlias },
+                            new Identifier { Value = "GlobalNodeId" })
+                    },
+                };
+                whereCondiction = WBooleanBinaryExpression.Conjunction(whereCondiction, newWhereCondition);
             }
             if (whereCondiction != null)
             {
                 if (query.WhereClause == null)
                 {
-                    query.WhereClause = new WWhereClause {SearchCondition = whereCondiction};
+                    query.WhereClause = new WWhereClause { SearchCondition = whereCondiction };
                 }
                 else
                 {
@@ -1059,37 +1075,9 @@ namespace GraphView
                         bindTableName,
                         edgeName,
                         edge.EdgeAlias));
-                if (edge.Predicates != null || edge.AttributeValueDict!=null)
-                {
-                    sb.Append("\n WHERE ");
-                    bool fisrtPre = true;
-                    if (edge.Predicates != null)
-                    {
-                        foreach (var predicate in edge.Predicates)
-                        {
-                            if (fisrtPre)
-                                fisrtPre = false;
-                            else
-                            {
-                                sb.Append(" AND ");
-                            }
-                            sb.Append(predicate);
-                        }
-                    }
-                    if (edge.AttributeValueDict != null)
-                    {
-                        foreach (var tuple in edge.AttributeValueDict)
-                        {
-                            if (fisrtPre)
-                                fisrtPre = false;
-                            else
-                            {
-                                sb.Append(" AND ");
-                            }
-                            sb.AppendFormat("{0}.{1} = {2}", edge.EdgeAlias, tuple.Key, tuple.Value);
-                        }
-                    }
-                }
+                var predicatesExpr = edge.RetrievePredicatesExpression();
+                if (predicatesExpr!=null)
+                    sb.AppendFormat("\n WHERE {0}", predicatesExpr);
             }
             sb.Append("\n) as Edge \n");
             sb.Append(String.Format(@"
@@ -1137,18 +1125,19 @@ namespace GraphView
                         EdgeStatistics.UpdateEdgeHistogram(edge, sinkList);
                         edge.AverageDegree = Convert.ToDouble(reader["AverageDegree"])*sinkList.Count*1.0/
                                              Convert.ToInt64(reader["SampleRowCount"]);
-                        if (edge.IsPath)
+                        var path = edge as MatchPath;
+                        if (path != null)
                         {
-                            if (edge.AverageDegree>1)
-                                if (edge.MaxLength != -1)
+                            if (path.AverageDegree > 1)
+                                if (path.MaxLength != -1)
                                 {
-                                    edge.AverageDegree = Math.Pow(edge.AverageDegree, edge.MaxLength) -
-                                                         (edge.MinLength > 0
-                                                             ? Math.Pow(edge.AverageDegree, edge.MinLength - 1)
+                                    path.AverageDegree = Math.Pow(path.AverageDegree, path.MaxLength) -
+                                                         (path.MinLength > 0
+                                                             ? Math.Pow(path.AverageDegree, path.MinLength - 1)
                                                              : 0);
                                 }
                                 else
-                                    edge.AverageDegree = double.MaxValue;
+                                    path.AverageDegree = double.MaxValue;
                         }
 
                     }
