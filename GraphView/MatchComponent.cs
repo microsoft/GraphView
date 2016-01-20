@@ -455,167 +455,167 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="nodeAlias"></param>
         /// <returns></returns>
-        private WTableReference EdgeToTableReference(MatchEdge edge, string nodeAlias)
-        {
-            var edgeIdentifiers = edge.EdgeColumn.MultiPartIdentifier.Identifiers;
-            var edgeColIdentifier = edgeIdentifiers.Last();
-            Identifier srcNodeIdentifier = new Identifier{Value = nodeAlias};
+        //private WTableReference EdgeToTableReference(MatchEdge edge, string nodeAlias)
+        //{
+        //    var edgeIdentifiers = edge.EdgeColumn.MultiPartIdentifier.Identifiers;
+        //    var edgeColIdentifier = edgeIdentifiers.Last();
+        //    Identifier srcNodeIdentifier = new Identifier{Value = nodeAlias};
             
-            List<WScalarExpression> parameters = new List<WScalarExpression>();
-            // The source is a physical node
-            if (!edge.SourceNode.IsView)
-            {
-                // The edge is a physical edge
-                if (!edge.IsView)
-                {
-                    parameters.Add(new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier(srcNodeIdentifier, edgeColIdentifier)
-                    });
-                    parameters.Add(new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier(srcNodeIdentifier,
-                                new Identifier {Value = edgeColIdentifier.Value + "DeleteCol"})
-                    });
-                }
-                // The edge is an edge view
-                else
-                {
-                    foreach (var column in edge.IncludedEdgeNames)
-                    {
-                        Identifier includedEdgeColumnIdentifier = new Identifier{Value = column.Item2};
-                        parameters.Add(new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier =
-                                new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
-                        });
-                        parameters.Add(new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier =
-                                new WMultiPartIdentifier(srcNodeIdentifier,
-                                    new Identifier { Value = includedEdgeColumnIdentifier.Value + "DeleteCol" })
-                        });
-                    }
-                }
-            }
-            // The source is a node view
-            else
-            {
-                // The edge is a physical edge
-                if (!edge.IsView)
-                {
-                    string srcTableName = edge.BindNodeTableObjName.BaseIdentifier.Value;
-                    Identifier nodeViewEdgeColIdentifier = new Identifier
-                    {
-                        Value = srcTableName + "_" + edgeColIdentifier.Value
-                    };
-                    parameters.Add(new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier(srcNodeIdentifier, nodeViewEdgeColIdentifier)
-                    });
-                    parameters.Add(new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier(srcNodeIdentifier,
-                                new Identifier { Value = nodeViewEdgeColIdentifier.Value + "DeleteCol" })
-                    });
+        //    List<WScalarExpression> parameters = new List<WScalarExpression>();
+        //    // The source is a physical node
+        //    if (!edge.SourceNode.IsView)
+        //    {
+        //        // The edge is a physical edge
+        //        if (!edge.IsView)
+        //        {
+        //            parameters.Add(new WColumnReferenceExpression
+        //            {
+        //                MultiPartIdentifier =
+        //                    new WMultiPartIdentifier(srcNodeIdentifier, edgeColIdentifier)
+        //            });
+        //            parameters.Add(new WColumnReferenceExpression
+        //            {
+        //                MultiPartIdentifier =
+        //                    new WMultiPartIdentifier(srcNodeIdentifier,
+        //                        new Identifier {Value = edgeColIdentifier.Value + "DeleteCol"})
+        //            });
+        //        }
+        //        // The edge is an edge view
+        //        else
+        //        {
+        //            foreach (var column in edge.IncludedEdgeNames)
+        //            {
+        //                Identifier includedEdgeColumnIdentifier = new Identifier{Value = column.Item2};
+        //                parameters.Add(new WColumnReferenceExpression
+        //                {
+        //                    MultiPartIdentifier =
+        //                        new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
+        //                });
+        //                parameters.Add(new WColumnReferenceExpression
+        //                {
+        //                    MultiPartIdentifier =
+        //                        new WMultiPartIdentifier(srcNodeIdentifier,
+        //                            new Identifier { Value = includedEdgeColumnIdentifier.Value + "DeleteCol" })
+        //                });
+        //            }
+        //        }
+        //    }
+        //    // The source is a node view
+        //    else
+        //    {
+        //        // The edge is a physical edge
+        //        if (!edge.IsView)
+        //        {
+        //            string srcTableName = edge.BindNodeTableObjName.BaseIdentifier.Value;
+        //            Identifier nodeViewEdgeColIdentifier = new Identifier
+        //            {
+        //                Value = srcTableName + "_" + edgeColIdentifier.Value
+        //            };
+        //            parameters.Add(new WColumnReferenceExpression
+        //            {
+        //                MultiPartIdentifier =
+        //                    new WMultiPartIdentifier(srcNodeIdentifier, nodeViewEdgeColIdentifier)
+        //            });
+        //            parameters.Add(new WColumnReferenceExpression
+        //            {
+        //                MultiPartIdentifier =
+        //                    new WMultiPartIdentifier(srcNodeIdentifier,
+        //                        new Identifier { Value = nodeViewEdgeColIdentifier.Value + "DeleteCol" })
+        //            });
                     
-                }
-                // The edge is an edge view
-                else
-                {
-                    foreach (var column in edge.IncludedEdgeNames)
-                    {
-                        if (edge.SourceNode.IncludedNodeNames.Contains(column.Item1))
-                        {
-                            Identifier includedEdgeColumnIdentifier = new Identifier
-                            {
-                                Value = column.Item1 + "_" + column.Item2
-                            };
-                            parameters.Add(new WColumnReferenceExpression
-                            {
-                                MultiPartIdentifier =
-                                    new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
-                            });
-                            parameters.Add(new WColumnReferenceExpression
-                            {
-                                MultiPartIdentifier =
-                                    new WMultiPartIdentifier(srcNodeIdentifier,
-                                        new Identifier {Value = includedEdgeColumnIdentifier.Value + "DeleteCol"})
-                            });
-                        }
-                        else
-                        {
-                            parameters.Add(new WValueExpression{Value = "null"});
-                            parameters.Add(new WValueExpression {Value = "null"});
-                        }
-                    }
-                }
-            }
+        //        }
+        //        // The edge is an edge view
+        //        else
+        //        {
+        //            foreach (var column in edge.IncludedEdgeNames)
+        //            {
+        //                if (edge.SourceNode.IncludedNodeNames.Contains(column.Item1))
+        //                {
+        //                    Identifier includedEdgeColumnIdentifier = new Identifier
+        //                    {
+        //                        Value = column.Item1 + "_" + column.Item2
+        //                    };
+        //                    parameters.Add(new WColumnReferenceExpression
+        //                    {
+        //                        MultiPartIdentifier =
+        //                            new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
+        //                    });
+        //                    parameters.Add(new WColumnReferenceExpression
+        //                    {
+        //                        MultiPartIdentifier =
+        //                            new WMultiPartIdentifier(srcNodeIdentifier,
+        //                                new Identifier {Value = includedEdgeColumnIdentifier.Value + "DeleteCol"})
+        //                    });
+        //                }
+        //                else
+        //                {
+        //                    parameters.Add(new WValueExpression{Value = "null"});
+        //                    parameters.Add(new WValueExpression {Value = "null"});
+        //                }
+        //            }
+        //        }
+        //    }
 
-            string decoderFunctionName;
-            if (edge.IsPath)
-            {
-                decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-                                      edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
-                                      edgeColIdentifier.Value + '_' +
-                                      "bfs";
-                parameters.Insert(0,new WValueExpression { Value = edge.MaxLength.ToString() });
-                parameters.Insert(0,new WValueExpression { Value = edge.MinLength.ToString() });
-                parameters.Insert(0,
-                    new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier(new[] {srcNodeIdentifier, new Identifier {Value = "GlobalNodeId"},})
-                    });
+        //    string decoderFunctionName;
+        //    if (edge.IsPath)
+        //    {
+        //        decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+        //                              edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
+        //                              edgeColIdentifier.Value + '_' +
+        //                              "bfs";
+        //        parameters.Insert(0,new WValueExpression { Value = edge.MaxLength.ToString() });
+        //        parameters.Insert(0,new WValueExpression { Value = edge.MinLength.ToString() });
+        //        parameters.Insert(0,
+        //            new WColumnReferenceExpression
+        //            {
+        //                MultiPartIdentifier =
+        //                    new WMultiPartIdentifier(new[] {srcNodeIdentifier, new Identifier {Value = "GlobalNodeId"},})
+        //            });
                 
-                var attributes =
-                        MetaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(edge.BindNodeTableObjName)][
-                            edgeColIdentifier.Value.ToLower()].EdgeInfo.ColumnAttributes;
-                if (edge.AttributeValueDict == null)
-                {
-                    WValueExpression nullExpression = new WValueExpression {Value = "null"};
-                    for (int i = 0; i < attributes.Count; i++)
-                        parameters.Add(nullExpression);
-                }
-                else
-                {
-                    foreach (var attribute in attributes)
-                    {
-                        string value;
-                        var valueExpression = new WValueExpression
-                        {
-                            Value = edge.AttributeValueDict.TryGetValue(attribute, out value) ? value : "null"
-                        };
+        //        var attributes =
+        //                MetaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(edge.BindNodeTableObjName)][
+        //                    edgeColIdentifier.Value.ToLower()].EdgeInfo.ColumnAttributes;
+        //        if (edge.AttributeValueDict == null)
+        //        {
+        //            WValueExpression nullExpression = new WValueExpression {Value = "null"};
+        //            for (int i = 0; i < attributes.Count; i++)
+        //                parameters.Add(nullExpression);
+        //        }
+        //        else
+        //        {
+        //            foreach (var attribute in attributes)
+        //            {
+        //                string value;
+        //                var valueExpression = new WValueExpression
+        //                {
+        //                    Value = edge.AttributeValueDict.TryGetValue(attribute, out value) ? value : "null"
+        //                };
 
-                        parameters.Add(valueExpression);
-                    }
-                }
-            }
-            else
-            {
-                decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-                                      edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
-                                      edgeColIdentifier.Value + '_' +
-                                      "Decoder";
-            }
-            var decoderFunction = new Identifier {Value = decoderFunctionName};
-            var tableRef = new WSchemaObjectFunctionTableReference
-            {
-                SchemaObject = new WSchemaObjectName(
-                    new Identifier { Value = "dbo" },
-                    decoderFunction),
-                Parameters = parameters,
-                Alias = new Identifier
-                {
-                    Value = edge.EdgeAlias,
-                }
-            };
-            return tableRef;
-        }
+        //                parameters.Add(valueExpression);
+        //            }
+        //        }
+        //    }
+        //    else
+        //    {
+        //        decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+        //                              edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
+        //                              edgeColIdentifier.Value + '_' +
+        //                              "Decoder";
+        //    }
+        //    var decoderFunction = new Identifier {Value = decoderFunctionName};
+        //    var tableRef = new WSchemaObjectFunctionTableReference
+        //    {
+        //        SchemaObject = new WSchemaObjectName(
+        //            new Identifier { Value = "dbo" },
+        //            decoderFunction),
+        //        Parameters = parameters,
+        //        Alias = new Identifier
+        //        {
+        //            Value = edge.EdgeAlias,
+        //        }
+        //    };
+        //    return tableRef;
+        //}
 
         /// <summary>
         /// Span the table given the edge using cross apply
@@ -629,7 +629,7 @@ namespace GraphView
             tableRef = new WUnqualifiedJoin
             {
                 FirstTableRef = tableRef,
-                SecondTableRef = EdgeToTableReference(edge, nodeAlias),
+                SecondTableRef = edge.ToSchemaObjectFunction(nodeAlias,MetaData),
                 UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
             };
             return tableRef;
