@@ -364,10 +364,12 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Check whether the table is a valid node table
+        /// Checks whether a table reference in the FROM clause is a node table. 
+        /// In GraphView's SELECT statement, a table reference in the FROM clause 
+        /// could also be a regular table. 
         /// </summary>
-        /// <param name="table"></param>
-        /// <returns></returns>
+        /// <param name="table">The table reference in the FROM clause</param>
+        /// <returns>True if the table reference is a node table; otherwise, false.</returns>
         private bool IsNodeTable(WTableReferenceWithAlias table)
         {
             var namedTable = table as WNamedTableReference;
@@ -476,16 +478,17 @@ namespace GraphView
 
 
         /// <summary>
-        /// Constructs Graph from the match clause. The Graph can consist of multiple connected SubGraph.
-        /// Not supported in this version
+        /// Constructs the graph pattern specified by the MATCH clause. 
+        /// The graph pattern may consist of multiple fully-connected sub-graphs.
         /// </summary>
-        /// <param name="query"></param>
+        /// <param name="query">The SELECT query block</param>
         /// <returns>A graph object contains all the connected componeents</returns>
         private MatchGraph ConstructGraph(WSelectQueryBlock query)
         {
-            var unionFind = new UnionFind();
-            if (query.MatchClause == null)
+            if (query == null || query.MatchClause == null)
                 return null;
+
+            var unionFind = new UnionFind();
             var edgeTableReferenceDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var matchClause = query.MatchClause;
             var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
@@ -494,7 +497,7 @@ namespace GraphView
             var parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             unionFind.Parent = parent;
 
-            //Constructs Graph from Match Pattern
+            // Constructs the graph pattern specified by the path expressions in the MATCH clause
             foreach (var path in matchClause.Paths)
             {
                 var index = 0;
@@ -745,7 +748,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Replace the Select * expression with all visible columns
+        /// Replaces the SELECT * expression with all visible columns
         /// </summary>
         /// <param name="node"></param>
         /// <param name="graph"></param>
@@ -1559,9 +1562,9 @@ namespace GraphView
         }
 
         /// <summary>
-        /// The entry of the optimizer, activated when visting each Select Query Block
+        /// The entry point of the optimizer, activated when visting each SELECT query block.
         /// </summary>
-        /// <param name="node"></param>
+        /// <param name="node">The SELECT query block</param>
         public override void Visit(WSelectQueryBlock node)
         {
             var checkVarVisitor = new CollectVariableVisitor();

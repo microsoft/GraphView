@@ -126,7 +126,7 @@ namespace GraphView
 
     internal class MatchGraph
     {
-        // Full connected components in the graph pattern 
+        // Fully-connected components in the graph pattern 
         public IList<ConnectedComponent> ConnectedSubGraphs { get; set; }
 
         public bool ContainsNode(string key)
