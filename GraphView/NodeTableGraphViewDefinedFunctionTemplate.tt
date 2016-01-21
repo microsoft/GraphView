@@ -477,17 +477,21 @@ foreach (var edge in EdgeList) {
 	public static SqlString <#=edgeName#>_PathMessageDecoder(SqlBytes array, SqlString nodeType, SqlString id)
 	{
 		if (array == null || array.IsNull)
-			return new SqlString(nodeType.Value + (id.IsNull ? "" : id.Value.ToString()));
+			return new SqlString("[" +
+			(nodeType.Value + (id.IsNull ? "" : id.Value.ToString())) +"]");
 		var br = new BinaryReader(array.Stream);
-		string res = ""; 
+		string res = "["; 
 		while (br.BaseStream.Position != br.BaseStream.Length)
 		{
 			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
-			res += br.ReadString() + " ";
+			res += "{\"NodeType\":\"";
+			res += br.ReadString() + "\", \"Id\":";
 			if ((bitmap[0] & 1) != 0) {
-				res += br.ReadString() + " ";
+				res += "\"" + br.ReadString() + "\"}, {\"EdgeType\":\"";
+			} else {
+				res += "null}, {\"EdgeType\":\"";
 			}
-			res += br.ReadString() + " ";
+			res += br.ReadString() + "\", \"Attribute\":[";
 <#
 			indent += "    ";
 			count = 1;
@@ -495,19 +499,34 @@ foreach (var edge in EdgeList) {
 			{
 				var variableName = variable.Item1;
 				var variableType = variable.Item2;
-				var str = "if ((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") != 0) {";
-				WriteLine(indent + str);
-				WriteLine(indent + "	res += br.Read" + typeDictionary[variableType].Item2 + "().ToString() + \" \";");
-				WriteLine(indent + "}");
-				count++;
-			}
+				if (count != 1)
+				{
+#>					res += ",";
+<#				}
 #>
+				res += "\"<#=variableName#>\":";
+				if ((bitmap[<#=(count / 8).ToString()#>] & <#=(1 << (count%8)).ToString()#>) != 0) {
+<#if (variableType.ToLower() == "string") {#>
+					res += "\"" + br.Read<#=typeDictionary[variableType].Item2#>().ToString() + "\"";
+<#} else {#>
+					res += br.Read<#=typeDictionary[variableType].Item2#>().ToString();
+<#}#>
+				} else {
+					res += "null";
+				}
+<#				count++;
+			}#>
+			res += "]}, ";
 		}
-		res += nodeType.Value + " ";
-		if (!id.IsNull)
-		{
-			res += id.Value + " ";
-		}
+			res += "{\"NodeType\":\"";
+			res += nodeType.Value + "\", \"Id\":";
+			if (!id.IsNull) {
+				res += "\"" + id.Value + "\"}";
+			} else {
+				res += "null}";
+			}
+
+		res += "]";
 		return new SqlString(res);
 	}
 <#}#>
