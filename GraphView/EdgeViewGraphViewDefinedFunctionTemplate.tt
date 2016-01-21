@@ -11,7 +11,8 @@
 {"int", new Tuple<string, string>("int", "Int32")},
 {"long", new Tuple<string, string>("bigint", "Int64")},
 {"double", new Tuple<string, string>("float", "Double")},
-{"string", new Tuple<string, string>("nvarchar(4000)", "String")}
+{"string", new Tuple<string, string>("nvarchar(4000)", "String")},
+{"bool", new Tuple<string, string>("bit", "Boolean")}
     };#>
     using System;
     using System.IO;

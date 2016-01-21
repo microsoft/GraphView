@@ -52,8 +52,10 @@ namespace GraphView
     public enum WEdgeAttributeType
     {
         Int,
+        Long,
         Double,
         String,
+        Bool
     }
 
     public partial class WGraphTableEdgeColumn : WNodeTableColumn

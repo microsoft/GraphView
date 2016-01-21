@@ -202,8 +202,8 @@ namespace GraphView
 
                     command.Parameters.Clear();
                     command.Parameters.AddWithValue("schema", tableSchema);
-                    command.Parameters.AddWithValue("role1", 0);
-                    command.Parameters.AddWithValue("role2", 2);
+                    command.Parameters.AddWithValue("role1", WNodeTableColumnRole.Property);
+                    command.Parameters.AddWithValue("role2", WNodeTableColumnRole.NodeId);
                     command.CommandText = string.Format(getColumnList, MetadataTables[0], MetadataTables[1], _tableSet);
 
                     Tuple<string, string> wrongTuple = Tuple.Create("wrong", "wrong");
@@ -636,7 +636,7 @@ namespace GraphView
                     Where NTC.TableSchema = @schema and NTCC.ColumnRole = @role";
                     command.Parameters.Clear();
                     command.Parameters.AddWithValue("schema", tableSchema);
-                    command.Parameters.AddWithValue("role", 1);
+                    command.Parameters.AddWithValue("role", WNodeTableColumnRole.Edge);
                     command.CommandText = string.Format(getEdgeColumnName, MetadataTables[0], MetadataTables[1],
                         _tableSet);
                     using (var reader = command.ExecuteReader())
@@ -731,7 +731,7 @@ namespace GraphView
                 Where NTC.TableSchema = @schema and NTC.TableName = @nodeview and NTCC.ColumnRole = @role;";
                 command.Parameters.AddWithValue("schema", nodeViewSchema);
                 command.Parameters.AddWithValue("nodeview", nodeViewName);
-                command.Parameters.AddWithValue("role", 3);
+                command.Parameters.AddWithValue("role", WNodeTableColumnRole.EdgeView);
                 command.CommandText = string.Format(getSubEdgeView, MetadataTables[0], MetadataTables[1]);
 
                 var edgeViewList = new List<string>();
@@ -767,7 +767,7 @@ namespace GraphView
                 Where TableSchema = @schema and  TableName = @tablename and ColumnRole = @role";
                 command.Parameters.AddWithValue("schema", nodeViewSchema);
                 command.Parameters.AddWithValue("tablename", nodeViewName);
-                command.Parameters.AddWithValue("role", 4);
+                command.Parameters.AddWithValue("role", WNodeTableColumnRole.NodeViewProperty);
                 command.CommandText = string.Format(deleteNodeViewColumn, MetadataTables[5], MetadataTables[1]);
                 command.ExecuteNonQuery();
 
@@ -781,7 +781,7 @@ namespace GraphView
                 )
                 delete from [{1}]
                 where TableRole = @role and TableSchema = @schema and TableName = @tablename";
-                command.Parameters["role"].Value = 1;
+                command.Parameters["role"].Value = WNodeTableColumnRole.Edge;
                 command.CommandText = string.Format(deleteNodeView, MetadataTables[7], MetadataTables[0]);
                 command.ExecuteNonQuery();
 
@@ -980,8 +980,8 @@ namespace GraphView
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("name", nodeName);
-                command.Parameters.AddWithValue("role1", 1);
-                command.Parameters.AddWithValue("role2", 4);
+                command.Parameters.AddWithValue("role1", WNodeTableColumnRole.Edge);
+                command.Parameters.AddWithValue("role2", WNodeTableColumnRole.NodeViewProperty);
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -1013,7 +1013,7 @@ namespace GraphView
                 command.Parameters.Add("tableschema", SqlDbType.NVarChar, 128);
                 command.Parameters["tableschema"].Value = tableSchema;
                 command.Parameters.Add("role", SqlDbType.Int);
-                command.Parameters["role"].Value = 1;
+                command.Parameters["role"].Value = WNodeTableColumnRole.Edge;
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -1058,7 +1058,7 @@ namespace GraphView
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("tablename", _nodeName);
                 command.Parameters.AddWithValue("columnname", edgeViewName);
-                command.Parameters.AddWithValue("role", 3);
+                command.Parameters.AddWithValue("role", WNodeTableColumnRole.EdgeView);
                 command.Parameters.AddWithValue("ref", _nodeName);
 
                 command.CommandText = String.Format(checkEdgeViewName, MetadataTables[0], MetadataTables[1]); //_NodeTableColumnCollection
@@ -1090,7 +1090,7 @@ namespace GraphView
                         MetadataTables[2]);
                     command.Parameters.Clear();
                     command.Parameters.AddWithValue("schema", tableSchema);
-                    command.Parameters.AddWithValue("role", 1);
+                    command.Parameters.AddWithValue("role", WNodeTableColumnRole.Edge);
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -1727,7 +1727,7 @@ namespace GraphView
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("tablename", _nodeName);
                 command.Parameters.AddWithValue("columnname", edgeView);
-                command.Parameters.AddWithValue("role", 3);
+                command.Parameters.AddWithValue("role", WNodeTableColumnRole.EdgeView);
                 command.Parameters.AddWithValue("ref", _nodeName);
                 command.CommandText = String.Format(checkViewName, MetadataTables[1]); //_NodeTableColumnCollection
                 using (var reader = command.ExecuteReader())
@@ -1851,7 +1851,7 @@ namespace GraphView
                 Where TableSchema = @schema and TableRole = @role;";
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", schema);
-                command.Parameters.AddWithValue("role", 0);
+                command.Parameters.AddWithValue("role", WNodeTableColumnRole.Property);
                 command.CommandText = string.Format(getTableName, MetadataTables[0]);
                 using (var reader = command.ExecuteReader())
                 {

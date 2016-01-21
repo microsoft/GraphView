@@ -37,7 +37,8 @@ namespace GraphView
 		{"int", new Tuple<string, string, int>("int", "SqlInt32", 4)},
 		{"long", new Tuple<string, string, int>("bigint", "SqlInt64", 8)},
 		{"double", new Tuple<string, string, int>("float", "SqlDouble", 8)},
-		{"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)}
+		{"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)},
+		{"bool", new Tuple<string, string, int>("bit", "SqlBoolean", 1)}
 	};
 	var Name = Schema + "_" + NodeName + "_" + EdgeName;
 	var columnNull = Tuple.Create("", "");
@@ -47,14 +48,14 @@ namespace GraphView
             #line hidden
             this.Write("\r\ncreate function ");
             
-            #line 21 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 22 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
             
             #line default
             #line hidden
             this.Write("_bfs(\r\n\t\t@source bigint, \r\n\t\t@minlength bigint,\r\n\t\t@maxlength bigint");
             
-            #line 24 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 25 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 
 	for (int i = 0; i < EdgeColumn.Count; i++)
 	{
@@ -83,14 +84,14 @@ with  allPath(sink, varPath) as (
 		convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
 		from ");
             
-            #line 47 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 48 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
             
             #line default
             #line hidden
             this.Write("_Decoder(\r\n\t\t");
             
-            #line 48 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 49 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 for (int i = 0; i < EdgeColumn.Count; i++)
 		{
 			if (i != 0) 
@@ -108,7 +109,7 @@ for (int i = 0; i < EdgeColumn.Count; i++)
             #line hidden
             this.Write(") as newpath\r\n\t\tWhere (@maxlength != 0)\r\n");
             
-            #line 61 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 62 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 foreach (var it in Attribute) {
 		Write("		");
 		Write("and (");
@@ -125,35 +126,35 @@ foreach (var it in Attribute) {
 		convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path
 		from (allPath join ");
             
-            #line 72 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 73 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
             
             #line default
             #line hidden
             this.Write("_SubView on  allPath.sink = ");
             
-            #line 72 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 73 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
             
             #line default
             #line hidden
             this.Write("_SubView.GlobalNodeId)\r\n\t\tcross apply ");
             
-            #line 73 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 74 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
             
             #line default
             #line hidden
             this.Write("_ExclusiveEdgeGenerator(allPath.varPath, ");
             
-            #line 73 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 74 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
             
             #line default
             #line hidden
             this.Write("_SubView.GlobalNodeId");
             
-            #line 73 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 74 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 
 			foreach (var it in EdgeColumn){
 			if (it.Equals(columnNull)) 
@@ -176,7 +177,7 @@ foreach (var it in Attribute) {
             this.Write(") as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlen" +
                     "gth - 1) * 20)\r\n");
             
-            #line 90 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            #line 91 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 foreach (var it in Attribute) {
 		Write("		");
 		Write("and (");

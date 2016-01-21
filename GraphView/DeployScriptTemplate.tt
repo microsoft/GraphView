@@ -10,7 +10,8 @@
 				{"int", new Tuple<string, string, int>("int", "SqlInt32", 4)},
 				{"long", new Tuple<string, string, int>("bigint", "SqlInt64", 8)},
 				{"double", new Tuple<string, string, int>("float", "SqlDouble", 8)},
-				{"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)}
+				{"string", new Tuple<string, string, int>("nvarchar(4000)", "SqlString", 4)},
+				{"bool", new Tuple<string, string, int>("bit", "SqlBoolean", 1)}
 			};
 #>
 <# if (Type == 0) {#> 

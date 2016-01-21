@@ -779,7 +779,8 @@ namespace GraphView
                 {"int", new Tuple<string, string>("int", "int")},
                 {"long", new Tuple<string, string>("bigint", "bigint")},
                 {"double", new Tuple<string, string>("float", "float")},
-                {"string", new Tuple<string, string>("nvarchar(4000)", "nvarchar")}
+                {"string", new Tuple<string, string>("nvarchar(4000)", "nvarchar")},
+                {"bool", new Tuple<string, string>("bit", "bit")}
             };
 
             //Check validity of input

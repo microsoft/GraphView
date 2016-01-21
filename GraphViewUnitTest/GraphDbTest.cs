@@ -532,7 +532,8 @@ namespace GraphViewUnitTest
                     CREATE TABLE [ClientNode] (
                     [ColumnRole: ""NodeId""]
                     [ClientId] [int],
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int"", ""mouth"":""string"", ""time"":""double""}]
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int"", ""mouth"":""string"",
+                        ""time"":""double"", ""together"":""bool""}]
                     [Colleagues] [varchar](max),
                     [ColumnRole: ""Edge"", Reference: ""ClientNode""]
                     [Colleagues2] [varchar](max)
@@ -554,27 +555,27 @@ namespace GraphViewUnitTest
 
                 const string insertEdge = @"
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 1, 'Jan', 1.1
+                SELECT Cn1, Cn2, 1, 'Jan', 1.1, 'true'
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 0 AND Cn2.ClientId = 1;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 2, 'Feb', 2.2 
+                SELECT Cn1, Cn2, 2, 'Feb', 2.2, 'false'
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 2;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 3, 'Mar', 3.3
+                SELECT Cn1, Cn2, 3, 'Mar', 3.3, 'true'
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 3;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 4, 'Apr', 4.4
+                SELECT Cn1, Cn2, 4, 'Apr', 4.4, 'false'
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 3 AND Cn2.ClientId = 1;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 5, 'May', 5.5 
+                SELECT Cn1, Cn2, 5, 'May', 5.5, 'true'
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 4;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 6, 'June', 6.6
+                SELECT Cn1, Cn2, 6, 'June', 6.6, 'false'
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 5;";
                 command.CommandText = insertEdge;
@@ -585,7 +586,26 @@ namespace GraphViewUnitTest
                 string query = @"
                 select *
 				from ClientNode cross apply dbo_ClientNode_Colleagues_bfs(ClientNode.GlobalNodeId,0,-1,
-				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null)
+				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null, null)
+				where ClientNode.ClientId = 0";
+                command.CommandText = query;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                    }
+                }
+                if (cnt!=8) Assert.Fail(cnt.ToString());
+
+                //Show Path
+                cnt = 0;
+                query = @"
+                select dbo.dbo_ClientNode_Colleagues_PathMessageDecoder(PathMessage, 'ClientNode', c.ClientId)
+                from ClientNode cross apply dbo_ClientNode_Colleagues_bfs2(ClientNode.GlobalNodeId,0,-1,'ClientNode', ClientNode.ClientId,
+                    ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null, null) as pathInfo
+                    join ClientNode as c
+                    on c.GlobalNodeId = pathInfo.sink
 				where ClientNode.ClientId = 0";
                 command.CommandText = query;
                 using (var reader = command.ExecuteReader())
