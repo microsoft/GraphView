@@ -234,6 +234,11 @@ namespace GraphView
         public int MinLength { get; set; }
         // The maximal length constraint for the path. Represents max when the value is set to -1.
         public int MaxLength { get; set; }
+        /// <summary>
+        /// True, the path is referenced in the SELECT clause and path information should be displayed
+        /// False, path information can be neglected
+        /// </summary>
+        public bool ReferencePathInfo { get; set; }
         
         // Predicates associated with the path constructs in the current context. 
         // Note that path predicates are defined as a part of path constructs, rather than
@@ -255,19 +260,48 @@ namespace GraphView
             if (!metaData.NodeViewMapping.TryGetValue(
                 WNamedTableReference.SchemaNameToTuple(SourceNode.NodeTableObjectName), out nodeSet))
                 nodeSet = null;
-            var edgeInfo =
-                metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)][
-                    edgeColIdentifier.Value].EdgeInfo;
+            var sourceNodeColumns =
+                metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)];
+            var edgeInfo = sourceNodeColumns[edgeColIdentifier.Value].EdgeInfo;
             List<Tuple<string, string>> edgeTuples = edgeInfo.EdgeColumns;
             var parameters = ConstructEdgeTvfParameters(nodeAlias, nodeSet, edgeTuples);
 
-            var decoderFunction = new Identifier
+            Identifier decoderFunction;
+            if (ReferencePathInfo)
             {
-                Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-                        BindNodeTableObjName.BaseIdentifier.Value + '_' +
-                        EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                        "bfs"
-            };
+                decoderFunction = new Identifier
+                {
+                    Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+                            BindNodeTableObjName.BaseIdentifier.Value + '_' +
+                            EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
+                            "bfs2"
+                };
+                string nodeIdName =
+                    sourceNodeColumns.FirstOrDefault(e => e.Value.Role == WNodeTableColumnRole.NodeId).Key;
+                if (string.IsNullOrEmpty(nodeIdName))
+                    parameters.Add(new WValueExpression { Value = "null" });
+                else
+                {
+                    parameters.Insert(0,new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(new Identifier() { Value = SourceNode.RefAlias },
+                                new Identifier() { Value = nodeIdName })
+                    });
+                    parameters.Insert(0,
+                        new WValueExpression {Value = BindNodeTableObjName.BaseIdentifier.Value, SingleQuoted = true});
+                }
+            }
+            else
+            {
+                decoderFunction = new Identifier
+                {
+                    Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
+                            BindNodeTableObjName.BaseIdentifier.Value + '_' +
+                            EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
+                            "bfs"
+                };
+            }
             parameters.Insert(0, new WValueExpression { Value = MaxLength.ToString() });
             parameters.Insert(0, new WValueExpression { Value = MinLength.ToString() });
             parameters.Insert(0,

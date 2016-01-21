@@ -617,9 +617,24 @@ namespace GraphViewUnitTest
                 }
                 if (cnt!=8) Assert.Fail(cnt.ToString());
 
+                //Show Path in GV
+                string gvQuery = @"
+                select path.*
+				from ClientNode as c1, ClientNode as c2
+				match c1-[colleagues* as path]->c2
+                where c1.ClientId = 0";
+                command.CommandText = gvQuery;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Trace.WriteLine(reader[0]);
+                    }
+                }
+
                 // Run following GraphView query can get 8 paths:
                 cnt = 0;
-                string gvQuery = @"
+                gvQuery = @"
                 select *
 				from ClientNode as c1, ClientNode as c2
 				match c1-[colleagues*]->c2

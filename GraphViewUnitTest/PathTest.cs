@@ -144,5 +144,32 @@ namespace GraphViewUnitTest
             }
         }
 
+        [TestMethod]
+        public void PathDisplayTest()
+        {
+            Init();
+            using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                conn.Open();
+                var command = conn.CreateCommand();
+                //Show Path in GV
+                string gvQuery = @"
+                select path.*
+				from ClientNode as c1, ClientNode as c2
+				match c1-[colleagues*1 .. 3 as path]->c2
+                where c1.ClientId = 0";
+                command.CommandText = gvQuery;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Trace.WriteLine(reader[0]);
+                    }
+                }
+                //Trace.WriteLine(command.GetTsqlQuery());
+            }
+        }
+       
+
     }
 }

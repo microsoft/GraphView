@@ -462,6 +462,193 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// If paths is referenced in the MATCH clause, checks the SELECT elements to decide whether the 
+        /// paths informaion is needed to be displayed. If PathAlias.* occurs in the SELECT elements,
+        /// sets the corresponding bool value in MatchPath, and replaces this element with 
+        /// an scalar function to display readable path information
+        /// </summary>
+        /// <param name="query">Select query</param>
+        /// <param name="pathDictionary">A collection of path alias and match path instance</param>
+        private void TransformPathInfoDisplaySelectElement(WSelectQueryBlock query,
+            Dictionary<string, MatchPath> pathDictionary)
+        {
+
+            if (pathDictionary!=null && pathDictionary.Any())
+            {
+                List<WSelectElement> newSelectElements = new List<WSelectElement>();
+                foreach (var selectElement in query.SelectElements)
+                {
+                    var starElement = selectElement as WSelectStarExpression;
+                    if (starElement != null && starElement.Qulifier != null)
+                    {
+                        var colName = starElement.Qulifier.Identifiers[starElement.Qulifier.Count - 1].Value;
+                        MatchPath path;
+                        if (pathDictionary.TryGetValue(colName, out path))
+                        {
+                            path.ReferencePathInfo = true;
+                            string schema = path.BindNodeTableObjName.SchemaIdentifier.Value;
+                            string tableName = path.BindNodeTableObjName.BaseIdentifier.Value;
+                            string pathName = path.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
+                            var parameters = new List<WScalarExpression>
+                            {
+                                new WColumnReferenceExpression
+                                {
+                                    MultiPartIdentifier =
+                                        new WMultiPartIdentifier(new Identifier() {Value = path.EdgeAlias},
+                                            new Identifier() {Value = "PathMessage"})
+                                },
+                            };
+                            if (
+                                _graphMetaData.NodeViewMapping.ContainsKey(
+                                    WNamedTableReference.SchemaNameToTuple(path.SinkNode.NodeTableObjectName)))
+                            {
+                                parameters.Add(new WColumnReferenceExpression
+                                {
+                                    MultiPartIdentifier =
+                                        new WMultiPartIdentifier(new Identifier() { Value = path.SinkNode.RefAlias },
+                                            new Identifier() { Value = "_NodeType" })
+                                });
+                                parameters.Add(new WColumnReferenceExpression
+                                {
+                                    MultiPartIdentifier =
+                                        new WMultiPartIdentifier(new Identifier() { Value = path.SinkNode.RefAlias },
+                                            new Identifier() { Value = "_NodeId" })
+                                });
+                            }
+                            else
+                            {
+                                parameters.Add(new WValueExpression
+                                {
+                                    Value = path.SinkNode.NodeTableObjectName.BaseIdentifier.Value,
+                                    SingleQuoted = true
+                                });
+                                string sinkNodeIdName =
+                                    _graphMetaData.ColumnsOfNodeTables[
+                                        WNamedTableReference.SchemaNameToTuple(path.SinkNode.NodeTableObjectName)]
+                                        .FirstOrDefault(e => e.Value.Role == WNodeTableColumnRole.NodeId).Key;
+                                if (string.IsNullOrEmpty(sinkNodeIdName))
+                                    parameters.Add(new WValueExpression { Value = "null" });
+                                else
+                                {
+                                    parameters.Add(new WColumnReferenceExpression
+                                    {
+                                        MultiPartIdentifier =
+                                            new WMultiPartIdentifier(new Identifier() { Value = path.SinkNode.RefAlias },
+                                                new Identifier() { Value = sinkNodeIdName })
+                                    });
+                                }
+
+                            }
+                            newSelectElements.Add(new WSelectScalarExpression
+                            {
+                                ColumnName = path.EdgeAlias + "_PathInfo",
+                                SelectExpr = new WFunctionCall
+                                {
+                                    CallTarget = new WMultiPartIdentifierCallTarget
+                                    {
+                                        Identifiers = new WMultiPartIdentifier(new Identifier { Value = "dbo" })
+                                    },
+                                    FunctionName = new Identifier { Value = string.Format("{0}_{1}_{2}_PathMessageDecoder", schema, tableName, pathName) },
+                                    Parameters = parameters
+                                }
+                            });
+                            continue;
+                        }
+                    }
+                    newSelectElements.Add(selectElement);
+
+                }
+                query.SelectElements = newSelectElements;
+            }
+        }
+
+        /// <summary>
+        /// If a table alias in the MATCH clause is defined in an upper-level context,
+        /// to be able to translate this MATCH clause, this table alias must be re-materialized
+        /// in the FROM clause of the current context and joined with the corresponding table
+        /// in the upper-level context.
+        /// </summary>
+        /// <param name="query">Select query</param>
+        /// <param name="nodes">A collection of node alias and match node instance</param>
+        private void RematerilizeExtrenalNodeTableReference(WSelectQueryBlock query, Dictionary<string, MatchNode> nodes)
+        {
+            var tableRefs = query.FromClause.TableReferences;
+            var tableSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var newTableRefs = new List<WTableReference>();
+            for (int index = 0; index < tableRefs.Count; ++index)
+            {
+                var table = tableRefs[index] as WNamedTableReference;
+                if (table == null)
+                {
+                    newTableRefs.Add(tableRefs[index]);
+                    continue;
+                }
+                if (!nodes.ContainsKey(table.ExposedName.Value))
+                {
+                    newTableRefs.Add(table);
+                }
+                else
+                {
+                    tableSet.Add(table.ExposedName.Value);
+                }
+            }
+            query.FromClause = new WFromClause
+            {
+                TableReferences = newTableRefs,
+            };
+            WBooleanExpression whereCondiction = null;
+            foreach (var node in nodes.Where(node => !tableSet.Contains(node.Key)))
+            {
+                node.Value.External = true;
+                var newWhereCondition = new WBooleanComparisonExpression
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                        new Identifier { Value = node.Key },
+                        new Identifier { Value = "GlobalNodeId" })
+                    },
+                    SecondExpr = new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                        new Identifier { Value = node.Value.RefAlias },
+                        new Identifier { Value = "GlobalNodeId" })
+                    },
+                };
+                whereCondiction = WBooleanBinaryExpression.Conjunction(whereCondiction, newWhereCondition);
+            }
+            if (whereCondiction != null)
+            {
+                if (query.WhereClause == null)
+                {
+                    query.WhereClause = new WWhereClause { SearchCondition = whereCondiction };
+                }
+                else
+                {
+                    if (query.WhereClause.SearchCondition == null)
+                    {
+                        query.WhereClause.SearchCondition = whereCondiction;
+                    }
+                    else
+                    {
+                        query.WhereClause.SearchCondition = new WBooleanBinaryExpression
+                        {
+                            BooleanExpressionType = BooleanBinaryExpressionType.And,
+                            FirstExpr = new WBooleanParenthesisExpression
+                            {
+                                Expression = query.WhereClause.SearchCondition
+                            },
+                            SecondExpr = new WBooleanParenthesisExpression
+                            {
+                                Expression = whereCondiction
+                            }
+                        };
+                    }
+                }
+            }
+        }
 
 
         /// <summary>
@@ -477,6 +664,7 @@ namespace GraphView
 
             var unionFind = new UnionFind();
             var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            var pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
             var matchClause = query.MatchClause;
             var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
             var connectedSubGraphs = new List<ConnectedComponent>();
@@ -541,16 +729,7 @@ namespace GraphView
                         edge = new MatchEdge
                         {
                             SourceNode = patternNode,
-                            EdgeColumn = new WColumnReferenceExpression
-                            {
-                                MultiPartIdentifier = new WMultiPartIdentifier
-                                {
-                                    Identifiers = new List<Identifier>
-                                    {
-                                        edgeIdentifier
-                                    }
-                                }
-                            },
+                            EdgeColumn = currentEdgeColumnRef,
                             EdgeAlias = edgeAlias,
                             BindNodeTableObjName =
                                 new WSchemaObjectName(
@@ -558,32 +737,28 @@ namespace GraphView
                                     new Identifier {Value = bindTableName}
                                     ),
                         };
+                        _context.AddEdgeReference(edge);
                     }
                     else
                     {
-                        edge = new MatchPath
-                    {
-                        SourceNode = patternNode,
-                        EdgeColumn = new WColumnReferenceExpression
+                        MatchPath matchPath = new MatchPath
                         {
-                            MultiPartIdentifier = new WMultiPartIdentifier
-                            {
-                                Identifiers = new List<Identifier>
-                                {
-                                    edgeIdentifier
-                                }
-                            }
-                        },
-                        EdgeAlias = edgeAlias,
-                        BindNodeTableObjName =
-                            new WSchemaObjectName(
-                                new Identifier {Value = schema},
-                                new Identifier {Value = bindTableName}
-                                ),
-                        MinLength = currentEdgeColumnRef.MinLength,
-                        MaxLength = currentEdgeColumnRef.MaxLength,
-                        AttributeValueDict = currentEdgeColumnRef.AttributeValueDict
-                    };
+                            SourceNode = patternNode,
+                            EdgeColumn = currentEdgeColumnRef,
+                            EdgeAlias = edgeAlias,
+                            BindNodeTableObjName =
+                                new WSchemaObjectName(
+                                    new Identifier {Value = schema},
+                                    new Identifier {Value = bindTableName}
+                                    ),
+                            MinLength = currentEdgeColumnRef.MinLength,
+                            MaxLength = currentEdgeColumnRef.MaxLength,
+                            ReferencePathInfo = false,
+                            AttributeValueDict = currentEdgeColumnRef.AttributeValueDict
+                        };
+                        _context.AddEdgeReference(matchPath);
+                        pathDictionary[edgeAlias] = matchPath;
+                        edge = matchPath;
                     }
 
                     if (preEdge != null)
@@ -603,7 +778,6 @@ namespace GraphView
                     patternNode.Neighbors.Add(edge);
 
 
-                    _context.AddEdgeReference(edge);
                 }
                 var tailExposedName = path.Tail.BaseIdentifier.Value;
                 var tailNode = nodes.GetOrCreate(tailExposedName);
@@ -663,86 +837,13 @@ namespace GraphView
             var replaceTableRefVisitor = new ReplaceEdgeReferenceVisitor();
             replaceTableRefVisitor.Invoke(query, edgeColumnToAliasesDict);
 
+            // Rematerializes node tables in the MATCH clause which are defined in the upper-level context
+            // and join them with the upper-level table references.
+            RematerilizeExtrenalNodeTableReference(query, nodes);
 
-            // If a table alias in the MATCH clause is defined in an upper-level context, 
-            // to be able to translate this MATCH clause, this table alias must be re-materialized 
-            // in the FROM clause of the current context and joined with the corresponding table
-            // in the upper-level context. 
-            var tableRefs = query.FromClause.TableReferences;
-            var tableSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var newTableRefs = new List<WTableReference>();
-            for (int index = 0; index < tableRefs.Count; ++index)
-            {
-                var table = tableRefs[index] as WNamedTableReference;
-                if (table == null)
-                {
-                    newTableRefs.Add(tableRefs[index]);
-                    continue;
-                }
-                if (!graph.ContainsNode(table.ExposedName.Value))
-                {
-                    newTableRefs.Add(table);
-                }
-                else
-                {
-                    tableSet.Add(table.ExposedName.Value);
-                }
-            }
-            query.FromClause = new WFromClause
-            {
-                TableReferences = newTableRefs,
-            };
-            WBooleanExpression whereCondiction = null;
-            foreach (var node in nodes.Where(node => !tableSet.Contains(node.Key)))
-                {
-                    node.Value.External = true;
-                    var newWhereCondition = new WBooleanComparisonExpression
-                    {
-                        ComparisonType = BooleanComparisonType.Equals,
-                        FirstExpr = new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier(
-                            new Identifier { Value = node.Key },
-                            new Identifier { Value = "GlobalNodeId" })
-                        },
-                        SecondExpr = new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier(
-                            new Identifier { Value = node.Value.RefAlias },
-                            new Identifier { Value = "GlobalNodeId" })
-                        },
-                    };
-                    whereCondiction = WBooleanBinaryExpression.Conjunction(whereCondiction, newWhereCondition);
-                }
-            if (whereCondiction != null)
-            {
-                if (query.WhereClause == null)
-                {
-                    query.WhereClause = new WWhereClause { SearchCondition = whereCondiction };
-                }
-                else
-                {
-                    if (query.WhereClause.SearchCondition == null)
-                    {
-                        query.WhereClause.SearchCondition = whereCondiction;
-                    }
-                    else
-                    {
-                        query.WhereClause.SearchCondition = new WBooleanBinaryExpression
-                        {
-                            BooleanExpressionType = BooleanBinaryExpressionType.And,
-                            FirstExpr = new WBooleanParenthesisExpression
-                            {
-                                Expression = query.WhereClause.SearchCondition
-                            },
-                            SecondExpr = new WBooleanParenthesisExpression
-                            {
-                                Expression = whereCondiction
-                            }
-                        };
-                    }
-                }
-            }
+            // Transforms the path reference in the SELECT elements into a 
+            // scalar function to display path information.
+            TransformPathInfoDisplaySelectElement(query, pathDictionary);
 
             
             return graph;

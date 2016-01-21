@@ -166,6 +166,7 @@ namespace GraphView
 #if DEBUG
                             // For debugging
                             OutputResult(CommandText, Command.CommandText);
+                            //throw new GraphViewException("No Execution");
 #endif
                             var reader = Command.ExecuteReader();
                             translationTx.Commit();
@@ -182,6 +183,7 @@ namespace GraphView
 #if DEBUG
                     // For debugging
                     OutputResult(CommandText, Command.CommandText);
+                    //throw new GraphViewException("No Execution");
 #endif
                     var reader = Command.ExecuteReader();
                     return reader;
