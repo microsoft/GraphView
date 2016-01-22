@@ -223,6 +223,7 @@ namespace GraphView
                 {
                     res = WBooleanBinaryExpression.Conjunction(res, expression);
                 }
+                return res;
             }
             return null;
         }
@@ -368,6 +369,7 @@ namespace GraphView
                         SecondExpr = new WValueExpression {Value = tuple.Value}
                     });
                 }
+                return res;
             }
             return null;
         }

@@ -434,8 +434,8 @@ namespace GraphView
             //    Trace.Write(item.Key.RefAlias + ",");
             //}
             //Trace.Write(node.RefAlias);
-            //Trace.Write(" Size:" + component.Size + " Cost:" +
-            //                (componentSize + nodeUnitSize));
+            //Trace.Write(" Size:" + component.Size + " Cost:" + cost);
+            //Trace.Write(" Method:" + joinTable.JoinHint);
             //Trace.WriteLine(" --> Total Cost:" + component.Cost);
 #endif
 

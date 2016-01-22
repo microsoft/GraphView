@@ -77,11 +77,18 @@ namespace GraphView
         }
     }
 
-    internal class DeleteSchemanameInSelectVisitor : WSqlFragmentVisitor
+    /// <summary>
+    /// When a table in the FROM clause is not given an alias, this table will be assigned its 
+    /// table name as its alias, and all references with schema name corresponding to this table
+    /// should be replaced with the assigned alias by removing the schema name since it is invalid
+    /// to have a schema identifier before an alias.
+    /// </summary>
+    internal class RemoveSchemanameInIdentifersVisitor : WSqlFragmentVisitor
     {
-        public void Invoke(WSelectQueryBlock node)
+        public override void Visit(WSelectStarExpression node)
         {
-            node.Accept(this);
+            if (node.Qulifier != null && node.Qulifier.Count > 1)
+                node.Qulifier = new WMultiPartIdentifier(node.Qulifier.Identifiers.Last());
         }
 
         public override void Visit(WColumnReferenceExpression node)
@@ -91,14 +98,14 @@ namespace GraphView
                 return;
             }
             var column = node.MultiPartIdentifier.Identifiers;
-            var number = column.Count();
+            var number = column.Count;
             if (number >= 3)
             {
-                var TableName = column[number - 2];
-                var ColumName = column[number - 1];
+                var tableName = column[number - 2];
+                var columName = column[number - 1];
                 column.Clear();
-                column.Insert(0, TableName);
-                column.Insert(1, ColumName);
+                column.Insert(0, tableName);
+                column.Insert(1, columName);
             }
         }
     }
@@ -988,7 +995,7 @@ namespace GraphView
         /// <param name="graph"></param>
         private void OptimizeTail(WSelectQueryBlock query, MatchGraph graph)
         {
-            var visitor = new CheckTableReferencingVisitor();
+            var visitor = new CheckTableReferenceVisitor();
             foreach (var connectedSubGraph in graph.ConnectedSubGraphs)
             {
                 var toRemove = connectedSubGraph.Nodes.Where(
@@ -1434,8 +1441,8 @@ namespace GraphView
                     // Iterates on the candidate node units & add it to the current component to generate next states
                     foreach (var candidateUnit in candidateUnits)
                     {
-                        // Pre-filter. If Current Join Cost (Compent Szie*Component Edge Degrees + Candidate Node Size * Candidate Edge Degrees)
-                        // > Current Optimal Join Cost, prunes this component.
+                        // Pre-filter. If the lower bound of the current totoal join cost
+                        // > current optimal join cost, prunes this component.
                         if (finishedComponent != null)
                         {
                             double candidateSize = candidateUnit.TreeRoot.EstimatedRows*
@@ -1443,15 +1450,17 @@ namespace GraphView
                                                        .Aggregate(1.0, (cur, next) => cur*next)*
                                                    candidateUnit.MaterializedEdges.Select(e => e.AverageDegree)
                                                        .Aggregate(1.0, (cur, next) => cur*next);
-                            double costLowerBound = Math.Min(curComponent.Size, candidateSize)*2;
-                            if (costLowerBound >
+                            double costLowerBound = curComponent.Size + candidateSize;
+                            if (candidateUnit.MaterializedEdges.Count == 0)
+                                costLowerBound = Math.Min(costLowerBound,
+                                    Math.Log(candidateUnit.TreeRoot.EstimatedRows, 512));
+                            if (curComponent.Cost + costLowerBound >
                                 finishedComponent.Cost )
                             {
                                 continue;
                             }
                         }
 
-                        // TODO : redundant work if new ave cost > maxvalue
                         var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator);
                         if (nextCompnentStates.Count >= MaxStates)
                         {
@@ -1486,16 +1495,22 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Update from clause in the query using optimal component of each connected sub-graph
+        /// Update FROM clause, adds DOWNSIZE predicates in the corresponding join conditions,
+        /// and add corresponding predicates on the spilt nodes in the WHERE clause using 
+        /// optimal component of each connected sub-graph.
         /// </summary>
-        /// <param name="node"></param>
-        /// <param name="components"></param>
+        /// <param name="node">The SELECT statement</param>
+        /// <param name="components">The optimal components of each fully-connected graph</param>
         private void UpdateQuery(WSelectQueryBlock node, List<MatchComponent> components)
         {
+            // Removes schema name in SELECT clause and all column references.
+            var removeSchemaVisitor = new RemoveSchemanameInIdentifersVisitor();
+            removeSchemaVisitor.Visit(node);
+
             string newWhereString = "";
             foreach (var component in components)
             {
-                // Add down size predicates
+                // Adds down size predicates
                 foreach (var joinTableTuple in component.FatherListofDownSizeTable)
                 {
                     var joinTable = joinTableTuple.Item1;
@@ -1543,10 +1558,10 @@ namespace GraphView
                         });
                 }
 
-                // Update from clause
+                // Updates from clause
                 node.FromClause.TableReferences.Add(component.TableRef);
 
-                // Add predicates for split nodes
+                // Adds predicates for split nodes
                 var component1 = component;
                 foreach (
                     var compNode in
@@ -1581,13 +1596,11 @@ namespace GraphView
                 };
                 node.WhereClause.GhostString = newWhereString;
             }
-
-            var visitor2 = new DeleteSchemanameInSelectVisitor();
-            visitor2.Invoke(node);
+            
         }
 
         /// <summary>
-        /// Recorde the declared parameter in the Store Procedure Statement
+        /// Records the declared parameter in the Store Procedure Statement
         /// </summary>
         /// <param name="node"></param>
         public override void Visit(WProcedureStatement node)

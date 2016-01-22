@@ -26,13 +26,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
     /// <summary>
-    /// Check if any columns of a specific table are referenced in a statement
+    /// Checks if any columns of a specific table are referenced in a statement,
+    /// and removes
     /// </summary>
-    class CheckTableReferencingVisitor : WSqlFragmentVisitor
+    class CheckTableReferenceVisitor : WSqlFragmentVisitor
     {
         private bool _tableExists;
         private string _tableName;
@@ -59,12 +61,26 @@ namespace GraphView
             return _tableExists;
         }
 
-        public override void Visit(WSelectQueryBlock node)
+        //public override void Visit(WSelectQueryBlock node)
+        //{
+        //    if (node.SelectElements.Any(e => e is WSelectStarExpression))
+        //        _tableExists = true;
+        //    else
+        //        base.Visit(node);
+        //}
+
+        public override void Visit(WSelectStarExpression node)
         {
-            if (node.SelectElements.Any(e => e is WSelectStarExpression))
+            if (_tableExists)
+                return;
+            if (node.Qulifier == null)
+            {
                 _tableExists = true;
-            else
-                base.Visit(node);
+                return;
+            }
+            if (String.Equals(node.Qulifier.Identifiers.Last().Value, _tableName, StringComparison.OrdinalIgnoreCase))
+                _tableExists = true;
+            
         }
 
         public override void Visit(WColumnReferenceExpression node)
@@ -93,7 +109,7 @@ namespace GraphView
                 default:
                     var flag = true;
                     var index1 = columnIdentifiers.Count - 2;
-                    var index2 = _tableRef.TableObjectName.Count-1;
+                    var index2 = _tableRef.TableObjectName.Count - 1;
                     for (; index1 >= 0 && index2 >= 0; --index1, --index2)
                     {
                         if (String.Equals(columnIdentifiers[index1].Value, _tableRef.TableObjectName[index2].Value,
