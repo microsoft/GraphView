@@ -223,6 +223,38 @@ namespace GraphView
             return result;
         }
 
+        private void CheckInsertEdgeValidity(string tableSchema, string sourceTableName, string columnName, string sinkTableName)
+        {
+            using (var command = Tx.Connection.CreateCommand())
+            {
+                command.Transaction = Tx;
+                command.Parameters.AddWithValue("@schema", tableSchema);
+                command.Parameters.AddWithValue("@tableName", sourceTableName);
+                command.Parameters.AddWithValue("@colName", columnName);
+                command.Parameters.AddWithValue("@role", WNodeTableColumnRole.Edge);
+                command.CommandText = string.Format(@"
+                    SELECT NodeColumn.Reference 
+                    FROM [{0}] as NodeTable JOIN [{1}] AS NodeColumn 
+                    ON NodeTable.TableId = NodeColumn.TableId
+                    WHERE NodeTable.TableSchema = @schema and 
+                          NodeTable.TableName = @tableName and 
+                          NodeColumn.ColumnName = @colName and
+                          NodeColumn.ColumnRole = @role", GraphViewConnection.MetadataTables[0],
+                    GraphViewConnection.MetadataTables[1]);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        throw new GraphViewException(
+                            string.Format("Node table {0} not exists or edge {1} not exists in node table {0}",
+                                sourceTableName, columnName));
+                    string sinkReference = reader[0].ToString();
+                    if (string.Compare(sinkTableName, sinkReference, StringComparison.OrdinalIgnoreCase) != 0)
+                        throw new GraphViewException(string.Format("Mismatch sink node table reference {0}",
+                            sinkTableName));
+                }
+            }
+        }
+
         /// <summary>
         /// Translates insert edge statement into update statement.
         /// Uses common table expression to record the inserting adjacency-list, 
@@ -236,24 +268,32 @@ namespace GraphView
             const string insertEdgeTableName = "GraphView_InsertEdgeInternalTable";
             string insertEdgeTempTable = "InsertTmp_"+Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
 
-            // Wraps the select statement in a common table expression
-            var edgeSelectQueryVisitor = new InsertEdgeSelectVisitor();
-            WTableReference sinkTable;
-            List<WScalarExpression> encodeParameters;
-            var insertCommonTableExpr = edgeSelectQueryVisitor.Invoke(node.SelectInsertSource.Select, insertEdgeTempTable, out sinkTable, out encodeParameters);
             var sourceNameTable = node.Target as WNamedTableReference;
             if (sourceNameTable == null)
                 throw new GraphViewException("Source table of INSERT EDGE statement should be a named table reference.");
+            List<WScalarExpression> encodeParameters;
+            WTableReference sinkTable;
+
+            // Wraps the select statement in a common table expression
+            var edgeSelectQueryVisitor = new InsertEdgeSelectVisitor();
+            var insertCommonTableExpr = edgeSelectQueryVisitor.Invoke(node.SelectInsertSource.Select,
+                insertEdgeTempTable, sourceNameTable.TableObjectName.BaseIdentifier.Value, out sinkTable,
+                out encodeParameters);
+            
             var sinkNameTable = sinkTable as WNamedTableReference;
             if (sinkNameTable == null)
                 throw new GraphViewException("Sink table of INSERT EDGE statement should be a named table reference.");
 
+            var edgeName = node.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
             var tableSchema =
                     sourceNameTable.TableObjectName.SchemaIdentifier != null
                         ? sourceNameTable.TableObjectName.SchemaIdentifier.Value
                         : "dbo";
             var tableName = sourceNameTable.TableObjectName.BaseIdentifier.Value;
-            var edgeName = node.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
+
+            CheckInsertEdgeValidity(tableSchema, tableName, edgeName, sinkNameTable.TableObjectName.BaseIdentifier.Value);
+
+
 
             // Select Into TempTable
             //res.Add(insertCommonTableExpr);
@@ -1766,18 +1806,22 @@ namespace GraphView
         private WTableReference _sinkTable;
         private List<WScalarExpression> _edgeProperties;
         private string _tempTableName;
-        public WCommonTableExpression Invoke(WSqlFragment node, string tempTableName, out WTableReference sinkTable, out List<WScalarExpression> edgeProperties)
+        private string _sourceTableName;
+
+        public WCommonTableExpression Invoke(WSqlFragment node, string tempTableName, string sourceTableName,
+            out WTableReference sinkTable, out List<WScalarExpression> edgeProperties)
         {
-            _edgeProperties = new List<WScalarExpression>
-            {
+            _edgeProperties = new List<WScalarExpression>();
+            _tempTableName = tempTableName;
+            _sourceTableName = sourceTableName;
+            node.Accept(this);
+            sinkTable = _sinkTable;
+            _edgeProperties.Insert(0,
                 new WColumnReferenceExpression
                 {
                     MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "sink"})
                 }
-            };
-            _tempTableName = tempTableName;
-            node.Accept(this);
-            sinkTable = _sinkTable;
+                );
             edgeProperties = _edgeProperties;
             return _result;
         }
@@ -1803,30 +1847,40 @@ namespace GraphView
             {
                 throw new GraphViewException("Numbers of select elements mismatch.");
             }
+            if (node.GroupByClause != null)
+            {
+                throw new GraphViewException("GROUP BY clause is not allowed in INSERT EDGE statement.");
+            }
             var sourceTableScalar = node.SelectElements[0] as WSelectScalarExpression;
             if (sourceTableScalar == null)
                 throw new GraphViewException("Source node id should be a scalar expression.");
             var sourceTableColumn = sourceTableScalar.SelectExpr as WColumnReferenceExpression;
             if (sourceTableColumn == null)
                 throw new GraphViewException("Source node id column should be a column reference expression.");
-            var sourceTableName = sourceTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
+            var sourceTableAlias = sourceTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
+            
+            var collectVarVisitor = new CollectVariableVisitor();
+            var context = collectVarVisitor.Invoke(node);
+            var sourceTable = context[sourceTableAlias] as WNamedTableReference;
+            if (sourceTable == null)
+            {
+                throw new GraphViewException("Source table of INSERT EDGE statement should be a named table reference.");
+            }
+            if (
+                string.Compare(_sourceTableName, sourceTable.TableObjectName.BaseIdentifier.Value,
+                    StringComparison.OrdinalIgnoreCase) != 0)
+                throw new GraphViewException("Source node table in the SELECT is mismatched with the INSERT source");
+
 
             var sourceNodeIdExpr = new WColumnReferenceExpression();
             foreach (var identifier in sourceTableColumn.MultiPartIdentifier.Identifiers)
                 sourceNodeIdExpr.Add(identifier);
             sourceNodeIdExpr.AddIdentifier("GlobalNodeId");
 
-            if (node.SelectElements.Count < 2)
-                throw new GraphViewException("Source and Sink tables should be specified in select elements.");
+            //if (node.SelectElements.Count < 2)
+            //    throw new GraphViewException("Source and Sink tables should be specified in select elements.");
 
-            if (node.GroupByClause != null)
-            {
-                throw new GraphViewException("GROUP BY clause is not allowed in INSERT EDGE statement.");
-            }
-            var collectVarVisitor = new CollectVariableVisitor();
-            var context = collectVarVisitor.Invoke(node);
             WColumnReferenceExpression sinkNodeIdExpr = null;
-
             for (var index = 1; index < node.SelectElements.Count; ++index)
             {
                 var element = node.SelectElements[index] as WSelectScalarExpression;
@@ -1839,8 +1893,8 @@ namespace GraphView
                     if (sinkTableColumn == null)
                         throw new GraphViewException("Sink node id column should be a column reference expression.");
 
-                    var sinkTableName = sinkTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
-                    _sinkTable = context[sinkTableName];
+                    var sinkTableAlias = sinkTableColumn.MultiPartIdentifier.Identifiers.Last().Value;
+                    _sinkTable = context[sinkTableAlias];
 
                     sinkNodeIdExpr = new WColumnReferenceExpression();
                     foreach (var identifier in sinkTableColumn.MultiPartIdentifier.Identifiers)
@@ -1853,14 +1907,6 @@ namespace GraphView
                 }
 
             }
-
-            var sourceTable = context[sourceTableName] as WNamedTableReference;
-
-            if (sourceTable == null)
-            {
-                throw new GraphViewException("Source table of INSERT EDGE statement should be a named table reference.");
-            }
-
 
             var sourceNodeId = new WSelectScalarExpression
             {

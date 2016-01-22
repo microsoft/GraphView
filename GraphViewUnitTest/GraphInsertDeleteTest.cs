@@ -16,7 +16,7 @@ namespace GraphViewUnitTest
     {
         private readonly string _connStr =
             System.Configuration.ConfigurationManager
-                  .ConnectionStrings["GraphViewDbConnectionString"].ConnectionString;
+                .ConnectionStrings["GraphViewDbConnectionString"].ConnectionString;
 
         [TestMethod]
         public void InsertNodes()
@@ -37,7 +37,8 @@ namespace GraphViewUnitTest
                 INSERT NODE INTO EmployeeNode (WorkId, name) VALUES ('G', 'Gerge');
                
                 ";
-                var command = new GraphViewCommand(sqlStr,graph);command.ExecuteNonQuery();
+                var command = new GraphViewCommand(sqlStr, graph);
+                command.ExecuteNonQuery();
             }
         }
 
@@ -70,7 +71,8 @@ namespace GraphViewUnitTest
                 FROM EmployeeNode D, ClientNode A
                 WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'
                 ";
-                var command = new GraphViewCommand(sqlStr,graph);command.ExecuteNonQuery();
+                var command = new GraphViewCommand(sqlStr, graph);
+                command.ExecuteNonQuery();
             }
         }
 
@@ -90,7 +92,7 @@ namespace GraphViewUnitTest
                 FROM EmployeeNode D, ClientNode A
                 WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'";
 
-                var command = new GraphViewCommand(sqlStr,graph);
+                var command = new GraphViewCommand(sqlStr, graph);
                 command.ExecuteNonQuery();
             }
         }
@@ -116,7 +118,7 @@ namespace GraphViewUnitTest
             {
                 if (!e.Message.Contains("being deleted still has/have ingoing or outdoing edge(s)"))
                     Assert.Fail();
-                
+
             }
 
         }
@@ -139,7 +141,8 @@ namespace GraphViewUnitTest
                 WHERE EmployeeNode.Workid LIKE 'B%' AND ClientNode.name LIKE 'A%';
                 ";
 
-                var command = new GraphViewCommand(sqlStr, graph); command.ExecuteNonQuery();
+                var command = new GraphViewCommand(sqlStr, graph);
+                command.ExecuteNonQuery();
             }
         }
 
@@ -153,7 +156,8 @@ namespace GraphViewUnitTest
                 const string sqlStr = @"
                 INSERT NODE INTO ClientNode (ClientId, name) VALUES ('lena', 'lena');
                 DELETE NODE FROM ClientNode WHERE name = 'lena';";
-                var command = new GraphViewCommand(sqlStr, graph); command.ExecuteNonQuery();
+                var command = new GraphViewCommand(sqlStr, graph);
+                command.ExecuteNonQuery();
             }
         }
 
@@ -165,10 +169,87 @@ namespace GraphViewUnitTest
             {
 
                 graph.Open();
-                graph.MergeAllDeleteColumn("dbo","EmployeeNode");
+                graph.MergeAllDeleteColumn("dbo", "EmployeeNode");
             }
 
         }
 
+        [TestMethod]
+        public void InsertWrongEdges()
+        {
+            InsertNodes();
+            try
+            {
+                using (var graph = new GraphViewConnection(_connStr))
+                {
+                    graph.Open();
+                    string sqlStr = @"
+                        INSERT EDGE INTO EmployeeNode.Colleagues
+                        SELECT D,E
+                        FROM ClientNode D, ClientNode E
+                        WHERE D.ClientId = 'D' AND E.ClientId = 'E'";
+                    graph.ExecuteNonQuery(sqlStr);
+                }
+                Assert.Fail();
+            }
+            catch (GraphViewException e)
+            {
+                if (e.Message!="Source node table in the SELECT is mismatched with the INSERT source")
+                    Assert.Fail();
+            }
+           
+        }
+
+        [TestMethod]
+        public void InsertWrongEdges2()
+        {
+            InsertNodes();
+            try
+            {
+                using (var graph = new GraphViewConnection(_connStr))
+                {
+                    graph.Open();
+                    string sqlStr = @"
+                        INSERT EDGE INTO ClientNode.Manager
+                        SELECT D,E
+                        FROM ClientNode D, ClientNode E
+                        WHERE D.ClientId = 'D' AND E.ClientId = 'E'";
+                    graph.ExecuteNonQuery(sqlStr);
+                }
+                Assert.Fail();
+            }
+            catch (GraphViewException e)
+            {
+                if (e.Message != "Node table ClientNode not exists or edge Manager not exists in node table ClientNode")
+                    Assert.Fail();
+            }
+           
+        }
+
+        [TestMethod]
+        public void InsertWrongEdges3()
+        {
+            InsertNodes();
+            try
+            {
+                using (var graph = new GraphViewConnection(_connStr))
+                {
+                    graph.Open();
+                    string sqlStr = @"
+                        INSERT EDGE INTO ClientNode.Colleagues
+                        SELECT D,E
+                        FROM ClientNode D, EmployeeNode E
+                        WHERE D.ClientId = 'D' AND E.WorkId = 'E'";
+                    graph.ExecuteNonQuery(sqlStr);
+                }
+                Assert.Fail();
+            }
+            catch (GraphViewException e)
+            {
+                if (e.Message != "Mismatch sink node table reference EmployeeNode")
+                    Assert.Fail();
+            }
+            
+        }
     }
 }

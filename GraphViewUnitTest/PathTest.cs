@@ -18,6 +18,48 @@ namespace GraphViewUnitTest
             TestInitialization.CreateTableAndProc();
             TestInitialization.InsertDataByProc(10);
         }
+
+        private void CreateView()
+        {
+            using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                conn.Open();
+                conn.CreateNodeView(@"
+                    CREATE NODE VIEW NV1 AS
+                    SELECT Workid as id, name
+                    FROM EmployeeNode
+                    UNION ALL
+                    SELECT Clientid as id, null
+                    FROM ClientNode
+                    ");
+                conn.CreateNodeView(@"
+                    CREATE NODE VIEW NV2 AS
+                    SELECT Workid as id, name
+                    FROM EmployeeNode
+                    WHERE Workid = 'A'");
+                conn.CreateEdgeView(@"
+                    CREATE EDGE VIEW NV1.EV1 AS
+                    SELECT a, b, null as c_new, d as d
+                    FROM EmployeeNode.Clients
+                    UNION ALL
+                    SELECT a as a, null, c, d
+                    FROM ClientNode.Colleagues
+                    ");
+
+                conn.CreateEdgeView(@"
+                    CREATE EDGE VIEW EmployeeNode.EV2 AS
+                    SELECT a, b, null as c_new, d as d
+                    FROM EmployeeNode.Clients
+                    UNION ALL
+                    SELECT a as a, null, c, d
+                    FROM EmployeeNode.Colleagues
+                    ");
+                conn.UpdateTableStatistics("dbo", "NV1");
+                conn.UpdateTableStatistics("dbo", "EmployeeNode");
+                conn.UpdateTableStatistics("dbo", "GlobalNodeView");
+            }
+        }
+
         [TestMethod]
         public void ParsePathTest()
         {
@@ -56,47 +98,15 @@ namespace GraphViewUnitTest
             IList<ParseError> errors;
             var stat = parser.Parse(new StringReader(query), out errors);
         }
+
+
         [TestMethod]
         public void PathTranslationTest()
         {
             Init();
+            CreateView();
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
-                conn.Open();
-                conn.CreateNodeView(@"
-                    CREATE NODE VIEW NV1 AS
-                    SELECT Workid as id, name
-                    FROM EmployeeNode
-                    UNION ALL
-                    SELECT Clientid as id, null
-                    FROM ClientNode
-                    ");
-                conn.CreateNodeView(@"
-                    CREATE NODE VIEW NV2 AS
-                    SELECT Workid as id, name
-                    FROM EmployeeNode
-                    WHERE Workid = 'A'");
-                conn.CreateEdgeView(@"
-                    CREATE EDGE VIEW NV1.EV1 AS
-                    SELECT a, b, null as c_new, d as d
-                    FROM EmployeeNode.Clients
-                    UNION ALL
-                    SELECT a as a, null, c, d
-                    FROM ClientNode.Colleagues
-                    ");
-
-                conn.CreateEdgeView(@"
-                    CREATE EDGE VIEW EmployeeNode.EV2 AS
-                    SELECT a, b, null as c_new, d as d
-                    FROM EmployeeNode.Clients
-                    UNION ALL
-                    SELECT a as a, null, c, d
-                    FROM EmployeeNode.Colleagues
-                    ");
-                conn.UpdateTableStatistics("dbo", "NV1");
-                conn.UpdateTableStatistics("dbo", "EmployeeNode");
-                conn.UpdateTableStatistics("dbo", "GlobalNodeView");
-
                 var command = conn.CreateCommand();
                 command.CommandText = @" 
                     SELECT e1.WorkId, e2.WorkId
