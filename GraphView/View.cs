@@ -330,7 +330,7 @@ namespace GraphView
                 Where TableSchema = @schema";
                 command.CommandText = string.Format(getColumnId, MetadataTables[1]); //_NodeTableColumnCollection
 
-                var nodeTableToUserId = new Dictionary<string, string>();
+                var nodeTableToUserId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 var edgeCount = 0;
                 var edgeList = new List<Tuple<string, string>>[nodes.Count];
                 for (int i = 0; i < nodes.Count; i++)

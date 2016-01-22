@@ -277,20 +277,40 @@ namespace GraphView
                             EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
                             "bfs2"
                 };
-                string nodeIdName =
-                    sourceNodeColumns.FirstOrDefault(e => e.Value.Role == WNodeTableColumnRole.NodeId).Key;
-                if (string.IsNullOrEmpty(nodeIdName))
-                    parameters.Add(new WValueExpression { Value = "null" });
-                else
+                // Node view
+                if (nodeSet!=null)
                 {
                     parameters.Insert(0,new WColumnReferenceExpression
                     {
                         MultiPartIdentifier =
                             new WMultiPartIdentifier(new Identifier() { Value = SourceNode.RefAlias },
-                                new Identifier() { Value = nodeIdName })
+                                new Identifier() { Value = "_NodeId" })
                     });
+                    parameters.Insert(0,new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(new Identifier() { Value = SourceNode.RefAlias },
+                                new Identifier() { Value = "_NodeType" })
+                    });
+                    
+                }
+                else
+                {
+                    string nodeIdName =
+                    sourceNodeColumns.FirstOrDefault(e => e.Value.Role == WNodeTableColumnRole.NodeId).Key;
+                    if (string.IsNullOrEmpty(nodeIdName))
+                        parameters.Insert(0, new WValueExpression { Value = "null" });
+                    else
+                    {
+                        parameters.Insert(0, new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier =
+                                new WMultiPartIdentifier(new Identifier() { Value = SourceNode.RefAlias },
+                                    new Identifier() { Value = nodeIdName })
+                        });
+                    }
                     parameters.Insert(0,
-                        new WValueExpression {Value = BindNodeTableObjName.BaseIdentifier.Value, SingleQuoted = true});
+                        new WValueExpression { Value = BindNodeTableObjName.BaseIdentifier.Value, SingleQuoted = true });
                 }
             }
             else

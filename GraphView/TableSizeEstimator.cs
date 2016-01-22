@@ -89,10 +89,10 @@ namespace GraphView
                     cmdSetShowPlanXml.ExecuteNonQuery();
                 }
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 Tx.Rollback();
-                throw new QueryCompilationException("Cannot obtain estimated execution plan from the SQL database.");
+                throw new QueryCompilationException("Cannot obtain estimated execution plan from the SQL database",e);
             }
 
             return xml;

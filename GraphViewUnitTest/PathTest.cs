@@ -107,6 +107,7 @@ namespace GraphViewUnitTest
             CreateView();
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
+                conn.Open();
                 var command = conn.CreateCommand();
                 command.CommandText = @" 
                     SELECT e1.WorkId, e2.WorkId
@@ -155,7 +156,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void PathDisplayTest()
+        public void RegularEdgePathDisplayTest()
         {
             Init();
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
@@ -168,6 +169,33 @@ namespace GraphViewUnitTest
 				from ClientNode as c1, ClientNode as c2
 				match c1-[colleagues*1 .. 3 as path]->c2
                 where c1.ClientId = 0";
+                command.CommandText = gvQuery;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Trace.WriteLine(reader[0]);
+                    }
+                }
+                //Trace.WriteLine(command.GetTsqlQuery());
+            }
+        }
+
+        [TestMethod]
+        public void EdgeViewPathDisplayTest()
+        {
+            Init();
+            CreateView();
+            using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                conn.Open();
+                var command = conn.CreateCommand();
+                //Show Path in GV
+                string gvQuery = @"
+                select path.*
+				from NV1 as n1, NV1 as n2
+				match n1-[EV1*1 .. 3 as path]->n2
+                where n1.id = 0";
                 command.CommandText = gvQuery;
                 using (var reader = command.ExecuteReader())
                 {
