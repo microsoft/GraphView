@@ -40,6 +40,11 @@ namespace GraphView
         EdgeView = 3,
         NodeViewProperty = 4
     }
+    public enum WNodeTableRole
+    {
+        NodeTable = 0,
+        NodeView = 1
+    }
     /// <summary>
     /// Stores information of a column in a graph table, including column type, name, and its data type.
     /// </summary>

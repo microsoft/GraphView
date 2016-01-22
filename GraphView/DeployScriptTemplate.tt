@@ -255,6 +255,25 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 )
   AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator; 
 GO
+
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(
+    @nodeType nvarchar(max), @id nvarchar(max),
+    @edgeType nvarchar(max)<#for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write(" @" + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+#>)
+RETURNS varbinary(max)
+AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>_PathMessageEncoder; 
+GO
+
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageDecoder(
+    @array varbinary(max), @nodeType nvarchar(max),
+    @id nvarchar(max))
+RETURNS nvarchar(max)
+AS EXTERNAL NAME <#=AssemblyName#>_<#=edgeName#>_Assembly.UserDefinedFunctions.<#=edgeName#>_PathMessageDecoder; 
+GO
 <#}#>
 <#}#>
 

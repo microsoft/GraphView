@@ -189,7 +189,223 @@ foreach (var it in Attribute) {
             #line hidden
             this.Write(")\r\nselect @source as sink, CAST(0x as varbinary(max)) as varPath\r\nwhere @minlengt" +
                     "h = 0\r\nunion\r\nselect *\r\nfrom allPath\r\nwhere DATALENGTH(allPath.varPath) >= @minl" +
-                    "ength * 20\r\n");
+                    "ength * 20\r\n\r\nGO\r\n\r\ncreate function ");
+            
+            #line 107 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_bfs2(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t@nodeType nvar" +
+                    "char(max), @id nvarchar(max)");
+            
+            #line 109 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+
+	for (int i = 0; i < EdgeColumn.Count; i++)
+	{
+		WriteLine(", ");
+		Write("		");
+		Write("@edge" + i.ToString() + " varbinary(max)");
+		WriteLine(", ");
+		Write("		");
+		Write("@del" + i.ToString() + " varbinary(max)");
+	}
+	foreach (var it in Attribute) {
+		WriteLine(", ");
+		Write("		");
+		Write("@" + it.Item1);
+		Write(" " + typeDictionary[it.Item2].Item1);
+	}
+            
+            #line default
+            #line hidden
+            this.Write(@")
+returns table
+as 
+return 
+with  allPath(sink, varPath, PathMessage) as (
+		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
+			convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + 
+			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max)) as varPath,
+		dbo.");
+            
+            #line 133 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageEncoder(@nodeType, @id,\r\n\t\t\tnewpath._EdgeType\r\n\t\t\t");
+            
+            #line 135 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+foreach (var it in Attribute) {
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\t,newpath.");
+            
+            #line 136 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(it.Item1));
+            
+            #line default
+            #line hidden
+            this.Write("\r\n\t\t\t");
+            
+            #line 137 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+}
+            
+            #line default
+            #line hidden
+            this.Write(") as PathMessage\r\n\t\tfrom ");
+            
+            #line 138 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_Decoder(\r\n\t\t");
+            
+            #line 139 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+for (int i = 0; i < EdgeColumn.Count; i++)
+		{
+			if (i != 0) 
+			{
+				WriteLine(", ");
+				Write("		");
+			}
+			Write("@edge" + i.ToString());
+			WriteLine(", ");
+			Write("		");
+			Write("@del" + i.ToString());
+		}
+            
+            #line default
+            #line hidden
+            this.Write(") as newpath\r\n\t\tWhere (@maxlength != 0)\r\n");
+            
+            #line 152 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+foreach (var it in Attribute) {
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}
+            
+            #line default
+            #line hidden
+            this.Write(@"
+		union all
+
+		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
+			convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) +
+			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varPath,
+		(allpath.PathMessage + dbo.");
+            
+            #line 164 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageEncoder(");
+            
+            #line 164 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_SubView._NodeType,\r\n\t\t\t");
+            
+            #line 165 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_SubView._NodeId,\r\n\t\t\tnewpath._EdgeType\r\n\t\t\t");
+            
+            #line 167 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+foreach (var it in Attribute) {
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\t, newpath.");
+            
+            #line 168 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(it.Item1));
+            
+            #line default
+            #line hidden
+            this.Write("\r\n\t\t\t");
+            
+            #line 169 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+}
+            
+            #line default
+            #line hidden
+            this.Write(")) as PathMessage\r\n\t\tfrom (allPath join ");
+            
+            #line 170 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_SubView on  allPath.sink = ");
+            
+            #line 170 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_SubView.GlobalNodeId)\r\n\t\tcross apply ");
+            
+            #line 171 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_ExclusiveEdgeGenerator(allPath.varPath, ");
+            
+            #line 171 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(Name));
+            
+            #line default
+            #line hidden
+            this.Write("_SubView.GlobalNodeId");
+            
+            #line 171 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+
+			foreach (var it in EdgeColumn){
+			if (it.Equals(columnNull)) 
+			{
+				WriteLine(",");
+				Write("		");
+				Write("null, null");
+			}
+			else
+			{
+				WriteLine(",");
+				Write("		");
+				Write(Name + "_SubView." + it.Item1 + "_" + it.Item2 + ",");
+				Write(Name + "_SubView." + it.Item1 + "_" + it.Item2 + "DeleteCol");
+			}
+		  }
+            
+            #line default
+            #line hidden
+            this.Write(") as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlen" +
+                    "gth - 1) * 20)\r\n");
+            
+            #line 188 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
+foreach (var it in Attribute) {
+		Write("		");
+		Write("and (");
+		Write("@" + it.Item1 + " is null or ");
+		WriteLine("@" + it.Item1 + " = newPath." + it.Item1 + ")");
+}
+            
+            #line default
+            #line hidden
+            this.Write(")\r\nselect @source as sink, CAST(0x as varbinary(max)) as varPath, CAST(0x as varb" +
+                    "inary(max)) as PathMessage\r\nwhere @minlength = 0\r\nunion\r\nselect *\r\nfrom allPath\r" +
+                    "\nwhere DATALENGTH(allPath.varPath) >= @minlength * 20\r\n");
             return this.GenerationEnvironment.ToString();
         }
     }

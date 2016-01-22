@@ -425,8 +425,8 @@ foreach (var edge in EdgeList) {
 		Write(indent + "Sql" + typeDictionary[variables[i].Item2].Item2 + " " + variables[i].Item1);
 	}#>)
 	{
-	MemoryStream _stream = new MemoryStream();
-	BinaryWriter _writer = new BinaryWriter(_stream);
+		MemoryStream _stream = new MemoryStream();
+		BinaryWriter _writer = new BinaryWriter(_stream);
 
 		Byte[] bitmap = new Byte[<#=byteSize#>];
 		Array.Clear(bitmap, 0, bitmap.Length);
@@ -469,7 +469,7 @@ foreach (var edge in EdgeList) {
 <#
 	}
 #>
-	return new SqlBytes(_stream.ToArray());
+		return new SqlBytes(_stream.ToArray());
 	}
 	
 	//path message decoder
@@ -491,7 +491,9 @@ foreach (var edge in EdgeList) {
 			} else {
 				res += "null}, {\"EdgeType\":\"";
 			}
-			res += br.ReadString() + "\", \"Attribute\":[";
+			res += br.ReadString() + "\"";
+			<#if (variables.Count != 0) {#>
+			res += ", \"Attribute\":{";
 <#
 			indent += "    ";
 			count = 1;
@@ -509,20 +511,25 @@ foreach (var edge in EdgeList) {
 <#if (variableType.ToLower() == "string") {#>
 					res += "\"" + br.Read<#=typeDictionary[variableType].Item2#>().ToString() + "\"";
 <#} else {#>
-					res += br.Read<#=typeDictionary[variableType].Item2#>().ToString();
+					res += br.Read<#=typeDictionary[variableType].Item2#>().ToString().ToLower();
 <#}#>
 				} else {
 					res += "null";
 				}
 <#				count++;
 			}#>
-			res += "]}, ";
+			res += "}";
+			<#}#>
+			res += "}, ";
 		}
 			res += "{\"NodeType\":\"";
 			res += nodeType.Value + "\", \"Id\":";
-			if (!id.IsNull) {
+			if (!id.IsNull) 
+			{
 				res += "\"" + id.Value + "\"}";
-			} else {
+			} 
+			else 
+			{
 				res += "null}";
 			}
 

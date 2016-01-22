@@ -792,8 +792,8 @@ var indent = "		";
             
             #line default
             #line hidden
-            this.Write(")\r\n\t{\r\n\tMemoryStream _stream = new MemoryStream();\r\n\tBinaryWriter _writer = new B" +
-                    "inaryWriter(_stream);\r\n\r\n\t\tByte[] bitmap = new Byte[");
+            this.Write(")\r\n\t{\r\n\t\tMemoryStream _stream = new MemoryStream();\r\n\t\tBinaryWriter _writer = new" +
+                    " BinaryWriter(_stream);\r\n\r\n\t\tByte[] bitmap = new Byte[");
             
             #line 431 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
@@ -883,8 +883,8 @@ var indent = "		";
             
             #line default
             #line hidden
-            this.Write("\treturn new SqlBytes(_stream.ToArray());\r\n\t}\r\n\t\r\n\t//path message decoder\r\n\t[Micro" +
-                    "soft.SqlServer.Server.SqlFunction]\r\n\tpublic static SqlString ");
+            this.Write("\t\treturn new SqlBytes(_stream.ToArray());\r\n\t}\r\n\t\r\n\t//path message decoder\r\n\t[Micr" +
+                    "osoft.SqlServer.Server.SqlFunction]\r\n\tpublic static SqlString ");
             
             #line 477 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
@@ -915,10 +915,17 @@ var indent = "		";
 			} else {
 				res += ""null}, {\""EdgeType\"":\"""";
 			}
-			res += br.ReadString() + ""\"", \""Attribute\"":["";
-");
+			res += br.ReadString() + ""\"""";
+			");
             
             #line 495 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+if (variables.Count != 0) {
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\tres += \", \\\"Attribute\\\":{\";\r\n");
+            
+            #line 497 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 
 			indent += "    ";
 			count = 1;
@@ -934,7 +941,7 @@ var indent = "		";
             #line hidden
             this.Write("\t\t\t\t\tres += \",\";\r\n");
             
-            #line 505 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 507 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 				}
 
             
@@ -942,74 +949,94 @@ var indent = "		";
             #line hidden
             this.Write("\t\t\t\tres += \"\\\"");
             
-            #line 507 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 509 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write("\\\":\";\r\n\t\t\t\tif ((bitmap[");
             
-            #line 508 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 510 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture((count / 8).ToString()));
             
             #line default
             #line hidden
             this.Write("] & ");
             
-            #line 508 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 510 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture((1 << (count%8)).ToString()));
             
             #line default
             #line hidden
             this.Write(") != 0) {\r\n");
             
-            #line 509 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 511 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 if (variableType.ToLower() == "string") {
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\tres += \"\\\"\" + br.Read");
             
-            #line 510 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 512 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variableType].Item2));
             
             #line default
             #line hidden
             this.Write("().ToString() + \"\\\"\";\r\n");
             
-            #line 511 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 513 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 } else {
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\tres += br.Read");
             
-            #line 512 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 514 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variableType].Item2));
             
             #line default
             #line hidden
-            this.Write("().ToString();\r\n");
+            this.Write("().ToString().ToLower();\r\n");
             
-            #line 513 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 515 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\t\t\t} else {\r\n\t\t\t\t\tres += \"null\";\r\n\t\t\t\t}\r\n");
             
-            #line 517 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 519 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 				count++;
 			}
             
             #line default
             #line hidden
-            this.Write("\t\t\tres += \"]}, \";\r\n\t\t}\r\n\t\t\tres += \"{\\\"NodeType\\\":\\\"\";\r\n\t\t\tres += nodeType.Value +" +
-                    " \"\\\", \\\"Id\\\":\";\r\n\t\t\tif (!id.IsNull) {\r\n\t\t\t\tres += \"\\\"\" + id.Value + \"\\\"}\";\r\n\t\t\t}" +
-                    " else {\r\n\t\t\t\tres += \"null}\";\r\n\t\t\t}\r\n\r\n\t\tres += \"]\";\r\n\t\treturn new SqlString(res)" +
-                    ";\r\n\t}\r\n");
+            this.Write("\t\t\tres += \"}\";\r\n\t\t\t");
             
-            #line 532 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+            #line 522 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
+}
+            
+            #line default
+            #line hidden
+            this.Write(@"			res += ""}, "";
+		}
+			res += ""{\""NodeType\"":\"""";
+			res += nodeType.Value + ""\"", \""Id\"":"";
+			if (!id.IsNull) 
+			{
+				res += ""\"""" + id.Value + ""\""}"";
+			} 
+			else 
+			{
+				res += ""null}"";
+			}
+
+		res += ""]"";
+		return new SqlString(res);
+	}
+");
+            
+            #line 539 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
 }
             
             #line default

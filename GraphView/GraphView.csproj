@@ -73,6 +73,11 @@
     <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
+    <Compile Include="NodeTableGraphViewDefinedFunctionTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>NodeTableGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+    </Compile>
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
@@ -100,11 +105,6 @@
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>EdgeViewGraphViewDefinedFunctionTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="NodeTableGraphViewDefinedFunctionTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>NodeTableGraphViewDefinedFunctionTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />

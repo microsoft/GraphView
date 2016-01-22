@@ -88,6 +88,7 @@ namespace GraphView
         public string Schema { get; set; }
         public string NodeName { get; set; }
         public string EdgeName { get; set; }
+        public string NodeId { get; set; }
         public IList<Tuple<string, string>> Attribute { get; set; }//Edge view attribute list <name, type>
         public List<Tuple<string, string>> EdgeColumn { get; set;}//Edge column list <table, edge column> 
     }
@@ -112,8 +113,10 @@ namespace GraphView
             return template.TransformText();
         }
 
-        private static string GenerateEdgeViewGraphViewDefinedEdgeFunction(string edgeViewName, Dictionary<string, string> attributetypeDictionary,
-            Dictionary<Tuple<string, string>, List<Tuple<string, string>>>  edgesAttributeMappingDictionary, Dictionary<Tuple<string, string>, long> edgeColumnToColumnId)
+        private static string GenerateEdgeViewGraphViewDefinedEdgeFunction(string edgeViewName,
+            Dictionary<string, string> attributetypeDictionary,
+            Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
+            Dictionary<Tuple<string, string>, long> edgeColumnToColumnId)
         {
             var template = new EdgeViewGraphViewDefinedFunctionTemplate
             {
@@ -298,11 +301,16 @@ namespace GraphView
         {
             
             var script = GenerateEdgeViewBFSRegisterScript(schema, tableName, edge, attribute, edgeColumn);
+            var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
             var command = conn.CreateCommand();
             command.Connection = conn;
             command.Transaction = tx;
-            command.CommandText = script;
-            command.ExecuteNonQuery();
+
+            foreach (var s in query)
+            {
+                command.CommandText = s;
+                command.ExecuteNonQuery();
+            }
         }
     }
 }

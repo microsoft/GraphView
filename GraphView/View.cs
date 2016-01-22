@@ -73,7 +73,10 @@ namespace GraphView
             {
                 "Decoder",
                 "ExclusiveEdgeGenerator",
-                "bfs"
+                "bfs",
+                "bfs2",
+                "PathMessageEncoder",
+                "PathMessageDecoder"
             };
 
         /// <summary>
@@ -344,7 +347,7 @@ namespace GraphView
                         var columnName = reader["ColumnName"].ToString().ToLower();
                         var columnRole = Convert.ToInt32(reader["ColumnRole"].ToString());
 
-                        if (columnRole == 2 || columnRole == 0)
+                        if (columnRole == (int) WNodeTableColumnRole.NodeId || columnRole == (int) WNodeTableColumnRole.Property)
                         {
                             var columnTuple = Tuple.Create(tableName, columnName);
                             if (_dictionaryColumnId.ContainsKey(columnTuple))
@@ -354,13 +357,13 @@ namespace GraphView
                         }
                         else
                         {
-                            if (columnRole == 1 && _dictionaryTableOffsetId.ContainsKey(tableName))
+                            if (columnRole == (int) WNodeTableColumnRole.Edge && _dictionaryTableOffsetId.ContainsKey(tableName))
                             {
                                 edgeList[_dictionaryTableOffsetId[tableName]].Add(Tuple.Create(tableName, columnName));
                                 edgeCount++;
                             }
                         }
-                        if (columnRole == 2)
+                        if (columnRole == (int) WNodeTableColumnRole.NodeId)
                         {
                             nodeTableToUserId[tableName] = columnName;
                         }
@@ -461,15 +464,15 @@ namespace GraphView
                         selectElement = ", " + selectElement;
                     }
 
-                    string userId = nodeTableToUserId.ContainsKey(it) ? nodeTableToUserId[it] : null;
+                    string nodeId = nodeTableToUserId.ContainsKey(it) ? nodeTableToUserId[it] : null;
                     appendColumn = "'" + it + "' as _NodeType,";
-                    if (!string.IsNullOrEmpty(userId))
+                    if (!string.IsNullOrEmpty(nodeId))
                     {
-                        appendColumn += "convert(nvarchar(max), " + userId + ") as _UserId";
+                        appendColumn += "convert(nvarchar(max), " + nodeId + ") as _NodeId";
                     }
                     else
                     {
-                        appendColumn += "convert(nvarchar(max), null) as _UserId";
+                        appendColumn += "convert(nvarchar(max), null) as _NodeId";
                     }
                     selectStringList[rowCount] = string.Format(selectTemplate, string.Join(", ", ColumnList),
                         appendColumn, selectElement, it);
@@ -970,18 +973,17 @@ namespace GraphView
                             tableSchema));
                 }
 
+                //Check edge view name hasn't been created.
                 const string checkEdge = @"
                 Select NTCC.ColumnName
                 From {0} NTC
                 Join {1} NTCC
                 on NTC.TableId = NTCC.TableId
-                Where (NTCC.ColumnRole = @role1 or NTCC.ColumnRole = @role2) and NTC.TableSchema = @schema and NTC.TableName = @name";
+                Where NTC.TableSchema = @schema and NTC.TableName = @name";
                 command.CommandText = string.Format(checkEdge, MetadataTables[0], MetadataTables[1]);
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("name", nodeName);
-                command.Parameters.AddWithValue("role1", WNodeTableColumnRole.Edge);
-                command.Parameters.AddWithValue("role2", WNodeTableColumnRole.NodeViewProperty);
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -990,7 +992,7 @@ namespace GraphView
                         if (edgeName == edgeViewName.ToLower())
                         {
                             throw new EdgeViewException(string.Format(
-                                "The edge \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
+                                "The column name \"{0}\" already exists in node \"{1}\".", edgeViewName, nodeName));
                         }
                     }
                 }
@@ -1052,7 +1054,8 @@ namespace GraphView
                 From {0} NTC
                 Join {1} NTCC
                 on NTC.TableId = NTCC.TableId
-                where NTC.TableSchema = @schema and NTC.TableName = @tablename and NTCC.ColumnName = @columnname and NTCC.ColumnRole = @role and NTCC.Reference = @ref";
+                where NTC.TableSchema = @schema and NTC.TableName = @tablename and NTCC.ColumnName = @columnname
+                    and NTCC.ColumnRole = @role and NTCC.Reference = @ref";
 
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("schema", tableSchema);
@@ -1271,7 +1274,7 @@ namespace GraphView
                         }
                     }
 
-                    //Records information for metadatatable
+                    //Records information from metadatatable
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -1337,6 +1340,27 @@ namespace GraphView
                     }
                 }
 
+                var nodeTableToNodeId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                const string getNodeIdName = @"
+                Select NTC.TableName, NTCC.ColumnName
+                From {0} NTC
+                Join {1} NTCC
+                On  NTC.TableId = NTCC.TableId
+                Where NTCC.ColumnRole = @role and NTC.TableSchema = @schema";
+                command.Parameters.Clear();
+                command.Parameters.AddWithValue("role", WNodeTableColumnRole.NodeId);
+                command.Parameters.AddWithValue("schema", tableSchema);
+                command.CommandText = string.Format(getNodeIdName, MetadataTables[0], MetadataTables[1]);
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var tableName = reader["TableName"].ToString().ToLower();
+                        var nodeId = reader["ColumnName"].ToString().ToLower();
+                        nodeTableToNodeId[tableName] = nodeId;
+                    }
+                }
+
                 int columnCal = subViewColumn.Count;
                 var subQueryList = new List<string>();
                 var subQuerytemplate = @"
@@ -1350,6 +1374,15 @@ namespace GraphView
                         continue;
                     }
                     elementList.Clear();
+                    if (nodeTableToNodeId.ContainsKey(it.Key))
+                    {
+                        elementList.Add("convert(nvarchar(max), " + nodeTableToNodeId[it.Key] + ") as _NodeId");
+                    }
+                    else
+                    {
+                        elementList.Add("convert(nvarchar(max), null) as _NodeId");
+                    }
+                    elementList.Add("'" + it.Key + "' as _NodeType");
                     int i;
                     for (i = 0; i < offset; i++)
                     {
@@ -1383,7 +1416,7 @@ namespace GraphView
                 else
                 {
                     command.CommandText = string.Format(createSubView, tableSchema,
-                        tableSchema + "_" + nodeName + "_" + edgeViewName + "_SubView", "select -1 as globalnodeid");
+                        tableSchema + "_" + nodeName + "_" + edgeViewName + "_SubView", "select -1 as globalnodeid, 'none' as _NodeType, 'none' as _NodeId");
                 }
                 command.ExecuteNonQuery();
 

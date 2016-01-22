@@ -336,7 +336,7 @@ if (byteSize != 0) {
             this.Write(", EdgeId = edgeid, _EdgeType = \"");
             
             #line 141 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
-            this.Write(this.ToStringHelper.ToStringWithCulture(it.Key));
+            this.Write(this.ToStringHelper.ToStringWithCulture(it.Key.Item2));
             
             #line default
             #line hidden
@@ -560,7 +560,266 @@ foreach (var variable in  AttributeTypeDict) {
             
             #line default
             #line hidden
-            this.Write("                };\r\n            }\r\n        }\r\n        yield break;\r\n    }\r\n}");
+            this.Write("                };\r\n            }\r\n        }\r\n        yield break;\r\n    }\r\n}\r\n\r\np" +
+                    "ublic partial class UserDefinedFunctions\r\n{\r\n\t//path message encoder\r\n");
+            
+            #line 266 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+
+	var attributeInfo= AttributeTypeDict.Select(x => Tuple.Create(x.Key, x.Value)).ToList();
+	var size = (attributeInfo.Count()) / 8 + 1; 
+
+            
+            #line default
+            #line hidden
+            this.Write("\r\n\t[Microsoft.SqlServer.Server.SqlFunction]\r\n\tpublic static SqlBytes ");
+            
+            #line 272 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageEncoder(SqlString nodeType, SqlString Id,\r\n\t\tSqlString edgeType");
+            
+            #line 273 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+indent = "		";
+	for (var i = 0; i < attributeInfo.Count; ++i)
+	{
+		WriteLine(",");
+		Write(indent + "Sql" + typeDictionary[attributeInfo[i].Item2].Item2 + " " + attributeInfo[i].Item1);
+	}
+            
+            #line default
+            #line hidden
+            this.Write(")\r\n\t{\r\n\t\tMemoryStream _stream = new MemoryStream();\r\n\t\tBinaryWriter _writer = new" +
+                    " BinaryWriter(_stream);\r\n\r\n\t\tByte[] bitmap = new Byte[");
+            
+            #line 283 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(size));
+            
+            #line default
+            #line hidden
+            this.Write("];\r\n\t\tArray.Clear(bitmap, 0, bitmap.Length);\r\n\t\tif (!Id.IsNull)\r\n\t\t{\r\n\t\t\tbitmap[0" +
+                    "] |= 1;\r\n\t\t}\r\n");
+            
+            #line 289 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+
+	var count2 = 1;
+	foreach (var variable in attributeInfo)
+	{
+		var variableName = variable.Item1;
+		var variableType = variable.Item2;
+		var pos = count2 / 8;
+		var bit = (1 << (count2 % 8));
+		
+            
+            #line default
+            #line hidden
+            this.Write("\t\tif (!");
+            
+            #line 298 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
+            
+            #line default
+            #line hidden
+            this.Write(".IsNull) {\r\n\t\t\tbitmap[");
+            
+            #line 299 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(pos));
+            
+            #line default
+            #line hidden
+            this.Write("] |= ");
+            
+            #line 299 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(bit));
+            
+            #line default
+            #line hidden
+            this.Write("; \r\n\t\t}\r\n");
+            
+            #line 301 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+
+		count2++;
+	}
+
+            
+            #line default
+            #line hidden
+            this.Write("\t\t_writer.Write(bitmap);\r\n\t\t_writer.Write(nodeType.Value);\r\n\t\tif (!Id.IsNull) \r\n\t" +
+                    "\t{\r\n\t\t\t_writer.Write(Id.Value);\r\n\t\t}\r\n\t\t_writer.Write(edgeType.Value);\r\n");
+            
+            #line 312 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+
+	foreach (var variable in attributeInfo)
+	{
+		var variableName = variable.Item1;
+		var variableType = variable.Item2;
+
+            
+            #line default
+            #line hidden
+            this.Write("\t\tif (!");
+            
+            #line 318 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
+            
+            #line default
+            #line hidden
+            this.Write(".IsNull) {\r\n\t\t\t_writer.Write(");
+            
+            #line 319 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
+            
+            #line default
+            #line hidden
+            this.Write(".Value);\r\n\t\t}\r\n");
+            
+            #line 321 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+
+	}
+
+            
+            #line default
+            #line hidden
+            this.Write("\t\treturn new SqlBytes(_stream.ToArray());\r\n\t}\r\n\r\n\t//path message decoder\r\n\t[Micro" +
+                    "soft.SqlServer.Server.SqlFunction]\r\n\tpublic static SqlString ");
+            
+            #line 329 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));
+            
+            #line default
+            #line hidden
+            this.Write(@"_PathMessageDecoder(SqlBytes array, SqlString nodeType, SqlString id)
+	{
+		if (array == null || array.IsNull)
+			return new SqlString(""["" +
+			(nodeType.Value + (id.IsNull ? """" : id.Value.ToString())) +""]"");
+		var br = new BinaryReader(array.Stream);
+		string res = ""[""; 
+		while (br.BaseStream.Position != br.BaseStream.Length)
+		{
+			byte[] bitmap = br.ReadBytes(");
+            
+            #line 338 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(size));
+            
+            #line default
+            #line hidden
+            this.Write(@");
+			res += ""{\""NodeType\"":\"""";
+			res += br.ReadString() + ""\"", \""Id\"":"";
+			if ((bitmap[0] & 1) != 0) {
+				res += ""\"""" + br.ReadString() + ""\""}, {\""EdgeType\"":\"""";
+			} else {
+				res += ""null}, {\""EdgeType\"":\"""";
+			}
+			res += br.ReadString() + ""\"""";
+			");
+            
+            #line 347 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+if (attributeInfo.Count != 0) {
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\tres += \", \\\"Attribute\\\":{\";\r\n");
+            
+            #line 349 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+
+			indent += "    ";
+			count2 = 1;
+			foreach (var variable in attributeInfo)
+			{
+				var variableName = variable.Item1;
+				var variableType = variable.Item2;
+				if (count2 != 1)
+				{
+
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\t\tres += \",\";\r\n");
+            
+            #line 359 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+				}
+
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\tres += \"\\\"");
+            
+            #line 361 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
+            
+            #line default
+            #line hidden
+            this.Write("\\\":\";\r\n\t\t\t\tif ((bitmap[");
+            
+            #line 362 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture((count2 / 8).ToString()));
+            
+            #line default
+            #line hidden
+            this.Write("] & ");
+            
+            #line 362 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture((1 << (count2 %8)).ToString()));
+            
+            #line default
+            #line hidden
+            this.Write(") != 0) {\r\n");
+            
+            #line 363 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+if (variableType.ToLower() == "string") {
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\t\tres += \"\\\"\" + br.Read");
+            
+            #line 364 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variableType].Item2));
+            
+            #line default
+            #line hidden
+            this.Write("().ToString() + \"\\\"\";\r\n");
+            
+            #line 365 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+} else {
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\t\tres += br.Read");
+            
+            #line 366 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variableType].Item2));
+            
+            #line default
+            #line hidden
+            this.Write("().ToString().ToLower();\r\n");
+            
+            #line 367 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+}
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\t\t} else {\r\n\t\t\t\t\tres += \"null\";\r\n\t\t\t\t}\r\n");
+            
+            #line 371 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+			count2++;
+			}
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\tres += \"}\";\r\n\t\t\t");
+            
+            #line 374 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
+}
+            
+            #line default
+            #line hidden
+            this.Write("\t\t\tres += \"}, \";\r\n\t\t}\r\n\t\t\tres += \"{\\\"NodeType\\\":\\\"\";\r\n\t\t\tres += nodeType.Value + " +
+                    "\"\\\", \\\"Id\\\":\";\r\n\t\t\tif (!id.IsNull) {\r\n\t\t\t\tres += \"\\\"\" + id.Value + \"\\\"}\";\r\n\t\t\t} " +
+                    "else {\r\n\t\t\t\tres += \"null}\";\r\n\t\t\t}\r\n\r\n\t\tres += \"]\";\r\n\t\treturn new SqlString(res);" +
+                    "\r\n\t}\r\n}");
             return this.GenerationEnvironment.ToString();
         }
     }

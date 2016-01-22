@@ -945,43 +945,127 @@ for (int i = 0; i < InputCount; i++) {
             
             #line default
             #line hidden
-            this.Write("ExclusiveEdgeGenerator; \r\nGO\r\n");
+            this.Write("ExclusiveEdgeGenerator; \r\nGO\r\n\r\nCREATE FUNCTION ");
             
-            #line 258 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 259 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
+            
+            #line default
+            #line hidden
+            this.Write("_");
+            
+            #line 259 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageEncoder(\r\n    @nodeType nvarchar(max), @id nvarchar(max),\r\n    @edgeT" +
+                    "ype nvarchar(max)");
+            
+            #line 261 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+for (var i = 0; i < variables.Count; ++i)
+    {
+        WriteLine(",");
+        Write(" @" + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+    }
+
+            
+            #line default
+            #line hidden
+            this.Write(")\r\nRETURNS varbinary(max)\r\nAS EXTERNAL NAME ");
+            
+            #line 268 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
+            
+            #line default
+            #line hidden
+            this.Write("_");
+            
+            #line 268 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_Assembly.UserDefinedFunctions.");
+            
+            #line 268 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageEncoder; \r\nGO\r\n\r\nCREATE FUNCTION ");
+            
+            #line 271 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
+            
+            #line default
+            #line hidden
+            this.Write("_");
+            
+            #line 271 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageDecoder(\r\n    @array varbinary(max), @nodeType nvarchar(max),\r\n    @i" +
+                    "d nvarchar(max))\r\nRETURNS nvarchar(max)\r\nAS EXTERNAL NAME ");
+            
+            #line 275 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
+            
+            #line default
+            #line hidden
+            this.Write("_");
+            
+            #line 275 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_Assembly.UserDefinedFunctions.");
+            
+            #line 275 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
+            
+            #line default
+            #line hidden
+            this.Write("_PathMessageDecoder; \r\nGO\r\n");
+            
+            #line 277 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             
-            #line 259 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 278 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\r\n\r\n");
             
-            #line 262 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 281 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
  if (Type == 2) {
             
             #line default
             #line hidden
             this.Write("CREATE ASSEMBLY ");
             
-            #line 263 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 282 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("Assembly FROM ");
             
-            #line 263 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 282 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Path));
             
             #line default
             #line hidden
             this.Write("\r\nGO\r\n\r\nCREATE AGGREGATE ");
             
-            #line 266 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 285 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -989,21 +1073,21 @@ for (int i = 0; i < InputCount; i++) {
             this.Write("GlobalNodeIdEncoder\r\n(\r\n\t@SrcId bigint\r\n)\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME " +
                     "");
             
-            #line 271 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 290 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("Assembly.GlobalNodeIdEncoder; \r\nGO\r\nCREATE AGGREGATE ");
             
-            #line 273 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 292 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("EdgeIdEncoder\r\n(\r\n\t@EdgeId int\r\n)\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME ");
             
-            #line 278 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 297 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -1011,7 +1095,7 @@ for (int i = 0; i < InputCount; i++) {
             this.Write("Assembly.EdgeIdEncoder; \r\nGO\r\n\r\nCREATE FUNCTION SingletonTable() RETURNS TABLE\r\n(" +
                     "\r\n\tmemoBit bit\r\n)\r\nas EXTERNAL NAME ");
             
-            #line 285 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 304 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -1019,7 +1103,7 @@ for (int i = 0; i < InputCount; i++) {
             this.Write("Assembly.UserDefinedFunctions.SingletonTable\r\nGO\r\n\r\nCREATE FUNCTION DownSizeFunct" +
                     "ion\r\n(@id int)\r\nRETURNS INT\r\nAS\r\n EXTERNAL NAME ");
             
-            #line 292 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 311 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -1028,7 +1112,7 @@ for (int i = 0; i < InputCount; i++) {
                     "ion(@topvalue int) RETURNS TABLE\r\nAS\r\nRETURN\r\n\tSELECT TOP(@topvalue) * FROM Sing" +
                     "letonTable()\r\nGO\r\n");
             
-            #line 300 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            #line 319 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default

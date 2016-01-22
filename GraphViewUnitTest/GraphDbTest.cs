@@ -540,6 +540,16 @@ namespace GraphViewUnitTest
                 )";
                 graph.CreateNodeTable(createClientStr);
                 
+                const string createEmployeeStr = @"
+                    CREATE TABLE [EmployeeNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [int],
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int"", ""mouth"":""string"",
+                        ""time"":""double"", ""together"":""bool""}]
+                    [Colleagues] [varchar](max)
+                )";
+                graph.CreateNodeTable(createEmployeeStr);
+
                 var command = new GraphViewCommand(null,graph);
 
                 const string insertNode = @"
@@ -598,7 +608,7 @@ namespace GraphViewUnitTest
                 }
                 if (cnt!=8) Assert.Fail(cnt.ToString());
 
-                //Show Path
+                //Show Path on Base node table and ordinary edge.
                 cnt = 0;
                 query = @"
                 select dbo.dbo_ClientNode_Colleagues_PathMessageDecoder(PathMessage, 'ClientNode', c.ClientId)
@@ -616,6 +626,40 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt!=8) Assert.Fail(cnt.ToString());
+
+                //Show Path on Global Node view and Edge view.
+                command.CommandText = @"
+                INSERT NODE INTO EmployeeNode(ClientId) VALUES (10);";
+                command.ExecuteNonQuery();
+                command.CommandText = @"
+                INSERT EDGE INTO EmployeeNode.Colleagues
+                SELECT Cn1, Cn2, 2, null, null, null 
+                FROM  EmployeeNode Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId = 10 AND Cn2.ClientId = 1;";
+                command.ExecuteNonQuery();
+
+                //Run following SQL query can get 8 paths:
+                const string edgeViewShowPath = @"
+                select dbo.dbo_GlobalNodeView_colleagues_PathMessageDecoder(PathMessage, c._NodeType, c._NodeId)
+                from GlobalNodeView cross apply 
+                    dbo_GlobalNodeView_colleagues_bfs2(GlobalNodeView.GlobalNodeId,0,-1,
+                    GlobalNodeView._NodeType, GlobalNodeView._NodeId,
+                    GlobalNodeView.clientnode_colleagues, GlobalNodeView.clientnode_colleaguesDeleteCol, 
+                    GlobalNodeView.employeenode_colleagues, GlobalNodeView.employeenode_colleaguesDeleteCol,
+                    null, null, null, null) as pathInfo
+                    join GlobalNodeView as c
+                    on c.GlobalNodeId = pathInfo.sink
+                where GlobalNodeView._NodeId = 10";
+                command.CommandText = edgeViewShowPath;
+                cnt = 0;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                    }
+                }
+                if (cnt != 8) Assert.Fail(cnt.ToString());
 
                 //Show Path in GV
                 string gvQuery = @"
@@ -653,12 +697,12 @@ namespace GraphViewUnitTest
                 const string deleteEdge = @"
                     DELETE EDGE [Cn1]-[Colleagues]->[Cn2]
                     FROM ClientNode  Cn1, ClientNode Cn2
-                    WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 5;";
+                    WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 2;";
                 command.CommandText = deleteEdge;
                 command.ExecuteNonQuery();
 
                 cnt = 0;
-                //Run following SQL query can get 7 paths:
+                //Run following SQL query can get 2 paths:
                 command.CommandText = gvQuery;
                 using (var reader = command.ExecuteReader())
                 {
@@ -667,9 +711,98 @@ namespace GraphViewUnitTest
                         cnt++;
                     }
                 }
-                if (cnt != 7) Assert.Fail(cnt.ToString());
+                if (cnt != 3) Assert.Fail(cnt.ToString());
 
                 //graph.DropNodeTable(@"drop table clientnode");
+            }
+        }
+
+        [TestMethod]
+        public void PathWithoutAtttributeTest()
+        {
+            TestInitialization.ClearDatabase();
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+                const string createClientStr = @"
+                    CREATE TABLE [ClientNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [int],
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode""]
+                    [Colleagues] [varchar](max),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode""]
+                    [Colleagues2] [varchar](max)
+                )";
+                graph.CreateNodeTable(createClientStr);
+
+                const string createEmployeeStr = @"
+                    CREATE TABLE [EmployeeNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [int],
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode""]
+                    [Colleagues] [varchar](max)
+                )";
+                graph.CreateNodeTable(createEmployeeStr);
+
+                var command = new GraphViewCommand(null, graph);
+
+                const string insertNode = @"
+                INSERT NODE INTO EmployeeNode (ClientId) VALUES (0);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (1);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (2);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (3);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (4);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (5);";
+                command.CommandText = insertNode;
+                command.ExecuteNonQuery();
+                const string insertEdge = @"
+                INSERT EDGE INTO EmployeeNode.Colleagues
+                SELECT Cn1, Cn2
+                FROM EmployeeNode Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 0 AND Cn2.ClientId = 1;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 2;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 3;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 3 AND Cn2.ClientId = 1;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 4;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 5;";
+                command.CommandText = insertEdge;
+                command.ExecuteNonQuery();
+                //Run following SQL query can get 8 paths:
+                const string edgeViewShowPath = @"
+                select dbo.dbo_GlobalNodeView_colleagues_PathMessageDecoder(PathMessage, c._NodeType, c._NodeId)
+                from GlobalNodeView cross apply 
+                    dbo_GlobalNodeView_colleagues_bfs2(GlobalNodeView.GlobalNodeId,0,-1,
+                    GlobalNodeView._NodeType, GlobalNodeView._NodeId,
+                    GlobalNodeView.clientnode_colleagues, GlobalNodeView.clientnode_colleaguesDeleteCol, 
+                    GlobalNodeView.employeenode_colleagues, GlobalNodeView.employeenode_colleaguesDeleteCol) as pathInfo
+                    join GlobalNodeView as c
+                    on c.GlobalNodeId = pathInfo.sink
+                where GlobalNodeView._NodeId = 0";
+                command.CommandText = edgeViewShowPath;
+                var cnt = 0;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                    }
+                }
+                if (cnt != 8) Assert.Fail(cnt.ToString());
             }
         }
 
