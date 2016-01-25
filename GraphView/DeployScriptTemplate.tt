@@ -55,7 +55,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
   AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator;
 GO
 
-create function <#=AssemblyName#>_<#=edgeName#>_bfs(@source bigint, 
+create function <#=AssemblyName#>_<#=edgeName#>_bfsPath(@source bigint, 
 		@minlength bigint, @maxlength bigint,
 		@edgeColumn varbinary(max), @Del varbinary(max)
 <#foreach (var it in variables) {
@@ -122,7 +122,7 @@ RETURNS nvarchar(max)
 AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>_PathMessageDecoder; 
 GO
 
-create function <#=AssemblyName#>_<#=edgeName#>_bfs2(@source bigint, 
+create function <#=AssemblyName#>_<#=edgeName#>_bfsPathWithMessage(@source bigint, 
 		@minlength bigint, @maxlength bigint,
 		@nodeType nvarchar(max), @id nvarchar(max),
 		@edgeColumn varbinary(max), @Del varbinary(max)

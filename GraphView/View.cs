@@ -73,8 +73,8 @@ namespace GraphView
             {
                 "Decoder",
                 "ExclusiveEdgeGenerator",
-                "bfs",
-                "bfs2",
+                "bfsPath",
+                "bfsPathWithMessage",
                 "PathMessageEncoder",
                 "PathMessageDecoder"
             };

@@ -569,7 +569,7 @@ namespace GraphViewUnitTest
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 0 AND Cn2.ClientId = 1;
                 INSERT EDGE INTO ClientNode.Colleagues
-                SELECT Cn1, Cn2, 2, 'Feb', 2.2, 'false'
+                SELECT Cn1, Cn2, 2, 'Feb', 2.2, null 
                 FROM ClientNode  Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 2;
                 INSERT EDGE INTO ClientNode.Colleagues
@@ -595,7 +595,7 @@ namespace GraphViewUnitTest
                 int cnt = 0;
                 string query = @"
                 select *
-				from ClientNode cross apply dbo_ClientNode_Colleagues_bfs(ClientNode.GlobalNodeId,0,-1,
+				from ClientNode cross apply dbo_ClientNode_Colleagues_bfsPath(ClientNode.GlobalNodeId,0,-1,
 				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null, null)
 				where ClientNode.ClientId = 0";
                 command.CommandText = query;
@@ -612,7 +612,7 @@ namespace GraphViewUnitTest
                 cnt = 0;
                 query = @"
                 select dbo.dbo_ClientNode_Colleagues_PathMessageDecoder(PathMessage, 'ClientNode', c.ClientId)
-                from ClientNode cross apply dbo_ClientNode_Colleagues_bfs2(ClientNode.GlobalNodeId,0,-1,'ClientNode', ClientNode.ClientId,
+                from ClientNode cross apply dbo_ClientNode_Colleagues_bfsWithMessage(ClientNode.GlobalNodeId,0,-1,'ClientNode', ClientNode.ClientId,
                     ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null, null) as pathInfo
                     join ClientNode as c
                     on c.GlobalNodeId = pathInfo.sink
@@ -633,7 +633,7 @@ namespace GraphViewUnitTest
                 command.ExecuteNonQuery();
                 command.CommandText = @"
                 INSERT EDGE INTO EmployeeNode.Colleagues
-                SELECT Cn1, Cn2, 2, null, null, null 
+                SELECT Cn1, Cn2, 2, null, null, 'true' 
                 FROM  EmployeeNode Cn1, ClientNode Cn2
                 WHERE Cn1.ClientId = 10 AND Cn2.ClientId = 1;";
                 command.ExecuteNonQuery();
@@ -642,7 +642,7 @@ namespace GraphViewUnitTest
                 const string edgeViewShowPath = @"
                 select dbo.dbo_GlobalNodeView_colleagues_PathMessageDecoder(PathMessage, c._NodeType, c._NodeId)
                 from GlobalNodeView cross apply 
-                    dbo_GlobalNodeView_colleagues_bfs2(GlobalNodeView.GlobalNodeId,0,-1,
+                    dbo_GlobalNodeView_colleagues_bfsPathWithMessage(GlobalNodeView.GlobalNodeId,0,-1,
                     GlobalNodeView._NodeType, GlobalNodeView._NodeId,
                     GlobalNodeView.clientnode_colleagues, GlobalNodeView.clientnode_colleaguesDeleteCol, 
                     GlobalNodeView.employeenode_colleagues, GlobalNodeView.employeenode_colleaguesDeleteCol,
@@ -786,7 +786,7 @@ namespace GraphViewUnitTest
                 const string edgeViewShowPath = @"
                 select dbo.dbo_GlobalNodeView_colleagues_PathMessageDecoder(PathMessage, c._NodeType, c._NodeId)
                 from GlobalNodeView cross apply 
-                    dbo_GlobalNodeView_colleagues_bfs2(GlobalNodeView.GlobalNodeId,0,-1,
+                    dbo_GlobalNodeView_colleagues_bfsPathWithMessage(GlobalNodeView.GlobalNodeId,0,-1,
                     GlobalNodeView._NodeType, GlobalNodeView._NodeId,
                     GlobalNodeView.clientnode_colleagues, GlobalNodeView.clientnode_colleaguesDeleteCol, 
                     GlobalNodeView.employeenode_colleagues, GlobalNodeView.employeenode_colleaguesDeleteCol) as pathInfo

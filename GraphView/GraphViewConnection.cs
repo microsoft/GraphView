@@ -859,8 +859,8 @@ namespace GraphView
                                     command.ExecuteNonQuery();
                                     command.CommandText = string.Format(
                                         @"DROP FUNCTION [{0}_{1}_ExclusiveEdgeGenerator];
-                                          DROP FUNCTION [{0}_{1}_bfs];
-                                          DROP FUNCTION [{0}_{1}_bfs2];
+                                          DROP FUNCTION [{0}_{1}_bfsPath];
+                                          DROP FUNCTION [{0}_{1}_bfsPathWithMessage];
                                           DROP FUNCTION [{0}_{1}_PathMessageEncoder];
                                           DROP FUNCTION [{0}_{1}_PathMessageDecoder];",
                                         assemblyName,
