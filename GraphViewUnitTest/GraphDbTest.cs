@@ -612,7 +612,7 @@ namespace GraphViewUnitTest
                 cnt = 0;
                 query = @"
                 select dbo.dbo_ClientNode_Colleagues_PathMessageDecoder(PathMessage, 'ClientNode', c.ClientId)
-                from ClientNode cross apply dbo_ClientNode_Colleagues_bfsWithMessage(ClientNode.GlobalNodeId,0,-1,'ClientNode', ClientNode.ClientId,
+                from ClientNode cross apply dbo_ClientNode_Colleagues_bfsPathWithMessage(ClientNode.GlobalNodeId,0,-1,'ClientNode', ClientNode.ClientId,
                     ClientNode.colleagues, ClientNode.ColleaguesDeleteCol, null, null, null, null) as pathInfo
                     join ClientNode as c
                     on c.GlobalNodeId = pathInfo.sink

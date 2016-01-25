@@ -275,7 +275,7 @@ namespace GraphView
                     Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
                             BindNodeTableObjName.BaseIdentifier.Value + '_' +
                             EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                            "bfs2"
+                            "bfsPathWithMessage"
                 };
                 // Node view
                 if (nodeSet!=null)
@@ -320,7 +320,7 @@ namespace GraphView
                     Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
                             BindNodeTableObjName.BaseIdentifier.Value + '_' +
                             EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                            "bfs"
+                            "bfsPath"
                 };
             }
             parameters.Insert(0, new WValueExpression { Value = MaxLength.ToString() });

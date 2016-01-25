@@ -207,6 +207,33 @@ namespace GraphViewUnitTest
                 //Trace.WriteLine(command.GetTsqlQuery());
             }
         }
+
+        [TestMethod]
+        public void GlobalViewPathDisplayTest()
+        {
+            Init();
+            //CreateView();
+            using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                conn.Open();
+                var command = conn.CreateCommand();
+                //Show Path in GV
+                string gvQuery = @"
+                select path.*
+				from GlobalNodeView  as n1, GlobalNodeView  as n2
+				match n1-[Colleagues*1 .. 3 as path]->n2
+                where n1._NodeId = 0";
+                command.CommandText = gvQuery;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Trace.WriteLine(reader[0]);
+                    }
+                }
+                //Trace.WriteLine(command.GetTsqlQuery());
+            }
+        }
        
 
     }
