@@ -989,7 +989,10 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Remove the unnecessary tail node table
+        /// Marks the node table alias, if it has no outgoing edges in the graph pattern
+        /// and its node properties are never referenced or projected in the query.
+        /// Such node table aliases will not appear in the FROM clause in the translated
+        /// query, but only be materialized in adjacency lists, i.e., table-valued functions.
         /// </summary>
         /// <param name="query"></param>
         /// <param name="graph"></param>

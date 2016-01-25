@@ -414,6 +414,10 @@ namespace GraphView
         /// </summary>
         public double GlobalNodeIdDensity { get;set; }
 
+        /// <summary>
+        /// Conjunctive predicates from the WHERE clause that 
+        /// can be associated with this node variable. 
+        /// </summary>
         public IList<WBooleanExpression> Predicates { get; set; }
 
         public string RefAlias
