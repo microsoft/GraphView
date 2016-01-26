@@ -48,7 +48,7 @@ namespace GraphView
         public WSchemaObjectName BindNodeTableObjName { get; set; }
         public double AverageDegree { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
-        public EdgeStatistics Statistics { get; set; }
+        public Statistics Statistics { get; set; }
         public override int GetHashCode()
         {
             return EdgeAlias.GetHashCode();
@@ -429,7 +429,6 @@ namespace GraphView
         {
             return NodeAlias.GetHashCode();
         }
-
     }
 
     internal class ConnectedComponent

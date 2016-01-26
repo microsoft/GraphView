@@ -31,14 +31,15 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class EdgeStatistics
+    internal class Statistics
     {
         // Default density value used by SQL Server in column statistics
+        // The density of a collection of values = 1 / (# of distinct values in the collection)
         public const double DefaultDensity = 0.0316228;
         // Upper Bound of the Bucket number
         private const int BucketNum = 200; 
 
-        public EdgeStatistics()
+        public Statistics()
         {
             Histogram = new Dictionary<long, Tuple<double, bool>>();
             Selectivity = 1.0;
@@ -66,7 +67,7 @@ namespace GraphView
         /// <param name="newStatistics"></param>
         /// <param name="currentJoin"></param>
         /// <returns></returns>
-        internal static EdgeStatistics UpdateHistogram(EdgeStatistics curStatistics, EdgeStatistics newStatistics)
+        internal static Statistics UpdateHistogram(Statistics curStatistics, Statistics newStatistics)
         {
             if (curStatistics == null)
                 return newStatistics;
@@ -77,7 +78,7 @@ namespace GraphView
             var newHistogram = newStatistics.Histogram;
             if (!curHistogram.Any())
             {
-                return new EdgeStatistics
+                return new Statistics
                 {
                     Density = newStatistics.Density,
                     Histogram = newHistogram,
@@ -86,7 +87,7 @@ namespace GraphView
             }
             if (!newHistogram.Any())
             {
-                return new EdgeStatistics
+                return new Statistics
                 {
                     Density = curStatistics.Density,
                     Histogram = curHistogram,
@@ -207,7 +208,7 @@ namespace GraphView
                 }
             }
 
-            return new EdgeStatistics
+            return new Statistics
             {
                 Histogram = resHistogram,
                 Density = density < 0 ? Math.Max(curStatistics.Density, newStatistics.Density) : density,
@@ -227,7 +228,7 @@ namespace GraphView
         {
             sinkList.Sort();
             var rowCount = sinkList.Count;
-            var statistics = new EdgeStatistics
+            var statistics = new Statistics
             {
                 RowCount = rowCount,
                 Selectivity = 1.0,

@@ -59,7 +59,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
-    <Compile Include="EdgeStatistics.cs" />
+    <Compile Include="Statistics.cs" />
     <Compile Include="ConvertToModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DictionaryExtensions.cs" />
