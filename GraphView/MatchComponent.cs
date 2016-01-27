@@ -58,7 +58,7 @@ namespace GraphView
     /// </summary>
     internal class MatchComponent
     {
-        public List<MatchNode> Nodes { get; set; }
+        public HashSet<MatchNode> Nodes { get; set; }
         public Dictionary<MatchEdge, bool> EdgeMaterilizedDict { get; set; }  
         //public List<MatchEdge> MaterializaedEdges { get; set; }
         //public List<MatchEdge> UnmaterializedEdges { get; set; }
@@ -115,7 +115,7 @@ namespace GraphView
         
         public MatchComponent()
         {
-            Nodes = new List<MatchNode>();
+            Nodes = new HashSet<MatchNode>();
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
@@ -152,7 +152,7 @@ namespace GraphView
         /// <param name="component"></param>
         public MatchComponent(MatchComponent component)
         {
-            Nodes = new List<MatchNode>(component.Nodes);
+            Nodes = new HashSet<MatchNode>(component.Nodes);
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>(component.EdgeMaterilizedDict);
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>(component.MaterializedNodeSplitCount);
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
@@ -187,7 +187,8 @@ namespace GraphView
                 SinkNodeStatisticsDict[edge.SinkNode] = edge.Statistics;
                 var edgeList = UnmaterializedNodeMapping.GetOrCreate(edge.SinkNode);
                 edgeList.Add(edge);
-                Nodes.Add(edge.SinkNode);
+                if (!Nodes.Contains(edge.SinkNode))
+                    Nodes.Add(edge.SinkNode);
                 Cardinality *= edge.AverageDegree;
                 SqlEstimatedSize *= 1000;
 
@@ -701,7 +702,8 @@ namespace GraphView
             else
             {
                 nodeName = root.RefAlias;
-                newComponent.Nodes.Add(root);
+                if (!Nodes.Contains(root))
+                    newComponent.Nodes.Add(root);
                 newComponent.MaterializedNodeSplitCount[root] = 0;
                 newComponent.SinkNodeStatisticsDict[root] = new Statistics {Selectivity = 1.0/root.TableRowCount};
             }
@@ -921,7 +923,8 @@ namespace GraphView
             foreach (var unmatEdge in unmatEdges)
             {
                 newComponent.EdgeMaterilizedDict[unmatEdge] = false;
-                newComponent.Nodes.Add(unmatEdge.SinkNode);
+                if (!Nodes.Contains(unmatEdge.SinkNode))
+                    newComponent.Nodes.Add(unmatEdge.SinkNode);
                 var sinkNodeInEdges = newComponent.UnmaterializedNodeMapping.GetOrCreate(unmatEdge.SinkNode);
                 sinkNodeInEdges.Add(unmatEdge);
                 degrees *= unmatEdge.AverageDegree;

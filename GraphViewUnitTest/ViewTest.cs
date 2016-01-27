@@ -39,6 +39,20 @@ namespace GraphViewUnitTest
                     SELECT Workid as id, name
                     FROM EmployeeNode
                     WHERE Workid = 'A'");
+                conn.CreateNodeView(@"
+                    CREATE NODE VIEW NV3 AS
+                    SELECT *
+                    FROM EmployeeNode
+                    UNION ALL
+                    SELECT *
+                    FROM ClientNode");
+                conn.CreateNodeView(@"
+                    CREATE NODE VIEW NV4 AS
+                    SELECT null
+                    FROM EmployeeNode
+                    UNION ALL
+                    SELECT null
+                    FROM ClientNode");
             }
 
         }
@@ -73,6 +87,14 @@ namespace GraphViewUnitTest
                     FROM EmployeeNode.Clients
                     UNION ALL
                     SELECT *
+                    FROM EmployeeNode.Colleagues
+                    ");
+                conn.CreateEdgeView(@"
+                    CREATE EDGE VIEW EmployeeNode.EV4 AS
+                    SELECT null
+                    FROM EmployeeNode.Clients
+                    UNION ALL
+                    SELECT null
                     FROM EmployeeNode.Colleagues
                     ");
 
