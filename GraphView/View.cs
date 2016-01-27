@@ -1181,7 +1181,7 @@ namespace GraphView
                                             var newType = _attributeType[attributeName];
                                             var newAttributeName = attributeName + "_" + newType;
 
-                                            edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
+                                            //edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
                                             _attributeType[newAttributeName] = _attributeType[attributeName];
                                             _attributeType[attributeName] = "wrong";
 

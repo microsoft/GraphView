@@ -89,6 +89,35 @@ namespace GraphViewUnitTest
             }
         }
 
+        public static void CreateGraphTableForPath()
+        {
+            using (var graph = new GraphViewConnection(ConnStr))
+            {
+                graph.Open();
+                const string createClientStr = @"
+                    CREATE TABLE [ClientNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [int],
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int"", ""mouth"":""string"",
+                        ""time"":""double"", ""together"":""bool""}]
+                    [Colleagues] [varchar](max),
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode""]
+                    [Colleagues2] [varchar](max)
+                )";
+                graph.CreateNodeTable(createClientStr);
+                
+                const string createEmployeeStr = @"
+                    CREATE TABLE [EmployeeNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [int],
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {year:""int"", ""mouth"":""string"",
+                        ""time"":""double"", ""together"":""bool""}]
+                    [Colleagues] [varchar](max)
+                )";
+                graph.CreateNodeTable(createEmployeeStr);
+            }
+        }
+
         public static void GenerateRandomData()
         {
             using (var graph = new GraphViewConnection(ConnStr))
@@ -104,6 +133,65 @@ namespace GraphViewUnitTest
                     "ClientNode"));
                 graph.ExecuteNonQuery(string.Format("UPDATE STATISTICS {0}.{1} {0}{1}_PK_GlobalNodeId", "dbo",
                     "EmployeeNode"));
+            }
+        }
+
+
+        public static void GenerateDataForPathTest()
+        {
+            using (var graph = new GraphViewConnection(ConnStr))
+            {
+                graph.Open();
+                var command = new GraphViewCommand(null,graph);
+                const string insertNode = @"
+                INSERT NODE INTO ClientNode (ClientId) VALUES (0);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (1);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (2);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (3);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (4);
+                INSERT NODE INTO ClientNode (ClientId) VALUES (5);
+                ";
+                command.CommandText = insertNode;
+                command.ExecuteNonQuery();
+
+                const string insertEdge = @"
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2, 1, 'Jan', 1.1, 'true'
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 0 AND Cn2.ClientId = 1;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2, 2, 'Feb', 2.2, null 
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 2;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2, 3, 'Mar', 3.3, 'true'
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 3;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2, 4, 'Apr', 4.4, 'false'
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 3 AND Cn2.ClientId = 1;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2, 5, 'May', 5.5, 'true'
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 1 AND Cn2.ClientId = 4;
+                INSERT EDGE INTO ClientNode.Colleagues
+                SELECT Cn1, Cn2, 6, 'June', 6.6, 'false'
+                FROM ClientNode  Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId  = 2 AND Cn2.ClientId = 5;";
+                command.CommandText = insertEdge;
+                command.ExecuteNonQuery();
+
+                command.CommandText = @"
+                INSERT NODE INTO EmployeeNode(ClientId) VALUES (10);";
+                command.ExecuteNonQuery();
+                command.CommandText = @"
+                INSERT EDGE INTO EmployeeNode.Colleagues
+                SELECT Cn1, Cn2, 2, null, null, 'true' 
+                FROM  EmployeeNode Cn1, ClientNode Cn2
+                WHERE Cn1.ClientId = 10 AND Cn2.ClientId = 1;";
+                command.ExecuteNonQuery();
+
             }
         }
 
@@ -371,13 +459,54 @@ namespace GraphViewUnitTest
         }
         
         /// <summary>
-        /// Clear database, create table and generate random data
+        /// Clear database, create table and generate random data for basic function
         /// </summary>
         public static void Init()
         {
             ClearDatabase();
             CreateGraphTable();
             GenerateRandomData();
+        }
+
+        /// <summary>
+        /// Clear database, create table and generate random data for path function test 
+        /// </summary>
+        public static void InitPathTest()
+        {
+            ClearDatabase();
+            CreateGraphTableForPath();
+            GenerateDataForPathTest();
+        }
+
+        public static void AddNewTableForPathTest()
+        {
+            using (var graph = new GraphViewConnection(ConnStr))
+            {
+                graph.Open();
+                const string createUserStr = @"
+                    CREATE TABLE [UserNode] (
+                    [ColumnRole: ""NodeId""]
+                    [ClientId] [int],
+                    [ColumnRole: ""Edge"", Reference: ""EmployeeNode"", Attributes: {year:""int"", ""mouth"":""int"",
+                         ""relationship"":""string""}]
+                    [Colleagues] [varchar](max)
+                )";
+                graph.CreateNodeTable(createUserStr);
+
+                var command = new GraphViewCommand(null,graph);
+                const string insertNode = @"
+                INSERT NODE INTO UserNode (ClientId) VALUES (20);";
+                command.CommandText = insertNode;
+                command.ExecuteNonQuery();
+
+                const string insertEdge = @"
+                INSERT EDGE INTO UserNode.Colleagues
+                SELECT Cn1, Cn2, 1, 2, 'good' 
+                FROM UserNode Cn1, EmployeeNode Cn2
+                WHERE Cn1.ClientId  = 20 AND Cn2.ClientId = 10;";
+                command.CommandText = insertEdge;
+                command.ExecuteNonQuery();
+            }
         }
     }
 }
