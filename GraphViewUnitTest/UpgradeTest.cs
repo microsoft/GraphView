@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Data.SqlClient;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -21,16 +23,54 @@ namespace GraphViewUnitTest
                    ";Integrated Security=True;Connect Timeout=3000;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False;Max Pool Size=300";
         }
 
+        
+
         [TestMethod]
-        public void UpgradeFunction()
+        public void UpgradeFromV100Test()
         {
             using (var conn = new GraphViewConnection(getConnectionString()))
             {
                 conn.Open();
-                conn.UpgradeGraphViewFunction();
-                conn.updateGlobalNodeView();
-                conn.UpdateTableStatistics("dbo","ClientNode");
-                conn.UpdateTableStatistics("dbo", "EmployeeNode");
+                var tx = conn.BeginTransaction("UpgradeFromV100ToV101");
+                try
+                {
+                    var tables = conn.GetNodeTables(tx);
+                    
+                    #region Upgrade meta tables
+                    conn.UpgradeMetaTableV100(tx);
+                    Console.WriteLine("Upgrade Meta Table Done!");
+                    #endregion
+
+                    #region Upgrade functions
+                    foreach (var table in tables)
+                    {
+                        conn.DropNodeTableFunctionV100(table.Item1,table.Item2,tx);
+                    }
+                    conn.UpgradeGraphViewFunctionV100(tx);
+                    Console.WriteLine("Upgrade functions Done!");
+                    #endregion
+
+                    #region Upgrade global view
+                    conn.updateGlobalNodeView("dbo", tx);
+                    Console.WriteLine("Upgrade global view Done!");
+                    #endregion
+
+                    #region Upgrade table statistics
+                    foreach (var table in tables)
+                    {
+                        conn.UpdateTableStatistics(table.Item1, table.Item2,tx);
+                    }
+                    Console.WriteLine("Upgrade table statistics Done!");
+                    #endregion
+
+                    tx.Commit();
+                }
+                catch (Exception e)
+                {
+                    tx.Rollback();
+                    throw;
+                }
+                
 
             }
         }
