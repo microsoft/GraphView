@@ -101,7 +101,7 @@ namespace GraphView
     }
 
     /// <summary>
-    /// AttachWhereClauseVisitor traverses a WHERE clause and attachs predicates
+    /// AttachWhereClauseVisitor traverses the WHERE clause and attachs predicates
     /// into nodes and edges of constructed graph.
     /// </summary>
     internal class AttachWhereClauseVisitor : WSqlFragmentVisitor

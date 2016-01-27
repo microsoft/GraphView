@@ -19,7 +19,7 @@
 	var columnNull = Tuple.Create("", "");
 #>
 
-create function <#=Name#>_bfs(
+create function <#=Name#>_bfsPath(
 		@source bigint, 
 		@minlength bigint,
 		@maxlength bigint<#
@@ -104,7 +104,7 @@ where DATALENGTH(allPath.varPath) >= @minlength * 20
 
 GO
 
-create function <#=Name#>_bfs2(@source bigint, 
+create function <#=Name#>_bfsPathWithMessage(@source bigint, 
 		@minlength bigint, @maxlength bigint,
 		@nodeType nvarchar(max), @id nvarchar(max)<#
 	for (int i = 0; i < EdgeColumn.Count; i++)

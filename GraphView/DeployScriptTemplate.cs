@@ -175,8 +175,8 @@ foreach (var edge in EdgeList) {
             
             #line default
             #line hidden
-            this.Write("_bfs(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t@edgeColumn var" +
-                    "binary(max), @Del varbinary(max)\r\n");
+            this.Write("_bfsPath(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t@edgeColumn" +
+                    " varbinary(max), @Del varbinary(max)\r\n");
             
             #line 61 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
@@ -393,9 +393,9 @@ for (var i = 0; i < variables.Count; ++i)
             
             #line default
             #line hidden
-            this.Write("_bfs2(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t@nodeType nvar" +
-                    "char(max), @id nvarchar(max),\r\n\t\t@edgeColumn varbinary(max), @Del varbinary(max)" +
-                    "\r\n");
+            this.Write("_bfsPathWithMessage(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t" +
+                    "@nodeType nvarchar(max), @id nvarchar(max),\r\n\t\t@edgeColumn varbinary(max), @Del " +
+                    "varbinary(max)\r\n");
             
             #line 129 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {

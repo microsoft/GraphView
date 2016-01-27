@@ -989,7 +989,10 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Remove the unnecessary tail node table
+        /// Marks the node table alias, if it has no outgoing edges in the graph pattern
+        /// and its node properties are never referenced or projected in the query.
+        /// Such node table aliases will not appear in the FROM clause in the translated
+        /// query, but only be materialized in adjacency lists, i.e., table-valued functions.
         /// </summary>
         /// <param name="query"></param>
         /// <param name="graph"></param>
@@ -1019,11 +1022,10 @@ namespace GraphView
         }
         
         /// <summary>
-        /// Estimates number of rows of node table in graph.
+        /// Estimates the number of rows of each node table in the graph pattern.
         /// </summary>
-        /// <param name="query"></param>
-        /// <param name="graph">Constructed node graph</param>
-        private void EstimateRows(WSelectQueryBlock query, MatchGraph graph)
+        /// <param name="graph">The graph pattern specified by the MATCH clause</param>
+        private void EstimateRows(MatchGraph graph)
         {
             var declareParameter = "";
             if (_variables != null)
@@ -1035,10 +1037,14 @@ namespace GraphView
                          TsqlFragmentToString.DataType(parameter.DataType) + "\r\n"));
             }
 
-            // Attaches predicates to nodes and edges
             var estimator = new TableSizeEstimator(Tx);
             bool first = true;
-            var selectQuerySb = new StringBuilder(1024);
+            
+            // Constructs a union-all query in which each sub-query is a selection of
+            // a node table alias plus predicates that can be associated with it. 
+            // This query is sent to the SQL DB to get the estimated cardinality of 
+            // each node table alias. 
+            var estimateQuerySb = new StringBuilder(1024);
             foreach (var subGraph in graph.ConnectedSubGraphs)
             {
                 foreach (var node in subGraph.Nodes)
@@ -1046,35 +1052,26 @@ namespace GraphView
                     if (first)
                         first = false;
                     else
-                        selectQuerySb.Append("\r\nUNION ALL\r\n");
+                        estimateQuerySb.Append("\r\nUNION ALL\r\n");
                     var currentNode = node.Value;
-                    selectQuerySb.AppendFormat("SELECT GlobalNodeId FROM {0} AS [{1}] WITH (ForceScan)",
+                    estimateQuerySb.AppendFormat("SELECT GlobalNodeId FROM {0} AS [{1}]",
                         currentNode.NodeTableObjectName,
                         currentNode.NodeAlias);
                     if (currentNode.Predicates != null && currentNode.Predicates.Count > 0)
                     {
-                        selectQuerySb.AppendFormat("\r\nWHERE {0}", currentNode.Predicates[0]);
+                        estimateQuerySb.AppendFormat("\r\nWHERE {0}", currentNode.Predicates[0]);
                         for (int i = 1; i < currentNode.Predicates.Count; i++)
                         {
                             var predicate = currentNode.Predicates[i];
-                            selectQuerySb.AppendFormat(" AND {0}", predicate);
+                            estimateQuerySb.AppendFormat(" AND {0}", predicate);
                         }
                     }
                 }
             }
 
-            // TODO: Can be distinguished between nodeview and node. E.g.:
-            //             SELECT count(*) FROM [dbo].[EmployeeNode] AS [e1] WITH (ForceScan)
-            //                                  ,[dbo].[EmployeeNode] AS [e2] WITH (ForceScan)
-            //                                  , [dbo].[ClientNode] AS [c1] WITH (ForceScan)
-            //                                  ,[dbo].[ClientNode] AS [c2] WITH (ForceScan)
-            //             WHERE e1.WorkId!=e2.WorkId
-            //             UNION ALL
-            //             SELECT COUNT(*) FROM [dbo].[NV1] AS [NV1] WITH (ForceScan)
-            //              WHERE [NV1].[id] = 10
-
             string nodeEstimationQuery = string.Format("{0}\r\n {1}\r\n", declareParameter,
-                selectQuerySb);
+                estimateQuerySb);
+            // A list of estimated cardinalities
             var estimateRows = estimator.GetUnionQueryTableEstimatedRows(nodeEstimationQuery);
 
             int j = 0;
@@ -1190,7 +1187,7 @@ namespace GraphView
                         var sinkBytes = reader["Sink"] as byte[];
                         if (sinkBytes == null)
                         {
-                            edge.Statistics = new EdgeStatistics
+                            edge.Statistics = new Statistics
                             {
                                 Density = 0,
                                 Histogram = new Dictionary<long, Tuple<double, bool>>(),
@@ -1208,7 +1205,7 @@ namespace GraphView
                             cursor += 8;
                             sinkList.Add(sink);
                         }
-                        EdgeStatistics.UpdateEdgeHistogram(edge, sinkList);
+                        Statistics.UpdateEdgeHistogram(edge, sinkList);
                         edge.AverageDegree = Convert.ToDouble(reader["AverageDegree"])*sinkList.Count*1.0/
                                              Convert.ToInt64(reader["SampleRowCount"]);
                         var path = edge as MatchPath;
@@ -1243,7 +1240,7 @@ namespace GraphView
                         var tableTuple = WNamedTableReference.SchemaNameToTuple(node.NodeTableObjectName);
                         if (_graphMetaData.NodeViewMapping.ContainsKey(tableTuple))
                         {
-                            node.GlobalNodeIdDensity = EdgeStatistics.DefaultDensity;
+                            node.GlobalNodeIdDensity = Statistics.DefaultDensity;
                         }
                         else
                         {
@@ -1269,12 +1266,12 @@ namespace GraphView
                     {
                         double density;
                         if (!reader.Read())
-                            density = EdgeStatistics.DefaultDensity;
+                            density = Statistics.DefaultDensity;
                         else
                         {
                             density = Convert.ToDouble(reader["Density"]);
                             if (Math.Abs(density - 1.0) < 0.0001)
-                                density = EdgeStatistics.DefaultDensity;
+                                density = Statistics.DefaultDensity;
                         }
                         
                         foreach (var node in item.Value)
@@ -1388,6 +1385,8 @@ namespace GraphView
         {
             var componentStates = new List<MatchComponent>();
             var nodes = subGraph.Nodes;
+            int nodeCount = subGraph.IsTailNode.Count(e => !e.Value);
+            int edgeCount = subGraph.Edges.Count;
             MatchComponent finishedComponent = null;
 
             //Init
@@ -1397,12 +1396,12 @@ namespace GraphView
                 if (!subGraph.IsTailNode[node.Value])
                 {
                     // Enumerate on each edge for a node to generate the intial states
-                    var edgeCount = node.Value.Neighbors.Count;
-                    int eNum = (int) Math.Pow(2, edgeCount) - 1;
+                    var nodeEdgeCount = node.Value.Neighbors.Count;
+                    int eNum = (int) Math.Pow(2, nodeEdgeCount) - 1;
                     while (eNum > 0)
                     {
                         var nodeInitialEdges = new List<MatchEdge>();
-                        for (int i = 0; i < edgeCount; i++)
+                        for (int i = 0; i < nodeEdgeCount; i++)
                         {
                             int index = (1 << i);
                             if ((eNum & index) != 0)
@@ -1427,11 +1426,17 @@ namespace GraphView
                 foreach (var curComponent in componentStates)
                 {
                     var nodeUnits = GetNodeUnits(subGraph, curComponent);
-                    if (!nodeUnits.Any())
+                    if (!nodeUnits.Any()
+                        && curComponent.MaterializedNodeSplitCount.Count == nodeCount
+                        && curComponent.EdgeMaterilizedDict.Count == edgeCount
+                        //&& curComponent.EdgeMaterilizedDict.All(e=>e.Value)
+                        )
+                    //if (!nodeUnits.Any())
                     {
                         if (finishedComponent == null || curComponent.Cost < finishedComponent.Cost)
                         {
                             finishedComponent = curComponent;
+                            
                         }
                         continue;
                     }
@@ -1450,7 +1455,7 @@ namespace GraphView
                                                        .Aggregate(1.0, (cur, next) => cur*next)*
                                                    candidateUnit.MaterializedEdges.Select(e => e.AverageDegree)
                                                        .Aggregate(1.0, (cur, next) => cur*next);
-                            double costLowerBound = curComponent.Size + candidateSize;
+                            double costLowerBound = curComponent.Cardinality + candidateSize;
                             if (candidateUnit.MaterializedEdges.Count == 0)
                                 costLowerBound = Math.Min(costLowerBound,
                                     Math.Log(candidateUnit.TreeRoot.EstimatedRows, 512));
@@ -1472,9 +1477,9 @@ namespace GraphView
                             }
                             else
                             {
-                                int edgeCount = newComponent.EdgeMaterilizedDict.Count;
-                                edgeCount = edgeCount == 0 ? 1 : edgeCount;
-                                if (newComponent.Cost/edgeCount < maxValue)
+                                int compEdgeCount = newComponent.EdgeMaterilizedDict.Count;
+                                compEdgeCount = compEdgeCount == 0 ? 1 : compEdgeCount;
+                                if (newComponent.Cost/compEdgeCount < maxValue)
                                 {
                                     nextCompnentStates[maxIndex] = newComponent;
                                     var tuple = GetMostExpensiveMatchComponent(nextCompnentStates);
@@ -1558,8 +1563,7 @@ namespace GraphView
                         });
                 }
 
-                // Updates from clause
-                node.FromClause.TableReferences.Add(component.TableRef);
+                
 
                 // Adds predicates for split nodes
                 var component1 = component;
@@ -1587,13 +1591,39 @@ namespace GraphView
                         nodeCount--;
                     }
                 }
-            }
-            if (newWhereString.Any())
-            {
-                node.WhereClause.SearchCondition = new WBooleanParenthesisExpression
+                // Cross apply the unmaterilized edges which point to the optimized tail nodes
+                Dictionary<MatchNode,MatchEdge> UnMatEdgeJoinDict = new Dictionary<MatchNode, MatchEdge>();
+                foreach (var unMatEdge in component.EdgeMaterilizedDict.Where(e => !e.Value).Select(e=>e.Key))
                 {
-                    Expression = node.WhereClause.SearchCondition
-                };
+                    component.TableRef = component.SpanTableRef(component.TableRef,
+                        unMatEdge, component.GetNodeRefName(unMatEdge.SourceNode));
+                    MatchEdge joinEdge;
+                    if (UnMatEdgeJoinDict.TryGetValue(unMatEdge.SinkNode, out joinEdge))
+                    {
+                        if (!string.IsNullOrEmpty(newWhereString))
+                            newWhereString += " AND ";
+                        newWhereString += string.Format("{0}.Sink = {1}.Sink", joinEdge.EdgeAlias, unMatEdge.EdgeAlias);
+                    }
+                    else
+                    {
+                        UnMatEdgeJoinDict[unMatEdge.SinkNode] = unMatEdge;
+                    }
+                }
+
+                // Updates from clause
+                node.FromClause.TableReferences.Add(component.TableRef);
+            }
+            if (!string.IsNullOrEmpty(newWhereString))
+            {
+                if (node.WhereClause!=null && node.WhereClause.SearchCondition!=null)
+                    node.WhereClause.SearchCondition = new WBooleanParenthesisExpression
+                    {
+                        Expression = node.WhereClause.SearchCondition
+                    };
+                else
+                {
+                    node.WhereClause = new WWhereClause();
+                }
                 node.WhereClause.GhostString = newWhereString;
             }
             
@@ -1661,7 +1691,7 @@ namespace GraphView
             {
                 OptimizeTail(node, graph);
                 AttachPredicates(node.WhereClause,graph);
-                EstimateRows(node, graph);
+                EstimateRows(graph);
                 RetrieveStatistics(graph);
 
                 var components = new List<MatchComponent>();
@@ -1681,12 +1711,13 @@ namespace GraphView
 
                 }
 
+
                 UpdateQuery(node, components);
 
 #if DEBUG
-                Trace.WriteLine(string.Format("Rows:{0}", components[0].Size));
+                Trace.WriteLine(string.Format("Rows:{0}", components[0].Cardinality));
                 Trace.WriteLine(string.Format("Cost:{0}", components[0].Cost));
-                Trace.WriteLine(string.Format("Estimated Rows:{0}", components[0].EstimateSize));
+                Trace.WriteLine(string.Format("Estimated Rows:{0}", components[0].SqlEstimatedSize));
 
 #endif
                 node.MatchClause = null;

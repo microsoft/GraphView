@@ -53,7 +53,7 @@ namespace GraphView
             
             #line default
             #line hidden
-            this.Write("_bfs(\r\n\t\t@source bigint, \r\n\t\t@minlength bigint,\r\n\t\t@maxlength bigint");
+            this.Write("_bfsPath(\r\n\t\t@source bigint, \r\n\t\t@minlength bigint,\r\n\t\t@maxlength bigint");
             
             #line 25 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 
@@ -196,8 +196,8 @@ foreach (var it in Attribute) {
             
             #line default
             #line hidden
-            this.Write("_bfs2(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t@nodeType nvar" +
-                    "char(max), @id nvarchar(max)");
+            this.Write("_bfsPathWithMessage(@source bigint, \r\n\t\t@minlength bigint, @maxlength bigint,\r\n\t\t" +
+                    "@nodeType nvarchar(max), @id nvarchar(max)");
             
             #line 109 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 

@@ -58,7 +58,7 @@ namespace GraphView
     /// </summary>
     internal class MatchComponent
     {
-        public List<MatchNode> Nodes { get; set; }
+        public HashSet<MatchNode> Nodes { get; set; }
         public Dictionary<MatchEdge, bool> EdgeMaterilizedDict { get; set; }  
         //public List<MatchEdge> MaterializaedEdges { get; set; }
         //public List<MatchEdge> UnmaterializedEdges { get; set; }
@@ -69,33 +69,43 @@ namespace GraphView
         // Maps the unmaterialized node to the alias of one of its incoming materialized edges;
         // the join condition between the node and the incoming edge should be added 
         // when the node is materialized.
-        //public Dictionary<MatchNode, string> UnmaterializedNodeMapping { get; set; }
         public Dictionary<MatchNode, List<MatchEdge>> UnmaterializedNodeMapping { get; set; }
 
-        // Store the statistics of the nodes in the component for further joins
-        public Dictionary<MatchNode, EdgeStatistics> StatisticsDict { get; set; }
+        // A collection of sink nodes and their statistics.
+        // A sink node's statistic will be updated as new candidates are added to the component
+        // and new edges point to this sink node. 
+        public Dictionary<MatchNode, Statistics> SinkNodeStatisticsDict { get; set; }
 
-        // Used memory of the component in total
+        // Total memory used by the current execution plan
         public double TotalMemory { get; set; }
 
-        // Latest used memory of the component. Only DeltaMemory will survive if the previous memory is released.
+        // Total memory of this component, if it is to be joined with the next candidate using 
+        // the left-deep hash join or the loop join. 
         public double DeltaMemory { get; set; }
 
-        // Record the parent of the rightest table in the join to do the adjustment. Tuple(Table Reference, Table Alias)
-        public Tuple<WQualifiedJoin, String> FatherOfRightestTableRef { get; set; }
+        // The parent of the rightest probe table in the join tree to do the adjustment. Tuple(Table Reference, Table Alias)
+        public Tuple<WQualifiedJoin, string> FatherOfRightestTableRef { get; set; }
 
-        // Record the size of the rightest table in the join
+        // The size of the rightest probe table in the join
         public double RightestTableRefSize { get; set; }
 
         // The list of the tables which additional down size predicates should be applied. List of Tuple(Table Reference, Table Alias)
-        public List<Tuple<WQualifiedJoin, String>> FatherListofDownSizeTable { get; set; }
+        public List<Tuple<WQualifiedJoin, string>> FatherListofDownSizeTable { get; set; }
 
-        public double Size { get; set; }
-        public double EstimateTotalMemory { get; set; }
-        public double EstimateDeltaMemory { get; set; }
-        public double EstimateSize { get; set; }
+        // Estimated number of rows returned by this component
+        public double Cardinality { get; set; }
+
+        // Total memory estimated by the SQL engine
+        public double SqlEstimatedTotalMemory { get; set; }
+        // Total memory estimated by the SQL engine, if this component is to be joined with the
+        // next candidate using the left-deep hash join or the loop join.
+        public double SqlEstimatedDeltaMemory { get; set; }
+
+        // Number of rows estimated by the SQL engine 
+        public double SqlEstimatedSize { get; set; }
        
         public double Cost { get; set; }
+
         public WTableReference TableRef { get; set; }
 
         public WSqlTableContext Context { get; set; }
@@ -105,18 +115,18 @@ namespace GraphView
         
         public MatchComponent()
         {
-            Nodes = new List<MatchNode>();
+            Nodes = new HashSet<MatchNode>();
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
-            StatisticsDict = new Dictionary<MatchNode, EdgeStatistics>();
-            Size = 1.0;
+            SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
+            Cardinality = 1.0;
             Cost = 0.0;
             TotalMemory = 0.0;
             DeltaMemory = 0.0;
-            EstimateDeltaMemory = 0.0;
-            EstimateTotalMemory = 0.0;
-            EstimateSize = 1.0;
+            SqlEstimatedDeltaMemory = 0.0;
+            SqlEstimatedTotalMemory = 0.0;
+            SqlEstimatedSize = 1.0;
             RightestTableRefSize = 0.0;
             FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>();
         }
@@ -125,10 +135,10 @@ namespace GraphView
         {
             Nodes.Add(node);
             MaterializedNodeSplitCount[node] = 0;
-            StatisticsDict[node] = new EdgeStatistics{Selectivity = 1.0/node.TableRowCount};
+            SinkNodeStatisticsDict[node] = new Statistics{Selectivity = 1.0/node.TableRowCount};
 
-            Size *= node.EstimatedRows;
-            EstimateSize *= node.EstimatedRows;
+            Cardinality *= node.EstimatedRows;
+            SqlEstimatedSize *= node.EstimatedRows;
             TableRef = new WNamedTableReference
             {
                 Alias = new Identifier { Value = node.RefAlias},
@@ -142,7 +152,7 @@ namespace GraphView
         /// <param name="component"></param>
         public MatchComponent(MatchComponent component)
         {
-            Nodes = new List<MatchNode>(component.Nodes);
+            Nodes = new HashSet<MatchNode>(component.Nodes);
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>(component.EdgeMaterilizedDict);
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>(component.MaterializedNodeSplitCount);
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
@@ -150,15 +160,15 @@ namespace GraphView
             {
                 UnmaterializedNodeMapping[nodeMapping.Key] = new List<MatchEdge>(nodeMapping.Value);
             }
-            StatisticsDict = new Dictionary<MatchNode, EdgeStatistics>(component.StatisticsDict);
+            SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>(component.SinkNodeStatisticsDict);
             TableRef = component.TableRef;
-            Size = component.Size;
+            Cardinality = component.Cardinality;
             Cost = component.Cost;
             DeltaMemory = component.DeltaMemory;
             TotalMemory = component.TotalMemory;
-            EstimateDeltaMemory = component.EstimateDeltaMemory;
-            EstimateTotalMemory = component.EstimateTotalMemory;
-            EstimateSize = component.EstimateSize;
+            SqlEstimatedDeltaMemory = component.SqlEstimatedDeltaMemory;
+            SqlEstimatedTotalMemory = component.SqlEstimatedTotalMemory;
+            SqlEstimatedSize = component.SqlEstimatedSize;
             FatherOfRightestTableRef = component.FatherOfRightestTableRef;
             RightestTableRefSize = component.RightestTableRefSize;
             FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>(component.FatherListofDownSizeTable);
@@ -174,12 +184,13 @@ namespace GraphView
             {
                 TableRef = SpanTableRef(TableRef, edge, node.RefAlias);
                 EdgeMaterilizedDict[edge] = true;
-                StatisticsDict[edge.SinkNode] = edge.Statistics;
+                SinkNodeStatisticsDict[edge.SinkNode] = edge.Statistics;
                 var edgeList = UnmaterializedNodeMapping.GetOrCreate(edge.SinkNode);
                 edgeList.Add(edge);
-                Nodes.Add(edge.SinkNode);
-                Size *= edge.AverageDegree;
-                EstimateSize *= 1000;
+                if (!Nodes.Contains(edge.SinkNode))
+                    Nodes.Add(edge.SinkNode);
+                Cardinality *= edge.AverageDegree;
+                SqlEstimatedSize *= 1000;
 
             }
         }
@@ -214,12 +225,12 @@ namespace GraphView
                 shrinkSize = 1.0/(1 - Math.Pow((1 - 1.0/shrinkSize), 1.5));
                 if (estimatedSize < shrinkSize)
                 {
-                    component.EstimateSize /= estimatedSize;
+                    component.SqlEstimatedSize /= estimatedSize;
                     estimatedSize = 1;
                 }
                 else
                 {
-                    component.EstimateSize /= shrinkSize;
+                    component.SqlEstimatedSize /= shrinkSize;
                     estimatedSize /= shrinkSize;
                 }
                 component.FatherListofDownSizeTable.Add(joinTableTuple);
@@ -252,7 +263,7 @@ namespace GraphView
                         UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
                     };
                     pow--;
-                    component.EstimateSize *= adjustValue;
+                    component.SqlEstimatedSize *= adjustValue;
                 }
                 joinTable.FirstTableRef = crossApplyTable;
             }
@@ -284,8 +295,8 @@ namespace GraphView
             double estimatedSelectivity)
         {
             var nodeUnitSize = nodeUnitCandidate.TreeRoot.EstimatedRows * nodeDegrees;
-            var componentSize = component.Size;
-            var estimatedCompSize = component.EstimateSize;
+            var componentSize = component.Cardinality;
+            var estimatedCompSize = component.SqlEstimatedSize;
             //var cost = nodeUnitSize + componentSize;
             
             // Sets to leaf deep hash join by default
@@ -307,7 +318,7 @@ namespace GraphView
             {
                 nodeUnitActualSize = nodeDegrees;
                 var cEstEdge = Math.Pow(1000, component.EdgeMaterilizedDict.Count(e => !e.Value));
-                var cSize = component.EstimateSize / cEstEdge;
+                var cSize = component.SqlEstimatedSize / cEstEdge;
                 var nSize = node.EstimatedRows;
                 if (nSize > cSize)
                 {
@@ -315,19 +326,19 @@ namespace GraphView
                 }
                 else
                 {
-                    newCompEstSize = component.EstimateSize * Math.Pow(1000, nodeUnitCandidate.UnmaterializedEdges.Count) * estimatedSelectivity;
+                    newCompEstSize = component.SqlEstimatedSize * Math.Pow(1000, nodeUnitCandidate.UnmaterializedEdges.Count) * estimatedSelectivity;
                 }
             }
             else
             {
                 nodeUnitActualSize = nodeUnitSize;
-                newCompEstSize = component.EstimateSize * estimatedNodeUnitSize * estimatedSelectivity;
+                newCompEstSize = component.SqlEstimatedSize * estimatedNodeUnitSize * estimatedSelectivity;
             }
-            component.EstimateSize = newCompEstSize < 1.0 ? 1.0 : newCompEstSize;
+            component.SqlEstimatedSize = newCompEstSize < 1.0 ? 1.0 : newCompEstSize;
            
 
             //Update Size
-            component.Size *= nodeUnitActualSize * joinSelectivity;
+            component.Cardinality *= nodeUnitActualSize * joinSelectivity;
 
             
 
@@ -355,9 +366,9 @@ namespace GraphView
                     component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
                 }
                 component.TotalMemory = component.DeltaMemory;
-                component.EstimateTotalMemory = component.EstimateDeltaMemory;
+                component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory;
                 joinTable.JoinHint = JoinHint.Loop;
-                component.EstimateSize = estimatedCompSize * estimatedNodeUnitSize /
+                component.SqlEstimatedSize = estimatedCompSize * estimatedNodeUnitSize /
                                          nodeUnitCandidate.TreeRoot.TableRowCount;
                 
                 cost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
@@ -374,7 +385,7 @@ namespace GraphView
                         joinTable.FirstTableRef = nodeTable;
                         joinTable.SecondTableRef = componentTable;
                         component.TotalMemory = component.DeltaMemory = nodeUnitSize;
-                        component.EstimateTotalMemory = component.EstimateDeltaMemory = estimatedNodeUnitSize;
+                        component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory = estimatedNodeUnitSize;
                         component.RightestTableRefSize = nodeInComp.EstimatedRows;
                         component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable,
                             component.GetNodeRefName(nodeInComp));
@@ -384,7 +395,7 @@ namespace GraphView
                     else
                     {
                         component.TotalMemory = component.DeltaMemory = componentSize;
-                        component.EstimateTotalMemory = component.EstimateDeltaMemory = component.EstimateSize;
+                        component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory = component.SqlEstimatedSize;
                         component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
                         component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
                         AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
@@ -397,9 +408,9 @@ namespace GraphView
                     var curDeltaMemory = componentSize;
                     component.TotalMemory = component.DeltaMemory + curDeltaMemory;
                     component.DeltaMemory = curDeltaMemory;
-                    var curDeltaEstimateMemory = component.EstimateSize;
-                    component.EstimateTotalMemory = component.EstimateDeltaMemory + curDeltaEstimateMemory;
-                    component.EstimateDeltaMemory = curDeltaEstimateMemory;
+                    var curDeltaEstimateMemory = component.SqlEstimatedSize;
+                    component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory + curDeltaEstimateMemory;
+                    component.SqlEstimatedDeltaMemory = curDeltaEstimateMemory;
 
                     // Adjust estimation in sql server
                     AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
@@ -420,8 +431,8 @@ namespace GraphView
 
                     component.TotalMemory += nodeUnitSize;
                     component.DeltaMemory = component.TotalMemory;
-                    component.EstimateTotalMemory += estimatedNodeUnitSize;
-                    component.EstimateDeltaMemory = component.EstimateTotalMemory;
+                    component.SqlEstimatedTotalMemory += estimatedNodeUnitSize;
+                    component.SqlEstimatedDeltaMemory = component.SqlEstimatedTotalMemory;
                 }
             }
 
@@ -691,9 +702,10 @@ namespace GraphView
             else
             {
                 nodeName = root.RefAlias;
-                newComponent.Nodes.Add(root);
+                if (!Nodes.Contains(root))
+                    newComponent.Nodes.Add(root);
                 newComponent.MaterializedNodeSplitCount[root] = 0;
-                newComponent.StatisticsDict[root] = new EdgeStatistics {Selectivity = 1.0/root.TableRowCount};
+                newComponent.SinkNodeStatisticsDict[root] = new Statistics {Selectivity = 1.0/root.TableRowCount};
             }
 
             // Constructs table reference
@@ -705,7 +717,7 @@ namespace GraphView
             WTableReference compTable = newComponent.TableRef;
 
             // Updates join conditions
-            double selectivity = 1.0;
+            double joinSelectivity = 1.0;
             double degrees = 1.0;
             List<double> densityList = new List<double>();
 
@@ -715,7 +727,7 @@ namespace GraphView
                 var firstEdge = inEdges.First();
                 bool materialized = newComponent.EdgeMaterilizedDict[firstEdge];
                 newComponent.UnmaterializedNodeMapping.Remove(root);
-                selectivity *= 1.0/root.TableRowCount;
+                joinSelectivity *= 1.0/root.TableRowCount;
 
                 // Component materialized edge to root
                 if (materialized)
@@ -746,7 +758,7 @@ namespace GraphView
                 // Component unmaterialized edge to root                
                 else
                 {
-                    EdgeStatistics statistics = null;
+                    Statistics statistics = null;
                     foreach (var edge in inEdges)
                     {
                         // Update component table
@@ -774,12 +786,12 @@ namespace GraphView
                                 },
                                 ComparisonType = BooleanComparisonType.Equals
                             });
-                        statistics = EdgeStatistics.UpdateHistogram(statistics,
+                        statistics = Statistics.UpdateHistogram(statistics,
                             edge.Statistics);
-                        selectivity *= statistics.Selectivity;
+                        joinSelectivity *= statistics.Selectivity;
                         densityList.Add(root.GlobalNodeIdDensity);
                     }
-                    newComponent.StatisticsDict[root] = statistics;
+                    newComponent.SinkNodeStatisticsDict[root] = statistics;
 
                 }
 
@@ -818,10 +830,10 @@ namespace GraphView
                             },
                             ComparisonType = BooleanComparisonType.Equals
                         });
-                    var statistics = EdgeStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
+                    var statistics = Statistics.UpdateHistogram(newComponent.SinkNodeStatisticsDict[sinkNode],
                         jointEdge.Statistics);
-                    selectivity *= statistics.Selectivity;
-                    newComponent.StatisticsDict[sinkNode] = statistics;
+                    joinSelectivity *= statistics.Selectivity;
+                    newComponent.SinkNodeStatisticsDict[sinkNode] = statistics;
 
                     densityList.Add(sinkNode.GlobalNodeIdDensity);
                 }
@@ -857,17 +869,17 @@ namespace GraphView
                                 ComparisonType = BooleanComparisonType.Equals
                             });
 
-                        densityList.Add(EdgeStatistics.DefaultDensity);
+                        densityList.Add(Statistics.DefaultDensity);
 
-                        var statistics = EdgeStatistics.UpdateHistogram(newComponent.StatisticsDict[sinkNode],
+                        var statistics = Statistics.UpdateHistogram(newComponent.SinkNodeStatisticsDict[sinkNode],
                             jointEdge.Statistics);
-                        selectivity *= statistics.Selectivity;
-                        newComponent.StatisticsDict[sinkNode] = statistics;
+                        joinSelectivity *= statistics.Selectivity;
+                        newComponent.SinkNodeStatisticsDict[sinkNode] = statistics;
                     }
                     // Leaf to unmaterialized leaf
                     else
                     {
-                        EdgeStatistics compSinkNodeStatistics = null;
+                        Statistics compSinkNodeStatistics = null;
                         foreach (var inEdge in inEdges)
                         {
                             compTable = SpanTableRef(compTable, inEdge, newComponent.GetNodeRefName(inEdge.SourceNode));
@@ -894,15 +906,15 @@ namespace GraphView
                                 ComparisonType = BooleanComparisonType.Equals
                             });
 
-                            densityList.Add(EdgeStatistics.DefaultDensity);
+                            densityList.Add(Statistics.DefaultDensity);
 
                             var leafToLeafStatistics = statisticsCalculator.GetLeafToLeafStatistics(jointEdge, inEdge);
-                            selectivity *= leafToLeafStatistics.Selectivity;
+                            joinSelectivity *= leafToLeafStatistics.Selectivity;
                             compSinkNodeStatistics =
-                                EdgeStatistics.UpdateHistogram(compSinkNodeStatistics,
+                                Statistics.UpdateHistogram(compSinkNodeStatistics,
                                     inEdge.Statistics);
                         }
-                        newComponent.StatisticsDict[sinkNode] = compSinkNodeStatistics;
+                        newComponent.SinkNodeStatisticsDict[sinkNode] = compSinkNodeStatistics;
                     }
                 }
             }
@@ -911,7 +923,8 @@ namespace GraphView
             foreach (var unmatEdge in unmatEdges)
             {
                 newComponent.EdgeMaterilizedDict[unmatEdge] = false;
-                newComponent.Nodes.Add(unmatEdge.SinkNode);
+                if (!Nodes.Contains(unmatEdge.SinkNode))
+                    newComponent.Nodes.Add(unmatEdge.SinkNode);
                 var sinkNodeInEdges = newComponent.UnmaterializedNodeMapping.GetOrCreate(unmatEdge.SinkNode);
                 sinkNodeInEdges.Add(unmatEdge);
                 degrees *= unmatEdge.AverageDegree;
@@ -932,7 +945,7 @@ namespace GraphView
 
             // Update Table Reference
             newComponent.TableRef = GetPlanAndUpdateCost(candidateTree, newComponent, nodeTable, compTable, joinCondition,
-                degrees, selectivity, estimatedNodeUnitSize, estimatedSelectity);
+                degrees, joinSelectivity, estimatedNodeUnitSize, estimatedSelectity);
 
             return newComponent;
         }

@@ -119,25 +119,25 @@ namespace GraphView
 
     internal interface IMatchJoinStatisticsCalculator
     {
-        EdgeStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
+        Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
     }
 
     internal class HistogramCalculator : IMatchJoinStatisticsCalculator
     {
-        private readonly Dictionary<Tuple<string, string>, EdgeStatistics> _leafToLeafSelectivity;
+        private readonly Dictionary<Tuple<string, string>, Statistics> _leafToLeafSelectivity;
 
         public HistogramCalculator()
         {
-            _leafToLeafSelectivity = new Dictionary<Tuple<string, string>, EdgeStatistics>(new MatchEdgeTupleEqualityComparer());
+            _leafToLeafSelectivity = new Dictionary<Tuple<string, string>, Statistics>(new MatchEdgeTupleEqualityComparer());
         }
-        public EdgeStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
+        public Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
         {
             var edgeTuple = new Tuple<string, string>(nodeEdge.EdgeAlias, componentEdge.EdgeAlias);
 
             if (_leafToLeafSelectivity.ContainsKey(edgeTuple))
                 return _leafToLeafSelectivity[edgeTuple];
 
-            var mergedStatistics = EdgeStatistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics);
+            var mergedStatistics = Statistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics);
             _leafToLeafSelectivity[edgeTuple] = mergedStatistics;
             return mergedStatistics;
         }

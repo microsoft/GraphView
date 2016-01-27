@@ -48,7 +48,7 @@ namespace GraphView
         public WSchemaObjectName BindNodeTableObjName { get; set; }
         public double AverageDegree { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
-        public EdgeStatistics Statistics { get; set; }
+        public Statistics Statistics { get; set; }
         public override int GetHashCode()
         {
             return EdgeAlias.GetHashCode();
@@ -275,7 +275,7 @@ namespace GraphView
                     Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
                             BindNodeTableObjName.BaseIdentifier.Value + '_' +
                             EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                            "bfs2"
+                            "bfsPathWithMessage"
                 };
                 // Node view
                 if (nodeSet!=null)
@@ -320,7 +320,7 @@ namespace GraphView
                     Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
                             BindNodeTableObjName.BaseIdentifier.Value + '_' +
                             EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                            "bfs"
+                            "bfsPath"
                 };
             }
             parameters.Insert(0, new WValueExpression { Value = MaxLength.ToString() });
@@ -414,6 +414,10 @@ namespace GraphView
         /// </summary>
         public double GlobalNodeIdDensity { get;set; }
 
+        /// <summary>
+        /// Conjunctive predicates from the WHERE clause that 
+        /// can be associated with this node variable. 
+        /// </summary>
         public IList<WBooleanExpression> Predicates { get; set; }
 
         public string RefAlias
@@ -425,7 +429,6 @@ namespace GraphView
         {
             return NodeAlias.GetHashCode();
         }
-
     }
 
     internal class ConnectedComponent

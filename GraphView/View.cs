@@ -73,8 +73,8 @@ namespace GraphView
             {
                 "Decoder",
                 "ExclusiveEdgeGenerator",
-                "bfs",
-                "bfs2",
+                "bfsPath",
+                "bfsPathWithMessage",
                 "PathMessageEncoder",
                 "PathMessageDecoder"
             };
@@ -543,7 +543,7 @@ namespace GraphView
                 var nodeViewPropertycolumnId = new List<Int64>();
                 string updateTableColumn =
                     string.Format(@"
-                    INSERT INTO {0} OUTPUT [Inserted].[ColumnId]
+                    INSERT INTO {0}(TableId,TableSchema,TableName,ColumnName,ColumnRole,Reference) OUTPUT [Inserted].[ColumnId]
                     VALUES (@tableId, @schema, @nodeviewname, @columnname, @columnrole, null)",
                         MetadataTables[1]);
                 command.Parameters.AddWithValue("tableId", nodeviewTableId);
@@ -1181,7 +1181,7 @@ namespace GraphView
                                             var newType = _attributeType[attributeName];
                                             var newAttributeName = attributeName + "_" + newType;
 
-                                            edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
+                                            //edgeColumnToAttributeInfo[edgeTuple].Add(Tuple.Create(newType, newAttributeName));
                                             _attributeType[newAttributeName] = _attributeType[attributeName];
                                             _attributeType[attributeName] = "wrong";
 
@@ -1844,7 +1844,7 @@ namespace GraphView
             }
         }
 
-        private void updateGlobalNodeView(string schema = "dbo", SqlTransaction externalTransaction = null)
+        public void updateGlobalNodeView(string schema = "dbo", SqlTransaction externalTransaction = null)
         {
             SqlTransaction transaction = externalTransaction ?? Conn.BeginTransaction();
             var command = Conn.CreateCommand();

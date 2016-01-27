@@ -38,16 +38,29 @@ namespace GraphView
         private List<Tuple<string, string>> _edges;
         private List<string> _edgeAttribute;
         private List<Tuple<string, List<Tuple<string, string, string>>>> _attributeMapping;
+        private bool _defaultMerge;
+        private bool _noAttributes;
+
         public void Invoke(string schema, WSelectQueryExpression selectStatement, out List<Tuple<string, string>> edges, out List<string> edgeAttribute, out List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping)
         {
+            _defaultMerge = false;
+            _noAttributes = false;
             _schema = schema;
             _edges = new List<Tuple<string, string>>();
             _edgeAttribute = new List<string>();
             _attributeMapping = new List<Tuple<string, List<Tuple<string, string, string>>>>();
             selectStatement.Accept(this);
             edges = _edges;
-            edgeAttribute = _edgeAttribute;
-            attributeMapping = _attributeMapping;
+            if (_defaultMerge)
+            {
+                edgeAttribute = null;
+                attributeMapping = null;
+            }
+            else
+            {
+                edgeAttribute = _edgeAttribute;
+                attributeMapping = _attributeMapping;
+            }
         }
 
         public override void Visit(WBinaryQueryExpression node)
@@ -60,14 +73,14 @@ namespace GraphView
         private void UpdateMapping(WSelectQueryBlock expr)
         {
             if (expr == null)
-                throw new NodeViewException("Invalid Select Statement in CREATE NODE VIEW");
+                throw new EdgeViewException("Invalid Select Statement in CREATE NODE VIEW");
             if (expr.FromClause.TableReferences.Count != 1)
-                throw new NodeViewException(
+                throw new EdgeViewException(
                     "Only one node table can be specified in each select statemtn of CREATE NODE VIEW");
 
             var tableRef = expr.FromClause.TableReferences.First() as WNamedTableReference;
             if (tableRef == null)
-                throw new NodeViewException("Invalid node table");
+                throw new EdgeViewException("Invalid node table");
 
             var schema = tableRef.TableObjectName.DatabaseIdentifier == null
                 ? "dbo"
@@ -78,21 +91,63 @@ namespace GraphView
             var tableRefName = tableRef.TableObjectName.SchemaIdentifier.Value;
             var edgeName = tableRef.TableObjectName.BaseIdentifier.Value;
             _edges.Add(new Tuple<string, string>(tableRefName, edgeName));
-            if (!_attributeMapping.Any())
+            if (_defaultMerge)
             {
+                if (expr.SelectElements.Count != 1)
+                    throw new EdgeViewException(
+                        "Select element in each statement should be consistent to the first statement");
+                if (!(expr.SelectElements.First() is WSelectStarExpression))
+                    throw new EdgeViewException(
+                        "Select element should be '*' for " + tableRefName + "." + edgeName);
+            }
+            else if (_noAttributes)
+            {
+                 if (expr.SelectElements.Count != 1)
+                     throw new EdgeViewException(
+                        "Select element in each statement should be consistent to the first statement");
+                var element = expr.SelectElements.First();
+                var valueExpr = element as WSelectScalarExpression;
+                if (valueExpr == null)
+                    throw new EdgeViewException(
+                        "Select element should be null for " + tableRefName + "." + edgeName);
+                var nullExpr = valueExpr.SelectExpr as WValueExpression;
+                if (nullExpr == null || nullExpr.Value.ToLower()!="null")
+                    throw new EdgeViewException(
+                        "Select element should be null for " + tableRefName + "." + edgeName);
+            }
+            else if (!_attributeMapping.Any())
+            {
+                if (expr.SelectElements.Count == 1 && expr.SelectElements.First() is WSelectStarExpression)
+                {
+                    _defaultMerge = true;
+                    return;
+                }
                 foreach (var selectElement in expr.SelectElements)
                 {
                     var scalarElement = selectElement as WSelectScalarExpression;
                     if (scalarElement == null)
-                        throw new NodeViewException("Invalid select element");
+                        throw new EdgeViewException("Invalid select element");
                     string newColName = scalarElement.ColumnName;
                     var oldColRefExpression = scalarElement.SelectExpr as WColumnReferenceExpression;
                     if (oldColRefExpression == null)
                     {
                         var oldColValueExpression = scalarElement.SelectExpr as WValueExpression;
-                        if (oldColValueExpression == null || oldColValueExpression.Value.ToLower() != "null" ||
-                            string.IsNullOrEmpty(newColName))
-                            throw new NodeViewException("Each select element should be null or reference to a column");
+                        if (oldColValueExpression == null)
+                            throw new NodeViewException(
+                                "Each select element should be null or reference to a column");
+                        if (oldColValueExpression.Value.ToLower() != "null")
+                            throw new NodeViewException(
+                                "Each select element should be null or reference to a column");
+                        if (string.IsNullOrEmpty(newColName))
+                        {
+                            if (expr.SelectElements.Count == 1)
+                            {
+                                _noAttributes = true;
+                                return;
+                            }
+                            throw new EdgeViewException(
+                                "Column name should be specified for the first select null expression");
+                        }
                         _attributeMapping.Add(
                             new Tuple<string, List<Tuple<string, string, string>>>(newColName.ToLower(),
                                 new List<Tuple<string, string, string>>()));
@@ -102,11 +157,13 @@ namespace GraphView
                         string oldColName = oldColRefExpression.MultiPartIdentifier.Identifiers.Last().Value;
                         if (string.IsNullOrEmpty(newColName))
                             newColName = oldColName;
-                        _attributeMapping.Add(new Tuple<string, List<Tuple<string,string, string>>>(newColName.ToLower(),
-                            new List<Tuple<string, string, string>>
-                            {
-                                new Tuple<string, string, string>(tableRefName.ToLower(),edgeName.ToLower(), oldColName.ToLower())
-                            }));
+                        _attributeMapping.Add(
+                            new Tuple<string, List<Tuple<string, string, string>>>(newColName.ToLower(),
+                                new List<Tuple<string, string, string>>
+                                {
+                                    new Tuple<string, string, string>(tableRefName.ToLower(), edgeName.ToLower(),
+                                        oldColName.ToLower())
+                                }));
                     }
                     _edgeAttribute.Add(newColName);
                 }
@@ -123,7 +180,8 @@ namespace GraphView
                     {
                         var oldColValueExpression = scalarElement.SelectExpr as WValueExpression;
                         if (oldColValueExpression == null || oldColValueExpression.Value.ToLower() != "null")
-                            throw new NodeViewException("Each select element should be null or reference to a column");
+                            throw new EdgeViewException(
+                                "Each select element should be null or reference to a column");
                     }
                     else
                     {
@@ -134,30 +192,30 @@ namespace GraphView
                     }
                 }
             }
-            expr.SelectElements.Add(new WSelectScalarExpression
-            {
-                SelectExpr =
-                    new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "Sink"})
-                    }
-            });
-            expr.SelectElements.Add(new WSelectScalarExpression
-            {
-                SelectExpr =
-                    new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "Src" })
-                    }
-            });
-            expr.FromClause.TableReferences[0] = new WNamedTableReference
-            {
-                TableObjectName =
-                    new WSchemaObjectName(new Identifier
-                    {
-                        Value = string.Format("{0}_{1}_{2}_Sampling", schema, tableRefName, edgeName)
-                    })
-            };
+            //expr.SelectElements.Add(new WSelectScalarExpression
+            //{
+            //    SelectExpr =
+            //        new WColumnReferenceExpression
+            //        {
+            //            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "Sink"})
+            //        }
+            //});
+            //expr.SelectElements.Add(new WSelectScalarExpression
+            //{
+            //    SelectExpr =
+            //        new WColumnReferenceExpression
+            //        {
+            //            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "Src" })
+            //        }
+            //});
+            //expr.FromClause.TableReferences[0] = new WNamedTableReference
+            //{
+            //    TableObjectName =
+            //        new WSchemaObjectName(new Identifier
+            //        {
+            //            Value = string.Format("{0}_{1}_{2}_Sampling", schema, tableRefName, edgeName)
+            //        })
+            //};
         }
 
         public override void Visit(WSelectQueryBlock node)
@@ -171,17 +229,21 @@ namespace GraphView
         private string _schema;
         private List<string> _tableObjList;
         private List<Tuple<string, List<Tuple<string, string>>>> _propertymapping;
+        private bool _defaultMerge;
+        private bool _noAttributes;
 
         public void Invoke(string schema, WSelectQueryExpression selectQuery,
             out List<string> tableObjList,
             out List<Tuple<string, List<Tuple<string, string>>>> propertymapping)
         {
+            _defaultMerge = false;
+            _noAttributes = false;
             _schema = schema;
             _tableObjList = new List<string>();
             _propertymapping = new List<Tuple<string, List<Tuple<string, string>>>>();
             selectQuery.Accept(this);
             tableObjList = _tableObjList;
-            propertymapping = _propertymapping;
+            propertymapping = _defaultMerge ? null : _propertymapping;
         }
 
 
@@ -205,8 +267,37 @@ namespace GraphView
             
             var tableRefName = tableRef.TableObjectName.BaseIdentifier.Value;
             _tableObjList.Add(tableRefName);
+            if (_defaultMerge)
+            {
+                if (expr.SelectElements.Count != 1)
+                    throw new EdgeViewException(
+                        "Select element in each statement should be consistent to the first statement");
+                if (!(expr.SelectElements.First() is WSelectStarExpression))
+                    throw new EdgeViewException(
+                        "Select element should be '*' for " + tableRefName);
+            }
+            else if (_noAttributes)
+            {
+                if (expr.SelectElements.Count != 1)
+                    throw new EdgeViewException(
+                       "Select element in each statement should be consistent to the first statement");
+                var element = expr.SelectElements.First();
+                var valueExpr = element as WSelectScalarExpression;
+                if (valueExpr == null)
+                    throw new EdgeViewException(
+                        "Select element should be null for " + tableRefName);
+                var nullExpr = valueExpr.SelectExpr as WValueExpression;
+                if (nullExpr == null || nullExpr.Value.ToLower() != "null")
+                    throw new EdgeViewException(
+                        "Select element should be null for " + tableRefName);
+            }
             if (!_propertymapping.Any())
             {
+                if (expr.SelectElements.Count == 1 && expr.SelectElements.First() is WSelectStarExpression)
+                {
+                    _defaultMerge = true;
+                    return;
+                }
                 foreach (var selectElement in expr.SelectElements)
                 {
                     var scalarElement = selectElement as WSelectScalarExpression;
@@ -217,9 +308,22 @@ namespace GraphView
                     if (oldColRefExpression == null)
                     {
                         var oldColValueExpression = scalarElement.SelectExpr as WValueExpression;
-                        if (oldColValueExpression == null || oldColValueExpression.Value.ToLower() != "null" ||
-                            string.IsNullOrEmpty(newColName))
-                            throw new NodeViewException("Each select element should be null or reference to a column");
+                        if (oldColValueExpression == null)
+                            throw new NodeViewException(
+                                "Each select element should be null or reference to a column");
+                        if (oldColValueExpression.Value.ToLower() != "null")
+                            throw new NodeViewException(
+                                "Each select element should be null or reference to a column");
+                        if (string.IsNullOrEmpty(newColName))
+                        {
+                            if (expr.SelectElements.Count == 1)
+                            {
+                                _noAttributes = true;
+                                return;
+                            }
+                            throw new EdgeViewException(
+                                "Column name should be specified for the first select null expression");
+                        }
                         _propertymapping.Add(new Tuple<string, List<Tuple<string, string>>>(newColName.ToLower(),
                             new List<Tuple<string, string>>()));
                     }
