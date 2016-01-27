@@ -19,6 +19,46 @@ namespace GraphViewUnitTest
             TestInitialization.CreateTableAndProc();
             TestInitialization.InsertDataByProc(NodeNum,NodeDegree);
         }
+        [TestMethod]
+        public void ValidateTest()
+        {
+            TestInitialization.InitAndInsHandmadeData();
+            using (var con = new GraphView.GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                con.Open();
+                con.CreateEdgeView(@"
+                    CREATE EDGE VIEW Device.Links AS
+                    SELECT *
+                    FROM Device.STARTDEVICE
+                    UNION ALL
+                    SELECT *
+                    FROM Device.ENDDEVICE
+                    ");
+
+                for (int i = 0; i < handmadeData.DeviceNum; ++i)
+                {
+                    var res = con.ExecuteReader(string.Format(@"SELECT Link.id from Link, Device
+                                            MATCH Device-[Links]->Link WHERE Device.id = {0}", i));
+                    try
+                    {
+                        int cnt = 0;
+                        while (res.Read())
+                        {
+                            ++cnt;
+                            int x = Convert.ToInt32(res["id"]);
+                            if (2*x % handmadeData.DeviceNum != i && 3*x % handmadeData.DeviceNum != i )   //  Any Link #x could be linked to #2*x or #3*x device
+                                throw new Exception(string.Format("The Link {0} have wrong device Linked!", i));
+                        }
+                        if (cnt != 2)
+                            throw new Exception(string.Format("The Link {0} doesn't have 2 device Linked!", i));
+                    }
+                    finally
+                    {
+                        res.Close();
+                    }
+                }
+            }
+        }
 
         [TestMethod]
         public void NodeViewTest()

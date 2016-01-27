@@ -11,6 +11,89 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphViewUnitTest
 {
+    /// <summary>
+    /// Generate data, [Device] and [Link]
+    /// Any Link [x] will be linked to [2*x] as startdevice or [3*x] as enddevice
+    /// </summary>
+    public class handmadeData
+    {
+        const string createDevice = @"
+                CREATE TABLE [Device] (
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Edge"", Reference: ""Device""] [Devices] [varchar](max),
+                    [ColumnRole: ""Edge"", Reference: ""Link"" ] [STARTDEVICE] [varchar](max),
+                    [ColumnRole: ""Edge"", Reference: ""Link"" ] [ENDDEVICE] [varchar](max)
+                )";
+        const string createLink = @"
+                CREATE TABLE [Link] (
+                    [ColumnRole: ""NodeId""]
+                    [id] [int],
+                    [ColumnRole: ""Edge"", Reference: ""Device""]
+                    [Links] [varchar](max)
+                )";
+        public const int DeviceNum = 37;
+        public const int LinkNum = 37;
+
+        /// <summary>
+        /// Start generate data 
+        /// Database should be empty before run it
+        /// </summary>
+        /// <param name="con"></param>
+        public static void generateData( GraphView.GraphViewConnection con ) {
+            con.CreateNodeTable(createLink);
+            con.CreateNodeTable(createDevice);
+
+            for (int i = 0; i < LinkNum; ++i)
+            {
+                con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Link] (id) values ({0})", i));
+            }
+            for (int i = 0; i < DeviceNum; ++i)
+            {
+                con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Device] (id) values ({0})", i));
+            }
+
+
+            for (int i = 0; i < LinkNum; ++i)
+            {
+                int st = 2 * i % DeviceNum;
+                int ed = 3 * i % DeviceNum;
+
+                con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Device.Devices SELECT d1,d2 FROM Device as d1, Device as d2 WHERE d1.id = {0} and d2.id = {1}", st, ed));
+                con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Device.STARTDEVICE SELECT d1,L FROM Device as d1, Link as L WHERE d1.id = {0} and L.id = {1}", st, i));
+                con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Device.ENDDEVICE SELECT d2,L FROM Device as d2, Link as L WHERE d2.id = {0} and L.id = {1}", ed, i));
+                con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Link.Links SELECT L,d FROM Link as L, Device as d WHERE L.id = {0} and d.id = {1}", i, st));
+                con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Link.Links SELECT L,d FROM Link as L, Device as d WHERE L.id = {0} and d.id = {1}", i, ed));
+            }
+        }
+        /// <summary>
+        /// Check the Edges
+        /// </summary>
+        /// <param name="con"></param>
+        public static void validate(GraphView.GraphViewConnection con )
+        {
+            for (int i = 0; i < LinkNum; ++i)
+            {
+                var res = con.ExecuteReader(string.Format(@"SELECT device.id from Link, Device
+                                            MATCH Link-[Links]->Device WHERE Link.id = {0}", i));
+                try
+                {
+                    int cnt = 0;
+                    while (res.Read())
+                    {
+                        ++cnt;
+                        if (!res["id"].Equals(3 * i % DeviceNum) && !res["id"].Equals(2 * i % DeviceNum ))   //  Any Link #x could be linked to #2*x or #3*x device
+                            throw new Exception(string.Format("The Link {0} have wrong device Linked!",i));
+                    }
+                    if ( cnt != 2 )
+                        throw new Exception(string.Format("The Link {0} doesn't have 2 device Linked!",i));
+                }
+                finally
+                {
+                    res.Close();
+                }
+            }
+        }
+    }
     public interface IDistribution
     {
         int GetOutDegreeNum(double rdNum);

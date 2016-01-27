@@ -121,9 +121,9 @@ namespace GraphViewUnitTest
                     [WorkId] [varchar](32),
                     [ColumnRole: ""Property""]
                     [name] [varchar](32),
-                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {a: ""int"", b: ""double"", d:""int""}]
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode""]
                     [Clients] [varchar](max),
-                    [ColumnRole: ""Edge"", Reference: ""EmployeeNode"", Attributes: {a:""int"", c:""string"", d:""int"", e:""double""}]
+                    [ColumnRole: ""Edge"", Reference: ""EmployeeNode""]
                     [Colleagues] [varchar](max)
                 )";
                 graph.CreateNodeTable(createEmployeeStr);
@@ -378,6 +378,17 @@ namespace GraphViewUnitTest
             ClearDatabase();
             CreateGraphTable();
             GenerateRandomData();
+        }
+
+        public static void InitAndInsHandmadeData()
+        {
+            GraphViewConnection con = new GraphViewConnection(ConnectionString);
+
+            con.Open();
+            con.ClearData();
+            handmadeData.generateData(con);
+            handmadeData.validate(con);
+            con.Close();
         }
     }
 }
