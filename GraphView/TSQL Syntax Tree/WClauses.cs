@@ -110,14 +110,17 @@ namespace GraphView
 
             sb.AppendFormat("{0}WHERE ", indent);
 
-            if (SearchCondition.OneLine())
+            if (SearchCondition != null)
             {
-                sb.Append(SearchCondition.ToString(""));
-            }
-            else
-            {
-                sb.Append("\r\n");
-                sb.AppendFormat(CultureInfo.CurrentCulture, SearchCondition.ToString(indent + " "));
+                if (SearchCondition.OneLine())
+                {
+                    sb.Append(SearchCondition.ToString(""));
+                }
+                else
+                {
+                    sb.Append("\r\n");
+                    sb.AppendFormat(CultureInfo.CurrentCulture, SearchCondition.ToString(indent + " "));
+                }
             }
 
             if (GhostString!=null)

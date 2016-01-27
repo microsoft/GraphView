@@ -68,6 +68,14 @@ namespace GraphViewUnitTest
                     SELECT a as a, null, c, d
                     FROM EmployeeNode.Colleagues
                     ");
+                conn.CreateEdgeView(@"
+                    CREATE EDGE VIEW EmployeeNode.EV3 AS
+                    SELECT *
+                    FROM EmployeeNode.Clients
+                    UNION ALL
+                    SELECT *
+                    FROM EmployeeNode.Colleagues
+                    ");
 
                 conn.UpdateTableStatistics("dbo","NV1");
                 conn.UpdateTableStatistics("dbo", "EmployeeNode");

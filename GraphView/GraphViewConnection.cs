@@ -1378,5 +1378,124 @@ namespace GraphView
             }
         }
 
+        
+        public void UpgradeGraphViewFunction()
+        {
+            var tx = Conn.BeginTransaction();
+            using (var command = Conn.CreateCommand())
+            {
+                command.Transaction = tx;
+                command.CommandText = string.Format(@"
+                select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ec.AttributeName, ec.AttributeType,ntc.ColumnRole
+                from
+                {0} as nt
+                join
+                {1} as ntc
+                on ntc.TableId = nt.TableId
+                left join
+                {2} as ec
+                on ec.ColumnId = ntc.ColumnId
+                where ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2
+                order by ntc.TableId", MetadataTables[0], MetadataTables[1], MetadataTables[2]);
+                command.Parameters.AddWithValue("@role1", WNodeTableColumnRole.Edge);
+                command.Parameters.AddWithValue("@role2", WNodeTableColumnRole.NodeId);
+
+
+                string tableSchema=null;
+                string tableName=null;
+                string columnName = null;
+                Dictionary<long, Tuple<string, List<Tuple<string, string>>>> edgeDict =
+                    new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+                long tableId = -1;
+                Dictionary<long, Dictionary<long, Tuple<string,List<Tuple<string, string>>>>>
+                    tableColDict =
+                        new Dictionary
+                            <long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>();
+                Dictionary<long, Tuple<string, string, string>> tableInfoDict = new Dictionary<long, Tuple<string, string, string>>();   
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        long curTableId = (long) reader["TableId"];
+                        if (tableId == -1)
+                        {
+                            tableId = curTableId;
+                            tableSchema = reader["TableSchema"].ToString();
+                            tableName = reader["TableName"].ToString();
+                        }
+                        else if (curTableId != tableId)
+                        {
+
+                            tableColDict[tableId] = edgeDict;
+                            tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+                                columnName);
+                            tableSchema = reader["TableSchema"].ToString();
+                            tableName = reader["TableName"].ToString();
+                            columnName = null;
+                            edgeDict = new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+                            tableId = curTableId;
+                        }
+                        var role = (WNodeTableColumnRole) reader["ColumnRole"];
+                        if (role == WNodeTableColumnRole.NodeId)
+                        {
+                            columnName = reader["ColumnName"].ToString();
+                            //continue;
+                        }
+                        else if (role == WNodeTableColumnRole.Edge)
+                        {
+                            long colId = (long) reader["ColumnId"];
+                            if (!reader.IsDBNull(5) && !reader.IsDBNull(6))
+                            {
+                                Tuple<string, List<Tuple<string, string>>> tuple;
+                                if (edgeDict.TryGetValue(colId, out tuple))
+                                {
+                                    tuple.Item2.Add(new Tuple<string, string>(reader["AttributeName"].ToString(),
+                                        reader["AttributeType"].ToString().ToLower()));
+                                }
+                                else
+                                {
+                                    edgeDict[colId] =
+                                        new Tuple<string, List<Tuple<string, string>>>(reader["ColumnName"].ToString(),
+                                            new List<Tuple<string, string>>
+                                            {
+                                                new Tuple<string, string>(reader["AttributeName"].ToString(),
+                                                    reader["AttributeType"].ToString().ToLower())
+                                            });
+                                }
+                            }
+                            else
+                            {
+                                edgeDict[colId] =
+                                    new Tuple<string, List<Tuple<string, string>>>(reader["ColumnName"].ToString(),
+                                        new List<Tuple<string, string>>());
+                            }
+                        }
+                    }
+                    tableColDict[tableId] = edgeDict;
+                    tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+                        columnName);
+                }
+                //List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = new List<Tuple<string, long, List<Tuple<string, string>>>>();
+
+                foreach (var item in tableColDict)
+                {
+                    var edgeList = item.Value.Select(e => new Tuple<string, long, List<Tuple<string, string>>>(e.Value.Item1, e.Key, e.Value.Item2)).ToList();
+                    if (edgeList.Any())
+                    {
+                        var tableInfo = tableInfoDict[item.Key];
+                        var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
+                        GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
+                            tableInfo.Item3, Conn, tx);
+                    }
+
+                }
+            }
+            tx.Commit();
+
+              
+            //var assemblyName = tableSchema + '_' + tableName;
+            //GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableName, edgeDict, Conn, tx);
+               
+        }
     }
 }

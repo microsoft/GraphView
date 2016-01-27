@@ -543,7 +543,7 @@ namespace GraphView
                 var nodeViewPropertycolumnId = new List<Int64>();
                 string updateTableColumn =
                     string.Format(@"
-                    INSERT INTO {0} OUTPUT [Inserted].[ColumnId]
+                    INSERT INTO {0}(TableId,TableSchema,TableName,ColumnName,ColumnRole,Reference) OUTPUT [Inserted].[ColumnId]
                     VALUES (@tableId, @schema, @nodeviewname, @columnname, @columnrole, null)",
                         MetadataTables[1]);
                 command.Parameters.AddWithValue("tableId", nodeviewTableId);
@@ -1844,7 +1844,7 @@ namespace GraphView
             }
         }
 
-        private void updateGlobalNodeView(string schema = "dbo", SqlTransaction externalTransaction = null)
+        public void updateGlobalNodeView(string schema = "dbo", SqlTransaction externalTransaction = null)
         {
             SqlTransaction transaction = externalTransaction ?? Conn.BeginTransaction();
             var command = Conn.CreateCommand();

@@ -38,16 +38,27 @@ namespace GraphView
         private List<Tuple<string, string>> _edges;
         private List<string> _edgeAttribute;
         private List<Tuple<string, List<Tuple<string, string, string>>>> _attributeMapping;
+        private bool _defaultMerge;
+
         public void Invoke(string schema, WSelectQueryExpression selectStatement, out List<Tuple<string, string>> edges, out List<string> edgeAttribute, out List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping)
         {
+            _defaultMerge = false;
             _schema = schema;
             _edges = new List<Tuple<string, string>>();
             _edgeAttribute = new List<string>();
             _attributeMapping = new List<Tuple<string, List<Tuple<string, string, string>>>>();
             selectStatement.Accept(this);
             edges = _edges;
-            edgeAttribute = _edgeAttribute;
-            attributeMapping = _attributeMapping;
+            if (_defaultMerge)
+            {
+                edgeAttribute = null;
+                attributeMapping = null;
+            }
+            else
+            {
+                edgeAttribute = _edgeAttribute;
+                attributeMapping = _attributeMapping;
+            }
         }
 
         public override void Visit(WBinaryQueryExpression node)
@@ -78,8 +89,22 @@ namespace GraphView
             var tableRefName = tableRef.TableObjectName.SchemaIdentifier.Value;
             var edgeName = tableRef.TableObjectName.BaseIdentifier.Value;
             _edges.Add(new Tuple<string, string>(tableRefName, edgeName));
-            if (!_attributeMapping.Any())
+            if (_defaultMerge)
             {
+                if (expr.SelectElements.Count != 1)
+                    throw new NodeViewException(
+                        "Select element in each statement should be consistent to the first statement");
+                if (!(expr.SelectElements.First() is WSelectStarExpression))
+                    throw new NodeViewException(
+                        "Select element should be '*' for " + tableRefName + "." + edgeName);
+            }
+            else if (!_attributeMapping.Any())
+            {
+                if (expr.SelectElements.Count == 1 && expr.SelectElements.First() is WSelectStarExpression)
+                {
+                    _defaultMerge = true;
+                    return;
+                }
                 foreach (var selectElement in expr.SelectElements)
                 {
                     var scalarElement = selectElement as WSelectScalarExpression;
@@ -134,30 +159,30 @@ namespace GraphView
                     }
                 }
             }
-            expr.SelectElements.Add(new WSelectScalarExpression
-            {
-                SelectExpr =
-                    new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "Sink"})
-                    }
-            });
-            expr.SelectElements.Add(new WSelectScalarExpression
-            {
-                SelectExpr =
-                    new WColumnReferenceExpression
-                    {
-                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "Src" })
-                    }
-            });
-            expr.FromClause.TableReferences[0] = new WNamedTableReference
-            {
-                TableObjectName =
-                    new WSchemaObjectName(new Identifier
-                    {
-                        Value = string.Format("{0}_{1}_{2}_Sampling", schema, tableRefName, edgeName)
-                    })
-            };
+            //expr.SelectElements.Add(new WSelectScalarExpression
+            //{
+            //    SelectExpr =
+            //        new WColumnReferenceExpression
+            //        {
+            //            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "Sink"})
+            //        }
+            //});
+            //expr.SelectElements.Add(new WSelectScalarExpression
+            //{
+            //    SelectExpr =
+            //        new WColumnReferenceExpression
+            //        {
+            //            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "Src" })
+            //        }
+            //});
+            //expr.FromClause.TableReferences[0] = new WNamedTableReference
+            //{
+            //    TableObjectName =
+            //        new WSchemaObjectName(new Identifier
+            //        {
+            //            Value = string.Format("{0}_{1}_{2}_Sampling", schema, tableRefName, edgeName)
+            //        })
+            //};
         }
 
         public override void Visit(WSelectQueryBlock node)

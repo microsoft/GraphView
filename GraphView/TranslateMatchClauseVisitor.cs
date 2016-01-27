@@ -1385,6 +1385,8 @@ namespace GraphView
         {
             var componentStates = new List<MatchComponent>();
             var nodes = subGraph.Nodes;
+            int nodeCount = subGraph.IsTailNode.Count(e => !e.Value);
+            int edgeCount = subGraph.Edges.Count;
             MatchComponent finishedComponent = null;
 
             //Init
@@ -1394,12 +1396,12 @@ namespace GraphView
                 if (!subGraph.IsTailNode[node.Value])
                 {
                     // Enumerate on each edge for a node to generate the intial states
-                    var edgeCount = node.Value.Neighbors.Count;
-                    int eNum = (int) Math.Pow(2, edgeCount) - 1;
+                    var nodeEdgeCount = node.Value.Neighbors.Count;
+                    int eNum = (int) Math.Pow(2, nodeEdgeCount) - 1;
                     while (eNum > 0)
                     {
                         var nodeInitialEdges = new List<MatchEdge>();
-                        for (int i = 0; i < edgeCount; i++)
+                        for (int i = 0; i < nodeEdgeCount; i++)
                         {
                             int index = (1 << i);
                             if ((eNum & index) != 0)
@@ -1424,11 +1426,17 @@ namespace GraphView
                 foreach (var curComponent in componentStates)
                 {
                     var nodeUnits = GetNodeUnits(subGraph, curComponent);
-                    if (!nodeUnits.Any())
+                    if (!nodeUnits.Any()
+                        && curComponent.MaterializedNodeSplitCount.Count == nodeCount
+                        && curComponent.EdgeMaterilizedDict.Count == edgeCount
+                        //&& curComponent.EdgeMaterilizedDict.All(e=>e.Value)
+                        )
+                    //if (!nodeUnits.Any())
                     {
                         if (finishedComponent == null || curComponent.Cost < finishedComponent.Cost)
                         {
                             finishedComponent = curComponent;
+                            
                         }
                         continue;
                     }
@@ -1469,9 +1477,9 @@ namespace GraphView
                             }
                             else
                             {
-                                int edgeCount = newComponent.EdgeMaterilizedDict.Count;
-                                edgeCount = edgeCount == 0 ? 1 : edgeCount;
-                                if (newComponent.Cost/edgeCount < maxValue)
+                                int compEdgeCount = newComponent.EdgeMaterilizedDict.Count;
+                                compEdgeCount = compEdgeCount == 0 ? 1 : compEdgeCount;
+                                if (newComponent.Cost/compEdgeCount < maxValue)
                                 {
                                     nextCompnentStates[maxIndex] = newComponent;
                                     var tuple = GetMostExpensiveMatchComponent(nextCompnentStates);
@@ -1555,8 +1563,7 @@ namespace GraphView
                         });
                 }
 
-                // Updates from clause
-                node.FromClause.TableReferences.Add(component.TableRef);
+                
 
                 // Adds predicates for split nodes
                 var component1 = component;
@@ -1584,13 +1591,39 @@ namespace GraphView
                         nodeCount--;
                     }
                 }
-            }
-            if (newWhereString.Any())
-            {
-                node.WhereClause.SearchCondition = new WBooleanParenthesisExpression
+                // Cross apply the unmaterilized edges which point to the optimized tail nodes
+                Dictionary<MatchNode,MatchEdge> UnMatEdgeJoinDict = new Dictionary<MatchNode, MatchEdge>();
+                foreach (var unMatEdge in component.EdgeMaterilizedDict.Where(e => !e.Value).Select(e=>e.Key))
                 {
-                    Expression = node.WhereClause.SearchCondition
-                };
+                    component.TableRef = component.SpanTableRef(component.TableRef,
+                        unMatEdge, component.GetNodeRefName(unMatEdge.SourceNode));
+                    MatchEdge joinEdge;
+                    if (UnMatEdgeJoinDict.TryGetValue(unMatEdge.SinkNode, out joinEdge))
+                    {
+                        if (!string.IsNullOrEmpty(newWhereString))
+                            newWhereString += " AND ";
+                        newWhereString += string.Format("{0}.Sink = {1}.Sink", joinEdge.EdgeAlias, unMatEdge.EdgeAlias);
+                    }
+                    else
+                    {
+                        UnMatEdgeJoinDict[unMatEdge.SinkNode] = unMatEdge;
+                    }
+                }
+
+                // Updates from clause
+                node.FromClause.TableReferences.Add(component.TableRef);
+            }
+            if (!string.IsNullOrEmpty(newWhereString))
+            {
+                if (node.WhereClause!=null && node.WhereClause.SearchCondition!=null)
+                    node.WhereClause.SearchCondition = new WBooleanParenthesisExpression
+                    {
+                        Expression = node.WhereClause.SearchCondition
+                    };
+                else
+                {
+                    node.WhereClause = new WWhereClause();
+                }
                 node.WhereClause.GhostString = newWhereString;
             }
             
@@ -1677,6 +1710,7 @@ namespace GraphView
 #endif
 
                 }
+
 
                 UpdateQuery(node, components);
 
