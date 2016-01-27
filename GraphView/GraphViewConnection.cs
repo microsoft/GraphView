@@ -91,9 +91,9 @@ namespace GraphView
                 "_NodeViewCollection"
             };
 
-        private static readonly string Version = "VERSION";
+        private static readonly string VersionTable = "VERSION";
 
-        private static readonly string version = "1.01";
+        private static readonly string version = "1.10";
         internal const string GraphViewUdfAssemblyName = "GraphViewUDF";
 
         /// <summary>
@@ -289,7 +289,7 @@ namespace GraphView
                             [VERSION] [varchar](8) NOT NULL
                         )
                         INSERT INTO [{0}] VALUES({1})";
-                    command.CommandText = string.Format(createVersionTable, Version, version);
+                    command.CommandText = string.Format(createVersionTable, VersionTable, version);
                     command.ExecuteNonQuery();
                 }
                 const string assemblyName = GraphViewUdfAssemblyName;
@@ -447,7 +447,7 @@ namespace GraphView
 
                 //Drops Version table
                 const string dropVersionTable = @" DROP TABLE {0}";
-                command.CommandText = string.Format(dropVersionTable, Version);
+                command.CommandText = string.Format(dropVersionTable, VersionTable);
                 command.ExecuteNonQuery();
 
                 //Drops metaTable
@@ -1647,6 +1647,41 @@ namespace GraphView
                 }
                 throw new SqlExecutionException("An error occurred when upgrading the meta tables.", e);
             }
+        }
+
+        public void UpdateVersionNumber(SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tran;
+            if (externalTransaction == null)
+            {
+                tran = Conn.BeginTransaction();
+            }
+            else
+            {
+                tran = externalTransaction;
+            }
+            try
+            {
+                using (var command = Conn.CreateCommand())
+                {
+                    command.Transaction = tran;
+                    command.CommandText = string.Format("UPDATE {0} SET VERSION = {1}", VersionTable, version);
+                    command.ExecuteNonQuery();
+                }
+                if (externalTransaction == null)
+                {
+                    tran.Commit();
+                }
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                {
+                    tran.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when updateing the version table.", e);
+            }
+            
         }
     }
 }

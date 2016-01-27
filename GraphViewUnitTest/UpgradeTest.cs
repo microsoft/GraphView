@@ -37,30 +37,44 @@ namespace GraphViewUnitTest
                     var tables = conn.GetNodeTables(tx);
                     
                     #region Upgrade meta tables
+
                     conn.UpgradeMetaTableV100(tx);
                     Console.WriteLine("Upgrade Meta Table Done!");
+
                     #endregion
 
                     #region Upgrade functions
+
                     foreach (var table in tables)
                     {
                         conn.DropNodeTableFunctionV100(table.Item1,table.Item2,tx);
                     }
                     conn.UpgradeGraphViewFunctionV100(tx);
                     Console.WriteLine("Upgrade functions Done!");
+
                     #endregion
 
                     #region Upgrade global view
+
                     conn.updateGlobalNodeView("dbo", tx);
                     Console.WriteLine("Upgrade global view Done!");
+                    
                     #endregion
 
                     #region Upgrade table statistics
+
                     foreach (var table in tables)
                     {
-                        conn.UpdateTableStatistics(table.Item1, table.Item2,tx);
+                        conn.UpdateTableStatistics(table.Item1, table.Item2, tx);
                     }
                     Console.WriteLine("Upgrade table statistics Done!");
+
+                    #endregion
+
+                    #region Update version number
+
+                    conn.UpdateVersionNumber(tx);
+
                     #endregion
 
                     tx.Commit();
