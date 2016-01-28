@@ -22,10 +22,11 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void ValidateTest()
         {
-            TestInitialization.InitAndInsHandmadeData();
+            TestInitialization.InitValidataData();
             using (var con = new GraphView.GraphViewConnection(TestInitialization.ConnectionString))
             {
                 con.Open();
+                #region simple view test on [Device] and [Link]
                 con.CreateEdgeView(@"
                     CREATE EDGE VIEW Device.Links AS
                     SELECT *
@@ -34,10 +35,10 @@ namespace GraphViewUnitTest
                     SELECT *
                     FROM Device.ENDDEVICE
                     ");
-
-                for (int i = 0; i < handmadeData.DeviceNum; ++i)
+                System.Data.SqlClient.SqlDataReader res;
+                for (int i = 0; i < ValidataData.DeviceNum; ++i)
                 {
-                    var res = con.ExecuteReader(string.Format(@"SELECT Link.id from Link, Device
+                    res = con.ExecuteReader(string.Format(@"SELECT Link.id from Link, Device
                                             MATCH Device-[Links]->Link WHERE Device.id = {0}", i));
                     try
                     {
@@ -46,7 +47,7 @@ namespace GraphViewUnitTest
                         {
                             ++cnt;
                             int x = Convert.ToInt32(res["id"]);
-                            if (2*x % handmadeData.DeviceNum != i && 3*x % handmadeData.DeviceNum != i )   //  Any Link #x could be linked to #2*x or #3*x device
+                            if (2 * x % ValidataData.DeviceNum != i && 3 * x % ValidataData.DeviceNum != i)   //  Any Link #x could be linked to #2*x or #3*x device
                                 throw new Exception(string.Format("The Link {0} have wrong device Linked!", i));
                         }
                         if (cnt != 2)
@@ -57,6 +58,32 @@ namespace GraphViewUnitTest
                         res.Close();
                     }
                 }
+                #endregion
+
+                #region path test
+                res = con.ExecuteReader(@"SELECT path.*
+                    FROM Node as N1,Node as N2
+                    MATCH [N1]-[Edge*0..5 AS path]->[N2]
+                    WHERE N1.id = 0");
+                try
+                {
+                    int cnt = 0;
+                    while (res.Read())
+                    {
+                        ++cnt;
+                        //System.Console.WriteLine(res[0]);
+                        
+                        for (int i = 0; i < res.FieldCount; ++i)
+                        {
+                            System.Console.WriteLine(res.GetValue(i));
+                        }
+                    }
+                }
+                finally
+                {
+                    res.Close();
+                }
+                #endregion
             }
         }
 

@@ -477,6 +477,19 @@ namespace GraphViewUnitTest
             CreateGraphTableForPath();
             GenerateDataForPathTest();
         }
+        /// <summary>
+        /// Clear database, create table and generate specific data
+        /// </summary>
+        public static void InitValidataData()
+        {
+            GraphViewConnection con = new GraphViewConnection(ConnectionString);
+
+            con.Open();
+            con.ClearData();
+            ValidataData.generateData(con);
+            ValidataData.validate(con);
+            con.Close();
+        }
 
         public static void AddNewTableForPathTest()
         {

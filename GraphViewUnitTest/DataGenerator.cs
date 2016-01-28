@@ -12,10 +12,12 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphViewUnitTest
 {
     /// <summary>
-    /// Generate data, [Device] and [Link]
+    /// Generate specific data:
+    /// [Device] and [Link]
+    /// [Node] for some marginal tests
     /// Any Link [x] will be linked to [2*x] as startdevice or [3*x] as enddevice
     /// </summary>
-    public class handmadeData
+    public class ValidataData
     {
         const string createDevice = @"
                 CREATE TABLE [Device] (
@@ -31,6 +33,13 @@ namespace GraphViewUnitTest
                     [ColumnRole: ""Edge"", Reference: ""Device""]
                     [Links] [varchar](max)
                 )";
+        const string createNode = @"
+                CREATE TABLE [Node] (
+                    [ColumnRole: ""NodeId""]
+                    [id] [int],
+                    [ColumnRole: ""Edge"", Reference: ""Node""]
+                    [Edge] [varchar](max)
+                )";
         public const int DeviceNum = 37;
         public const int LinkNum = 37;
 
@@ -42,7 +51,9 @@ namespace GraphViewUnitTest
         public static void generateData( GraphView.GraphViewConnection con ) {
             con.CreateNodeTable(createLink);
             con.CreateNodeTable(createDevice);
+            con.CreateNodeTable(createNode);
 
+            #region Data for [Device] and [Link]
             for (int i = 0; i < LinkNum; ++i)
             {
                 con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Link] (id) values ({0})", i));
@@ -51,7 +62,6 @@ namespace GraphViewUnitTest
             {
                 con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Device] (id) values ({0})", i));
             }
-
 
             for (int i = 0; i < LinkNum; ++i)
             {
@@ -64,6 +74,18 @@ namespace GraphViewUnitTest
                 con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Link.Links SELECT L,d FROM Link as L, Device as d WHERE L.id = {0} and d.id = {1}", i, st));
                 con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Link.Links SELECT L,d FROM Link as L, Device as d WHERE L.id = {0} and d.id = {1}", i, ed));
             }
+            #endregion
+
+            #region Data for Node
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Node] (id) values ({0})", 0));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Node] (id) values ({0})", 1));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Node] (id) values ({0})", 2));
+
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Node.Edge SELECT n1,n2 FROM Node as n1, Node as n2 where n1.id = {0} and n2.id = {1}", 0, 0));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Node.Edge SELECT n1,n2 FROM Node as n1, Node as n2 where n1.id = {0} and n2.id = {1}", 0, 1));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Node.Edge SELECT n1,n2 FROM Node as n1, Node as n2 where n1.id = {0} and n2.id = {1}", 1, 2));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Node.Edge SELECT n1,n2 FROM Node as n1, Node as n2 where n1.id = {0} and n2.id = {1}", 2, 0));
+            #endregion
         }
         /// <summary>
         /// Check the Edges
