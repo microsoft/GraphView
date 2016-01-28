@@ -139,7 +139,7 @@ return
 with  allPath(sink, varPath, PathMessage) as (
 		select newpath.sink,  
 		CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-			convert(binary(8), reverse(convert(binary(8), 3))) + 
+			convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + 
 			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max)) as varPath,
 		dbo.<#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(@nodeType, @id, '<#=edgeName#>'
 			<#foreach (var it in variables) {#>
