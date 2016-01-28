@@ -1516,52 +1516,52 @@ namespace GraphView
             foreach (var component in components)
             {
                 // Adds down size predicates
-                foreach (var joinTableTuple in component.FatherListofDownSizeTable)
-                {
-                    var joinTable = joinTableTuple.Item1;
-                    var downSizeFunctionCall = new WFunctionCall
-                    {
-                        CallTarget = new WMultiPartIdentifierCallTarget
-                        {
-                            Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
-                        },
-                        FunctionName = new Identifier {Value = "DownSizeFunction"},
-                        Parameters = new List<WScalarExpression>
-                        {
-                            new WColumnReferenceExpression
-                            {
-                                MultiPartIdentifier = new WMultiPartIdentifier
-                                {
-                                    Identifiers = new List<Identifier>
-                                    {
-                                        new Identifier {Value = joinTableTuple.Item2},
-                                        new Identifier {Value = "LocalNodeid"}
-                                    }
-                                }
-                            }
-                        }
-                    };
-                    joinTable.JoinCondition = WBooleanBinaryExpression.Conjunction(joinTable.JoinCondition,
-                        new WBooleanParenthesisExpression
-                        {
-                            Expression = new WBooleanBinaryExpression
-                            {
-                                BooleanExpressionType = BooleanBinaryExpressionType.Or,
-                                FirstExpr = new WBooleanComparisonExpression
-                                {
-                                    ComparisonType = BooleanComparisonType.Equals,
-                                    FirstExpr = downSizeFunctionCall,
-                                    SecondExpr = new WValueExpression("1", false)
-                                },
-                                SecondExpr = new WBooleanComparisonExpression
-                                {
-                                    ComparisonType = BooleanComparisonType.Equals,
-                                    FirstExpr = downSizeFunctionCall,
-                                    SecondExpr = new WValueExpression("2", false)
-                                }
-                            }
-                        });
-                }
+                //foreach (var joinTableTuple in component.FatherListofDownSizeTable)
+                //{
+                //    var joinTable = joinTableTuple.Item1;
+                //    var downSizeFunctionCall = new WFunctionCall
+                //    {
+                //        CallTarget = new WMultiPartIdentifierCallTarget
+                //        {
+                //            Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
+                //        },
+                //        FunctionName = new Identifier {Value = "DownSizeFunction"},
+                //        Parameters = new List<WScalarExpression>
+                //        {
+                //            new WColumnReferenceExpression
+                //            {
+                //                MultiPartIdentifier = new WMultiPartIdentifier
+                //                {
+                //                    Identifiers = new List<Identifier>
+                //                    {
+                //                        new Identifier {Value = joinTableTuple.Item2},
+                //                        new Identifier {Value = "LocalNodeid"}
+                //                    }
+                //                }
+                //            }
+                //        }
+                //    };
+                //    joinTable.JoinCondition = WBooleanBinaryExpression.Conjunction(joinTable.JoinCondition,
+                //        new WBooleanParenthesisExpression
+                //        {
+                //            Expression = new WBooleanBinaryExpression
+                //            {
+                //                BooleanExpressionType = BooleanBinaryExpressionType.Or,
+                //                FirstExpr = new WBooleanComparisonExpression
+                //                {
+                //                    ComparisonType = BooleanComparisonType.Equals,
+                //                    FirstExpr = downSizeFunctionCall,
+                //                    SecondExpr = new WValueExpression("1", false)
+                //                },
+                //                SecondExpr = new WBooleanComparisonExpression
+                //                {
+                //                    ComparisonType = BooleanComparisonType.Equals,
+                //                    FirstExpr = downSizeFunctionCall,
+                //                    SecondExpr = new WValueExpression("2", false)
+                //                }
+                //            }
+                //        });
+                //}
 
                 
 

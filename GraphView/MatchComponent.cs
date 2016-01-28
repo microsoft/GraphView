@@ -84,13 +84,14 @@ namespace GraphView
         public double DeltaMemory { get; set; }
 
         // The parent of the rightest probe table in the join tree to do the adjustment. Tuple(Table Reference, Table Alias)
-        public Tuple<WQualifiedJoin, string> FatherOfRightestTableRef { get; set; }
+        //public Tuple<WQualifiedJoin, string> FatherOfRightestTableRef { get; set; }
+        public string RightestTableAlias { get; set; }
 
         // The size of the rightest probe table in the join
         public double RightestTableRefSize { get; set; }
 
         // The list of the tables which additional down size predicates should be applied. List of Tuple(Table Reference, Table Alias)
-        public List<Tuple<WQualifiedJoin, string>> FatherListofDownSizeTable { get; set; }
+        //public List<Tuple<WQualifiedJoin, string>> FatherListofDownSizeTable { get; set; }
 
         // Estimated number of rows returned by this component
         public double Cardinality { get; set; }
@@ -128,7 +129,7 @@ namespace GraphView
             SqlEstimatedTotalMemory = 0.0;
             SqlEstimatedSize = 1.0;
             RightestTableRefSize = 0.0;
-            FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>();
+            //FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>();
         }
 
         public MatchComponent(MatchNode node):this()
@@ -169,9 +170,10 @@ namespace GraphView
             SqlEstimatedDeltaMemory = component.SqlEstimatedDeltaMemory;
             SqlEstimatedTotalMemory = component.SqlEstimatedTotalMemory;
             SqlEstimatedSize = component.SqlEstimatedSize;
-            FatherOfRightestTableRef = component.FatherOfRightestTableRef;
+            RightestTableAlias = component.RightestTableAlias;
+            //FatherOfRightestTableRef = component.FatherOfRightestTableRef;
             RightestTableRefSize = component.RightestTableRefSize;
-            FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>(component.FatherListofDownSizeTable);
+            //FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>(component.FatherListofDownSizeTable);
             Context = component.Context;
             MetaData = component.MetaData;
         }
@@ -212,7 +214,9 @@ namespace GraphView
             double size,
             double estimatedSize,
             double shrinkSize,
-            Tuple<WQualifiedJoin,String> joinTableTuple)
+            string nodeAlias
+            //Tuple<WQualifiedJoin,String> joinTableTuple
+            )
         {
             const int sizeFactor = 10;
             int estimateFactor = 0;
@@ -233,8 +237,51 @@ namespace GraphView
                     component.SqlEstimatedSize /= shrinkSize;
                     estimatedSize /= shrinkSize;
                 }
-                component.FatherListofDownSizeTable.Add(joinTableTuple);
+                //component.FatherListofDownSizeTable.Add(joinTableTuple);
                 estimateFactor = (int) Math.Ceiling(size/estimatedSize);
+
+                var downSizeFunctionCall = new WFunctionCall
+                {
+                    CallTarget = new WMultiPartIdentifierCallTarget
+                    {
+                        Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
+                    },
+                    FunctionName = new Identifier {Value = "DownSizeFunction"},
+                    Parameters = new List<WScalarExpression>
+                    {
+                        new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier = new WMultiPartIdentifier
+                            {
+                                Identifiers = new List<Identifier>
+                                {
+                                    new Identifier {Value = nodeAlias},
+                                    new Identifier {Value = "LocalNodeid"}
+                                }
+                            }
+                        }
+                    }
+                };
+                joinTable.JoinCondition = WBooleanBinaryExpression.Conjunction(joinTable.JoinCondition,
+                    new WBooleanParenthesisExpression
+                    {
+                        Expression = new WBooleanBinaryExpression
+                        {
+                            BooleanExpressionType = BooleanBinaryExpressionType.Or,
+                            FirstExpr = new WBooleanComparisonExpression
+                            {
+                                ComparisonType = BooleanComparisonType.Equals,
+                                FirstExpr = downSizeFunctionCall,
+                                SecondExpr = new WValueExpression("1", false)
+                            },
+                            SecondExpr = new WBooleanComparisonExpression
+                            {
+                                ComparisonType = BooleanComparisonType.Equals,
+                                FirstExpr = downSizeFunctionCall,
+                                SecondExpr = new WValueExpression("2", false)
+                            }
+                        }
+                    });
             }
             if (estimateFactor > 1)
             {
@@ -363,7 +410,8 @@ namespace GraphView
                 if (firstJoin)
                 {
                     component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
-                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
+                    component.RightestTableAlias = component.GetNodeRefName(node);
+                    //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
                 }
                 component.TotalMemory = component.DeltaMemory;
                 component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory;
@@ -387,19 +435,21 @@ namespace GraphView
                         component.TotalMemory = component.DeltaMemory = nodeUnitSize;
                         component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory = estimatedNodeUnitSize;
                         component.RightestTableRefSize = nodeInComp.EstimatedRows;
-                        component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable,
-                            component.GetNodeRefName(nodeInComp));
+                        //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable,
+                        //    component.GetNodeRefName(nodeInComp));
+                        component.RightestTableAlias = component.GetNodeRefName(nodeInComp);
                         AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
-                            nodeUnitCandidate.TreeRoot.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node)));
+                            nodeUnitCandidate.TreeRoot.EstimatedRows, component.GetNodeRefName(node));
                     }
                     else
                     {
                         component.TotalMemory = component.DeltaMemory = componentSize;
                         component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory = component.SqlEstimatedSize;
                         component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
-                        component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
+                        //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
+                        component.RightestTableAlias = component.GetNodeRefName(node);
                         AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
-                            nodeInComp.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(nodeInComp)));
+                            nodeInComp.EstimatedRows, component.GetNodeRefName(nodeInComp));
                     }
                 }
                 // Left Deep
@@ -414,9 +464,10 @@ namespace GraphView
 
                     // Adjust estimation in sql server
                     AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
-                        component.RightestTableRefSize, component.FatherOfRightestTableRef);
-                    component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, string>(joinTable,
-                        component.GetNodeRefName(node));
+                        component.RightestTableRefSize, component.RightestTableAlias);
+                    //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, string>(joinTable,
+                    //    component.GetNodeRefName(node));
+                    component.RightestTableAlias = component.GetNodeRefName(node);
                     component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
 
                 }
@@ -427,7 +478,7 @@ namespace GraphView
                     joinTable.SecondTableRef = componentTable;
 
                     AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
-                        node.EstimatedRows, new Tuple<WQualifiedJoin, string>(joinTable, component.GetNodeRefName(node)));
+                        node.EstimatedRows, component.GetNodeRefName(node));
 
                     component.TotalMemory += nodeUnitSize;
                     component.DeltaMemory = component.TotalMemory;
