@@ -42,7 +42,6 @@ namespace GraphView
         public Statistics()
         {
             Histogram = new Dictionary<long, Tuple<double, bool>>();
-            Selectivity = 1.0;
         }
 
         /// <summary>
@@ -56,7 +55,6 @@ namespace GraphView
         public Dictionary<long, Tuple<double, bool>> Histogram;
         public Double RowCount;
         public Double Density;
-        public Double Selectivity;
         public long MaxValue;
 
 
@@ -67,8 +65,9 @@ namespace GraphView
         /// <param name="newStatistics"></param>
         /// <param name="currentJoin"></param>
         /// <returns></returns>
-        internal static Statistics UpdateHistogram(Statistics curStatistics, Statistics newStatistics)
+        internal static Statistics UpdateHistogram(Statistics curStatistics, Statistics newStatistics, out double joinSelectivity)
         {
+            joinSelectivity = 1.0;
             if (curStatistics == null)
                 return newStatistics;
             else if (newStatistics == null)
@@ -82,7 +81,6 @@ namespace GraphView
                 {
                     Density = newStatistics.Density,
                     Histogram = newHistogram,
-                    Selectivity = curStatistics.Selectivity * newStatistics.Selectivity,
                 };
             }
             if (!newHistogram.Any())
@@ -91,7 +89,6 @@ namespace GraphView
                 {
                     Density = curStatistics.Density,
                     Histogram = curHistogram,
-                    Selectivity = curStatistics.Selectivity * newStatistics.Selectivity,
                 };
             }
             var curNotPopularCount = 0.0;
@@ -208,13 +205,13 @@ namespace GraphView
                 }
             }
 
+            joinSelectivity = resRowCount/(curStatistics.RowCount*newStatistics.RowCount);
             return new Statistics
             {
                 Histogram = resHistogram,
                 Density = density < 0 ? Math.Max(curStatistics.Density, newStatistics.Density) : density,
                 MaxValue = Math.Max(curStatistics.MaxValue, newStatistics.MaxValue),
                 RowCount = resRowCount,
-                Selectivity = resRowCount / (curStatistics.RowCount * newStatistics.RowCount),
             };
         }
 
@@ -231,7 +228,6 @@ namespace GraphView
             var statistics = new Statistics
             {
                 RowCount = rowCount,
-                Selectivity = 1.0,
             };
             var height = (int)(rowCount / BucketNum);
             var popBucketCount = 0;

@@ -119,26 +119,33 @@ namespace GraphView
 
     internal interface IMatchJoinStatisticsCalculator
     {
-        Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
+        Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge,out double selectivity);
     }
 
     internal class HistogramCalculator : IMatchJoinStatisticsCalculator
     {
-        private readonly Dictionary<Tuple<string, string>, Statistics> _leafToLeafSelectivity;
+        private readonly Dictionary<Tuple<string, string>, Tuple<Statistics,double>> _leafToLeafStatistics;
+
 
         public HistogramCalculator()
         {
-            _leafToLeafSelectivity = new Dictionary<Tuple<string, string>, Statistics>(new MatchEdgeTupleEqualityComparer());
+            _leafToLeafStatistics =
+                new Dictionary<Tuple<string, string>, Tuple<Statistics, double>>(new MatchEdgeTupleEqualityComparer());
+
         }
-        public Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
+        public Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge, out double selectivity)
         {
             var edgeTuple = new Tuple<string, string>(nodeEdge.EdgeAlias, componentEdge.EdgeAlias);
+            Tuple<Statistics, double> edgeStatisticsTuple;
+            if (_leafToLeafStatistics.TryGetValue(edgeTuple, out edgeStatisticsTuple))
+            {
+                selectivity = edgeStatisticsTuple.Item2;
+                return edgeStatisticsTuple.Item1;
+            }
 
-            if (_leafToLeafSelectivity.ContainsKey(edgeTuple))
-                return _leafToLeafSelectivity[edgeTuple];
-
-            var mergedStatistics = Statistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics);
-            _leafToLeafSelectivity[edgeTuple] = mergedStatistics;
+            var mergedStatistics = Statistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics,
+                out selectivity);
+            _leafToLeafStatistics[edgeTuple] = new Tuple<Statistics, double>(mergedStatistics, selectivity);
             return mergedStatistics;
         }
 

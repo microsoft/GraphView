@@ -60,9 +60,6 @@ namespace GraphView
     {
         public HashSet<MatchNode> Nodes { get; set; }
         public Dictionary<MatchEdge, bool> EdgeMaterilizedDict { get; set; }  
-        //public List<MatchEdge> MaterializaedEdges { get; set; }
-        //public List<MatchEdge> UnmaterializedEdges { get; set; }
-
         // Stores the split count of a materialized node
         public Dictionary<MatchNode, int> MaterializedNodeSplitCount { get; set; }
 
@@ -83,15 +80,11 @@ namespace GraphView
         // the left-deep hash join or the loop join. 
         public double DeltaMemory { get; set; }
 
-        // The parent of the rightest probe table in the join tree to do the adjustment. Tuple(Table Reference, Table Alias)
-        //public Tuple<WQualifiedJoin, string> FatherOfRightestTableRef { get; set; }
+        // The alias of the rightest probe table in the join
         public string RightestTableAlias { get; set; }
 
         // The size of the rightest probe table in the join
         public double RightestTableRefSize { get; set; }
-
-        // The list of the tables which additional down size predicates should be applied. List of Tuple(Table Reference, Table Alias)
-        //public List<Tuple<WQualifiedJoin, string>> FatherListofDownSizeTable { get; set; }
 
         // Estimated number of rows returned by this component
         public double Cardinality { get; set; }
@@ -129,15 +122,13 @@ namespace GraphView
             SqlEstimatedTotalMemory = 0.0;
             SqlEstimatedSize = 1.0;
             RightestTableRefSize = 0.0;
-            //FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>();
         }
 
         public MatchComponent(MatchNode node):this()
         {
             Nodes.Add(node);
             MaterializedNodeSplitCount[node] = 0;
-            SinkNodeStatisticsDict[node] = new Statistics{Selectivity = 1.0/node.TableRowCount};
-
+            //SinkNodeStatisticsDict[node] = new Statistics ();
             Cardinality *= node.EstimatedRows;
             SqlEstimatedSize *= node.EstimatedRows;
             TableRef = new WNamedTableReference
@@ -171,9 +162,7 @@ namespace GraphView
             SqlEstimatedTotalMemory = component.SqlEstimatedTotalMemory;
             SqlEstimatedSize = component.SqlEstimatedSize;
             RightestTableAlias = component.RightestTableAlias;
-            //FatherOfRightestTableRef = component.FatherOfRightestTableRef;
             RightestTableRefSize = component.RightestTableRefSize;
-            //FatherListofDownSizeTable = new List<Tuple<WQualifiedJoin, String>>(component.FatherListofDownSizeTable);
             Context = component.Context;
             MetaData = component.MetaData;
         }
@@ -206,7 +195,7 @@ namespace GraphView
         /// <param name="size"></param>
         /// <param name="estimatedSize"></param>
         /// <param name="shrinkSize"></param>
-        /// <param name="joinTableTuple"></param>
+        /// <param name="nodeAlias"></param>
         private static void AdjustEstimation(
             MatchComponent component,
             WTableReference tablfRef,
@@ -215,7 +204,6 @@ namespace GraphView
             double estimatedSize,
             double shrinkSize,
             string nodeAlias
-            //Tuple<WQualifiedJoin,String> joinTableTuple
             )
         {
             const int sizeFactor = 10;
@@ -237,9 +225,9 @@ namespace GraphView
                     component.SqlEstimatedSize /= shrinkSize;
                     estimatedSize /= shrinkSize;
                 }
-                //component.FatherListofDownSizeTable.Add(joinTableTuple);
                 estimateFactor = (int) Math.Ceiling(size/estimatedSize);
 
+                // Add disjunctive DownSize predicates into the current join condition
                 var downSizeFunctionCall = new WFunctionCall
                 {
                     CallTarget = new WMultiPartIdentifierCallTarget
@@ -285,6 +273,7 @@ namespace GraphView
             }
             if (estimateFactor > 1)
             {
+                // Add UpSize table-valued function
                 WTableReference crossApplyTable = tablfRef;
                 int pow = (int) (Math.Floor(Math.Log(estimateFactor, 1000)) + 1);
                 int adjustValue = (int) Math.Pow(estimateFactor, 1.0/pow);
@@ -344,7 +333,6 @@ namespace GraphView
             var nodeUnitSize = nodeUnitCandidate.TreeRoot.EstimatedRows * nodeDegrees;
             var componentSize = component.Cardinality;
             var estimatedCompSize = component.SqlEstimatedSize;
-            //var cost = nodeUnitSize + componentSize;
             
             // Sets to leaf deep hash join by default
             WQualifiedJoin joinTable = new WQualifiedJoin
@@ -396,13 +384,16 @@ namespace GraphView
             double loopJoinOuterThreshold = 1e4;//1e6;
             double sizeFactor = 5;//1000;
             double maxMemory = 1e8;
+            double loopCost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
+            double hashCost = componentSize + nodeUnitSize;
             double cost;
 
             // Loop Join
             if (
                 nodeUnitCandidate.MaterializedEdges.Count == 0 && // the joins are purely leaf to sink join
                 (
-                    componentSize < loopJoinOuterThreshold ||     // the outer table is relatively small
+                    //componentSize < loopJoinOuterThreshold ||     // the outer table is relatively small
+                    loopCost < hashCost ||
                     (component.DeltaMemory + componentSize > maxMemory && component.DeltaMemory + nodeUnitSize > maxMemory) // memory is in pressure
                 ) 
                )
@@ -411,20 +402,19 @@ namespace GraphView
                 {
                     component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
                     component.RightestTableAlias = component.GetNodeRefName(node);
-                    //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
                 }
                 component.TotalMemory = component.DeltaMemory;
                 component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory;
                 joinTable.JoinHint = JoinHint.Loop;
                 component.SqlEstimatedSize = estimatedCompSize * estimatedNodeUnitSize /
                                          nodeUnitCandidate.TreeRoot.TableRowCount;
-                
-                cost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
+
+                cost = loopCost; //componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
             }
             // Hash Join
             else
             {
-                cost = componentSize + nodeUnitSize;
+                cost = hashCost;//componentSize + nodeUnitSize;
                 if (firstJoin)
                 {
                     var nodeInComp = component.MaterializedNodeSplitCount.Keys.First(e => e != node);
@@ -435,8 +425,6 @@ namespace GraphView
                         component.TotalMemory = component.DeltaMemory = nodeUnitSize;
                         component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory = estimatedNodeUnitSize;
                         component.RightestTableRefSize = nodeInComp.EstimatedRows;
-                        //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable,
-                        //    component.GetNodeRefName(nodeInComp));
                         component.RightestTableAlias = component.GetNodeRefName(nodeInComp);
                         AdjustEstimation(component, nodeTable, joinTable, nodeUnitSize, estimatedNodeUnitSize,
                             nodeUnitCandidate.TreeRoot.EstimatedRows, component.GetNodeRefName(node));
@@ -446,7 +434,6 @@ namespace GraphView
                         component.TotalMemory = component.DeltaMemory = componentSize;
                         component.SqlEstimatedTotalMemory = component.SqlEstimatedDeltaMemory = component.SqlEstimatedSize;
                         component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
-                        //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, String>(joinTable, component.GetNodeRefName(node));
                         component.RightestTableAlias = component.GetNodeRefName(node);
                         AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
                             nodeInComp.EstimatedRows, component.GetNodeRefName(nodeInComp));
@@ -465,8 +452,6 @@ namespace GraphView
                     // Adjust estimation in sql server
                     AdjustEstimation(component, componentTable, joinTable, componentSize, estimatedCompSize,
                         component.RightestTableRefSize, component.RightestTableAlias);
-                    //component.FatherOfRightestTableRef = new Tuple<WQualifiedJoin, string>(joinTable,
-                    //    component.GetNodeRefName(node));
                     component.RightestTableAlias = component.GetNodeRefName(node);
                     component.RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
 
@@ -496,7 +481,7 @@ namespace GraphView
             //    Trace.Write(item.Key.RefAlias + ",");
             //}
             //Trace.Write(node.RefAlias);
-            //Trace.Write(" Size:" + component.Size + " Cost:" + cost);
+            //Trace.Write(" Size:" + component.Cardinality + " Cost:" + cost);
             //Trace.Write(" Method:" + joinTable.JoinHint);
             //Trace.WriteLine(" --> Total Cost:" + component.Cost);
 #endif
@@ -510,174 +495,6 @@ namespace GraphView
                 Table = joinTable
             };
         }
-
-        /// <summary>
-        /// Generate the Table-Valued Function by the edge given the node alias
-        /// </summary>
-        /// <param name="edge"></param>
-        /// <param name="nodeAlias"></param>
-        /// <returns></returns>
-        //private WTableReference EdgeToTableReference(MatchEdge edge, string nodeAlias)
-        //{
-        //    var edgeIdentifiers = edge.EdgeColumn.MultiPartIdentifier.Identifiers;
-        //    var edgeColIdentifier = edgeIdentifiers.Last();
-        //    Identifier srcNodeIdentifier = new Identifier{Value = nodeAlias};
-            
-        //    List<WScalarExpression> parameters = new List<WScalarExpression>();
-        //    // The source is a physical node
-        //    if (!edge.SourceNode.IsView)
-        //    {
-        //        // The edge is a physical edge
-        //        if (!edge.IsView)
-        //        {
-        //            parameters.Add(new WColumnReferenceExpression
-        //            {
-        //                MultiPartIdentifier =
-        //                    new WMultiPartIdentifier(srcNodeIdentifier, edgeColIdentifier)
-        //            });
-        //            parameters.Add(new WColumnReferenceExpression
-        //            {
-        //                MultiPartIdentifier =
-        //                    new WMultiPartIdentifier(srcNodeIdentifier,
-        //                        new Identifier {Value = edgeColIdentifier.Value + "DeleteCol"})
-        //            });
-        //        }
-        //        // The edge is an edge view
-        //        else
-        //        {
-        //            foreach (var column in edge.IncludedEdgeNames)
-        //            {
-        //                Identifier includedEdgeColumnIdentifier = new Identifier{Value = column.Item2};
-        //                parameters.Add(new WColumnReferenceExpression
-        //                {
-        //                    MultiPartIdentifier =
-        //                        new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
-        //                });
-        //                parameters.Add(new WColumnReferenceExpression
-        //                {
-        //                    MultiPartIdentifier =
-        //                        new WMultiPartIdentifier(srcNodeIdentifier,
-        //                            new Identifier { Value = includedEdgeColumnIdentifier.Value + "DeleteCol" })
-        //                });
-        //            }
-        //        }
-        //    }
-        //    // The source is a node view
-        //    else
-        //    {
-        //        // The edge is a physical edge
-        //        if (!edge.IsView)
-        //        {
-        //            string srcTableName = edge.BindNodeTableObjName.BaseIdentifier.Value;
-        //            Identifier nodeViewEdgeColIdentifier = new Identifier
-        //            {
-        //                Value = srcTableName + "_" + edgeColIdentifier.Value
-        //            };
-        //            parameters.Add(new WColumnReferenceExpression
-        //            {
-        //                MultiPartIdentifier =
-        //                    new WMultiPartIdentifier(srcNodeIdentifier, nodeViewEdgeColIdentifier)
-        //            });
-        //            parameters.Add(new WColumnReferenceExpression
-        //            {
-        //                MultiPartIdentifier =
-        //                    new WMultiPartIdentifier(srcNodeIdentifier,
-        //                        new Identifier { Value = nodeViewEdgeColIdentifier.Value + "DeleteCol" })
-        //            });
-                    
-        //        }
-        //        // The edge is an edge view
-        //        else
-        //        {
-        //            foreach (var column in edge.IncludedEdgeNames)
-        //            {
-        //                if (edge.SourceNode.IncludedNodeNames.Contains(column.Item1))
-        //                {
-        //                    Identifier includedEdgeColumnIdentifier = new Identifier
-        //                    {
-        //                        Value = column.Item1 + "_" + column.Item2
-        //                    };
-        //                    parameters.Add(new WColumnReferenceExpression
-        //                    {
-        //                        MultiPartIdentifier =
-        //                            new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
-        //                    });
-        //                    parameters.Add(new WColumnReferenceExpression
-        //                    {
-        //                        MultiPartIdentifier =
-        //                            new WMultiPartIdentifier(srcNodeIdentifier,
-        //                                new Identifier {Value = includedEdgeColumnIdentifier.Value + "DeleteCol"})
-        //                    });
-        //                }
-        //                else
-        //                {
-        //                    parameters.Add(new WValueExpression{Value = "null"});
-        //                    parameters.Add(new WValueExpression {Value = "null"});
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    string decoderFunctionName;
-        //    if (edge.IsPath)
-        //    {
-        //        decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-        //                              edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
-        //                              edgeColIdentifier.Value + '_' +
-        //                              "bfs";
-        //        parameters.Insert(0,new WValueExpression { Value = edge.MaxLength.ToString() });
-        //        parameters.Insert(0,new WValueExpression { Value = edge.MinLength.ToString() });
-        //        parameters.Insert(0,
-        //            new WColumnReferenceExpression
-        //            {
-        //                MultiPartIdentifier =
-        //                    new WMultiPartIdentifier(new[] {srcNodeIdentifier, new Identifier {Value = "GlobalNodeId"},})
-        //            });
-                
-        //        var attributes =
-        //                MetaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(edge.BindNodeTableObjName)][
-        //                    edgeColIdentifier.Value.ToLower()].EdgeInfo.ColumnAttributes;
-        //        if (edge.AttributeValueDict == null)
-        //        {
-        //            WValueExpression nullExpression = new WValueExpression {Value = "null"};
-        //            for (int i = 0; i < attributes.Count; i++)
-        //                parameters.Add(nullExpression);
-        //        }
-        //        else
-        //        {
-        //            foreach (var attribute in attributes)
-        //            {
-        //                string value;
-        //                var valueExpression = new WValueExpression
-        //                {
-        //                    Value = edge.AttributeValueDict.TryGetValue(attribute, out value) ? value : "null"
-        //                };
-
-        //                parameters.Add(valueExpression);
-        //            }
-        //        }
-        //    }
-        //    else
-        //    {
-        //        decoderFunctionName = edge.BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-        //                              edge.BindNodeTableObjName.BaseIdentifier.Value + '_' +
-        //                              edgeColIdentifier.Value + '_' +
-        //                              "Decoder";
-        //    }
-        //    var decoderFunction = new Identifier {Value = decoderFunctionName};
-        //    var tableRef = new WSchemaObjectFunctionTableReference
-        //    {
-        //        SchemaObject = new WSchemaObjectName(
-        //            new Identifier { Value = "dbo" },
-        //            decoderFunction),
-        //        Parameters = parameters,
-        //        Alias = new Identifier
-        //        {
-        //            Value = edge.EdgeAlias,
-        //        }
-        //    };
-        //    return tableRef;
-        //}
 
         /// <summary>
         /// Span the table given the edge using cross apply
@@ -756,7 +573,6 @@ namespace GraphView
                 if (!Nodes.Contains(root))
                     newComponent.Nodes.Add(root);
                 newComponent.MaterializedNodeSplitCount[root] = 0;
-                newComponent.SinkNodeStatisticsDict[root] = new Statistics {Selectivity = 1.0/root.TableRowCount};
             }
 
             // Constructs table reference
@@ -837,9 +653,10 @@ namespace GraphView
                                 },
                                 ComparisonType = BooleanComparisonType.Equals
                             });
+                        double selectivity;
                         statistics = Statistics.UpdateHistogram(statistics,
-                            edge.Statistics);
-                        joinSelectivity *= statistics.Selectivity;
+                            edge.Statistics,out selectivity);
+                        joinSelectivity *= selectivity;
                         densityList.Add(root.GlobalNodeIdDensity);
                     }
                     newComponent.SinkNodeStatisticsDict[root] = statistics;
@@ -881,11 +698,17 @@ namespace GraphView
                             },
                             ComparisonType = BooleanComparisonType.Equals
                         });
-                    var statistics = Statistics.UpdateHistogram(newComponent.SinkNodeStatisticsDict[sinkNode],
-                        jointEdge.Statistics);
-                    joinSelectivity *= statistics.Selectivity;
+                    Statistics sinkNodeStatistics;
+                    if (!newComponent.SinkNodeStatisticsDict.TryGetValue(sinkNode, out sinkNodeStatistics))
+                    {
+                        sinkNodeStatistics = null;
+                        joinSelectivity *= 1.0/sinkNode.TableRowCount;
+                    }
+                    double selectivity;
+                    var statistics = Statistics.UpdateHistogram(sinkNodeStatistics,
+                        jointEdge.Statistics, out selectivity);
+                    joinSelectivity *= selectivity;
                     newComponent.SinkNodeStatisticsDict[sinkNode] = statistics;
-
                     densityList.Add(sinkNode.GlobalNodeIdDensity);
                 }
                 // Leaf to component unmaterialized node
@@ -921,10 +744,10 @@ namespace GraphView
                             });
 
                         densityList.Add(Statistics.DefaultDensity);
-
+                        double selectivity;
                         var statistics = Statistics.UpdateHistogram(newComponent.SinkNodeStatisticsDict[sinkNode],
-                            jointEdge.Statistics);
-                        joinSelectivity *= statistics.Selectivity;
+                            jointEdge.Statistics,out selectivity);
+                        joinSelectivity *= selectivity;
                         newComponent.SinkNodeStatisticsDict[sinkNode] = statistics;
                     }
                     // Leaf to unmaterialized leaf
@@ -959,11 +782,13 @@ namespace GraphView
 
                             densityList.Add(Statistics.DefaultDensity);
 
-                            var leafToLeafStatistics = statisticsCalculator.GetLeafToLeafStatistics(jointEdge, inEdge);
-                            joinSelectivity *= leafToLeafStatistics.Selectivity;
+                            double selectivity;
+                            var leafToLeafStatistics = statisticsCalculator.GetLeafToLeafStatistics(jointEdge, inEdge,
+                                out selectivity);
+                            joinSelectivity *= selectivity;
                             compSinkNodeStatistics =
                                 Statistics.UpdateHistogram(compSinkNodeStatistics,
-                                    inEdge.Statistics);
+                                    inEdge.Statistics,out selectivity);
                         }
                         newComponent.SinkNodeStatisticsDict[sinkNode] = compSinkNodeStatistics;
                     }

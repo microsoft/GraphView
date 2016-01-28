@@ -1193,7 +1193,7 @@ namespace GraphView
                                 Histogram = new Dictionary<long, Tuple<double, bool>>(),
                                 MaxValue = 0,
                                 RowCount = 0,
-                                Selectivity = 1.0
+                                //Selectivity = 1.0
                             };
                             continue;
                         }
