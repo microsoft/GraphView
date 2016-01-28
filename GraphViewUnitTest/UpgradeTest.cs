@@ -25,7 +25,7 @@ namespace GraphViewUnitTest
 
         
 
-        [TestMethod]
+        //[TestMethod]
         public void UpgradeFromV100Test()
         {
             using (var conn = new GraphViewConnection(getConnectionString()))
@@ -82,14 +82,14 @@ namespace GraphViewUnitTest
                 catch (Exception e)
                 {
                     tx.Rollback();
-                    throw;
+                    throw new Exception(e.Message);
                 }
                 
 
             }
         }
 
-        [TestMethod]
+        //[TestMethod]
         public void UpgradeSelectTest()
         {
             using (var conn = new GraphViewConnection(getConnectionString()))

@@ -115,7 +115,6 @@ namespace GraphView
 
             int line = tokens[currentToken].Line;
             nextToken = currentToken;
-            string edgeInfo;
             string alias = null;
             int maxLen = 1;
             int minLen = 1;

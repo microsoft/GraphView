@@ -236,14 +236,15 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void bfsPathFunctionTest()
+        public void bfsPath_ResultTest()
         {
             TestInitialization.InitPathTest();
             using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 graph.Open();
                 var command = new GraphViewCommand(null,graph);
-
+                
+                #region test path on ordinary edge
                 //Run following SQL query can get 8 paths:
                 int cnt = 0;
                 string query = @"
@@ -260,8 +261,9 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt!=8) Assert.Fail(cnt.ToString());
+                #endregion
 
-                //Show Path on Base node table and ordinary edge.
+                #region Show Path on Base node table and ordinary edge.
                 cnt = 0;
                 query = @"
                 select dbo.dbo_ClientNode_Colleagues_PathMessageDecoder(PathMessage, 'ClientNode', c.ClientId)
@@ -279,8 +281,9 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt!=8) Assert.Fail(cnt.ToString());
+                #endregion
 
-                //Show Path on Edge view of employeenode.colleagues and clientnode.colleagues by global node view.
+                #region Show Path on Edge view of employeenode.colleagues and clientnode.colleagues by global node view.
                 //Run following SQL query can get 8 paths:
                 const string edgeViewShowPath = @"
                 select dbo.dbo_GlobalNodeView_colleagues_PathMessageDecoder(PathMessage, c._NodeType, c._NodeId)
@@ -303,10 +306,12 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt != 8) Assert.Fail(cnt.ToString());
+                #endregion
+
                 //graph.DropNodeTable(@"drop table clientnode");
 
+                #region  Show Path on Edge view of employeenode.colleagues,clientnode.colleagues and usernode.colleagues by global node view.
                 TestInitialization.AddNewTableForPathTest();
-                //Show Path on Edge view of employeenode.colleagues,clientnode.colleagues and usernode.colleagues by global node view.
                 //Run following SQL query can get 8 paths:
                 const string edgeViewShowPath2 = @"
                 select dbo.dbo_GlobalNodeView_colleagues_PathMessageDecoder(PathMessage, c._NodeType, c._NodeId)
@@ -330,16 +335,137 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt != 9) Assert.Fail(cnt.ToString());
+                #endregion
             }
         }
 
         [TestMethod]
-        public void bfsPathParseTest()
+        public void bfsPath_ViewWithoutproperty_Parse_ResultTest()
         {
             TestInitialization.InitPathTest();
             using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 graph.Open();
+                
+                //Creates node view without property
+                graph.CreateNodeView(@"
+                    CREATE NODE VIEW NodeView AS
+                    SELECT null
+                    FROM EmployeeNode
+                    UNION ALL
+                    SELECT null
+                    FROM ClientNode");
+
+                //Creates empty-attribute edge view
+                graph.CreateEdgeView(@"
+                    CREATE EDGE VIEW Nodeview.EdgeView AS
+                    SELECT null
+                    FROM EmployeeNode.Colleagues
+                    UNION ALL
+                    SELECT null 
+                    FROM ClientNode.Colleagues");
+
+                //Get result of the path (in output)
+                var command = graph.CreateCommand();
+                command.CommandText = @"
+                select path.*
+				from nodeView as c1, clientNode as c2
+				match c1-[edgeView* as path]->c2
+                where c1._NodeId= '10'";
+                int cnt = 0;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                        for (int i = 0; i < reader.FieldCount; ++i)
+                        {
+                            Console.WriteLine(reader.GetValue(i));
+                        }
+                    }
+                }
+                if (cnt != 7) Assert.Fail(cnt.ToString());
+            }
+        }
+
+        [TestMethod]
+        public void bfsPath_ByDefaultView_Parse_ResultTest()
+        {
+            TestInitialization.InitPathTest();
+            using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                graph.Open();
+                TestInitialization.AddNewTableForPathTest(); 
+                //Creates node view without property
+                graph.CreateNodeView(@"
+                    CREATE NODE VIEW NodeView AS
+                    SELECT *
+                    FROM EmployeeNode
+                    UNION ALL
+                    SELECT *
+                    FROM ClientNode
+                    UNION ALL
+                    SELECT *
+                    FROM UserNode");
+
+                //Get result of the path (in output) by-defualt edge
+                var command = graph.CreateCommand();
+                command.CommandText = @"
+                select path.*
+				from nodeView as c1, clientNode as c2
+				match c1-[colleagues* as path]->c2
+                where c1._NodeId= 20";
+                int cnt = 0;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                        for (int i = 0; i < reader.FieldCount; ++i)
+                        {
+                            Console.WriteLine(reader.GetValue(i));
+                        }
+                    }
+                }
+                if (cnt != 7) Assert.Fail(cnt.ToString());
+
+                //Get result of the path (in output)
+                graph.CreateEdgeView(@"
+                    CREATE Edge VIEW nodeview.edgeview AS
+                    SELECT *
+                    FROM EmployeeNode.colleagues
+                    UNION ALL
+                    SELECT *
+                    FROM ClientNode.colleagues");
+                command.CommandText = @"
+                select path.*
+				from nodeView as c1, globalnodeview as c2
+				match c1-[edgeView* as path]->c2
+                where c1._NodeId= 10";
+                cnt = 0;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                        for (int i = 0; i < reader.FieldCount; ++i)
+                        {
+                            Console.WriteLine(reader.GetValue(i));
+                        }
+                    }
+                }
+                if (cnt != 8) Assert.Fail(cnt.ToString());
+            }
+        }
+
+        [TestMethod]
+        public void bfsPath_Parse_ResultTest()
+        {
+            TestInitialization.InitPathTest();
+            using (var graph = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                graph.Open();
+                #region show path on ordinary edge
                 var command = new GraphViewCommand(null,graph);
                 int cnt;
                 //Show Path in GV
@@ -356,7 +482,9 @@ namespace GraphViewUnitTest
                         Trace.WriteLine(reader[0]);
                     }
                 }
-
+                #endregion
+    
+                #region path on orinary edge
                 // Run following GraphView query can get 8 paths:
                 cnt = 0;
                 gvQuery = @"
@@ -373,7 +501,9 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt != 8) Assert.Fail(cnt.ToString());
+                #endregion
 
+                #region path on global node view and by-default edge view
                 //test global node view
                 cnt = 0;
                 var globalnodeviewQuery = @"
@@ -390,7 +520,9 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt != 8) Assert.Fail(cnt.ToString());
+                #endregion
 
+                #region show path on global node view and by-default edge view
                 //test global node view
                 TestInitialization.AddNewTableForPathTest();
                 cnt = 0;
@@ -408,24 +540,9 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt != 9) Assert.Fail(cnt.ToString());
+                #endregion
 
-                ////
-                //graph.CreateNodeView(@"
-                //    CREATE NODE VIEW NodeView AS
-                //    SELECT null
-                //    FROM EmployeeNode
-                //    UNION ALL
-                //    SELECT null
-                //    FROM ClientNode");
-                ////test Empty-attribute edge view path
-                //graph.CreateEdgeView(@"
-                //CREATE EDGE VIEW NV1.EV1 AS
-                //SELECT null
-                //FROM EmployeeNode.Colleagues
-                //UNION ALL
-                //SELECT null 
-                //FROM ClientNode.Colleagues");
-
+                #region delete edge and test again
                 const string deleteEdge = @"
                     DELETE EDGE [Cn1]-[Colleagues]->[Cn2]
                     FROM ClientNode  Cn1, ClientNode Cn2
@@ -444,6 +561,7 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt != 3) Assert.Fail(cnt.ToString());
+                #endregion
             }
         }
 

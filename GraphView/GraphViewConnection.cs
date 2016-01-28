@@ -1126,7 +1126,7 @@ namespace GraphView
             {
                 if (externalTransaction == null)
                     tx.Rollback();
-                throw;
+                throw new Exception(e.Message);
             }
 
         }
@@ -1156,7 +1156,7 @@ namespace GraphView
             {
                 if (externalTransaction == null)
                     tx.Rollback();
-                throw;
+                throw new Exception(e.Message);
             }
 
         }
