@@ -188,14 +188,17 @@ foreach (var it in variables) {
             
             #line default
             #line hidden
-            this.Write(@")
-returns table
-as 
-return 
-with  allPath(sink, varPath) as (
-		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-		convert(binary(8), reverse(convert(binary(8), 3))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
-		from ");
+            this.Write(")\r\nreturns table\r\nas \r\nreturn \r\nwith  allPath(sink, varPath) as (\r\n\t\tselect newpa" +
+                    "th.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + \r\n\t\tco" +
+                    "nvert(binary(8), reverse(convert(binary(8), ");
+            
+            #line 73 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
+            
+            #line default
+            #line hidden
+            this.Write("))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(" +
+                    "max))\r\n\t\tfrom ");
             
             #line 74 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));

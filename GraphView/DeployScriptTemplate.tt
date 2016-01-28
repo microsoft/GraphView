@@ -70,7 +70,7 @@ as
 return 
 with  allPath(sink, varPath) as (
 		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-		convert(binary(8), reverse(convert(binary(8), 3))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
+		convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
 		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in variables) {
