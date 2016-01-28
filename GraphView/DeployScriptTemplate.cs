@@ -407,16 +407,17 @@ foreach (var it in variables) {
             
             #line default
             #line hidden
-            this.Write(@")
-returns table
-as 
-return 
-with  allPath(sink, varPath, PathMessage) as (
-		select newpath.sink,  
-		CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-			convert(binary(8), reverse(convert(binary(8), 3))) + 
-			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max)) as varPath,
-		dbo.");
+            this.Write(")\r\nreturns table\r\nas \r\nreturn \r\nwith  allPath(sink, varPath, PathMessage) as (\r\n\t" +
+                    "\tselect newpath.sink,  \r\n\t\tCAST(convert(binary(8), reverse(convert(binary(8), @s" +
+                    "ource))) + \r\n\t\t\tconvert(binary(8), reverse(convert(binary(8), ");
+            
+            #line 142 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
+            
+            #line default
+            #line hidden
+            this.Write("))) + \r\n\t\t\tconvert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbi" +
+                    "nary(max)) as varPath,\r\n\t\tdbo.");
             
             #line 144 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
