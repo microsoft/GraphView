@@ -1397,7 +1397,7 @@ namespace GraphView
                                 nodeInitialEdges.Add(node.Value.Neighbors[i]);
                             }
                         }
-                        componentStates.Add(new MatchComponent(node.Value, nodeInitialEdges, _context, _graphMetaData));
+                        componentStates.Add(new MatchComponent(node.Value, nodeInitialEdges, _graphMetaData));
                         eNum--;
                     }
                 }
@@ -1452,7 +1452,7 @@ namespace GraphView
                             }
                         }
 
-                        var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator);
+                        var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator,_graphMetaData);
                         if (nextCompnentStates.Count >= MaxStates)
                         {
                             if (maxIndex < 0)
@@ -1501,56 +1501,6 @@ namespace GraphView
             string newWhereString = "";
             foreach (var component in components)
             {
-                // Adds down size predicates
-                //foreach (var joinTableTuple in component.FatherListofDownSizeTable)
-                //{
-                //    var joinTable = joinTableTuple.Item1;
-                //    var downSizeFunctionCall = new WFunctionCall
-                //    {
-                //        CallTarget = new WMultiPartIdentifierCallTarget
-                //        {
-                //            Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
-                //        },
-                //        FunctionName = new Identifier {Value = "DownSizeFunction"},
-                //        Parameters = new List<WScalarExpression>
-                //        {
-                //            new WColumnReferenceExpression
-                //            {
-                //                MultiPartIdentifier = new WMultiPartIdentifier
-                //                {
-                //                    Identifiers = new List<Identifier>
-                //                    {
-                //                        new Identifier {Value = joinTableTuple.Item2},
-                //                        new Identifier {Value = "LocalNodeid"}
-                //                    }
-                //                }
-                //            }
-                //        }
-                //    };
-                //    joinTable.JoinCondition = WBooleanBinaryExpression.Conjunction(joinTable.JoinCondition,
-                //        new WBooleanParenthesisExpression
-                //        {
-                //            Expression = new WBooleanBinaryExpression
-                //            {
-                //                BooleanExpressionType = BooleanBinaryExpressionType.Or,
-                //                FirstExpr = new WBooleanComparisonExpression
-                //                {
-                //                    ComparisonType = BooleanComparisonType.Equals,
-                //                    FirstExpr = downSizeFunctionCall,
-                //                    SecondExpr = new WValueExpression("1", false)
-                //                },
-                //                SecondExpr = new WBooleanComparisonExpression
-                //                {
-                //                    ComparisonType = BooleanComparisonType.Equals,
-                //                    FirstExpr = downSizeFunctionCall,
-                //                    SecondExpr = new WValueExpression("2", false)
-                //                }
-                //            }
-                //        });
-                //}
-
-                
-
                 // Adds predicates for split nodes
                 var component1 = component;
                 foreach (
@@ -1577,12 +1527,13 @@ namespace GraphView
                         nodeCount--;
                     }
                 }
+
                 // Cross apply the unmaterilized edges which point to the optimized tail nodes
                 Dictionary<MatchNode,MatchEdge> UnMatEdgeJoinDict = new Dictionary<MatchNode, MatchEdge>();
                 foreach (var unMatEdge in component.EdgeMaterilizedDict.Where(e => !e.Value).Select(e=>e.Key))
                 {
                     component.TableRef = component.SpanTableRef(component.TableRef,
-                        unMatEdge, component.GetNodeRefName(unMatEdge.SourceNode));
+                        unMatEdge, component.GetNodeRefName(unMatEdge.SourceNode),_graphMetaData);
                     MatchEdge joinEdge;
                     if (UnMatEdgeJoinDict.TryGetValue(unMatEdge.SinkNode, out joinEdge))
                     {
@@ -1599,6 +1550,7 @@ namespace GraphView
                 // Updates from clause
                 node.FromClause.TableReferences.Add(component.TableRef);
             }
+
             if (!string.IsNullOrEmpty(newWhereString))
             {
                 if (node.WhereClause!=null && node.WhereClause.SearchCondition!=null)

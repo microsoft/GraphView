@@ -152,7 +152,6 @@ namespace GraphView
         public double SqlEstimatedSize { get; set; }
         public double Cost { get; set; }
         public WTableReference TableRef { get; set; }
-        public GraphMetaData MetaData { get; set; }
 
         
         public MatchComponent()
@@ -211,15 +210,13 @@ namespace GraphView
             SqlEstimatedSize = component.SqlEstimatedSize;
             RightestTableAlias = component.RightestTableAlias;
             RightestTableRefSize = component.RightestTableRefSize;
-            MetaData = component.MetaData;
         }
 
-        public MatchComponent(MatchNode node, List<MatchEdge> populatedEdges, WSqlTableContext context, GraphMetaData metaData) : this(node)
+        public MatchComponent(MatchNode node, List<MatchEdge> populatedEdges,GraphMetaData metaData) : this(node)
         {
-            MetaData = metaData;
             foreach (var edge in populatedEdges)
             {
-                TableRef = SpanTableRef(TableRef, edge, node.RefAlias);
+                TableRef = SpanTableRef(TableRef, edge, node.RefAlias, metaData);
                 EdgeMaterilizedDict[edge] = true;
                 SinkNodeStatisticsDict[edge.SinkNode] = edge.Statistics;
                 var edgeList = UnmaterializedNodeMapping.GetOrCreate(edge.SinkNode);
@@ -410,7 +407,8 @@ namespace GraphView
             CandidateJoinUnit nodeUnitCandidate,
             WBooleanExpression joinCondition,
             double joinSelectivity,
-            double estimatedSelectivity)
+            double estimatedSelectivity,
+            GraphMetaData metaData)
         {
             var nodeDegrees = nodeUnitCandidate.EdgeDegrees;
             var nodeUnitSize = nodeUnitCandidate.TreeRoot.EstimatedRows * nodeDegrees;
@@ -489,7 +487,7 @@ namespace GraphView
                     {
                         FirstTableRef = TableRef,
                         SecondTableRef =
-                            nodeUnitCandidate.ToTableReference(GetNodeRefName(nodeUnitCandidate.TreeRoot), MetaData),
+                            nodeUnitCandidate.ToTableReference(GetNodeRefName(nodeUnitCandidate.TreeRoot), metaData),
                         JoinCondition = joinCondition,
                         QualifiedJoinType = QualifiedJoinType.Inner,
                         JoinHint = JoinHint.Loop
@@ -509,7 +507,7 @@ namespace GraphView
                     var nodeInComp = MaterializedNodeSplitCount.Keys.First(e => e != node);
                     if (nodeUnitSize < componentSize)
                     {
-                        buildTableReference = AdjustEstimation(nodeUnitCandidate, GetNodeRefName(node), MetaData, out adjustedJoincondition,
+                        buildTableReference = AdjustEstimation(nodeUnitCandidate, GetNodeRefName(node), metaData, out adjustedJoincondition,
                             out adjustedSqlEstimatedSize);
                         probeTableReference = TableRef;
                         TotalMemory = DeltaMemory = nodeUnitSize;
@@ -524,7 +522,7 @@ namespace GraphView
                         RightestTableAlias = GetNodeRefName(nodeInComp);
                         buildTableReference = AdjustEstimation(this, out adjustedJoincondition, out adjustedSqlEstimatedSize);
                         probeTableReference =
-                            nodeUnitCandidate.ToTableReference(GetNodeRefName(nodeUnitCandidate.TreeRoot), MetaData);
+                            nodeUnitCandidate.ToTableReference(GetNodeRefName(nodeUnitCandidate.TreeRoot), metaData);
                         TotalMemory = DeltaMemory = componentSize;
                         SqlEstimatedTotalMemory = SqlEstimatedDeltaMemory = SqlEstimatedSize;
                         RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
@@ -537,7 +535,7 @@ namespace GraphView
                     // Adjust estimation in sql server
                     buildTableReference = AdjustEstimation(this, out adjustedJoincondition, out adjustedSqlEstimatedSize);
                     probeTableReference =
-                           nodeUnitCandidate.ToTableReference(GetNodeRefName(nodeUnitCandidate.TreeRoot), MetaData);
+                           nodeUnitCandidate.ToTableReference(GetNodeRefName(nodeUnitCandidate.TreeRoot), metaData);
                     var curDeltaMemory = componentSize;
                     TotalMemory = DeltaMemory + curDeltaMemory;
                     DeltaMemory = curDeltaMemory;
@@ -553,7 +551,7 @@ namespace GraphView
                 // Right Deep
                 else
                 {
-                    buildTableReference = AdjustEstimation(nodeUnitCandidate, GetNodeRefName(node), MetaData, out adjustedJoincondition,
+                    buildTableReference = AdjustEstimation(nodeUnitCandidate, GetNodeRefName(node), metaData, out adjustedJoincondition,
                            out adjustedSqlEstimatedSize);
                     probeTableReference = TableRef;
 
@@ -607,12 +605,12 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="nodeAlias"></param>
         /// <returns></returns>
-        public WTableReference SpanTableRef(WTableReference tableRef, MatchEdge edge, string nodeAlias)
+        public WTableReference SpanTableRef(WTableReference tableRef, MatchEdge edge, string nodeAlias, GraphMetaData metaData)
         {
             tableRef = new WUnqualifiedJoin
             {
                 FirstTableRef = tableRef,
-                SecondTableRef = edge.ToSchemaObjectFunction(nodeAlias,MetaData),
+                SecondTableRef = edge.ToSchemaObjectFunction(nodeAlias, metaData),
                 UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
             };
             return tableRef;
@@ -629,7 +627,8 @@ namespace GraphView
 
         private WBooleanExpression ConstructJoinCondition(
             CandidateJoinUnit candidateTree,
-            IMatchJoinStatisticsCalculator statisticsCalculator, 
+            IMatchJoinStatisticsCalculator statisticsCalculator,
+            GraphMetaData metaData,
             out double joinSelectivity, 
             out double sqlEstimatedJoinSelectivity)
         {
@@ -720,7 +719,7 @@ namespace GraphView
                     foreach (var edge in inEdges)
                     {
                         // Update component table
-                        TableRef = SpanTableRef(TableRef, edge, GetNodeRefName(edge.SourceNode));
+                        TableRef = SpanTableRef(TableRef, edge, GetNodeRefName(edge.SourceNode),metaData);
 
                         EdgeMaterilizedDict[edge] = true;
                         joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition,
@@ -845,7 +844,7 @@ namespace GraphView
                         Statistics compSinkNodeStatistics = null;
                         foreach (var inEdge in inEdges)
                         {
-                            TableRef = SpanTableRef(TableRef, inEdge, GetNodeRefName(inEdge.SourceNode));
+                            TableRef = SpanTableRef(TableRef, inEdge, GetNodeRefName(inEdge.SourceNode),metaData);
                             EdgeMaterilizedDict[inEdge] = true;
                             joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition,
                             new WBooleanComparisonExpression
@@ -914,7 +913,8 @@ namespace GraphView
         /// <returns></returns>
         public MatchComponent GetNextState(
             CandidateJoinUnit candidateTree, 
-            IMatchJoinStatisticsCalculator statisticsCalculator)
+            IMatchJoinStatisticsCalculator statisticsCalculator,
+            GraphMetaData metaData)
         {
             // Deep copy the component
             var newComponent = new MatchComponent(this);
@@ -922,12 +922,12 @@ namespace GraphView
             // Constrcuts join conditions and retrieves join selectivity
             double joinSelectivity;
             double sqlEstimatedJoinSelectivity;
-            var joinCondition = newComponent.ConstructJoinCondition(candidateTree, statisticsCalculator, out joinSelectivity,
+            var joinCondition = newComponent.ConstructJoinCondition(candidateTree, statisticsCalculator,metaData, out joinSelectivity,
                 out sqlEstimatedJoinSelectivity);
 
             // Constructs physical join method and join table references
             newComponent.ConstructPhysicalJoinAndUpdateCost(candidateTree, joinCondition,
-               joinSelectivity, sqlEstimatedJoinSelectivity);
+               joinSelectivity, sqlEstimatedJoinSelectivity,metaData);
 
             return newComponent;
         }
