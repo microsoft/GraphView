@@ -39,12 +39,12 @@ namespace GraphView
     /// </summary>
     internal interface IMatchJoinPruning
     {
-        IEnumerable<OneHeightTree> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component);
+        IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<CandidateJoinUnit, bool>> treeTuples, MatchComponent component);
     }
 
     internal class PruneJointEdge : IMatchJoinPruning
     {
-        public IEnumerable<OneHeightTree> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component)
+        public IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<CandidateJoinUnit, bool>> treeTuples, MatchComponent component)
         {
             foreach (var treeTuple in treeTuples)
             {
@@ -85,7 +85,7 @@ namespace GraphView
                             }
                         }
                         
-                        yield return new OneHeightTree
+                        yield return new CandidateJoinUnit
                         {
                             TreeRoot = root,
                             MaterializedEdges = newJointEdges,

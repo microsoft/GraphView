@@ -1089,20 +1089,30 @@ namespace GraphView
                         var nodeSet = _graphMetaData.NodeViewMapping[tableTuple];
                         int n = nodeSet.Count;
                         double nodeViewEstRows = 0.0;
+                        currentNode.TableRowCount = nodeSet.Aggregate(0,
+                            (cur, next) => cur + estimator.GetTableRowCount(tableSchema, next));
+                        bool bug = false;
                         while (n > 0)
                         {
                             n--;
+                            if (j > estimateRows.Count - 1)
+                            {
+                                bug = true;
+                                break;
+                            }
                             nodeViewEstRows += estimateRows[j];
                             j++;
                         }
-                        currentNode.EstimatedRows = nodeViewEstRows;
-                        currentNode.TableRowCount = nodeSet.Aggregate(0,
-                            (cur, next) => cur + estimator.GetTableRowCount(tableSchema, next));
+                        currentNode.EstimatedRows = bug ? currentNode.TableRowCount : nodeViewEstRows;
+
                     }
                     else
                     {
-                        currentNode.EstimatedRows = estimateRows[j];
                         currentNode.TableRowCount = estimator.GetTableRowCount(tableSchema, tableName);
+                        if (j > estimateRows.Count - 1)
+                            currentNode.EstimatedRows = currentNode.TableRowCount;
+                        else
+                            currentNode.EstimatedRows = estimateRows[j];
                         j++;
                     }
                 }
@@ -1317,7 +1327,7 @@ namespace GraphView
         /// <param name="graph"></param>
         /// <param name="component"></param>
         /// <returns></returns>
-        private IEnumerable<Tuple<OneHeightTree, bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
+        private IEnumerable<Tuple<CandidateJoinUnit, bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
         {
             var nodes = graph.Nodes;
             foreach (var node in nodes.Values.Where(e => !graph.IsTailNode[e]))
@@ -1347,7 +1357,7 @@ namespace GraphView
                 // Add unpopulated edges
                 var nodeUnpopulatedEdges = nodeEdgeDict.Where(e => !e.Value).Select(e => e.Key).ToList();
                 if (joint)
-                    yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
+                    yield return new Tuple<CandidateJoinUnit, bool>(new CandidateJoinUnit
                     {
                         TreeRoot = node,
                         MaterializedEdges = jointEdges,
@@ -1358,7 +1368,7 @@ namespace GraphView
                 else if (nodeUnpopulatedEdges.Count > 0 && component.MaterializedNodeSplitCount.Count > 1 &&
                          component.MaterializedNodeSplitCount.ContainsKey(node))
                 {
-                    yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
+                    yield return new Tuple<CandidateJoinUnit, bool>(new CandidateJoinUnit
                     {
                         TreeRoot = node,
                         MaterializedEdges = jointEdges,

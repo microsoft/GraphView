@@ -33,12 +33,19 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+
+    internal class OneHeightTree
+    {
+        public MatchNode TreeRoot { get; set; }
+        public List<MatchEdge> Edges { get; set; }
+    }
+
     /// <summary>
     /// A 1-height tree is a node with one or more outgoing edges. 
     /// A 1-height tree is translated to a table alias, plus one or more Transpose() functions. 
     /// One Transpose() function populates instances of one edge. 
     /// </summary>
-    internal class OneHeightTree
+    internal class CandidateJoinUnit
     {
         public MatchNode TreeRoot { get; set; }
         // TreeRoot's outgoing edges that are materialized by Transpose() functions.
@@ -354,17 +361,17 @@ namespace GraphView
         /// </summary>
         /// <param name="metaData"></param>
         /// <param name="joinCondition"></param>
-        /// <param name="oneHeightTree"></param>
+        /// <param name="candidateJoinUnit"></param>
         /// <param name="nodeAlias"></param>
         /// <param name="affectedSqlEstimatedSize"></param>
-        private static WTableReference AdjustEstimation(OneHeightTree oneHeightTree, string nodeAlias, GraphMetaData metaData, out WBooleanExpression joinCondition, out double affectedSqlEstimatedSize)
+        private static WTableReference AdjustEstimation(CandidateJoinUnit candidateJoinUnit, string nodeAlias, GraphMetaData metaData, out WBooleanExpression joinCondition, out double affectedSqlEstimatedSize)
         {
             const int sizeFactor = 10;
             int estimateFactor = 0;
-            double size = oneHeightTree.EdgeDegrees;
-            double estimatedSize = oneHeightTree.SqlEstimatedEdgeDegrees;
-            double shrinkSize = oneHeightTree.TreeRoot.EstimatedRows;
-            WTableReference tableReference = oneHeightTree.ToTableReference(nodeAlias, metaData);
+            double size = candidateJoinUnit.EdgeDegrees;
+            double estimatedSize = candidateJoinUnit.SqlEstimatedEdgeDegrees;
+            double shrinkSize = candidateJoinUnit.TreeRoot.EstimatedRows;
+            WTableReference tableReference = candidateJoinUnit.ToTableReference(nodeAlias, metaData);
             affectedSqlEstimatedSize = 1.0;
             joinCondition = null;
 
@@ -400,7 +407,7 @@ namespace GraphView
         /// <param name="estimatedSelectivity"></param>
         /// <returns></returns>
         private void ConstructPhysicalJoinAndUpdateCost(
-            OneHeightTree nodeUnitCandidate,
+            CandidateJoinUnit nodeUnitCandidate,
             WBooleanExpression joinCondition,
             double joinSelectivity,
             double estimatedSelectivity)
@@ -621,7 +628,7 @@ namespace GraphView
         }
 
         private WBooleanExpression ConstructJoinCondition(
-            OneHeightTree candidateTree,
+            CandidateJoinUnit candidateTree,
             IMatchJoinStatisticsCalculator statisticsCalculator, 
             out double joinSelectivity, 
             out double sqlEstimatedJoinSelectivity)
@@ -906,7 +913,7 @@ namespace GraphView
         /// <param name="statisticsCalculator"></param>
         /// <returns></returns>
         public MatchComponent GetNextState(
-            OneHeightTree candidateTree, 
+            CandidateJoinUnit candidateTree, 
             IMatchJoinStatisticsCalculator statisticsCalculator)
         {
             // Deep copy the component
