@@ -257,7 +257,7 @@ namespace GraphView
             //        }
             //    }
             //};
-            EdgeColumn = deleteSpec.MatchClause.Paths[0].PathNodeList[0].Item2;
+            EdgeColumn = deleteSpec.MatchClause.Paths[0].PathEdgeList[0].Item2;
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)

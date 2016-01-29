@@ -84,6 +84,12 @@ namespace GraphView
                 return Qulifier.ToString() + "." + "*";
             }
         }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
     }
 
     public partial class WSelectSetVariable : WSelectElement

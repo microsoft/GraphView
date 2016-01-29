@@ -443,5 +443,9 @@ namespace GraphView
         {
             node.AcceptChildren(this);
         }
+        public virtual void Visit(WCreateViewStatement node)
+        {
+            node.AcceptChildren(this);
+        }
     }
 }

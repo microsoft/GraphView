@@ -34,6 +34,7 @@ using System.IO;
 using System.Globalization;
 using System.Linq;
 using System.Security.Authentication.ExtendedProtection;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -49,7 +50,7 @@ namespace GraphView
         /// the value stores list of edge properties. Each property consists of two strings, indicating
         /// its name and type respectively.
         /// </summary>
-        public List<Tuple<string, bool, List<Tuple<string, string>>>> EdgeList { get; set; }
+        public List<Tuple<string, long, List<Tuple<string, string>>>> EdgeList { get; set; }
     }
 
     partial class EdgeViewGraphViewDefinedFunctionTemplate
@@ -57,6 +58,7 @@ namespace GraphView
         public string EdgeName { get; set; }
         public Dictionary<string, string> AttributeTypeDict { get; set; }
         public Dictionary<Tuple<string, string>, List<Tuple<string, string>>> Mapping { get; set; }
+        public Dictionary<Tuple<string, string>, long> ColumnId;
     }
 
     partial class DeployScriptTemplate
@@ -70,14 +72,27 @@ namespace GraphView
         /// the value stores list of edge properties. Each property consists of two strings, indicating
         /// its name and type respectively.
         /// </summary>
-        public List<Tuple<string, bool, List<Tuple<string, string>>>> EdgeList { get; set; }
+        public List<Tuple<string, long, List<Tuple<string, string>>>> EdgeList { get; set; }
 
         public int InputCount { get; set; }
 
         public int Type;
 
         public string NodeTable { get; set; }
+
+        public string UserId { get; set; }
     }
+
+    partial class EdgeViewBfsScriptTemplate
+    {
+        public string Schema { get; set; }
+        public string NodeName { get; set; }
+        public string EdgeName { get; set; }
+        public string NodeId { get; set; }
+        public IList<Tuple<string, string>> Attribute { get; set; }//Edge view attribute list <name, type>
+        public List<Tuple<string, string>> EdgeColumn { get; set;}//Edge column list <table, edge column> 
+    }
+
 
     public static class GraphViewDefinedFunctionGenerator
     {
@@ -89,7 +104,7 @@ namespace GraphView
             return template.TransformText();
         }
 
-        private static string GenerateNodeTableGraphViewDefinedFunction(List<Tuple<string, bool, List<Tuple<string, string>>>> edgeList)
+        private static string GenerateNodeTableGraphViewDefinedFunction(List<Tuple<string, long, List<Tuple<string, string>>>> edgeList)
         {
             var template = new NodeTableGraphViewDefinedFunctionTemplate
             {
@@ -98,14 +113,17 @@ namespace GraphView
             return template.TransformText();
         }
 
-        private static string GenerateEdgeViewGraphViewDefinedEdgeFunction(string edgeViewName, Dictionary<string, string> attributetypeDictionary,
-            Dictionary<Tuple<string, string>, List<Tuple<string, string>>>  edgesAttributeMappingDictionary)
+        private static string GenerateEdgeViewGraphViewDefinedEdgeFunction(string edgeViewName,
+            Dictionary<string, string> attributetypeDictionary,
+            Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
+            Dictionary<Tuple<string, string>, long> edgeColumnToColumnId)
         {
             var template = new EdgeViewGraphViewDefinedFunctionTemplate
             {
                 EdgeName = edgeViewName,
                 AttributeTypeDict = attributetypeDictionary,
-                Mapping = edgesAttributeMappingDictionary
+                Mapping = edgesAttributeMappingDictionary,
+                ColumnId = edgeColumnToColumnId
             };
             return template.TransformText();
         }
@@ -138,7 +156,7 @@ namespace GraphView
         }
 
         private static string GenerateRegisterScript(string assemblyName, string path, int type, string nodeTable = null,
-            List<Tuple<string, bool, List<Tuple<string, string>>>> edgeList = null,  int inputCount = 1)
+            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = null, int inputCount = 1, string userId = null)
         {
             var template = new DeployScriptTemplate
             {
@@ -147,7 +165,22 @@ namespace GraphView
                 Path = ObtainHexStringOfAssembly(path),
                 InputCount = inputCount,
                 Type = type,
-                NodeTable = nodeTable
+                NodeTable = nodeTable,
+                UserId = userId
+            };
+            return template.TransformText();
+        }
+
+        private static string GenerateEdgeViewBFSRegisterScript(string schema, string tableName, string edge,
+            IList<Tuple<string, string>> attribute, List<Tuple<string, string>> edgeColumn)
+        {
+            var template = new EdgeViewBfsScriptTemplate()
+            {
+                Schema = schema,
+                NodeName = tableName,
+                EdgeName = edge,
+                Attribute = attribute,
+                EdgeColumn = edgeColumn,
             };
             return template.TransformText();
         }
@@ -202,7 +235,8 @@ namespace GraphView
 
         public static void NodeTableRegister(
             string assemblyName, string nodeTable,
-            List<Tuple<string, bool, List<Tuple<string, string>>>> edgeList,
+            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList,
+            string userId,
             SqlConnection conn,
             SqlTransaction tx
             )
@@ -212,7 +246,7 @@ namespace GraphView
             var result = Compile(code);
             if (result.Errors.Count > 0)
                 throw new GraphViewException("Failed to compile nodetable Graph View defined function");
-            var script = GenerateRegisterScript(assemblyName, result.PathToAssembly, 0, nodeTable, edgeList);
+            var script = GenerateRegisterScript(assemblyName, result.PathToAssembly, 0, nodeTable, edgeList, 1, userId);
 
             var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
             var command = conn.CreateCommand();
@@ -228,20 +262,21 @@ namespace GraphView
             }
         }
 
-        public static void RegisterEdgeView(string suppernode, string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
-            Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
+        public static void EdgeViewRegister(string suppernode, string schema, string edgeViewName, Dictionary<string, string> attributetypeDictionary,
+            Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary, Dictionary<Tuple<string, string>, long> edgeColumnToColumnId,
             SqlConnection conn, SqlTransaction tx)
         {
-            var edgeDictionary = new List<Tuple<string, bool, List<Tuple<string, string>>>>
-            {
-                new Tuple<string, bool, List<Tuple<string, string>>>(edgeViewName, false, attributetypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
-            };
 
             var code = GenerateEdgeViewGraphViewDefinedEdgeFunction(edgeViewName, attributetypeDictionary,
-                edgesAttributeMappingDictionary);
+                edgesAttributeMappingDictionary, edgeColumnToColumnId);
             var result = Compile(code);
             if (result.Errors.Count > 0)
                 throw new GraphViewException("Failed to compile function");
+
+            var edgeDictionary = new List<Tuple<string, long, List<Tuple<string, string>>>>
+            {
+                new Tuple<string, long, List<Tuple<string, string>>>(edgeViewName, 0, attributetypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
+            };
             var script = GenerateRegisterScript(schema + '_' + suppernode, result.PathToAssembly, 1, edgeViewName, edgeDictionary, edgesAttributeMappingDictionary.Count());
 
             var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
@@ -257,6 +292,24 @@ namespace GraphView
                 command.CommandText = s;
                 command.ExecuteNonQuery();
                 i++;
+            }
+        }
+
+        public static void EdgeViewBfsRegister(string schema, string tableName, string edge,
+            IList<Tuple<string, string>> attribute, List<Tuple<string, string>> edgeColumn,
+            SqlConnection conn, SqlTransaction tx)
+        {
+            
+            var script = GenerateEdgeViewBFSRegisterScript(schema, tableName, edge, attribute, edgeColumn);
+            var query = script.Split(new string[] {"GO"}, StringSplitOptions.None);
+            var command = conn.CreateCommand();
+            command.Connection = conn;
+            command.Transaction = tx;
+
+            foreach (var s in query)
+            {
+                command.CommandText = s;
+                command.ExecuteNonQuery();
             }
         }
     }

@@ -26,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Data.SqlClient;
 using System.Data.SqlTypes;
 using System.Globalization;
@@ -33,7 +34,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Xml;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Microsoft.VisualBasic.FileIO;
 
@@ -46,7 +50,7 @@ namespace GraphView
         private static string RandomString(int strLength = 10)
         {
 #if DEBUG
-            return "DEBUG";
+            //return "DEBUG";
 #endif
             var rndStr = "";
             var tick = (int)DateTime.Now.Ticks + _rep++;
@@ -149,10 +153,13 @@ namespace GraphView
             private readonly Dictionary<string, int> _columnIndex;
             private readonly IList<string> _dataColumn;
             private readonly IList<string> _dataType;
-            private readonly string _rowterminator;
-            private readonly string _fieldterminator;
+            private readonly string _rowTerminator;
+            private readonly string _fieldTerminator;
             private readonly StreamReader _streamReader;
             private readonly IList<int> _kmp;
+            private readonly bool _skipHeader;
+            private readonly int _labelColumn;
+            private readonly string _labelName;
 
             private void PreKmp(string pattern, IList<int> kmp)
             {
@@ -177,18 +184,22 @@ namespace GraphView
                 }
             }
 
-            public BulkInsertFileDataReader(string fileName, string fieldterminator,
-                string rowterminator, IList<string> datacolumn, IList<string> dataType)
+            public BulkInsertFileDataReader(string fileName, string fieldTerminator,
+                string rowTerminator, IList<string> datacolumn, IList<string> dataType, bool skipHeader = false,
+                int labelColumn = -1, string labelName = null)
             {
                 _streamReader = new StreamReader(fileName);
-                _rowterminator = rowterminator;
-                _fieldterminator = fieldterminator;
+                _rowTerminator = rowTerminator;
+                _fieldTerminator = fieldTerminator;
                 _columnIndex = new Dictionary<string, int>();
                 _dataType = dataType;
                 _dataColumn = datacolumn;
                 _countRow = 1;
+                _skipHeader = skipHeader;
                 _kmp = new List<int>();
-                PreKmp(rowterminator, _kmp);
+                _labelColumn = labelColumn;
+                _labelName = labelName;
+                PreKmp(rowTerminator, _kmp);
 
                 var count = 0;
                 foreach (var it in datacolumn)
@@ -353,7 +364,7 @@ namespace GraphView
                 return false;
             }
 
-            public bool Read()
+            private bool getNextRow()
             {
                 bool getRowTerminator = false;
                 var builder = new StringBuilder();
@@ -364,15 +375,15 @@ namespace GraphView
                 {
                     if (rowTerminatorPosition == -1)
                     {
-                        builder.Append((char) ichar);
+                        builder.Append((char)ichar);
                         ichar = _streamReader.Read();
                         rowTerminatorPosition = 0;
                     }
-                    else if (_rowterminator[rowTerminatorPosition] == (char) ichar)
+                    else if (_rowTerminator[rowTerminatorPosition] == (char)ichar)
                     {
-                        builder.Append((char) ichar);
+                        builder.Append((char)ichar);
                         rowTerminatorPosition++;
-                        if (rowTerminatorPosition == _rowterminator.Length)
+                        if (rowTerminatorPosition == _rowTerminator.Length)
                         {
                             getRowTerminator = true;
                             break;
@@ -396,10 +407,11 @@ namespace GraphView
                     }
                 }
 
-                builder.Length -= _rowterminator.Length;
+                builder.Length -= _rowTerminator.Length;
                 var rowstring = builder.ToString();
-                string[] _term = { _fieldterminator };
-                _value = rowstring.Split(_term,StringSplitOptions.None); // Allow for multi char seperators :   ie MovieLens
+                var words = new string[1];
+                words[0] = _fieldTerminator;
+                _value = rowstring.Split(words, StringSplitOptions.None);
                 if (_value == null || _value.Count() != FieldCount)
                 {
                     if (_streamReader.Peek() == -1)
@@ -408,6 +420,33 @@ namespace GraphView
                     }
                     const string error = @"It should be {0} field(s) in the {1} row of data file";
                     throw new BulkInsertNodeException(string.Format(error, FieldCount, _countRow));
+                }
+                return true;
+            }
+
+            public bool Read()
+            {
+                if (!getNextRow())
+                {
+                    return false;
+                }
+
+                if ((_countRow == 1) && _skipHeader)
+                {
+                    if (!getNextRow())
+                    {
+                        return false;
+                    }
+                }
+                if (_labelColumn != -1)
+                {
+                    while (GetValue(_labelColumn).ToString().ToLower() != _labelName)
+                    {
+                        if (!getNextRow())
+                        {
+                            return false;
+                        }
+                    }
                 }
                 _countRow++;
                 return true;
@@ -445,7 +484,7 @@ namespace GraphView
         /// <param name="fieldTerminator"> The field terminator of data file. Default by "\t".</param>
         /// <param name="rowTerminator"> The row terminator of data file. Default by "\r\n".</param>
         public void BulkInsertNode(string dataFileName, string tableName, string tableSchema = "dbo",
-            List<string> dataColumnName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n")
+            IList<string> dataColumnName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n", bool skipHeader = false)
         {
             var command = Conn.CreateCommand();
             command.CommandTimeout = 0;
@@ -661,7 +700,7 @@ namespace GraphView
                 {
                     sqlBulkCopy.BulkCopyTimeout = 0;
                     using (var reader = new BulkInsertFileDataReader(dataFileName, fieldTerminator, rowTerminator, dataColumnName,
-                        columnDataType))
+                        columnDataType, skipHeader))
                     {
                         foreach (var it in dataColumnName)
                         {
@@ -712,15 +751,15 @@ namespace GraphView
 
         /// <summary>
         /// Bulk insert edge from data file
-        /// Data file should contain source node id and sink node id on the first and second columns,
+        /// Data file should contain source node id and Sink node id on the first and second columns,
         /// then followed by the columns of user-supplied edge attribute.
         /// </summary>
         /// <param name="dataFileName"> The name of data file.</param>
         /// <param name="tableSchema"> The Schema name of node table. Default by "dbo".</param>
         /// <param name="sourceTableName"> The source node table name of node table.</param>
         /// <param name="sourceNodeIdName"> The node id name of source node table.</param>
-        /// <param name="sinkTableName"> The sink node table name of node table.</param>
-        /// <param name="sinkNodeIdName"> The node id name of sink node table.</param>
+        /// <param name="sinkTableName"> The Sink node table name of node table.</param>
+        /// <param name="sinkNodeIdName"> The node id name of Sink node table.</param>
         /// <param name="edgeColumnName"> The edge column name in source node table.</param>
         /// <param name="dataEdgeAttributeName"> User-supplied edge attribute name in data file in order.
         /// By default(null), data file should exactly contain all the Edge Attribute in creating order.
@@ -728,19 +767,20 @@ namespace GraphView
         /// <param name="fieldTerminator"> The field terminator of data file. Default by "\t".</param>
         /// <param name="rowTerminator"> The row terminator of data file. Default by "\r\n".</param>
         /// <param name="updateMethod"> Choose update method or rebuild table method to implement bulk insert edge.
-
+        /// <param name="Header"> True, the data file contains Header</param>
         public void BulkInsertEdge(string dataFileName, string tableSchema, string sourceTableName,
             string sourceNodeIdName, string sinkTableName, string sinkNodeIdName, string edgeColumnName,
-            List<string> dataEdgeAttributeName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n",
-            bool updateMethod = true)
+            IList<string> dataEdgeAttributeName = null, string fieldTerminator = "\t", string rowTerminator = "\r\n",
+            bool updateMethod = true, bool Header = false)
         {
             //Data types mapping from C# into sql and .Net.
             var typeDictionary = new Dictionary<string, Tuple<string, string>>
             {
-                {"int", new Tuple<string, string>("int", "Int32")},
-                {"long", new Tuple<string, string>("bigint", "Int64")},
-                {"double", new Tuple<string, string>("float", "Double")},
-                {"string", new Tuple<string, string>("nvarchar(4000)", "String")}
+                {"int", new Tuple<string, string>("int", "int")},
+                {"long", new Tuple<string, string>("bigint", "bigint")},
+                {"double", new Tuple<string, string>("float", "float")},
+                {"string", new Tuple<string, string>("nvarchar(4000)", "nvarchar")},
+                {"bool", new Tuple<string, string>("bit", "bit")}
             };
             
             //Check validity of input
@@ -748,9 +788,9 @@ namespace GraphView
             {
                 throw new BulkInsertEdgeException("The string of source table name is null or empty.");
             }
-            if (string.IsNullOrEmpty(sinkTableName ))
+            if (string.IsNullOrEmpty(sinkTableName))
             {
-                throw new BulkInsertEdgeException("The string of sink table name is null or empty.");
+                throw new BulkInsertEdgeException("The string of Sink table name is null or empty.");
             }
             if (string.IsNullOrEmpty(dataFileName))
             {
@@ -762,7 +802,7 @@ namespace GraphView
             }
             if (string.IsNullOrEmpty(sinkNodeIdName))
             {
-                throw new BulkInsertEdgeException("The string of sink node Id name is null or empty.");
+                throw new BulkInsertEdgeException("The string of Sink node Id name is null or empty.");
             }
             if (!File.Exists(dataFileName))
             {
@@ -787,7 +827,7 @@ namespace GraphView
             command.Transaction = transaction;
             try
             {
-                //Check validity of table name in GraphView(source and sink node table)
+                //Check validity of table name in GraphView(source and Sink node table)
                 command.Parameters.Clear();
                 const string checkNodeTableCollection = @"
                 Select *
@@ -904,7 +944,7 @@ namespace GraphView
                     }
                 }
 
-                //Get the name and datatype of user-defined node id of source and sink table
+                //Get the name and datatype of user-defined node id of source and Sink table
                 command.Parameters.Clear();
                 const string getNodeIdDataType = @"
                 Select GC.ColumnName, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
@@ -956,7 +996,7 @@ namespace GraphView
                         if (reader["ColumnName"].ToString().ToLower() != sinkNodeIdName.ToLower())
                         {
                             throw new BulkInsertEdgeException(
-                                string.Format("\"{0}\" is not a node id name of sink node table\"{1}\"", sinkNodeIdName,
+                                string.Format("\"{0}\" is not a node id name of Sink node table\"{1}\"", sinkNodeIdName,
                                     sinkTableName));
                         }
                         sinkNodeId = Tuple.Create(reader["ColumnName"].ToString(), reader["DATA_TYPE"].ToString(),
@@ -965,7 +1005,7 @@ namespace GraphView
                     else
                     {
                         throw new BulkInsertEdgeException(
-                            string.Format("There doesn't exist a node id in sink note table \"{0}\".", sinkTableName));
+                            string.Format("There doesn't exist a node id in Sink note table \"{0}\".", sinkTableName));
                     }
                 }
 
@@ -994,8 +1034,8 @@ namespace GraphView
                 command.ExecuteNonQuery();
 
                 //Bulk insert
-                var  dataColumnName = new List<string>();
-                var  columnDataType = new List<string>();
+                var dataColumnName = new List<string>();
+                var columnDataType = new List<string>();
                 dataColumnName.Add(sourceNodeId.Item3);
                 columnDataType.Add(sourceNodeId.Item2);
 
@@ -1005,16 +1045,16 @@ namespace GraphView
                 foreach (var it in userSuppliedEdgeAttributeInfo)
                 {
                    dataColumnName.Add(it.Item1); 
-                   columnDataType.Add(it.Item2); 
+                    columnDataType.Add(typeDictionary[it.Item2.ToLower()].Item2);
                 }
                 
 
-                using (var sqlBulkCopy = new SqlBulkCopy(Conn,SqlBulkCopyOptions.TableLock, transaction))
+                using (var sqlBulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.TableLock, transaction))
                 {
                     sqlBulkCopy.BulkCopyTimeout = 0;
                     using (var reader = new BulkInsertFileDataReader(dataFileName, fieldTerminator, rowTerminator,
                             dataColumnName,
-                            columnDataType))
+                            columnDataType, Header))
                     {
                         foreach (var it in dataColumnName)
                         {
@@ -1025,22 +1065,7 @@ namespace GraphView
                     }
                 }
 
-                //Bulk insert edge data into temp table
-                //const string bulkInsertEdge = @"
-                //BULK INSERT {0}
-                //   FROM ""{1}""
-                //   WITH 
-                //      (
-                //         FIELDTERMINATOR = '{2}',
-                //         ROWTERMINATOR = '{3}',
-                //         tablock
-                //      )";
-                //command.Parameters.Clear();
-                //command.CommandText = string.Format(bulkInsertEdge, randomTempTableName, dataFileName, fieldTerminator,
-                //    rowTerminator);
-                //command.ExecuteNonQuery();
-
-                //Create clustered index on sink node in temp table
+                //Create clustered index on Sink node in temp table
                 string clusteredIndexName = "sinkIndex_" + RandomString(); 
                 const string createClusteredIndex = @"
                 create clustered index [{0}] on {1}([{2}])";
@@ -1091,13 +1116,13 @@ namespace GraphView
                     const string updateReversedEdgeData = @"
                         UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
                         From (
-                            Select tempTable.[{1}] as sink, count(*) as sourceCount
+                            Select tempTable.[{1}] as Sink, count(*) as sourceCount
                             From {2} tempTable
                             Join [{5}]
                             On [{5}].[{6}] = tempTable.[{7}]
                             Group by tempTable.[{1}]
                         ) as [GraphView_InsertEdgeInternalTable]
-                        Where [GraphView_InsertEdgeInternalTable].sink = [{0}].[{4}]";
+                        Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
                     command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
                         randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
                         sourceNodeId.Item3);
@@ -1354,15 +1379,16 @@ namespace GraphView
                     const string updateReversedEdgeData = @"
                         UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
                         From (
-                            Select tempTable.[{1}] as sink, count(*) as sourceCount
+                            Select tempTable.[{1}] as Sink, count(*) as sourceCount
                             From {2} tempTable
                             Join [{5}]
                             On [{5}].[{6}] = tempTable.[{7}]
                             Group by tempTable.[{1}]
                         ) as [GraphView_InsertEdgeInternalTable]
-                        Where [GraphView_InsertEdgeInternalTable].sink = [{0}].[{4}]";
+                        Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
                     command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
-                        randomTempTableName, tableSchema, sinkNodeId.Item1);
+                        randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
+                        sourceNodeId.Item3);
                     command.ExecuteNonQuery();
                 }
 
@@ -1376,6 +1402,904 @@ namespace GraphView
             {
                 transaction.Rollback();
                 throw new BulkInsertEdgeException(error.Message);
+            }
+        }
+
+        public class FileInfo
+        {
+            public static string FieldTerminator { get; set; }
+            public static string RowTerminator { get; set; }
+            public static string ByDefaultType { get; set; }
+            public static bool SkipScanLabel { get; set; }
+            public string FileName { get; set; }
+
+            public List<string> FileHeader { get; set; }
+            public Dictionary<string, string> ColumnToType { get; set; }
+            public List<string> Labels { get; set; }
+            public int LabelOffset { get; set; }
+
+            public static readonly Dictionary<string ,string> TypeDict = new Dictionary<string ,string>
+            {
+                {"int", "int"},
+                {"long", "bigint"},
+                {"float","float"},
+                {"double", "float"},
+                {"boolean","bit"},
+                {"byte", "tinyint"},
+                {"short","smallint"},
+                {"char","nchar(1) COLLATE Latin1_General_100_CS_AI"},
+                {"string","nvarchar(4000) COLLATE Latin1_General_100_CS_AI"}
+            }; 
+
+            public FileInfo(string filename)
+            {
+                FileName = filename;
+                ColumnToType = new Dictionary<string, string>();
+            }
+
+            public virtual void ParseHeader()
+            {
+            }
+
+            public void getHeader()
+            {
+                using (var reader = new StreamReader(FileName))
+                {
+                    var head = reader.ReadLine();
+                    var words = new string[1];
+                    words[0] = FieldTerminator;
+                    FileHeader = head.Split(words, StringSplitOptions.None).ToList();
+
+                }
+            }
+
+            //After assigning LabelColumn, gets the the list of label in the file
+            protected void getLabel()
+            {
+                var dataColumnName = new List<string>();
+                var columnDataType = new List<string>();
+                int fieldNumber = FileHeader.Count;
+                for (int i = 0; i < fieldNumber; i++)
+                {
+                    columnDataType.Add("nvarchar");
+                    dataColumnName.Add(RandomString());
+                }
+                var labelDict =  new Dictionary<string, bool>();
+                using (var reader = new BulkInsertFileDataReader(FileName, FieldTerminator, RowTerminator,
+                    dataColumnName, columnDataType, true))
+                {
+                    if (SkipScanLabel)
+                    {
+                        if (reader.Read())
+                        {
+                            labelDict[reader.GetValue(LabelOffset).ToString().ToLower()] = true;
+                        }
+                    }
+                    else
+                    {
+                        while (reader.Read())
+                        {
+                            labelDict[reader.GetValue(LabelOffset).ToString().ToLower()] = true;
+                        }
+                    }
+                }
+                Labels = labelDict.Select(x => x.Key).ToList();
+            }
+
+            protected bool addColumn(string columnName, string columnType)
+            {
+                 
+                if (ColumnToType.ContainsKey(columnName))
+                {
+                    return false;
+                }
+                ColumnToType[columnName] = columnType.ToLower();
+                return true;
+            }
+
+        }
+
+
+        private class NodeFileInfo : FileInfo
+        {
+            public string UserId { get; set; } //user Id's name and data type
+            public int UserIdOffset { set; get; } 
+            public string NameSpace { get; set; }
+
+            public NodeFileInfo(string fileName) : base(fileName)
+            {
+            }
+
+            public override void ParseHeader()
+            {
+                //Get label column and label list
+                var labelColumns =
+                    FileHeader.Select((x, i) => Tuple.Create(x, i)).Where(x  => (x.Item1.ToLower() == ":label")).ToArray();
+                if (labelColumns.Length == 0)
+                {
+                    throw new BulkInsertNodeException(String.Format("The file {0} does not contain Label column.",
+                        FileName));
+                }
+                else if (labelColumns.Length > 1)
+                {
+                    throw new BulkInsertNodeException(
+                        String.Format("The file {0} contains more than one Label column.", FileName));
+                }
+                LabelOffset = labelColumns[0].Item2;
+                getLabel();
+
+                int count = -1;
+                //Get user id name and namespace, parse header
+                foreach (var iterator in FileHeader)
+                {
+                    count++;
+                    if (String.Equals(iterator, ":label", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    var firstChar = iterator.ToLower().IndexOf(":id");
+                    if (firstChar != -1)
+                    {
+                        UserIdOffset = count;
+                        if (UserId != null)
+                        {
+                            throw new BulkInsertNodeException(
+                                String.Format("The file {0} contains more than one  id columns.", FileName));
+                        }
+                        int startIndex = iterator.IndexOf("(");
+                        int endIndex = iterator.IndexOf(")");
+                        if (startIndex != -1 && endIndex != -1)
+                        {
+                            int length = endIndex - startIndex - 1;
+                            NameSpace = iterator.Substring(startIndex + 1, length).ToLower();
+                        }
+                        else
+                        {
+                            NameSpace = "";
+                        }
+                        UserId = iterator.Substring(0, firstChar).ToLower();
+                    }
+                    else
+                    {
+                        var colon = iterator.IndexOf(":");
+                        string columnType;
+                        string columnName;
+                        if (colon == -1)
+                        {
+                            columnType = ByDefaultType;
+                            columnName = iterator.ToLower();
+                        }
+                        else
+                        {
+                            columnName = iterator.Substring(0, colon).ToLower();
+                            columnType = iterator.Substring(colon + 1, iterator.Length - colon - 1).ToLower();
+                            if (TypeDict.ContainsKey(columnType))
+                            {
+                               columnType = TypeDict[columnType];
+                            }
+                        }
+                        if (!addColumn(columnName.ToLower(), columnType))
+                        {
+                            throw new BulkInsertNodeException(String.Format("The file \"{0}\" contains the same column name.",
+                                iterator));
+                        }
+                        
+                    }
+
+                }
+                if (UserId == null)
+                {
+                        throw new BulkInsertNodeException(
+                            String.Format("The file {0} does not contain any id column.", FileName));
+                }
+            }
+        }
+
+        private class EdgeFileInfo : FileInfo
+        {
+            public int StartIdOffset { get; set; }
+            public int EndIdOffset { get; set; }
+            public string StartNameSpace { get; set; }
+            public string EndNameSpace { get; set; }
+
+            public string sinkTable { get; set; }
+
+            public EdgeFileInfo(string fileName) : base(fileName)
+            {
+            }
+            public override void ParseHeader()
+            {
+
+                var typeColumns =
+                    FileHeader.Select((x, i) => Tuple.Create(x, i)).Where(x  => (x.Item1.ToLower() == ":type")).ToArray();
+                if (typeColumns.Length == 0)
+                {
+                    throw new BulkInsertNodeException(String.Format("The file {0} does not contain type column.",
+                        FileName));
+                }
+                else if (typeColumns.Length > 1)
+                {
+                    throw new BulkInsertEdgeException(
+                        String.Format("The file {0} contains more than one type column.", FileName));
+                }
+                LabelOffset = typeColumns[0].Item2;
+                getLabel();
+
+                int count = -1;
+                //Get user id name and namespace, parse header
+                foreach (var iterator in FileHeader)
+                {
+                    count++;
+                    if (String.Equals(iterator, ":type", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    var firstChar = iterator.ToLower().IndexOf(":start_id");
+                    if (firstChar != -1)
+                    {
+                        StartIdOffset = count;
+                        if (StartNameSpace != null)
+                        {
+                            throw new BulkInsertNodeException(
+                                String.Format("The file {0} contains more than one start id columns.", FileName));
+                        }
+                        int startIndex = iterator.IndexOf("(");
+                        int endIndex = iterator.IndexOf(")");
+                        if (startIndex != -1 && endIndex != -1)
+                        {
+                            int length = endIndex - startIndex - 1;
+                            StartNameSpace = iterator.Substring(startIndex + 1, length).ToLower();
+                        }
+                        else
+                        {
+                            StartNameSpace = "";
+                        }
+                    }
+                    else
+                    {
+                        var pos = iterator.ToLower().IndexOf(":end_id");
+                        if (pos != -1)
+                        {
+                            EndIdOffset = count;
+                            if (EndNameSpace != null)
+                            {
+                                throw new BulkInsertNodeException(
+                                    String.Format("The file {0} contains more than one end id columns.", FileName));
+                            }
+                            int startIndex = iterator.IndexOf("(");
+                            int endIndex = iterator.IndexOf(")");
+                            if (startIndex != -1 && endIndex != -1)
+                            {
+                                int length = endIndex - startIndex - 1;
+                                EndNameSpace = iterator.Substring(startIndex + 1, length).ToLower();
+                            }
+                            else
+                            {
+                                EndNameSpace = "";
+                            }
+                        }
+                        else
+                        {
+                            var colon = iterator.IndexOf(":");
+                            string columnType;
+                            string columnName;
+                            if (colon == -1)
+                            {
+                                columnName = iterator.ToLower();
+                                columnType = ByDefaultType;
+                            }
+                            else
+                            {
+                                columnName = iterator.Substring(0, colon).ToLower();
+                                columnType = iterator.Substring(colon + 1, iterator.Length - colon - 1).ToLower();
+                                if (TypeDict.ContainsKey(columnType))
+                                {
+                                   columnType = TypeDict[columnType];
+                                }
+                            }
+                            if (!addColumn(columnName.ToLower(), columnType))
+                            {
+                                throw new BulkInsertNodeException(
+                                    String.Format("The file \"{0}\" contains the same column name.",
+                                        iterator));
+                            }
+                        }
+                    }
+                }
+                if (StartNameSpace == null || EndNameSpace == null)
+                {
+                        throw new BulkInsertNodeException(
+                            String.Format("The file {0} does not contain any id column.", FileName));
+                }
+            }
+        }
+
+        private class EdgeInfo
+        {
+            public Dictionary<string, string> AttributeToType { get; set; }
+            public string Sink;
+
+            public EdgeInfo ()
+            {
+                AttributeToType = new Dictionary<string, string>();
+            }
+            public bool AddAtrribute(string attributeName, string attributeType)
+            {
+                if (AttributeToType.ContainsKey(attributeName))
+                {
+                    return false;
+                }
+                AttributeToType[attributeName] = attributeType;
+                return true;
+            }
+
+            public static bool operator==(EdgeInfo a, EdgeInfo b)
+            {
+                if (a.Sink == b.Sink)
+                {
+                    Dictionary<string, string> x = a.AttributeToType;
+                    Dictionary<string, string> y = b.AttributeToType;
+                    if (x.Count != y.Count)
+                    {
+                        return false;
+                    }
+
+                    foreach (var it in x)
+                    {
+                        if (!y.ContainsKey(it.Value))
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            if (!String.Equals(y[it.Value], it.Key, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            public static bool operator !=(EdgeInfo a, EdgeInfo b)
+            {
+                return !(a == b);
+            }
+
+            public override bool Equals(object obj)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override int GetHashCode()
+            {
+                throw new NotImplementedException();
+            }
+
+            public string Tostring(string edgeName)
+            {
+                const string edgeString = @"
+                    [ColumnRole: ""Edge"", Reference: ""{0}"" {1}]
+                    [{2}] [varchar](max)";
+                var attributes = string.Join(", ",  AttributeToType.Select(x => x.Key + ": \"" + x.Value + "\""));
+                if (!string.IsNullOrEmpty(attributes))
+                {
+                    attributes = ", Attributes: {" + attributes + "}";
+                }
+                return string.Format(edgeString, Sink, attributes, edgeName);
+            } 
+        }
+
+        private class NodeInfo
+        {
+            public string tableName;
+            public Tuple<string, string> UserId { get; set; } //user Id's name and data type
+            public Dictionary<string, string> PropetyToType { get; set; }
+            public Dictionary<string, EdgeInfo> EdgesToInfo { get; set; }
+
+            public NodeInfo()
+            {
+                PropetyToType = new Dictionary<string, string>();
+                EdgesToInfo = new Dictionary<string, EdgeInfo>();
+            }
+            public bool AddProperty(string columnName, string columnType)
+            {
+                if (PropetyToType.ContainsKey(columnName))
+                {
+                    if (PropetyToType[columnName] != columnType.ToLower())
+                    {
+                        return false;
+                    }
+                }
+                PropetyToType[columnName] = columnType.ToLower();
+                return true;
+            }
+
+            public bool AddEdge(string edgeName, EdgeInfo info)
+            {
+                if (EdgesToInfo.ContainsKey(edgeName))
+                {
+                    if (EdgesToInfo[edgeName] != info)
+                    {
+                        return false;
+                    }
+                }
+                EdgesToInfo[edgeName] = info;
+                return true;
+            }
+
+            public override string ToString()
+            {
+                const string createNodeTable = @"
+                    CREATE TABLE [{0}](
+                        [ColumnRole: ""NodeId""]
+                        [{1}] {2},
+                        {3}
+                        {4}
+                    )";
+
+                const string propertyString = @"
+                        [ColumnRole: ""Property""]
+                        [{0}] {1}";
+                var properties = string.Join(",\n",
+                    PropetyToType.Select(x => string.Format(propertyString, x.Key, x.Value)));
+                if (!string.IsNullOrEmpty(properties))
+                {
+                    properties += ',';
+                }
+                var edges = string.Join(",\n", EdgesToInfo.Select(x => x.Value.Tostring(x.Key)));
+                return string.Format(createNodeTable, tableName, UserId.Item1, UserId.Item2, properties, edges);
+            }
+        }
+
+        private string convertSqlType(string x)
+        {
+            int firstchar = x.IndexOf("(");
+            if (firstchar == -1)
+            {
+                return x;
+            }
+            else
+            {
+                return x.Substring(0, firstchar);
+            }
+
+        }
+
+        /// <summary>
+        /// Imports nodes and edges data into GraphView.
+        /// Runs the following command to enable minimal logging,
+        /// which will highly enhance the performance of bulk loading:
+        /// USE master; ALTER DATABASE database_name SET RECOVERY BULK_LOGGED;
+        /// </summary>
+        /// <param name="nodesFileName"> The list of node file name(s)</param>
+        /// <param name="edgesFileName"> the list of edge file name(s)</param>
+        /// <param name="directory"> The directory of the node and edge data files</param>
+        /// <param name="skipScanLabel"> True, notifies GraphView that every node file has only one label and 
+        /// every edge file has only one type. This will improve the performance of importing.</param>
+        /// <param name="fieldTerminator"> The field terminator of data files</param>
+        /// <param name="byDefaultType"> The default data type.</param>
+        public void Import(IList<string> nodesFileName, IList<string> edgesFileName, string directory,
+            bool skipScanLabel = false, string fieldTerminator = ",", string byDefaultType = "string")
+        {
+            if (!string.IsNullOrEmpty(directory))
+            {
+                if (Directory.Exists(directory))
+                {
+                    nodesFileName = nodesFileName.Select(x => directory + "\\" + x).ToList();
+                    edgesFileName = edgesFileName.Select(x => directory + "\\" + x).ToList();
+                }
+                else
+                {
+                    throw new BulkInsertNodeException(String.Format("The directory {0} does not exist.", directory));
+                }
+            }
+            if (FileInfo.TypeDict.ContainsKey(byDefaultType.ToLower()))
+            {
+                byDefaultType = FileInfo.TypeDict[byDefaultType.ToLower()];
+            }
+            else
+            {
+                throw new BulkInsertNodeException("The type by default is not supported. The type supported includes:\n" +
+                                                  "int,long,float,double,boolean,byt,short,char,string\n");
+            }
+            FileInfo.FieldTerminator = fieldTerminator;
+            FileInfo.RowTerminator = "\r\n";
+            FileInfo.ByDefaultType = byDefaultType;
+            FileInfo.SkipScanLabel = skipScanLabel;
+
+            //Collects file header's information
+            var nodeFileToInfo = new Dictionary<string, NodeFileInfo>();
+            foreach (var it in nodesFileName)
+            {
+                if (!File.Exists(it))
+                {
+                    throw new BulkInsertNodeException(String.Format("The file {0} does not exist.", it));
+                }
+                else
+                {
+                    var temp = new NodeFileInfo(it);
+
+                    temp.getHeader();
+                    temp.ParseHeader();
+                    nodeFileToInfo[it] = temp;
+                }
+            }
+
+            var edgeFileToInfo = new Dictionary<string, EdgeFileInfo>();
+            foreach (var it in edgesFileName)
+            {
+                if (!File.Exists(it))
+                {
+                    throw new BulkInsertEdgeException(String.Format("The file {0} does not exist.", it));
+                }
+                else
+                {
+                    var temp = new EdgeFileInfo(it);
+                    temp.getHeader();
+                    temp.ParseHeader();
+                    edgeFileToInfo[it] = temp;
+                }
+            }
+            
+            var nameSpaceToNodeTableSet = new Dictionary<string, HashSet<string>>();
+
+            //Generates node table's information
+            var nodeTableToInfo = new Dictionary<string, NodeInfo>();
+            foreach (var it in nodeFileToInfo)
+            {
+                NodeFileInfo nodeFile = it.Value;
+                foreach (var iterator in nodeFile.Labels)
+                {
+                    NodeInfo temp;
+                    if (nodeTableToInfo.ContainsKey(iterator))
+                    {
+                        temp = nodeTableToInfo[iterator];
+                    }
+                    else
+                    {
+                        temp = new NodeInfo();
+                    }
+                    
+                    //Assigns properties
+                    foreach (var VARIABLE in nodeFile.ColumnToType)
+                    {
+                        if (!temp.AddProperty(VARIABLE.Key, VARIABLE.Value))
+                        {
+                            throw new BulkInsertNodeException(
+                                String.Format(
+                                    "The label \"{0}\" contains column \"{1}\" in different types in two different file",
+                                    iterator, VARIABLE.Key));
+                        }
+                    }
+
+                    //Assigns user id
+                    var userid = Tuple.Create(nodeFile.UserId.ToLower(), byDefaultType.ToLower());
+                    if (temp.UserId != null && !(userid.Item1 == temp.UserId.Item1 || userid.Item2 == temp.UserId.Item2))
+                    {
+                        throw new BulkInsertNodeException(String.Format("The label \"{0}\" contains two differenct ids in two node files",
+                            iterator));
+                    }
+                    temp.UserId = userid;
+
+                    temp.tableName = iterator;
+                    nodeTableToInfo[iterator] = temp;
+
+                    //Updates name space dictionary
+                    if (!nameSpaceToNodeTableSet.ContainsKey(nodeFile.NameSpace))
+                    {
+                       nameSpaceToNodeTableSet[nodeFile.NameSpace] = new HashSet<string>();
+                    }
+                    HashSet<string> nodeTableSet = nameSpaceToNodeTableSet[nodeFile.NameSpace];
+                    if (!nodeTableSet.Contains(iterator))
+                    {
+                        nodeTableSet.Add(iterator);
+                    }
+                }
+            }
+
+            //Generates edge file's information
+            foreach (var it in edgeFileToInfo)
+            {
+                EdgeFileInfo edgeFile = it.Value;
+                HashSet<string> startNodeTable = nameSpaceToNodeTableSet[edgeFile.StartNameSpace];
+                HashSet<string> endNodeTable = nameSpaceToNodeTableSet[edgeFile.EndNameSpace];
+
+                var edge = new EdgeInfo();
+                if (endNodeTable.Count > 2)
+                {
+                    throw new BulkInsertEdgeException("One edge cannot refer to two different node tables");
+                }
+                else if (endNodeTable.Count < 1)
+                {
+                    throw new BulkInsertEdgeException(
+                        string.Format("Cannot find the namespace \"{0}\" in node files",
+                            edgeFile.EndNameSpace));
+                }
+
+                foreach (var VARIABLE in endNodeTable)
+                {
+                    edgeFile.sinkTable = edge.Sink = VARIABLE;
+                }
+
+                foreach (var VARIABLE in edgeFile.ColumnToType)
+                {
+                    if (!edge.AddAtrribute(VARIABLE.Key, VARIABLE.Value))
+                    {
+                        throw new BulkInsertEdgeException(
+                            string.Format("The Edge data file \"{0}\" contains two attributes of same name.", it.Key));
+                    }
+                }
+                foreach (var iterator in edgeFile.Labels)
+                {
+                    foreach (var VARIABLE in startNodeTable)
+                    {
+                        if (!nodeTableToInfo[VARIABLE].AddEdge(iterator, edge))
+                        {
+                            throw new BulkInsertEdgeException(
+                                string.Format("There exists edge type \"{0}\" conflicts on node table \"{1}\" ",
+                                    iterator, VARIABLE));
+                        }
+                    }
+                }
+            }
+
+            var transaction = Conn.BeginTransaction();
+            var command = Conn.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandTimeout = 0;
+            try
+            {
+                //Creates node table
+                foreach (var pair in nodeTableToInfo)
+                {
+                    CreateNodeTable(pair.Value.ToString(), transaction);
+
+                    const string dropConstrain = @"
+                    ALTER TABLE {0} DROP CONSTRAINT {1}";
+                    string constrainName = "dbo" + pair.Value.tableName + "_PK_GlobalNodeId";
+                    command.CommandText = string.Format(dropConstrain, pair.Value.tableName, constrainName);
+                    command.ExecuteNonQuery();
+
+                    string indexName = "dbo" + pair.Value.tableName + "_UQ_" + pair.Value.UserId.Item1;
+                    command.CommandText = string.Format(dropConstrain, pair.Value.tableName, indexName);
+                    command.ExecuteNonQuery();
+                }
+
+                //Bulk inserts nodes
+                foreach (var pair in nodeFileToInfo)
+                {
+                    var nodeFile = pair.Value;
+                    //Bulk insert
+                    var dataColumnName = new List<string>(nodeFile.FileHeader.Count);
+                    var columnDataType = new List<string>(nodeFile.FileHeader.Count);
+
+                    using (var it = nodeFile.ColumnToType.GetEnumerator())
+                    {
+                        for (int i = 0; i < nodeFile.FileHeader.Count; i++)
+                        {
+                            if (i == nodeFile.UserIdOffset)
+                            {
+                                dataColumnName.Add(nodeFile.UserId);
+                                columnDataType.Add(convertSqlType(byDefaultType));
+                            }
+                            else if (i == nodeFile.LabelOffset)
+                            {
+                                dataColumnName.Add("label");
+                                columnDataType.Add(convertSqlType("nvarchar(4000)"));
+                            }
+                            else
+                            {
+                                if (it.MoveNext())
+                                {
+                                    dataColumnName.Add(it.Current.Key);
+                                    columnDataType.Add(convertSqlType(it.Current.Value));
+                                }
+                            }
+                        }
+                    }
+                    foreach (var it in nodeFile.Labels)
+                    {
+                        var tableNameWithSchema = "dbo." + it;
+                        using (var sqlBulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.TableLock, transaction))
+                        {
+                            sqlBulkCopy.BulkCopyTimeout = 0;
+                            using (
+                                var reader = skipScanLabel
+                                    ? new BulkInsertFileDataReader(nodeFile.FileName, fieldTerminator, "\r\n",
+                                        dataColumnName, columnDataType, true)
+                                    : new BulkInsertFileDataReader(nodeFile.FileName, fieldTerminator, "\r\n",
+                                        dataColumnName, columnDataType, true, nodeFile.LabelOffset, it))
+                            {
+                                foreach (var variable in dataColumnName)
+                                {
+                                    if (variable != "label")
+                                    {
+                                        sqlBulkCopy.ColumnMappings.Add(new SqlBulkCopyColumnMapping(variable, variable));
+                                    }
+                                }
+                                sqlBulkCopy.DestinationTableName = tableNameWithSchema;
+                                sqlBulkCopy.WriteToServer(reader);
+                            }
+                        }
+                    }
+                }
+
+                //Rebuilds cluster index on node table
+                foreach (var pair in nodeTableToInfo)
+                {
+                    const string createPrimaryKey = @"
+                    ALTER TABLE {0} ADD CONSTRAINT {1} PRIMARY KEY (GlobalNodeId)";
+                    string constrainName = "dbo" + pair.Value.tableName + "_PK_GlobalNodeId";
+                    command.CommandText = string.Format(createPrimaryKey, pair.Value.tableName, constrainName);
+                    command.ExecuteNonQuery();
+
+                    const string dropIndex = @"
+                    ALTER TABLE {0} ADD CONSTRAINT {1} UNIQUE ({2})";
+                    string indexName = "dbo" + pair.Value.tableName + "_UQ_" + pair.Value.UserId.Item1;
+                    command.CommandText = string.Format(dropIndex, pair.Value.tableName, indexName,
+                        pair.Value.UserId.Item1);
+                    command.ExecuteNonQuery();
+                }
+
+                //Bulk inserts edges
+                foreach (var pair in edgeFileToInfo)
+                {
+                    var edgeFile = pair.Value;
+                    var dataColumnName = new List<string>(edgeFile.FileHeader.Count);
+                    var columnDataType = new List<string>(edgeFile.FileHeader.Count);
+
+                    using (var it = edgeFile.ColumnToType.GetEnumerator())
+                    {
+                        for (int i = 0; i < edgeFile.FileHeader.Count; i++)
+                        {
+                            if (i == edgeFile.StartIdOffset)
+                            {
+                                dataColumnName.Add("startid");
+                                columnDataType.Add(convertSqlType(byDefaultType));
+                            }
+                            else if (i == edgeFile.EndIdOffset)
+                            {
+                                dataColumnName.Add("endid");
+                                columnDataType.Add(convertSqlType(byDefaultType));
+                            }
+                            if (i == edgeFile.LabelOffset)
+                            {
+                                dataColumnName.Add("type");
+                                columnDataType.Add(convertSqlType(byDefaultType));
+                            }
+                            else
+                            {
+                                if (it.MoveNext())
+                                {
+                                    dataColumnName.Add(it.Current.Key);
+                                    columnDataType.Add(convertSqlType(it.Current.Value));
+                                }
+                            }
+                        }
+                    }
+
+                    HashSet<string> startNodeTable = nameSpaceToNodeTableSet[edgeFile.StartNameSpace];
+                    foreach (var edgeColumnName in edgeFile.Labels)
+                    {
+                        //Create temp table for bulk inserting edge data
+                        var randomTempTableName = "dbo." + edgeColumnName + edgeFile.sinkTable + "_" + RandomString();
+                        var attributes = string.Join(",\n", edgeFile.ColumnToType.Select(x => x.Key + " " + x.Value));
+                        const string createTempTable = @"
+                        Create table {0}
+                        (
+                            startid {1},
+                            endid {1},
+                            {2}
+                        )";
+
+                        command.CommandText = string.Format(createTempTable, randomTempTableName, byDefaultType,
+                            attributes);
+                        command.ExecuteNonQuery();
+
+                        //Bulk inset
+                        using (var sqlBulkCopy = new SqlBulkCopy(Conn, SqlBulkCopyOptions.TableLock, transaction))
+                        {
+                            sqlBulkCopy.BulkCopyTimeout = 0;
+                            using (
+                                var reader = skipScanLabel
+                                    ? new BulkInsertFileDataReader(edgeFile.FileName, fieldTerminator, "\r\n",
+                                        dataColumnName, columnDataType, true)
+                                    : new BulkInsertFileDataReader(edgeFile.FileName, fieldTerminator, "\r\n",
+                                        dataColumnName, columnDataType, true, edgeFile.LabelOffset, edgeColumnName))
+                            {
+                                foreach (var it in dataColumnName)
+                                {
+                                    if (it != "type")
+                                    {
+                                        sqlBulkCopy.ColumnMappings.Add(it, it);
+                                    }
+                                }
+                                sqlBulkCopy.DestinationTableName = randomTempTableName;
+                                sqlBulkCopy.WriteToServer(reader);
+                            }
+                        }
+
+                        //Creates clustered index on sink node in temp table
+                        string clusteredIndexName = "sinkIndex_" + RandomString();
+                        const string createClusteredIndex = @"
+                        create clustered index [{0}] on {1}([endid])";
+                        command.Parameters.Clear();
+                        command.CommandText = string.Format(createClusteredIndex, clusteredIndexName,
+                            randomTempTableName);
+                        command.ExecuteNonQuery();
+
+                        foreach (var sourceTableName in startNodeTable)
+                        {
+                            //Updates database
+                            string aggregeteFunctionName = "dbo_" + sourceTableName + '_' + edgeColumnName + '_' +
+                                                           "Encoder";
+                            var tempStringForVariable = string.Join(", ", edgeFile.ColumnToType.Select(x => x.Key));
+                            if (!string.IsNullOrEmpty(tempStringForVariable))
+                            {
+                                tempStringForVariable = "," + tempStringForVariable;
+                            }
+                            string aggregateFunction = aggregeteFunctionName + "([sinkTable].[GlobalNodeId]" +
+                                                       tempStringForVariable +
+                                                       ")";
+                            const string updateEdgeData = @"
+                            Select [{0}].globalnodeid, [GraphView_InsertEdgeInternalTable].binary, [GraphView_InsertEdgeInternalTable].sinkCount into #ParallelOptimalTempTable
+                            From 
+                            (
+                            Select tempTable.[{2}] source, [{3}].{4} as binary, count([sinkTable].[GlobalNodeId]) as sinkCount
+                            From {5} tempTable
+                            Join [{3}].[{6}] sinkTable
+                            On sinkTable.[{7}] = tempTable.[{8}]
+                            Group by tempTable.[{2}]
+                            )
+                            as [GraphView_InsertEdgeInternalTable],
+                            [{3}].[{0}]
+                            Where [{0}].[{9}] = [GraphView_InsertEdgeInternalTable].source;
+                            UPDATE [{3}].[{0}] SET {1} .WRITE(temp.[binary], null, null), {1}OutDegree += sinkCount
+                            from #ParallelOptimalTempTable temp
+                            where temp.globalnodeid = [{0}].globalnodeid;
+                            drop table #ParallelOptimalTempTable;";
+                            command.Parameters.Clear();
+                            var sinkTableId = nodeTableToInfo[edgeFile.sinkTable].UserId.Item1;
+                            var sourceTableId = nodeTableToInfo[sourceTableName].UserId.Item1;
+                            command.CommandText = string.Format(updateEdgeData, sourceTableName, edgeColumnName,
+                                "startid",
+                                "dbo", aggregateFunction, randomTempTableName, edgeFile.sinkTable, sinkTableId,
+                                "endid", sourceTableId);
+                            command.ExecuteNonQuery();
+
+                            const string updateReversedEdgeData = @"
+                            UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
+                            From (
+                                Select tempTable.[{1}] as Sink, count(*) as sourceCount
+                                From {2} tempTable
+                                Join [{5}]
+                                On [{5}].[{6}] = tempTable.[{7}]
+                                Group by tempTable.[{1}]
+                            ) as [GraphView_InsertEdgeInternalTable]
+                            Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
+                            command.CommandText = string.Format(updateReversedEdgeData, edgeFile.sinkTable, "endid",
+                                randomTempTableName, "dbo", sinkTableId, sourceTableName, sourceTableId,
+                                "startid");
+                            command.ExecuteNonQuery();
+
+                            //Drops temp table 
+                            const string dropTempTable = @"
+                            drop table {0}";
+                            command.CommandText = string.Format(dropTempTable, randomTempTableName);
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                }
+                transaction.Commit();
+            }
+
+            catch (Exception error)
+            {
+                transaction.Rollback();
+                throw new BulkInsertNodeException(error.Message);
             }
         }
     }

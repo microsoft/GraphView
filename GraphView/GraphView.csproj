@@ -36,7 +36,8 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>GraphView.dll.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>
+    </AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
@@ -53,18 +54,31 @@
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BulkInsert.cs" />
     <Compile Include="CheckTableReferencingVisitor.cs" />
-    <Compile Include="ColumnStatistics.cs" />
-    <Compile Include="ConvertToModificationStatementVisitor.cs" />
     <Compile Include="DeployScriptTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
+    <Compile Include="Statistics.cs" />
+    <Compile Include="ConvertToModificationStatementVisitor.cs" />
+    <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="EdgeViewBfsScriptTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>EdgeViewBfsScriptTemplate.tt</DependentUpon>
+    </Compile>
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
+    <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
+    <Compile Include="NodeTableGraphViewDefinedFunctionTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>NodeTableGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+    </Compile>
+    <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
     <Compile Include="MetaGraphViewDefinedFunctionTemplate.cs">
@@ -91,11 +105,6 @@
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>EdgeViewGraphViewDefinedFunctionTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="NodeTableGraphViewDefinedFunctionTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>NodeTableGraphViewDefinedFunctionTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
@@ -131,7 +140,6 @@
     <Compile Include="WSqlTableContext.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="GraphView.dll.snk" />
     <None Include="DeployScriptTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>DeployScriptTemplate.cs</LastGenOutput>
@@ -151,6 +159,12 @@
     <None Include="MetaGraphViewDefinedFunctionTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>MetaGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="EdgeViewBfsScriptTemplate.tt">
+      <Generator>TextTemplatingFilePreprocessor</Generator>
+      <LastGenOutput>EdgeViewBfsScriptTemplate.cs</LastGenOutput>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

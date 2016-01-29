@@ -101,7 +101,7 @@ namespace GraphView
     }
 
     /// <summary>
-    /// AttachWhereClauseVisitor traverses a WHERE clause and attachs predicates
+    /// AttachWhereClauseVisitor traverses the WHERE clause and attachs predicates
     /// into nodes and edges of constructed graph.
     /// </summary>
     internal class AttachWhereClauseVisitor : WSqlFragmentVisitor
@@ -141,7 +141,6 @@ namespace GraphView
                 }
                 node.Predicates.Add(expr);
             }
-
         }
 
         public override void Visit(WBooleanBinaryExpression node)
@@ -188,170 +187,259 @@ namespace GraphView
         {
         }
     }
+#region comment codes
+    //internal class CheckBooleanEqualExpersion : WSqlFragmentVisitor
+    //{
+    //    private WSqlTableContext _context;
+    //    private MatchEdge _curPath;
+    //    public void Invoke(MatchGraph graph, WSqlTableContext context)
+    //    {
+    //        _context = context;
+    //        foreach (
+    //            var path in
+    //                graph.ConnectedSubGraphs.SelectMany(
+    //                    e =>e.Edges.Values.Where(
+    //                            ee => ee.Predicates != null && ee.IsPath)))
+    //        {
+    //            _curPath = path;
+    //            foreach (var predicate in path.Predicates)
+    //            {
+    //                predicate.Accept(this);
+    //            }
+    //        }
+    //    }
+    //    public override void Visit(WBooleanBinaryExpression node)
+    //    {
+    //        if (node.BooleanExpressionType != BooleanBinaryExpressionType.And)
+    //        {
+    //            throw new GraphViewException("Only conjunction is allowed in path predicates");
+    //        }
+    //        base.Visit(node);
+
+    //    }
+
+    //    public override void Visit(WBooleanComparisonExpression node)
+    //    {
+    //        if (node.ComparisonType!=BooleanComparisonType.Equals)
+    //            throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //        WValueExpression valueExpression = node.FirstExpr as WValueExpression;
+    //        WColumnReferenceExpression columnReferenceExpression;
+    //        if (valueExpression==null)
+    //        {
+    //            valueExpression = node.SecondExpr as WValueExpression;
+    //            if (valueExpression == null)
+    //                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //            columnReferenceExpression = node.FirstExpr as WColumnReferenceExpression;
+    //            if (columnReferenceExpression == null)
+    //                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //        }
+    //        else
+    //        {
+    //            columnReferenceExpression = node.SecondExpr as WColumnReferenceExpression;
+    //            if (columnReferenceExpression == null)
+    //                throw new GraphViewException("Only equal comparison expression between column and value is allowed in path predicates");
+    //        }
+    //        string attributeName = columnReferenceExpression.MultiPartIdentifier.Identifiers.Last().Value;
+    //        string value = valueExpression.ToString();
+    //        _context.AddPathPredicateValue(_curPath, attributeName, value);
+    //    }
+
+    //    public override void Visit(WBooleanIsNullExpression node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WBetweenExpression node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WLikePredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WInPredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WSubqueryComparisonPredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+
+    //    public override void Visit(WExistsPredicate node)
+    //    {
+    //        throw new GraphViewException("Only equal comparison expression is allowed in path predicates");
+    //    }
+    //}
 
 
-    internal class CheckNodeEdgeReferenceVisitor : WSqlFragmentVisitor
-    {
-        private bool _referencedByNodeAndEdge;
-        private MatchGraph _graph;
-        private Dictionary<string, string> _columnTableMapping;
 
-        public CheckNodeEdgeReferenceVisitor(MatchGraph graph, Dictionary<string, string> columnTableMapping)
-        {
-            _graph = graph;
-            _columnTableMapping = columnTableMapping;
-        }
-        public bool Invoke(WBooleanExpression node)
-        {
-            _referencedByNodeAndEdge = true;
-            node.Accept(this);
-            return _referencedByNodeAndEdge;
-        }
-        public override void Visit(WColumnReferenceExpression node)
-        {
-            if (!_referencedByNodeAndEdge) 
-                return;
-            var column = node.MultiPartIdentifier.Identifiers;
-            string tableAlias = "";
-            if (column.Count >= 2)
-            {
-                tableAlias = column[column.Count - 2].Value;
-            }
-            else
-            {
-                var columnName = column.Last().Value;
-                if ((_columnTableMapping.ContainsKey(columnName)))
-                {
-                    tableAlias = _columnTableMapping[columnName];
-                }
-            }
+    //internal class CheckNodeEdgeReferenceVisitor : WSqlFragmentVisitor
+    //{
+    //    private bool _referencedByNodeAndEdge;
+    //    private MatchGraph _graph;
+    //    private Dictionary<string, string> _columnTableMapping;
 
-            if (!_graph.ContainsNode(tableAlias))
-            {
-                _referencedByNodeAndEdge = false;
-            }
-        }
+    //    public CheckNodeEdgeReferenceVisitor(MatchGraph graph, Dictionary<string, string> columnTableMapping)
+    //    {
+    //        _graph = graph;
+    //        _columnTableMapping = columnTableMapping;
+    //    }
+    //    public bool Invoke(WBooleanExpression node)
+    //    {
+    //        _referencedByNodeAndEdge = true;
+    //        node.Accept(this);
+    //        return _referencedByNodeAndEdge;
+    //    }
+    //    public override void Visit(WColumnReferenceExpression node)
+    //    {
+    //        if (!_referencedByNodeAndEdge) 
+    //            return;
+    //        var column = node.MultiPartIdentifier.Identifiers;
+    //        string tableAlias = "";
+    //        if (column.Count >= 2)
+    //        {
+    //            tableAlias = column[column.Count - 2].Value;
+    //        }
+    //        else
+    //        {
+    //            var columnName = column.Last().Value;
+    //            if ((_columnTableMapping.ContainsKey(columnName)))
+    //            {
+    //                tableAlias = _columnTableMapping[columnName];
+    //            }
+    //        }
 
-        public override void Visit(WScalarSubquery node)
-        {
-            _referencedByNodeAndEdge = false;
-        }
+    //        if (!_graph.ContainsNode(tableAlias))
+    //        {
+    //            _referencedByNodeAndEdge = false;
+    //        }
+    //    }
 
-        public override void Visit(WFunctionCall node)
-        {
-            _referencedByNodeAndEdge = false;
-        }
+    //    public override void Visit(WScalarSubquery node)
+    //    {
+    //        _referencedByNodeAndEdge = false;
+    //    }
 
-        public override void Visit(WSearchedCaseExpression node)
-        {
-            _referencedByNodeAndEdge = false;
-        }
-    }
+    //    public override void Visit(WFunctionCall node)
+    //    {
+    //        _referencedByNodeAndEdge = false;
+    //    }
 
-    internal class AttachNodeEdgePredictesVisitor : WSqlFragmentVisitor
-    {
+    //    public override void Visit(WSearchedCaseExpression node)
+    //    {
+    //        _referencedByNodeAndEdge = false;
+    //    }
+    //}
 
-        private CheckNodeEdgeReferenceVisitor _checkNodeEdgeReferenceVisitor;
-        private WWhereClause _nodeEdgePredicatesWhenClause = new WWhereClause();
+    //internal class AttachNodeEdgePredictesVisitor : WSqlFragmentVisitor
+    //{
 
-        public WWhereClause Invoke(WWhereClause node, MatchGraph graph, Dictionary<string, string> columnTableMapping)
-        {
-            _checkNodeEdgeReferenceVisitor = new CheckNodeEdgeReferenceVisitor(graph, columnTableMapping)
-            ;
-            if (node.SearchCondition != null)
-                node.SearchCondition.Accept(this);
-            return _nodeEdgePredicatesWhenClause;
-        }
+    //    private CheckNodeEdgeReferenceVisitor _checkNodeEdgeReferenceVisitor;
+    //    private WWhereClause _nodeEdgePredicatesWhenClause = new WWhereClause();
 
-        public void UpdateWherClause(WWhereClause whereClause, WBooleanExpression node)
-        {
-            if (whereClause.SearchCondition == null)
-                whereClause.SearchCondition = node;
-            else
-            {
-                whereClause.SearchCondition = new WBooleanBinaryExpression
-                {
-                    FirstExpr = whereClause.SearchCondition,
-                    SecondExpr = node,
-                    BooleanExpressionType = BooleanBinaryExpressionType.And
-                };
-            }
-        }
+    //    public WWhereClause Invoke(WWhereClause node, MatchGraph graph, Dictionary<string, string> columnTableMapping)
+    //    {
+    //        _checkNodeEdgeReferenceVisitor = new CheckNodeEdgeReferenceVisitor(graph, columnTableMapping)
+    //        ;
+    //        if (node.SearchCondition != null)
+    //            node.SearchCondition.Accept(this);
+    //        return _nodeEdgePredicatesWhenClause;
+    //    }
 
-        public override void Visit(WBooleanBinaryExpression node)
-        {
-            if (node.BooleanExpressionType == BooleanBinaryExpressionType.And)
-            {
-                if (_checkNodeEdgeReferenceVisitor.Invoke(node.FirstExpr))
-                {
-                    UpdateWherClause(_nodeEdgePredicatesWhenClause, node.FirstExpr);
-                }
-                else
-                {
-                    base.Visit(node.FirstExpr);
-                }
-                if (_checkNodeEdgeReferenceVisitor.Invoke(node.SecondExpr))
-                {
-                    UpdateWherClause(_nodeEdgePredicatesWhenClause, node.SecondExpr);
-                }
-                else
-                {
-                    base.Visit(node.SecondExpr);
-                }
-            }
-            else
-            {
-                if (_checkNodeEdgeReferenceVisitor.Invoke(node))
-                {
-                    UpdateWherClause(_nodeEdgePredicatesWhenClause,node);
-                }
-            }
-        }
+    //    public void UpdateWherClause(WWhereClause whereClause, WBooleanExpression node)
+    //    {
+    //        if (whereClause.SearchCondition == null)
+    //            whereClause.SearchCondition = node;
+    //        else
+    //        {
+    //            whereClause.SearchCondition = new WBooleanBinaryExpression
+    //            {
+    //                FirstExpr = whereClause.SearchCondition,
+    //                SecondExpr = node,
+    //                BooleanExpressionType = BooleanBinaryExpressionType.And
+    //            };
+    //        }
+    //    }
 
-        public override void Visit(WBooleanComparisonExpression node)
-        {
-            if (_checkNodeEdgeReferenceVisitor.Invoke(node))
-            {
-                UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
-            }
-        }
+    //    public override void Visit(WBooleanBinaryExpression node)
+    //    {
+    //        if (node.BooleanExpressionType == BooleanBinaryExpressionType.And)
+    //        {
+    //            if (_checkNodeEdgeReferenceVisitor.Invoke(node.FirstExpr))
+    //            {
+    //                UpdateWherClause(_nodeEdgePredicatesWhenClause, node.FirstExpr);
+    //            }
+    //            else
+    //            {
+    //                base.Visit(node.FirstExpr);
+    //            }
+    //            if (_checkNodeEdgeReferenceVisitor.Invoke(node.SecondExpr))
+    //            {
+    //                UpdateWherClause(_nodeEdgePredicatesWhenClause, node.SecondExpr);
+    //            }
+    //            else
+    //            {
+    //                base.Visit(node.SecondExpr);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            if (_checkNodeEdgeReferenceVisitor.Invoke(node))
+    //            {
+    //                UpdateWherClause(_nodeEdgePredicatesWhenClause,node);
+    //            }
+    //        }
+    //    }
 
-        public override void Visit(WBooleanIsNullExpression node)
-        {
-            if (_checkNodeEdgeReferenceVisitor.Invoke(node))
-            {
-                UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
-            }
-        }
+    //    public override void Visit(WBooleanComparisonExpression node)
+    //    {
+    //        if (_checkNodeEdgeReferenceVisitor.Invoke(node))
+    //        {
+    //            UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
+    //        }
+    //    }
 
-        public override void Visit(WBetweenExpression node)
-        {
-            if (_checkNodeEdgeReferenceVisitor.Invoke(node))
-            {
-                UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
-            }
-        }
+    //    public override void Visit(WBooleanIsNullExpression node)
+    //    {
+    //        if (_checkNodeEdgeReferenceVisitor.Invoke(node))
+    //        {
+    //            UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
+    //        }
+    //    }
 
-        public override void Visit(WLikePredicate node)
-        {
-            if (_checkNodeEdgeReferenceVisitor.Invoke(node))
-            {
-                UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
-            }
-        }
+    //    public override void Visit(WBetweenExpression node)
+    //    {
+    //        if (_checkNodeEdgeReferenceVisitor.Invoke(node))
+    //        {
+    //            UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
+    //        }
+    //    }
 
-        public override void Visit(WInPredicate node)
-        {
-        }
+    //    public override void Visit(WLikePredicate node)
+    //    {
+    //        if (_checkNodeEdgeReferenceVisitor.Invoke(node))
+    //        {
+    //            UpdateWherClause(_nodeEdgePredicatesWhenClause, node);
+    //        }
+    //    }
 
-        public override void Visit(WSubqueryComparisonPredicate node)
-        {
-        }
+    //    public override void Visit(WInPredicate node)
+    //    {
+    //    }
 
-        public override void Visit(WExistsPredicate node)
-        {
-        }
-    }
+    //    public override void Visit(WSubqueryComparisonPredicate node)
+    //    {
+    //    }
+
+    //    public override void Visit(WExistsPredicate node)
+    //    {
+    //    }
+    //}
+#endregion
 
     
 }

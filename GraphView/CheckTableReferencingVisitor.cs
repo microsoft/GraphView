@@ -26,13 +26,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
     /// <summary>
-    /// Check if any columns of a specific table are referenced in a statement
+    /// Checks if any columns of a specific table are referenced in a statement,
+    /// and removes
     /// </summary>
-    class CheckTableReferencingVisitor : WSqlFragmentVisitor
+    class CheckTableReferenceVisitor : WSqlFragmentVisitor
     {
         private bool _tableExists;
         private string _tableName;
@@ -54,17 +56,31 @@ namespace GraphView
             _tableExists = false;
             _tableName = tableName;
             _tableRef = context[tableName] as WNamedTableReference;
-            _columnTableMapping = context.GetColumnTableMapping(columnsOfNodeTables);
+            _columnTableMapping = context.GetColumnToAliasMapping(columnsOfNodeTables);
             node.Accept(this);
             return _tableExists;
         }
 
-        public override void Visit(WSelectQueryBlock node)
+        //public override void Visit(WSelectQueryBlock node)
+        //{
+        //    if (node.SelectElements.Any(e => e is WSelectStarExpression))
+        //        _tableExists = true;
+        //    else
+        //        base.Visit(node);
+        //}
+
+        public override void Visit(WSelectStarExpression node)
         {
-            if (node.SelectElements.Any(e => e is WSelectStarExpression))
+            if (_tableExists)
+                return;
+            if (node.Qulifier == null)
+            {
                 _tableExists = true;
-            else
-                base.Visit(node);
+                return;
+            }
+            if (String.Equals(node.Qulifier.Identifiers.Last().Value, _tableName, StringComparison.OrdinalIgnoreCase))
+                _tableExists = true;
+            
         }
 
         public override void Visit(WColumnReferenceExpression node)
@@ -80,24 +96,24 @@ namespace GraphView
                 case 1:
                     if (_columnTableMapping.ContainsKey(columnName) &&
                         String.Equals(_columnTableMapping[columnName], _tableName,
-                            StringComparison.CurrentCultureIgnoreCase))
+                            StringComparison.OrdinalIgnoreCase))
                         _tableExists = true;
                     break;
                 // column referencd by exposed name
                 case 2:
                     var tableExposedName = columnIdentifiers[0].Value;
-                    if (String.Equals(tableExposedName, _tableName, StringComparison.CurrentCultureIgnoreCase))
+                    if (String.Equals(tableExposedName, _tableName, StringComparison.OrdinalIgnoreCase))
                         _tableExists = true;
                     break;
                 // column referencd by complete table name
                 default:
                     var flag = true;
                     var index1 = columnIdentifiers.Count - 2;
-                    var index2 = _tableRef.TableObjectName.Count-1;
+                    var index2 = _tableRef.TableObjectName.Count - 1;
                     for (; index1 >= 0 && index2 >= 0; --index1, --index2)
                     {
                         if (String.Equals(columnIdentifiers[index1].Value, _tableRef.TableObjectName[index2].Value,
-                            StringComparison.CurrentCultureIgnoreCase))
+                            StringComparison.OrdinalIgnoreCase))
                             continue;
                         flag = false;
                         break;

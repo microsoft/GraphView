@@ -199,6 +199,22 @@ namespace GraphView
                         wstat = wdstat;
                         break;
                     }
+                case "CreateViewStatement":
+                {
+                    var cvs = tsqlStat as CreateViewStatement;
+                    var wcvs = new WCreateViewStatement
+                    {
+                        Columns = cvs.Columns,
+                        FirstTokenIndex = cvs.FirstTokenIndex,
+                        LastTokenIndex = cvs.LastTokenIndex,
+                        SchemaObjectName = ParseSchemaObjectName(cvs.SchemaObjectName),
+                        SelectStatement = ParseSelectQueryStatement(cvs.SelectStatement.QueryExpression),
+                        ViewOptions = cvs.ViewOptions,
+                        WithCheckOption = cvs.WithCheckOption
+                    };
+                    wstat = wcvs;
+                    break;
+                }
                 case "BeginTransactionStatement":
                     {
                         var beginTranStat = tsqlStat as BeginTransactionStatement;

@@ -30,8 +30,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Schema;
 
 namespace GraphView
 {
@@ -111,25 +113,100 @@ namespace GraphView
             if (!ParseQuotedIdentifier(tokens, ref currentToken, ref edgeIdentifier, ref farestError))
                 return false;
 
+            int line = tokens[currentToken].Line;
             nextToken = currentToken;
-            var spiltEdgeIdentifier = edgeIdentifier.Value.Split(' ');
             string alias = null;
-            if (spiltEdgeIdentifier.Length > 1)
+            int maxLen = 1;
+            int minLen = 1;
+
+            string errorKey = "";
+            var edgeTokens = LexicalAnalyzer.Tokenize(edgeIdentifier.Value, ref errorKey);
+            if (!string.IsNullOrEmpty(errorKey))
+                throw new SyntaxErrorException(line, errorKey);
+            int curEdgeToken = 0;
+            int edgeFareastError = 0;
+            string edgeName = null;
+            string strValue = null;
+            Dictionary<string, string> attributeValueDict = null;
+
+
+            // Gets edge name
+            if (!ReadToken(edgeTokens, AnnotationTokenType.NameToken, ref curEdgeToken, ref edgeName, ref edgeFareastError))
+                throw new SyntaxErrorException(line, edgeTokens[edgeFareastError].value);
+            edgeIdentifier.Value = edgeName;
+
+            // Gets path info
+            if (ReadToken(edgeTokens, "*", ref curEdgeToken, ref strValue, ref edgeFareastError))
             {
-                alias = spiltEdgeIdentifier.Last();
-                if (GraphViewKeywords._keywords.Contains(alias))
-                    throw new SyntaxErrorException(string.Format("System restricted Name {0} cannot be used",
-                        alias));
-                edgeIdentifier.Value = spiltEdgeIdentifier.First();
+                string lengStr = "";
+
+                // Gets path minimal length
+                if (ReadToken(edgeTokens, AnnotationTokenType.Integer, ref curEdgeToken, ref lengStr,
+                    ref edgeFareastError))
+                {
+                    if (!int.TryParse(lengStr, out minLen) || minLen<0)
+                        throw new SyntaxErrorException(line, lengStr, "Min length should be an integer no less than zero");
+                    for (int i = 0; i < 2; i++)
+                    {
+                        if (!ReadToken(edgeTokens, ".", ref curEdgeToken, ref strValue,
+                            ref edgeFareastError))
+                            throw new SyntaxErrorException(line, lengStr,
+                                "Two dots should be followed by the minimal length integer");
+                    }
+
+                    // Gets path maximal length
+                    if (!ReadToken(edgeTokens, AnnotationTokenType.Integer, ref curEdgeToken, ref lengStr,
+                        ref edgeFareastError) || !int.TryParse(lengStr, out maxLen) || maxLen < minLen)
+                        throw new SyntaxErrorException(line, lengStr,
+                            "Max length should be an integer no less than the min length");
+                }
+                else
+                {
+                    minLen = 0;
+                    maxLen = -1;
+                }
+                // Gets edge alias
+                if (ReadToken(edgeTokens, "as", ref curEdgeToken, ref strValue, ref edgeFareastError))
+                {
+                    if (!ReadToken(edgeTokens, AnnotationTokenType.NameToken, ref curEdgeToken, ref alias, ref edgeFareastError))
+                        throw new SyntaxErrorException(line, edgeTokens[edgeFareastError].value);
+                }
+
+                // Gets predicates on attributes
+                NestedObject jsonNestedObject = null;
+                int braceToken = curEdgeToken;
+                if (ReadToken(edgeTokens, AnnotationTokenType.LeftBrace, ref curEdgeToken, ref strValue,
+                    ref edgeFareastError))
+                {
+                    if (!ParseNestedObject(edgeTokens, ref braceToken, ref jsonNestedObject, ref edgeFareastError, true))
+                        throw new SyntaxErrorException(line, "{", "Invalid json string");
+                    else
+                        attributeValueDict =
+                            (jsonNestedObject as CollectionObject).Collection.ToDictionary(e => e.Key.ToLower(),
+                                e =>
+                                    (e.Value is StringObject)
+                                        ? "'" + ((StringObject) e.Value).Value + "'"
+                                        : (e.Value as NormalObject).Value);
+                }
             }
+
+            // Gets edge alias
+            if (ReadToken(edgeTokens, "as", ref curEdgeToken, ref strValue, ref edgeFareastError))
+            {
+                if (!ReadToken(edgeTokens, AnnotationTokenType.NameToken, ref curEdgeToken, ref alias, ref edgeFareastError))
+                    throw new SyntaxErrorException(line, edgeTokens[edgeFareastError].value);
+            }
+
             result = new WEdgeColumnReferenceExpression
             {
                 ColumnType = ColumnType.Regular,
-                MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier),
-                FirstTokenIndex = currentToken - 1,
-                LastTokenIndex = currentToken - 1,
                 Alias = alias,
-                AliasRole = AliasType.UserSpecified
+                LastTokenIndex = currentToken - 1,
+                FirstTokenIndex = currentToken - 1,
+                MaxLength = maxLen,
+                MinLength = minLen,
+                MultiPartIdentifier = new WMultiPartIdentifier(edgeIdentifier),
+                AttributeValueDict = attributeValueDict
             };
             return true;
         }
@@ -178,20 +255,6 @@ namespace GraphView
             Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> tuple = null;
             while (ParseMatchPathPart(tokens, ref currentToken, ref tuple, ref farestError))
             {
-                if (nodeList.Count > 0)
-                {
-                    var preTuple = nodeList.Last();
-                    if (preTuple.Item2.Alias == null)
-                    {
-                        preTuple.Item2.Alias = String.Format(CultureInfo.CurrentCulture, "{0}_{1}_{2}",
-                            preTuple.Item1.BaseIdentifier.Value,
-                            preTuple.Item2.MultiPartIdentifier.Identifiers.Last().Value,
-                            tuple.Item1.BaseIdentifier.Value);
-                        preTuple.Item2.AliasRole = AliasType.Default;
-                    }
-
-                    
-                }
                 nodeList.Add(tuple);
             }
 
@@ -203,17 +266,11 @@ namespace GraphView
             if (!ParseSchemaObjectName(tokens, ref currentToken, ref tail, ref farestError))
                 return false;
 
-            var lastTuple = nodeList.Last();
-            if (lastTuple.Item2.Alias == null)
-            {
-                lastTuple.Item2.Alias = String.Format(CultureInfo.CurrentCulture, "{0}_{1}_{2}", lastTuple.Item1.BaseIdentifier.Value,
-                        lastTuple.Item2.MultiPartIdentifier.Identifiers.Last().Value, tail.BaseIdentifier.Value);
-                lastTuple.Item2.AliasRole = AliasType.Default;
-            }
+           
 
             result = new WMatchPath
             {
-                PathNodeList = nodeList,
+                PathEdgeList = nodeList,
                 Tail = tail,
                 FirstTokenIndex = firstToken,
                 LastTokenIndex = currentToken - 1
@@ -521,7 +578,7 @@ namespace GraphView
             if (!ParseDataType(tokens, ref currentToken, ref dataType, ref farestError))
                 return false;
 
-            HashSet<string> metaDataFields = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase)
+            HashSet<string> metaDataFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "columnrole",
                 "reference",
@@ -662,6 +719,11 @@ namespace GraphView
         private abstract class NestedObject { }
 
         private class StringObject : NestedObject
+        {
+            public string Value { get; set; }
+        }
+
+        private class NormalObject: NestedObject
         {
             public string Value { get; set; }
         }
@@ -809,11 +871,37 @@ namespace GraphView
             }
         }
 
+        private static bool ReadToken(
+            List<AnnotationToken> tokens,
+            string text,
+            ref int nextToken,
+            ref string tokenValue,
+            ref int fareastError)
+        {
+            if (tokens.Count == nextToken)
+            {
+                fareastError = nextToken;
+                return false;
+            }
+            else if (string.Equals(tokens[nextToken].value, text, StringComparison.OrdinalIgnoreCase))
+            {
+                tokenValue = tokens[nextToken].value;
+                nextToken++;
+                return true;
+            }
+            else
+            {
+                fareastError = Math.Max(fareastError, nextToken);
+                return false;
+            }
+        }
+
         private static bool ParseNestedObject(
             List<AnnotationToken> tokenList, 
             ref int nextToken, 
             ref NestedObject result,
-            ref int fareastError)
+            ref int fareastError,
+            bool supportMoreFieldType = false)
         {
             int currentToken = nextToken;
             string tokenStr = null;
@@ -831,7 +919,7 @@ namespace GraphView
                 if ((ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref fieldName, ref fareastError) || 
                     ReadToken(tokenList, AnnotationTokenType.NameToken, ref currentToken, ref fieldName, ref fareastError)) &&
                     ReadToken(tokenList, AnnotationTokenType.Colon, ref currentToken, ref tokenStr, ref fareastError) &&
-                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError))
+                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError, supportMoreFieldType))
                 {
                     collectionObj.Collection[fieldName.ToLower()] = fieldValue;
                 }
@@ -844,7 +932,7 @@ namespace GraphView
                     (ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref fieldName, ref fareastError) || 
                     ReadToken(tokenList, AnnotationTokenType.NameToken, ref currentToken, ref fieldName, ref fareastError)) &&
                     ReadToken(tokenList, AnnotationTokenType.Colon, ref currentToken, ref tokenStr, ref fareastError) &&
-                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError))
+                    ParseNestedObject(tokenList, ref currentToken, ref fieldValue, ref fareastError, supportMoreFieldType))
                 {
                     collectionObj.Collection[fieldName.ToLower()] = fieldValue;
                 }
@@ -858,7 +946,10 @@ namespace GraphView
                 nextToken = currentToken;
                 return true;
             }
-            else if (ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref tokenStr, ref fareastError))
+            else if (
+                ReadToken(tokenList, AnnotationTokenType.DoubleQuotedString, ref currentToken, ref tokenStr,
+                    ref fareastError)
+                )
             {
                 StringObject stringObj = new StringObject()
                 {
@@ -866,6 +957,24 @@ namespace GraphView
                 };
 
                 result = stringObj;
+                nextToken = currentToken;
+                return true;
+            }
+            else if (supportMoreFieldType &&
+                 (ReadToken(tokenList, AnnotationTokenType.Integer, ref currentToken, ref tokenStr,
+                     ref fareastError) ||
+                  ReadToken(tokenList, AnnotationTokenType.Double, ref currentToken, ref tokenStr,
+                      ref fareastError) ||
+                  ReadToken(tokenList, AnnotationTokenType.Binary, ref currentToken, ref tokenStr,
+                      ref fareastError) ||
+                  ReadToken(tokenList, AnnotationTokenType.SingleQuotedString, ref currentToken, ref tokenStr,
+                      ref fareastError)))
+            {
+                NormalObject normalObject = new NormalObject
+                {
+                    Value = tokenStr
+                };
+                result = normalObject;
                 nextToken = currentToken;
                 return true;
             }
@@ -1042,6 +1151,14 @@ namespace GraphView
                         {
                             Clustered = false,
                             IsPrimaryKey = false,
+                            ConstraintIdentifier = new Identifier
+                            {
+                                Value = string.Format("{0}_UQ_{1}", (stmt.SchemaObjectName.SchemaIdentifier == null
+                                    ? "dbo"
+                                    : stmt.SchemaObjectName.SchemaIdentifier.Value) +
+                                                                    stmt.SchemaObjectName.BaseIdentifier.Value,
+                                    rawColumnDef[i].ColumnIdentifier.Value)
+                            }
                         });
                         break;
                 }
@@ -1116,6 +1233,51 @@ namespace GraphView
             stmt.Definition.ColumnDefinitions.Add(identityCol);
             stmt.Definition.ColumnDefinitions.Add(inDegreeCol);
 
+            return fragment;
+        }
+
+        public WSqlFragment ParseCreateNodeEdgeViewStatement(string query, out IList<ParseError> errors)
+        {
+            var tsqlParser = new TSql110Parser(true);
+            var sr = new StringReader(query);
+            var tokens = new List<TSqlParserToken>(tsqlParser.GetTokenStream(sr, out errors));
+            if (errors.Count > 0)
+            {
+                return null;
+            }
+            int currentToken = 0;
+            int farestError = 0;
+            while (currentToken < tokens.Count)
+            {
+                int nextToken = currentToken;
+                if (ReadToken(tokens, "create", ref nextToken, ref farestError))
+                {
+                    int pos = nextToken;
+                    if (ReadToken(tokens, "node", ref nextToken, ref farestError))
+                    {
+                        tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        tokens[pos].Text = "/*__GRAPHVIEW_CREATE_NODEVIEW*/";
+                    }
+                    else if (ReadToken(tokens, "edge", ref nextToken, ref farestError))
+                    {
+                        tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        tokens[pos].Text = "/*__GRAPHVIEW_CREATE_EDGEVIEW*/";
+                    }
+                    else
+                    {
+                        var error = tokens[farestError];
+                        throw new SyntaxErrorException(error.Line, error.Text);
+                        //errors.Add(new ParseError(0, error.Offset, error.Line, error.Column,
+                        //    string.Format("Incorrect syntax near {0}", error.Text)));
+                    }
+                }
+                currentToken++;
+            }
+
+            var parser = new WSqlParser();
+            var fragment = parser.Parse(tokens, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                return null;
             return fragment;
         }
 
@@ -1235,7 +1397,7 @@ namespace GraphView
                             errors.Add(new ParseError(0, error.Offset, error.Line, error.Column, ""));
                             return null;
                         }
-                        else if (path.PathNodeList.Count != 1)
+                        else if (path.PathEdgeList.Count != 1)
                         {
                             var error = _tokens[nextToken];
                             errors.Add(new ParseError(0, error.Offset, error.Line, error.Column, 
@@ -1252,7 +1414,7 @@ namespace GraphView
                         _tokens[currentToken].Text = "SELECT";
 
                         _tokens[pos].TokenType = TSqlTokenType.Identifier;
-                        _tokens[pos].Text = path.PathNodeList[0].Item1.BaseIdentifier.Value;
+                        _tokens[pos].Text = path.PathEdgeList[0].Item1.BaseIdentifier.Value;
 
                         _tokens[pos + 1].TokenType = TSqlTokenType.Comma;
                         _tokens[pos + 1].Text = ",";

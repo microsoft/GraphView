@@ -39,11 +39,11 @@ namespace GraphView
 {
     public class TableSizeEstimator
     {
-        public SqlConnection Conn { get; private set; }
+        public SqlTransaction Tx { get; private set; }
 
-        public TableSizeEstimator(SqlConnection conn)
+        public TableSizeEstimator(SqlTransaction tx)
         {
-            Conn = conn;
+            this.Tx = tx;
         }
 
         /// <summary>
@@ -51,23 +51,22 @@ namespace GraphView
         /// </summary>
         private string GetEstimatedPlanXml(string sqlStr)
         {
-            var tx = Conn.BeginTransaction();
             string xml = "";
             //Set showplan
             try
             {
-                using (var cmdSetShowPlanXml = Conn.CreateCommand())
+                using (var cmdSetShowPlanXml = Tx.Connection.CreateCommand())
                 {
-                    cmdSetShowPlanXml.Transaction = tx;
+                    cmdSetShowPlanXml.Transaction = Tx;
                     cmdSetShowPlanXml.CommandText = "SET SHOWPLAN_XML ON";
                     cmdSetShowPlanXml.ExecuteNonQuery();
                 }
 
                 //Run input SQL
-                using (var cmdInput = Conn.CreateCommand())
+                using (var cmdInput = Tx.Connection.CreateCommand())
                 {
                     cmdInput.CommandText = sqlStr;
-                    cmdInput.Transaction = tx;
+                    cmdInput.Transaction = Tx;
 
                     var adapter = new SqlDataAdapter();
                     var dataSet = new DataSet { Locale = CultureInfo.CurrentCulture };
@@ -83,20 +82,18 @@ namespace GraphView
                     xml = Regex.Replace(xml, "<ShowPlanXML.*?>", "<ShowPlanXML>");
                 }
 
-                using (var cmdSetShowPlanXml = Conn.CreateCommand())
+                using (var cmdSetShowPlanXml = Tx.Connection.CreateCommand())
                 {
-                    cmdSetShowPlanXml.Transaction = tx;
+                    cmdSetShowPlanXml.Transaction = Tx;
                     cmdSetShowPlanXml.CommandText = "SET SHOWPLAN_XML OFF";
                     cmdSetShowPlanXml.ExecuteNonQuery();
                 }
-                tx.Commit();
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                tx.Rollback();
-                throw;
+                Tx.Rollback();
+                throw new QueryCompilationException("Cannot obtain estimated execution plan from the SQL database",e);
             }
-
 
             return xml;
         }
@@ -127,7 +124,7 @@ namespace GraphView
                 where e.Elements().Any(e2 => e2.Name.LocalName == "TableScan" || e2.Name.LocalName == "IndexScan")
                 select e;
 
-            var ret = new Dictionary<string, double>(StringComparer.CurrentCultureIgnoreCase);
+            var ret = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
             foreach (var t in tables)
             {
                 QuoteType quote;
@@ -139,6 +136,26 @@ namespace GraphView
             }
 
             return ret;
+        }
+
+        internal List<double> GetUnionQueryTableEstimatedRows(string sqlStr)
+        {
+            var xml = GetEstimatedPlanXml(sqlStr);
+            var root = XElement.Parse(xml);
+            var res = new List<double>();
+            foreach (var element in root.Descendants("Concat").First().Elements("RelOp"))
+            {
+                if (element.Attribute("PhysicalOp").Value == "Concatenation")
+                {
+                    var xElement = element.Element("Concat");
+                    if (xElement != null)
+                        res.AddRange(from sElement in xElement.Elements("RelOp")
+                            select Convert.ToDouble(sElement.Attribute("EstimateRows").Value));
+                }
+                else
+                    res.Add(Convert.ToDouble(element.Attribute("EstimateRows").Value));
+            }
+            return res;
         }
 
         internal int GetTableRowCount(string tableSchema, string tableName)
@@ -165,8 +182,9 @@ namespace GraphView
             GROUP BY 
                 s.NAME, t.NAME, i.object_id, i.index_id, i.name, p.[Rows]
             ";
-            using (var command = Conn.CreateCommand())
+            using (var command = Tx.Connection.CreateCommand())
             {
+                command.Transaction = Tx;
                 command.CommandText = sqlStr;
                 command.Parameters.AddWithValue("@tableSchema", tableSchema);
                 command.Parameters.AddWithValue("@tableName", tableName);

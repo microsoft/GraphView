@@ -39,20 +39,38 @@ namespace GraphView
     /// </summary>
     internal interface IMatchJoinPruning
     {
-        IEnumerable<OneHeightTree> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component);
+        IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component);
     }
 
     internal class PruneJointEdge : IMatchJoinPruning
     {
-        public IEnumerable<OneHeightTree> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component)
+        public IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component)
         {
             foreach (var treeTuple in treeTuples)
             {
                 var tree = treeTuple.Item1;
                 bool singleNode = treeTuple.Item2;
                 var root = tree.TreeRoot;
-                var jointEdges = tree.MaterializedEdges;
-                var unpopEdges = tree.UnmaterializedEdges;
+
+                List<MatchEdge> jointEdges = new List<MatchEdge>();
+                List<MatchEdge> unpopEdges = new List<MatchEdge>();
+
+                if (singleNode)
+                {
+                    unpopEdges = tree.Edges;
+                }
+                else
+                {
+                    foreach (var edge in tree.Edges)
+                    {
+                        if (component.Nodes.Contains(edge.SinkNode))
+                            jointEdges.Add(edge);
+                        else
+                            unpopEdges.Add(edge);
+                    }
+                }
+                //var jointEdges = tree.MaterializedEdges;
+                //var unpopEdges = tree.UnmaterializedEdges;
                 int joinEdgesCount = jointEdges.Count;
                 int unpopEdgesCount = unpopEdges.Count;
 
@@ -85,7 +103,7 @@ namespace GraphView
                             }
                         }
                         
-                        yield return new OneHeightTree
+                        yield return new CandidateJoinUnit
                         {
                             TreeRoot = root,
                             MaterializedEdges = newJointEdges,
@@ -119,32 +137,33 @@ namespace GraphView
 
     internal interface IMatchJoinStatisticsCalculator
     {
-        WSqlTableContext Context { get; set; }
-
-        ColumnStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge);
-
-
+        Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge,out double selectivity);
     }
 
     internal class HistogramCalculator : IMatchJoinStatisticsCalculator
     {
-        public Dictionary<Tuple<string, string>, ColumnStatistics> LeafToLeafSelectivity { get; set; }
+        private readonly Dictionary<Tuple<string, string>, Tuple<Statistics,double>> _leafToLeafStatistics;
+
 
         public HistogramCalculator()
         {
-            LeafToLeafSelectivity = new Dictionary<Tuple<string, string>, ColumnStatistics>(new MatchEdgeTupleEqualityComparer());
-        }
+            _leafToLeafStatistics =
+                new Dictionary<Tuple<string, string>, Tuple<Statistics, double>>(new MatchEdgeTupleEqualityComparer());
 
-        public WSqlTableContext Context { get; set; }
-        public ColumnStatistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge)
+        }
+        public Statistics GetLeafToLeafStatistics(MatchEdge nodeEdge, MatchEdge componentEdge, out double selectivity)
         {
             var edgeTuple = new Tuple<string, string>(nodeEdge.EdgeAlias, componentEdge.EdgeAlias);
+            Tuple<Statistics, double> edgeStatisticsTuple;
+            if (_leafToLeafStatistics.TryGetValue(edgeTuple, out edgeStatisticsTuple))
+            {
+                selectivity = edgeStatisticsTuple.Item2;
+                return edgeStatisticsTuple.Item1;
+            }
 
-            if (LeafToLeafSelectivity.ContainsKey(edgeTuple))
-                return LeafToLeafSelectivity[edgeTuple];
-
-            var mergedStatistics = ColumnStatistics.UpdateHistogram(Context.GetEdgeStatistics(nodeEdge), Context.GetEdgeStatistics(componentEdge));
-            LeafToLeafSelectivity[edgeTuple] = mergedStatistics;
+            var mergedStatistics = Statistics.UpdateHistogram(nodeEdge.Statistics, componentEdge.Statistics,
+                out selectivity);
+            _leafToLeafStatistics[edgeTuple] = new Tuple<Statistics, double>(mergedStatistics, selectivity);
             return mergedStatistics;
         }
 
