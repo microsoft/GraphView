@@ -443,6 +443,16 @@ namespace GraphView
             Edges = new Dictionary<string, MatchEdge>(StringComparer.OrdinalIgnoreCase);
             IsTailNode = new Dictionary<MatchNode, bool>();
         }
+
+        public int ActiveNodeCount
+        {
+            get { return IsTailNode.Count(e => !e.Value); }
+        }
+
+        public int EdgeCount
+        {
+            get { return Edges.Count; }
+        }
     }
 
     internal class MatchGraph

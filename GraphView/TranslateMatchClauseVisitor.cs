@@ -1327,7 +1327,7 @@ namespace GraphView
                 var nodeEdgeDict = node.Neighbors.ToDictionary(e => e,
                     e => component.EdgeMaterilizedDict.ContainsKey(e));
 
-                // Edge to component node
+                // 1-height tree's edges to the component's nodes
                 foreach (var edge in node.Neighbors.Where(e => !nodeEdgeDict[e]))
                 {
                     if (component.Nodes.Contains(edge.SinkNode))
@@ -1338,7 +1338,7 @@ namespace GraphView
                     }
                 }
 
-                // Component edge to node
+                // A component's edge to the 1-height tree's root
                 if (!joint && component.UnmaterializedNodeMapping.ContainsKey(node))
                 {
                     joint = true;
@@ -1384,14 +1384,11 @@ namespace GraphView
         private MatchComponent ConstructComponent(ConnectedComponent subGraph)
         {
             var componentStates = new List<MatchComponent>();
-            var nodes = subGraph.Nodes;
-            int nodeCount = subGraph.IsTailNode.Count(e => !e.Value);
-            int edgeCount = subGraph.Edges.Count;
-            MatchComponent finishedComponent = null;
+            MatchComponent optimalFinalComponent = null;
 
             //Init
             double maxValue = Double.MinValue;
-            foreach (var node in nodes)
+            foreach (var node in subGraph.Nodes)
             {
                 if (!subGraph.IsTailNode[node.Value])
                 {
@@ -1427,15 +1424,13 @@ namespace GraphView
                 {
                     var nodeUnits = GetNodeUnits(subGraph, curComponent);
                     if (!nodeUnits.Any()
-                        && curComponent.MaterializedNodeSplitCount.Count == nodeCount
-                        && curComponent.EdgeMaterilizedDict.Count == edgeCount
-                        //&& curComponent.EdgeMaterilizedDict.All(e=>e.Value)
+                        && curComponent.ActiveNodeCount == subGraph.ActiveNodeCount
+                        && curComponent.EdgeMaterilizedDict.Count == subGraph.EdgeCount
                         )
-                    //if (!nodeUnits.Any())
                     {
-                        if (finishedComponent == null || curComponent.Cost < finishedComponent.Cost)
+                        if (optimalFinalComponent == null || curComponent.Cost < optimalFinalComponent.Cost)
                         {
-                            finishedComponent = curComponent;
+                            optimalFinalComponent = curComponent;
                             
                         }
                         continue;
@@ -1448,7 +1443,7 @@ namespace GraphView
                     {
                         // Pre-filter. If the lower bound of the current totoal join cost
                         // > current optimal join cost, prunes this component.
-                        if (finishedComponent != null)
+                        if (optimalFinalComponent != null)
                         {
                             double candidateSize = candidateUnit.TreeRoot.EstimatedRows*
                                                    candidateUnit.UnmaterializedEdges.Select(e => e.AverageDegree)
@@ -1460,7 +1455,7 @@ namespace GraphView
                                 costLowerBound = Math.Min(costLowerBound,
                                     Math.Log(candidateUnit.TreeRoot.EstimatedRows, 512));
                             if (curComponent.Cost + costLowerBound >
-                                finishedComponent.Cost )
+                                optimalFinalComponent.Cost )
                             {
                                 continue;
                             }
@@ -1495,7 +1490,7 @@ namespace GraphView
                 componentStates = nextCompnentStates;
             }
 
-            return finishedComponent;
+            return optimalFinalComponent;
 
         }
 

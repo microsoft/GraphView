@@ -63,6 +63,11 @@ namespace GraphView
         // Stores the split count of a materialized node
         public Dictionary<MatchNode, int> MaterializedNodeSplitCount { get; set; }
 
+        public int ActiveNodeCount
+        {
+            get { return MaterializedNodeSplitCount.Count; }
+        }
+
         // Maps the unmaterialized node to the alias of one of its incoming materialized edges;
         // the join condition between the node and the incoming edge should be added 
         // when the node is materialized.
