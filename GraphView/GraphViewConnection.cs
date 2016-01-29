@@ -94,6 +94,9 @@ namespace GraphView
         private static readonly string VersionTable = "VERSION";
 
         private static readonly string version = "1.10";
+        private string currentVersion = "";
+        public string CurrentVersion { get { return currentVersion; } }
+
         internal const string GraphViewUdfAssemblyName = "GraphViewUDF";
 
         /// <summary>
@@ -181,9 +184,9 @@ namespace GraphView
         /// Initializes a graph database and creates meta-data, 
         /// including table ID, graph column and edge attribute information.
         /// </summary>
-        internal void CreateMetadata()
+        internal void CreateMetadata(SqlTransaction transaction)
         {
-            var tx = Conn.BeginTransaction();
+            var tx = transaction;
             try
             {
                 using (var command = new SqlCommand(null, Conn))
@@ -288,9 +291,10 @@ namespace GraphView
                         CREATE TABLE [{0}] (
                             [VERSION] [varchar](8) NOT NULL
                         )
-                        INSERT INTO [{0}] VALUES({1})";
+                        INSERT INTO [{0}] (VERSION) VALUES({1})";
                     command.CommandText = string.Format(createVersionTable, VersionTable, version);
                     command.ExecuteNonQuery();
+                    currentVersion = version;
                 }
                 const string assemblyName = GraphViewUdfAssemblyName;
                 //var edgeDictionary = new List<Tuple<string, bool, List<Tuple<string, string>>>>
@@ -298,11 +302,9 @@ namespace GraphView
                 //    new Tuple<string, bool, List<Tuple<string, string>>>("GlobalNodeId",false, new List<Tuple<string, string>>())
                 //};
                 GraphViewDefinedFunctionGenerator.MetaRegister(assemblyName, Conn, tx);
-                tx.Commit();
             }
             catch (SqlException e)
             {
-                tx.Rollback();
                 throw new SqlExecutionException("Failed to create necessary meta-data or system-reserved functions.", e);
             }
         }
@@ -484,16 +486,34 @@ namespace GraphView
         /// </summary>
         public void Open()
         {
+            Conn.Open();
+            var transaction = Conn.BeginTransaction(); 
             try
             {
-                Conn.Open();
-                if (!CheckDatabase())
+                if (!CheckDatabase(transaction))
                 {
-                    CreateMetadata();
+                    CreateMetadata(transaction);
                 }
+
+                if (currentVersion == "1.00")
+                {
+                    UpgradeFromV100ToV110(transaction);
+                }
+
+                if (currentVersion == "1.10")
+                {
+                    
+                }
+
+                if (currentVersion != version)
+                {
+                    throw new GraphViewException("Version number in version table is not right.");
+                }
+                transaction.Commit();
             }
             catch (SqlException e)
             {
+                transaction.Rollback();
                 throw new SqlExecutionException("An error occurred when opening a database connection", e);
             }
         }
@@ -513,35 +533,106 @@ namespace GraphView
             }
         }
 
+        private void UpgradeFromV100ToV110(SqlTransaction transaction)
+        {
+            //var tx = conn.BeginTransaction("UpgradeFromV100ToV101");
+            var tables = GetNodeTables(transaction);
+
+            //Upgrade meta tables
+            UpgradeMetaTableV100(transaction);
+
+            //Upgrade functions
+            foreach (var table in tables)
+            {
+                DropNodeTableFunctionV100(table.Item1, table.Item2, transaction);
+            }
+            UpgradeGraphViewFunctionV100(transaction);
+
+            //Upgrade global view
+            foreach (var schema in tables.ToLookup(x => x.Item1.ToLower()))
+            {
+                updateGlobalNodeView(schema.Key, transaction);
+            }
+
+            //Upgrade table statistics
+            foreach (var table in tables)
+            {
+                UpdateTableStatistics(table.Item1, table.Item2, transaction);
+            }
+
+            //Update version number
+            UpdateVersionNumber("1.10", transaction);
+        }
+
         /// <summary>
         /// Validates the graph database by checking if metadata tables exist.
         /// </summary>
         /// <returns>True, if graph database is valid; otherwise, false.</returns>
-        private bool CheckDatabase()
+        private bool CheckDatabase(SqlTransaction transaction)
         {
-            var tableString = String.Join(", ", MetadataTables.Select(x => "'" + x + "'"));
+            const string checkVersionTable = @"
+                select TABLE_NAME
+                from INFORMATION_SCHEMA.TABLES
+                Where TABLE_CATALOG = @catalog and TABLE_SCHEMA = @schema and TABLE_NAME = @name and TABLE_TYPE = @type";
+
+            const string checkVersion = @"
+                Select * 
+                From {0}";
+
             using (var command = Conn.CreateCommand())
             {
-
-                command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
-                    SELECT COUNT([name]) cnt
-                    FROM sysobjects
-                    WHERE [type] = @type AND [category] = @category AND
-                    [name] IN ({0})
-                ", tableString);
-
-                command.Parameters.Add("@type", SqlDbType.NVarChar, 2);
-                command.Parameters.Add("@category", SqlDbType.Int);
-                command.Parameters["@type"].Value = "U";
-                command.Parameters["@category"].Value = 0;
-
+                command.Transaction = transaction;
+                command.CommandText = checkVersionTable;
+                command.Parameters.AddWithValue("@type", "BASE TABLE");
+                command.Parameters.AddWithValue("@catalog", Conn.Database);
+                command.Parameters.AddWithValue("@schema", "dbo");
+                command.Parameters.AddWithValue("@name", VersionTable);
                 using (var reader = command.ExecuteReader())
                 {
                     if (!reader.Read())
+                    {
                         return false;
-                    return Convert.ToInt32(reader["cnt"], CultureInfo.CurrentCulture) == MetadataTables.Count;
+                    }
                 }
             }
+
+            using (var command = Conn.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = string.Format(checkVersion, VersionTable);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        currentVersion = reader["VERSION"].ToString();
+                    }
+                }
+            }
+
+            return true;
+            //var tableString = String.Join(", ", MetadataTables.Select(x => "'" + x + "'"));
+            //using (var command = Conn.CreateCommand())
+            //{
+
+            //    command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
+            //        SELECT COUNT([name]) cnt
+            //        FROM sysobjects
+            //        WHERE [type] = @type AND [category] = @category AND
+            //        [name] IN ({0})
+            //    ", tableString);
+
+            //    command.Parameters.Add("@type", SqlDbType.NVarChar, 2);
+            //    command.Parameters.Add("@category", SqlDbType.Int);
+            //    command.Parameters["@type"].Value = "U";
+            //    command.Parameters["@category"].Value = 0;
+
+            //    using (var reader = command.ExecuteReader())
+            //    {
+            //        if (!reader.Read())
+            //            return false;
+            //        return Convert.ToInt32(reader["cnt"], CultureInfo.CurrentCulture) == MetadataTables.Count;
+            //    }
+            //}
         }
 
         /// <summary>
@@ -1649,7 +1740,7 @@ namespace GraphView
             }
         }
 
-        public void UpdateVersionNumber(SqlTransaction externalTransaction = null)
+        public void UpdateVersionNumber(string versionNumber, SqlTransaction externalTransaction = null)
         {
             SqlTransaction tran;
             if (externalTransaction == null)
@@ -1665,9 +1756,10 @@ namespace GraphView
                 using (var command = Conn.CreateCommand())
                 {
                     command.Transaction = tran;
-                    command.CommandText = string.Format("UPDATE {0} SET VERSION = {1}", VersionTable, version);
+                    command.CommandText = string.Format("UPDATE {0} SET VERSION = {1}", VersionTable, versionNumber);
                     command.ExecuteNonQuery();
                 }
+                currentVersion = versionNumber;
                 if (externalTransaction == null)
                 {
                     tran.Commit();

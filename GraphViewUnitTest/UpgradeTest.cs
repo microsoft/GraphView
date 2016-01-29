@@ -73,7 +73,7 @@ namespace GraphViewUnitTest
 
                     #region Update version number
 
-                    conn.UpdateVersionNumber(tx);
+                    conn.UpdateVersionNumber("1.10", tx);
 
                     #endregion
 

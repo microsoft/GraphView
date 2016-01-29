@@ -527,10 +527,11 @@ namespace GraphView
                 //Update metaTable
                 Int64 nodeviewTableId = 0;
                 string updateGraphTable =
-                    string.Format(@"INSERT INTO {0} OUTPUT [Inserted].[TableId] VALUES (@schema, @nodeviewname, 1)",
+                    string.Format(@"INSERT INTO {0} (TableSchema, TableName, TableRole) OUTPUT [Inserted].[TableId] VALUES (@schema, @nodeviewname, @role)",
                         MetadataTables[0]);
                 command.Parameters.AddWithValue("schema", tableSchema);
                 command.Parameters.AddWithValue("nodeviewname", nodeViewName);
+                command.Parameters.AddWithValue("role", 1);
                 command.CommandText = updateGraphTable;
                 using (var reader = command.ExecuteReader())
                 {
@@ -562,7 +563,7 @@ namespace GraphView
                     }
                 }
 
-                string updateNodeView = string.Format(@"INSERT INTO {0} VALUES (@nodeviewtableid, @tableid)",
+                string updateNodeView = string.Format(@"INSERT INTO {0} (NodeViewTableId, TableId) VALUES (@nodeviewtableid, @tableid)",
                     MetadataTables[7]);
                 command.Parameters.Clear();
                 command.Parameters.AddWithValue("nodeviewtableid", nodeviewTableId);
@@ -1852,6 +1853,7 @@ namespace GraphView
 
             try
             {
+                //Drops GlobalNodeView if exists
                 string globalViewName = "GlobalNodeView";
                 const string checkGlobalView = @"
                 select VIEWS.name
@@ -1876,8 +1878,9 @@ namespace GraphView
                 {
                     DropNodeView(schema, globalViewName, transaction);
                 }
-                var nodes = new List<string>();
 
+                //Gets nodes list and creates global node view on it.
+                var nodes = new List<string>();
                 const string getTableName = @"
                 Select TableName
                 From {0}
