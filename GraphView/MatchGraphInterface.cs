@@ -39,20 +39,38 @@ namespace GraphView
     /// </summary>
     internal interface IMatchJoinPruning
     {
-        IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<CandidateJoinUnit, bool>> treeTuples, MatchComponent component);
+        IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component);
     }
 
     internal class PruneJointEdge : IMatchJoinPruning
     {
-        public IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<CandidateJoinUnit, bool>> treeTuples, MatchComponent component)
+        public IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component)
         {
             foreach (var treeTuple in treeTuples)
             {
                 var tree = treeTuple.Item1;
                 bool singleNode = treeTuple.Item2;
                 var root = tree.TreeRoot;
-                var jointEdges = tree.MaterializedEdges;
-                var unpopEdges = tree.UnmaterializedEdges;
+
+                List<MatchEdge> jointEdges = new List<MatchEdge>();
+                List<MatchEdge> unpopEdges = new List<MatchEdge>();
+
+                if (singleNode)
+                {
+                    unpopEdges = tree.Edges;
+                }
+                else
+                {
+                    foreach (var edge in tree.Edges)
+                    {
+                        if (component.Nodes.Contains(edge.SinkNode))
+                            jointEdges.Add(edge);
+                        else
+                            unpopEdges.Add(edge);
+                    }
+                }
+                //var jointEdges = tree.MaterializedEdges;
+                //var unpopEdges = tree.UnmaterializedEdges;
                 int joinEdgesCount = jointEdges.Count;
                 int unpopEdgesCount = unpopEdges.Count;
 

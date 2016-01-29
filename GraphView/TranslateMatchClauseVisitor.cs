@@ -1327,52 +1327,33 @@ namespace GraphView
         /// <param name="graph"></param>
         /// <param name="component"></param>
         /// <returns></returns>
-        private IEnumerable<Tuple<CandidateJoinUnit, bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
+        private IEnumerable<Tuple<OneHeightTree, bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
         {
             var nodes = graph.Nodes;
             foreach (var node in nodes.Values.Where(e => !graph.IsTailNode[e]))
             {
-                bool joint = false;
-                var jointEdges = new List<MatchEdge>();
-                var nodeEdgeDict = node.Neighbors.ToDictionary(e => e,
-                    e => component.EdgeMaterilizedDict.ContainsKey(e));
+                var remainingEdges = node.Neighbors.Where(e => !component.EdgeMaterilizedDict.ContainsKey(e)).ToList();
 
-                // 1-height tree's edges to the component's nodes
-                foreach (var edge in node.Neighbors.Where(e => !nodeEdgeDict[e]))
+                // If there exists a component's edge pointing to the 1-heright tree's root
+                // or a 1-height tree's edge pointing to the component's node, then generates a valid
+                // 1-height tree with edges. Otherwise, if a node can be joint to component as a single
+                // split node with unmaterialized edges, generates a 1-height tree with a tag set to true.
+                if (component.UnmaterializedNodeMapping.ContainsKey(node) ||
+                    remainingEdges.Any(e => component.Nodes.Contains(e.SinkNode)))
                 {
-                    if (component.Nodes.Contains(edge.SinkNode))
-                    {
-                        joint = true;
-                        nodeEdgeDict[edge] = true;
-                        jointEdges.Add(edge);
-                    }
-                }
-
-                // A component's edge to the 1-height tree's root
-                if (!joint && component.UnmaterializedNodeMapping.ContainsKey(node))
-                {
-                    joint = true;
-                }
-
-                // Add unpopulated edges
-                var nodeUnpopulatedEdges = nodeEdgeDict.Where(e => !e.Value).Select(e => e.Key).ToList();
-                if (joint)
-                    yield return new Tuple<CandidateJoinUnit, bool>(new CandidateJoinUnit
+                    yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
                     {
                         TreeRoot = node,
-                        MaterializedEdges = jointEdges,
-                        UnmaterializedEdges = nodeUnpopulatedEdges,
+                        Edges = remainingEdges
                     }, false);
-
-                // Single node edge
-                else if (nodeUnpopulatedEdges.Count > 0 && component.MaterializedNodeSplitCount.Count > 1 &&
+                }
+                else if (remainingEdges.Count > 0 && component.MaterializedNodeSplitCount.Count > 1 &&
                          component.MaterializedNodeSplitCount.ContainsKey(node))
                 {
-                    yield return new Tuple<CandidateJoinUnit, bool>(new CandidateJoinUnit
+                    yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
                     {
                         TreeRoot = node,
-                        MaterializedEdges = jointEdges,
-                        UnmaterializedEdges = nodeUnpopulatedEdges,
+                        Edges = remainingEdges
                     }, true);
                 }
             }
