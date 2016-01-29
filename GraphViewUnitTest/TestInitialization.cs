@@ -480,7 +480,7 @@ namespace GraphViewUnitTest
         /// <summary>
         /// Clear database, create table and generate specific data
         /// </summary>
-        public static void InitValidataData()
+        public static void InitValidateData()
         {
             GraphViewConnection con = new GraphViewConnection(ConnectionString);
 

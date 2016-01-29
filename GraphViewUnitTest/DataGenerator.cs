@@ -13,9 +13,10 @@ namespace GraphViewUnitTest
 {
     /// <summary>
     /// Generate specific data:
-    /// [Device] and [Link]
-    /// [Node] for some marginal tests
+    /// [Device], [Label] and [Link]
     /// Any Link [x] will be linked to [2*x] as startdevice or [3*x] as enddevice
+    /// 
+    /// [Node] for some marginal tests
     /// </summary>
     public class ValidataData
     {
@@ -28,18 +29,41 @@ namespace GraphViewUnitTest
                 )";
         const string createLink = @"
                 CREATE TABLE [Link] (
-                    [ColumnRole: ""NodeId""]
-                    [id] [int],
-                    [ColumnRole: ""Edge"", Reference: ""Device""]
-                    [Links] [varchar](max)
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Edge"", Reference: ""Device""] [Links] [varchar](max)
                 )";
+        const string createLabelOnDevice = @"
+                CREATE TABLE [Label] (
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Property""] [note] varchar(40),
+                    [ColumnRole: ""Edge"", Reference: ""Device""] [OnDevice] [varchar](max)
+                )";
+
         const string createNode = @"
                 CREATE TABLE [Node] (
-                    [ColumnRole: ""NodeId""]
-                    [id] [int],
-                    [ColumnRole: ""Edge"", Reference: ""Node""]
-                    [Edge] [varchar](max)
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Edge"", Reference: ""Node""] [Edge] [varchar](max)
                 )";
+        const string createPeople = @"
+                CREATE TABLE [People] (
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Property""] [name] varchar(40),
+                    [ColumnRole: ""Edge"", Reference: ""Book""] [Reads] [varchar](max)
+                )";
+        const string createBook = @"
+                CREATE TABLE [Book] (
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Property""] [name] varchar(40)
+                )";
+        const string createWriter = @"
+                CREATE TABLE [Writer] (
+                    [ColumnRole: ""NodeId""] [id] [int],
+                    [ColumnRole: ""Property""] [name] varchar(40),
+                    [ColumnRole: ""Edge"", Reference: ""Book"", Attributes: {times: ""string"", comments:""string""}] [Reads] [varchar](max),
+                    [ColumnRole: ""Edge"", Reference: ""Book"", Attributes: {times: ""int"", comments:""string""}] [Writes] [varchar](max),
+                )";
+
+
         public const int DeviceNum = 37;
         public const int LinkNum = 37;
 
@@ -49,11 +73,13 @@ namespace GraphViewUnitTest
         /// </summary>
         /// <param name="con"></param>
         public static void generateData( GraphView.GraphViewConnection con ) {
-            con.CreateNodeTable(createLink);
-            con.CreateNodeTable(createDevice);
-            con.CreateNodeTable(createNode);
 
             #region Data for [Device] and [Link]
+
+            con.CreateNodeTable(createLink);
+            con.CreateNodeTable(createDevice);
+            con.CreateNodeTable(createLabelOnDevice);
+            
             for (int i = 0; i < LinkNum; ++i)
             {
                 con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Link] (id) values ({0})", i));
@@ -61,6 +87,9 @@ namespace GraphViewUnitTest
             for (int i = 0; i < DeviceNum; ++i)
             {
                 con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Device] (id) values ({0})", i));
+
+                con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Label] (id,note) values ({0},'{1}')", i, "This is label #" + i.ToString()));
+                con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Label.OnDevice SELECT Label, Device FROM Label, Device WHERE Label.id = {0} and Device.id = {1}",i,i));
             }
 
             for (int i = 0; i < LinkNum; ++i)
@@ -76,7 +105,9 @@ namespace GraphViewUnitTest
             }
             #endregion
 
-            #region Data for Node
+            #region Data for [Node] to do some marginal test
+            con.CreateNodeTable(createNode);
+
             con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Node] (id) values ({0})", 0));
             con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Node] (id) values ({0})", 1));
             con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Node] (id) values ({0})", 2));
@@ -86,6 +117,46 @@ namespace GraphViewUnitTest
             con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Node.Edge SELECT n1,n2 FROM Node as n1, Node as n2 where n1.id = {0} and n2.id = {1}", 1, 2));
             con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Node.Edge SELECT n1,n2 FROM Node as n1, Node as n2 where n1.id = {0} and n2.id = {1}", 2, 0));
             #endregion
+
+            #region Data for [People], [Writer] and [Book]
+            
+            con.CreateNodeTable(createPeople);
+            con.CreateNodeTable(createBook);
+            con.CreateNodeTable(createWriter);
+#endregion
+            #region testing the nodeview for the same property "name" of [People] and [Book]
+
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [People] (id,name) values ({0},'{1}')", 0,"Alice"));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [People] (id,name) values ({0},'{1}')", 1,"Bob"));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [People] (id,name) values ({0},'{1}')", 2,"Cindy"));
+
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Book] (id,name) values ({0},'{1}')", 1000, "Alice reads this book"));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Book] (id,name) values ({0},'{1}')", 1001, "Bob reads this book"));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Book] (id,name) values ({0},'{1}')", 1002, "Cindy reads this book"));
+
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO People.Reads SELECT People,book FROM People , Book where People.id = {0} and Book.id = {1}", 0, 1000));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO People.Reads SELECT People,book FROM People , Book where People.id = {0} and Book.id = {1}", 1, 1001));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO People.Reads SELECT People,book FROM People , Book where People.id = {0} and Book.id = {1}", 2, 1002));
+            #endregion
+            #region testing the edgeview for the same attribute of [Writer.Reads] and [Writer.writes]
+
+
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Writer] (id,name) values ({0},'{1}')", 0, "Alice"));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Writer] (id,name) values ({0},'{1}')", 1, "Bob"));
+            con.ExecuteNonQuery(string.Format("INSERT NODE INTO [Writer] (id,name) values ({0},'{1}')", 2, "Cindy"));
+
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Writer.Reads SELECT Writer,book,'Never','good' FROM Writer , Book where Writer.id = {0} and Book.id = {1}", 0, 1000));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Writer.Reads SELECT Writer,book,'Twice','bad' FROM Writer , Book where Writer.id = {0} and Book.id = {1}", 1, 1001));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Writer.Reads SELECT Writer,book,'Once','soso' FROM Writer , Book where Writer.id = {0} and Book.id = {1}", 2, 1002));
+
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Writer.writes SELECT Writer,book,4,'not good' FROM Writer , Book where Writer.id = {0} and Book.id = {1}", 0, 1000));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Writer.writes SELECT Writer,book,5,'not bad' FROM Writer , Book where Writer.id = {0} and Book.id = {1}", 1, 1001));
+            con.ExecuteNonQuery(string.Format("INSERT EDGE INTO Writer.writes SELECT Writer,book,6,'hehe' FROM Writer , Book where Writer.id = {0} and Book.id = {1}", 2, 1002));
+
+
+            #endregion
+
+
         }
         /// <summary>
         /// Check the Edges

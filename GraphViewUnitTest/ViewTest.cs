@@ -19,73 +19,7 @@ namespace GraphViewUnitTest
             TestInitialization.CreateTableAndProc();
             TestInitialization.InsertDataByProc(NodeNum,NodeDegree);
         }
-        [TestMethod]
-        public void ValidateTest()
-        {
-            TestInitialization.InitValidataData();
-            using (var con = new GraphView.GraphViewConnection(TestInitialization.ConnectionString))
-            {
-                con.Open();
-                #region simple view test on [Device] and [Link]
-                con.CreateEdgeView(@"
-                    CREATE EDGE VIEW Device.Links AS
-                    SELECT *
-                    FROM Device.STARTDEVICE
-                    UNION ALL
-                    SELECT *
-                    FROM Device.ENDDEVICE
-                    ");
-                System.Data.SqlClient.SqlDataReader res;
-                for (int i = 0; i < ValidataData.DeviceNum; ++i)
-                {
-                    res = con.ExecuteReader(string.Format(@"SELECT Link.id from Link, Device
-                                            MATCH Device-[Links]->Link WHERE Device.id = {0}", i));
-                    try
-                    {
-                        int cnt = 0;
-                        while (res.Read())
-                        {
-                            ++cnt;
-                            int x = Convert.ToInt32(res["id"]);
-                            if (2 * x % ValidataData.DeviceNum != i && 3 * x % ValidataData.DeviceNum != i)   //  Any Link #x could be linked to #2*x or #3*x device
-                                throw new Exception(string.Format("The Link {0} have wrong device Linked!", i));
-                        }
-                        if (cnt != 2)
-                            throw new Exception(string.Format("The Link {0} doesn't have 2 device Linked!", i));
-                    }
-                    finally
-                    {
-                        res.Close();
-                    }
-                }
-                #endregion
-
-                #region path test
-                res = con.ExecuteReader(@"SELECT path.*
-                    FROM Node as N1,Node as N2
-                    MATCH [N1]-[Edge*0..5 AS path]->[N2]
-                    WHERE N1.id = 0");
-                try
-                {
-                    int cnt = 0;
-                    while (res.Read())
-                    {
-                        ++cnt;
-                        //System.Console.WriteLine(res[0]);
-                        
-                        for (int i = 0; i < res.FieldCount; ++i)
-                        {
-                            System.Console.WriteLine(res.GetValue(i));
-                        }
-                    }
-                }
-                finally
-                {
-                    res.Close();
-                }
-                #endregion
-            }
-        }
+        
 
         [TestMethod]
         public void NodeViewTest()
