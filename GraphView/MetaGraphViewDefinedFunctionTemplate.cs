@@ -18,7 +18,7 @@ namespace GraphView
     /// Class to produce the template output
     /// </summary>
     
-    #line 1 "D:\GraphViewGitHub\GraphView_Zhanxiang\GraphView\MetaGraphViewDefinedFunctionTemplate.tt"
+    #line 1 "D:\Source\graphview\GraphView\MetaGraphViewDefinedFunctionTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
     public partial class MetaGraphViewDefinedFunctionTemplate : MetaGraphViewDefinedFunctionTemplateBase
     {
@@ -41,37 +41,42 @@ namespace GraphView
                     "()\r\n    {\r\n\r\n      yield return new SingletonTableDecoderResult\r\n      {\r\n      " +
                     "  bit = true,\r\n      };\r\n    }\r\n\r\n  [Microsoft.SqlServer.Server.SqlFunction]\r\n  " +
                     "  public static SqlInt32 DownSizeFunction(SqlInt32 Checksum)\r\n    {\r\n      retur" +
-                    "n new SqlInt32(1);\r\n    }\r\n}\r\n\r\n[Serializable]\r\n[Microsoft.SqlServer.Server.SqlU" +
-                    "serDefinedAggregate(Format.UserDefined,\r\n    IsInvariantToNulls = true,\r\n    IsI" +
-                    "nvariantToOrder = true,\r\n    IsInvariantToDuplicates = false,\r\n    MaxByteSize =" +
-                    " -1)]\r\npublic struct EdgeIdEncoder : IBinarySerialize\r\n{\r\n  private MemoryStream" +
-                    " _stream;\r\n  private BinaryWriter _writer;\r\n\r\n  public void Init()\r\n  {\r\n    _st" +
-                    "ream = new MemoryStream();\r\n    _writer = new BinaryWriter(_stream);\r\n  }\r\n  pub" +
-                    "lic void Accumulate(SqlInt32 edgeid)\r\n  {\r\n    if (edgeid.IsNull)\r\n      return;" +
-                    "\r\n    _writer.Write(edgeid.Value);\r\n\r\n  }\r\n\r\n  public void Merge (EdgeIdEncoder " +
-                    "group)\r\n  {\r\n    _writer.Write(group._stream.GetBuffer(), 0, (int) group._stream" +
-                    ".Length);\r\n  }\r\n\r\n  public SqlBytes Terminate()\r\n  {\r\n    var bytes = _stream.To" +
-                    "Array();\r\n    return new SqlBytes(bytes);\r\n  }\r\n\r\n  public void Read(BinaryReade" +
-                    "r r)\r\n  {\r\n    if (_stream != null)\r\n      _stream.Dispose();\r\n    if (_writer !" +
-                    "= null)\r\n      _writer.Dispose();\r\n    _stream = new MemoryStream();\r\n    _write" +
-                    "r = new BinaryWriter(_stream);\r\n    _writer.Write(r.ReadBytes((int)r.BaseStream." +
-                    "Length));\r\n  }\r\n\r\n  public void Write(BinaryWriter w)\r\n  {\r\n    w.Write(_stream." +
-                    "ToArray());\r\n  }\r\n\r\n\r\n}\r\n\r\n[Serializable]\r\n[Microsoft.SqlServer.Server.SqlUserDe" +
-                    "finedAggregate(Format.UserDefined,\r\n    IsInvariantToNulls = true,\r\n    IsInvari" +
-                    "antToOrder = true,\r\n    IsInvariantToDuplicates = false,\r\n    MaxByteSize = -1)]" +
-                    "\r\npublic struct GlobalNodeIdEncoder : IBinarySerialize\r\n{\r\n  private MemoryStrea" +
-                    "m _stream;\r\n  private BinaryWriter _writer;\r\n\r\n  public void Init()\r\n  {\r\n    _s" +
-                    "tream = new MemoryStream();\r\n    _writer = new BinaryWriter(_stream);\r\n  }\r\n\r\n  " +
-                    "public void Accumulate(\r\n      SqlInt64 sink)\r\n  {\r\n    if (sink.IsNull)\r\n      " +
-                    "return;\r\n    _writer.Write(sink.Value);\r\n  }\r\n\r\n\r\n  public void Merge (GlobalNod" +
-                    "eIdEncoder group)\r\n  {\r\n    _writer.Write(group._stream.GetBuffer(), 0, (int) gr" +
-                    "oup._stream.Length);\r\n  }\r\n\r\n  public SqlBytes Terminate()\r\n  {\r\n    var bytes =" +
-                    " _stream.ToArray();\r\n    return new SqlBytes(bytes);\r\n  }\r\n\r\n  public void Read(" +
-                    "BinaryReader r)\r\n  {\r\n    if (_stream != null)\r\n      _stream.Dispose();\r\n    if" +
-                    " (_writer != null)\r\n      _writer.Dispose();\r\n    _stream = new MemoryStream();\r" +
-                    "\n    _writer = new BinaryWriter(_stream);\r\n    _writer.Write(r.ReadBytes((int)r." +
-                    "BaseStream.Length));\r\n  }\r\n\r\n  public void Write(BinaryWriter w)\r\n  {\r\n    w.Wri" +
-                    "te(_stream.ToArray());\r\n  }\r\n\r\n}\r\n");
+                    "n new SqlInt32(1);\r\n    }\r\n\r\n  [Microsoft.SqlServer.Server.SqlFunction]\r\n    pub" +
+                    "lic static byte[] ConvertNumberIntoBinaryForPath(SqlInt64 sink, \r\n\tSqlInt64 edge" +
+                    "ColumnId, SqlInt32 edgeId)\r\n    {\r\n\t\tvar\t_stream = new MemoryStream();\r\n\t\tvar _w" +
+                    "riter = new BinaryWriter(_stream);\r\n\t\t_writer.Write(sink.Value);\r\n\t\t_writer.Writ" +
+                    "e(edgeColumnId.Value);\r\n\t\t_writer.Write(edgeId.Value);\r\n\t\treturn _stream.ToArray" +
+                    "();\r\n    }\r\n}\r\n\r\n[Serializable]\r\n[Microsoft.SqlServer.Server.SqlUserDefinedAggre" +
+                    "gate(Format.UserDefined,\r\n    IsInvariantToNulls = true,\r\n    IsInvariantToOrder" +
+                    " = true,\r\n    IsInvariantToDuplicates = false,\r\n    MaxByteSize = -1)]\r\npublic s" +
+                    "truct EdgeIdEncoder : IBinarySerialize\r\n{\r\n  private MemoryStream _stream;\r\n  pr" +
+                    "ivate BinaryWriter _writer;\r\n\r\n  public void Init()\r\n  {\r\n    _stream = new Memo" +
+                    "ryStream();\r\n    _writer = new BinaryWriter(_stream);\r\n  }\r\n  public void Accumu" +
+                    "late(SqlInt32 edgeid)\r\n  {\r\n    if (edgeid.IsNull)\r\n      return;\r\n    _writer.W" +
+                    "rite(edgeid.Value);\r\n\r\n  }\r\n\r\n  public void Merge (EdgeIdEncoder group)\r\n  {\r\n  " +
+                    "  _writer.Write(group._stream.GetBuffer(), 0, (int) group._stream.Length);\r\n  }\r" +
+                    "\n\r\n  public SqlBytes Terminate()\r\n  {\r\n    var bytes = _stream.ToArray();\r\n    r" +
+                    "eturn new SqlBytes(bytes);\r\n  }\r\n\r\n  public void Read(BinaryReader r)\r\n  {\r\n    " +
+                    "if (_stream != null)\r\n      _stream.Dispose();\r\n    if (_writer != null)\r\n      " +
+                    "_writer.Dispose();\r\n    _stream = new MemoryStream();\r\n    _writer = new BinaryW" +
+                    "riter(_stream);\r\n    _writer.Write(r.ReadBytes((int)r.BaseStream.Length));\r\n  }\r" +
+                    "\n\r\n  public void Write(BinaryWriter w)\r\n  {\r\n    w.Write(_stream.ToArray());\r\n  " +
+                    "}\r\n\r\n\r\n}\r\n\r\n[Serializable]\r\n[Microsoft.SqlServer.Server.SqlUserDefinedAggregate(" +
+                    "Format.UserDefined,\r\n    IsInvariantToNulls = true,\r\n    IsInvariantToOrder = tr" +
+                    "ue,\r\n    IsInvariantToDuplicates = false,\r\n    MaxByteSize = -1)]\r\npublic struct" +
+                    " GlobalNodeIdEncoder : IBinarySerialize\r\n{\r\n  private MemoryStream _stream;\r\n  p" +
+                    "rivate BinaryWriter _writer;\r\n\r\n  public void Init()\r\n  {\r\n    _stream = new Mem" +
+                    "oryStream();\r\n    _writer = new BinaryWriter(_stream);\r\n  }\r\n\r\n  public void Acc" +
+                    "umulate(\r\n      SqlInt64 sink)\r\n  {\r\n    if (sink.IsNull)\r\n      return;\r\n    _w" +
+                    "riter.Write(sink.Value);\r\n  }\r\n\r\n\r\n  public void Merge (GlobalNodeIdEncoder grou" +
+                    "p)\r\n  {\r\n    _writer.Write(group._stream.GetBuffer(), 0, (int) group._stream.Len" +
+                    "gth);\r\n  }\r\n\r\n  public SqlBytes Terminate()\r\n  {\r\n    var bytes = _stream.ToArra" +
+                    "y();\r\n    return new SqlBytes(bytes);\r\n  }\r\n\r\n  public void Read(BinaryReader r)" +
+                    "\r\n  {\r\n    if (_stream != null)\r\n      _stream.Dispose();\r\n    if (_writer != nu" +
+                    "ll)\r\n      _writer.Dispose();\r\n    _stream = new MemoryStream();\r\n    _writer = " +
+                    "new BinaryWriter(_stream);\r\n    _writer.Write(r.ReadBytes((int)r.BaseStream.Leng" +
+                    "th));\r\n  }\r\n\r\n  public void Write(BinaryWriter w)\r\n  {\r\n    w.Write(_stream.ToAr" +
+                    "ray());\r\n  }\r\n\r\n}\r\n");
             return this.GenerationEnvironment.ToString();
         }
     }

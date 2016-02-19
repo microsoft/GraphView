@@ -69,8 +69,8 @@ returns table
 as 
 return 
 with  allPath(sink, varPath) as (
-		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-		convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
+		select newpath.sink,  
+		dbo.ConvertNumberIntoBinaryForPath(@source, <#=edgeColumnId#>, newpath.EdgeId)
 		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in variables) {
@@ -82,8 +82,9 @@ with  allPath(sink, varPath) as (
 
 		union all
 
-		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
-		convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path
+		select newpath.Sink, allpath.varPath + 
+		
+		dbo.ConvertNumberIntoBinaryForPath(allpath.sink, <#=edgeColumnId#>, newpath.EdgeId) as Path
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
@@ -138,9 +139,7 @@ as
 return 
 with  allPath(sink, varPath, PathMessage) as (
 		select newpath.sink,  
-		CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-			convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + 
-			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max)) as varPath,
+		dbo.ConvertNumberIntoBinaryForPath(@source, <#=edgeColumnId#>, newpath.EdgeId) as varPath,
 		dbo.<#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(@nodeType, @id, '<#=edgeName#>'
 			<#foreach (var it in variables) {#>
 				,newpath.<#=it.Item1#>
@@ -156,9 +155,8 @@ with  allPath(sink, varPath, PathMessage) as (
 
 		union all
 
-		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
-			convert(binary(8), reverse(convert(binary(8), <#=edgeColumnId#>))) + 
-			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varPath,
+		select newpath.Sink, allpath.varPath + 
+		dbo.ConvertNumberIntoBinaryForPath(allpath.sink, <#=edgeColumnId#>, newpath.EdgeId) as varPath,
 		(allPath.PathMessage +
 		dbo.<#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder('<#=NodeTable#>',
 			<#if (String.IsNullOrEmpty(UserId)) {#>
@@ -315,5 +313,9 @@ CREATE FUNCTION UpSizeFunction(@topvalue int) RETURNS TABLE
 AS
 RETURN
 	SELECT TOP(@topvalue) * FROM SingletonTable()
+GO
+CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b bigint, @c int)
+RETURNS varbinary(max)
+EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.ConvertNumberIntoBinaryForPath;
 GO
 <#}#>

@@ -48,6 +48,18 @@ public partial class UserDefinedFunctions
     {
       return new SqlInt32(1);
     }
+
+  [Microsoft.SqlServer.Server.SqlFunction]
+    public static byte[] ConvertNumberIntoBinaryForPath(SqlInt64 sink, 
+	SqlInt64 edgeColumnId, SqlInt32 edgeId)
+    {
+		var	_stream = new MemoryStream();
+		var _writer = new BinaryWriter(_stream);
+		_writer.Write(sink.Value);
+		_writer.Write(edgeColumnId.Value);
+		_writer.Write(edgeId.Value);
+		return _stream.ToArray();
+    }
 }
 
 [Serializable]

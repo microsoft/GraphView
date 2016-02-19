@@ -468,6 +468,7 @@ namespace GraphView
                 DROP AGGREGATE GraphViewUDFEdgeIdEncoder
                 DROP FUNCTION SingletonTable
                 DROP FUNCTION DownSizeFunction
+                DROP FUNCTION ConvertNumberIntoBinaryForPath
                 DROP FUNCTION UpSizeFunction
                 DROP ASSEMBLY GraphViewUDFAssembly";
                 command.CommandText = dropAssembly;
