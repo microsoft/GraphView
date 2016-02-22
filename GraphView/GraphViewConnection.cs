@@ -108,7 +108,7 @@ namespace GraphView
 
         private static readonly string VersionTable = "VERSION";
 
-        private static readonly string version = "1.10";
+        private static readonly string version = "1.11";
         private string currentVersion = "";
         public string CurrentVersion { get { return currentVersion; } }
 
@@ -523,7 +523,11 @@ namespace GraphView
 
                 if (currentVersion == "1.10")
                 {
-                    
+                    UpgradeFromV110ToV111(transaction); 
+                }
+
+                if (currentVersion == "1.11")
+                {
                 }
 
                 if (currentVersion != version)
@@ -584,6 +588,22 @@ namespace GraphView
 
             //Update version number
             UpdateVersionNumber("1.10", transaction);
+        }
+
+        //Add one udf ConvertNumberIntoBinaryForPath
+        private void UpgradeFromV110ToV111(SqlTransaction transaction)
+        {
+            var tables = GetNodeTables(transaction);
+            DropAssemblyAndUDFV110(transaction);
+            const string assemblyName = GraphViewUdfAssemblyName;
+            GraphViewDefinedFunctionGenerator.MetaRegister(assemblyName, Conn, transaction);
+            //Update version number
+            UpdateVersionNumber("1.11", transaction);
+            //Upgrade global view
+            foreach (var schema in tables.ToLookup(x => x.Item1.ToLower()))
+            {
+                updateGlobalNodeView(schema.Key, transaction);
+            }
         }
 
         /// <summary>
@@ -1206,6 +1226,35 @@ namespace GraphView
             }
         }
 
+        public void DropAssemblyAndUDFV110(SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx;
+            tx = externalTransaction ?? Conn.BeginTransaction();
+            try
+            {
+                using (var command = Conn.CreateCommand())
+                {
+                    command.Transaction = tx;
+                    //Drop assembly and UDF
+                    const string dropAssembly = @"
+                    DROP AGGREGATE GraphViewUDFGlobalNodeIdEncoder
+                    DROP AGGREGATE GraphViewUDFEdgeIdEncoder
+                    DROP FUNCTION SingletonTable
+                    DROP FUNCTION DownSizeFunction
+                    DROP FUNCTION UpSizeFunction
+                    DROP ASSEMBLY GraphViewUDFAssembly";
+                    command.CommandText = dropAssembly;
+                    command.ExecuteNonQuery();
+                }
+
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                    tx.Rollback();
+                throw new Exception(e.Message);
+            }
+        }
         /// <summary>
         /// Gets all node tables in the graph database.
         /// </summary>
@@ -1727,14 +1776,63 @@ namespace GraphView
             {
                 tran = externalTransaction;
             }
-            var sr = new StreamReader("../../UpgradeMetaTableV100.sql");
+
+            const string upgradeScript = @"
+            --_NodeTableColumnCollection
+            alter table _NodeTableColumnCollection
+            add TableId bigint
+            go
+            update _NodeTableColumnCollection
+            set TableId = tid
+            from
+            (
+            select n.TableId as tid, n.TableSchema as ts, n.TableName as tn
+            from _NodeTableCollection as n
+            ) as ntc
+            where ntc.ts = TableSchema and ntc.tn = TableName
+            go
+            alter table _NodeTableColumnCollection
+            alter column TableId bigint not null
+            go
+            -- _EdgeAttributeCollection
+            alter table _EdgeAttributeCollection
+            add ColumnId bigint
+            go
+            update _EdgeAttributeCollection
+            set ColumnId = cid
+            from
+            (
+            select n.ColumnId as cid, n.TableSchema as ts, n.TableName as tn, n.ColumnName as cn
+            from _NodeTableColumnCollection as n
+            ) as ntc
+            where ntc.ts = TableSchema and ntc.tn = TableName and ntc.cn = ColumnName
+            go
+            alter table _EdgeAttributeCollection
+            alter column ColumnId bigint not null
+            go
+            -- _EdgeAverageDegreeCollection
+            alter table _EdgeAverageDegreeCollection
+            add SampleRowCount int default(1000), ColumnId bigint
+            go
+            update _EdgeAverageDegreeCollection
+            set ColumnId = cid
+            from
+            (
+            select n.ColumnId as cid, n.TableSchema as ts, n.TableName as tn, n.ColumnName as cn
+            from _NodeTableColumnCollection as n
+            ) as ntc
+            where ntc.ts = TableSchema and ntc.tn = TableName and ntc.cn = ColumnName
+            go
+            alter table _EdgeAverageDegreeCollection
+            alter column ColumnId bigint not null
+            go";
 
             try
             {
                 using (var command = Conn.CreateCommand())
                 {
 
-                    var upgradeQuery = sr.ReadToEnd().Split(new string[] {"go"}, StringSplitOptions.None);
+                    var upgradeQuery = upgradeScript.Split(new string[] {"go"}, StringSplitOptions.None);
 
                     command.Connection = Conn;
                     command.Transaction = tran;

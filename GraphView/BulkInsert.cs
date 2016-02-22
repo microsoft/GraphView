@@ -1077,13 +1077,13 @@ namespace GraphView
                 {
                     //Update database
                     var hashSetOfUserSuppliedEdgeAttribute =
-                        new HashSet<string>(userSuppliedEdgeAttributeInfo.Select(x => x.Item1));
+                        new HashSet<string>(userSuppliedEdgeAttributeInfo.Select(x => x.Item1.ToLower()));
                     string aggregeteFunctionName = tableSchema + '_' + sourceTableName + '_' + edgeColumnName + '_' + "Encoder";
                     var tempTableForVariable =
                         allEdgeAttributeNameInOrder.Select(
                             x =>
                                 string.Format(", {0}",
-                                    (hashSetOfUserSuppliedEdgeAttribute.Contains(x) ? ("tempTable.[" + x + "]") : "null")));
+                                    (hashSetOfUserSuppliedEdgeAttribute.Contains(x.ToLower()) ? ("tempTable.[" + x + "]") : "null")));
                     var tempStringForVariable = string.Join("", tempTableForVariable);
                     string aggregateFunction = aggregeteFunctionName + "([sinkTable].[GlobalNodeId]" +
                                                tempStringForVariable +
