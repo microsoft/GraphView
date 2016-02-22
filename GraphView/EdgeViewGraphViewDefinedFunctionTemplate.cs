@@ -20,7 +20,7 @@ namespace GraphView
     
     #line 1 "D:\Source\graphview\GraphView\EdgeViewGraphViewDefinedFunctionTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
-    public partial class EdgeViewGraphViewDefinedFunctionTemplate : EdgeViewGraphViewDefinedFunctionTemplateBase
+    public partial class EdgeViewGraphViewCodeTemplate : EdgeViewGraphViewDefinedFunctionTemplateBase
     {
 #line hidden
         /// <summary>

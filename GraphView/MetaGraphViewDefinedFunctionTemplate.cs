@@ -20,7 +20,7 @@ namespace GraphView
     
     #line 1 "D:\Source\graphview\GraphView\MetaGraphViewDefinedFunctionTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
-    public partial class MetaGraphViewDefinedFunctionTemplate : MetaGraphViewDefinedFunctionTemplateBase
+    public partial class MetaGraphViewCodeTemplate : MetaGraphViewDefinedFunctionTemplateBase
     {
 #line hidden
         /// <summary>

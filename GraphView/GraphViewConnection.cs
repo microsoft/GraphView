@@ -315,11 +315,9 @@ namespace GraphView
                     currentVersion = version;
                 }
                 const string assemblyName = GraphViewUdfAssemblyName;
-                //var edgeDictionary = new List<Tuple<string, bool, List<Tuple<string, string>>>>
-                //{
-                //    new Tuple<string, bool, List<Tuple<string, string>>>("GlobalNodeId",false, new List<Tuple<string, string>>())
-                //};
-                GraphViewDefinedFunctionGenerator.MetaRegister(assemblyName, Conn, tx);
+
+                GraphViewDefinedFunctionRegister register =  new MetaFunctionRegister(assemblyName);
+                register.Register(Conn, tx);
             }
             catch (SqlException e)
             {
@@ -596,7 +594,10 @@ namespace GraphView
             var tables = GetNodeTables(transaction);
             DropAssemblyAndUDFV110(transaction);
             const string assemblyName = GraphViewUdfAssemblyName;
-            GraphViewDefinedFunctionGenerator.MetaRegister(assemblyName, Conn, transaction);
+
+            GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
+            register.Register(Conn, transaction);
+
             //Update version number
             UpdateVersionNumber("1.11", transaction);
             //Upgrade global view
@@ -885,7 +886,8 @@ namespace GraphView
                 if (edgeDict.Count > 0)
                 {
                     var assemblyName = tableSchema + '_' + tableName;
-                    GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableName, edgeDict, userId, Conn, tx);
+                    GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableName, edgeDict, userId);
+                    register.Register(Conn, tx);
                 }
                 using (var command = new SqlCommand(null, Conn))
                 {
@@ -1741,8 +1743,9 @@ namespace GraphView
                         {
                             var tableInfo = tableInfoDict[item.Key];
                             var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
-                            GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
-                                tableInfo.Item3, Conn, tx);
+                            GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
+                                tableInfo.Item3);
+                            register.Register(Conn, tx);
                         }
 
                     }

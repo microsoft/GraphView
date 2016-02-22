@@ -20,7 +20,7 @@ namespace GraphView
     
     #line 1 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
-    public partial class EdgeViewBfsScriptTemplate : EdgeViewBfsScriptTemplateBase
+    public partial class EdgeViewBfsScriptTemplateStrategyTemplate : EdgeViewBfsScriptTemplateBase
     {
 #line hidden
         /// <summary>

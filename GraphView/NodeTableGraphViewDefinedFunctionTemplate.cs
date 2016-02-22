@@ -20,7 +20,7 @@ namespace GraphView
     
     #line 1 "D:\Source\graphview\GraphView\NodeTableGraphViewDefinedFunctionTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
-    public partial class NodeTableGraphViewDefinedFunctionTemplate : NodeTableGraphViewDefinedFunctionTemplateBase
+    public partial class NodeTableGraphViewCodeTemplate : NodeTableGraphViewDefinedFunctionTemplateBase
     {
 #line hidden
         /// <summary>
