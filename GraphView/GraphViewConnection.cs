@@ -61,7 +61,20 @@ namespace GraphView
         /// </summary>
         public SqlConnection Conn { get; private set; }
 
+        /// <summary>
+        /// Connection to guarantee consistency in Graph View
+        /// </summary>
         internal SqlConnection TranslationConnection { get; private set; }
+
+        public string ConnectionString
+        {
+            get { return Conn.ConnectionString; }
+            set
+            {
+                Conn.ConnectionString = value;
+                TranslationConnection.ConnectionString = value;
+            }
+        }
 
         /// <summary>
         /// When set to true, database will check validity if DbInit is set to false.
@@ -109,9 +122,10 @@ namespace GraphView
             Overwrite = false;
             _disposed = false;
             Conn = new SqlConnection();
+            TranslationConnection = new SqlConnection();
         }
 
-        /// <summary>
+        /// <summary>connectionString
         /// Initializes a new connection to a graph database.
         /// The database could be a SQL Server instance or Azure SQL Database, as specified by the connection string.
         /// </summary>
@@ -1461,6 +1475,7 @@ namespace GraphView
                 if (disposing)
                 {
                     Conn.Dispose();
+                    TranslationConnection.Dispose();
                 }
             }
             _disposed = true;
