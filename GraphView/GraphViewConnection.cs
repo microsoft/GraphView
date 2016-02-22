@@ -61,6 +61,8 @@ namespace GraphView
         /// </summary>
         public SqlConnection Conn { get; private set; }
 
+        internal SqlConnection TranslationConnection { get; private set; }
+
         /// <summary>
         /// When set to true, database will check validity if DbInit is set to false.
         /// </summary>
@@ -118,6 +120,7 @@ namespace GraphView
         {
             _disposed = false;
             Conn = new SqlConnection(connectionString);
+            TranslationConnection = new SqlConnection(connectionString);
             GraphDbAverageDegreeSamplingRate = 200;
             GraphDbEdgeColumnSamplingRate = 200;
         }
@@ -133,6 +136,7 @@ namespace GraphView
         {
             _disposed = false;
             Conn = new SqlConnection(connectionString, sqlCredential);
+            TranslationConnection = new SqlConnection(connectionString, sqlCredential);
         }
 
         /// <summary>
@@ -488,6 +492,8 @@ namespace GraphView
         public void Open()
         {
             Conn.Open();
+            TranslationConnection.Open();
+            
             var transaction = Conn.BeginTransaction(); 
             try
             {
@@ -527,6 +533,7 @@ namespace GraphView
             try
             {
                 Conn.Close();
+                TranslationConnection.Close();
             }
             catch (SqlException e)
             {
