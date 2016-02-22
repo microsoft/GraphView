@@ -55,7 +55,7 @@ namespace GraphView
                 throw new SyntaxErrorException(errors);
 
             // Translation and Check CheckInvisibleColumn
-            using (SqlTransaction tx = Connection.BeginTransaction())
+            using (SqlTransaction tx = GraphViewConnection.BeginTransaction())
             {
                 var visitor = new TranslateMatchClauseVisitor(tx);
                 visitor.Invoke(script);
@@ -69,7 +69,7 @@ namespace GraphView
             get { return Command.CommandType; }
             set { Command.CommandType = value; }
         }
-        public GraphViewConnection Connection { get; set; }
+        public GraphViewConnection GraphViewConnection { get; set; }
         
         public string CommandText { get; set; }
 
@@ -99,15 +99,15 @@ namespace GraphView
         public GraphViewCommand(string commandText, GraphViewConnection connection)
         {
             CommandText = commandText;
-            Connection = connection;
-            Command = Connection.Conn.CreateCommand();
+            GraphViewConnection = connection;
+            Command = GraphViewConnection.Conn.CreateCommand();
         }
 
         public GraphViewCommand(string commandText, GraphViewConnection connection, SqlTransaction transaction)
         {
             CommandText = commandText;
-            Connection = connection;
-            Command = Connection.Conn.CreateCommand();
+            GraphViewConnection = connection;
+            Command = GraphViewConnection.Conn.CreateCommand();
             Tx = transaction;
         }
 
@@ -153,25 +153,23 @@ namespace GraphView
 
                 if (Tx == null)
                 {
-                    using(SqlConnection translationConnection = new SqlConnection(Connection.Conn.ConnectionString))
-                    {
-                        translationConnection.Open();
-                        using (SqlTransaction translationTx = translationConnection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
-                        {
-                            var visitor = new TranslateMatchClauseVisitor(translationTx);
-                            visitor.Invoke(script);
+                    var translationConnection = GraphViewConnection.TranslationConnection;
 
-                            // Executes translated SQL 
-                            Command.CommandText = script.ToString();
+                    using (SqlTransaction translationTx = translationConnection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
+                    {
+                        var visitor = new TranslateMatchClauseVisitor(translationTx);
+                        visitor.Invoke(script);
+
+                        // Executes translated SQL 
+                        Command.CommandText = script.ToString();
 #if DEBUG
-                            // For debugging
-                            OutputResult(CommandText, Command.CommandText);
-                            //throw new GraphViewException("No Execution");
+                        // For debugging
+                        OutputResult(CommandText, Command.CommandText);
+                        //throw new GraphViewException("No Execution");
 #endif
-                            var reader = Command.ExecuteReader();
-                            translationTx.Commit();
-                            return reader;
-                        }
+                        var reader = Command.ExecuteReader();
+                        translationTx.Commit();
+                        return reader;
                     }
                 }
                 else
@@ -220,7 +218,7 @@ namespace GraphView
                 if (Tx == null)
                 {
                     externalTransaction = false;
-                    Tx = Connection.BeginTransaction();
+                    Tx = GraphViewConnection.BeginTransaction();
                 }
 
                 // Translation

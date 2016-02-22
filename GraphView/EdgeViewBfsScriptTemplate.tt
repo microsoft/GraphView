@@ -43,8 +43,8 @@ returns table
 as 
 return 
 with  allPath(sink, varPath) as (
-		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-		convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max))
+		select newpath.sink,  
+		dbo.ConvertNumberIntoBinaryForPath(@source, EdgeColumnId, newpath.EdgeId)
 		from <#=Name#>_Decoder(
 		<#for (int i = 0; i < EdgeColumn.Count; i++)
 		{
@@ -68,8 +68,8 @@ with  allPath(sink, varPath) as (
 
 		union all
 
-		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
-		convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as Path
+		select newpath.Sink, allpath.varPath + 
+		dbo.ConvertNumberIntoBinaryForPath(allpath.sink, EdgeColumnId, newpath.EdgeId) as Path
 		from (allPath join <#=Name#>_SubView on  allPath.sink = <#=Name#>_SubView.GlobalNodeId)
 		cross apply <#=Name#>_ExclusiveEdgeGenerator(allPath.varPath, <#=Name#>_SubView.GlobalNodeId<#
 			foreach (var it in EdgeColumn){
@@ -127,9 +127,8 @@ returns table
 as 
 return 
 with  allPath(sink, varPath, PathMessage) as (
-		select newpath.sink,  CAST(convert(binary(8), reverse(convert(binary(8), @source))) + 
-			convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) + 
-			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varbinary(max)) as varPath,
+		select newpath.sink,  
+		dbo.ConvertNumberIntoBinaryForPath(@source,  EdgeColumnId, newpath.EdgeId) as varPath,
 		dbo.<#=Name#>_PathMessageEncoder(@nodeType, @id,
 			newpath._EdgeType
 			<#foreach (var it in Attribute) {#>
@@ -158,9 +157,8 @@ with  allPath(sink, varPath, PathMessage) as (
 
 		union all
 
-		select newpath.Sink, allpath.varPath + convert(binary(8), reverse(convert(binary(8), allpath.sink))) + 
-			convert(binary(8), reverse(convert(binary(8), EdgeColumnId))) +
-			convert(binary(4),reverse(convert(binary(4),newpath.EdgeId))) as varPath,
+		select newpath.Sink, allpath.varPath + 
+		dbo.ConvertNumberIntoBinaryForPath(allpath.sink, EdgeColumnId, newpath.EdgeId) as varPath,
 		(allpath.PathMessage + dbo.<#=Name#>_PathMessageEncoder(<#=Name#>_SubView._NodeType,
 			<#=Name#>_SubView._NodeId,
 			newpath._EdgeType

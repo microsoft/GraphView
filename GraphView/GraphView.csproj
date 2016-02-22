@@ -59,6 +59,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
+    <Compile Include="MetaGraphViewDefinedFunctionTemplate.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MetaGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+    </Compile>
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertToModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
@@ -81,11 +86,6 @@
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
-    <Compile Include="MetaGraphViewDefinedFunctionTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>MetaGraphViewDefinedFunctionTemplate.tt</DependentUpon>
-    </Compile>
     <Compile Include="TranslateDataModificationVisitor.cs" />
     <Compile Include="GetQueryTablesVisitor.cs" />
     <Compile Include="TableSizeEstimator.cs" />
