@@ -105,13 +105,11 @@ namespace GraphView
             command.Connection = conn;
             command.Transaction = tx;
 
-            int i = 0;
             foreach (var s in query)
             {
                 if (s == null) continue;
                 command.CommandText = s;
                 command.ExecuteNonQuery();
-                i++;
             }
         }
     }

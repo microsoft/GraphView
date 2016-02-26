@@ -59,10 +59,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
-    <Compile Include="MetaGraphViewDefinedFunctionTemplate.cs">
+    <Compile Include="MetaGraphViewCodeTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>MetaGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+      <DependentUpon>MetaGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertToModificationStatementVisitor.cs" />
@@ -78,10 +78,10 @@
     <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
-    <Compile Include="NodeTableGraphViewDefinedFunctionTemplate.cs">
+    <Compile Include="NodeTableGraphViewCodeTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>NodeTableGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+      <DependentUpon>NodeTableGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
@@ -96,15 +96,15 @@
     <Compile Include="MatchClauseVisitor.cs" />
     <Compile Include="GraphViewParser.cs" />
     <Compile Include="MatchGraph.cs" />
-    <None Include="EdgeViewGraphViewDefinedFunctionTemplate.tt">
+    <None Include="EdgeViewGraphViewCodeTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>EdgeViewGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+      <LastGenOutput>EdgeViewGraphViewCodeTemplate.cs</LastGenOutput>
     </None>
     <Compile Include="GraphViewDefinedFunctionGenerator.cs" />
-    <Compile Include="EdgeViewGraphViewDefinedFunctionTemplate.cs">
+    <Compile Include="EdgeViewGraphViewCodeTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>EdgeViewGraphViewDefinedFunctionTemplate.tt</DependentUpon>
+      <DependentUpon>EdgeViewGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
@@ -144,9 +144,9 @@
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>DeployScriptTemplate.cs</LastGenOutput>
     </None>
-    <None Include="NodeTableGraphViewDefinedFunctionTemplate.tt">
+    <None Include="NodeTableGraphViewCodeTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>NodeTableGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+      <LastGenOutput>NodeTableGraphViewCodeTemplate.cs</LastGenOutput>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -156,9 +156,9 @@
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="MetaGraphViewDefinedFunctionTemplate.tt">
+    <None Include="MetaGraphViewCodeTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>MetaGraphViewDefinedFunctionTemplate.cs</LastGenOutput>
+      <LastGenOutput>MetaGraphViewCodeTemplate.cs</LastGenOutput>
     </None>
   </ItemGroup>
   <ItemGroup>

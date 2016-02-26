@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -91,7 +92,7 @@ namespace GraphView
         /// 4: _StoredProcedureCollection,
         /// 5: _NodeViewColumnCollection,
         /// 6: _EdgeViewAttributeCollection,
-        /// 7: _NodeViewCollection,
+        /// 7: _NodeViewCollection
         /// </summary>
         internal static readonly List<string> MetadataTables =
             new List<string>
@@ -106,6 +107,18 @@ namespace GraphView
                 "_NodeViewCollection"
             };
 
+        internal static readonly List<Tuple<string, string>> Version110MetaUdf= 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION","SingletonTable"),
+                Tuple.Create("FUNCTION","DownSizeFunction"),
+                Tuple.Create("FUNCTION","UpSizeFunction"),
+                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly")
+            };
+
+        private BitArray _a = new BitArray(1);
         private static readonly string VersionTable = "VERSION";
 
         private static readonly string version = "1.11";
@@ -592,7 +605,7 @@ namespace GraphView
         private void UpgradeFromV110ToV111(SqlTransaction transaction)
         {
             var tables = GetNodeTables(transaction);
-            DropAssemblyAndUDFV110(transaction);
+            DropAssemblyAndMetaUDFV110(transaction);
             const string assemblyName = GraphViewUdfAssemblyName;
 
             GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
@@ -1228,7 +1241,7 @@ namespace GraphView
             }
         }
 
-        public void DropAssemblyAndUDFV110(SqlTransaction externalTransaction = null)
+        public void DropAssemblyAndMetaUDFV110(SqlTransaction externalTransaction = null)
         {
             SqlTransaction tx;
             tx = externalTransaction ?? Conn.BeginTransaction();
@@ -1239,13 +1252,8 @@ namespace GraphView
                     command.Transaction = tx;
                     //Drop assembly and UDF
                     const string dropAssembly = @"
-                    DROP AGGREGATE GraphViewUDFGlobalNodeIdEncoder
-                    DROP AGGREGATE GraphViewUDFEdgeIdEncoder
-                    DROP FUNCTION SingletonTable
-                    DROP FUNCTION DownSizeFunction
-                    DROP FUNCTION UpSizeFunction
-                    DROP ASSEMBLY GraphViewUDFAssembly";
-                    command.CommandText = dropAssembly;
+                    DROP {0} {1}";
+                    command.CommandText = string.Join("\n", Version110MetaUdf.Select(x => string.Format(dropAssembly, x.Item1, x.Item2)));
                     command.ExecuteNonQuery();
                 }
 
