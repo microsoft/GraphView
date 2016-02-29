@@ -231,12 +231,9 @@ public partial class UserDefinedFunctions
 		}
 
 
-		using (var br = new BinaryReader(src.Stream))
-		{
-			using (var resultMs = new MemoryStream())
-			{
-				using (var bw = new BinaryWriter(resultMs))
-				{
+		var br = new BinaryReader(src.Stream);
+			var resultMs = new MemoryStream();
+				var bw = new BinaryWriter(resultMs);
 					var edgeid = (Int32)0;
 					while (br.BaseStream.Position < br.BaseStream.Length)
 					{
@@ -284,10 +281,7 @@ public partial class UserDefinedFunctions
 							WriteLine(indent + "}" );
 						} #>
 					}
-					return new SqlBytes(resultMs.ToArray());
-				}
-			}
-		}
+					return new SqlBytes(resultMs);
 
 	}
 	<# }#>
@@ -377,8 +371,7 @@ public struct <#=edgeName#>Encoder : IBinarySerialize
 
 	public SqlBytes Terminate()
 	{
-		var bytes = _stream.ToArray();
-		return new SqlBytes(bytes);
+		return new SqlBytes(_stream);
 	}
 
 	public void Read(BinaryReader r)
@@ -394,7 +387,7 @@ public struct <#=edgeName#>Encoder : IBinarySerialize
 
 	public void Write(BinaryWriter w)
 	{
-		w.Write(_stream.ToArray());
+		w.Write(_stream.GetBuffer(), 0, (int) _stream.Length);
 	}
 
 }
@@ -469,7 +462,7 @@ foreach (var edge in EdgeList) {
 <#
 	}
 #>
-		return new SqlBytes(_stream.ToArray());
+		return new SqlBytes(_stream);
 	}
 	
 	//path message decoder

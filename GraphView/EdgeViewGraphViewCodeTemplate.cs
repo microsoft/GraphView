@@ -681,8 +681,8 @@ indent = "		";
             
             #line default
             #line hidden
-            this.Write("\t\treturn new SqlBytes(_stream.ToArray());\r\n\t}\r\n\r\n\t//path message decoder\r\n\t[Micro" +
-                    "soft.SqlServer.Server.SqlFunction]\r\n\tpublic static SqlString ");
+            this.Write("\t\treturn new SqlBytes(_stream);\r\n\t}\r\n\r\n\t//path message decoder\r\n\t[Microsoft.SqlSe" +
+                    "rver.Server.SqlFunction]\r\n\tpublic static SqlString ");
             
             #line 329 "D:\Source\graphview\GraphView\EdgeViewGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(EdgeName));

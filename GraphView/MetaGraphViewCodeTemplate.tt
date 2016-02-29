@@ -53,12 +53,13 @@ public partial class UserDefinedFunctions
     public static byte[] ConvertNumberIntoBinaryForPath(SqlInt64 sink, 
 	SqlInt64 edgeColumnId, SqlInt32 edgeId)
     {
-		var	_stream = new MemoryStream();
+		byte[] _buffer = new byte[20];
+		var	_stream = new MemoryStream(_buffer);
 		var _writer = new BinaryWriter(_stream);
 		_writer.Write(sink.Value);
 		_writer.Write(edgeColumnId.Value);
 		_writer.Write(edgeId.Value);
-		return _stream.ToArray();
+		return _buffer;
     }
 }
 
@@ -93,8 +94,7 @@ public struct EdgeIdEncoder : IBinarySerialize
 
   public SqlBytes Terminate()
   {
-    var bytes = _stream.ToArray();
-    return new SqlBytes(bytes);
+    return new SqlBytes(_stream);
   }
 
   public void Read(BinaryReader r)
@@ -110,7 +110,7 @@ public struct EdgeIdEncoder : IBinarySerialize
 
   public void Write(BinaryWriter w)
   {
-    w.Write(_stream.ToArray());
+    w.Write(_stream.GetBuffer(), 0, (int) _stream.Length);
   }
 
 
@@ -149,8 +149,7 @@ public struct GlobalNodeIdEncoder : IBinarySerialize
 
   public SqlBytes Terminate()
   {
-    var bytes = _stream.ToArray();
-    return new SqlBytes(bytes);
+    return new SqlBytes(_stream);
   }
 
   public void Read(BinaryReader r)
@@ -166,7 +165,7 @@ public struct GlobalNodeIdEncoder : IBinarySerialize
 
   public void Write(BinaryWriter w)
   {
-    w.Write(_stream.ToArray());
+    w.Write(_stream.GetBuffer(), 0, (int)_stream.Length);
   }
 
 }

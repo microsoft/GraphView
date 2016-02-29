@@ -321,7 +321,7 @@ public partial class UserDefinedFunctions
 <#
 	}
 #>
-		return new SqlBytes(_stream.ToArray());
+		return new SqlBytes(_stream);
 	}
 
 	//path message decoder
