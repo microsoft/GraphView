@@ -302,5 +302,79 @@ namespace GraphView
                     throw new GraphViewException("Invalid unary expression type.");
             }
         }
+
+        public static string OptimizerHintKind(OptimizerHintKind type)
+        {
+            switch (type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.Unspecified:
+                    return "";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.HashGroup:
+                    return "Hash Group";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.OrderGroup:
+                    return "Order Group";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.MergeJoin:
+                    return "Merge Join";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.HashJoin:
+                    return "Hash Join";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.LoopJoin:
+                    return "Loop Join";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.ConcatUnion:
+                    return "Concat Union";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.HashUnion:
+                    return "Hash Union";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.MergeUnion:
+                    return "Merge Union";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.KeepUnion:
+                    return "Keep Union";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.ForceOrder:
+                    return "Force Order";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.RobustPlan:
+                    return "Robust Plan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.KeepPlan:
+                    return "Keep Plan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.KeepFixedPlan:
+                    return "KeepFixed Plan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.ExpandViews:
+                    return "Expand Views";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.AlterColumnPlan:
+                    return "AlterColumnPlan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.ShrinkDBPlan:
+                    return "ShrinkDBPlan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.BypassOptimizerQueue:
+                    return "BypassOptimizerQueue";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.UsePlan:
+                    return "Use Plan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.ParameterizationSimple:
+                    return "Parameterization Simple";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.ParameterizationForced:
+                    return "Parameterization Forced";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.OptimizeCorrelatedUnionAll:
+                    return "OptimizeCorrelatedUnionAll";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.Recompile:
+                    return "Recompile";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.Fast:
+                    return "Fast";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.CheckConstraintsPlan:
+                    return "CheckConstraintsPlan";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.MaxRecursion:
+                    return "MaxRecursion";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.MaxDop:
+                    return "MaxDop";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.QueryTraceOn:
+                    return "QueryTraceOn";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.CardinalityTunerLimit:
+                    return "CardinalityTunerLimit";
+                //case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.TableHints:
+                //    return "TableHints";
+                //case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.OptimizeFor:
+                //    return "OptimizeFor";
+                case Microsoft.SqlServer.TransactSql.ScriptDom.OptimizerHintKind.IgnoreNonClusteredColumnStoreIndex:
+                    return "Ignore_NonClustered_ColumnStore_Index";
+                default:
+                    throw new GraphViewException("Invalid optimize hint kind.");
+            }
+        }
+        
     }
 }

@@ -57,6 +57,7 @@ namespace GraphView
                 sb.AppendFormat("{0}SELECT INTO {1}\r\n", indent, Into);
             }
             sb.Append(QueryExpr.ToString(indent));
+            sb.Append(OptimizerHintListToString(indent));
 
             return sb.ToString();
         }

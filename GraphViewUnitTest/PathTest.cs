@@ -156,6 +156,28 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void PathTranslationWithHintTest()
+        {
+            Init();
+            CreateView();
+            using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
+            {
+                conn.Open();
+                var command = conn.CreateCommand();
+                command.CommandText = @" 
+                    SELECT e1.WorkId, e2.WorkId
+                    FROM 
+                     EmployeeNode AS e1, EmployeeNode AS e2
+                    MATCH [e1]-[Colleagues* as c]->[e2]
+                    OPTION (MAXRECURSION 0)";
+                command.ExecuteNonQuery();
+
+            }
+        }
+
+
+        [
+            TestMethod]
         public void RegularEdgePathDisplayTest()
         {
             Init();

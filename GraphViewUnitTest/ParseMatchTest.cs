@@ -22,8 +22,15 @@ namespace GraphViewUnitTest
             Assert.IsNotNull(script);
             Assert.AreNotEqual(script.Batches.Count, 0);
             Assert.AreNotEqual(script.Batches[0].Statements.Count, 0);
-            foreach (var queryBlock in script.Batches[0].Statements.Select(statement => statement as WSelectQueryBlock))
+            //foreach (var queryBlock in script.Batches[0].Statements.Select(statement => statement as WSelectQueryBlock))
+            //{
+            //    Assert.IsNotNull(queryBlock);
+            //    Assert.IsNotNull(queryBlock.MatchClause);
+            //}
+            foreach (var selectStat in script.Batches[0].Statements.Select(statement => statement as WSelectStatement))
             {
+                Assert.IsNotNull(selectStat);
+                var queryBlock = selectStat.QueryExpr as WSelectQueryBlock;
                 Assert.IsNotNull(queryBlock);
                 Assert.IsNotNull(queryBlock.MatchClause);
             }
@@ -44,7 +51,11 @@ namespace GraphViewUnitTest
             Assert.IsNotNull(script);
             Assert.AreNotEqual(script.Batches.Count, 0);
             Assert.AreNotEqual(script.Batches[0].Statements.Count, 0);
-            var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+            //var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+            //Assert.IsNotNull(queryBlock);
+            var selectStat = script.Batches[0].Statements[0] as WSelectStatement;
+            Assert.IsNotNull(selectStat);
+            var queryBlock = selectStat.QueryExpr as WSelectQueryBlock;
             Assert.IsNotNull(queryBlock);
             Assert.IsNotNull(queryBlock.MatchClause);
             Assert.AreEqual(queryBlock.MatchClause.Paths.Count, 1);
@@ -97,10 +108,16 @@ namespace GraphViewUnitTest
             Assert.IsNotNull(script);
             Assert.AreNotEqual(script.Batches.Count, 0);
             Assert.AreNotEqual(script.Batches[0].Statements.Count, 0);
-            var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+            //var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+            var selectStat = script.Batches[0].Statements[0] as WSelectStatement;
+            Assert.IsNotNull(selectStat);
+            var queryBlock = selectStat.QueryExpr as WSelectQueryBlock;
             Assert.IsNotNull(queryBlock);
             Assert.IsNull(queryBlock.MatchClause);
-            queryBlock = script.Batches[0].Statements[1] as WSelectQueryBlock;
+            //queryBlock = script.Batches[0].Statements[1] as WSelectQueryBlock;
+            selectStat = script.Batches[0].Statements[1] as WSelectStatement;
+            Assert.IsNotNull(selectStat);
+            queryBlock = selectStat.QueryExpr as WSelectQueryBlock;
             Assert.IsNotNull(queryBlock);
             Assert.IsNotNull(queryBlock.MatchClause);
         }
@@ -178,7 +195,11 @@ namespace GraphViewUnitTest
                 Assert.IsNotNull(script);
                 Assert.AreNotEqual(script.Batches.Count, 0);
                 Assert.AreNotEqual(script.Batches[0].Statements.Count, 0);
-                var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+
+                //var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+                var selectStat = script.Batches[0].Statements[0] as WSelectStatement;
+                Assert.IsNotNull(selectStat);
+                var queryBlock = selectStat.QueryExpr as WSelectQueryBlock;
                 Assert.IsNotNull(queryBlock);
                 Assert.IsNull(queryBlock.MatchClause);
             }
@@ -203,7 +224,10 @@ namespace GraphViewUnitTest
             Assert.IsNotNull(script);
             Assert.AreNotEqual(script.Batches.Count, 0);
             Assert.AreNotEqual(script.Batches[0].Statements.Count, 0);
-            var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+            //var queryBlock = script.Batches[0].Statements[0] as WSelectQueryBlock;
+            var selectStat = script.Batches[0].Statements[0] as WSelectStatement;
+            Assert.IsNotNull(selectStat);
+            var queryBlock = selectStat.QueryExpr as WSelectQueryBlock;
             Assert.IsNotNull(queryBlock);
             Assert.IsNull(queryBlock.MatchClause);
         }

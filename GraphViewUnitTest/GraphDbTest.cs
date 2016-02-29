@@ -859,6 +859,44 @@ namespace GraphViewUnitTest
                 }
             }
         }
+
+        [TestMethod]
+        public void TestSelectStatementHints()
+        {
+            const string query = @"
+                SELECT e1.WorkId FROM EmployeeNode e1
+                OPTION(MAXDOP 1,FORCE ORDER, merge join, optimize for unknown)";
+            var sr = new StringReader(query);
+            var parser = new GraphViewParser();
+            TestInitialization.Init();
+            IList<ParseError> errors;
+            var script = parser.Parse(sr, out errors) as WSqlScript;
+            Assert.IsNotNull(script);
+            var stat = script.Batches[0].Statements[0] as WStatementWithCtesAndXmlNamespaces;
+            Assert.IsNotNull(stat);
+            Assert.IsNotNull(stat.OptimizerHints);
+            using (var conn = new GraphViewConnection(_connStr))
+            {
+                conn.Open();
+                using (var command = conn.CreateCommand())
+                {
+                //    command.CommandText = @"
+                //DECLARE @a varchar(32);
+                //SELECT e1.WorkId FROM EmployeeNode e1 where workid = @a
+                //OPTION(optimize for (@a = '1'))";
+                    command.CommandText = query;
+                    using (var reader = command.ExecuteReader())
+                    {
+                        var count = 0;
+                        while (reader.Read())
+                        {
+                            count++;
+                        }
+                        Trace.WriteLine(count);
+                    }
+                }
+            }
+        }
     }
 
 }
