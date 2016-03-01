@@ -79,7 +79,6 @@ public partial class UserDefinedFunctions
 		var deleDict =  new Dictionary<Int32, bool>();
 		if (deleteEdge != null && !deleteEdge.IsNull)
 		{	
-			//var ms = new MemoryStream(deleteEdge.Value);
 			var delebr = new BinaryReader(deleteEdge.Stream);
 			while (delebr.BaseStream.Position != delebr.BaseStream.Length)
 			{
@@ -90,42 +89,82 @@ public partial class UserDefinedFunctions
 			yield break;
 		var br = new BinaryReader(array.Stream);
 		var edgeid = (Int32)0;
-		while (br.BaseStream.Position != br.BaseStream.Length)
+		if (deleDict.Count == 0)
 		{
-			edgeid++;
-		<#if (byteSize != 0) {#>
-		byte[] bitmap = br.ReadBytes(<#=byteSize#>);
-		<#}#>
-			var sink = br.ReadInt64();
-<#
-				indent += "    ";
-				var count = 0;
-				foreach (var variable in variables)
-				{
-					var variableName = variable.Item1;
-					var variableType = variable.Item2;
-					var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
-					if (attributeSize == 0) {
-						str = "";
-					}
-					WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
-					count++;
-				}
-#>
-			if (!deleDict.ContainsKey(edgeid)) {
-			yield return new <#=edgeName#>DecoderResult
+			while (br.BaseStream.Position != br.BaseStream.Length)
 			{
-				Sink = sink, EdgeId = edgeid,
+				edgeid++;
+			<#if (byteSize != 0) {#>
+			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+			<#}#>
+				var sink = br.ReadInt64();
 <#
-				indent += "    ";
-				for (var i = 0; i < variables.Count; ++i)
-				{
-					WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
-				}
+					indent += "    ";
+					var count = 0;
+					foreach (var variable in variables)
+					{
+						var variableName = variable.Item1;
+						var variableType = variable.Item2;
+						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+						if (attributeSize == 0) {
+							str = "";
+						}
+						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
+						count++;
+					}
 #>
-			};
+				yield return new <#=edgeName#>DecoderResult
+				{
+					Sink = sink, EdgeId = edgeid,
+<#
+					indent += "    ";
+					for (var i = 0; i < variables.Count; ++i)
+					{
+						WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
+					}
+#>
+				};
+			}
 		}
-	}
+		else 
+		{
+			while (br.BaseStream.Position != br.BaseStream.Length)
+			{
+				edgeid++;
+			<#if (byteSize != 0) {#>
+			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+			<#}#>
+				var sink = br.ReadInt64();
+<#
+					indent += "    ";
+					count = 0;
+					foreach (var variable in variables)
+					{
+						var variableName = variable.Item1;
+						var variableType = variable.Item2;
+						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+						if (attributeSize == 0) {
+							str = "";
+						}
+						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
+						count++;
+					}
+#>
+				if (!deleDict.ContainsKey(edgeid)) {
+				yield return new <#=edgeName#>DecoderResult
+				{
+					Sink = sink, EdgeId = edgeid,
+<#
+					indent += "    ";
+					for (var i = 0; i < variables.Count; ++i)
+					{
+						WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
+					}
+#>
+				};
+				}
+			}
+		}
 	}
 
 	//Path Decoder
@@ -180,24 +219,45 @@ public partial class UserDefinedFunctions
 				PathDict[Edgeid] = true;
 			}
 		}
-		
-		foreach (var it in <#=edgeName#>Decoder(array, dele))
+		if (PathDict.Count == 0) 
 		{
-			var  adjacent = it as <#=edgeName#>DecoderResult;
-			var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
-			if (!PathDict.ContainsKey(EdgeId))
+			foreach (var it in <#=edgeName#>Decoder(array, dele))
 			{
-				yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
-				{
-					EdgeId = adjacent.EdgeId,
-					EdgeColumnId = <#=edgeColumnId#>,
-					SinkId = adjacent.Sink, <#
-					for (var i = 0; i < variables.Count; ++i)
+				var  adjacent = it as <#=edgeName#>DecoderResult;
+				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
 					{
-						WriteLine(indent + variables[i].Item1 + " = adjacent." + variables[i].Item1 + ",");
-					}
+						EdgeId = adjacent.EdgeId,
+						EdgeColumnId = <#=edgeColumnId#>,
+						SinkId = adjacent.Sink, <#
+						for (var i = 0; i < variables.Count; ++i)
+						{
+							WriteLine(indent + variables[i].Item1 + " = adjacent." + variables[i].Item1 + ",");
+						}
 #>
-				};
+					};
+			}
+		}
+		else
+		{
+			foreach (var it in <#=edgeName#>Decoder(array, dele))
+			{
+				var  adjacent = it as <#=edgeName#>DecoderResult;
+				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+				if (!PathDict.ContainsKey(EdgeId))
+				{
+					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
+					{
+						EdgeId = adjacent.EdgeId,
+						EdgeColumnId = <#=edgeColumnId#>,
+						SinkId = adjacent.Sink, <#
+						for (var i = 0; i < variables.Count; ++i)
+						{
+							WriteLine(indent + variables[i].Item1 + " = adjacent." + variables[i].Item1 + ",");
+						}
+#>
+					};
+				}
 			}
 		}
 		yield break;

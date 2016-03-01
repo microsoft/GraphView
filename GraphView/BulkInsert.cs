@@ -1395,6 +1395,7 @@ namespace GraphView
                 var dropTempTable = @"Drop table {0}";
                 command.CommandText = string.Format(dropTempTable, randomTempTableName);
                 command.ExecuteNonQuery();
+                UpdateTableStatistics(tableSchema, sourceTableName, transaction);
                 transaction.Commit();
             }
             catch (Exception error)
