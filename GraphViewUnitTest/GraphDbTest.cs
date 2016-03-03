@@ -897,6 +897,154 @@ namespace GraphViewUnitTest
                 }
             }
         }
+
+        //#region Work Load Test
+        //public void CreateGraphTable()
+        //{
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+
+        //        const string createPatentStr = @"
+        //        CREATE TABLE [Patent_NT] (
+        //            [ColumnRole: ""NodeId""]
+        //            patentId INT NOT NULL,
+        //            [ColumnRole: ""Property""]
+        //            gyear INT,
+        //            [ColumnRole: ""Property""]
+        //            gdate INT,
+        //            [ColumnRole: ""Property""]
+        //            ayear INT,
+        //            [ColumnRole: ""Property""]
+        //            country VARCHAR(10),
+        //            [ColumnRole: ""Property""]
+        //            postate VARCHAR(10),
+        //            [ColumnRole: ""Property""]
+        //            assignee INT,
+        //            [ColumnRole: ""Property""]
+        //            asscode INT,
+        //            [ColumnRole: ""Property""]
+        //            claims INT,
+        //            [ColumnRole: ""Property""]
+        //            nclass INT,
+        //            [ColumnRole: ""Property""]
+        //            cat INT,
+        //            [ColumnRole: ""Property""]
+        //            subcat INT,
+        //            [ColumnRole: ""Property""]
+        //            cmade INT,
+        //            [ColumnRole: ""Property""]
+        //            creceive INT,
+        //            [ColumnRole: ""Property""]
+        //            ratiocit DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            general DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            original DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            fwdaplag DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            bckgtlag DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            selfctub DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            selfctlb DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            secdupbd DECIMAL(12,5),
+        //            [ColumnRole: ""Property""]
+        //            secdlwbd DECIMAL(12,5),
+        //            [ColumnRole: ""Edge"", Reference: ""Patent_NT""]
+        //            adjacencyList varbinary(8000)
+        //        )";
+        //        graph.CreateNodeTable(createPatentStr);
+        //    }
+        //}
+
+        //public void BulkInsertNode()
+        //{
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        const string filedterminator = @",";
+        //        const string rowterminator = "\n";
+        //        graph.BulkInsertNode(@"D:\data2\apat63_99.txt", "Patent_NT", "dbo", null, filedterminator, rowterminator);
+        //    }
+        //}
+
+        //public void BulkInsertEdge()
+        //{
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        const string filedterminator = @",";
+        //        const string rowterminator = "\n";
+        //        graph.BulkInsertEdge(@"D:\data2\cite75_99.txt", "dbo", "Patent_NT", "patentid", "Patent_NT", "patentid",
+        //            "adjacencyList",
+        //            null, filedterminator, rowterminator);
+        //    graph.UpdateTableStatistics("dbo", "Patent_NT");
+        //    }
+        //}
+
+        //[TestMethod]
+        //public void SetUpWorkLoadTest()
+        //{
+        //    TestInitialization.ClearDatabase();
+        //    CreateGraphTable();
+        //    BulkInsertNode();
+        //    BulkInsertEdge();
+        //}
+
+        //[TestMethod]
+        //public void ExecuteQuery()
+        //{
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        string query = @"
+		//		SELECT count(*)
+        //        FROM 
+        //            Patent_NT as A, 
+        //            Patent_NT as B
+        //        MATCH
+        //           	A-[adjacencyList*0..5]->B
+        //        Where A.GYEAR = 1984";
+        //        using (var reader = graph.ExecuteReader(query))
+        //        {
+        //            while (reader.Read())
+        //            {
+        //                
+        //            }
+        //        }
+        //    }
+        //}
+
+        //[TestMethod]
+        //public void AllExecuteQuery()
+        //{
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        var sr = new StreamReader("WorkLoadTest.sql");
+
+        //        var clearQuery = sr.ReadToEnd().Split(new string[] { "GO" }, StringSplitOptions.None);
+
+        //        string query = @"";
+        //        foreach (var it in clearQuery)
+        //        {
+        //            if (it == "") continue;
+        //            query = it;
+        //            using (var reader = graph.ExecuteReader(query))
+        //            {
+        //                //while (reader.Read())
+        //                //{
+        //                //    
+        //                //}
+        //            }
+        //        }
+        //    }
+        //}
+
+        //#endregion
     }
 
 }
