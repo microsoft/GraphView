@@ -75,9 +75,9 @@ namespace GraphView
                 var stmt = statements[j];
                 if (_nodeCount >= _annotations.Count)
                     break;
-                if (stmt is WSelectQueryBlock && stmt.FirstTokenIndex == _annotations[_nodeCount].Position)
+                if (stmt is WSelectStatement && stmt.FirstTokenIndex == _annotations[_nodeCount].Position)
                 {
-                    var newStmt = stmt as WSelectQueryBlock;
+                    var newStmt = (stmt as WSelectStatement).QueryExpr as WSelectQueryBlock;
                     var annotation = _annotations[_nodeCount] as DeleteEdgeAnnotation;
                     if (annotation != null)
                         newStmt.MatchClause = new WMatchClause

@@ -106,8 +106,18 @@ namespace GraphView
                 case "SelectStatement":
                     {
                         var sel = tsqlStat as SelectStatement;
-                        wstat = ParseSelectQueryStatement(sel.QueryExpression);
+                        WSelectStatement wselstat = new WSelectStatement
+                        {
+                            FirstTokenIndex = sel.FirstTokenIndex,
+                            LastTokenIndex = sel.LastTokenIndex,
+                            Into = ParseSchemaObjectName(sel.Into),
+                            OptimizerHints = sel.OptimizerHints,
+                            QueryExpr = ParseSelectQueryStatement(sel.QueryExpression)
 
+                        };
+                        wstat = wselstat;
+
+                        //wstat = ParseSelectQueryStatement(sel.QueryExpression);
                         break;
                     }
                 case "CreateFunctionStatement":

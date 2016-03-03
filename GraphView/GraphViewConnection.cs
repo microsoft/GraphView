@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -91,7 +92,7 @@ namespace GraphView
         /// 4: _StoredProcedureCollection,
         /// 5: _NodeViewColumnCollection,
         /// 6: _EdgeViewAttributeCollection,
-        /// 7: _NodeViewCollection,
+        /// 7: _NodeViewCollection
         /// </summary>
         internal static readonly List<string> MetadataTables =
             new List<string>
@@ -106,6 +107,18 @@ namespace GraphView
                 "_NodeViewCollection"
             };
 
+        internal static readonly List<Tuple<string, string>> Version110MetaUdf= 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION","SingletonTable"),
+                Tuple.Create("FUNCTION","DownSizeFunction"),
+                Tuple.Create("FUNCTION","UpSizeFunction"),
+                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly")
+            };
+
+        private BitArray _a = new BitArray(1);
         private static readonly string VersionTable = "VERSION";
 
         private static readonly string version = "1.11";
@@ -315,11 +328,9 @@ namespace GraphView
                     currentVersion = version;
                 }
                 const string assemblyName = GraphViewUdfAssemblyName;
-                //var edgeDictionary = new List<Tuple<string, bool, List<Tuple<string, string>>>>
-                //{
-                //    new Tuple<string, bool, List<Tuple<string, string>>>("GlobalNodeId",false, new List<Tuple<string, string>>())
-                //};
-                GraphViewDefinedFunctionGenerator.MetaRegister(assemblyName, Conn, tx);
+
+                GraphViewDefinedFunctionRegister register =  new MetaFunctionRegister(assemblyName);
+                register.Register(Conn, tx);
             }
             catch (SqlException e)
             {
@@ -525,7 +536,7 @@ namespace GraphView
                 {
                     UpgradeFromV110ToV111(transaction); 
                 }
-                    
+
                 if (currentVersion == "1.11")
                 {
                 }
@@ -594,9 +605,12 @@ namespace GraphView
         private void UpgradeFromV110ToV111(SqlTransaction transaction)
         {
             var tables = GetNodeTables(transaction);
-            DropAssemblyAndUDFV110(transaction);
+            DropAssemblyAndMetaUDFV110(transaction);
             const string assemblyName = GraphViewUdfAssemblyName;
-            GraphViewDefinedFunctionGenerator.MetaRegister(assemblyName, Conn, transaction);
+
+            GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
+            register.Register(Conn, transaction);
+
             //Update version number
             UpdateVersionNumber("1.11", transaction);
             //Upgrade global view
@@ -885,7 +899,8 @@ namespace GraphView
                 if (edgeDict.Count > 0)
                 {
                     var assemblyName = tableSchema + '_' + tableName;
-                    GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableName, edgeDict, userId, Conn, tx);
+                    GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableName, edgeDict, userId);
+                    register.Register(Conn, tx);
                 }
                 using (var command = new SqlCommand(null, Conn))
                 {
@@ -1226,7 +1241,7 @@ namespace GraphView
             }
         }
 
-        public void DropAssemblyAndUDFV110(SqlTransaction externalTransaction = null)
+        public void DropAssemblyAndMetaUDFV110(SqlTransaction externalTransaction = null)
         {
             SqlTransaction tx;
             tx = externalTransaction ?? Conn.BeginTransaction();
@@ -1237,13 +1252,8 @@ namespace GraphView
                     command.Transaction = tx;
                     //Drop assembly and UDF
                     const string dropAssembly = @"
-                    DROP AGGREGATE GraphViewUDFGlobalNodeIdEncoder
-                    DROP AGGREGATE GraphViewUDFEdgeIdEncoder
-                    DROP FUNCTION SingletonTable
-                    DROP FUNCTION DownSizeFunction
-                    DROP FUNCTION UpSizeFunction
-                    DROP ASSEMBLY GraphViewUDFAssembly";
-                    command.CommandText = dropAssembly;
+                    DROP {0} {1}";
+                    command.CommandText = string.Join("\n", Version110MetaUdf.Select(x => string.Format(dropAssembly, x.Item1, x.Item2)));
                     command.ExecuteNonQuery();
                 }
 
@@ -1741,8 +1751,9 @@ namespace GraphView
                         {
                             var tableInfo = tableInfoDict[item.Key];
                             var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
-                            GraphViewDefinedFunctionGenerator.NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
-                                tableInfo.Item3, Conn, tx);
+                            GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
+                                tableInfo.Item3);
+                            register.Register(Conn, tx);
                         }
 
                     }

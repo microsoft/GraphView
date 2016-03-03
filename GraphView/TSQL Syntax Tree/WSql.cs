@@ -24,6 +24,7 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using GraphView.TSQL_Syntax_Tree;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -210,7 +211,100 @@ namespace GraphView
     /// <summary>
     /// Statements with optimization hints
     /// </summary>
-    public abstract partial class WStatementWithCtesAndXmlNamespaces : WSqlStatement { }
+    public abstract partial class WStatementWithCtesAndXmlNamespaces : WSqlStatement
+    {
+        public IList<OptimizerHint> OptimizerHints { get; set; }
+
+        // Turns T-SQL OptimizerHint into string 
+        internal static string OptimizerHintToString(OptimizerHint hint)
+        {
+            var sb = new StringBuilder(1024);
+            // Literal hint
+            if (hint is LiteralOptimizerHint)
+            {
+                sb.Append(TsqlFragmentToString.OptimizerHintKind(hint.HintKind));
+                var loh = hint as LiteralOptimizerHint;
+
+                // TODO: Only support numeric literal
+                sb.AppendFormat(" {0}",loh.Value.Value);
+            }
+            // OptimizeFor hint
+            else if (hint is OptimizeForOptimizerHint)
+            {
+                var ooh = hint as OptimizeForOptimizerHint;
+                sb.AppendFormat("OPTIMIZE FOR ");
+                if (ooh.IsForUnknown)
+                    sb.Append("UNKNOWN");
+                else
+                {
+                    sb.Append("(");
+                    for (int i = 0; i < ooh.Pairs.Count; i++)
+                    {
+                        if (i > 0)
+                            sb.Append(", ");
+                        sb.Append(ooh.Pairs[i].Variable.Name);
+
+                        // TODO: Only support value expression
+                        if (ooh.Pairs[i].Value != null && ooh.Pairs[i].Value is Literal)
+                        {
+                            if (ooh.Pairs[i].Value is StringLiteral)
+                                sb.AppendFormat(" = '{0}'", ((Literal)ooh.Pairs[i].Value).Value);
+                            else
+                                sb.AppendFormat(" = {0}", ((Literal)ooh.Pairs[i].Value).Value);
+                        }
+                        else
+                            sb.Append(" UNKNOWN");
+                    }
+                    sb.Append(")");
+
+                }
+            }
+            // Table hint
+            else if (hint is TableHintsOptimizerHint)
+            {
+                var toh = hint as TableHintsOptimizerHint;
+                sb.Append("TABLE HINT ");
+                sb.Append("(");
+                sb.Append(TsqlFragmentToString.SchemaObjectName(toh.ObjectName));
+                for (int i = 0; i < toh.TableHints.Count; i++)
+                {
+                    if (i > 0)
+                        sb.Append(", ");
+                    // TODO: Table hint in WSQL Syntax tree is incomplete
+                    sb.AppendFormat("@{0}", toh.TableHints[i].HintKind.ToString());
+                }
+                sb.Append(")");
+
+            }
+            // Regular hint
+            else
+            {
+                sb.Append(TsqlFragmentToString.OptimizerHintKind(hint.HintKind));
+            }
+            return sb.ToString();
+
+        }
+
+        // Tranlates optimizer hint list into string
+        internal string OptimizerHintListToString(string indent="")
+        {
+            if (OptimizerHints == null || !OptimizerHints.Any())
+                return "";
+            var sb = new StringBuilder(1024);
+            sb.Append("\r\n");
+            sb.AppendFormat("{0}OPTION", indent);
+            sb.Append("(");
+            for (int i = 0; i < OptimizerHints.Count; i++)
+            {
+                if (i > 0)
+                    sb.Append(", ");
+                sb.AppendFormat("{0}", OptimizerHintToString(OptimizerHints[i]));
+            }
+            sb.Append(")");
+
+            return sb.ToString();
+        }
+    }
 
     /// <summary>
     /// This class represents all T-SQL statements not identified by the current parser.

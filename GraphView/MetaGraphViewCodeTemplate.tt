@@ -1,0 +1,171 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #> 
+using System;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data.SqlTypes;
+using System.Text;
+using Microsoft.SqlServer.Server;
+
+public partial class UserDefinedFunctions
+{
+  private class SingletonTableDecoderResult
+  {
+    public bool bit { get; set; }
+  }
+
+  public static void SingletonTable_FillRow(
+      object tableTypeObject,
+      out SqlBoolean bit)
+  {
+    var decoderResult = (SingletonTableDecoderResult)tableTypeObject;
+    bit = decoderResult.bit;
+  }
+
+  [SqlFunction(
+      DataAccess = DataAccessKind.None,
+      TableDefinition = "ghostbit bit",
+      FillRowMethodName = "SingletonTable_FillRow",
+      IsDeterministic = true,
+      IsPrecise = false
+      )]
+    public static IEnumerable SingletonTable()
+    {
+
+      yield return new SingletonTableDecoderResult
+      {
+        bit = true,
+      };
+    }
+
+	[Microsoft.SqlServer.Server.SqlFunction]
+    public static SqlInt32 DownSizeFunction(SqlInt32 Checksum)
+    {
+      return new SqlInt32(1);
+    }
+
+	[Microsoft.SqlServer.Server.SqlFunction]
+    public static byte[] ConvertNumberIntoBinaryForPath(SqlInt64 sink, 
+	SqlInt64 edgeColumnId, SqlInt32 edgeId)
+    {
+		byte[] _buffer = new byte[20];
+		var	_stream = new MemoryStream(_buffer);
+		var _writer = new BinaryWriter(_stream);
+		_writer.Write(sink.Value);
+		_writer.Write(edgeColumnId.Value);
+		_writer.Write(edgeId.Value);
+		return _buffer;
+    }
+}
+
+[Serializable]
+[Microsoft.SqlServer.Server.SqlUserDefinedAggregate(Format.UserDefined,
+    IsInvariantToNulls = true,
+    IsInvariantToOrder = true,
+    IsInvariantToDuplicates = false,
+    MaxByteSize = -1)]
+public struct EdgeIdEncoder : IBinarySerialize
+{
+  private MemoryStream _stream;
+  private BinaryWriter _writer;
+
+  public void Init()
+  {
+    _stream = new MemoryStream();
+    _writer = new BinaryWriter(_stream);
+  }
+  public void Accumulate(SqlInt32 edgeid)
+  {
+    if (edgeid.IsNull)
+      return;
+    _writer.Write(edgeid.Value);
+
+  }
+
+  public void Merge (EdgeIdEncoder group)
+  {
+    _writer.Write(group._stream.GetBuffer(), 0, (int) group._stream.Length);
+  }
+
+  public SqlBytes Terminate()
+  {
+    return new SqlBytes(_stream);
+  }
+
+  public void Read(BinaryReader r)
+  {
+    if (_stream != null)
+      _stream.Dispose();
+    if (_writer != null)
+      _writer.Dispose();
+    _stream = new MemoryStream();
+    _writer = new BinaryWriter(_stream);
+    _writer.Write(r.ReadBytes((int)r.BaseStream.Length));
+  }
+
+  public void Write(BinaryWriter w)
+  {
+    w.Write(_stream.GetBuffer(), 0, (int) _stream.Length);
+  }
+
+
+}
+
+[Serializable]
+[Microsoft.SqlServer.Server.SqlUserDefinedAggregate(Format.UserDefined,
+    IsInvariantToNulls = true,
+    IsInvariantToOrder = true,
+    IsInvariantToDuplicates = false,
+    MaxByteSize = -1)]
+public struct GlobalNodeIdEncoder : IBinarySerialize
+{
+  private MemoryStream _stream;
+  private BinaryWriter _writer;
+
+  public void Init()
+  {
+    _stream = new MemoryStream();
+    _writer = new BinaryWriter(_stream);
+  }
+
+  public void Accumulate(
+      SqlInt64 sink)
+  {
+    if (sink.IsNull)
+      return;
+    _writer.Write(sink.Value);
+  }
+
+
+  public void Merge (GlobalNodeIdEncoder group)
+  {
+    _writer.Write(group._stream.GetBuffer(), 0, (int) group._stream.Length);
+  }
+
+  public SqlBytes Terminate()
+  {
+    return new SqlBytes(_stream);
+  }
+
+  public void Read(BinaryReader r)
+  {
+    if (_stream != null)
+      _stream.Dispose();
+    if (_writer != null)
+      _writer.Dispose();
+    _stream = new MemoryStream();
+    _writer = new BinaryWriter(_stream);
+    _writer.Write(r.ReadBytes((int)r.BaseStream.Length));
+  }
+
+  public void Write(BinaryWriter w)
+  {
+    w.Write(_stream.GetBuffer(), 0, (int)_stream.Length);
+  }
+
+}

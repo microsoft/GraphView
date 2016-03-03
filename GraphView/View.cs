@@ -1422,16 +1422,16 @@ namespace GraphView
                 command.ExecuteNonQuery();
 
                 //Registers function
-                GraphViewDefinedFunctionGenerator.EdgeViewRegister(_nodeName, tableSchema, edgeViewName,
-                    _attributeType,
-                    edgeColumnToAttributeInfo, _edgeColumnToColumnId, Conn, command.Transaction);
+                GraphViewDefinedFunctionRegister register = new EdgeViewRegister(_nodeName, tableSchema, edgeViewName,
+                    _attributeType, edgeColumnToAttributeInfo, _edgeColumnToColumnId);
+                register.Register(Conn, transaction);
                 
                 var subViewEdgeColumnSet = subViewColumn.ToLookup(x => x);
                 var nullValue = Tuple.Create("", "");
                 var edgeColumnForBfs = edges.Select(x => subViewEdgeColumnSet.Contains(x) ? x : nullValue).ToList();
-                GraphViewDefinedFunctionGenerator.EdgeViewBfsRegister(tableSchema, nodeName, edgeViewName,
-                    _attributeType.Select(x => Tuple.Create(x.Key, x.Value)).ToList(), edgeColumnForBfs, Conn,
-                    transaction);
+                register = new EdgeViewBfsRegister(tableSchema, nodeName, edgeViewName,
+                    _attributeType.Select(x => Tuple.Create(x.Key, x.Value)).ToList(), edgeColumnForBfs);
+                register.Register(Conn, transaction);
 
 
                 //Prepares the select element 2D array

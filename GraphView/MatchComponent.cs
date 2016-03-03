@@ -455,7 +455,7 @@ namespace GraphView
             double loopJoinOuterThreshold = 1e4;//1e6;
             double sizeFactor = 5;//1000;
             double maxMemory = 1e8;
-            double loopCost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512);
+            double loopCost = componentSize*Math.Log(nodeUnitCandidate.TreeRoot.EstimatedRows, 512) * 0.20;
             double hashCost = componentSize + nodeUnitSize;
             double cost;
 

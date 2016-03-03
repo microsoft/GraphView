@@ -1,0 +1,593 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #> 
+
+<#
+var typeDictionary = new Dictionary<string, Tuple<string, string>> 
+{
+{"int", new Tuple<string, string>("int", "Int32")},
+{"long", new Tuple<string, string>("bigint", "Int64")},
+{"double", new Tuple<string, string>("float", "Double")},
+{"string", new Tuple<string, string>("nvarchar(4000)", "String")},
+{"bool", new Tuple<string, string>("bit", "Boolean")}
+};
+#>
+using System;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data.SqlTypes;
+using System.Text;
+using Microsoft.SqlServer.Server;
+
+public partial class UserDefinedFunctions
+{
+	//edge decoder
+<#
+	foreach (var edge in EdgeList) {
+	var edgeName = edge.Item1;
+	var edgeColumnId = edge.Item2;
+	var variables = edge.Item3; //Attribute name and type
+	var attributeSize = variables.Count();
+	var byteSize = (attributeSize - 1) / 8 + 1; 
+		if (attributeSize == 0) {
+			byteSize = 0;
+	}
+#>
+	private class <#=edgeName#>DecoderResult
+	{
+		public long Sink { get; set; }
+		public Int32 EdgeId{ get; set; }
+<#foreach (var variable in variables) {#>
+		public Sql<#=typeDictionary[variable.Item2].Item2#> <#=variable.Item1#> { get; set; }
+<#}#>
+	}
+
+	public static void <#=edgeName#>Decoder_FillRow(
+		object tableTypeObject,
+		out SqlInt64 sink, out SqlInt32 edgeid<#
+	var indent = "		";
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write(indent + "out Sql" + typeDictionary[variables[i].Item2].Item2 + " " + variables[i].Item1);
+	}#>)
+	{
+		var decoderResult = (<#=edgeName#>DecoderResult)tableTypeObject;
+		sink = decoderResult.Sink;
+		edgeid = decoderResult.EdgeId;
+<#foreach (var variable in variables) {#>
+	  <#=variable.Item1 #> = decoderResult.<#=variable.Item1 #>;
+<#}#>
+	}
+
+	[SqlFunction(
+		DataAccess = DataAccessKind.None,
+		TableDefinition = "Sink bigint, EdgeId int<#
+		for (var i = 0; i < variables.Count; ++i)
+			Write(", " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
+		#>",
+		FillRowMethodName = "<#=edgeName#>Decoder_FillRow",
+		IsDeterministic = true,
+		IsPrecise = false
+		)]
+	public static IEnumerable <#=edgeName#>Decoder(SqlBytes array, SqlBytes deleteEdge)
+	{
+		var deleDict =  new Dictionary<Int32, bool>();
+		if (deleteEdge != null && !deleteEdge.IsNull)
+		{	
+			var delebr = new BinaryReader(deleteEdge.Stream);
+			while (delebr.BaseStream.Position != delebr.BaseStream.Length)
+			{
+				deleDict[delebr.ReadInt32()] = true;
+			}
+		}
+		if (array == null || array.IsNull)
+			yield break;
+		var br = new BinaryReader(array.Stream);
+		var edgeid = (Int32)0;
+		if (deleDict.Count == 0)
+		{
+			while (br.BaseStream.Position != br.BaseStream.Length)
+			{
+				edgeid++;
+			<#if (byteSize != 0) {#>
+			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+			<#}#>
+				var sink = br.ReadInt64();
+<#
+					indent += "    ";
+					var count = 0;
+					foreach (var variable in variables)
+					{
+						var variableName = variable.Item1;
+						var variableType = variable.Item2;
+						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+						if (attributeSize == 0) {
+							str = "";
+						}
+						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
+						count++;
+					}
+#>
+				yield return new <#=edgeName#>DecoderResult
+				{
+					Sink = sink, EdgeId = edgeid,
+<#
+					indent += "    ";
+					for (var i = 0; i < variables.Count; ++i)
+					{
+						WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
+					}
+#>
+				};
+			}
+		}
+		else 
+		{
+			while (br.BaseStream.Position != br.BaseStream.Length)
+			{
+				edgeid++;
+			<#if (byteSize != 0) {#>
+			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+			<#}#>
+				var sink = br.ReadInt64();
+<#
+					indent += "    ";
+					count = 0;
+					foreach (var variable in variables)
+					{
+						var variableName = variable.Item1;
+						var variableType = variable.Item2;
+						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+						if (attributeSize == 0) {
+							str = "";
+						}
+						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
+						count++;
+					}
+#>
+				if (!deleDict.ContainsKey(edgeid)) {
+				yield return new <#=edgeName#>DecoderResult
+				{
+					Sink = sink, EdgeId = edgeid,
+<#
+					indent += "    ";
+					for (var i = 0; i < variables.Count; ++i)
+					{
+						WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
+					}
+#>
+				};
+				}
+			}
+		}
+	}
+
+	//Path Decoder
+	private class <#=edgeName#>ExclusiveEdgeGeneratorResult 
+	{
+		public int EdgeId{get; set;}
+		public long EdgeColumnId {get; set;}
+		public long SinkId{get; set;}
+<#foreach (var variable in variables) {#>
+		public Sql<#=typeDictionary[variable.Item2].Item2#> <#=variable.Item1#> { get; set; }
+<#}#>
+	}
+
+	public static void <#=edgeName#>ExclusiveEdgeGenerator_FillRow(
+		object tableTypeObject,
+		out SqlInt32 EdgeId, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId <#
+		for (var i = 0; i < variables.Count; ++i)
+		{
+			WriteLine(",");
+			Write(indent + "out Sql" + typeDictionary[variables[i].Item2].Item2 + " " + variables[i].Item1);
+		}#>
+		)
+	{
+		var decoderResult = (<#=edgeName#>ExclusiveEdgeGeneratorResult)tableTypeObject;
+		EdgeId = decoderResult.EdgeId;
+		EdgeColumnId =  decoderResult.EdgeColumnId;
+		SinkId = decoderResult.SinkId;
+<#foreach (var variable in variables) {#>
+	  <#=variable.Item1 #> = decoderResult.<#=variable.Item1 #>;
+<#}#>
+	}
+	
+		[SqlFunction(
+		DataAccess = DataAccessKind.None,
+		TableDefinition = "EdgeId int, EdgeColumnId bigint, SinkId bigint",
+		FillRowMethodName = "<#=edgeName#>ExclusiveEdgeGenerator_FillRow",
+		IsDeterministic = true,
+		IsPrecise = false
+		)]
+	public static IEnumerable <#=edgeName#>ExclusiveEdgeGenerator(SqlBytes  PathVarbinary, SqlInt64 nodeid, SqlBytes array, SqlBytes dele)
+	{
+		if (array == null || array.IsNull)
+			yield break;
+		//var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
+		Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
+		var brPath = new BinaryReader(PathMemory);
+		var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		if (PathVarbinary != null && !PathVarbinary.IsNull) {
+			while (brPath.BaseStream.Position != brPath.BaseStream.Length)
+			{
+				var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
+				PathDict[Edgeid] = true;
+			}
+		}
+		if (PathDict.Count == 0) 
+		{
+			foreach (var it in <#=edgeName#>Decoder(array, dele))
+			{
+				var  adjacent = it as <#=edgeName#>DecoderResult;
+				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
+					{
+						EdgeId = adjacent.EdgeId,
+						EdgeColumnId = <#=edgeColumnId#>,
+						SinkId = adjacent.Sink, <#
+						for (var i = 0; i < variables.Count; ++i)
+						{
+							WriteLine(indent + variables[i].Item1 + " = adjacent." + variables[i].Item1 + ",");
+						}
+#>
+					};
+			}
+		}
+		else
+		{
+			foreach (var it in <#=edgeName#>Decoder(array, dele))
+			{
+				var  adjacent = it as <#=edgeName#>DecoderResult;
+				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+				if (!PathDict.ContainsKey(EdgeId))
+				{
+					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
+					{
+						EdgeId = adjacent.EdgeId,
+						EdgeColumnId = <#=edgeColumnId#>,
+						SinkId = adjacent.Sink, <#
+						for (var i = 0; i < variables.Count; ++i)
+						{
+							WriteLine(indent + variables[i].Item1 + " = adjacent." + variables[i].Item1 + ",");
+						}
+#>
+					};
+				}
+			}
+		}
+		yield break;
+	}
+
+	[Microsoft.SqlServer.Server.SqlFunction(
+		DataAccess = DataAccessKind.None,
+		IsDeterministic = true,
+		IsPrecise = true)]
+	public static SqlBytes <#=edgeName#>Recycle(SqlBytes src, SqlBytes toRecycle)
+	{
+		if (src.IsNull || src.Length == 0)
+		{
+			return SqlBytes.Null;
+		}
+		if (toRecycle.IsNull || src.Length == 0)
+			return src;
+		var toRecycleArray = new Int32[(int)toRecycle.Length];
+		Buffer.BlockCopy(toRecycle.Value, 0, toRecycleArray, 0, (int)toRecycle.Length);
+
+		var toRecycleHashTable = new Hashtable();
+		for (var i = 0; i < toRecycleArray.Length; ++i)
+		{
+			if (toRecycleHashTable.Contains(toRecycleArray[i]))
+			{
+				var itemCount = (int) toRecycleHashTable[toRecycleArray[i]];
+				toRecycleHashTable[toRecycleArray[i]] = itemCount + 1;
+			}
+			else
+				toRecycleHashTable.Add(toRecycleArray[i], 1);
+		}
+
+
+		var br = new BinaryReader(src.Stream);
+			var resultMs = new MemoryStream();
+				var bw = new BinaryWriter(resultMs);
+					var edgeid = (Int32)0;
+					while (br.BaseStream.Position < br.BaseStream.Length)
+					{
+						<#if (byteSize != 0) {#>
+						//read bitmap
+						byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+						<#}#>
+						// read
+						var sink = br.ReadInt64();
+						
+						edgeid++;
+						if (toRecycleHashTable.Contains(edgeid))
+						{
+						<#var count3 = 0;
+						foreach (var variable in variables)
+						{
+							string str = "(bitmap["+ (count3 / 8).ToString() + "]" + " & " + (1 << (count3%8)).ToString() + ") != 0";
+							count3++;
+							var variableName = variable.Item1;
+							var variableType = variable.Item2;
+							WriteLine(indent + "if("+ str + ") {");
+							WriteLine(indent + "br.Read" + typeDictionary[variableType].Item2 + "();");
+							WriteLine(indent + "}" );
+						} 
+						#>
+							continue;
+						}
+						// write
+
+						<#if (byteSize != 0) {#>
+						bw.Write(bitmap);
+						<#}#>
+						bw.Write(sink);
+						<#
+						indent = "							";
+						var _count = 0;
+						foreach (var variable in variables)
+						{
+							string str = "(bitmap["+ (_count / 8).ToString() + "]" + " & " + (1 << (_count%8)).ToString() + ") != 0";
+							_count++;
+							var variableName = variable.Item1;
+							var variableType = variable.Item2;
+							WriteLine(indent + "if("+ str + ") {");
+							WriteLine(indent + "bw.Write(br.Read" + typeDictionary[variableType].Item2 + "());");
+							WriteLine(indent + "}" );
+						} #>
+					}
+					return new SqlBytes(resultMs);
+
+	}
+	<# }#>
+}
+
+	//edge encoder
+<#foreach (var edge in EdgeList) {
+	var edgeName = edge.Item1;
+	var variables = edge.Item3;
+	var attributeSize = variables.Count();
+	var byteSize = (attributeSize - 1) / 8 + 1; 
+		if (attributeSize == 0) {
+			byteSize = 0;
+		}
+#>
+[Serializable]
+	[Microsoft.SqlServer.Server.SqlUserDefinedAggregate(Format.UserDefined,
+		IsInvariantToNulls = true,
+		IsInvariantToOrder = true,
+		IsInvariantToDuplicates = false,
+		MaxByteSize = -1)]
+public struct <#=edgeName#>Encoder : IBinarySerialize
+{
+	private MemoryStream _stream;
+	private BinaryWriter _writer;
+
+	public void Init()
+	{
+		_stream = new MemoryStream();
+		_writer = new BinaryWriter(_stream);
+	}
+
+	public void Accumulate(
+		SqlInt64 sink<#
+	var indent = "        ";
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write(indent + "Sql" + typeDictionary[variables[i].Item2].Item2 + " " + variables[i].Item1);
+	}#>)
+	{
+		if (sink.IsNull)
+			return;
+		<#if (byteSize != 0) {#>
+		Byte[] bitmap = new Byte[<#=byteSize#>];
+		Array.Clear(bitmap, 0, bitmap.Length);
+		<#}#>
+<#
+	var count = 0;
+	foreach (var variable in variables)
+	{
+		var variableName = variable.Item1;
+		var variableType = variable.Item2;
+		var pos = count / 8;
+		var bit = (1 << (count % 8));
+		#>
+		if (!<#=variableName#>.IsNull) {
+			bitmap[<#=pos#>] |= <#=bit#>; 
+		}
+	<#
+		count++;
+	}
+	#>
+	<#if (byteSize != 0) {#>
+		_writer.Write(bitmap);
+	<#}#>
+		_writer.Write(sink.Value);
+<#
+	foreach (var variable in variables)
+	{
+		var variableName = variable.Item1;
+		var variableType = variable.Item2;
+		#>
+		if (!<#=variableName#>.IsNull) {
+			_writer.Write(<#=variableName#>.Value);
+		}
+	<#
+	}
+	#>
+	}
+
+
+	public void Merge (<#=edgeName#>Encoder group)
+	{
+		_writer.Write(group._stream.GetBuffer(), 0, (int) group._stream.Length);
+	}
+
+	public SqlBytes Terminate()
+	{
+		return new SqlBytes(_stream);
+	}
+
+	public void Read(BinaryReader r)
+	{
+		if (_stream != null)
+			_stream.Dispose();
+		if (_writer != null)
+			_writer.Dispose();
+		_stream = new MemoryStream();
+		_writer = new BinaryWriter(_stream);
+		_writer.Write(r.ReadBytes((int)r.BaseStream.Length));
+	}
+
+	public void Write(BinaryWriter w)
+	{
+		w.Write(_stream.GetBuffer(), 0, (int) _stream.Length);
+	}
+
+}
+
+	
+<#}#>
+
+
+
+public partial class UserDefinedFunctions
+{
+	//path message encoder
+<#
+foreach (var edge in EdgeList) {
+	var edgeName = edge.Item1;
+	var edgeColumnId = edge.Item2;
+	var variables = edge.Item3;
+	var attributeSize = variables.Count() + 1;//User-supplied Id may be null
+	var byteSize = (attributeSize - 1) / 8 + 1; 
+#>
+
+	[Microsoft.SqlServer.Server.SqlFunction]
+	public static SqlBytes <#=edgeName#>_PathMessageEncoder(SqlString nodeType, SqlString Id,
+		SqlString edgeType<#var indent = "		";
+	for (var i = 0; i < variables.Count; ++i)
+	{
+		WriteLine(",");
+		Write(indent + "Sql" + typeDictionary[variables[i].Item2].Item2 + " " + variables[i].Item1);
+	}#>)
+	{
+		MemoryStream _stream = new MemoryStream();
+		BinaryWriter _writer = new BinaryWriter(_stream);
+
+		Byte[] bitmap = new Byte[<#=byteSize#>];
+		Array.Clear(bitmap, 0, bitmap.Length);
+		if (!Id.IsNull)
+		{
+			bitmap[0] |= 1;
+		}
+<#
+	var count = 1;
+	foreach (var variable in variables)
+	{
+		var variableName = variable.Item1;
+		var variableType = variable.Item2;
+		var pos = count / 8;
+		var bit = (1 << (count % 8));
+		#>
+		if (!<#=variableName#>.IsNull) {
+			bitmap[<#=pos#>] |= <#=bit#>; 
+		}
+<#
+		count++;
+	}
+#>
+		_writer.Write(bitmap);
+		_writer.Write(nodeType.Value);
+		if (!Id.IsNull) 
+		{
+			_writer.Write(Id.Value);
+		}
+		_writer.Write(edgeType.Value);
+<#
+	foreach (var variable in variables)
+	{
+		var variableName = variable.Item1;
+		var variableType = variable.Item2;
+#>
+		if (!<#=variableName#>.IsNull) {
+			_writer.Write(<#=variableName#>.Value);
+		}
+<#
+	}
+#>
+		return new SqlBytes(_stream);
+	}
+	
+	//path message decoder
+	[Microsoft.SqlServer.Server.SqlFunction]
+	public static SqlString <#=edgeName#>_PathMessageDecoder(SqlBytes array, SqlString nodeType, SqlString id)
+	{
+		if (array == null || array.IsNull)
+			return new SqlString("[" +
+			(nodeType.Value + (id.IsNull ? "" : id.Value.ToString())) +"]");
+		var br = new BinaryReader(array.Stream);
+		string res = "["; 
+		while (br.BaseStream.Position != br.BaseStream.Length)
+		{
+			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+			res += "{\"NodeType\":\"";
+			res += br.ReadString() + "\", \"Id\":";
+			if ((bitmap[0] & 1) != 0) {
+				res += "\"" + br.ReadString() + "\"}, {\"EdgeType\":\"";
+			} else {
+				res += "null}, {\"EdgeType\":\"";
+			}
+			res += br.ReadString() + "\"";
+			<#if (variables.Count != 0) {#>
+			res += ", \"Attribute\":{";
+<#
+			indent += "    ";
+			count = 1;
+			foreach (var variable in variables)
+			{
+				var variableName = variable.Item1;
+				var variableType = variable.Item2;
+				if (count != 1)
+				{
+#>					res += ",";
+<#				}
+#>
+				res += "\"<#=variableName#>\":";
+				if ((bitmap[<#=(count / 8).ToString()#>] & <#=(1 << (count%8)).ToString()#>) != 0) {
+<#if (variableType.ToLower() == "string") {#>
+					res += "\"" + br.Read<#=typeDictionary[variableType].Item2#>().ToString() + "\"";
+<#} else {#>
+					res += br.Read<#=typeDictionary[variableType].Item2#>().ToString().ToLower();
+<#}#>
+				} else {
+					res += "null";
+				}
+<#				count++;
+			}#>
+			res += "}";
+			<#}#>
+			res += "}, ";
+		}
+			res += "{\"NodeType\":\"";
+			res += nodeType.Value + "\", \"Id\":";
+			if (!id.IsNull) 
+			{
+				res += "\"" + id.Value + "\"}";
+			} 
+			else 
+			{
+				res += "null}";
+			}
+
+		res += "]";
+		return new SqlString(res);
+	}
+<#}#>
+}
