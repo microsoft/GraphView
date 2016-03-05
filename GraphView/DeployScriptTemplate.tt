@@ -88,7 +88,7 @@ with  allPath(sink, varPath) as (
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 24)
 <#foreach (var it in variables) {
 		Write("		");
 		Write("and (");
@@ -101,7 +101,7 @@ where @minlength = 0
 union
 select *
 from allPath
-where DATALENGTH(allPath.varPath) >= @minlength * 20
+where DATALENGTH(allPath.varPath) >= @minlength * 24
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(
@@ -172,7 +172,7 @@ with  allPath(sink, varPath, PathMessage) as (
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 24)
 <#foreach (var it in variables) {
 		Write("		");
 		Write("and (");
@@ -185,7 +185,7 @@ where @minlength = 0
 union
 select *
 from allPath
-where DATALENGTH(allPath.varPath) >= @minlength * 20
+where DATALENGTH(allPath.varPath) >= @minlength * 24
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Recycle(@src varbinary(max), @toRecycle varbinary(max))

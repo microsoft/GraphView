@@ -294,7 +294,7 @@ foreach (var it in variables) {
             #line default
             #line hidden
             this.Write("DeleteCol) as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <=" +
-                    " (@maxlength - 1) * 20)\r\n");
+                    " (@maxlength - 1) * 24)\r\n");
             
             #line 92 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
@@ -308,7 +308,7 @@ foreach (var it in variables) {
             #line hidden
             this.Write(")\r\nselect @source as sink, CAST(0x as varbinary(max)) as varPath\r\nwhere @minlengt" +
                     "h = 0\r\nunion\r\nselect *\r\nfrom allPath\r\nwhere DATALENGTH(allPath.varPath) >= @minl" +
-                    "ength * 20\r\nGO\r\n\r\nCREATE FUNCTION ");
+                    "ength * 24\r\nGO\r\n\r\nCREATE FUNCTION ");
             
             #line 107 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
@@ -638,7 +638,7 @@ foreach (var it in variables) {
             #line default
             #line hidden
             this.Write("DeleteCol) as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <=" +
-                    " (@maxlength - 1) * 20)\r\n");
+                    " (@maxlength - 1) * 24)\r\n");
             
             #line 176 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
 foreach (var it in variables) {
@@ -652,7 +652,7 @@ foreach (var it in variables) {
             #line hidden
             this.Write(")\r\nselect @source as sink, CAST(0x as varbinary(max)) as varPath, CAST(0x as varb" +
                     "inary(max)) as PathMessage\r\nwhere @minlength = 0\r\nunion\r\nselect *\r\nfrom allPath\r" +
-                    "\nwhere DATALENGTH(allPath.varPath) >= @minlength * 20\r\nGO\r\n\r\nCREATE FUNCTION ");
+                    "\nwhere DATALENGTH(allPath.varPath) >= @minlength * 24\r\nGO\r\n\r\nCREATE FUNCTION ");
             
             #line 191 "D:\Source\graphview\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));

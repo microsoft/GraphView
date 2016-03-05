@@ -20,7 +20,7 @@ namespace GraphView
     
     #line 1 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
-    public partial class EdgeViewBfsScriptTemplateStrategyTemplate : EdgeViewBfsScriptTemplateBase
+    public partial class EdgeViewBfsScriptTemplate : EdgeViewBfsScriptTemplateBase
     {
 #line hidden
         /// <summary>
@@ -167,7 +167,7 @@ foreach (var it in Attribute) {
             #line default
             #line hidden
             this.Write(") as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlen" +
-                    "gth - 1) * 20)\r\n");
+                    "gth - 1) * 24)\r\n");
             
             #line 91 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 foreach (var it in Attribute) {
@@ -181,7 +181,7 @@ foreach (var it in Attribute) {
             #line hidden
             this.Write(")\r\nselect @source as sink, CAST(0x as varbinary(max)) as varPath\r\nwhere @minlengt" +
                     "h = 0\r\nunion\r\nselect *\r\nfrom allPath\r\nwhere DATALENGTH(allPath.varPath) >= @minl" +
-                    "ength * 20\r\n\r\nGO\r\n\r\ncreate function ");
+                    "ength * 24\r\n\r\nGO\r\n\r\ncreate function ");
             
             #line 107 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(Name));
@@ -373,7 +373,7 @@ foreach (var it in Attribute) {
             #line default
             #line hidden
             this.Write(") as newPath\r\n\t\tWhere (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlen" +
-                    "gth - 1) * 20)\r\n");
+                    "gth - 1) * 24)\r\n");
             
             #line 186 "D:\Source\graphview\GraphView\EdgeViewBfsScriptTemplate.tt"
 foreach (var it in Attribute) {
@@ -387,7 +387,7 @@ foreach (var it in Attribute) {
             #line hidden
             this.Write(")\r\nselect @source as sink, CAST(0x as varbinary(max)) as varPath, CAST(0x as varb" +
                     "inary(max)) as PathMessage\r\nwhere @minlength = 0\r\nunion\r\nselect *\r\nfrom allPath\r" +
-                    "\nwhere DATALENGTH(allPath.varPath) >= @minlength * 20\r\n");
+                    "\nwhere DATALENGTH(allPath.varPath) >= @minlength * 24\r\n");
             return this.GenerationEnvironment.ToString();
         }
     }

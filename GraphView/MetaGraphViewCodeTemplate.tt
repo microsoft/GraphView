@@ -53,12 +53,20 @@ public partial class UserDefinedFunctions
     public static byte[] ConvertNumberIntoBinaryForPath(SqlInt64 sink, 
 	SqlInt64 edgeColumnId, SqlInt32 edgeId)
     {
-		byte[] _buffer = new byte[20];
-		var	_stream = new MemoryStream(_buffer);
-		var _writer = new BinaryWriter(_stream);
-		_writer.Write(sink.Value);
-		_writer.Write(edgeColumnId.Value);
-		_writer.Write(edgeId.Value);
+		//byte[] _buffer = new byte[20];
+		//var	_stream = new MemoryStream(_buffer);
+		//var _writer = new BinaryWriter(_stream);
+		//_writer.Write(sink.Value);
+		//_writer.Write(edgeColumnId.Value);
+		//_writer.Write(edgeId.Value);
+
+		byte[] _buffer = new byte[24];
+		long[] longBuffer = new long[3];
+		longBuffer[0] = sink.Value;
+		longBuffer[1] = edgeColumnId.Value;
+		longBuffer[2] = (long) edgeId.Value;
+		Buffer.BlockCopy(longBuffer, 0, _buffer, 0, 24);
+
 		return _buffer;
     }
 }
@@ -84,7 +92,6 @@ public struct EdgeIdEncoder : IBinarySerialize
     if (edgeid.IsNull)
       return;
     _writer.Write(edgeid.Value);
-
   }
 
   public void Merge (EdgeIdEncoder group)
@@ -112,8 +119,6 @@ public struct EdgeIdEncoder : IBinarySerialize
   {
     w.Write(_stream.GetBuffer(), 0, (int) _stream.Length);
   }
-
-
 }
 
 [Serializable]

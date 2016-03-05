@@ -986,12 +986,29 @@ namespace GraphViewUnitTest
         //}
 
         //[TestMethod]
+        //public void BuildIndex()
+        //{
+
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        string query = @"
+        //        CREATE NONCLUSTERED COLUMNSTORE INDEX cli
+        //            ON dbo.Patent_NT(gyear,gdate,GlobalNodeId);
+        //        CREATE NONCLUSTERED INDEX igear on dbo.Patent_NT(gyear);
+        //        CREATE NONCLUSTERED INDEX igdate on dbo.Patent_NT(gdate);";
+        //        graph.ExecuteNonQuery(query);
+        //    }
+        //}
+
+        //[TestMethod]
         //public void SetUpWorkLoadTest()
         //{
         //    TestInitialization.ClearDatabase();
         //    CreateGraphTable();
         //    BulkInsertNode();
         //    BulkInsertEdge();
+        //    BuildIndex();
         //}
 
         //[TestMethod]

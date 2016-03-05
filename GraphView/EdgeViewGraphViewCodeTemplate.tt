@@ -210,18 +210,29 @@
         Write(indent + "SqlBytes dele" + i.ToString());
 }#>)
     {
-        //var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
-        Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
-		var brPath = new BinaryReader(PathMemory);
-        var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
-        if (PathVarbinary != null && !PathVarbinary.IsNull) {
-            while (brPath.BaseStream.Position != brPath.BaseStream.Length)
-            {
-                var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
-                PathDict[Edgeid] = true;
-            }
-        }
+        //Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
+		//var brPath = new BinaryReader(PathMemory);
+        //var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+        //if (PathVarbinary != null && !PathVarbinary.IsNull) {
+        //    while (brPath.BaseStream.Position != brPath.BaseStream.Length)
+        //    {
+        //        var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
+        //        PathDict[Edgeid] = true;
+        //    }
+        //}
         
+		var len = (int) PathVarbinary.Length;
+		var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		if (PathVarbinary != null && !PathVarbinary.IsNull) {
+			for (int i = 0; i < len; i += 24) 
+			{
+				var Edgeid = Tuple.Create(BitConverter.ToInt64(PathVarbinary.Buffer, i),
+										BitConverter.ToInt64(PathVarbinary.Buffer, i + 8),
+										(int)BitConverter.ToInt64(PathVarbinary.Buffer, i + 16));
+				PathDict[Edgeid] = true;
+			}
+		}
+
         foreach (var it in <#=EdgeName#>Decoder(
 <#
 	indent += "    ";

@@ -194,7 +194,7 @@ namespace GraphView
         }
     }
 
-    partial class EdgeViewBfsScriptTemplateStrategyTemplate: IGraphViewScriptTemplateStrategy
+    partial class EdgeViewBfsScriptTemplate: IGraphViewScriptTemplateStrategy
     {
         public string Schema { get; set; }
         public string NodeName { get; set; }
@@ -290,7 +290,7 @@ namespace GraphView
             IList<Tuple<string, string>> attribute, List<Tuple<string, string>> edgeColumn)
         {
             CSharpTemplate = null; 
-            ScriptTemplate = new EdgeViewBfsScriptTemplateStrategyTemplate()
+            ScriptTemplate = new EdgeViewBfsScriptTemplate()
             {
                 Schema = schema,
                 NodeName = tableName,

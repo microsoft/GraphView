@@ -91,40 +91,54 @@ public partial class UserDefinedFunctions
 		var edgeid = (Int32)0;
 		if (deleDict.Count == 0)
 		{
-			while (br.BaseStream.Position != br.BaseStream.Length)
-			{
-				edgeid++;
 			<#if (byteSize != 0) {#>
-			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
-			<#}#>
-				var sink = br.ReadInt64();
-<#
-					indent += "    ";
-					var count = 0;
-					foreach (var variable in variables)
-					{
-						var variableName = variable.Item1;
-						var variableType = variable.Item2;
-						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
-						if (attributeSize == 0) {
-							str = "";
-						}
-						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
-						count++;
-					}
-#>
-				yield return new <#=edgeName#>DecoderResult
+				while (br.BaseStream.Position != br.BaseStream.Length)
 				{
-					Sink = sink, EdgeId = edgeid,
-<#
-					indent += "    ";
-					for (var i = 0; i < variables.Count; ++i)
+					edgeid++;
+				<#if (byteSize != 0) {#>
+				byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+				<#}#>
+					var sink = br.ReadInt64();
+	<#
+						indent += "    ";
+						var count = 0;
+						foreach (var variable in variables)
+						{
+							var variableName = variable.Item1;
+							var variableType = variable.Item2;
+							var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+							if (attributeSize == 0) {
+								str = "";
+							}
+							WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
+							count++;
+						}
+	#>
+					yield return new <#=edgeName#>DecoderResult
 					{
-						WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
-					}
-#>
-				};
-			}
+						Sink = sink, EdgeId = edgeid,
+	<#
+						indent += "    ";
+						for (var i = 0; i < variables.Count; ++i)
+						{
+							WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
+						}
+	#>
+					};
+				}
+			<#} else {#>
+				var len = (int)array.Length;	
+				for (int i = 0; i < len; i+=8)
+				{
+					edgeid++;
+					var sink = BitConverter.ToInt64(array.Buffer, i);
+					yield return new <#=edgeName#>DecoderResult
+					{
+						Sink = sink, EdgeId = edgeid,
+					};
+				}
+
+			<#}#>
 		}
 		else 
 		{
@@ -137,17 +151,17 @@ public partial class UserDefinedFunctions
 				var sink = br.ReadInt64();
 <#
 					indent += "    ";
-					count = 0;
+					var count2 = 0;
 					foreach (var variable in variables)
 					{
 						var variableName = variable.Item1;
 						var variableType = variable.Item2;
-						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+						var str = "((bitmap["+ (count2 / 8).ToString() + "]" + " & " + (1 << (count2%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
 						if (attributeSize == 0) {
 							str = "";
 						}
 						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
-						count++;
+						count2++;
 					}
 #>
 				if (!deleDict.ContainsKey(edgeid)) {
@@ -208,17 +222,44 @@ public partial class UserDefinedFunctions
 	{
 		if (array == null || array.IsNull)
 			yield break;
-		//var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
-		Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
-		var brPath = new BinaryReader(PathMemory);
+		//Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
+		//var brPath = new BinaryReader(PathMemory);
+		//var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		//if (PathVarbinary != null && !PathVarbinary.IsNull) {
+		//	while (brPath.BaseStream.Position != brPath.BaseStream.Length)
+		//	{
+		//		var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
+		//		PathDict[Edgeid] = true;
+		//	}
+		//}
+
+		//var len = (int) PathVarbinary.Length;
+		//var longArray = new long[len >> 3];
+		//Buffer.BlockCopy(PathVarbinary.Buffer, 0, longArray, 0, len);
+		//var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		//if (PathVarbinary != null && !PathVarbinary.IsNull) {
+		//	for (int i = 0; i < (len >> 3); i += 3) 
+		//	{
+		//		var Edgeid = Tuple.Create(longArray[i], 
+		//									longArray[i+1],
+		//									(int)longArray[i+2]);
+		//		PathDict[Edgeid] = true;
+		//	}
+		//}
+		
+
+		var len = (int) PathVarbinary.Length;
 		var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
-			while (brPath.BaseStream.Position != brPath.BaseStream.Length)
+			for (int i = 0; i < len; i += 24) 
 			{
-				var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
+				var Edgeid = Tuple.Create(BitConverter.ToInt64(PathVarbinary.Buffer, i),
+										BitConverter.ToInt64(PathVarbinary.Buffer, i + 8),
+										(int)BitConverter.ToInt64(PathVarbinary.Buffer, i + 16));
 				PathDict[Edgeid] = true;
 			}
 		}
+
 		if (PathDict.Count == 0) 
 		{
 			foreach (var it in <#=edgeName#>Decoder(array, dele))
