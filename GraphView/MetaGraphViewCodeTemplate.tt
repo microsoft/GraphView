@@ -143,7 +143,7 @@ public struct GlobalNodeIdEncoder : IBinarySerialize
   {
     if (sink.IsNull)
       return;
-    _writer.Write(sink.Value);
+	_stream.Write(BitConverter.GetBytes(sink.Value), 0, 8);
   }
 
 

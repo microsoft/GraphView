@@ -71,15 +71,15 @@ namespace GraphView
                     "moryStream _stream;\r\n  private BinaryWriter _writer;\r\n\r\n  public void Init()\r\n  " +
                     "{\r\n    _stream = new MemoryStream();\r\n    _writer = new BinaryWriter(_stream);\r\n" +
                     "  }\r\n\r\n  public void Accumulate(\r\n      SqlInt64 sink)\r\n  {\r\n    if (sink.IsNull" +
-                    ")\r\n      return;\r\n    _writer.Write(sink.Value);\r\n  }\r\n\r\n\r\n  public void Merge (" +
-                    "GlobalNodeIdEncoder group)\r\n  {\r\n    _writer.Write(group._stream.GetBuffer(), 0," +
-                    " (int) group._stream.Length);\r\n  }\r\n\r\n  public SqlBytes Terminate()\r\n  {\r\n    re" +
-                    "turn new SqlBytes(_stream);\r\n  }\r\n\r\n  public void Read(BinaryReader r)\r\n  {\r\n   " +
-                    " if (_stream != null)\r\n      _stream.Dispose();\r\n    if (_writer != null)\r\n     " +
-                    " _writer.Dispose();\r\n    _stream = new MemoryStream();\r\n    _writer = new Binary" +
-                    "Writer(_stream);\r\n    _writer.Write(r.ReadBytes((int)r.BaseStream.Length));\r\n  }" +
-                    "\r\n\r\n  public void Write(BinaryWriter w)\r\n  {\r\n    w.Write(_stream.GetBuffer(), 0" +
-                    ", (int)_stream.Length);\r\n  }\r\n\r\n}\r\n");
+                    ")\r\n      return;\r\n\t_stream.Write(BitConverter.GetBytes(sink.Value), 0, 8);\r\n  }\r" +
+                    "\n\r\n\r\n  public void Merge (GlobalNodeIdEncoder group)\r\n  {\r\n    _writer.Write(gro" +
+                    "up._stream.GetBuffer(), 0, (int) group._stream.Length);\r\n  }\r\n\r\n  public SqlByte" +
+                    "s Terminate()\r\n  {\r\n    return new SqlBytes(_stream);\r\n  }\r\n\r\n  public void Read" +
+                    "(BinaryReader r)\r\n  {\r\n    if (_stream != null)\r\n      _stream.Dispose();\r\n    i" +
+                    "f (_writer != null)\r\n      _writer.Dispose();\r\n    _stream = new MemoryStream();" +
+                    "\r\n    _writer = new BinaryWriter(_stream);\r\n    _writer.Write(r.ReadBytes((int)r" +
+                    ".BaseStream.Length));\r\n  }\r\n\r\n  public void Write(BinaryWriter w)\r\n  {\r\n    w.Wr" +
+                    "ite(_stream.GetBuffer(), 0, (int)_stream.Length);\r\n  }\r\n\r\n}\r\n");
             return this.GenerationEnvironment.ToString();
         }
     }
