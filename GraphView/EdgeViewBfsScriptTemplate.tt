@@ -97,7 +97,7 @@ with  allPath(sink, varPath) as (
 )
 select @source as sink, CAST(0x as varbinary(max)) as varPath
 where @minlength = 0
-union
+union all
 select *
 from allPath
 where DATALENGTH(allPath.varPath) >= @minlength * 24
@@ -192,7 +192,7 @@ with  allPath(sink, varPath, PathMessage) as (
 )
 select @source as sink, CAST(0x as varbinary(max)) as varPath, CAST(0x as varbinary(max)) as PathMessage
 where @minlength = 0
-union
+union all
 select *
 from allPath
 where DATALENGTH(allPath.varPath) >= @minlength * 24

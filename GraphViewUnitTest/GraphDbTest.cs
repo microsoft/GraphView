@@ -29,7 +29,7 @@ namespace GraphViewUnitTest
                 graph.Open();
                 graph.UpdateTableStatistics("dbo", "EmployeeNode");
             }
-            using (var conn = new SqlConnection(_connStr))
+            using (var conn = new SqlConnection(_connStr)) 
             {
                 conn.Open();
                 var command = conn.CreateCommand();
@@ -1018,7 +1018,7 @@ namespace GraphViewUnitTest
         //    {
         //        graph.Open();
         //        string query = @"
-		//		SELECT count(*)
+		//	//SELECT count(*)
         //        FROM 
         //            Patent_NT as A, 
         //            Patent_NT as B
@@ -1062,6 +1062,22 @@ namespace GraphViewUnitTest
         //}
 
         //#endregion
+
+        //[TestMethod]
+        //public void CreateNodeTable()
+        //{
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+
+        //        const string createPatentStr = @"
+        //        CREATE TABLE [Test4] (
+        //            [ColumnRole: ""Edge"", Reference: ""Test4""]
+        //            adjacencyList varbinary(8000)
+        //        )";
+        //        graph.CreateNodeTable(createPatentStr);
+        //    }
+        //}
     }
 
 }
