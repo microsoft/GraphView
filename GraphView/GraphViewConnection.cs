@@ -887,8 +887,8 @@ namespace GraphView
                     columns.OfType<WGraphTableEdgeColumn>()
                         .Select(
                             col =>
-                                new Tuple<string, long, List<Tuple<string, string>>>(col.ColumnName.Value,
-                                    edgeColumnNameToColumnId[col.ColumnName.Value],
+                                new Tuple<string,int, List<Tuple<string, string>>>(col.ColumnName.Value,
+                                    (int)edgeColumnNameToColumnId[col.ColumnName.Value],
                                     col.Attributes.Select(
                                         x =>
                                             new Tuple<string, string>(x.Item1.Value,
@@ -1745,7 +1745,7 @@ namespace GraphView
                         var edgeList =
                             item.Value.Select(
                                 e =>
-                                    new Tuple<string, long, List<Tuple<string, string>>>(e.Value.Item1, e.Key,
+                                    new Tuple<string, int, List<Tuple<string, string>>>(e.Value.Item1, (int)e.Key,
                                         e.Value.Item2)).ToList();
                         if (edgeList.Any())
                         {

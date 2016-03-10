@@ -126,7 +126,7 @@ namespace GraphView
         /// the value stores list of edge properties. Each property consists of two strings, indicating
         /// its name and type respectively.
         /// </summary>
-        public List<Tuple<string, long, List<Tuple<string, string>>>> EdgeList { get; set; }
+        public List<Tuple<string, int, List<Tuple<string, string>>>> EdgeList { get; set; }
     }
 
     partial class EdgeViewGraphViewCodeTemplate : IGraphViewCodeTemplateStrategy
@@ -134,7 +134,7 @@ namespace GraphView
         public string EdgeName { get; set; }
         public Dictionary<string, string> AttributeTypeDict { get; set; }
         public Dictionary<Tuple<string, string>, List<Tuple<string, string>>> Mapping { get; set; }
-        public Dictionary<Tuple<string, string>, long> ColumnId;
+        public Dictionary<Tuple<string, string>, int> ColumnId;
     }
 
     #endregion
@@ -151,7 +151,7 @@ namespace GraphView
         /// the value stores list of edge properties. Each property consists of two strings, indicating
         /// its name and type respectively.
         /// </summary>
-        public List<Tuple<string, long, List<Tuple<string, string>>>> EdgeList { get; set; }
+        public List<Tuple<string, int, List<Tuple<string, string>>>> EdgeList { get; set; }
 
         public int InputCount { get; set; }
 
@@ -232,7 +232,7 @@ namespace GraphView
     internal class NodeTableRegister : GraphViewDefinedFunctionRegister
     {
         public NodeTableRegister(string assemblyName, string nodeTable,
-            List<Tuple<string, long, List<Tuple<string, string>>>> edgeList, string userId)
+            List<Tuple<string, int, List<Tuple<string, string>>>> edgeList, string userId)
         {
             CSharpTemplate = new NodeTableGraphViewCodeTemplate
             {
@@ -256,7 +256,7 @@ namespace GraphView
         public EdgeViewRegister(string nodeName, string schema, string edgeViewName,
             Dictionary<string, string> attributeTypeDictionary,
             Dictionary<Tuple<string, string>, List<Tuple<string, string>>> edgesAttributeMappingDictionary,
-            Dictionary<Tuple<string, string>, long> edgeColumnToColumnId)
+            Dictionary<Tuple<string, string>, int> edgeColumnToColumnId)
         {
             CSharpTemplate = new EdgeViewGraphViewCodeTemplate
             {
@@ -266,9 +266,9 @@ namespace GraphView
                 ColumnId = edgeColumnToColumnId
             };
 
-            var edgeDictionary = new List<Tuple<string, long, List<Tuple<string, string>>>>
+            var edgeDictionary = new List<Tuple<string, int, List<Tuple<string, string>>>>
             {
-                new Tuple<string, long, List<Tuple<string, string>>>(edgeViewName, 0, attributeTypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
+                new Tuple<string, int , List<Tuple<string, string>>>(edgeViewName, 0, attributeTypeDictionary.Select(x => Tuple.Create(x.Key, x.Value)).ToList())
             };
             ScriptTemplate = new DeployScriptTemplate
             {

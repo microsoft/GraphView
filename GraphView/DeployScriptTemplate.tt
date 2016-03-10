@@ -43,7 +43,7 @@ GO
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @PathVarbinary varbinary(max), @nodeid bigint, @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
 (
-	EdgeId int, EdgeColumnId bigint, Sink bigint<#
+	EdgeId int, EdgeColumnId int, Sink bigint<#
 	for (var i = 0; i < variables.Count; ++i)
 	{
 		WriteLine(",");
@@ -88,7 +88,7 @@ with  allPath(sink, varPath) as (
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 24)
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 16)
 <#foreach (var it in variables) {
 		Write("		");
 		Write("and (");
@@ -101,7 +101,7 @@ where @minlength = 0
 union all
 select *
 from allPath
-where DATALENGTH(allPath.varPath) >= @minlength * 24
+where DATALENGTH(allPath.varPath) >= @minlength * 16
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(
@@ -172,7 +172,7 @@ with  allPath(sink, varPath, PathMessage) as (
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 24)
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 16)
 <#foreach (var it in variables) {
 		Write("		");
 		Write("and (");
@@ -185,7 +185,7 @@ where @minlength = 0
 union all
 select *
 from allPath
-where DATALENGTH(allPath.varPath) >= @minlength * 24
+where DATALENGTH(allPath.varPath) >= @minlength * 16
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Recycle(@src varbinary(max), @toRecycle varbinary(max))
@@ -224,7 +224,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 @array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
 <#}#>) RETURNS TABLE
 (
-	Sink bigint, EdgeColumnId bigint, EdgeId int, _EdgeType nvarchar(max)<#
+	Sink bigint, EdgeColumnId int, EdgeId int, _EdgeType nvarchar(max)<#
 	for (var i = 0; i < variables.Count; ++i)
 	{
 		WriteLine(",");
@@ -242,7 +242,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
 <#}#>) RETURNs TABLE
 (
-	EdgeId int, EdgeColumnId bigint, Sink bigint, _EdgeType nvarchar(max)<#
+	EdgeId int, EdgeColumnId int, Sink bigint, _EdgeType nvarchar(max)<#
 	for (var i = 0; i < variables.Count; ++i)
 	{
 		WriteLine(",");
@@ -314,7 +314,7 @@ AS
 RETURN
 	SELECT TOP(@topvalue) * FROM SingletonTable()
 GO
-CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b bigint, @c int)
+CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b int, @c int)
 RETURNS varbinary(max)
 EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.ConvertNumberIntoBinaryForPath;
 GO

@@ -134,7 +134,7 @@ public partial class UserDefinedFunctions
 				//	var sink = BitConverter.ToInt64(array.Buffer, i);
 				//	yield return new <#=edgeName#>DecoderResult
 				//	{
-				//		Sink = sink, EdgeId = edgeid,
+				//		Sink = sink, EdgeId = edgeid
 				//	};
 				//}
 
@@ -198,7 +198,7 @@ public partial class UserDefinedFunctions
 	private class <#=edgeName#>ExclusiveEdgeGeneratorResult 
 	{
 		public int EdgeId{get; set;}
-		public long EdgeColumnId {get; set;}
+		public int EdgeColumnId {get; set;}
 		public long SinkId{get; set;}
 <#foreach (var variable in variables) {#>
 		public Sql<#=typeDictionary[variable.Item2].Item2#> <#=variable.Item1#> { get; set; }
@@ -207,7 +207,7 @@ public partial class UserDefinedFunctions
 
 	public static void <#=edgeName#>ExclusiveEdgeGenerator_FillRow(
 		object tableTypeObject,
-		out SqlInt32 EdgeId, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId <#
+		out SqlInt32 EdgeId, out SqlInt32 EdgeColumnId, out SqlInt64 SinkId <#
 		for (var i = 0; i < variables.Count; ++i)
 		{
 			WriteLine(",");
@@ -226,7 +226,7 @@ public partial class UserDefinedFunctions
 	
 		[SqlFunction(
 		DataAccess = DataAccessKind.None,
-		TableDefinition = "EdgeId int, EdgeColumnId bigint, SinkId bigint",
+		TableDefinition = "EdgeId int, EdgeColumnId int, SinkId bigint",
 		FillRowMethodName = "<#=edgeName#>ExclusiveEdgeGenerator_FillRow",
 		IsDeterministic = true,
 		IsPrecise = false
@@ -249,12 +249,13 @@ public partial class UserDefinedFunctions
 		var len = (int) PathVarbinary.Length;
 		var longArray = new long[len >> 3];
 		Buffer.BlockCopy(PathVarbinary.Buffer, 0, longArray, 0, len);
-		var PathDict =  new Dictionary<Int32, bool>();
+		var PathDict =  new Dictionary<int, bool>();
+		len = len >> 3;
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
-			for (int i = 0; i < (len >> 3); i += 3) 
+			for (int i = 0; i < len; i += 2) 
 			{
 				if (longArray[i] == nodeid.Value) {
-					var Edgeid = (int)longArray[i+2];
+					var Edgeid = (int)longArray[i+1];
 					PathDict[Edgeid] = true;
 				}
 			}
@@ -278,7 +279,7 @@ public partial class UserDefinedFunctions
 			foreach (var it in <#=edgeName#>Decoder(array, dele))
 			{
 				var  adjacent = it as <#=edgeName#>DecoderResult;
-				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+				var EdgeId = Tuple.Create(nodeid.Value, <#=edgeColumnId#>, adjacent.EdgeId);
 					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
 					{
 						EdgeId = adjacent.EdgeId,

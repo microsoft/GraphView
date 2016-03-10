@@ -27,8 +27,8 @@
     private class <#=EdgeName#>DecoderResult
     {
 		public long Sink { get; set; }
-		public long ColumnId { get; set; }
-		public Int32 EdgeId{ get; set; }
+		public int ColumnId { get; set; }
+		public int EdgeId{ get; set; }
 		public string _EdgeType {get; set;}
 <#foreach (var variable in AttributeTypeDict) {#>
 		public Sql<#=typeDictionary[variable.Value].Item2#> <#=variable.Key#> { get; set; }
@@ -37,7 +37,7 @@
 
     public static void <#=EdgeName#>Decoder_FillRow(
     object tableTypeObject,
-    out SqlInt64 sink, out SqlInt64 columnId, out SqlInt32 edgeid, out SqlString _EdgeType<#
+    out SqlInt64 sink, out SqlInt32 columnId, out SqlInt32 edgeid, out SqlString _EdgeType<#
     var indent = "        ";
     foreach (var variable in AttributeTypeDict) {
         WriteLine(",");
@@ -56,7 +56,7 @@
 
     [SqlFunction(
     DataAccess = DataAccessKind.None,
-    TableDefinition = "Sink bigint, ColumnId bigint, EdgeId int, _EdgeType string<#
+    TableDefinition = "Sink bigint, ColumnId int, EdgeId int, _EdgeType string<#
     foreach(var variable in AttributeTypeDict)
     Write(", " + variable.Key + " " + typeDictionary[variable.Value].Item1);
 #>",
@@ -159,7 +159,7 @@
     {
         public int EdgeId{get; set;}
         public long SinkId{get; set;}
-        public long ColumnId{get; set;}
+        public int ColumnId{get; set;}
         public string _EdgeType {get; set;}
 <#foreach (var variable in AttributeTypeDict) {#>
         public Sql<#=typeDictionary[variable.Value].Item2#> <#=variable.Key#> { get; set; }
@@ -168,7 +168,7 @@
 
     public static void <#=EdgeName#>ExclusiveEdgeGenerator_FillRow(
         object tableTypeObject,
-        out SqlInt32 EdgeId, out SqlInt64 ColumnId, out SqlInt64 SinkId, out SqlString _EdgeType<#
+        out SqlInt32 EdgeId, out SqlInt32 ColumnId, out SqlInt64 SinkId, out SqlString _EdgeType<#
 
 		foreach (var variable in AttributeTypeDict) {
             WriteLine(",");
@@ -188,7 +188,7 @@
     
         [SqlFunction(
         DataAccess = DataAccessKind.None,
-        TableDefinition = "EdgeId int, ColumnId bigint, SinkId bigint, _EdgeType String",
+        TableDefinition = "EdgeId int, ColumnId int, SinkId bigint, _EdgeType String",
         FillRowMethodName = "<#=EdgeName#>ExclusiveEdgeGenerator_FillRow",
         IsDeterministic = true,
         IsPrecise = false
@@ -221,15 +221,30 @@
         //    }
         //}
         
+		//var len = (int) PathVarbinary.Length;
+		//var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		//if (PathVarbinary != null && !PathVarbinary.IsNull) {
+		//	for (int i = 0; i < len; i += 24) 
+		//	{
+		//		var Edgeid = Tuple.Create(BitConverter.ToInt64(PathVarbinary.Buffer, i),
+		//								BitConverter.ToInt64(PathVarbinary.Buffer, i + 8),
+		//								(int)BitConverter.ToInt64(PathVarbinary.Buffer, i + 16));
+		//		PathDict[Edgeid] = true;
+		//	}
+		//}
+
 		var len = (int) PathVarbinary.Length;
-		var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		var longArray = new long[len >> 3];
+		Buffer.BlockCopy(PathVarbinary.Buffer, 0, longArray, 0, len);
+		var PathDict =  new Dictionary<long, bool>();
+		len = len >> 3;
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
-			for (int i = 0; i < len; i += 24) 
+			for (int i = 0; i < len; i += 2) 
 			{
-				var Edgeid = Tuple.Create(BitConverter.ToInt64(PathVarbinary.Buffer, i),
-										BitConverter.ToInt64(PathVarbinary.Buffer, i + 8),
-										(int)BitConverter.ToInt64(PathVarbinary.Buffer, i + 16));
-				PathDict[Edgeid] = true;
+				if (longArray[i] == nodeid.Value) {
+					var Edgeid = longArray[i+1];
+					PathDict[Edgeid] = true;
+				}
 			}
 		}
 
@@ -249,7 +264,7 @@
 }#>))
         {
             var  adjacent = it as <#=EdgeName#>DecoderResult;
-            var EdgeId = Tuple.Create(nodeid.Value, adjacent.ColumnId, adjacent.EdgeId);
+            long EdgeId = ((long) adjacent.ColumnId << 32) | adjacent.EdgeId;
             if (!PathDict.ContainsKey(EdgeId))
             {
                 yield return new <#=EdgeName#>ExclusiveEdgeGeneratorResult

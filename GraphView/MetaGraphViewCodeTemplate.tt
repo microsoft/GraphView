@@ -51,7 +51,7 @@ public partial class UserDefinedFunctions
 
 	[Microsoft.SqlServer.Server.SqlFunction]
     public static byte[] ConvertNumberIntoBinaryForPath(SqlInt64 sink, 
-	SqlInt64 edgeColumnId, SqlInt32 edgeId)
+	SqlInt32 edgeColumnId, SqlInt32 edgeId)
     {
 		//byte[] _buffer = new byte[20];
 		//var	_stream = new MemoryStream(_buffer);
@@ -60,12 +60,11 @@ public partial class UserDefinedFunctions
 		//_writer.Write(edgeColumnId.Value);
 		//_writer.Write(edgeId.Value);
 
-		byte[] _buffer = new byte[24];
-		long[] longBuffer = new long[3];
+		byte[] _buffer = new byte[16];
+		long[] longBuffer = new long[2];
 		longBuffer[0] = sink.Value;
-		longBuffer[1] = edgeColumnId.Value;
-		longBuffer[2] = (long) edgeId.Value;
-		Buffer.BlockCopy(longBuffer, 0, _buffer, 0, 24);
+		longBuffer[1] = ((long)edgeColumnId.Value << 32) |  edgeId.Value;
+		Buffer.BlockCopy(longBuffer, 0, _buffer, 0, 16);
 
 		return _buffer;
     }

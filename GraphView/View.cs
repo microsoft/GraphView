@@ -63,7 +63,7 @@ namespace GraphView
 
 
         //For edge view
-        private Dictionary<Tuple<string, string>, long> _edgeColumnToColumnId; //<NodeTable, Edge> => ColumnId
+        private Dictionary<Tuple<string, string>, int> _edgeColumnToColumnId; //<NodeTable, Edge> => ColumnId
         private Dictionary<string, List<long>> _dictionaryAttribute; //<EdgeViewAttributeName> => List<AttributeId>
         private Dictionary<string, string> _attributeType; //<EdgeViewAttribute> => <Type>
 
@@ -999,7 +999,7 @@ namespace GraphView
                 }
 
                 edges = edges.Select(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())).ToList();
-                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2), x => (long)-1);
+                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2), x => -1);
                 //<NodeTable, Edge> => ColumnId
 
                 var subViewToEdges = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase); //Subview is made up of the tables with non-zero indegree. <table name> => list<edge column>
