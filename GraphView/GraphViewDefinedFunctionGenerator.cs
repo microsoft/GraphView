@@ -75,6 +75,7 @@ namespace GraphView
             parameters.ReferencedAssemblies.Add("System.Data.dll");
             parameters.ReferencedAssemblies.Add("System.Xml.dll");
             parameters.ReferencedAssemblies.Add("System.Core.dll");
+            parameters.CompilerOptions = "/optimize";
             var result = codeProvider.CompileAssemblyFromSource(parameters, code);
 
             return result;

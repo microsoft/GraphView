@@ -76,12 +76,17 @@ public partial class UserDefinedFunctions
 		)]
 	public static IEnumerable <#=edgeName#>Decoder(SqlBytes array, SqlBytes deleteEdge)
 	{
-		var deleDict =  new Dictionary<Int32, bool>();
+		//var deleDict =  new Dictionary<Int32, bool>();
+		Dictionary<Int32, bool> deleDict = null;
 		if (deleteEdge != null && !deleteEdge.IsNull)
 		{	
 			var delebr = new BinaryReader(deleteEdge.Stream);
 			while (delebr.BaseStream.Position != delebr.BaseStream.Length)
 			{
+                if (deleDict == null)
+                {
+                    deleDict = new Dictionary<int, bool>();
+                }
 				deleDict[delebr.ReadInt32()] = true;
 			}
 		}
@@ -89,7 +94,7 @@ public partial class UserDefinedFunctions
 			yield break;
 		var br = new BinaryReader(array.Stream);
 		var edgeid = (Int32)0;
-		if (deleDict.Count == 0)
+		if (deleDict == null || deleDict.Count == 0)
 		{
 			<#if (byteSize != 0) {#>
 				while (br.BaseStream.Position != br.BaseStream.Length)
@@ -249,13 +254,17 @@ public partial class UserDefinedFunctions
 		var len = (int) PathVarbinary.Length;
 		var longArray = new long[len >> 3];
 		Buffer.BlockCopy(PathVarbinary.Buffer, 0, longArray, 0, len);
-		var PathDict =  new Dictionary<int, bool>();
+		//var PathDict =  new Dictionary<int, bool>();
+		Dictionary<int, bool> PathDict = null;
 		len = len >> 3;
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
 			for (int i = 0; i < len; i += 2) 
 			{
 				if (longArray[i] == nodeid.Value) {
 					var Edgeid = (int)longArray[i+1];
+					if (PathDict == null) {
+						PathDict = new Dictionary<int, bool>();
+					}
 					PathDict[Edgeid] = true;
 				}
 			}
@@ -274,7 +283,7 @@ public partial class UserDefinedFunctions
 		//	}
 		//}
 
-		if (PathDict.Count == 0) 
+		if (PathDict == null || PathDict.Count == 0) 
 		{
 			foreach (var it in <#=edgeName#>Decoder(array, dele))
 			{
