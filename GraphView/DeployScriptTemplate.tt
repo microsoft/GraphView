@@ -55,6 +55,14 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
   AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator;
 GO
 
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveNodeGenerator(
+@PathVarbinary varbinary(max), @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
+(
+   Sink bigint
+)
+  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveNodeGenerator;
+GO
+
 create function <#=AssemblyName#>_<#=edgeName#>_bfsPath(@source bigint, 
 		@minlength bigint, @maxlength bigint,
 		@edgeColumn varbinary(max), @Del varbinary(max)

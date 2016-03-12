@@ -118,9 +118,60 @@ namespace GraphView
                 Tuple.Create("ASSEMBLY","GraphViewUDFAssembly")
             };
 
+        internal static readonly List<Tuple<string, string>> Version111MetaUdf= 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION","SingletonTable"),
+                Tuple.Create("FUNCTION","DownSizeFunction"),
+                Tuple.Create("FUNCTION","UpSizeFunction"),
+                Tuple.Create("FUNCTION","ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly"),
+            };
+
+        internal static readonly List<Tuple<string, string>> Version200MetaUdf= 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION","SingletonTable"),
+                Tuple.Create("FUNCTION","DownSizeFunction"),
+                Tuple.Create("FUNCTION","UpSizeFunction"),
+                Tuple.Create("FUNCTION","ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly"),
+            };
+        
+        internal static readonly List<Tuple<string, string>> Version111TableUDF = 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("FUNCTION", "Decoder"),
+                Tuple.Create("FUNCTION", "Recycle"),
+                Tuple.Create("AGGREGAT", "Encoder"),
+                Tuple.Create("FUNCTION", "ExclusiveEdgeGenerator"),
+                Tuple.Create("FUNCTION", "bfsPath"),
+                Tuple.Create("FUNCTION", "bfsPathWithMessage"),
+                Tuple.Create("FUNCTION", "PathMessageEncoder"),
+                Tuple.Create("FUNCTION", "PathMessageDecoder"),
+            };
+        internal static readonly List<Tuple<string, string>> Version200TableUDF = 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("FUNCTION", "Decoder"),
+                Tuple.Create("FUNCTION", "Recycle"),
+                Tuple.Create("AGGREGATE", "Encoder"),
+                Tuple.Create("FUNCTION", "ExclusiveEdgeGenerator"),
+                Tuple.Create("FUNCTION", "bfsPath"),
+                Tuple.Create("FUNCTION", "bfsPathWithMessage"),
+                Tuple.Create("FUNCTION", "PathMessageEncoder"),
+                Tuple.Create("FUNCTION", "PathMessageDecoder"),
+                Tuple.Create("FUNCTION", "ExclusiveNodeGenerator"),
+            };
         private BitArray _a = new BitArray(1);
         private static readonly string VersionTable = "VERSION";
 
+        private List<Tuple<string, string>> _currentMetaUdf = Version200MetaUdf;
+        private List<Tuple<string, string>> _currentTableUdf = Version200TableUDF;
         private static readonly string version = "1.11";
         private string currentVersion = "";
         public string CurrentVersion { get { return currentVersion; } }
@@ -492,16 +543,12 @@ namespace GraphView
                 }
 
                 //Drop assembly and UDF
-                const string dropAssembly = @"
-                DROP AGGREGATE GraphViewUDFGlobalNodeIdEncoder
-                DROP AGGREGATE GraphViewUDFEdgeIdEncoder
-                DROP FUNCTION SingletonTable
-                DROP FUNCTION DownSizeFunction
-                DROP FUNCTION ConvertNumberIntoBinaryForPath
-                DROP FUNCTION UpSizeFunction
-                DROP ASSEMBLY GraphViewUDFAssembly";
-                command.CommandText = dropAssembly;
-                command.ExecuteNonQuery();
+                const string dropAssembly = @"drop {0} {1}";
+                foreach (var it in _currentMetaUdf)
+                {
+                    command.CommandText = string.Format(dropAssembly, it.Item1, it.Item2);
+                    command.ExecuteNonQuery();
+                }
                 transaction.Commit();
             }
             catch (SqlException e)
@@ -998,22 +1045,15 @@ namespace GraphView
                                         DROP TABLE [{0}_{1}_{2}_Sampling]",
                                         tableSchema, tableName, edgeColumn.Item1);
                                     command.ExecuteNonQuery();
-                                    command.CommandText = string.Format(
-                                        @"DROP FUNCTION [{0}_{1}_Decoder];
-                                          DROP FUNCTION [{0}_{1}_Recycle];
-                                          DROP AGGREGATE [{0}_{1}_Encoder];",
-                                        assemblyName,
-                                        edgeColumn.Item1);
-                                    command.ExecuteNonQuery();
-                                    command.CommandText = string.Format(
-                                        @"DROP FUNCTION [{0}_{1}_ExclusiveEdgeGenerator];
-                                          DROP FUNCTION [{0}_{1}_bfsPath];
-                                          DROP FUNCTION [{0}_{1}_bfsPathWithMessage];
-                                          DROP FUNCTION [{0}_{1}_PathMessageEncoder];
-                                          DROP FUNCTION [{0}_{1}_PathMessageDecoder];",
-                                        assemblyName,
-										edgeColumn.Item1);
-                                    command.ExecuteNonQuery();
+
+                                    foreach (var it in _currentTableUdf)
+                                    {
+                                        command.CommandText = string.Format(
+                                            @"DROP {2} [{0}_{1}_{3}];",
+                                            assemblyName,
+                                            edgeColumn.Item1, it.Item1, it.Item2);
+                                        command.ExecuteNonQuery();
+                                    }
                                 }
                             }
                             command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
