@@ -139,6 +139,7 @@ namespace GraphView
                 Tuple.Create("FUNCTION","DownSizeFunction"),
                 Tuple.Create("FUNCTION","UpSizeFunction"),
                 Tuple.Create("FUNCTION","ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("FUNCTION","ConvertInt64IntoVarbinary"),
                 Tuple.Create("ASSEMBLY","GraphViewUDFAssembly"),
             };
         
@@ -162,12 +163,13 @@ namespace GraphView
                 Tuple.Create("AGGREGATE", "Encoder"),
                 Tuple.Create("FUNCTION", "ExclusiveEdgeGenerator"),
                 Tuple.Create("FUNCTION", "bfsPath"),
+                Tuple.Create("FUNCTION", "bfsPath_DifferNodes"),
                 Tuple.Create("FUNCTION", "bfsPathWithMessage"),
                 Tuple.Create("FUNCTION", "PathMessageEncoder"),
                 Tuple.Create("FUNCTION", "PathMessageDecoder"),
                 Tuple.Create("FUNCTION", "ExclusiveNodeGenerator"),
             };
-        private BitArray _a = new BitArray(1);
+
         private static readonly string VersionTable = "VERSION";
 
         private List<Tuple<string, string>> _currentMetaUdf = Version200MetaUdf;

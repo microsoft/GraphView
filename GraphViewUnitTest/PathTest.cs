@@ -283,6 +283,22 @@ namespace GraphViewUnitTest
                     }
                 }
                 if (cnt!=8) Assert.Fail(cnt.ToString());
+
+                cnt = 0;
+                query = @"
+                select *
+				from ClientNode cross apply dbo_ClientNode_Colleagues_bfsPath_DifferNodes(ClientNode.GlobalNodeId,0,-1,
+				 ClientNode.colleagues, ClientNode.ColleaguesDeleteCol)
+				where ClientNode.ClientId = 0";
+                command.CommandText = query;
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        cnt++;
+                    }
+                }
+                if (cnt!=6) Assert.Fail(cnt.ToString());
                 #endregion
 
                 #region Show Path on Base node table and ordinary edge.

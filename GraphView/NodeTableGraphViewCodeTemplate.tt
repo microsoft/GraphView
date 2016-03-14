@@ -132,17 +132,6 @@ public partial class UserDefinedFunctions
 					};
 				}
 			<#} else {#>
-				//var len = (int)array.Length;	
-				//for (int i = 0; i < len; i+=8)
-				//{
-				//	edgeid++;
-				//	var sink = BitConverter.ToInt64(array.Buffer, i);
-				//	yield return new <#=edgeName#>DecoderResult
-				//	{
-				//		Sink = sink, EdgeId = edgeid
-				//	};
-				//}
-
 
 				var len = (int) array.Length;
 				var longArray = new long[len >> 3];
@@ -360,12 +349,10 @@ public partial class UserDefinedFunctions
 
       var PathDict = new Dictionary<long, bool>();
       len = len >> 3;
-      if (PathVarbinary != null && !PathVarbinary.IsNull) {
-        for (int i = 0; i < len; i++) 
-        {
-            PathDict.Add(longArray[i],true);
-        }
-      }
+		for (int i = 0; i < len; i++) 
+		{
+			PathDict.Add(longArray[i],true);
+		}
       
       foreach (var it in <#=edgeName#>Decoder(array, dele))
       {

@@ -68,6 +68,12 @@ public partial class UserDefinedFunctions
 
 		return _buffer;
     }
+
+	[Microsoft.SqlServer.Server.SqlFunction]
+    public static byte[] ConvertInt64IntoVarbinary(SqlInt64 sink)
+    {
+		return BitConverter.GetBytes(sink.Value);
+    }
 }
 
 [Serializable]

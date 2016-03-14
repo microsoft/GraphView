@@ -1063,21 +1063,23 @@ namespace GraphViewUnitTest
 
         //#endregion
 
-        //[TestMethod]
-        //public void CreateNodeTable()
-        //{
-        //    using (var graph = new GraphViewConnection(_connStr))
-        //    {
-        //        graph.Open();
+        [TestMethod]
+        public void CreateNodeTable()
+        {
+            TestInitialization.ClearDatabase();
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
 
-        //        const string createPatentStr = @"
-        //        CREATE TABLE [Test4] (
-        //            [ColumnRole: ""Edge"", Reference: ""Test4""]
-        //            adjacencyList varbinary(8000)
-        //        )";
-        //        graph.CreateNodeTable(createPatentStr);
-        //    }
-        //}
+                const string createPatentStr = @"
+                CREATE TABLE [Friends] (
+                    [ColumnRole: ""Edge"", Reference: ""Friends""]
+                    adjacencyList varbinary(8000)
+                )";
+                graph.CreateNodeTable(createPatentStr);
+            }
+
+        }
     }
 
 }
