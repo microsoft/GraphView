@@ -76,49 +76,49 @@ namespace GraphView
                 var insertEdgeStatement = statements[index] as WInsertEdgeSpecification;
                 if (insertEdgeStatement != null)
                 {
-                    result.Add(new WBeginTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "InsertEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WBeginTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "InsertEdgeTran" }
+                    //    }
+                    //});
                     
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, false));
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, true));
                     TranslateEdgeInsert(insertEdgeStatement,result);
 
-                    result.Add(new WCommitTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "InsertEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WCommitTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "InsertEdgeTran" }
+                    //    }
+                    //});
                     continue;
                 }
                 var deleteEdgeStatement = statements[index] as WDeleteEdgeSpecification;
                 if (deleteEdgeStatement != null)
                 {
-                    result.Add(new WBeginTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "DeleteEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WBeginTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "DeleteEdgeTran" }
+                    //    }
+                    //});
                     //result.Add(TranslateDeleteEdge(deleteEdgeStatement, true));
                     //result.Add(TranslateDeleteEdge(deleteEdgeStatement, false));
 
                     TranslateEdgeDelete(deleteEdgeStatement,result);
 
-                    result.Add(new WCommitTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "DeleteEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WCommitTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "DeleteEdgeTran" }
+                    //    }
+                    //});
                     continue;
                 }
                 var deleteNodeStatement = statements[index] as WDeleteNodeSpecification;
