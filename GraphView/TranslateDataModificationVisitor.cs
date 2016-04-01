@@ -86,7 +86,10 @@ namespace GraphView
                     
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, false));
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, true));
-                    TranslateEdgeInsert(insertEdgeStatement,result);
+
+                    var stmts = new List<WSqlStatement>();
+                    TranslateEdgeInsert(insertEdgeStatement, stmts);
+                    result.Add(new WBeginEndBlockStatement() { StatementList = stmts, });
 
                     //result.Add(new WCommitTransactionStatement
                     //{
@@ -110,7 +113,9 @@ namespace GraphView
                     //result.Add(TranslateDeleteEdge(deleteEdgeStatement, true));
                     //result.Add(TranslateDeleteEdge(deleteEdgeStatement, false));
 
-                    TranslateEdgeDelete(deleteEdgeStatement,result);
+                    var stmts = new List<WSqlStatement>();
+                    TranslateEdgeDelete(deleteEdgeStatement, stmts);
+                    result.Add(new WBeginEndBlockStatement() { StatementList = stmts, });
 
                     //result.Add(new WCommitTransactionStatement
                     //{
@@ -219,6 +224,7 @@ namespace GraphView
                     }
                 }
                 result.Add(statements[index]);
+
             }
             return result;
         }
