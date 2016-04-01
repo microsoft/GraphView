@@ -89,16 +89,15 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}INSERT INTO ", indent);
-            sb.Append(Target.ToString(indent));
-            if (Columns != null)
+            sb.AppendFormat("{0}INSERT INTO {1}", indent, Target.ToString());
+            if (Columns != null && Columns.Count > 0)
             {
                 sb.AppendFormat(" ({0}", Columns[0].ToString(indent));
                 for (var i = 1; i < Columns.Count; ++i)
                 {
                     sb.AppendFormat(", {0}", Columns[i].ToString(indent));
                 }
-                sb.Append(")\r\n");
+                sb.Append(")");
             }
             sb.Append("\r\n");
             sb.Append(InsertSource.ToString(indent));
@@ -152,14 +151,14 @@ namespace GraphView
     {
         public WSelectInsertSource SelectInsertSource { get; set; }
         public WColumnReferenceExpression EdgeColumn { get; set; }
+
         public WInsertEdgeSpecification(WInsertSpecification insertSpec)
         {
-            if (!(insertSpec.InsertSource is WSelectInsertSource))
+            SelectInsertSource = insertSpec.InsertSource as WSelectInsertSource;
+            if (SelectInsertSource == null)
             {
-                throw new GraphViewException("Invalid syntax in INSERT EDGE");
+                throw new SyntaxErrorException("The insert source of the INSERT EDGE statement must be a SELECT statement.");
             }
-            var source = insertSpec.InsertSource as WSelectInsertSource;
-            SelectInsertSource = source;
 
             InsertOption = insertSpec.InsertOption;
             FirstTokenIndex = insertSpec.FirstTokenIndex;
@@ -182,6 +181,14 @@ namespace GraphView
             if (SelectInsertSource != null)
                 SelectInsertSource.Accept(visitor);
             base.AcceptChildren(visitor);
+        }
+
+        internal override string ToString(string indent)
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            sb.Append(SelectInsertSource.ToString(indent));
+            return sb.ToString();
         }
     }
 

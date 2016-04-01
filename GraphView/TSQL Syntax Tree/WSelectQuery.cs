@@ -279,6 +279,12 @@ namespace GraphView
                 sb.Append(FromClause.ToString(indent));
             }
 
+            if (MatchClause != null)
+            {
+                sb.Append("\r\n");
+                sb.Append(MatchClause.ToString(indent));
+            }
+
             if (WhereClause.SearchCondition != null || !string.IsNullOrEmpty(WhereClause.GhostString))
             {
                 sb.Append("\r\n");

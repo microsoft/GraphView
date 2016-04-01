@@ -358,5 +358,34 @@ CREATE TABLE [dbo].[ClientNode](
                 }
             }
         }
+
+        [TestMethod]
+        public void TestUnknownSqlStatementParsing()
+        {
+            string sqlStr = @"CREATE PROCEDURE AddTrade
+                    @buyerId nvarchar(50),
+                    @platform INT,
+                    @mobile varchar(20),
+                    @telephone varchar(20),
+                    @orderId varchar(50),
+                    @fullname nvarchar(20)
+                    AS
+                    BEGIN
+                        if (@telephone<>@mobile)
+                            INSERT EDGE INTO Account.UseMobile
+	                                SELECT a,t FROM Account a , Mobile t
+                                    MATCH a-[x]->t
+		                                WHERE a.id = @buyerId AND t.id = @telephone ;
+                    END";
+
+            var parser = new GraphViewParser();
+            var sr = new StringReader(sqlStr);
+            IList<ParseError> errors;
+            var script = parser.Parse(sr, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                throw new SyntaxErrorException(errors);
+
+            Console.WriteLine(script.ToString());
+        }
     }
 }

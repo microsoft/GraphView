@@ -62,6 +62,24 @@ namespace GraphView
             ConvertToGraphModificationStatement(node.StatementList);
         }
 
+        public override void Visit(WIfStatement node)
+        {
+            base.Visit(node);
+         
+            var statementList = new List<WSqlStatement>(1);
+            statementList.Add(node.ThenStatement);
+            ConvertToGraphModificationStatement(statementList);
+            node.ThenStatement = statementList[0];
+
+            if (node.ElseStatement != null)
+            {
+                statementList.Clear();
+                statementList.Add(node.ElseStatement);
+                ConvertToGraphModificationStatement(statementList);
+                node.ElseStatement = statementList[0];
+            }
+        }
+
         /// <summary>
         /// convert statements in annotation to according graph data modification statements
         /// </summary>

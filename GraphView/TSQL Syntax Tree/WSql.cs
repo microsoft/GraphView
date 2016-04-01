@@ -376,7 +376,7 @@ namespace GraphView
             var sb = new StringBuilder(1024);
 
             sb.AppendFormat("{0}BEGIN\r\n", indent);
-            sb.Append(StatementListToString(StatementList, indent + "    "));
+            sb.Append(StatementListToString(StatementList, indent + "  "));
             sb.Append("\r\n");
             sb.AppendFormat("{0}END", indent);
 
@@ -414,10 +414,20 @@ namespace GraphView
             var sb = new StringBuilder(1024);
 
             sb.AppendFormat("{0}WHILE ", indent);
-            sb.Append(Predicate.ToString() + "\r\n");
-            sb.Append(Statement.ToString());
-            sb.Append("\r\n");
 
+            if (Predicate.OneLine())
+            {
+                sb.Append(Predicate.ToString(""));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(Predicate.ToString(indent + "  "));
+            }
+
+            sb.Append("\r\n");
+            sb.Append(Statement.ToString(indent));
+ 
             return sb.ToString();
         }
 
@@ -437,6 +447,68 @@ namespace GraphView
             {
                 Statement.Accept(visitor);
             }
+            base.AcceptChildren(visitor);
+        }
+    }
+
+    public partial class WIfStatement : WSqlStatement
+    {
+        public WBooleanExpression Predicate { get; set; }
+        public WSqlStatement ThenStatement { get; set; }
+        public WSqlStatement ElseStatement { get; set; }
+
+        internal override bool OneLine()
+        {
+            return false;
+        }
+
+        internal override string ToString(string indent)
+        {
+            StringBuilder sb = new StringBuilder(128);
+
+            if (Predicate.OneLine())
+            {
+                sb.AppendFormat("{0}IF {1}\r\n", indent, Predicate.ToString(""));
+            }
+            else
+            {
+                sb.AppendFormat("{0}IF \r\n", indent);
+                sb.Append(Predicate.ToString(indent + "  "));
+                sb.Append("\r\n");
+            }
+
+            sb.Append(ThenStatement.ToString(indent + "  "));
+
+            if (ElseStatement != null)
+            {
+                sb.Append("\r\n");
+                sb.AppendFormat("{0}ELSE\r\n", indent);
+
+                sb.Append(ElseStatement.ToString(indent + "  "));
+            }
+
+            return sb.ToString();
+        }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            if (Predicate != null)
+            {
+                Predicate.Accept(visitor);
+                ThenStatement.Accept(visitor);
+            }
+
+            if (ElseStatement != null)
+            {
+                ElseStatement.Accept(visitor);
+            }
+
             base.AcceptChildren(visitor);
         }
     }

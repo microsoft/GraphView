@@ -129,7 +129,24 @@ namespace GraphView
         internal int MinLength { get; set; }
         internal int MaxLength { get; set; }
         internal Dictionary<string, string> AttributeValueDict { get; set; }
-         
+
+        internal override bool OneLine()
+        {
+            return true;
+        }
+
+        internal override string ToString(string indent)
+        {
+            if (Alias == null || Alias.Length == 0) 
+            {
+                return string.Format("{0}{1}", indent, MultiPartIdentifier.ToString());
+            }
+            else
+            {
+                return string.Format("{0}{1} AS {2}", indent, MultiPartIdentifier.ToString(), Alias);
+            }
+            
+        }
     }
 
     /// <summary>
