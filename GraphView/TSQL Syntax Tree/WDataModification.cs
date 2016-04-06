@@ -206,18 +206,35 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            var sb = new StringBuilder();
-            sb.AppendFormat("{0}DELETE ", indent);
-            if (TopRowFilter != null)
-                sb.Append(TopRowFilter.ToString(indent));
+            var sb = new StringBuilder(128);
 
-            sb.AppendFormat(" FROM {0} ", Target.ToString(indent));
+            sb.AppendFormat("{0}DELETE", indent);
+            if (TopRowFilter != null)
+            {
+                if (TopRowFilter.OneLine())
+                {
+                    sb.Append(TopRowFilter.ToString(""));
+                }
+                else
+                {
+                    sb.Append("\r\n");
+                    sb.Append(TopRowFilter.ToString(indent + "  "));
+                }
+            }
+
+            sb.AppendFormat(" FROM {0}", Target.ToString());
 
             if (FromClause != null)
+            {
+                sb.Append("\r\n");
                 sb.Append(FromClause.ToString(indent));
+            }
 
             if (WhereClause != null && WhereClause.SearchCondition != null)
+            {
+                sb.Append("\r\n");
                 sb.Append(WhereClause.ToString(indent));
+            }
 
             return sb.ToString();
         }
@@ -244,6 +261,45 @@ namespace GraphView
         {
             if (visitor != null)
                 visitor.Visit(this);
+        }
+
+        internal override bool OneLine()
+        {
+            return WhereClause == null;
+        }
+
+        internal override string ToString(string indent)
+        {
+            StringBuilder sb = new StringBuilder(128);
+
+            sb.AppendFormat("{0}DELETE NODE", indent);
+            if (TopRowFilter != null)
+            {
+                if (TopRowFilter.OneLine())
+                {
+                    sb.Append(TopRowFilter.ToString(""));
+                }
+                else
+                {
+                    sb.Append("\r\n");
+                    sb.Append(TopRowFilter.ToString(indent + "  "));
+                }
+            }
+            sb.AppendFormat(" FROM {0}", Target.ToString());
+
+            if (FromClause != null)
+            {
+                sb.Append("\r\n");
+                sb.Append(FromClause.ToString(indent));
+            }
+
+            if (WhereClause != null && WhereClause.SearchCondition != null)
+            {
+                sb.Append("\r\n");
+                sb.Append(WhereClause.ToString(indent));
+            }
+
+            return sb.ToString();
         }
     }
 
@@ -281,6 +337,49 @@ namespace GraphView
             if (SelectDeleteExpr != null)
                 SelectDeleteExpr.Accept(visitor);
             base.AcceptChildren(visitor);
+        }
+
+        internal override bool OneLine()
+        {
+            return false;
+        }
+
+        internal override string ToString(string indent)
+        {
+            StringBuilder sb = new StringBuilder(128);
+
+            WSelectElement sourceElement = SelectDeleteExpr.SelectElements[0];
+            WSelectElement sinkElement = SelectDeleteExpr.SelectElements[1];
+            sb.AppendFormat("{0}DELETE EDGE {1}-{2}->{3}",
+                indent,
+                sourceElement.ToString(""),
+                EdgeColumn.ToString(""),
+                sinkElement.ToString(""));
+
+            sb.Append("\r\n");
+            sb.Append(SelectDeleteExpr.FromClause.ToString(indent));
+
+            // For the DELETE EDGE statement, the first path in the parsed MATCH clause is 
+            // the one-hop path, i.e., the edge, to be deleted. 
+            if (SelectDeleteExpr.MatchClause.Paths.Count > 1)
+            {
+                sb.Append("\r\n");
+                sb.AppendFormat("{0}MATCH {1}", indent, SelectDeleteExpr.MatchClause.Paths[1].ToString(""));
+
+                for (int i = 2; i < SelectDeleteExpr.MatchClause.Paths.Count; i++)
+                {
+                    sb.Append("\r\n");
+                    sb.AppendFormat("  {0}{1}", indent, SelectDeleteExpr.MatchClause.Paths[i].ToString(""));
+                }
+            }
+
+            if (SelectDeleteExpr.WhereClause != null && SelectDeleteExpr.WhereClause.SearchCondition != null)
+            {
+                sb.Append("\r\n");
+                sb.Append(SelectDeleteExpr.WhereClause.ToString(indent));
+            }
+
+            return sb.ToString();
         }
     }
 

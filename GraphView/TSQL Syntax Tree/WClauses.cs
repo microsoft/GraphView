@@ -490,12 +490,12 @@ namespace GraphView
             sb.AppendFormat("{0}{1}-[{2}]->", 
                 indent, 
                 PathEdgeList[0].Item1.BaseIdentifier.Value, 
-                PathEdgeList[0].Item2.ToString()
+                PathEdgeList[0].Item2.ToString("")
             );
             for (int i = 1; i < PathEdgeList.Count; i++) 
             {
                 sb.AppendFormat("{0}-[{1}]->", PathEdgeList[i].Item1.BaseIdentifier.Value,
-                    PathEdgeList[i].Item2.ToString());
+                    PathEdgeList[i].Item2.ToString(""));
             }
             sb.Append(Tail.BaseIdentifier.Value);
 

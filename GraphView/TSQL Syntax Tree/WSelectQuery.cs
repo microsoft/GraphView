@@ -360,7 +360,7 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            var sb = new StringBuilder(128);
+            var sb = new StringBuilder(32);
 
             sb.AppendFormat("{0}TOP ", indent);
 
@@ -371,7 +371,7 @@ namespace GraphView
             else
             {
                 sb.Append("\r\n");
-                sb.Append(Expression.ToString(indent + " "));
+                sb.Append(Expression.ToString(indent + "  "));
             }
 
             if (Percent)

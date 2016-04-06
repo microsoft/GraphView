@@ -363,20 +363,28 @@ CREATE TABLE [dbo].[ClientNode](
         public void TestUnknownSqlStatementParsing()
         {
             string sqlStr = @"CREATE PROCEDURE AddTrade
-                    @buyerId nvarchar(50),
-                    @platform INT,
-                    @mobile varchar(20),
-                    @telephone varchar(20),
-                    @orderId varchar(50),
-                    @fullname nvarchar(20)
-                    AS
-                    BEGIN
-                        if (@telephone<>@mobile)
-                            INSERT EDGE INTO Account.UseMobile
-	                                SELECT a,t FROM Account a , Mobile t
-                                    MATCH a-[x]->t
-		                                WHERE a.id = @buyerId AND t.id = @telephone ;
-                    END";
+@buyerId nvarchar(50),
+@platform INT,
+@mobile varchar(20),
+@telephone varchar(20),
+@orderId varchar(50),
+@fullname nvarchar(20)
+AS
+BEGIN
+
+	INSERT EDGE INTO Trade.UseMainMobile
+			SELECT t,a FROM Mobile a , Trade t
+				WHERE a.id = @mobile AND t.orderId = @orderId ;
+	
+	if (@telephone<>@mobile)
+		    INSERT EDGE INTO Account.UseMobile
+	    SELECT a,t FROM Account a , Mobile t
+		    WHERE a.id = @buyerId AND t.id = @telephone ;
+END";
+            string sqlStr2 = @"
+                DELETE EDGE [D]-[Colleagues]->[F]
+                FROM EmployeeNode as D, EmployeeNode as E, EmployeeNode as F
+                MATCH [D]-[COLLEAGUES AS ex]->[E]-[COLLEAGUES AS ey]->[F]";
 
             var parser = new GraphViewParser();
             var sr = new StringReader(sqlStr);

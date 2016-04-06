@@ -31,7 +31,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphView
 {
     /// <summary>
-    /// Insert MATCH Clause into Select Query Block
+    /// The visitor that puts the MATCH clause back to the SELECT query block
     /// </summary>
     class MatchClauseVisitor : WSqlFragmentVisitor
     {

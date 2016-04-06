@@ -75,7 +75,7 @@
       <DependentUpon>NodeTableGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="Statistics.cs" />
-    <Compile Include="ConvertToModificationStatementVisitor.cs" />
+    <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="EdgeViewBfsScriptTemplate.cs">
