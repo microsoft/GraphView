@@ -44,7 +44,7 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            return indent + Select.ToString(indent) + "\r\n";
+            return Select.ToString(indent);
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)

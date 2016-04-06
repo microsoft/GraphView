@@ -56,7 +56,7 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            var sb = new StringBuilder(128);
+            var sb = new StringBuilder(16);
 
             for (var i = 0; i < Identifiers.Count; i++)
             {

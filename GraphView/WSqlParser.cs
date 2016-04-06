@@ -99,6 +99,11 @@ namespace GraphView
 
         private WSqlStatement ParseStatement(TSqlStatement tsqlStat)
         {
+            if (tsqlStat == null)
+            {
+                return null;
+            }
+
             WSqlStatement wstat;
 
             switch (tsqlStat.GetType().Name)
@@ -330,6 +335,21 @@ namespace GraphView
 
 
                         wstat = wbestat;
+                        break;
+                    }
+                case "IfStatement":
+                    {
+                        var ifSt = tsqlStat as IfStatement;
+
+                        wstat = new WIfStatement()
+                        {
+                            Predicate = ParseBooleanExpression(ifSt.Predicate),
+                            ThenStatement = ParseStatement(ifSt.ThenStatement),
+                            ElseStatement = ParseStatement(ifSt.ElseStatement),
+                            FirstTokenIndex = ifSt.FirstTokenIndex,
+                            LastTokenIndex = ifSt.LastTokenIndex
+                        };
+
                         break;
                     }
                 case "DeclareVariableStatement":

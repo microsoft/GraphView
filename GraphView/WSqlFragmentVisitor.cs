@@ -435,6 +435,12 @@ namespace GraphView
         {
             node.AcceptChildren(this);
         }
+
+        public virtual void Visit(WIfStatement node)
+        {
+            node.AcceptChildren(this);
+        }
+
         public virtual void Visit(WCommonTableExpression node)
         {
             node.AcceptChildren(this);

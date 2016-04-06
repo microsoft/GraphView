@@ -76,148 +76,63 @@ namespace GraphView
                 var insertEdgeStatement = statements[index] as WInsertEdgeSpecification;
                 if (insertEdgeStatement != null)
                 {
-                    result.Add(new WBeginTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "InsertEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WBeginTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "InsertEdgeTran" }
+                    //    }
+                    //});
                     
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, false));
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, true));
-                    TranslateEdgeInsert(insertEdgeStatement,result);
 
-                    result.Add(new WCommitTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "InsertEdgeTran" }
-                        }
-                    });
+                    var stmts = new List<WSqlStatement>();
+                    TranslateEdgeInsert(insertEdgeStatement, stmts);
+                    result.Add(new WBeginEndBlockStatement() { StatementList = stmts, });
+
+                    //result.Add(new WCommitTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "InsertEdgeTran" }
+                    //    }
+                    //});
                     continue;
                 }
                 var deleteEdgeStatement = statements[index] as WDeleteEdgeSpecification;
                 if (deleteEdgeStatement != null)
                 {
-                    result.Add(new WBeginTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "DeleteEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WBeginTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "DeleteEdgeTran" }
+                    //    }
+                    //});
                     //result.Add(TranslateDeleteEdge(deleteEdgeStatement, true));
                     //result.Add(TranslateDeleteEdge(deleteEdgeStatement, false));
 
-                    TranslateEdgeDelete(deleteEdgeStatement,result);
+                    var stmts = new List<WSqlStatement>();
+                    TranslateEdgeDelete(deleteEdgeStatement, stmts);
+                    result.Add(new WBeginEndBlockStatement() { StatementList = stmts, });
 
-                    result.Add(new WCommitTransactionStatement
-                    {
-                        Name = new WIdentifierOrValueExpression
-                        {
-                            Identifier = new Identifier { Value = "DeleteEdgeTran" }
-                        }
-                    });
+                    //result.Add(new WCommitTransactionStatement
+                    //{
+                    //    Name = new WIdentifierOrValueExpression
+                    //    {
+                    //        Identifier = new Identifier { Value = "DeleteEdgeTran" }
+                    //    }
+                    //});
                     continue;
                 }
                 var deleteNodeStatement = statements[index] as WDeleteNodeSpecification;
                 if (deleteNodeStatement != null)
                 {
-                    var table = deleteNodeStatement.Target as WNamedTableReference;
-                    if (table == null)
-                        throw new GraphViewException("Target of DELETE NODE statement should be a named table reference.");
-                    WBooleanExpression cond = new WBooleanComparisonExpression
-                    {
-                        ComparisonType = BooleanComparisonType.Equals,
-                        FirstExpr = new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "InDegree"})
-                        },
-                        SecondExpr = new WValueExpression
-                        {
-                            Value = "0"
-                        }
-                    };
-                    var tableSchema = table.TableObjectName.SchemaIdentifier == null
-                        ? "dbo"
-                        : table.TableObjectName.SchemaIdentifier.Value;
-                    var tableName = table.TableObjectName.BaseIdentifier.Value;
-                    using (var command = Tx.Connection.CreateCommand())
-                    {
-                        command.Transaction = Tx;
-                        command.CommandText = string.Format(
-                            @"SELECT [TableSchema], [TableName], [ColumnName] FROM [{3}] WHERE TableSchema = '{0}' and [TableName]='{1}' and ColumnRole={2}",
-                            tableSchema, tableName, 1, GraphViewConnection.MetadataTables[1]);
-                        using (var reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                var col = reader["ColumnName"].ToString();
-                                cond = WBooleanBinaryExpression.Conjunction(cond, new WBooleanComparisonExpression
-                                {
-                                    ComparisonType = BooleanComparisonType.Equals,
-                                    FirstExpr = new WColumnReferenceExpression
-                                    {
-                                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = col + "OutDegree" })
-                                    },
-                                    SecondExpr = new WValueExpression
-                                    {
-                                        Value = "0"
-                                    }
-
-                                });
-                            }
-
-                        }
-                    }
-                    WWhereClause checkDeleteNode = new WWhereClause
-                    {
-                        SearchCondition = new WBooleanNotExpression {Expression = cond}
-                    };
-                    if (deleteNodeStatement.WhereClause == null ||
-                        deleteNodeStatement.WhereClause.SearchCondition == null)
-                    {
-                        deleteNodeStatement.WhereClause = new WWhereClause {SearchCondition = cond};
-                    }
-                    else
-                    {
-                        checkDeleteNode = new WWhereClause
-                        {
-                            SearchCondition = new WBooleanBinaryExpression
-                            {
-                                BooleanExpressionType = BooleanBinaryExpressionType.And,
-                                FirstExpr = deleteNodeStatement.WhereClause.SearchCondition,
-                                SecondExpr = checkDeleteNode.SearchCondition
-                            }
-                        };
-                        deleteNodeStatement.WhereClause = new WWhereClause
-                        {
-                            SearchCondition = new WBooleanBinaryExpression
-                            {
-                                BooleanExpressionType = BooleanBinaryExpressionType.And,
-                                FirstExpr = deleteNodeStatement.WhereClause.SearchCondition,
-                                SecondExpr = cond
-                            }
-                        };
-                    }
-                    using (var command = Tx.Connection.CreateCommand())
-                    {
-                        command.Transaction = Tx;
-                        command.CommandText = string.Format("SELECT InDegree FROM {0}.{1} {2}", tableSchema, tableName,
-                            checkDeleteNode.ToString());
-                        using (var reader = command.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                throw new GraphViewException(
-                                    string.Format(
-                                        "Node(s) of node table {0} being deleted still has/have ingoing or outdoing edge(s)",
-                                        tableName));
-                            }
-                        }
-                    }
+                    TranslateNodeDelete(deleteNodeStatement, result);
+                    continue;
                 }
+
                 result.Add(statements[index]);
             }
             return result;
@@ -1797,6 +1712,110 @@ namespace GraphView
             };
         }
 
+        private void TranslateNodeDelete(WDeleteNodeSpecification node, List<WSqlStatement> res)
+        {
+            var table = node.Target as WNamedTableReference;
+            if (table == null)
+                throw new GraphViewException("Target of DELETE NODE statement should be a named table reference.");
+            WBooleanExpression cond = new WBooleanComparisonExpression
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = new WColumnReferenceExpression
+                {
+                    MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "InDegree" })
+                },
+                SecondExpr = new WValueExpression
+                {
+                    Value = "0"
+                }
+            };
+            var tableSchema = table.TableObjectName.SchemaIdentifier == null
+                ? "dbo"
+                : table.TableObjectName.SchemaIdentifier.Value;
+            var tableName = table.TableObjectName.BaseIdentifier.Value;
+            using (var command = Tx.Connection.CreateCommand())
+            {
+                command.Transaction = Tx;
+                command.CommandText = string.Format(
+                    @"SELECT [TableSchema], [TableName], [ColumnName] FROM [{3}] WHERE TableSchema = '{0}' and [TableName]='{1}' and ColumnRole={2}",
+                    tableSchema, tableName, 1, GraphViewConnection.MetadataTables[1]);
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var col = reader["ColumnName"].ToString();
+                        cond = WBooleanBinaryExpression.Conjunction(cond, new WBooleanComparisonExpression
+                        {
+                            ComparisonType = BooleanComparisonType.Equals,
+                            FirstExpr = new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = col + "OutDegree" })
+                            },
+                            SecondExpr = new WValueExpression
+                            {
+                                Value = "0"
+                            }
+
+                        });
+                    }
+
+                }
+            }
+            WWhereClause checkDeleteNode = new WWhereClause
+            {
+                SearchCondition = new WBooleanNotExpression { Expression = cond }
+            };
+            if (node.WhereClause == null ||
+                node.WhereClause.SearchCondition == null)
+            {
+                node.WhereClause = new WWhereClause { SearchCondition = cond };
+            }
+            else
+            {
+                checkDeleteNode = new WWhereClause
+                {
+                    SearchCondition = new WBooleanBinaryExpression
+                    {
+                        BooleanExpressionType = BooleanBinaryExpressionType.And,
+                        FirstExpr = node.WhereClause.SearchCondition,
+                        SecondExpr = checkDeleteNode.SearchCondition
+                    }
+                };
+                node.WhereClause = new WWhereClause
+                {
+                    SearchCondition = new WBooleanBinaryExpression
+                    {
+                        BooleanExpressionType = BooleanBinaryExpressionType.And,
+                        FirstExpr = node.WhereClause.SearchCondition,
+                        SecondExpr = cond
+                    }
+                };
+            }
+            using (var command = Tx.Connection.CreateCommand())
+            {
+                command.Transaction = Tx;
+                command.CommandText = string.Format("SELECT InDegree FROM {0}.{1} {2}", tableSchema, tableName,
+                    checkDeleteNode.ToString());
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        throw new GraphViewException(
+                            string.Format(
+                                "Node(s) of node table {0} being deleted still has/have ingoing or outdoing edge(s)",
+                                tableName));
+                    }
+                }
+            }
+
+            res.Add(new WDeleteSpecification
+            {
+                FromClause = node.FromClause,
+                Target = node.Target,
+                TopRowFilter = node.TopRowFilter,
+                WhereClause = node.WhereClause,
+            });
+        }
     }
 
 
