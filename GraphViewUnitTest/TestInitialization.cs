@@ -84,6 +84,8 @@ namespace GraphViewUnitTest
                     [name] [varchar](32),
                     [ColumnRole: ""Property""]
                     [income] [int],
+                    [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {db: ""double"", str: ""string""} ]
+                    [testBwtUserAndClient] [varchar](max),
                 )";
                 graph.CreateNodeTable(createUserStr);
             }

@@ -18,7 +18,7 @@ namespace GraphView
     /// Class to produce the template output
     /// </summary>
     
-    #line 1 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+    #line 1 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.TextTemplating", "12.0.0.0")]
     public partial class NodeTableGraphViewCodeTemplate : NodeTableGraphViewCodeTemplateBase
     {
@@ -30,7 +30,7 @@ namespace GraphView
         {
             this.Write(" \r\n\r\n");
             
-            #line 8 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 8 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 var typeDictionary = new Dictionary<string, Tuple<string, string>> 
 {
@@ -49,7 +49,7 @@ var typeDictionary = new Dictionary<string, Tuple<string, string>>
                     "qlServer.Server;\r\n\r\npublic partial class UserDefinedFunctions\r\n{\r\n\t//edge decode" +
                     "r\r\n");
             
-            #line 29 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 29 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	foreach (var edge in EdgeList) {
 	var edgeName = edge.Item1;
@@ -66,7 +66,7 @@ var typeDictionary = new Dictionary<string, Tuple<string, string>>
             #line hidden
             this.Write("\tprivate class ");
             
-            #line 40 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 40 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -74,35 +74,35 @@ var typeDictionary = new Dictionary<string, Tuple<string, string>>
             this.Write("DecoderResult\r\n\t{\r\n\t\tpublic long Sink { get; set; }\r\n\t\tpublic Int32 EdgeId{ get; " +
                     "set; }\r\n");
             
-            #line 44 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 44 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 foreach (var variable in variables) {
             
             #line default
             #line hidden
             this.Write("\t\tpublic Sql");
             
-            #line 45 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 45 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variable.Item2].Item2));
             
             #line default
             #line hidden
             this.Write(" ");
             
-            #line 45 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 45 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Item1));
             
             #line default
             #line hidden
             this.Write(" { get; set; }\r\n");
             
-            #line 46 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 46 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t}\r\n\r\n\tpublic static void ");
             
-            #line 49 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 49 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -110,7 +110,7 @@ foreach (var variable in variables) {
             this.Write("Decoder_FillRow(\r\n\t\tobject tableTypeObject,\r\n\t\tout SqlInt64 sink, out SqlInt32 ed" +
                     "geid");
             
-            #line 51 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 51 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	var indent = "		";
 	for (var i = 0; i < variables.Count; ++i)
@@ -123,7 +123,7 @@ foreach (var variable in variables) {
             #line hidden
             this.Write(")\r\n\t{\r\n\t\tvar decoderResult = (");
             
-            #line 59 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 59 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -131,28 +131,28 @@ foreach (var variable in variables) {
             this.Write("DecoderResult)tableTypeObject;\r\n\t\tsink = decoderResult.Sink;\r\n\t\tedgeid = decoderR" +
                     "esult.EdgeId;\r\n");
             
-            #line 62 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 62 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 foreach (var variable in variables) {
             
             #line default
             #line hidden
             this.Write("\t  ");
             
-            #line 63 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 63 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Item1));
             
             #line default
             #line hidden
             this.Write(" = decoderResult.");
             
-            #line 63 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 63 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Item1));
             
             #line default
             #line hidden
             this.Write(";\r\n");
             
-            #line 64 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 64 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
@@ -160,7 +160,7 @@ foreach (var variable in variables) {
             this.Write("\t}\r\n\r\n\t[SqlFunction(\r\n\t\tDataAccess = DataAccessKind.None,\r\n\t\tTableDefinition = \"S" +
                     "ink bigint, EdgeId int");
             
-            #line 69 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 69 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 		for (var i = 0; i < variables.Count; ++i)
 			Write(", " + variables[i].Item1 + " " + typeDictionary[variables[i].Item2].Item1);
@@ -170,7 +170,7 @@ foreach (var variable in variables) {
             #line hidden
             this.Write("\",\r\n\t\tFillRowMethodName = \"");
             
-            #line 73 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 73 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -178,7 +178,7 @@ foreach (var variable in variables) {
             this.Write("Decoder_FillRow\",\r\n\t\tIsDeterministic = true,\r\n\t\tIsPrecise = false\r\n\t\t)]\r\n\tpublic " +
                     "static IEnumerable ");
             
-            #line 77 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 77 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -196,7 +196,8 @@ foreach (var variable in variables) {
                 {
                     deleDict = new Dictionary<int, bool>();
                 }
-				deleDict.Add(delebr.ReadInt32(), true);
+				//deleDict.Add(delebr.ReadInt32(), true);
+				deleDict[delebr.ReadInt32()] = true;
 			}
 		}
 		if (array == null || array.IsNull)
@@ -207,7 +208,7 @@ foreach (var variable in variables) {
 		{
 			");
             
-            #line 99 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 100 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
@@ -215,28 +216,28 @@ if (byteSize != 0) {
             this.Write("\t\t\t\twhile (br.BaseStream.Position != br.BaseStream.Length)\r\n\t\t\t\t{\r\n\t\t\t\t\tedgeid++;" +
                     "\r\n\t\t\t\t");
             
-            #line 103 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 104 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("\t\t\t\tbyte[] bitmap = br.ReadBytes(");
             
-            #line 104 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 105 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
             #line hidden
             this.Write(");\r\n\t\t\t\t");
             
-            #line 105 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 106 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\tvar sink = br.ReadInt64();\r\n\t");
             
-            #line 107 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 108 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 						indent += "    ";
 						var count = 0;
@@ -257,14 +258,14 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\t\t\tyield return new ");
             
-            #line 122 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 123 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("DecoderResult\r\n\t\t\t\t\t{\r\n\t\t\t\t\t\tSink = sink, EdgeId = edgeid,\r\n\t");
             
-            #line 125 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 126 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 						indent += "    ";
 						for (var i = 0; i < variables.Count; ++i)
@@ -277,7 +278,7 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\t\t\t};\r\n\t\t\t\t}\r\n\t\t\t");
             
-            #line 134 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 135 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 } else {
             
             #line default
@@ -286,7 +287,7 @@ if (byteSize != 0) {
                     "\tBuffer.BlockCopy(array.Buffer, 0, longArray, 0, len);\r\n\t\t\t\tlen = len >> 3;\r\n\t\t\t" +
                     "\tfor (int i = 0; i < len; i++)\r\n\t\t\t\t{\r\n\t\t\t\t\tedgeid++;\r\n\t\t\t\t\tyield return new ");
             
-            #line 143 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 144 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -294,7 +295,7 @@ if (byteSize != 0) {
             this.Write("DecoderResult\r\n\t\t\t\t\t{\r\n\t\t\t\t\t\tSink = longArray[i], EdgeId = edgeid,\r\n\t\t\t\t\t};\r\n\t\t\t\t" +
                     "}\r\n\t\t\t");
             
-            #line 148 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 149 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
@@ -302,28 +303,28 @@ if (byteSize != 0) {
             this.Write("\t\t}\r\n\t\telse \r\n\t\t{\r\n\t\t\twhile (br.BaseStream.Position != br.BaseStream.Length)\r\n\t\t\t" +
                     "{\r\n\t\t\t\tedgeid++;\r\n\t\t\t");
             
-            #line 155 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 156 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("\t\t\tbyte[] bitmap = br.ReadBytes(");
             
-            #line 156 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 157 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
             #line hidden
             this.Write(");\r\n\t\t\t");
             
-            #line 157 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 158 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\t\t\tvar sink = br.ReadInt64();\r\n");
             
-            #line 159 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 160 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 					indent += "    ";
 					var count2 = 0;
@@ -344,14 +345,14 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\t\tif (!deleDict.ContainsKey(edgeid)) {\r\n\t\t\t\tyield return new ");
             
-            #line 175 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 176 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("DecoderResult\r\n\t\t\t\t{\r\n\t\t\t\t\tSink = sink, EdgeId = edgeid,\r\n");
             
-            #line 178 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 179 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 					indent += "    ";
 					for (var i = 0; i < variables.Count; ++i)
@@ -364,7 +365,7 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\t\t};\r\n\t\t\t\t}\r\n\t\t\t}\r\n\t\t}\r\n\t}\r\n\r\n\t//Path Decoder\r\n\tprivate class ");
             
-            #line 192 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 193 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -372,35 +373,35 @@ if (byteSize != 0) {
             this.Write("ExclusiveEdgeGeneratorResult \r\n\t{\r\n\t\tpublic int EdgeId{get; set;}\r\n\t\tpublic int E" +
                     "dgeColumnId {get; set;}\r\n\t\tpublic long SinkId{get; set;}\r\n");
             
-            #line 197 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 198 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 foreach (var variable in variables) {
             
             #line default
             #line hidden
             this.Write("\t\tpublic Sql");
             
-            #line 198 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 199 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variable.Item2].Item2));
             
             #line default
             #line hidden
             this.Write(" ");
             
-            #line 198 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 199 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Item1));
             
             #line default
             #line hidden
             this.Write(" { get; set; }\r\n");
             
-            #line 199 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 200 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t}\r\n\r\n\tpublic static void ");
             
-            #line 202 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 203 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -408,7 +409,7 @@ foreach (var variable in variables) {
             this.Write("ExclusiveEdgeGenerator_FillRow(\r\n\t\tobject tableTypeObject,\r\n\t\tout SqlInt32 EdgeId" +
                     ", out SqlInt32 EdgeColumnId, out SqlInt64 SinkId ");
             
-            #line 204 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 205 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 		for (var i = 0; i < variables.Count; ++i)
 		{
@@ -420,7 +421,7 @@ foreach (var variable in variables) {
             #line hidden
             this.Write("\t\t)\r\n\t{\r\n\t\tvar decoderResult = (");
             
-            #line 212 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 213 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -429,28 +430,28 @@ foreach (var variable in variables) {
                     "\t\tEdgeColumnId =  decoderResult.EdgeColumnId;\r\n\t\tSinkId = decoderResult.SinkId;\r" +
                     "\n");
             
-            #line 216 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 217 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 foreach (var variable in variables) {
             
             #line default
             #line hidden
             this.Write("\t  ");
             
-            #line 217 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 218 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Item1));
             
             #line default
             #line hidden
             this.Write(" = decoderResult.");
             
-            #line 217 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 218 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variable.Item1));
             
             #line default
             #line hidden
             this.Write(";\r\n");
             
-            #line 218 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 219 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
@@ -458,7 +459,7 @@ foreach (var variable in variables) {
             this.Write("\t}\r\n\t\r\n\t\t[SqlFunction(\r\n\t\tDataAccess = DataAccessKind.None,\r\n\t\tTableDefinition = " +
                     "\"EdgeId int, EdgeColumnId int, SinkId bigint\",\r\n\t\tFillRowMethodName = \"");
             
-            #line 224 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 225 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -466,7 +467,7 @@ foreach (var variable in variables) {
             this.Write("ExclusiveEdgeGenerator_FillRow\",\r\n\t\tIsDeterministic = true,\r\n\t\tIsPrecise = false\r" +
                     "\n\t\t)]\r\n\tpublic static IEnumerable ");
             
-            #line 228 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 229 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -495,28 +496,28 @@ foreach (var variable in variables) {
                     "+ 16));\r\n\t\t//\t\tPathDict[Edgeid] = true;\r\n\t\t//\t}\r\n\t\t//}\r\n\r\n\t\tif (PathDict == null" +
                     " || PathDict.Count == 0) \r\n\t\t{\r\n\t\t\tforeach (var it in ");
             
-            #line 277 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 278 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("Decoder(array, dele))\r\n\t\t\t{\r\n\t\t\t\tvar  adjacent = it as ");
             
-            #line 279 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 280 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("DecoderResult;\r\n\t\t\t\tvar EdgeId = Tuple.Create(nodeid.Value, ");
             
-            #line 280 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 281 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
             
             #line default
             #line hidden
             this.Write(", adjacent.EdgeId);\r\n\t\t\t\t\tyield return new ");
             
-            #line 281 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 282 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -524,14 +525,14 @@ foreach (var variable in variables) {
             this.Write("ExclusiveEdgeGeneratorResult\r\n\t\t\t\t\t{\r\n\t\t\t\t\t\tEdgeId = adjacent.EdgeId,\r\n\t\t\t\t\t\tEdge" +
                     "ColumnId = ");
             
-            #line 284 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 285 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
             
             #line default
             #line hidden
             this.Write(",\r\n\t\t\t\t\t\tSinkId = adjacent.Sink, ");
             
-            #line 285 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 286 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 						for (var i = 0; i < variables.Count; ++i)
 						{
@@ -543,14 +544,14 @@ foreach (var variable in variables) {
             #line hidden
             this.Write("\t\t\t\t\t};\r\n\t\t\t}\r\n\t\t}\r\n\t\telse\r\n\t\t{\r\n\t\t\tforeach (var it in ");
             
-            #line 296 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 297 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("Decoder(array, dele))\r\n\t\t\t{\r\n\t\t\t\tvar  adjacent = it as ");
             
-            #line 298 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 299 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -558,7 +559,7 @@ foreach (var variable in variables) {
             this.Write("DecoderResult;\r\n\t\t\t\tvar EdgeId = adjacent.EdgeId;\r\n\t\t\t\tif (!PathDict.ContainsKey(" +
                     "EdgeId))\r\n\t\t\t\t{\r\n\t\t\t\t\tyield return new ");
             
-            #line 302 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 303 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -566,14 +567,14 @@ foreach (var variable in variables) {
             this.Write("ExclusiveEdgeGeneratorResult\r\n\t\t\t\t\t{\r\n\t\t\t\t\t\tEdgeId = adjacent.EdgeId,\r\n\t\t\t\t\t\tEdge" +
                     "ColumnId = ");
             
-            #line 305 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 306 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeColumnId));
             
             #line default
             #line hidden
             this.Write(",\r\n\t\t\t\t\t\tSinkId = adjacent.Sink, ");
             
-            #line 306 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 307 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 						for (var i = 0; i < variables.Count; ++i)
 						{
@@ -586,7 +587,7 @@ foreach (var variable in variables) {
             this.Write("\t\t\t\t\t};\r\n\t\t\t\t}\r\n\t\t\t}\r\n\t\t}\r\n\t\tyield break;\r\n\t}\r\n\t\r\n    //Path Decoder(differ nodes" +
                     ")\r\n    private class ");
             
-            #line 320 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 321 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -594,7 +595,7 @@ foreach (var variable in variables) {
             this.Write("ExclusiveNodeGeneratorResult \r\n    {\r\n      public long SinkId{get; set;}\r\n    }\r" +
                     "\n\r\n    public static void ");
             
-            #line 325 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 326 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -602,7 +603,7 @@ foreach (var variable in variables) {
             this.Write("ExclusiveNodeGenerator_FillRow(\r\n      object tableTypeObject,\r\n      out SqlInt6" +
                     "4 SinkId)\r\n    {\r\n      var decoderResult = (");
             
-            #line 329 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 330 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -611,7 +612,7 @@ foreach (var variable in variables) {
                     "d;\r\n    }\r\n\t\r\n\t\t[SqlFunction(\r\n\t\tDataAccess = DataAccessKind.None,\r\n\t\tTableDefin" +
                     "ition = \"SinkId bigint\",\r\n\t\tFillRowMethodName = \"");
             
-            #line 336 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 337 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -619,7 +620,7 @@ foreach (var variable in variables) {
             this.Write("ExclusiveNodeGenerator_FillRow\",\r\n\t\tIsDeterministic = true,\r\n\t\tIsPrecise = false\r" +
                     "\n\t\t)]\r\n    public static IEnumerable ");
             
-            #line 340 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 341 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -643,14 +644,14 @@ foreach (var variable in variables) {
       
       foreach (var it in ");
             
-            #line 357 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 358 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("Decoder(array, dele))\r\n      {\r\n        var  adjacent = it as ");
             
-            #line 359 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 360 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -658,7 +659,7 @@ foreach (var variable in variables) {
             this.Write("DecoderResult;\r\n        if (!PathDict.TryGetValue(adjacent.Sink, out temp))\r\n    " +
                     "    {\r\n          yield return new ");
             
-            #line 362 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 363 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -679,7 +680,7 @@ foreach (var variable in variables) {
 		IsPrecise = true)]
 	public static SqlBytes ");
             
-            #line 376 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 377 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -716,21 +717,21 @@ foreach (var variable in variables) {
 					{
 						");
             
-            #line 406 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 407 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\t\t//read bitmap\r\n\t\t\t\t\t\tbyte[] bitmap = br.ReadBytes(");
             
-            #line 408 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 409 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
             #line hidden
             this.Write(");\r\n\t\t\t\t\t\t");
             
-            #line 409 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 410 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
@@ -738,7 +739,7 @@ if (byteSize != 0) {
             this.Write("\t\t\t\t\t\t// read\r\n\t\t\t\t\t\tvar sink = br.ReadInt64();\r\n\t\t\t\t\t\t\r\n\t\t\t\t\t\tedgeid++;\r\n\t\t\t\t\t\ti" +
                     "f (toRecycleHashTable.Contains(edgeid))\r\n\t\t\t\t\t\t{\r\n\t\t\t\t\t\t");
             
-            #line 416 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 417 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 var count3 = 0;
 						foreach (var variable in variables)
 						{
@@ -756,21 +757,21 @@ var count3 = 0;
             #line hidden
             this.Write("\t\t\t\t\t\t\tcontinue;\r\n\t\t\t\t\t\t}\r\n\t\t\t\t\t\t// write\r\n\r\n\t\t\t\t\t\t");
             
-            #line 432 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 433 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\t\tbw.Write(bitmap);\r\n\t\t\t\t\t\t");
             
-            #line 434 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 435 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\t\tbw.Write(sink);\r\n\t\t\t\t\t\t");
             
-            #line 436 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 437 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 						indent = "							";
 						var _count = 0;
@@ -789,14 +790,14 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\t\t\t\t}\r\n\t\t\t\t\treturn new SqlBytes(resultMs);\r\n\r\n\t}\r\n\t");
             
-            #line 453 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 454 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
  }
             
             #line default
             #line hidden
             this.Write("}\r\n\r\n\t//edge encoder\r\n");
             
-            #line 457 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 458 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 foreach (var edge in EdgeList) {
 	var edgeName = edge.Item1;
 	var variables = edge.Item3;
@@ -813,7 +814,7 @@ foreach (var edge in EdgeList) {
                     "efined,\r\n\t\tIsInvariantToNulls = true,\r\n\t\tIsInvariantToOrder = true,\r\n\t\tIsInvaria" +
                     "ntToDuplicates = false,\r\n\t\tMaxByteSize = -1)]\r\npublic struct ");
             
-            #line 472 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 473 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -823,7 +824,7 @@ foreach (var edge in EdgeList) {
                     "ter = new BinaryWriter(_stream);\r\n\t}\r\n\r\n\tpublic void Accumulate(\r\n\t\tSqlInt64 sin" +
                     "k");
             
-            #line 484 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 485 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	var indent = "        ";
 	for (var i = 0; i < variables.Count; ++i)
@@ -836,27 +837,27 @@ foreach (var edge in EdgeList) {
             #line hidden
             this.Write(")\r\n\t{\r\n\t\tif (sink.IsNull)\r\n\t\t\treturn;\r\n\t\t");
             
-            #line 494 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 495 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("\t\tByte[] bitmap = new Byte[");
             
-            #line 495 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 496 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
             #line hidden
             this.Write("];\r\n\t\tArray.Clear(bitmap, 0, bitmap.Length);\r\n\t\t");
             
-            #line 497 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 498 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             
-            #line 498 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 499 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	var count = 0;
 	foreach (var variable in variables)
@@ -871,28 +872,28 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\tif (!");
             
-            #line 507 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 508 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write(".IsNull) {\r\n\t\t\tbitmap[");
             
-            #line 508 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 509 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(pos));
             
             #line default
             #line hidden
             this.Write("] |= ");
             
-            #line 508 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 509 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(bit));
             
             #line default
             #line hidden
             this.Write("; \r\n\t\t}\r\n\t");
             
-            #line 510 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 511 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 		count++;
 	}
@@ -902,21 +903,21 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t");
             
-            #line 514 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 515 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (byteSize != 0) {
             
             #line default
             #line hidden
             this.Write("\t\t_writer.Write(bitmap);\r\n\t");
             
-            #line 516 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 517 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\t_writer.Write(sink.Value);\r\n");
             
-            #line 518 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 519 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	foreach (var variable in variables)
 	{
@@ -928,21 +929,21 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t\tif (!");
             
-            #line 524 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 525 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write(".IsNull) {\r\n\t\t\t_writer.Write(");
             
-            #line 525 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 526 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write(".Value);\r\n\t\t}\r\n\t");
             
-            #line 527 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 528 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	}
 	
@@ -951,7 +952,7 @@ if (byteSize != 0) {
             #line hidden
             this.Write("\t}\r\n\r\n\r\n\tpublic void Merge (");
             
-            #line 533 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 534 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -987,14 +988,14 @@ if (byteSize != 0) {
 	
 ");
             
-            #line 562 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 563 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\r\n\r\n\r\npublic partial class UserDefinedFunctions\r\n{\r\n\t//path message encoder\r\n");
             
-            #line 569 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 570 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 foreach (var edge in EdgeList) {
 	var edgeName = edge.Item1;
@@ -1008,14 +1009,14 @@ foreach (var edge in EdgeList) {
             #line hidden
             this.Write("\r\n\t[Microsoft.SqlServer.Server.SqlFunction]\r\n\tpublic static SqlBytes ");
             
-            #line 579 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 580 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
             #line hidden
             this.Write("_PathMessageEncoder(SqlString nodeType, SqlString Id,\r\n\t\tSqlString edgeType");
             
-            #line 580 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 581 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 var indent = "		";
 	for (var i = 0; i < variables.Count; ++i)
 	{
@@ -1028,7 +1029,7 @@ var indent = "		";
             this.Write(")\r\n\t{\r\n\t\tMemoryStream _stream = new MemoryStream();\r\n\t\tBinaryWriter _writer = new" +
                     " BinaryWriter(_stream);\r\n\r\n\t\tByte[] bitmap = new Byte[");
             
-            #line 590 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 591 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
@@ -1036,7 +1037,7 @@ var indent = "		";
             this.Write("];\r\n\t\tArray.Clear(bitmap, 0, bitmap.Length);\r\n\t\tif (!Id.IsNull)\r\n\t\t{\r\n\t\t\tbitmap[0" +
                     "] |= 1;\r\n\t\t}\r\n");
             
-            #line 596 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 597 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	var count = 1;
 	foreach (var variable in variables)
@@ -1051,28 +1052,28 @@ var indent = "		";
             #line hidden
             this.Write("\t\tif (!");
             
-            #line 605 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 606 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write(".IsNull) {\r\n\t\t\tbitmap[");
             
-            #line 606 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 607 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(pos));
             
             #line default
             #line hidden
             this.Write("] |= ");
             
-            #line 606 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 607 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(bit));
             
             #line default
             #line hidden
             this.Write("; \r\n\t\t}\r\n");
             
-            #line 608 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 609 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 		count++;
 	}
@@ -1083,7 +1084,7 @@ var indent = "		";
             this.Write("\t\t_writer.Write(bitmap);\r\n\t\t_writer.Write(nodeType.Value);\r\n\t\tif (!Id.IsNull) \r\n\t" +
                     "\t{\r\n\t\t\t_writer.Write(Id.Value);\r\n\t\t}\r\n\t\t_writer.Write(edgeType.Value);\r\n");
             
-            #line 619 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 620 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	foreach (var variable in variables)
 	{
@@ -1095,21 +1096,21 @@ var indent = "		";
             #line hidden
             this.Write("\t\tif (!");
             
-            #line 625 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 626 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write(".IsNull) {\r\n\t\t\t_writer.Write(");
             
-            #line 626 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 627 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write(".Value);\r\n\t\t}\r\n");
             
-            #line 628 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 629 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 	}
 
@@ -1119,7 +1120,7 @@ var indent = "		";
             this.Write("\t\treturn new SqlBytes(_stream);\r\n\t}\r\n\t\r\n\t//path message decoder\r\n\t[Microsoft.SqlS" +
                     "erver.Server.SqlFunction]\r\n\tpublic static SqlString ");
             
-            #line 636 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 637 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(edgeName));
             
             #line default
@@ -1135,7 +1136,7 @@ var indent = "		";
 		{
 			byte[] bitmap = br.ReadBytes(");
             
-            #line 645 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 646 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(byteSize));
             
             #line default
@@ -1151,14 +1152,14 @@ var indent = "		";
 			res += br.ReadString() + ""\"""";
 			");
             
-            #line 654 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 655 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (variables.Count != 0) {
             
             #line default
             #line hidden
             this.Write("\t\t\tres += \", \\\"Attribute\\\":{\";\r\n");
             
-            #line 656 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 657 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 
 			indent += "    ";
 			count = 1;
@@ -1174,7 +1175,7 @@ if (variables.Count != 0) {
             #line hidden
             this.Write("\t\t\t\t\tres += \",\";\r\n");
             
-            #line 666 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 667 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 				}
 
             
@@ -1182,63 +1183,63 @@ if (variables.Count != 0) {
             #line hidden
             this.Write("\t\t\t\tres += \"\\\"");
             
-            #line 668 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 669 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(variableName));
             
             #line default
             #line hidden
             this.Write("\\\":\";\r\n\t\t\t\tif ((bitmap[");
             
-            #line 669 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 670 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture((count / 8).ToString()));
             
             #line default
             #line hidden
             this.Write("] & ");
             
-            #line 669 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 670 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture((1 << (count%8)).ToString()));
             
             #line default
             #line hidden
             this.Write(") != 0) {\r\n");
             
-            #line 670 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 671 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 if (variableType.ToLower() == "string") {
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\tres += \"\\\"\" + br.Read");
             
-            #line 671 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 672 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variableType].Item2));
             
             #line default
             #line hidden
             this.Write("().ToString() + \"\\\"\";\r\n");
             
-            #line 672 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 673 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 } else {
             
             #line default
             #line hidden
             this.Write("\t\t\t\t\tres += br.Read");
             
-            #line 673 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 674 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(typeDictionary[variableType].Item2));
             
             #line default
             #line hidden
             this.Write("().ToString().ToLower();\r\n");
             
-            #line 674 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 675 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
             #line hidden
             this.Write("\t\t\t\t} else {\r\n\t\t\t\t\tres += \"null\";\r\n\t\t\t\t}\r\n");
             
-            #line 678 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 679 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 				count++;
 			}
             
@@ -1246,7 +1247,7 @@ if (variableType.ToLower() == "string") {
             #line hidden
             this.Write("\t\t\tres += \"}\";\r\n\t\t\t");
             
-            #line 681 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 682 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default
@@ -1269,7 +1270,7 @@ if (variableType.ToLower() == "string") {
 	}
 ");
             
-            #line 698 "D:\Source\graphview\GraphView\NodeTableGraphViewCodeTemplate.tt"
+            #line 699 "D:\Source\GraphView\NodeTableGraphViewCodeTemplate.tt"
 }
             
             #line default

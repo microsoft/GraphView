@@ -49,7 +49,8 @@ namespace GraphViewUnitTest
                     {
                         conn.DropNodeTableFunctionV100(table.Item1,table.Item2,tx);
                     }
-                    conn.UpgradeGraphViewFunctionV100(tx);
+                    //conn.UpgradeGraphViewFunctionV100(tx);
+                    conn.UpgradeNodeTableFunction(tx);
                     Console.WriteLine("Upgrade functions Done!");
 
                     #endregion

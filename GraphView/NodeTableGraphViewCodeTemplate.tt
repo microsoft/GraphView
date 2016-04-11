@@ -87,7 +87,8 @@ public partial class UserDefinedFunctions
                 {
                     deleDict = new Dictionary<int, bool>();
                 }
-				deleDict.Add(delebr.ReadInt32(), true);
+				//deleDict.Add(delebr.ReadInt32(), true);
+				deleDict[delebr.ReadInt32()] = true;
 			}
 		}
 		if (array == null || array.IsNull)

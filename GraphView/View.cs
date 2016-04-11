@@ -1592,13 +1592,14 @@ namespace GraphView
 
                 //Insert edge view message into "_NodeTableColumnCollection" MetaDataTable
                 const string insertGraphEdgeView = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
+                INSERT INTO [{0}] ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [EdgeUdfPrefix])
                 OUTPUT [Inserted].[ColumnId]
-                VALUES (@tableschema, @TableName, @tableid, @columnname, @columnrole, @reference)";
+                VALUES (@tableschema, @TableName, @tableid, @columnname, @columnrole, @reference, @udfPrefix)";
                 command.Parameters.AddWithValue("columnname", edgeViewName);
                 command.Parameters.AddWithValue("columnrole", 3);
                 command.Parameters.AddWithValue("reference", _nodeName);
                 command.Parameters.AddWithValue("tableid", tableId);
+                command.Parameters.AddWithValue("@udfPrefix", tableSchema + "_" + _nodeName + "_" + edgeViewName);
 
                 command.CommandText = string.Format(insertGraphEdgeView, MetadataTables[1]);
                 //_NodeTableColumnCollection

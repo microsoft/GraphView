@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
+using System.Net.Configuration;
 using System.Runtime.Remoting.Contexts;
 using System.Text;
 using System.Threading.Tasks;
@@ -83,13 +84,13 @@ namespace GraphView
                     //        Identifier = new Identifier { Value = "InsertEdgeTran" }
                     //    }
                     //});
-                    
+
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, false));
                     //result.Add(TranslateInsertEdge(insertEdgeStatement, true));
 
                     var stmts = new List<WSqlStatement>();
                     TranslateEdgeInsert(insertEdgeStatement, stmts);
-                    result.Add(new WBeginEndBlockStatement() { StatementList = stmts, });
+                    result.Add(new WBeginEndBlockStatement() {StatementList = stmts,});
 
                     //result.Add(new WCommitTransactionStatement
                     //{
@@ -115,7 +116,7 @@ namespace GraphView
 
                     var stmts = new List<WSqlStatement>();
                     TranslateEdgeDelete(deleteEdgeStatement, stmts);
-                    result.Add(new WBeginEndBlockStatement() { StatementList = stmts, });
+                    result.Add(new WBeginEndBlockStatement() {StatementList = stmts,});
 
                     //result.Add(new WCommitTransactionStatement
                     //{
@@ -138,7 +139,7 @@ namespace GraphView
             return result;
         }
 
-        private void CheckInsertEdgeValidity(string tableSchema, string sourceTableName, string columnName, string sinkTableName)
+        private void CheckInsertEdgeValidity(string tableSchema, string sourceTableName, string columnName, string sinkTableName, out bool hasReversedEdge)
         {
             using (var command = Tx.Connection.CreateCommand())
             {
@@ -148,7 +149,7 @@ namespace GraphView
                 command.Parameters.AddWithValue("@colName", columnName);
                 command.Parameters.AddWithValue("@role", WNodeTableColumnRole.Edge);
                 command.CommandText = string.Format(@"
-                    SELECT NodeColumn.Reference 
+                    SELECT NodeColumn.Reference, NodeColumn.HasReversedEdge
                     FROM [{0}] as NodeTable JOIN [{1}] AS NodeColumn 
                     ON NodeTable.TableId = NodeColumn.TableId
                     WHERE NodeTable.TableSchema = @schema and 
@@ -166,6 +167,7 @@ namespace GraphView
                     if (string.Compare(sinkTableName, sinkReference, StringComparison.OrdinalIgnoreCase) != 0)
                         throw new GraphViewException(string.Format("Mismatch sink node table reference {0}",
                             sinkTableName));
+                    hasReversedEdge = bool.Parse(reader[1].ToString());
                 }
             }
         }
@@ -194,6 +196,14 @@ namespace GraphView
             var insertCommonTableExpr = edgeSelectQueryVisitor.Invoke(node.SelectInsertSource.Select,
                 insertEdgeTempTable, sourceNameTable.TableObjectName.BaseIdentifier.Value, out sinkTable,
                 out encodeParameters);
+
+            var reversedEncodeParameters = new List<WScalarExpression>(encodeParameters.ToArray());
+            reversedEncodeParameters.RemoveAt(0);
+            reversedEncodeParameters.Insert(0,
+                                new WColumnReferenceExpression
+                                {
+                                    MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "src" })
+                                });
             
             var sinkNameTable = sinkTable as WNamedTableReference;
             if (sinkNameTable == null)
@@ -205,9 +215,8 @@ namespace GraphView
                         ? sourceNameTable.TableObjectName.SchemaIdentifier.Value
                         : "dbo";
             var tableName = sourceNameTable.TableObjectName.BaseIdentifier.Value;
-
-            CheckInsertEdgeValidity(tableSchema, tableName, edgeName, sinkNameTable.TableObjectName.BaseIdentifier.Value);
-
+            bool hasReversedEdge;
+            CheckInsertEdgeValidity(tableSchema, tableName, edgeName, sinkNameTable.TableObjectName.BaseIdentifier.Value, out hasReversedEdge);
 
 
             // Select Into TempTable
@@ -287,6 +296,24 @@ namespace GraphView
                             MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "sink"})
                         },
                         ColumnName = "source"
+                    },
+                    new WSelectScalarExpression
+                    {
+                        SelectExpr = hasReversedEdge ? 
+                            new WFunctionCall
+                            {
+                                CallTarget = new WMultiPartIdentifierCallTarget
+                                {
+                                    Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
+                                },
+                                FunctionName = new Identifier {Value = tableSchema + '_' + tableName +'_' + edgeName + '_' + "Encoder"},
+                                Parameters = reversedEncodeParameters,
+                            } :
+                            (WScalarExpression)new WValueExpression
+                            {
+                                Value = "0x"
+                            },
+                        ColumnName = "binary2"
                     },
                     new WSelectScalarExpression
                     {
@@ -406,7 +433,60 @@ namespace GraphView
                         },
                         ExpressionType = BinaryExpressionType.Add
                     }
-                }
+                },
+                new WFunctionCallSetClause()
+                {
+                    MutatorFuction = new WFunctionCall
+                    {
+                        CallTarget = new WMultiPartIdentifierCallTarget()
+                        {
+                            Identifiers = new WMultiPartIdentifier(new Identifier
+                            {
+                                Value = tableName +'_' + edgeName + "Reversed"
+                            })
+                        },
+                        FunctionName = new Identifier {Value = "WRITE"},
+                        Parameters = new WScalarExpression[]
+                        {
+                            new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier = new WMultiPartIdentifier(
+                                    new Identifier {Value = insertEdgeTableName},
+                                    new Identifier {Value = "binary2"})
+                            },
+                            new WValueExpression("null", false),
+                            new WValueExpression("null", false)
+                        }
+                    }
+                },
+                new WAssignmentSetClause()
+                {
+                    AssignmentKind = AssignmentKind.Equals,
+                    Column = new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(new Identifier
+                            {
+                                Value = tableName +'_' + edgeName + "Reversed" + "OutDegree"
+                            })
+                    },
+                    NewValue = new WBinaryExpression
+                    {
+                        FirstExpr = new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier =
+                                new WMultiPartIdentifier(new Identifier
+                                {
+                                    Value = tableName +'_' + edgeName + "Reversed" + "OutDegree"
+                                })
+                        },
+                        SecondExpr = new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "srcCnt"})
+                        },
+                        ExpressionType = BinaryExpressionType.Add
+                    }
+                },
             };
             WWhereClause whereClause = new WWhereClause
             {
@@ -451,6 +531,15 @@ namespace GraphView
                             new WColumnDefinition
                             {
                                 ColumnIdentifier = new Identifier{Value = "binary1"},
+                                DataType = new WParameterizedDataTypeReference
+                                {
+                                    Name = new WSchemaObjectName(new Identifier{Value = "varbinary"}),
+                                    Parameters = new List<Literal>{new MaxLiteral{Value = "max"}}
+                                },
+                            },
+                            new WColumnDefinition
+                            {
+                                ColumnIdentifier = new Identifier{Value = "binary2"},
                                 DataType = new WParameterizedDataTypeReference
                                 {
                                     Name = new WSchemaObjectName(new Identifier{Value = "varbinary"}),
@@ -529,13 +618,14 @@ namespace GraphView
                                             new WSchemaObjectName(new Identifier[] {new Identifier {Value = "binary1"}}),
                                     }
                                 },
-                                //new WSelectScalarExpression
-                                //{
-                                //    SelectExpr = new WColumnReferenceExpression
-                                //    {
-                                //                MultiPartIdentifier = new WSchemaObjectName(new Identifier[]{new Identifier{Value = "binary2"}}),
-                                //    }
-                                //}, 
+                                new WSelectScalarExpression
+                                {
+                                    SelectExpr = new WColumnReferenceExpression
+                                    {
+                                        MultiPartIdentifier = 
+                                            new WSchemaObjectName(new Identifier[] {new Identifier {Value = "binary2"}}),
+                                    }
+                                }, 
                                 new WSelectScalarExpression
                                 {
                                     SelectExpr = new WFunctionCall
@@ -635,7 +725,7 @@ namespace GraphView
                 res.Add(new WUpdateSpecification
                 {
                     Target = node.Target,
-                    SetClauses = setClauses,
+                    SetClauses = hasReversedEdge ? setClauses.ToList() : new List<WSetClause>{setClauses[0], setClauses[1], setClauses[2]},
                     FromClause = new WFromClause
                     {
                         TableReferences = new WTableReference[]
@@ -740,6 +830,15 @@ namespace GraphView
                             },
                             new WColumnDefinition
                             {
+                                ColumnIdentifier = new Identifier {Value = "binary2"},
+                                DataType = new WParameterizedDataTypeReference
+                                {
+                                    Name = new WSchemaObjectName(new Identifier {Value = "varbinary"}),
+                                    Parameters = new List<Literal> {new MaxLiteral {Value = "max"}}
+                                },
+                            },
+                            new WColumnDefinition
+                            {
                                 ColumnIdentifier = new Identifier {Value = "srcCnt"},
                                 DataType = new WParameterizedDataTypeReference
                                 {
@@ -818,7 +917,8 @@ namespace GraphView
                         {
                             TableObjectName = sinkNameTable.TableObjectName
                         },
-                        SetClauses = new List<WSetClause> {setClauses[1]},
+                        SetClauses = hasReversedEdge ? new List<WSetClause> {setClauses[1], setClauses[3], setClauses[4]} :
+                                                       new List<WSetClause> {setClauses[1]},
                         FromClause = new WFromClause
                         {
                             TableReferences = new WTableReference[]
@@ -898,19 +998,24 @@ namespace GraphView
         {
             const string deleteEdgeTableName = "GraphView_DeleteEdgeInternalTable";
             string deleteEdgeTempTable = "DeleteTmp_" + Path.GetRandomFileName().Replace(".", "").Substring(0, 8);
+            bool hasReversedEdge = true;
 
             // Wraps the select statement in a common table expression
             WTableReference sinkTable, sourceTable;
-            var deleteCommonTableExpr = ConstructDeleteEdgeSelect(node.SelectDeleteExpr,
-                node.EdgeColumn, deleteEdgeTempTable,
-                out sinkTable, out sourceTable);
+            var deleteCommonTableExpr = ConstructDeleteEdgeSelect(node.SelectDeleteExpr, node.EdgeColumn, deleteEdgeTempTable,
+                out sinkTable, out sourceTable, ref hasReversedEdge);
             var sourceNameTable = sourceTable as WNamedTableReference;
             if (sourceNameTable == null)
                 throw new GraphViewException("Source table of DELETE EDGE statement should be a named table reference.");
             var sinkNameTable = sinkTable as WNamedTableReference;
             if (sinkNameTable == null)
                 throw new GraphViewException("Sink table of DELETE EDGE statement should be a named table reference.");
-
+            var reversedEdgeName = sourceNameTable.TableObjectName.Identifiers.Last().Value + 
+                "_" + node.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + "Reversed";
+            //Check src & sink
+            string sourceTableName = sourceNameTable.TableObjectName.ToString();
+            string sinkTableName = sinkNameTable.TableObjectName.ToString();
+            int compare = string.CompareOrdinal(sourceTableName, sinkTableName);
 
             // Get edge select query and reversed edge select query
             WSelectQueryBlock edgeSelectQuery = new WSelectQueryBlock
@@ -967,7 +1072,10 @@ namespace GraphView
                     {
                         new WSpecialNamedTableReference
                         {
-                            TableObjectName = new WSchemaObjectName(new Identifier{Value = deleteEdgeTempTable })
+                            TableObjectName = new WSchemaObjectName(new Identifier
+                            {
+                                Value = hasReversedEdge && compare == 0 ? deleteEdgeTempTable + "_1" : deleteEdgeTempTable
+                            })
                         }
                     }
                 },
@@ -996,6 +1104,26 @@ namespace GraphView
                     },
                     new WSelectScalarExpression
                     {
+                        SelectExpr = hasReversedEdge ? 
+                            new WFunctionCall
+                            {
+                                CallTarget = new WMultiPartIdentifierCallTarget
+                                {
+                                    Identifiers = new WMultiPartIdentifier(new Identifier {Value = "dbo"})
+                                },
+                                FunctionName = new Identifier {Value = GraphViewConnection.GraphViewUdfAssemblyName + "EdgeIdEncoder"},
+                                Parameters = new List<WScalarExpression>
+                                {
+                                    new WColumnReferenceExpression
+                                    {
+                                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "edgeid"})
+                                    },
+                                },
+                            } : (WScalarExpression)new WValueExpression{Value = "0x",},
+                        ColumnName = "binary2"
+                    },
+                    new WSelectScalarExpression
+                    {
                         SelectExpr = new WFunctionCall
                         {
                             FunctionName =
@@ -1015,7 +1143,21 @@ namespace GraphView
                     },
 
                 },
-                FromClause = edgeSelectQuery.FromClause,
+                FromClause = hasReversedEdge && compare == 0 ? 
+                    new WFromClause
+                    {
+                        TableReferences = new List<WTableReference>
+                        {
+                            new WSpecialNamedTableReference
+                            {
+                                TableObjectName = new WSchemaObjectName(new Identifier
+                                {
+                                    Value = deleteEdgeTempTable + "_2",
+                                })
+                            }
+                        }
+                    } 
+                    : edgeSelectQuery.FromClause,
                 GroupByClause = new WGroupByClause
                 {
                     GroupingSpecifications = new List<WGroupingSpecification>
@@ -1028,10 +1170,6 @@ namespace GraphView
                 }
             };
 
-            //Check src & sink
-            string sourceTableName = sourceNameTable.TableObjectName.ToString();
-            string sinkTableName = sinkNameTable.TableObjectName.ToString();
-            int compare = string.CompareOrdinal(sourceTableName, sinkTableName);
             WSetClause[] setClauses = new WSetClause[]
             {
                 new WFunctionCallSetClause()
@@ -1115,7 +1253,61 @@ namespace GraphView
                         },
                         ExpressionType = BinaryExpressionType.Subtract
                     }
-                }
+                },
+                new WFunctionCallSetClause()
+                {
+                    MutatorFuction = new WFunctionCall
+                    {
+                        CallTarget = new WMultiPartIdentifierCallTarget()
+                        {
+                            Identifiers =
+                                new WMultiPartIdentifier(new Identifier
+                                {
+                                    Value = reversedEdgeName + "DeleteCol"
+                                })
+                        },
+                        FunctionName = new Identifier {Value = "WRITE"},
+                        Parameters = new WScalarExpression[]
+                        {
+                            new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier = new WMultiPartIdentifier(
+                                    new Identifier {Value = deleteEdgeTableName},
+                                    new Identifier {Value = "binary2"})
+                            },
+                            new WValueExpression("null", false),
+                            new WValueExpression("null", false)
+                        }
+                    }
+                },
+                new WAssignmentSetClause()
+                {
+                    AssignmentKind = AssignmentKind.Equals,
+                    Column = new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier(new Identifier
+                            {
+                                Value = reversedEdgeName + "OutDegree"
+                            })
+                    },
+                    NewValue = new WBinaryExpression
+                    {
+                        FirstExpr = new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier =
+                                new WMultiPartIdentifier(new Identifier
+                                {
+                                    Value = reversedEdgeName + "OutDegree"
+                                })
+                        },
+                        SecondExpr = new WColumnReferenceExpression
+                        {
+                            MultiPartIdentifier = new WMultiPartIdentifier(new Identifier {Value = "srcCnt"})
+                        },
+                        ExpressionType = BinaryExpressionType.Subtract
+                    }
+                },
                 
             };
             WWhereClause whereClause = new WWhereClause
@@ -1169,6 +1361,15 @@ namespace GraphView
                             }, 
                             new WColumnDefinition
                             {
+                                ColumnIdentifier = new Identifier{Value = "binary2"},
+                                DataType = new WParameterizedDataTypeReference
+                                {
+                                    Name = new WSchemaObjectName(new Identifier{Value = "varbinary"}),
+                                    Parameters = new List<Literal>{new MaxLiteral{Value = "max"}}
+                                },
+                            }, 
+                            new WColumnDefinition
+                            {
                                 ColumnIdentifier = new Identifier{Value = "sinkCnt"},
                                 DataType = new WParameterizedDataTypeReference
                                 {
@@ -1192,7 +1393,7 @@ namespace GraphView
                 {
                     TableObjectName = new WSchemaObjectName(new Identifier { Value = "@" + deleteEdgeTempTable })
                 };
-                res.Add(deleteCommonTableExpr);
+                res.Add(hasReversedEdge ? deleteCommonTableExpr : (WSqlStatement)deleteCommonTableExpr.WCommonTableExpressions[0]);
                 res.Add(new WInsertSpecification
                 {
                     Target = tableVar,
@@ -1237,6 +1438,14 @@ namespace GraphView
                                     {
                                         MultiPartIdentifier =
                                             new WSchemaObjectName(new Identifier[] {new Identifier {Value = "binary1"}}),
+                                    }
+                                },
+                                new WSelectScalarExpression
+                                {
+                                    SelectExpr = new WColumnReferenceExpression
+                                    {
+                                        MultiPartIdentifier =
+                                            new WSchemaObjectName(new Identifier[] {new Identifier {Value = "binary2"}}),
                                     }
                                 },
                                 //new WSelectScalarExpression
@@ -1346,7 +1555,7 @@ namespace GraphView
                     {
                         TableObjectName = sourceNameTable.TableObjectName
                     },
-                    SetClauses = setClauses,
+                    SetClauses = hasReversedEdge ? setClauses.ToList() : new List<WSetClause> { setClauses[0], setClauses[1], setClauses[2] },
                     FromClause = new WFromClause
                     {
                         TableReferences = new WTableReference[]
@@ -1451,6 +1660,15 @@ namespace GraphView
                             },
                             new WColumnDefinition
                             {
+                                ColumnIdentifier = new Identifier {Value = "binary2"},
+                                DataType = new WParameterizedDataTypeReference
+                                {
+                                    Name = new WSchemaObjectName(new Identifier {Value = "varbinary"}),
+                                    Parameters = new List<Literal> {new MaxLiteral {Value = "max"}}
+                                },
+                            },
+                            new WColumnDefinition
+                            {
                                 ColumnIdentifier = new Identifier {Value = "srcCnt"},
                                 DataType = new WParameterizedDataTypeReference
                                 {
@@ -1532,7 +1750,8 @@ namespace GraphView
                         {
                             TableObjectName = sinkNameTable.TableObjectName
                         },
-                        SetClauses = new List<WSetClause> {setClauses[1]},
+                        SetClauses = hasReversedEdge ? new List<WSetClause> {setClauses[1], setClauses[3], setClauses[4]} :
+                                                       new List<WSetClause> {setClauses[1]},
                         FromClause = new WFromClause
                         {
                             TableReferences = new WTableReference[]
@@ -1564,7 +1783,7 @@ namespace GraphView
                 {
 
                     // With expression
-                    res.Add(deleteCommonTableExpr);
+                    res.Add(deleteCommonTableExpr.WCommonTableExpressions[0]);
                     res.Add(insertStat[0]);
                     res.Add(updateStat[0]);
                     res.Add(new WSqlUnknownStatement
@@ -1573,7 +1792,7 @@ namespace GraphView
                     });
 
                     // With expression
-                    res.Add(deleteCommonTableExpr);
+                    res.Add(deleteCommonTableExpr.WCommonTableExpressions[1]);
                     res.Add(insertStat[1]);
                     res.Add(updateStat[1]);
                     res.Add(new WSqlUnknownStatement
@@ -1585,7 +1804,7 @@ namespace GraphView
                 {
 
                     // With expression
-                    res.Add(deleteCommonTableExpr);
+                    res.Add(deleteCommonTableExpr.WCommonTableExpressions[1]);
                     res.Add(insertStat[1]);
                     res.Add(updateStat[1]);
                     res.Add(new WSqlUnknownStatement
@@ -1594,7 +1813,7 @@ namespace GraphView
                     });
 
                     // With expression
-                    res.Add(deleteCommonTableExpr);
+                    res.Add(deleteCommonTableExpr.WCommonTableExpressions[0]);
                     res.Add(insertStat[0]);
                     res.Add(updateStat[0]);
                     res.Add(new WSqlUnknownStatement
@@ -1607,8 +1826,78 @@ namespace GraphView
 
         }
 
-        private WCommonTableExpression ConstructDeleteEdgeSelect(WSelectQueryBlock node, WEdgeColumnReferenceExpression edgeCol, string tempTableName
-            ,out WTableReference sinkTable, out WTableReference sourceTable)
+        private WMatchClause ConstructReversedMatchClause(WSelectQueryBlock node, WSqlTableContext context)
+        {
+            var result = new WMatchClause()
+            {
+                Paths = new List<WMatchPath>(),
+            };
+
+            foreach (var path in node.MatchClause.Paths)
+            {
+                var reversedEdgeNameList = new List<string>();
+                var nodeList = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
+                var edgeList = path.PathEdgeList;
+
+                for (var i = 0; i < edgeList.Count; ++i)
+                {
+                    var sourceTableName = edgeList[i].Item1.Identifiers.Last().Value;
+                    var edgeName = edgeList[i].Item2.MultiPartIdentifier.Identifiers.Last().Value;
+                    WTableReference sourceTable = context[sourceTableName];
+                    var sourceTableObjectName =
+                        (sourceTable as WNamedTableReference).TableObjectName.Identifiers.Last().Value;
+
+                    reversedEdgeNameList.Add(sourceTableObjectName + "_" + edgeName + "Reversed");
+                }
+
+                var sinkIdentifier = path.Tail.Identifiers.Last();
+
+                for (var i = edgeList.Count - 1; i >= 0; --i)
+                {
+                    var nodeName = new WSchemaObjectName()
+                    {
+                        Identifiers = new List<Identifier>
+                        {
+                            new Identifier()
+                            {
+                                Value = sinkIdentifier.Value,
+                                QuoteType = sinkIdentifier.QuoteType,
+                            }
+                        },
+                    };
+
+                    var originalPath = edgeList[i].Item2;
+                    var edgeCol = new WEdgeColumnReferenceExpression()
+                    {
+                        ColumnType = ColumnType.Regular,
+                        Alias = originalPath.Alias,
+                        MaxLength = originalPath.MaxLength,
+                        MinLength = originalPath.MinLength,
+                        AttributeValueDict = originalPath.AttributeValueDict,
+                        MultiPartIdentifier = new WMultiPartIdentifier(new Identifier()
+                        {
+                            QuoteType = originalPath.MultiPartIdentifier.Identifiers.Last().QuoteType,
+                            Value = reversedEdgeNameList[i],
+                        }),
+                    };
+
+                    nodeList.Add(new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(nodeName, edgeCol));
+                    sinkIdentifier = edgeList[i].Item1.Identifiers.Last();
+                }
+
+                result.Paths.Add(new WMatchPath
+                                 {
+                                     PathEdgeList = nodeList,
+                                     Tail = edgeList[0].Item1,
+                                     IsReversed = true,
+                                 });
+            }
+
+            return result;
+        }
+
+        private WMultiCommonTableExpression ConstructDeleteEdgeSelect(WSelectQueryBlock node, WEdgeColumnReferenceExpression edgeCol, string tempTableName
+            ,out WTableReference sinkTable, out WTableReference sourceTable, ref bool hasReversedEdge)
         {
             sourceTable = null;
             sinkTable = null;
@@ -1678,8 +1967,55 @@ namespace GraphView
                         {
                             new Identifier {Value = edgeCol.Alias??string.Format("{0}_{1}_{2}",sourceTableName,edgeCol.MultiPartIdentifier.Identifiers.Last().Value,sinkTableName)},
                             new Identifier {Value = "Edgeid"}
-                        }
-                        )
+                        })
+                },
+                ColumnName = "edgeid"
+            }; 
+
+            var sourceTableNameRef = sourceTable as WNamedTableReference;
+            if (sourceTableNameRef == null)
+                throw new GraphViewException("Source table of DELETE EDGE statement should be a named table reference.");
+            var sinkTableNameRef = sinkTable as WNamedTableReference;
+            if (sinkTableNameRef == null)
+                throw new GraphViewException("Sink table of DELETE EDGE statement should be a named table reference.");
+            int compare = string.CompareOrdinal(sourceTableNameRef.TableObjectName.ToString(), sinkTableNameRef.TableObjectName.ToString());
+
+            using (var command = Tx.Connection.CreateCommand())
+            {
+                command.Transaction = Tx;
+                command.Parameters.AddWithValue("@schema", WNamedTableReference.SchemaNameToTuple(sourceTableNameRef.TableObjectName).Item1);
+                command.Parameters.AddWithValue("@tableName", sourceTableNameRef.TableObjectName.Identifiers.Last().Value);
+                command.Parameters.AddWithValue("@colName", edgeCol.MultiPartIdentifier.Identifiers.Last().Value);
+                command.Parameters.AddWithValue("@role", WNodeTableColumnRole.Edge);
+                command.CommandText = string.Format(@"
+                    SELECT NodeColumn.HasReversedEdge
+                    FROM [{0}] AS NodeColumn 
+                    WHERE NodeColumn.TableSchema = @schema and 
+                          NodeColumn.TableName = @tableName and 
+                          NodeColumn.ColumnName = @colName and
+                          NodeColumn.ColumnRole = @role", 
+                    GraphViewConnection.MetadataTables[1]);
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        hasReversedEdge = bool.Parse(reader[0].ToString());
+                    }
+                }
+            }
+            
+            var reversedEdgeName = sourceTableNameRef.TableObjectName.Identifiers.Last().Value +
+                                    "_" + edgeCol.MultiPartIdentifier.Identifiers.Last().Value + "Reversed";
+            var reversedEdgeId = new WSelectScalarExpression
+            {
+                SelectExpr = new WColumnReferenceExpression
+                {
+                    MultiPartIdentifier = new WMultiPartIdentifier(
+                        new Identifier[]
+                        {
+                            new Identifier {Value = edgeCol.Alias??string.Format("{0}_{1}_{2}",sinkTableName,reversedEdgeName,sourceTableName)},
+                            new Identifier {Value = "Edgeid"}
+                        })
                 },
                 ColumnName = "edgeid"
             };
@@ -1691,27 +2027,61 @@ namespace GraphView
                 edgeId
             };
 
-            return new WCommonTableExpression
+            var reversedElements = new List<WSelectElement>
             {
-                ExpressionName = new Identifier { Value = tempTableName },
-                QueryExpression = new WSelectQueryBlock
-                {
-                    FromClause = node.FromClause,
-                    WhereClause = new WWhereClause
-                    {
-                        SearchCondition = node.WhereClause.SearchCondition
-                    },
-                    HavingClause = node.HavingClause,
-                    OrderByClause = node.OrderByClause,
-                    TopRowFilter = node.TopRowFilter,
-                    UniqueRowFilter = node.UniqueRowFilter,
-                    SelectElements = elements,
-                    MatchClause = node.MatchClause,
-                }
+                sourceNodeId,
+                sinkNodeId,
+                reversedEdgeId,
+            };
 
+            return new WMultiCommonTableExpression
+            {
+                WCommonTableExpressions = new List<WCommonTableExpression>()
+                {
+                    new WCommonTableExpression
+                    {
+                        ExpressionName = new Identifier
+                        {
+                            Value = hasReversedEdge && compare == 0 ? tempTableName + "_1" : tempTableName
+                        },
+                        QueryExpression = new WSelectQueryBlock
+                        {
+                            FromClause = node.FromClause,
+                            WhereClause = new WWhereClause
+                            {
+                                SearchCondition = node.WhereClause.SearchCondition
+                            },
+                            HavingClause = node.HavingClause,
+                            OrderByClause = node.OrderByClause,
+                            TopRowFilter = node.TopRowFilter,
+                            UniqueRowFilter = node.UniqueRowFilter,
+                            SelectElements = elements,
+                            MatchClause = node.MatchClause,
+                        }
+                    },
+                    new WCommonTableExpression
+                    {
+                        ExpressionName = new Identifier
+                        {
+                            Value = hasReversedEdge && compare == 0 ? tempTableName + "_2" : tempTableName
+                        },
+                        QueryExpression = new WSelectQueryBlock
+                        {
+                            FromClause = node.FromClause,
+                            WhereClause = hasReversedEdge ? 
+                                new WWhereClause { SearchCondition = ObjectExtensions.Copy(node.WhereClause.SearchCondition), }
+                                : node.WhereClause,
+                            HavingClause = node.HavingClause,
+                            OrderByClause = node.OrderByClause,
+                            TopRowFilter = node.TopRowFilter,
+                            UniqueRowFilter = node.UniqueRowFilter,
+                            SelectElements = hasReversedEdge ? reversedElements : elements,
+                            MatchClause = hasReversedEdge? ConstructReversedMatchClause(node, context) : node.MatchClause,
+                        }
+                    },
+                }
             };
         }
-
         private void TranslateNodeDelete(WDeleteNodeSpecification node, List<WSqlStatement> res)
         {
             var table = node.Target as WNamedTableReference;
@@ -1763,7 +2133,7 @@ namespace GraphView
             }
             WWhereClause checkDeleteNode = new WWhereClause
             {
-                SearchCondition = new WBooleanNotExpression { Expression = cond }
+                SearchCondition = new WBooleanNotExpression { Expression = new WBooleanParenthesisExpression { Expression = cond } }
             };
             if (node.WhereClause == null ||
                 node.WhereClause.SearchCondition == null)

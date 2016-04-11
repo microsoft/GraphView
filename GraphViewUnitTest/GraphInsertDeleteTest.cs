@@ -70,6 +70,16 @@ namespace GraphViewUnitTest
                 SELECT D,A,null,null,null
                 FROM EmployeeNode D, ClientNode A
                 WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'
+
+                INSERT EDGE INTO EmployeeNode.Clients
+                SELECT E,A,null,null,null
+                FROM EmployeeNode E, ClientNode A
+                WHERE E.WORKID = 'E' AND A.CLIENTID = 'A'
+                
+                INSERT EDGE INTO EmployeeNode.Clients
+                SELECT D,B,590,3.62,'CLB'
+                FROM EmployeeNode D, ClientNode B
+                WHERE D.WORKID = 'D' AND B.CLIENTID = 'B'
                 ";
                 var command = new GraphViewCommand(sqlStr, graph);
                 command.ExecuteNonQuery();
@@ -90,7 +100,12 @@ namespace GraphViewUnitTest
 
                 DELETE EDGE [D]-[Clients]->[A]
                 FROM EmployeeNode D, ClientNode A
-                WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'";
+                WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'
+
+                DELETE EDGE [E]-[Clients]->[A]
+                FROM EmployeeNode D, EmployeeNode E, ClientNode A
+                MATCH [D]-[COLLEAGUES]->[E]-[Clients as EdgeEA]->[A]
+                ";
 
                 var command = new GraphViewCommand(sqlStr, graph);
                 command.ExecuteNonQuery();

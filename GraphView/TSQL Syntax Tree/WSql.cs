@@ -193,7 +193,8 @@ namespace GraphView
             {
                 sb.AppendFormat("{0}", statementList[i].ToString(indent));
 
-                if (sb[sb.Length - 1] != ';' && !(statementList[i] is WCommonTableExpression))
+                if (sb[sb.Length - 1] != ';' && !(statementList[i] is WCommonTableExpression || 
+                                                  statementList[i] is WMultiCommonTableExpression))
                 {
                     sb.Append(';');
                 }

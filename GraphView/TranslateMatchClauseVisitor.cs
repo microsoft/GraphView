@@ -121,6 +121,9 @@ namespace GraphView
         public HashSet<string> SinkNodes;
         public List<Tuple<string, string>> EdgeColumns;
         public IList<string> ColumnAttributes;
+        public bool HasReversedEdge;
+        public bool IsReversedEdge;
+        public string EdgeUdfPrefix;
     }
 
     public class GraphMetaData
@@ -196,15 +199,15 @@ namespace GraphView
                 command.CommandText = string.Format(
                     @"
                     SELECT [TableSchema] as [Schema], [TableName] as [Name1], [ColumnName] as [Name2], 
-                           [ColumnRole] as [Role], [Reference] as [Name3], null as [EdgeViewTable], null as [ColumnId]
+                           [ColumnRole] as [Role], [Reference] as [Name3], [HasReversedEdge] as [HasRevEdge], [IsReversedEdge] as [IsRevEdge], [EdgeUdfPrefix] as [UdfPrefix], null as [EdgeViewTable], null as [ColumnId]
                     FROM [{0}]
                     UNION ALL
                     SELECT [TableSchema] as [Schema], [TableName] as [Name1], [ColumnName] as [Name2], 
-                           -1 as [Role], [AttributeName] as [Name3], null, [AttributeId]
+                           -1 as [Role], [AttributeName] as [Name3], 0, 0, null, null, [AttributeId]
                     FROM [{1}]
                     UNION ALL
                     SELECT [NV].[TableSchema] as [Schema], [NV].[TableName] as [Name1], [NT].[TableName] as [Name2], 
-                           -2 as [Role], null as [Name3], null, null
+                           -2 as [Role], null as [Name3], 0, 0, null, null, null
                     FROM 
                         [{2}] as [NV_NT_Mapping]
                         JOIN
@@ -215,7 +218,7 @@ namespace GraphView
                         ON NV_NT_Mapping.TableId = NT.TableId
                     UNION ALL
                     SELECT [EV].[TableSchema] as [Schema], [EV].[ColumnName] as [Name1], [ED].[ColumnName]as [Name2],
-                           -3 as [Role], [ED].[TableName] as [Name3], [EV].[TableName] as [EdgeViewTable], [ED].[ColumnId] as [ColumnId]
+                           -3 as [Role], [ED].[TableName] as [Name3], 0, 0, null, [EV].[TableName] as [EdgeViewTable], [ED].[ColumnId] as [ColumnId]
                     FROM 
                         [{4}] as [EV_ED_Mapping]
                         JOIN
@@ -236,6 +239,10 @@ namespace GraphView
                         string schema = reader["Schema"].ToString().ToLower(CultureInfo.CurrentCulture);
                         string name1 = reader["Name1"].ToString().ToLower(CultureInfo.CurrentCulture);
                         string name2 = reader["Name2"].ToString().ToLower(CultureInfo.CurrentCulture);
+                        bool hasRevEdge = reader["HasRevEdge"].ToString().Equals("1");
+                        bool isRevEdge = reader["IsRevEdge"].ToString().Equals("1");
+                        string udfPrefix = reader["UdfPrefix"].ToString().ToLower(CultureInfo.CurrentCulture);
+
                         // Retrieve columns of node tables
                         var tableTuple = new Tuple<string, string>(schema, name1);
                         if (tag >= 0)
@@ -260,6 +267,9 @@ namespace GraphView
                                             reader["Name3"].ToString().ToLower(CultureInfo.CurrentCulture)
                                         }
                                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                                    HasReversedEdge = hasRevEdge,
+                                    IsReversedEdge = isRevEdge,
+                                    EdgeUdfPrefix = udfPrefix,
                                 };
 
                             }
@@ -711,16 +721,32 @@ namespace GraphView
                     string edgeAlias = currentEdgeColumnRef.Alias;
                     if (edgeAlias == null)
                     {
+                        bool isReversed = path.IsReversed;
                         var currentEdgeName = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
+                        var originalSourceName =
+                            (_context[nextNodeExposedName] as WNamedTableReference).TableObjectName.BaseIdentifier.Value;
+                        string originalEdgeName = null;
+
+                        if (isReversed)
+                        {
+                            var i = currentEdgeName.IndexOf(originalSourceName, StringComparison.OrdinalIgnoreCase) + 
+                                originalSourceName.Length;
+                            originalEdgeName = currentEdgeName.Substring(i + 1,
+                                currentEdgeName.Length - "Reversed".Length - i - 1);
+                        }
+                        
                         edgeAlias = string.Format("{0}_{1}_{2}", currentNodeExposedName, currentEdgeName,
                             nextNodeExposedName);
-                        if (edgeColumnToAliasesDict.ContainsKey(currentEdgeName))
+
+                        // when current edge is a reversed edge, the key should still be the original edge name
+                        var edgeNameKey = isReversed ? originalEdgeName : currentEdgeName;
+                        if (edgeColumnToAliasesDict.ContainsKey(edgeNameKey))
                         {
-                            edgeColumnToAliasesDict[currentEdgeName].Add(edgeAlias);
+                            edgeColumnToAliasesDict[edgeNameKey].Add(edgeAlias);
                         }
                         else
                         {
-                            edgeColumnToAliasesDict.Add(currentEdgeName, new List<string> { edgeAlias });
+                            edgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { edgeAlias });
                         }
                     }
 

@@ -178,23 +178,35 @@ namespace GraphView
         {
             var edgeIdentifiers = EdgeColumn.MultiPartIdentifier.Identifiers;
             var edgeColIdentifier = edgeIdentifiers.Last();
+            var edgeColName = edgeColIdentifier.Value;
 
             HashSet<string> nodeSet;
             if (!metaData.NodeViewMapping.TryGetValue(
                 WNamedTableReference.SchemaNameToTuple(SourceNode.NodeTableObjectName), out nodeSet))
                 nodeSet = null;
-            EdgeInfo edgeInfo =
-                metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)][
-                    edgeColIdentifier.Value].EdgeInfo;
+            NodeColumns columnInfo = metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)][
+                edgeColIdentifier.Value];
+            EdgeInfo edgeInfo = columnInfo.EdgeInfo;
             List<Tuple<string, string>> edgeTuples = edgeInfo.EdgeColumns;
             var parameters = ConstructEdgeTvfParameters(nodeAlias, nodeSet, edgeTuples);
 
+            //var isRevEdge = columnInfo.IsReversedEdge;
+            //string refTableName = null, originalEdgeName = null;
+            //if (isRevEdge)
+            //{
+            //    var index = edgeColName.IndexOf('_');
+            //    refTableName = edgeColName.Substring(0, index);
+            //    originalEdgeName = edgeColName.Substring(index + 1,
+            //        edgeColName.Length - "Reversed".Length - index - 1);
+            //}
+            //var decoderSchemaName = isRevEdge ? columnInfo.RefTableSchema : BindNodeTableObjName.SchemaIdentifier.Value;
+            //var decoderTableName = isRevEdge ? refTableName : BindNodeTableObjName.BaseIdentifier.Value;
+            //var decoderEdgeName = isRevEdge ? originalEdgeName : EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
+            //var decoderStr = decoderSchemaName + "_" + decoderTableName + "_" + decoderEdgeName + "_Decoder";
+
             var decoderFunction = new Identifier
             {
-                Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-                        BindNodeTableObjName.BaseIdentifier.Value + '_' +
-                        EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                        "Decoder"
+                Value = edgeInfo.EdgeUdfPrefix + "_Decoder",
             };
             return new WSchemaObjectFunctionTableReference
             {
