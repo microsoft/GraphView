@@ -89,6 +89,11 @@ namespace GraphView
         public virtual void AcceptChildren(WSqlFragmentVisitor visitor)
         {
         }
+
+        public virtual string ToDocDbScript()
+        {
+            return "";
+        }
     }
 
     public partial class WSqlScript : WSqlFragment
