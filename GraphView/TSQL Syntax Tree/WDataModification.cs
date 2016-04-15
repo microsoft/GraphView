@@ -145,6 +145,32 @@ namespace GraphView
             if (visitor != null)
                 visitor.Visit(this);
         }
+
+        //need : Url , Key , DatabaseID , CollectionID
+        public override string ToDocDbScript(string EndpointUrl, string AuthorizationKey, string DatabaseID, string CollectionID)
+        {
+            string json_str = "{}";
+            var cnt = InsertSource as WValuesInsertSource;
+            for (int i = 0; i < Columns.Count(); i++)
+            {
+                string s1 = Columns[i].MultiPartIdentifier.Identifiers[0].Value;
+                var cnt2 = (cnt.RowValues[0].ColumnValues[i] as WValueExpression);
+                string s2 =cnt2.Value;
+                if (cnt2.SingleQuoted)
+                    s2 = '\"' + s2 + '\"';
+
+                if (s2[0] == '@') return "";
+                json_str = GraphViewJsonCommand.insert_property(json_str, s2, s1).ToString();
+            }
+            json_str = json_str.Replace("\"", "\"\"");
+            //cnt.RowValues[0].ColumnValues
+            return (DocDBScript_head(EndpointUrl, AuthorizationKey, DatabaseID, CollectionID)
+                  + "string json_str = @\"" +json_str + "\";\r\n"
+                  + "\t\t\tawait client.CreateDocumentAsync(\"dbs/\" + database.Id + \"/colls/\" + documentCollection.Id, JObject.Parse(json_str));"
+                  + DocDBScript_tail()
+                );
+
+        }
     }
 
     public partial class WInsertEdgeSpecification : WInsertSpecification

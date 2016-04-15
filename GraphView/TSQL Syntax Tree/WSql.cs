@@ -90,9 +90,112 @@ namespace GraphView
         {
         }
 
-        public virtual string ToDocDbScript()
+        public virtual string ToDocDbScript(string endpointUrl, string authorizationKey, string databaseId, string collectionId)
         {
             return "";
+        }
+
+        public string DocDBScript_head(string EndpointUrl, string AuthorizationKey, string DatabaseID, string CollectionID)
+        {
+            string ans = @"
+namespace ConsoleApplication1
+{
+    using System;
+    using System.Configuration;
+    using System.Linq;
+    using System.Threading.Tasks;
+
+    // Add DocumentDB references
+    using Microsoft.Azure.Documents;
+    using Microsoft.Azure.Documents.Client;
+    using Microsoft.Azure.Documents.Linq;
+    using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
+
+    public class Program
+    {
+        // Read the DocumentDB endpointUrl and authorizationKey from config file
+        // WARNING: Never store credentials in source code
+        // For more information, visit http://azure.microsoft.com/blog/2013/07/17/windows-azure-web-sites-how-application-strings-and-connection-strings-work/
+        private const string EndpointUrl = """ + EndpointUrl + @""";
+        private const string AuthorizationKey = """ + AuthorizationKey + @""";
+
+        public static void Main(string[] args)
+        {
+            try
+            {
+                GetStartedDemo().Wait();
+            }
+            catch (DocumentClientException de)
+            {
+                Exception baseException = de.GetBaseException();
+                Console.WriteLine(""{0} error occurred: {1}, Message: {2}"", de.StatusCode, de.Message, baseException.Message);
+            }
+            catch (Exception e)
+            {
+                Exception baseException = e.GetBaseException();
+                Console.WriteLine(""Error: {0}, Message: {1}"", e.Message, baseException.Message);
+            }
+            finally
+            {
+                Console.WriteLine(""End of demo, press any key to exit."");
+                Console.ReadKey();
+            }
+        }
+
+        private static async Task GetStartedDemo()
+        {
+            // Create a new instance of the DocumentClient
+            var client = new DocumentClient(new Uri(EndpointUrl), AuthorizationKey);
+
+            // Check to verify a database with the id=Graphview_DocDB does not exist
+            Database database =
+                client.CreateDatabaseQuery().Where(db => db.Id == """ + DatabaseID + @""").AsEnumerable().FirstOrDefault();
+
+
+            // If the database does not exist, create a new database
+            if (database == null)
+            {
+                database = await client.CreateDatabaseAsync(
+                    new Database
+                    {
+                        Id = """ + DatabaseID + @"""
+                    });
+
+                Console.WriteLine(""Created dbs"");
+            }
+
+            // Check to verify a document collection with the id=GraphOne does not exist
+            DocumentCollection documentCollection =
+                client.CreateDocumentCollectionQuery(""dbs/"" + database.Id)
+                    .Where(c => c.Id == """ + CollectionID + @""")
+                    .AsEnumerable()
+                    .FirstOrDefault();
+
+            // If the document collection does not exist, create a new collection
+            if (documentCollection == null)
+            {
+                documentCollection = await client.CreateDocumentCollectionAsync(""dbs/"" + database.Id,
+                    new DocumentCollection
+                    {
+                        Id = """ + CollectionID + @"""
+                    });
+
+                Console.WriteLine(""Created dbs/Graphview_DocDB/colls/GraphOne"");
+            }
+  
+            ";
+            return ans;
+        }
+        public string DocDBScript_tail()
+        {
+            string ans = @"
+        }
+
+    }
+}
+            ";
+            return ans;
         }
     }
 
