@@ -77,7 +77,7 @@ namespace GraphView
                 var insertNodeStatement = statements[index] as WInsertNodeSpecification;
                 if (insertNodeStatement != null)
                 {   //put the answer into a Temporary Document
-                    FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.OpenOrCreate);
+                    FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
                     StreamWriter File = new StreamWriter(aFile);
                     File.Write(insertNodeStatement.ToDocDbScript("https://graphview.documents.azure.com:443/", "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==", "Graphview_DocDB", "GraphOne"));
                     File.Close();

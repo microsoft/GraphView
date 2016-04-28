@@ -44,10 +44,16 @@ namespace GraphView
                 case JsonToken.EndObject:
                     writer.WriteEndObject();
                     break;
+                case JsonToken.Null:
+                    writer.WriteNull();
+                    break;
+                case JsonToken.Float:
+                    writer.WriteValue(reader.Value);
+                    break;
             }
         }
         //insert s2 into s1 's end
-        public static void insert_string(ref StringBuilder s1, string s2, ref JsonWriter writer)
+        public static void insert_string(ref StringBuilder s1, string s2, ref JsonWriter writer, bool isObject)
         {
             JsonTextReader reader = new JsonTextReader(new StringReader(s2));
 
@@ -56,8 +62,10 @@ namespace GraphView
                 switch (reader.TokenType)
                 {
                     case JsonToken.StartObject:
+                        if (isObject) insert_reader(ref s1, reader, ref writer);
                         break;
                     case JsonToken.EndObject:
+                        if (isObject) insert_reader(ref s1, reader, ref writer);
                         break;
                     default:
                         insert_reader(ref s1, reader, ref writer);
@@ -94,7 +102,7 @@ namespace GraphView
                             sta.Pop();
                         if (find && sta.Count == 0)
                         {
-                            insert_string(ref sb, s2, ref writer);
+                            insert_string(ref sb, s2, ref writer, false);
                             find = false;
                         }
                         writer.WriteEnd();
@@ -138,20 +146,266 @@ namespace GraphView
                     case JsonToken.PropertyName:
                         if (reader1.Value.ToString() == s3)
                             find = flag = true;
-                        Console.WriteLine(reader1.Value.ToString());
                         insert_reader(ref sb, reader1, ref writer);
                         if (find)
                         {
                             find = false;
-                            insert_string(ref sb, s2, ref writer);
+                            insert_string(ref sb, s2, ref writer, false);
                             reader1.Read();
                         }
                         break;
                     case JsonToken.EndObject:
-                        if (!flag)
+                        sta.Pop();
+                        if (!flag && sta.Count == 0)
                         {
                             writer.WritePropertyName(s3);
-                            insert_string(ref sb, s2, ref writer);
+                            insert_string(ref sb, s2, ref writer, false);
+                        }
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    case JsonToken.StartObject:
+                        sta.Push(1);
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    default:
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                }
+            }
+
+            return sb;
+        }
+
+        public static int get_reverse_edge_num(string s1)
+        {
+            bool flag = false;
+            int now = 1;
+
+
+            JsonTextReader reader1 = new JsonTextReader(new StringReader(s1));
+            while (reader1.Read())
+            {
+                switch (reader1.TokenType)
+                {
+                    case JsonToken.PropertyName:
+                        if (reader1.Value.ToString() == "_reverse_edge")
+                            flag = true;
+                        break;
+                    case JsonToken.StartArray:
+                        if (flag)
+                        {
+                            reader1.Read();
+                            if (reader1.TokenType == JsonToken.EndArray)
+                                return 1;
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value == now)
+                                now++;
+                            else
+                                return now;
+                        }
+                        break;
+                    case JsonToken.EndArray:
+                        return now;
+                        break;
+                    case JsonToken.StartObject:
+                        if (flag)
+                        {
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value == now)
+                                now++;
+                            else
+                                return now;
+                        }
+                        break;
+                }
+            }
+            return 1;
+        }
+        public static int get_edge_num(string s1)
+        {
+            bool flag = false;
+            int now = 1;
+
+
+            JsonTextReader reader1 = new JsonTextReader(new StringReader(s1));
+            while (reader1.Read())
+            {
+                switch (reader1.TokenType)
+                {
+                    case JsonToken.PropertyName:
+                        if (reader1.Value.ToString() == "_edge")
+                            flag = true;
+                        break;
+                    case JsonToken.StartArray:
+                        if (flag)
+                        {
+                            reader1.Read();
+                            if (reader1.TokenType == JsonToken.EndArray)
+                                return 1;
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value == now)
+                                now++;
+                            else
+                                return now;
+                        }
+                        break;
+                    case JsonToken.EndArray:
+                        if (flag)
+                            return now;
+                        break;
+                    case JsonToken.StartObject:
+                        if (flag)
+                        {
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value == now)
+                                now++;
+                            else
+                                return now;
+                        }
+                        break;
+                }
+            }
+            return 1;
+        }
+        public static StringBuilder insert_reverse_edge(string s1, string s2, int num)
+        {
+            bool find = false;
+            bool Write = false;
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+            JsonWriter writer = new JsonTextWriter(sw);
+
+            JsonTextReader reader1 = new JsonTextReader(new StringReader(s1));
+            while (reader1.Read())
+            {
+                switch (reader1.TokenType)
+                {
+                    case JsonToken.PropertyName:
+                        if (reader1.Value.ToString() == "_reverse_edge")
+                            find = true;
+                        insert_reader(ref sb, reader1, ref writer);
+                        //if (find)
+                        //{
+                        //    find = false;
+                        //    insert_string(ref sb, s2, ref writer);
+                        //    reader1.Read();
+                        //}
+                        break;
+                    case JsonToken.StartArray:
+                        insert_reader(ref sb, reader1, ref writer);
+                        if (find)
+                        {
+                            if (num == 1)
+                            {
+                                insert_string(ref sb, s2, ref writer, true);
+                                Write = true;
+                            }
+                        }
+                        break;
+                    case JsonToken.StartObject:
+                        if (!find || Write)
+                            insert_reader(ref sb, reader1, ref writer);
+                        else
+                        {
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value > num)
+                            {
+                                insert_string(ref sb, s2, ref writer, true);
+                                Write = true;
+                            }
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("_ID");
+                            insert_reader(ref sb, reader1, ref writer);
+                        }
+                        break;
+                    case JsonToken.EndArray:
+                        if (find)
+                        {
+                            find = false;
+                            if (!Write)
+                            {
+                                insert_string(ref sb, s2, ref writer, true);
+                                Write = true;
+                            }
+                        }
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    default:
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                }
+            }
+
+            return sb;
+        }
+        public static StringBuilder insert_edge(string s1, string s2, int num)
+        {
+            bool find = false;
+            bool Write = false;
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+            JsonWriter writer = new JsonTextWriter(sw);
+
+            JsonTextReader reader1 = new JsonTextReader(new StringReader(s1));
+            while (reader1.Read())
+            {
+                switch (reader1.TokenType)
+                {
+                    case JsonToken.PropertyName:
+                        if (reader1.Value.ToString() == "_edge")
+                            find = true;
+                        insert_reader(ref sb, reader1, ref writer);
+                        //if (find)
+                        //{
+                        //    find = false;
+                        //    insert_string(ref sb, s2, ref writer);
+                        //    reader1.Read();
+                        //}
+                        break;
+                    case JsonToken.StartArray:
+                        insert_reader(ref sb, reader1, ref writer);
+                        if (find)
+                        {
+                            if (num == 1)
+                            {
+                                insert_string(ref sb, s2, ref writer, true);
+                                Write = true;
+                            }
+                        }
+                        break;
+                    case JsonToken.StartObject:
+                        if (!find || Write)
+                            insert_reader(ref sb, reader1, ref writer);
+                        else
+                        {
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value > num)
+                            {
+                                insert_string(ref sb, s2, ref writer, true);
+                                Write = true;
+                            }
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("_ID");
+                            insert_reader(ref sb, reader1, ref writer);
+                        }
+                        break;
+                    case JsonToken.EndArray:
+                        if (find)
+                        {
+                            find = false;
+                            if (!Write)
+                            {
+                                insert_string(ref sb, s2, ref writer, true);
+                                Write = true;
+                            }
                         }
                         insert_reader(ref sb, reader1, ref writer);
                         break;

@@ -882,6 +882,98 @@ namespace GraphView
             return graph;
         }
 
+        private MatchGraph DocDB_ConstructGraph(WSelectQueryBlock query)
+        {
+            if (query == null || query.WhereClause.SearchCondition == null)
+                return null;
+
+            var unionFind = new UnionFind();
+            var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            var pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
+            var matchClause = query.MatchClause;
+            var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
+            var connectedSubGraphs = new List<ConnectedComponent>();
+            var subGrpahMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
+            var parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            unionFind.Parent = parent;
+
+            foreach( var cnt in query.SelectElements)
+            {
+                if (cnt == null) continue;
+                var cnt2 = (cnt as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
+                if (cnt2 == null) continue;
+                nodes.GetOrCreate(cnt2.MultiPartIdentifier.Identifiers[0].Value);
+            }
+
+            // Puts nodes into subgraphs
+            foreach (var node in nodes)
+            {
+                string root = "a";      // make it into one subgraph , in order to finish partial function
+                var patternNode = node.Value;
+
+                //update node's info
+                if (patternNode.NodeAlias == null)
+                {
+                    patternNode.NodeAlias = node.Key;
+                    patternNode.Neighbors = new List<MatchEdge>();
+                    patternNode.External = false;
+                    var nodeTable = _context[node.Key] as WNamedTableReference;
+                    if (nodeTable != null)
+                    {
+                        patternNode.NodeTableObjectName = nodeTable.TableObjectName;
+                        if (patternNode.NodeTableObjectName.SchemaIdentifier == null)
+                            patternNode.NodeTableObjectName.Identifiers.Insert(0, new Identifier { Value = "dbo" });
+                    }
+                }
+
+                if (!subGrpahMap.ContainsKey(root))
+                {
+                    var subGraph = new ConnectedComponent();
+                    subGraph.Nodes[node.Key] = node.Value;
+                    //foreach (var edge in node.Value.Neighbors)
+                    //{
+                    //    subGraph.Edges[edge.EdgeAlias] = edge;
+                    //}
+                    subGrpahMap[root] = subGraph;
+                    connectedSubGraphs.Add(subGraph);
+                    subGraph.IsTailNode[node.Value] = false;
+                }
+                else
+                {
+                    var subGraph = subGrpahMap[root];
+                    subGraph.Nodes[node.Key] = node.Value;
+                    //foreach (var edge in node.Value.Neighbors)
+                    //{
+                    //    subGraph.Edges[edge.EdgeAlias] = edge;
+                    //}
+                    subGraph.IsTailNode[node.Value] = false;
+                }
+            }
+
+            var graph = new MatchGraph
+            {
+                ConnectedSubGraphs = connectedSubGraphs,
+            };
+            unionFind.Parent = null;
+
+            //// When an edge in the MATCH clause is not associated with an alias, 
+            //// assigns to it a default alias: sourceAlias_EdgeColumnName_sinkAlias. 
+            //// Also rewrites edge attributes anywhere in the query that can be bound to this default alias. 
+            //var replaceTableRefVisitor = new ReplaceEdgeReferenceVisitor();
+            //replaceTableRefVisitor.Invoke(query, edgeColumnToAliasesDict);
+
+            //// Rematerializes node tables in the MATCH clause which are defined in the upper-level context
+            //// and join them with the upper-level table references.
+            //RematerilizeExtrenalNodeTableReference(query, nodes);
+
+            //// Transforms the path reference in the SELECT elements into a 
+            //// scalar function to display path information.
+            //TransformPathInfoDisplaySelectElement(query, pathDictionary);
+
+
+            return graph;
+        }
+
         /// <summary>
         /// Replaces the SELECT * expression with all visible columns
         /// </summary>
@@ -1650,7 +1742,8 @@ namespace GraphView
             CheckValidity(node);
             var graph = ConstructGraph(node);
             //ChangeSelectStarExpression(node, graph);
-
+            //if (graph == null)
+            //    graph = DocDB_ConstructGraph(node);
             if (graph != null)
             {
                 OptimizeTail(node, graph);
@@ -1686,6 +1779,44 @@ namespace GraphView
 #endif
                 node.MatchClause = null;
             }
+
+            
+            var DOCDB_graph = new MatchGraph();
+            if (graph == null)
+                DOCDB_graph = DocDB_ConstructGraph(node);
+
+            if (DOCDB_graph != null && DOCDB_graph.ConnectedSubGraphs != null) 
+            {
+                //OptimizeTail(node, DOCDB_graph);
+                AttachPredicates(node.WhereClause, DOCDB_graph);
+
+                FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
+                StreamWriter File = new StreamWriter(aFile);
+                File.Write( node.DocDBScript_head("https://graphview.documents.azure.com:443/", "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==", "Graphview_DocDB", "GraphOne") );
+
+                var query_nodes = DOCDB_graph.ConnectedSubGraphs[0].Nodes;
+                foreach(var query_node in query_nodes)
+                {
+                    string predicate = "";
+                    for(int i = 0; i < query_node.Value.Predicates.Count() ; i++)
+                    {
+                        if (i != 0) predicate += " and ";
+                        predicate += query_node.Value.Predicates[i].ToString();
+                    }
+                    predicate = predicate.Replace("\'", "\\\"");
+
+                    string ans = @"
+                        var sum_" + query_node.Key + @" = client.CreateDocumentQuery(""dbs/"" + database.Id + ""/colls/"" + documentCollection.Id,
+                        ""SELECT * "" +
+                        ""FROM " + query_node.Key +@" "" +
+                        ""WHERE "+ predicate +@""");
+                    ";
+                    File.Write(ans);
+                }
+                //File.Write(node.DocDBScript_tail());
+                File.Close();
+            }
+
 
             _context = _context.ParentContext;
         }

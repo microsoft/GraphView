@@ -50,7 +50,7 @@ namespace GraphViewUnitTest
             {
                 graph.Open();
                 const string sqlStr = @"
-                INSERT EDGE INTO EmployeeNode.Colleagues
+                /*INSERT EDGE INTO EmployeeNode.Colleagues
                 SELECT D,E
                 FROM EmployeeNode D, EmployeeNode E
                 WHERE D.WORKID = 'D' AND E.WORKID = 'E'
@@ -75,8 +75,8 @@ namespace GraphViewUnitTest
                 SELECT E,A,null,null,null
                 FROM EmployeeNode E, ClientNode A
                 WHERE E.WORKID = 'E' AND A.CLIENTID = 'A'
-                
-                INSERT EDGE INTO EmployeeNode.Clients
+                */
+                INSERT EDGE INTO EmployeeNode.Clients (AGE,NODEID,NAME)
                 SELECT D,B,590,3.62,'CLB'
                 FROM EmployeeNode D, ClientNode B
                 WHERE D.WORKID = 'D' AND B.CLIENTID = 'B'

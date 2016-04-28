@@ -221,11 +221,93 @@ namespace GraphView
                     Tx = GraphViewConnection.BeginTransaction();
                 }
 
-                // Translation
-                var modVisitor = new TranslateDataModificationVisitor(Tx);
-                modVisitor.Invoke(script);
-                var matchVisitor = new TranslateMatchClauseVisitor(Tx);
-                matchVisitor.Invoke(script);
+                foreach (var Batch in script.Batches)
+                {
+                    var DocDB_script = new WSqlScript();
+                    DocDB_script.Batches = new List<WSqlBatch>();
+                    DocDB_script.Batches.Add(new WSqlBatch());
+                    DocDB_script.Batches[0].Statements = new List<WSqlStatement>();
+
+                    foreach (var statement in Batch.Statements)
+                    {
+                        DocDB_script.Batches[0].Statements.Clear();
+                        DocDB_script.Batches[0].Statements.Add(statement);
+
+                        var insertNodeStatement = statement as WInsertNodeSpecification;
+                        if (insertNodeStatement != null)
+                        {
+                            //put the answer into a Temporary Document
+                            FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
+                            StreamWriter File = new StreamWriter(aFile);
+                            File.Write(insertNodeStatement.ToDocDbScript("https://graphview.documents.azure.com:443/", "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==", "Graphview_DocDB", "GraphOne"));
+                            File.Close();
+                            
+                        }
+
+                        var insertEdgeStatement = statement as WInsertEdgeSpecification;
+                        if (insertEdgeStatement != null)
+                        {
+                            // Translation
+                            //var modVisitor = new TranslateDataModificationVisitor(Tx);
+                            //modVisitor.Invoke(script);
+                            var matchVisitor = new TranslateMatchClauseVisitor(Tx);
+                            matchVisitor.Invoke(DocDB_script);
+
+                            string Edge = "{}";
+                            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_ID").ToString();
+                            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_reverse_ID").ToString();
+                            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_sink").ToString();
+
+                            var Columns = insertEdgeStatement.Columns;
+                            var Values = new List<WValueExpression>();
+                            var SelectQueryBlock = insertEdgeStatement.SelectInsertSource.Select as WSelectQueryBlock;
+                            var source = "";
+                            var sink = "";
+
+                            foreach (var SelectElement in SelectQueryBlock.SelectElements)
+                            {
+                                var SelectScalar = SelectElement as WSelectScalarExpression;
+                                if (SelectScalar != null)
+                                {
+                                    var ValueExpression = SelectScalar.SelectExpr as WValueExpression;
+                                    if (ValueExpression != null) 
+                                        Values.Add(ValueExpression);
+
+                                    var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
+                                    if (ColumnReferenceExpression != null)
+                                        if (source == "") source = ColumnReferenceExpression.ToString();
+                                        else sink = ColumnReferenceExpression.ToString();
+                                }
+                            }
+
+                            if(Values.Count()!=Columns.Count())
+                                throw new SyntaxErrorException("Columns and Values not match");
+
+                            for (var index = 0; index < Columns.Count(); index++)
+                            {
+                                Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(), Columns[index].ToString()).ToString();
+                            }
+                            FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Append);
+                            StreamWriter File = new StreamWriter(aFile);
+                            Edge = Edge.Replace("\"", "\"\"");
+                            File.Write( "\r\n\t\t\t\t\t\tstring Edge = @\""+ Edge + "\";\r\n" );
+                            File.Write(
+                                @"
+                            foreach(var " + source + @" in sum_" + source + @")
+                            {
+                                foreach(var " + sink + @" in sum_" + sink + @")
+                                {
+                                    INSERT_EDGE(" + source + @", " + sink + @", Edge, " + source + @".id, " + sink + @".id);
+                                }
+                            }
+                                "
+                                );
+                            File.Write(statement.DocDBScript_tail());
+                            File.Close();
+                        }
+
+                    }
+                }
 
                 Command.CommandText = script.ToString();
                 Command.Transaction = Tx;
@@ -233,14 +315,15 @@ namespace GraphView
                 // For debugging
                 OutputResult(CommandText, Command.CommandText);
 #endif
-                int res = Command.ExecuteNonQuery();
-                if (!externalTransaction)
-                {
-                    Tx.Commit();
-                    Tx.Dispose();
-                    Tx = null;
-                }
-                return res;
+                //int res = Command.ExecuteNonQuery();
+                //if (!externalTransaction)
+                //{
+                //    Tx.Commit();
+                //    Tx.Dispose();
+                //    Tx = null;
+                //}
+                //return res;
+                return 0;
             }
             catch (SqlException e)
             {

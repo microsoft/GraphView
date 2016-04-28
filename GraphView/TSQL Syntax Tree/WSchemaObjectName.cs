@@ -64,7 +64,7 @@ namespace GraphView
                 {
                     sb.Append('.');
                 }
-                sb.Append("["+Identifiers[i].Value+"]");
+                sb.Append(Identifiers[i].Value);
             }
 
             return sb.ToString();
