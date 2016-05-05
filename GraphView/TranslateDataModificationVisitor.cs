@@ -200,10 +200,10 @@ namespace GraphView
             var reversedEncodeParameters = new List<WScalarExpression>(encodeParameters.ToArray());
             reversedEncodeParameters.RemoveAt(0);
             reversedEncodeParameters.Insert(0,
-                                new WColumnReferenceExpression
-                                {
-                                    MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "src" })
-                                });
+                new WColumnReferenceExpression
+                {
+                    MultiPartIdentifier = new WMultiPartIdentifier(new Identifier { Value = "src" })
+                });
             
             var sinkNameTable = sinkTable as WNamedTableReference;
             if (sinkNameTable == null)
