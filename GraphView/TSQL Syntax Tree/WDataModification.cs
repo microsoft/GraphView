@@ -336,6 +336,11 @@ namespace GraphView
 
             return sb.ToString();
         }
+
+        public override string ToDocDbScript(string endpointUrl, string authorizationKey, string databaseId, string collectionId)
+        {
+            return base.ToDocDbScript(endpointUrl, authorizationKey, databaseId, collectionId);
+        }
     }
 
     public partial class WDeleteEdgeSpecification : WDeleteSpecification
@@ -415,6 +420,11 @@ namespace GraphView
             }
 
             return sb.ToString();
+        }
+
+        public override string ToDocDbScript(string endpointUrl, string authorizationKey, string databaseId, string collectionId)
+        {
+            return base.ToDocDbScript(endpointUrl, authorizationKey, databaseId, collectionId);
         }
     }
 
