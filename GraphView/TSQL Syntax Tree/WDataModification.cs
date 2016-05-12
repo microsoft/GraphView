@@ -216,6 +216,15 @@ namespace GraphView
             sb.Append(SelectInsertSource.ToString(indent));
             return sb.ToString();
         }
+
+        public override string ToDocDbScript(string endpointUrl, string authorizationKey, string databaseId, string collectionId)
+        {
+            var attachPredicateVisitor = new AttachWhereClauseVisitor();
+            var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
+            attachPredicateVisitor.Invoke(whereClause, graph, columnTableMapping);
+
+            return base.ToDocDbScript(endpointUrl, authorizationKey, databaseId, collectionId);
+        }
     }
 
     public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase

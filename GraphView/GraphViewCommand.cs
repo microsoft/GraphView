@@ -233,6 +233,23 @@ namespace GraphView
                         DocDB_script.Batches[0].Statements.Clear();
                         DocDB_script.Batches[0].Statements.Add(statement);
 
+                        if (statement is WInsertNodeSpecification)
+                        {
+
+                        }
+                        else if (statement is WDeleteNodeSpecification)
+                        {
+
+                        }
+                        else if (statement is WInsertEdgeSpecification)
+                        {
+
+                        }
+                        else if (statement is WDeleteEdgeSpecification)
+                        {
+
+                        }
+
                         var insertNodeStatement = statement as WInsertNodeSpecification;
                         if (insertNodeStatement != null)
                         {

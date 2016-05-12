@@ -219,6 +219,11 @@ namespace GraphView
             TranslationConnection = new SqlConnection(connectionString, sqlCredential);
         }
 
+        public GraphViewConnection(string docDbUrl, string username, string password)
+        {
+
+        }
+
         /// <summary>
         /// Starts a database transaction.
         /// </summary>
