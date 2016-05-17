@@ -27,15 +27,14 @@ namespace GraphViewUnitTest
             {
                 graph.Open();
                 const string sqlStr = @"
-                INSERT NODE INTO ClientNode (ClientId, name) VALUES ('A', 'Ava');
-                INSERT NODE INTO ClientNode (ClientId, name) VALUES ('B', 'Bob');
-                INSERT NODE INTO ClientNode (ClientId, name) VALUES ('C', 'Chad');
 
-                INSERT NODE INTO EmployeeNode (WorkId, name) VALUES ('D', 'David');
-                INSERT NODE INTO EmployeeNode (WorkId, name) VALUES ('E', 'Elisa');
-                INSERT NODE INTO EmployeeNode (WorkId, name) VALUES ('F', 'Frank');
-                INSERT NODE INTO EmployeeNode (WorkId, name) VALUES ('G', 'Gerge');
-               
+                INSERT INTO Node (ClientId, name, age, locate) VALUES ('A', 'Alice', 13, null);
+                INSERT INTO Node (ClientId, name) VALUES ('B', 'Bob');
+                INSERT INTO Node (ClientId, name) VALUES ('C', 'Chad');
+                INSERT INTO Node (WorkId, name) VALUES ('D', 'David');
+                INSERT INTO Node (WorkId, name) VALUES ('E', 'Elisa');
+                INSERT INTO Node (WorkId, name) VALUES ('F', 'Frank');
+                INSERT INTO Node (WorkId, name) VALUES ('G', 'Gerge');
                 ";
                 var command = new GraphViewCommand(sqlStr, graph);
                 command.ExecuteNonQuery();
@@ -50,36 +49,36 @@ namespace GraphViewUnitTest
             {
                 graph.Open();
                 const string sqlStr = @"
-                /*INSERT EDGE INTO EmployeeNode.Colleagues
+                INSERT INTO Edge
                 SELECT D,E
-                FROM EmployeeNode D, EmployeeNode E
-                WHERE D.WORKID = 'D' AND E.WORKID = 'E'
+                FROM Node D, Node E
+                WHERE D.WorkId = 'D' AND E.WorkId = 'E'
 
-                INSERT EDGE INTO EmployeeNode.Colleagues
+                INSERT INTO Edge
                 SELECT E,F
-                FROM EmployeeNode E, EmployeeNode F
-                WHERE E.WORKID = 'E' AND F.WORKID = 'F'
-
-                INSERT EDGE INTO EmployeeNode.Colleagues
+                FROM Node E, Node F
+                WHERE E.WorkId = 'E' AND F.WorkId = 'F'
+/*                
+                INSERT INTO Edge
                 SELECT D,F
                 FROM EmployeeNode D, EmployeeNode E, EmployeeNode F
                 MATCH [D]-[COLLEAGUES]->[E]-[COLLEAGUES]->[F]
-                WHERE D.WORKID = 'D' AND F.WORKID = 'F'
-
-                INSERT EDGE INTO EmployeeNode.Clients
+                WHERE D.WorkId = 'D' AND F.WorkId = 'F'
+*/
+                INSERT INTO Edge (AGE,NODEID,NAME)
                 SELECT D,A,null,null,null
-                FROM EmployeeNode D, ClientNode A
-                WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'
+                FROM Node D, Node A
+                WHERE D.WorkId = 'D' AND A.ClientId = 'A'
 
-                INSERT EDGE INTO EmployeeNode.Clients
+                INSERT INTO Edge (AGE,NODEID,NAME)
                 SELECT E,A,null,null,null
-                FROM EmployeeNode E, ClientNode A
-                WHERE E.WORKID = 'E' AND A.CLIENTID = 'A'
-                */
-                INSERT EDGE INTO EmployeeNode.Clients (AGE,NODEID,NAME)
+                FROM Node E, Node A
+                WHERE E.WorkId = 'E' AND A.ClientId = 'A'
+                
+                INSERT INTO Edge (AGE,NODEID,NAME)
                 SELECT D,B,590,3.62,'CLB'
-                FROM EmployeeNode D, ClientNode B
-                WHERE D.WORKID = 'D' AND B.CLIENTID = 'B'
+                FROM Node D, Node B
+                WHERE D.WorkId = 'D' AND B.ClientId = 'B'
                 ";
                 var command = new GraphViewCommand(sqlStr, graph);
                 command.ExecuteNonQuery();
@@ -100,7 +99,7 @@ namespace GraphViewUnitTest
 
                 DELETE EDGE [D]-[Clients]->[A]
                 FROM EmployeeNode D, ClientNode A
-                WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'
+                WHERE D.WorkId = 'D' AND A.ClientId = 'A'
 
                 DELETE EDGE [E]-[Clients]->[A]
                 FROM EmployeeNode D, EmployeeNode E, ClientNode A
@@ -122,7 +121,7 @@ namespace GraphViewUnitTest
                 {
                     graph.Open();
                     const string sqlStr = @"
-                        DELETE NODE FROM EmployeeNode";
+                        DELETE FROM Node";
 
                     var command = new GraphViewCommand(sqlStr, graph);
                     command.ExecuteNonQuery();
@@ -164,13 +163,14 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestInsertDeleteNode()
         {
-            TestInitialization.Init();
+            //TestInitialization.Init();
             using (var graph = new GraphViewConnection(_connStr))
             {
                 graph.Open();
                 const string sqlStr = @"
-                INSERT NODE INTO ClientNode (ClientId, name) VALUES ('lena', 'lena');
-                DELETE NODE FROM ClientNode WHERE name = 'lena';";
+                INSERT INTO Node (ClientId, name) VALUES ('lena', 'lena');
+                INSERT INTO Node (ClientId, name, age, locate) VALUES ('A', 'Alice', 13, null);
+                DELETE FROM Node";
                 var command = new GraphViewCommand(sqlStr, graph);
                 command.ExecuteNonQuery();
             }

@@ -33,7 +33,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal class MatchEdge
+    public class MatchEdge
     {
         public MatchNode SourceNode { get; set; }
         public WColumnReferenceExpression EdgeColumn { get; set; }
@@ -407,7 +407,7 @@ namespace GraphView
         }
     }
 
-    internal class MatchNode
+    public class MatchNode
     {
         public string NodeAlias { get; set; }
         public WSchemaObjectName NodeTableObjectName { get; set; }
@@ -443,7 +443,7 @@ namespace GraphView
         }
     }
 
-    internal class ConnectedComponent
+    public class ConnectedComponent
     {
         public Dictionary<string, MatchNode> Nodes { get; set; }
         public Dictionary<string, MatchEdge> Edges { get; set; }
@@ -467,7 +467,7 @@ namespace GraphView
         }
     }
 
-    internal class MatchGraph
+    public class MatchGraph
     {
         // Fully-connected components in the graph pattern 
         public IList<ConnectedComponent> ConnectedSubGraphs { get; set; }

@@ -882,15 +882,12 @@ namespace GraphView
             return graph;
         }
 
-        private MatchGraph DocDB_ConstructGraph(WSelectQueryBlock query)
+        public MatchGraph DocDB_ConstructGraph(WSelectQueryBlock query)
         {
             if (query == null || query.WhereClause.SearchCondition == null)
                 return null;
 
             var unionFind = new UnionFind();
-            var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-            var pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
-            var matchClause = query.MatchClause;
             var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
             var connectedSubGraphs = new List<ConnectedComponent>();
             var subGrpahMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);

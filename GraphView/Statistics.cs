@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class Statistics
+    public class Statistics
     {
         // Default density value used by SQL Server in column statistics
         // The density of a collection of values = 1 / (# of distinct values in the collection)

@@ -33,6 +33,7 @@ using System.Data.SqlClient;
 using System.Globalization;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 
 namespace GraphView
 {
@@ -192,7 +193,11 @@ namespace GraphView
                 throw new SqlExecutionException("An error occurred when executing the query", e);
             }
         }
-
+        Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            string s = @"D:\source\graphview\packages\Newtonsoft.Json.6.0.8\lib\net45\" + args.Name.Remove(args.Name.IndexOf(',')) + ".dll";
+            return Assembly.LoadFile(s);
+        }
         public int ExecuteNonQuery()
         {
             try
@@ -221,6 +226,12 @@ namespace GraphView
                     Tx = GraphViewConnection.BeginTransaction();
                 }
 
+                AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
+
+                var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "Graphview_DocDB", "GraphOne");
+
                 foreach (var Batch in script.Batches)
                 {
                     var DocDB_script = new WSqlScript();
@@ -233,79 +244,52 @@ namespace GraphView
                         DocDB_script.Batches[0].Statements.Clear();
                         DocDB_script.Batches[0].Statements.Add(statement);
 
-                        var insertNodeStatement = statement as WInsertNodeSpecification;
-                        if (insertNodeStatement != null)
+                        string code = "";
+
+                        if (statement is WInsertSpecification)
                         {
-                            //put the answer into a Temporary Document
-                            FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
-                            StreamWriter File = new StreamWriter(aFile);
-                            File.Write(insertNodeStatement.ToDocDbScript("https://graphview.documents.azure.com:443/", "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==", "Graphview_DocDB", "GraphOne"));
-                            File.Close();
+                            var insertSpecification = (statement as WInsertSpecification);
+
+                            if (insertSpecification.Target.ToString() == "Node")
+                            {
+                                var insertNodeStatement = new WInsertNodeSpecification(insertSpecification);
+                                code = insertNodeStatement.ToDocDbScript(DocDB_conn);
+                            }
+                            else if (insertSpecification.Target.ToString() == "Edge")
+                            {
+                                var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
+                                code = insertEdgeStatement.ToDocDbScript(DocDB_conn);
+                            }
+                        }
+                        else if (statement is WDeleteSpecification)
+                        {
+                            var deletespecification = statement as WDeleteSpecification;
                             
+                            if (deletespecification.Target.ToString() == "Node")
+                            {
+                                var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
+                                code = deleteNodeStatement.ToDocDbScript(DocDB_conn);
+                            }
                         }
+#if DEBUG
+                        //put the answer into a Temporary Document
+                        FileStream aFile =
+                            new FileStream(
+                                "D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs",
+                                FileMode.Create);
+                        StreamWriter File = new StreamWriter(aFile);
+                        File.Write(code);
+                        File.Close();
+#endif
+                        var result =
+                            GraphViewDocDBCommand.CompileFromSource(code);
+                        if (result.Errors.Count > 0)
+                            throw new GraphViewException("");
+                        Assembly ass = Assembly.LoadFrom(result.PathToAssembly);
+                        object obj = ass.CreateInstance("ConsoleApplication1.Program");
+                        MethodInfo mi = obj.GetType().GetMethod("Main");
 
-                        var insertEdgeStatement = statement as WInsertEdgeSpecification;
-                        if (insertEdgeStatement != null)
-                        {
-                            // Translation
-                            //var modVisitor = new TranslateDataModificationVisitor(Tx);
-                            //modVisitor.Invoke(script);
-                            var matchVisitor = new TranslateMatchClauseVisitor(Tx);
-                            matchVisitor.Invoke(DocDB_script);
-
-                            string Edge = "{}";
-                            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_ID").ToString();
-                            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_reverse_ID").ToString();
-                            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_sink").ToString();
-
-                            var Columns = insertEdgeStatement.Columns;
-                            var Values = new List<WValueExpression>();
-                            var SelectQueryBlock = insertEdgeStatement.SelectInsertSource.Select as WSelectQueryBlock;
-                            var source = "";
-                            var sink = "";
-
-                            foreach (var SelectElement in SelectQueryBlock.SelectElements)
-                            {
-                                var SelectScalar = SelectElement as WSelectScalarExpression;
-                                if (SelectScalar != null)
-                                {
-                                    var ValueExpression = SelectScalar.SelectExpr as WValueExpression;
-                                    if (ValueExpression != null) 
-                                        Values.Add(ValueExpression);
-
-                                    var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
-                                    if (ColumnReferenceExpression != null)
-                                        if (source == "") source = ColumnReferenceExpression.ToString();
-                                        else sink = ColumnReferenceExpression.ToString();
-                                }
-                            }
-
-                            if(Values.Count()!=Columns.Count())
-                                throw new SyntaxErrorException("Columns and Values not match");
-
-                            for (var index = 0; index < Columns.Count(); index++)
-                            {
-                                Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(), Columns[index].ToString()).ToString();
-                            }
-                            FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Append);
-                            StreamWriter File = new StreamWriter(aFile);
-                            Edge = Edge.Replace("\"", "\"\"");
-                            File.Write( "\r\n\t\t\t\t\t\tstring Edge = @\""+ Edge + "\";\r\n" );
-                            File.Write(
-                                @"
-                            foreach(var " + source + @" in sum_" + source + @")
-                            {
-                                foreach(var " + sink + @" in sum_" + sink + @")
-                                {
-                                    INSERT_EDGE(" + source + @", " + sink + @", Edge, " + source + @".id, " + sink + @".id);
-                                }
-                            }
-                                "
-                                );
-                            File.Write(statement.DocDBScript_tail());
-                            File.Close();
-                        }
-
+                        mi.Invoke(obj, null);
                     }
                 }
 

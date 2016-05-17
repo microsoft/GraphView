@@ -180,6 +180,10 @@ namespace GraphView
 
         internal const string GraphViewUdfAssemblyName = "GraphViewUDF";
 
+        public string DocDB_Url;
+        public string DocDB_Key;
+        public string DocDB_DatabaseId;
+        public string DocDB_CollectionId;
         /// <summary>
         /// Initializes a new instance of the GraphViewConnection class.
         /// </summary>
@@ -217,6 +221,22 @@ namespace GraphView
             _disposed = false;
             Conn = new SqlConnection(connectionString, sqlCredential);
             TranslationConnection = new SqlConnection(connectionString, sqlCredential);
+        }
+        /// <summary>
+        /// Initializes a new connection to DocDB.
+        /// Contains four string,
+        /// Url , Key , Database's name , Collection's name
+        /// </summary>
+        /// <param name="docdb_EndpointUrl">The Url</param>
+        /// <param name="docdb_AuthorizationKey">The Key</param>
+        /// <param name="docdb_DatabaseID">Database's name</param>
+        /// <param name="docdb_CollectionID">Collection's name</param>
+        public GraphViewConnection(string docdb_EndpointUrl, string docdb_AuthorizationKey, string docdb_DatabaseID, string docdb_CollectionID)
+        {
+            DocDB_Url = docdb_EndpointUrl;
+            DocDB_Key = docdb_AuthorizationKey;
+            DocDB_DatabaseId = docdb_DatabaseID;
+            DocDB_CollectionId = docdb_CollectionID;
         }
 
         /// <summary>
