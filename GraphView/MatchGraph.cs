@@ -414,6 +414,7 @@ namespace GraphView
         public IList<MatchEdge> Neighbors { get; set; }
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
+        public string DocDBQuery { get; set; }
         /// <summary>
         /// True, if this node alias is defined in one of the parent query contexts;
         /// false, if the node alias is defined in the current query context.

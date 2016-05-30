@@ -206,7 +206,8 @@ namespace GraphView
                         }
                         break;
                     case JsonToken.EndArray:
-                        return now;
+                        if (flag)
+                            return now;
                         break;
                     case JsonToken.StartObject:
                         if (flag)

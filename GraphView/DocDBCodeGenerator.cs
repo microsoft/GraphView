@@ -26,15 +26,40 @@ namespace GraphView
     public class DocDBSelectQuery
     {
         public string Key;
-        public string Predicate;
+        public string Selectclause;
+        public string Fromclause;
+        public string Whereclause;
+        public MatchNode Node;
 
-        public DocDBSelectQuery(string key, string predicate)
+        public DocDBSelectQuery(string key, string whereclause)
         {
             Key = key;
-            Predicate = predicate;
+            Whereclause = whereclause;
+            Node = null;
+        }
+        public DocDBSelectQuery(string key, string selectclause, string fromclause,  string whereclause, MatchNode node)
+        {
+            Key = key;
+            Selectclause = selectclause;
+            Fromclause = fromclause;
+            Whereclause = whereclause;
+            Node = node;
         }
     }
     partial class DocDBInsertEdgeTemplate
+    {
+        public string EndpointUrl { get; set; }
+        public string AuthorizationKey { get; set; }
+        public string DatabaseID { get; set; }
+        public string CollectionID { get; set; }
+        public string Edge { get; set; }
+        public string source { get; set; }
+        public string sink { get; set; }
+
+        public IList<DocDBSelectQuery> SelectQuery { get; set; }
+    }
+
+    partial class DocDBDeleteEdgeTemplate
     {
         public string EndpointUrl { get; set; }
         public string AuthorizationKey { get; set; }

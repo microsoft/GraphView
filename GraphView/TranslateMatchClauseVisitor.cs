@@ -1778,41 +1778,41 @@ namespace GraphView
             }
 
             
-            var DOCDB_graph = new MatchGraph();
-            if (graph == null)
-                DOCDB_graph = DocDB_ConstructGraph(node);
+//            var DOCDB_graph = new MatchGraph();
+//            if (graph == null)
+//                DOCDB_graph = DocDB_ConstructGraph(node);
 
-            if (DOCDB_graph != null && DOCDB_graph.ConnectedSubGraphs != null) 
-            {
-                //OptimizeTail(node, DOCDB_graph);
-                AttachPredicates(node.WhereClause, DOCDB_graph);
+//            if (DOCDB_graph != null && DOCDB_graph.ConnectedSubGraphs != null) 
+//            {
+//                //OptimizeTail(node, DOCDB_graph);
+//                AttachPredicates(node.WhereClause, DOCDB_graph);
 
-                FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
-                StreamWriter File = new StreamWriter(aFile);
-                File.Write( node.DocDBScript_head("https://graphview.documents.azure.com:443/", "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==", "Graphview_DocDB", "GraphOne") );
+//                FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
+//                StreamWriter File = new StreamWriter(aFile);
+//                File.Write( node.DocDBScript_head("https://graphview.documents.azure.com:443/", "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==", "Graphview_DocDB", "GraphOne") );
 
-                var query_nodes = DOCDB_graph.ConnectedSubGraphs[0].Nodes;
-                foreach(var query_node in query_nodes)
-                {
-                    string predicate = "";
-                    for(int i = 0; i < query_node.Value.Predicates.Count() ; i++)
-                    {
-                        if (i != 0) predicate += " and ";
-                        predicate += query_node.Value.Predicates[i].ToString();
-                    }
-                    predicate = predicate.Replace("\'", "\\\"");
+//                var query_nodes = DOCDB_graph.ConnectedSubGraphs[0].Nodes;
+//                foreach(var query_node in query_nodes)
+//                {
+//                    string predicate = "";
+//                    for(int i = 0; i < query_node.Value.Predicates.Count() ; i++)
+//                    {
+//                        if (i != 0) predicate += " and ";
+//                        predicate += query_node.Value.Predicates[i].ToString();
+//                    }
+//                    predicate = predicate.Replace("\'", "\\\"");
 
-                    string ans = @"
-                        var sum_" + query_node.Key + @" = client.CreateDocumentQuery(""dbs/"" + database.Id + ""/colls/"" + documentCollection.Id,
-                        ""SELECT * "" +
-                        ""FROM " + query_node.Key +@" "" +
-                        ""WHERE "+ predicate +@""");
-                    ";
-                    File.Write(ans);
-                }
-                //File.Write(node.DocDBScript_tail());
-                File.Close();
-            }
+//                    string ans = @"
+//                        var sum_" + query_node.Key + @" = client.CreateDocumentQuery(""dbs/"" + database.Id + ""/colls/"" + documentCollection.Id,
+//                        ""SELECT * "" +
+//                        ""FROM " + query_node.Key +@" "" +
+//                        ""WHERE "+ predicate +@""");
+//                    ";
+//                    File.Write(ans);
+//                }
+//                //File.Write(node.DocDBScript_tail());
+//                File.Close();
+//            }
 
 
             _context = _context.ParentContext;

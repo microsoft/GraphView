@@ -543,20 +543,20 @@ namespace ConsoleApplication1
 			<#
 			foreach (var query_node in SelectQuery)
             {
-				if(query_node.Predicate != "")
+				if(query_node.Whereclause != "")
 					Write(@"
 							var sum_" + query_node.Key +
 								 @" = client.CreateDocumentQuery(""dbs/"" + database.Id + ""/colls/"" + documentCollection.Id,
 							""SELECT * "" +
 							""FROM " + query_node.Key + @" "" +
-							""WHERE " + query_node.Predicate + @""");
+							""WHERE " + query_node.Whereclause + @""");
 						");
 				else
 					Write(@"
 							var sum_" + query_node.Key +
 								 @" = client.CreateDocumentQuery(""dbs/"" + database.Id + ""/colls/"" + documentCollection.Id,
 							""SELECT * "" +
-							""FROM " + query_node.Key + @" 
+							""FROM " + query_node.Key + @""");
 						");
             }
 			#>

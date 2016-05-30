@@ -38,7 +38,7 @@ namespace GraphView
     /// <summary>
     /// A query context that records the definitions of node/edge variables. 
     /// </summary>
-    internal class WSqlTableContext
+    public class WSqlTableContext
     {
         public WSqlTableContext ParentContext { get; set; }
 

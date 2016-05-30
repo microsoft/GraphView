@@ -34,6 +34,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Azure.Documents.Client;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using IsolationLevel = System.Data.IsolationLevel;
 // For debugging
@@ -184,6 +185,8 @@ namespace GraphView
         public string DocDB_Key;
         public string DocDB_DatabaseId;
         public string DocDB_CollectionId;
+        public bool DocDB_finish;
+        public DocumentClient client;
         /// <summary>
         /// Initializes a new instance of the GraphViewConnection class.
         /// </summary>
@@ -237,6 +240,11 @@ namespace GraphView
             DocDB_Key = docdb_AuthorizationKey;
             DocDB_DatabaseId = docdb_DatabaseID;
             DocDB_CollectionId = docdb_CollectionID;
+        }
+
+        public void createclient()
+        {
+            client = new DocumentClient(new Uri(DocDB_Url), DocDB_Key);
         }
 
         /// <summary>

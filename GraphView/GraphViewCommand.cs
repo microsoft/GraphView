@@ -202,16 +202,6 @@ namespace GraphView
         {
             try
             {
-                if (CommandType == CommandType.StoredProcedure)
-                {
-                    if (Tx != null)
-                    {
-                        Command.Transaction = Tx;
-                    }
-                    Command.CommandText = CommandText;
-                    return Command.ExecuteNonQuery();
-                }
-
                 var sr = new StringReader(CommandText);
                 var parser = new GraphViewParser();
                 IList<ParseError> errors;
@@ -219,18 +209,12 @@ namespace GraphView
                 if (errors.Count > 0)
                     throw new SyntaxErrorException(errors);
 
-                bool externalTransaction = true;
-                if (Tx == null)
-                {
-                    externalTransaction = false;
-                    Tx = GraphViewConnection.BeginTransaction();
-                }
-
                 AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
 
                 var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "Graphview_DocDB", "GraphOne");
+                    "GroupMatch", "GraphSix");
+                DocDB_conn.createclient();
 
                 foreach (var Batch in script.Batches)
                 {
@@ -258,19 +242,30 @@ namespace GraphView
                             else if (insertSpecification.Target.ToString() == "Edge")
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
-                                code = insertEdgeStatement.ToDocDbScript(DocDB_conn);
+                                insertEdgeStatement.RunDocDbScript(DocDB_conn);
                             }
                         }
                         else if (statement is WDeleteSpecification)
                         {
                             var deletespecification = statement as WDeleteSpecification;
-                            
-                            if (deletespecification.Target.ToString() == "Node")
+
+                            if (deletespecification is WDeleteEdgeSpecification)
+                            {
+                                var deleteEdgeStatement = deletespecification as WDeleteEdgeSpecification;
+                                code = deleteEdgeStatement.ToDocDbScript(DocDB_conn);
+                            }
+                            else if (deletespecification.Target.ToString() == "Node")
                             {
                                 var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
                                 code = deleteNodeStatement.ToDocDbScript(DocDB_conn);
                             }
                         }
+
+                        while (DocDB_conn.DocDB_finish == false)
+                        {
+                            System.Threading.Thread.Sleep(100);
+                        }
+
 #if DEBUG
                         //put the answer into a Temporary Document
                         FileStream aFile =
@@ -281,23 +276,23 @@ namespace GraphView
                         File.Write(code);
                         File.Close();
 #endif
-                        var result =
-                            GraphViewDocDBCommand.CompileFromSource(code);
-                        if (result.Errors.Count > 0)
-                            throw new GraphViewException("");
-                        Assembly ass = Assembly.LoadFrom(result.PathToAssembly);
-                        object obj = ass.CreateInstance("ConsoleApplication1.Program");
-                        MethodInfo mi = obj.GetType().GetMethod("Main");
+                        //var result =
+                        //    GraphViewDocDBCommand.CompileFromSource(code);
+                        //if (result.Errors.Count > 0)
+                        //    throw new GraphViewException("");
+                        //Assembly ass = Assembly.LoadFrom(result.PathToAssembly);
+                        //object obj = ass.CreateInstance("ConsoleApplication1.Program");
+                        //MethodInfo mi = obj.GetType().GetMethod("Main");
 
-                        mi.Invoke(obj, null);
+                        //mi.Invoke(obj, null);
                     }
                 }
 
-                Command.CommandText = script.ToString();
-                Command.Transaction = Tx;
+                //Command.CommandText = script.ToString();
+                //Command.Transaction = Tx;
 #if DEBUG
                 // For debugging
-                OutputResult(CommandText, Command.CommandText);
+                //OutputResult(CommandText, Command.CommandText);
 #endif
                 //int res = Command.ExecuteNonQuery();
                 //if (!externalTransaction)
