@@ -67,6 +67,7 @@
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BulkInsert.cs" />
     <Compile Include="CheckTableReferencingVisitor.cs" />
+    <Compile Include="DocDBSelectProcessor.cs" />
     <Compile Include="DocDBCodeGenerator.cs" />
     <Compile Include="DeployScriptTemplate.cs">
       <AutoGen>True</AutoGen>
