@@ -611,6 +611,8 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
             };
             string code = DeleteNodeGenerator.TransformText();
             
+            //QueryComponent.SelectProcessor(,,)
+
             return code;
         }
     }

@@ -257,11 +257,8 @@ namespace GraphView
             {
                 string root;
 
-                if (query.MatchClause == null)
-                        root = "A";  // put them into the same graph
-                else
-                    root = unionFind.Find(node.Key);
-
+                root = "DocDB_graph";  // put them into the same graph
+                
                 var patternNode = node.Value;
 
                 //update node's info
