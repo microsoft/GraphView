@@ -78,6 +78,16 @@ namespace GraphView
                     GraphInfo[node.Value.NodeAlias] = ++sum;
             }
             List<DocDBMatchQuery> MatchList = new List<DocDBMatchQuery>();
+            if (source != "" && sink != "")
+            {
+                MatchList.Add(new DocDBMatchQuery()
+                {
+                    source_num = GraphInfo[source],
+                    sink_num = GraphInfo[sink],
+                    source_alias = source,
+                    sink_alias = sink
+                });
+            }
             foreach (var node in NodesTable)
             {
                 int edge_source_num = GraphInfo[node.Value.NodeAlias];
@@ -112,14 +122,14 @@ namespace GraphView
                     });
                 }
             }
-            if (sink != "" || source != "")
+            if (sink != "" && source != "")
             {
                 foreach (var x in ExtractPairs(MatchList, 50))
                 {
                     yield return x;
                 }
             }
-            else
+            else 
             {
                 foreach (var x in ExtractNodes(MatchList, 50))
                 {
@@ -135,17 +145,45 @@ namespace GraphView
                 }
                 foreach (var x in SelectQueryBlock.SelectElements)
                 {
-                    var exprx = x as WSelectScalarExpression;
-                    var expr = exprx.SelectExpr as WColumnReferenceExpression;
-                    var identifier = expr.MultiPartIdentifier.Identifiers;
-                    int TargetNode = GraphInfo[identifier[0].Value];
                     string QueryRange = "";
-                    foreach (var node in GroupDic[TargetNode.ToString()])
-                        QueryRange += "\"" + node + "\",";
-                    if (QueryRange.Length > 0) QueryRange = QueryRange.Substring(0, QueryRange.Length - 1);
-                    string script = "SELECT " + expr.MultiPartIdentifier.ToString() + " AS NODEINFO " +
-                        " FROM " + identifier[0].Value +
-                        " WHERE " + identifier[0].Value + ".id IN (" + QueryRange + ")";
+                    string script = "";
+                    if (x is WSelectStarExpression)
+                    {
+                        var star = x as WSelectStarExpression;
+                        if (star.Qulifier == null) {
+                            foreach (var node in GroupDic)
+                                foreach (var id in node.Value)
+                                    QueryRange += "\"" + id + "\",";
+                            if (QueryRange.Length > 0) QueryRange = QueryRange.Substring(0, QueryRange.Length - 1);
+                            script = "SELECT NODE AS NODEINFO " +
+                                "FROM NODE" +
+                            " WHERE NODE.id IN (" + QueryRange + ")";
+                        }
+                        else
+                        {
+                            var alias = star.Qulifier.Identifiers[0].Value.ToString();
+                            int TargetNode = GraphInfo[alias];
+                            foreach (var node in GroupDic[TargetNode.ToString()])
+                                QueryRange += "\"" + node + "\",";
+                            if (QueryRange.Length > 0) QueryRange = QueryRange.Substring(0, QueryRange.Length - 1);
+                            script = "SELECT " + alias + " AS NODEINFO " +
+                                " FROM " + alias +
+                                " WHERE " + alias + ".id IN (" + QueryRange + ")";
+                        }
+                    }
+                    else
+                    {
+                        var exprx = x as WSelectScalarExpression;
+                        var expr = exprx.SelectExpr as WColumnReferenceExpression;
+                        var identifier = expr.MultiPartIdentifier.Identifiers;
+                        int TargetNode = GraphInfo[identifier[0].Value];
+                        foreach (var node in GroupDic[TargetNode.ToString()])
+                            QueryRange += "\"" + node + "\",";
+                        if (QueryRange.Length > 0) QueryRange = QueryRange.Substring(0, QueryRange.Length - 1);
+                        script = "SELECT " + expr.MultiPartIdentifier.ToString() + " AS NODEINFO " +
+                            " FROM " + identifier[0].Value +
+                            " WHERE " + identifier[0].Value + ".id IN (" + QueryRange + ")";
+                    }
                     var res = ExcuteQuery("GroupMatch", "GraphSix", script);
                     HashSet<Tuple<string, string>> result = new HashSet<Tuple<string, string>>();
                     string ResString = "";
