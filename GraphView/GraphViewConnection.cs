@@ -185,6 +185,7 @@ namespace GraphView
         public string DocDB_Key;
         public string DocDB_DatabaseId;
         public string DocDB_CollectionId;
+        public bool DocDB_finish;
         public DocumentClient client;
         /// <summary>
         /// Initializes a new instance of the GraphViewConnection class.

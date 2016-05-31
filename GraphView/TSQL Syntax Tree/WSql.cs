@@ -26,6 +26,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using GraphView.TSQL_Syntax_Tree;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
@@ -93,6 +94,10 @@ namespace GraphView
         public virtual string ToDocDbScript(GraphViewConnection docDbConnection)
         {
             return "";
+        }
+        public virtual async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        {
+
         }
 
         public string DocDBScript_head(string EndpointUrl, string AuthorizationKey, string DatabaseID, string CollectionID)

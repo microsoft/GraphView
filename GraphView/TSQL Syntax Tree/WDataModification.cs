@@ -28,10 +28,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Linq;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -182,6 +184,28 @@ namespace GraphView
             string code = InsertNodeGenerator.TransformText();
 
             return code;
+        }
+        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        {
+            string Json_str = "{}";
+            docDbConnection.DocDB_finish = false;
+
+            var cnt = InsertSource as WValuesInsertSource;
+            for (int i = 0; i < Columns.Count(); i++)
+            {
+                string s1 = Columns[i].MultiPartIdentifier.Identifiers[0].Value;
+                var cnt2 = (cnt.RowValues[0].ColumnValues[i] as WValueExpression);
+                string s2 = cnt2.Value;
+                if (cnt2.SingleQuoted)
+                    s2 = '\"' + s2 + '\"';
+                Json_str = GraphViewJsonCommand.insert_property(Json_str, s2, s1).ToString();
+            }
+            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
+            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
+
+            var obj = JObject.Parse(Json_str);
+            await docDbConnection.client.CreateDocumentAsync("dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId, obj);
+            docDbConnection.DocDB_finish = true;
         }
     }
 
@@ -363,9 +387,109 @@ namespace GraphView
 
             return code;
         }
+        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        {
+            docDbConnection.DocDB_finish = false;
+
+            var DocDB_graph = new MatchGraph();
+            var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
+            DocDB_graph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
+
+            var attachPredicateVisitor = new AttachWhereClauseVisitor();
+            var _context = new WSqlTableContext();
+            var _graphMetaData = new GraphMetaData();
+            var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
+            if (SelectQueryBlock != null)
+                attachPredicateVisitor.Invoke(SelectQueryBlock.WhereClause, DocDB_graph, columnTableMapping);
+
+            //build up Edge(string)
+            string Edge = "{}";
+            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_reverse_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_sink").ToString();
+
+            var Columns = this.Columns;
+            var Values = new List<WValueExpression>();
+            var source = "";
+            var sink = "";
+
+            foreach (var SelectElement in SelectQueryBlock.SelectElements)
+            {
+                var SelectScalar = SelectElement as WSelectScalarExpression;
+                if (SelectScalar != null)
+                {
+                    if (SelectScalar.SelectExpr is WValueExpression)
+                    {
+                        var ValueExpression = SelectScalar.SelectExpr as WValueExpression;
+                        Values.Add(ValueExpression);
+                    }
+                    else if (SelectScalar.SelectExpr is WColumnReferenceExpression)
+                    {
+                        var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
+                        if (source == "") source = ColumnReferenceExpression.ToString();
+                        else
+                        {
+                            if (sink == "")
+                                sink = ColumnReferenceExpression.ToString();
+                        }
+                    }
+                }
+            }
+            if (Values.Count() != Columns.Count())
+                throw new SyntaxErrorException("Columns and Values not match");
+
+            for (var index = 0; index < Columns.Count(); index++)
+            {
+                Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(),
+                        Columns[index].ToString()).ToString();
+            }
+
+            if (SelectQueryBlock.MatchClause != null)
+            {
+                var Find = GraphViewDocDBCommand.BuildFind(DocDB_graph, source, sink);
+                QueryComponent.init(50, docDbConnection);
+                Dictionary<string, string> map = new Dictionary<string, string>();
+                foreach (var x in QueryComponent.ExtractPairs(Find, 50))
+                    foreach (var y in x)
+                    {
+                        if (!map.ContainsKey(y.Item1))
+                        {
+                            var documents =
+                                docDbConnection.client.CreateDocumentQuery(
+                                    "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
+                                    docDbConnection.DocDB_CollectionId,
+                                    "SELECT * " +
+                                    string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item1));
+                            foreach (var doc in documents)
+                                map[y.Item1] = JsonConvert.SerializeObject(doc);
+                        }
+                        if (!map.ContainsKey(y.Item2))
+                        {
+                            var documents =
+                                docDbConnection.client.CreateDocumentQuery(
+                                    "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
+                                    docDbConnection.DocDB_CollectionId,
+                                    "SELECT * " +
+                                    string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item2));
+                            foreach (var doc in documents)
+                                map[y.Item2] = JsonConvert.SerializeObject(doc);
+                        }
+                        DocDBDocumentCommand.INSERT_EDGE(map, Edge, y.Item1, y.Item2);
+                    }
+                foreach (var cnt in map)
+                    await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
+            }
+            docDbConnection.DocDB_finish = true;
+        }
     }
 
-    public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
+    
+    
+       
+    
+
+
+public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
     {
         public WDeleteSpecification()
         {

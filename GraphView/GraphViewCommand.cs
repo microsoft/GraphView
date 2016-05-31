@@ -242,12 +242,12 @@ namespace GraphView
                             if (insertSpecification.Target.ToString() == "Node")
                             {
                                 var insertNodeStatement = new WInsertNodeSpecification(insertSpecification);
-                                code = insertNodeStatement.ToDocDbScript(DocDB_conn);
+                                insertNodeStatement.RunDocDbScript(DocDB_conn);
                             }
                             else if (insertSpecification.Target.ToString() == "Edge")
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
-                                code = insertEdgeStatement.ToDocDbScript(DocDB_conn);
+                                insertEdgeStatement.RunDocDbScript(DocDB_conn);
                             }
                         }
                         else if (statement is WDeleteSpecification)
@@ -265,6 +265,12 @@ namespace GraphView
                                 code = deleteNodeStatement.ToDocDbScript(DocDB_conn);
                             }
                         }
+
+                        while (DocDB_conn.DocDB_finish == false)
+                        {
+                            System.Threading.Thread.Sleep(100);
+                        }
+
 #if DEBUG
                         //put the answer into a Temporary Document
                         FileStream aFile =
