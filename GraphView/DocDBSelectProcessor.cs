@@ -431,7 +431,7 @@ namespace GraphView
             yield return new PathStatue(new BindingStatue(), new LinkStatue());
             yield break;
         }
-        static public IEnumerable<HashSet<Tuple<string, string>>> ExtractNodes(List<DocDBMatchQuery> ParaPacket, int PacketSize)
+        static private IEnumerable<HashSet<Tuple<string, string>>> ExtractNodes(List<DocDBMatchQuery> ParaPacket, int PacketSize)
         {
             HashSet<Tuple<string, string>> PacketSet = new HashSet<Tuple<string, string>>();
             HashSet<Tuple<string, string>> packet = new HashSet<Tuple<string, string>>();
@@ -458,7 +458,7 @@ namespace GraphView
             if (PacketCnt != 0) yield return packet;
             yield break;
         }
-        static public IEnumerable<HashSet<Tuple<string, string>>> ExtractPairs(List<DocDBMatchQuery> ParaPacket, int PacketSize)
+        static private IEnumerable<HashSet<Tuple<string, string>>> ExtractPairs(List<DocDBMatchQuery> ParaPacket, int PacketSize)
         {
             HashSet<Tuple<string, string>> packet = new HashSet<Tuple<string, string>>();
             HashSet<Tuple<string, string>> PacketSet = new HashSet<Tuple<string, string>>();
