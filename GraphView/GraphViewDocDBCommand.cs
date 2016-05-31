@@ -110,12 +110,21 @@ namespace GraphView
             unionFind.Parent = parent;
 
             foreach (var cnt in query.SelectElements)
-            {   if (cnt is WSelectStarExpression) continue;
+            {
+                if (cnt is WSelectStarExpression) continue;
                 if (cnt == null) continue;
                 var cnt2 = (cnt as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
                 if (cnt2 == null) continue;
                 nodes.GetOrCreate(cnt2.MultiPartIdentifier.Identifiers[0].Value);
             }
+            if (query.FromClause != null)
+            {
+                foreach (WTableReferenceWithAlias cnt in query.FromClause.TableReferences)
+                {
+                    nodes.GetOrCreate(cnt.Alias.Value);
+                }
+            }
+
             if (query.MatchClause != null)
             {
                 if (query.MatchClause.Paths.Count > 0)

@@ -215,6 +215,7 @@ namespace GraphView
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphSix");
                 DocDB_conn.createclient();
+                QueryComponent.init(50,DocDB_conn);
 
                 foreach (var Batch in script.Batches)
                 {

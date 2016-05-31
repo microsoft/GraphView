@@ -23,7 +23,6 @@ namespace GraphViewUnitTest
         {
 
             const string sqlStr = @"
-
                 INSERT INTO Node (name, age) VALUES ('A', 10);
                 INSERT INTO Node (name, age) VALUES ('B', 70);
                 INSERT INTO Node (name, age) VALUES ('C', 60);
@@ -41,10 +40,24 @@ namespace GraphViewUnitTest
             
             const string sqlStr = @"
                 INSERT INTO Edge (Long)
-                SELECT A,C,60
+                SELECT A,B,10
+                FROM Node A, Node B
+                WHERE A.name = 'A' AND B.name = 'B'
+
+                INSERT INTO Edge (Long)
+                SELECT A,C,30
                 FROM Node A, Node C
-                MATCH [A]-[Edge As e]->[B]-[Edge As f]->[C],[A]-[Edge As g]->[C],[A]-[Edge As h]->[D]
-                WHERE A.age < 20 AND C.age >55 AND g.Long > 55
+                WHERE A.name = 'A' AND C.name = 'C'
+
+                INSERT INTO Edge (Long)
+                SELECT A,D,40
+                FROM Node A, Node D
+                WHERE A.name = 'A' AND D.name = 'D'
+
+                INSERT INTO Edge (Long)
+                SELECT B,C,20
+                FROM Node B, Node C
+                WHERE B.name = 'B' AND C.name = 'C'
                 ";
             var command = new GraphViewCommand(sqlStr);
             command.ExecuteNonQuery();

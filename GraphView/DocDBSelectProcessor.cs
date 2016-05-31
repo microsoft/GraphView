@@ -31,7 +31,7 @@ namespace GraphView
     public class QueryComponent
     {
         //Database Client
-        public static DocumentClient client;
+        public static DocumentClient client = null;
 
         //Initialization
         static List<string> ListZero = new List<string>() { };
@@ -71,6 +71,12 @@ namespace GraphView
             Dictionary<string, int> GraphInfo = new Dictionary<string, int>();
             int sum = 0;
             var NodesTable = graph.ConnectedSubGraphs[0].Nodes;
+            var attachPredicateVisitor = new AttachWhereClauseVisitor();
+            var _context = new WSqlTableContext();
+            var _graphMetaData = new GraphMetaData();
+            var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
+            if (SelectQueryBlock != null)
+                attachPredicateVisitor.Invoke(SelectQueryBlock.WhereClause, graph, columnTableMapping);
             foreach (var node in NodesTable)
             {
                 BuildNodes(node.Value);
@@ -91,7 +97,7 @@ namespace GraphView
             foreach (var node in NodesTable)
             {
                 int edge_source_num = GraphInfo[node.Value.NodeAlias];
-                if (node.Value.Neighbors != null)
+                if (node.Value.Neighbors.Count != 0)
                 {
                     for (int i = 0; i < node.Value.Neighbors.Count(); i++)
                     {
@@ -102,8 +108,8 @@ namespace GraphView
                         {
                             source_num = edge_source_num,
                             sink_num = edge_sink_num,
-                            source_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
-                            sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\\\""),
+                            source_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
+                            sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\""),
                             source_alias = node.Value.NodeAlias,
                             sink_alias = edge_sink_alias
                         });
@@ -115,8 +121,8 @@ namespace GraphView
                     {
                         source_num = edge_source_num,
                         sink_num = edge_source_num,
-                        source_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
-                        sink_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
+                        source_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
+                        sink_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
                         source_alias = node.Value.NodeAlias,
                         sink_alias = node.Value.NodeAlias
                     });
