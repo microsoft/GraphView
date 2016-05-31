@@ -229,7 +229,12 @@ namespace GraphView
                         DocDB_script.Batches[0].Statements.Add(statement);
 
                         string code = "";
-
+                        if (statement is WSelectStatement)
+                        {
+                            var selectStatement = (statement as WSelectStatement);
+                            var res = selectStatement.Run(DocDB_conn);
+                            Console.WriteLine(res);
+                        }
                         if (statement is WInsertSpecification)
                         {
                             var insertSpecification = (statement as WInsertSpecification);
@@ -242,7 +247,7 @@ namespace GraphView
                             else if (insertSpecification.Target.ToString() == "Edge")
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
-                                insertEdgeStatement.RunDocDbScript(DocDB_conn);
+                                code = insertEdgeStatement.ToDocDbScript(DocDB_conn);
                             }
                         }
                         else if (statement is WDeleteSpecification)
@@ -260,12 +265,6 @@ namespace GraphView
                                 code = deleteNodeStatement.ToDocDbScript(DocDB_conn);
                             }
                         }
-
-                        while (DocDB_conn.DocDB_finish == false)
-                        {
-                            System.Threading.Thread.Sleep(100);
-                        }
-
 #if DEBUG
                         //put the answer into a Temporary Document
                         FileStream aFile =

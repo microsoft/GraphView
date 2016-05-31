@@ -28,12 +28,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Linq;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -153,11 +151,9 @@ namespace GraphView
         }
 
         //need : Url , Key , DatabaseID , CollectionID
-        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        public override string ToDocDbScript(GraphViewConnection docDbConnection)
         {
             string Json_str = "{}";
-            docDbConnection.DocDB_finish = false;
-
             var cnt = InsertSource as WValuesInsertSource;
             for (int i = 0; i < Columns.Count(); i++)
             {
@@ -166,14 +162,26 @@ namespace GraphView
                 string s2 =cnt2.Value;
                 if (cnt2.SingleQuoted)
                     s2 = '\"' + s2 + '\"';
+
+                if (s2[0] == '@') return "";
                 Json_str = GraphViewJsonCommand.insert_property(Json_str, s2, s1).ToString();
             }
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
+            Json_str = Json_str.Replace("\"", "\"\"");
 
-            var obj = JObject.Parse(Json_str);
-            await docDbConnection.client.CreateDocumentAsync("dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId, obj);
-            docDbConnection.DocDB_finish = true;
+            var InsertNodeGenerator = new DocDBInsertNodeTemplate()
+            {
+                json_str = Json_str,
+                EndpointUrl = docDbConnection.DocDB_Url,
+                AuthorizationKey = docDbConnection.DocDB_Key,
+                DatabaseID = docDbConnection.DocDB_DatabaseId,
+                CollectionID = docDbConnection.DocDB_CollectionId
+            };
+
+            string code = InsertNodeGenerator.TransformText();
+
+            return code;
         }
     }
 
@@ -221,11 +229,20 @@ namespace GraphView
             return sb.ToString();
         }
 
-        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        public override string ToDocDbScript(GraphViewConnection docDbConnection)
         {
             var DocDB_graph = new MatchGraph();
             var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
             DocDB_graph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
+
+            var InsertEdgeGenerator = new DocDBInsertEdgeTemplate()
+            {
+                EndpointUrl = docDbConnection.DocDB_Url,
+                AuthorizationKey = docDbConnection.DocDB_Key,
+                DatabaseID = docDbConnection.DocDB_DatabaseId,
+                CollectionID = docDbConnection.DocDB_CollectionId,
+                SelectQuery = new List<DocDBSelectQuery>()
+            };
 
             var attachPredicateVisitor = new AttachWhereClauseVisitor();
             var _context = new WSqlTableContext();
@@ -233,6 +250,22 @@ namespace GraphView
             var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
             if (SelectQueryBlock != null)
                 attachPredicateVisitor.Invoke(SelectQueryBlock.WhereClause, DocDB_graph, columnTableMapping);
+            
+            var query_nodes = DocDB_graph.ConnectedSubGraphs[0].Nodes;
+            foreach (var query_node in query_nodes)
+            {
+                string predicate = "";
+                if (query_node.Value.Predicates != null)
+                {
+                    for (int i = 0; i < query_node.Value.Predicates.Count(); i++)
+                    {
+                        if (i != 0) predicate += " and ";
+                        predicate += query_node.Value.Predicates[i].ToString();
+                    }
+                    predicate = predicate.Replace("\'", "\\\"");
+                }
+                InsertEdgeGenerator.SelectQuery.Add(new DocDBSelectQuery(query_node.Key , predicate));
+            }
 
             //build up Edge(string)
             string Edge = "{}";
@@ -276,6 +309,7 @@ namespace GraphView
                         Columns[index].ToString()).ToString();
             }
             
+
             if (SelectQueryBlock.MatchClause != null)
             {
                 var Find = GraphViewDocDBCommand.BuildFind(DocDB_graph, source, sink);
@@ -309,9 +343,25 @@ namespace GraphView
                         DocDBDocumentCommand.INSERT_EDGE(map, Edge, y.Item1, y.Item2);
                     }
                 foreach (var cnt in map)
-                    await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
+                {
+                    DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
+                }
             }
-            docDbConnection.DocDB_finish = true;
+            
+
+
+
+
+            
+
+            Edge = Edge.Replace("\"", "\"\"");
+            InsertEdgeGenerator.Edge = Edge;
+            InsertEdgeGenerator.source = source;
+            InsertEdgeGenerator.sink = sink;
+
+            string code = InsertEdgeGenerator.TransformText();
+
+            return code;
         }
     }
 

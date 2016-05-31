@@ -62,6 +62,18 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal string Run(GraphViewConnection DocDB_conn)
+        {
+            var Query = QueryExpr as WSelectQueryBlock;
+            QueryComponent.init(50, DocDB_conn);
+            string reses = "";
+            foreach (var res in QueryComponent.SelectProcessor(Query))
+            {
+                foreach (var x in res)
+                    reses += x.Item1;
+            }
+            return reses;
+        }
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)

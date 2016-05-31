@@ -69,7 +69,7 @@ namespace GraphViewUnitTest
 
                 DELETE EDGE [D]-[Edge]->[A]
                 FROM Node D, Node A
-                WHERE D.WorkId = 'D'
+                WHERE D.WorkId = 'D' AND A.ClientId = 'A'
 /*
                 DELETE EDGE [E]-[Clients]->[A]
                 FROM EmployeeNode D, EmployeeNode E, ClientNode A

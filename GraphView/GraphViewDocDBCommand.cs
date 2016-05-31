@@ -15,6 +15,24 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using System.Net;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
+using GraphView;
+using Newtonsoft.Json.Linq;
+
+using GraphView;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+
 
 
 
@@ -239,10 +257,11 @@ namespace GraphView
             {
                 string root;
 
-                /////////////////////////////////////////////////////////////
-                
-                root = "DocDB_graph";  // put them into the same graph
-                
+                if (query.MatchClause == null)
+                        root = "A";  // put them into the same graph
+                else
+                    root = unionFind.Find(node.Key);
+
                 var patternNode = node.Value;
 
                 //update node's info
@@ -459,13 +478,107 @@ namespace GraphView
                     queryOptions);
             return Result;
         }
-        static public void ShowAll()
+        static public IEnumerable<HashSet<Tuple<string, string>>> SelectProcessor(WSelectQueryBlock SelectQueryBlock, string source = "", string sink = "")
         {
-            var all = ExcuteQuery("GroupMatch", "GraphSix", "SELECT * FROM ALL");
-            foreach (var x in all) Console.Write(x);
-        }
+            var graph = new MatchGraph();
+            graph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
+            Dictionary<string, HashSet<string>> GroupDic = new Dictionary<string, HashSet<string>>();
+            Dictionary<string, int> GraphInfo = new Dictionary<string, int>();
+            int sum = 0;
+            var NodesTable = graph.ConnectedSubGraphs[0].Nodes;
+            foreach (var node in NodesTable)
+            {
+                BuildNodes(node.Value);
+                if (!GraphInfo.ContainsKey(node.Value.NodeAlias))
+                    GraphInfo[node.Value.NodeAlias] = ++sum;
+            }
+            List<DocDBMatchQuery> MatchList = new List<DocDBMatchQuery>();
+            foreach (var node in NodesTable)
+            {
+                int edge_source_num = GraphInfo[node.Value.NodeAlias];
+                if (node.Value.Neighbors != null)
+                {
+                    for (int i = 0; i < node.Value.Neighbors.Count(); i++)
+                    {
+                        var edge = node.Value.Neighbors[i];
+                        string edge_sink_alias = edge.SinkNode.NodeAlias;
+                        int edge_sink_num = GraphInfo[edge_sink_alias];
+                        MatchList.Add(new DocDBMatchQuery()
+                        {
+                            source_num = edge_source_num,
+                            sink_num = edge_sink_num,
+                            source_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
+                            sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\\\""),
+                            source_alias = node.Value.NodeAlias,
+                            sink_alias = edge_sink_alias
+                        });
+                    }
+                }
+                else
+                {
+                    MatchList.Add(new DocDBMatchQuery()
+                    {
+                        source_num = edge_source_num,
+                        sink_num = edge_source_num,
+                        source_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
+                        sink_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
+                        source_alias = node.Value.NodeAlias,
+                        sink_alias = node.Value.NodeAlias
+                    });
+                }
+            }
+            if (sink != "" || source != "")
+            {
+                foreach (var x in ExtractPairs(MatchList, 50))
+                {
+                    yield return x;
+                }
+            }
+            else
+            {
+                foreach (var x in ExtractNodes(MatchList, 50))
+                {
+                    foreach (var y in x)
+                    {
+                        if (!GroupDic.ContainsKey(y.Item2))
+                        {
+                            HashSet<string> NewHashSet = new HashSet<string>();
+                            GroupDic.Add(y.Item2, NewHashSet);
+                        }
+                        GroupDic[y.Item2].Add(y.Item1);
+                    }
+                }
+                foreach (var x in SelectQueryBlock.SelectElements)
+                {
+                    var exprx = x as WSelectScalarExpression;
+                    var expr = exprx.SelectExpr as WColumnReferenceExpression;
+                    var identifier = expr.MultiPartIdentifier.Identifiers;
+                    int TargetNode = GraphInfo[identifier[0].Value];
+                    string QueryRange = "";
+                    foreach (var node in GroupDic[TargetNode.ToString()])
+                        QueryRange += "\"" + node + "\",";
+                    if (QueryRange.Length > 0) QueryRange = QueryRange.Substring(0, QueryRange.Length - 1);
+                    string script = "SELECT " + expr.MultiPartIdentifier.ToString() + " AS NODEINFO "+
+                        " FROM " + identifier[0].Value +
+                        " WHERE " + identifier[0].Value + ".id IN (" + QueryRange + ")";
+                    var res = ExcuteQuery("GroupMatch", "GraphSix", script);
+                    HashSet<Tuple<string, string>> result = new HashSet<Tuple<string, string>>();
+                    string ResString = "";
+                    foreach (var item in res)
+                    {
+                        JToken obj = ((JObject)item)["NODEINFO"];
+                        string objstring = obj.ToString();
+                        ResString += objstring;
+                    }
+                    Tuple<string, string> ResTuple = new Tuple<string, string>(ResString, "");
+                    result.Add(ResTuple);
+                    yield return result;
+                }
 
-        static private IEnumerable<PathStatue> FindLink(int index, List<DocDBMatchQuery> ParaPacket, HashSet<int> ReverseCheckSet = null)//,string From, string where)
+            }
+            yield break;
+        }
+        static private IEnumerable<PathStatue> FindNext(int index, List<DocDBMatchQuery> ParaPacket, HashSet<int> ReverseCheckSet = null)//,string From, string where)
         {
             LinkStatue QueryResult = new LinkStatue();
             List<PathStatue> MiddleStage = new List<PathStatue>();
@@ -475,7 +588,7 @@ namespace GraphView
             int to = ParaPacket[index].sink_num;
             int from = ParaPacket[index].source_num;
             IEnumerable<PathStatue> LastStage;
-            if (index != 1) LastStage = FindLink(index - 1, ParaPacket);
+            if (index != 1) LastStage = FindNext(index - 1, ParaPacket);
             else LastStage = StageZero;
             foreach (var paths in LastStage)
             {
@@ -484,7 +597,44 @@ namespace GraphView
                     PathPacket.Add(paths);
                     PacketCnt += 1;
                 }
-                else
+                else if (to == from) {
+                    string script = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
+                    string NodeScript = script;
+                    string NodeWhereScript = " " + ParaPacket[index].source_SelectClause;
+                    NodeScript = NodeScript.Replace("node", ParaPacket[index].source_alias);
+                    if (!(NodeWhereScript.Substring(NodeWhereScript.Length - 6, 5) == "Where"))
+                    {
+                        NodeScript += NodeWhereScript;
+                    }
+                    else NodeScript += " From " + ParaPacket[index].source_alias;
+                    var start = ExcuteQuery("GroupMatch", "GraphSix", NodeScript);
+                    foreach (var item in start)
+                    {
+                        JToken NodeInfo = ((JObject)item)["NodeInfo"];
+                        var edge = NodeInfo["edge"];
+                        var id = NodeInfo["id"];
+                        var reverse = NodeInfo["reverse"];
+                        foreach (var path in PathPacket)
+                        {
+                            if (!path.Item1.ContainsKey(id.ToString()))
+                            {
+                                BindingStatue newBinding = new BindingStatue(path.Item1);
+                                newBinding.Add(id.ToString(), from);
+                                LinkStatue newLink = new LinkStatue();
+                                HashSet<string> newList;
+                                foreach (var x in path.Item2)
+                                {
+                                    newList = new HashSet<string>(x.Value);
+                                    newLink.Add(x.Key, newList);
+                                }
+                                newLink["Bindings"].Add(from.ToString());
+                                PathStatue newPath = new PathStatue(newBinding, newLink);
+                                yield return newPath;
+                            }
+                        }
+                    }
+                }
+                else 
                 {
                     string script = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
 
@@ -657,26 +807,26 @@ namespace GraphView
             yield return new PathStatue(new BindingStatue(), new LinkStatue());
             yield break;
         }
-
-        static public IEnumerable<HashSet<string>> ExtractNodes(List<DocDBMatchQuery> ParaPacket, int PacketSize)
+        static public IEnumerable<HashSet<Tuple<string,string>>> ExtractNodes(List<DocDBMatchQuery> ParaPacket, int PacketSize)
         {
-            HashSet<string> PacketSet = new HashSet<string>();
-            HashSet<string> packet = new HashSet<string>();
+            HashSet<Tuple<string, string>> PacketSet = new HashSet<Tuple<string, string>>();
+            HashSet<Tuple<string, string>> packet = new HashSet<Tuple<string, string>>();
             int PacketCnt = 0;
-            foreach (var path in FindLink(ParaPacket.Count - 1, ParaPacket))
+            foreach (var path in FindNext(ParaPacket.Count - 1, ParaPacket))
             {
                 foreach (var node in path.Item1)
                 {
+                    var NewTuple = new Tuple<string, string>(node.Key, node.Value.ToString());
                     if (PacketCnt >= PacketSize)
                     {
                         yield return packet;
-                        packet = new HashSet<string>();
+                        packet = new HashSet<Tuple<string, string>>();
                         PacketCnt = 0;
                     }
-                    if (!PacketSet.Contains(node.Key))
+                    if (!PacketSet.Contains(NewTuple))
                     {
-                        packet.Add(node.Key);
-                        PacketSet.Add(node.Key);
+                        packet.Add(NewTuple);
+                        PacketSet.Add(NewTuple);
                     }
                     PacketCnt += 1;
                 }
@@ -693,7 +843,7 @@ namespace GraphView
             int second = ParaPacket[0].sink_num;
             string FirstGroup = "";
             string SecondGroup = "";
-            foreach (var path in FindLink(ParaPacket.Count - 1, ParaPacket))
+            foreach (var path in FindNext(ParaPacket.Count - 1, ParaPacket))
             {
                 foreach (var node in path.Item1)
                 {
@@ -719,11 +869,48 @@ namespace GraphView
             if (PacketCnt != 0) yield return packet;
             yield break;
         }
-        static public void QueryTrianglePattern(List<DocDBMatchQuery> list)
+        static private void BuildNodes(MatchNode node)
         {
-            foreach (var x in ExtractPairs(list, 50))
-                foreach (var y in x)
-                    Console.WriteLine(y);
+            string Query = "From " + node.NodeAlias;
+            string Edgepredicate = "";
+            int edge_predicate_num = 0;
+            foreach (var edge in node.Neighbors)
+            {
+                if (edge.Predicates != null)
+                {
+                    if (edge_predicate_num != 0) Edgepredicate += " And ";
+                    edge_predicate_num++;
+                    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                    Edgepredicate += " (";
+                    for (int i = 0; i < edge.Predicates.Count(); i++)
+                    {
+                        if (i != 0)
+                            Edgepredicate += " And ";
+                        Edgepredicate += "(" + edge.Predicates[i] + ")";
+                    }
+                    Edgepredicate += ") ";
+                }
+            }
+            Query += " Where ";
+            if (node.Predicates != null)
+            {
+                for (int i = 0; i < node.Predicates.Count(); i++)
+                {
+                    if (i != 0)
+                        Query += " And ";
+                    Query += node.Predicates[i];
+                }
+                if (Edgepredicate != "")
+                    Query += " And ";
+            }
+
+
+            if (Edgepredicate != "")
+            {
+                Query += Edgepredicate;
+            }
+
+            node.DocDBQuery = Query;
         }
     }
 
@@ -765,7 +952,6 @@ namespace GraphView
         {
             var new_source = JObject.Parse(DocumentString);
             await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, Documentid), new_source);
-            
         }
     }
 

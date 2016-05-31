@@ -108,17 +108,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectTest()
         {
-            EdgeViewTest();
-            using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
-            {
-                conn.Open();
-                conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId, c1.ClientId, c2.ClientId, NV1.id, NV2.id
-                FROM 
-                 EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
-                MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2, e2-[ev2]->e1
-                WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
+                const string sqlStr = @"SELECT A.age,C.age
+                FROM Node A, Node C
+                MATCH [A]-[Edge As e]->[B]-[Edge As f]->[C],[A]-[Edge As g]->[C],[A]-[Edge As h]->[D]
+                WHERE A.age < 20 AND C.age >55 AND g.Long > 55";
+                var command = new GraphViewCommand(sqlStr);
+                command.ExecuteNonQuery();
             }
-        }
 
         [TestMethod]
         public void GlobalViewTest()
