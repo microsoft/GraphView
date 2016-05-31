@@ -234,6 +234,7 @@ namespace GraphView
                             var selectStatement = (statement as WSelectStatement);
                             var res = selectStatement.Run(DocDB_conn);
                             Console.WriteLine(res);
+                            DocDB_conn.DocDB_finish = true;
                         }
                         if (statement is WInsertSpecification)
                         {
