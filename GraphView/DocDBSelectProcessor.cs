@@ -32,7 +32,8 @@ namespace GraphView
     {
         //Database Client
         public static DocumentClient client = null;
-
+        public static MatchGraph graph = null;
+    
         //Initialization
         static List<string> ListZero = new List<string>() { };
         static LinkStatue LinkZero = new LinkStatue() { };
@@ -65,7 +66,6 @@ namespace GraphView
         }
         static public IEnumerable<HashSet<Tuple<string, string>>> SelectProcessor(WSelectQueryBlock SelectQueryBlock, string source = "", string sink = "")
         {
-            var graph = new MatchGraph();
             graph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
             Dictionary<string, HashSet<string>> GroupDic = new Dictionary<string, HashSet<string>>();
             Dictionary<string, int> GraphInfo = new Dictionary<string, int>();
