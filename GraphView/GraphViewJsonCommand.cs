@@ -418,5 +418,117 @@ namespace GraphView
 
             return sb;
         }
+        public static string Delete_edge(string s1, int DeleteID)
+        {
+            bool find = false;
+            bool Deleted = false;
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+            JsonWriter writer = new JsonTextWriter(sw);
+
+            JsonTextReader reader1 = new JsonTextReader(new StringReader(s1));
+            while (reader1.Read())
+            {
+                switch (reader1.TokenType)
+                {
+                    case JsonToken.PropertyName:
+                        if (reader1.Value.ToString() == "_edge")
+                            find = true;
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    case JsonToken.StartArray:
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    case JsonToken.StartObject:
+                        if (!find || Deleted)
+                            insert_reader(ref sb, reader1, ref writer);
+                        else
+                        {
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value == DeleteID)
+                            {
+                                while (reader1.TokenType != JsonToken.EndObject)
+                                    reader1.Read();
+                                Deleted = true;
+                            }
+                            else
+                            {
+                                writer.WriteStartObject();
+                                writer.WritePropertyName("_ID");
+                                insert_reader(ref sb, reader1, ref writer);
+                            }
+                        }
+                        break;
+                    case JsonToken.EndArray:
+                        if (find)
+                            find = false;
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    default:
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                }
+            }
+
+            return sb.ToString();
+        }
+        public static string Delete_reverse_edge(string s1, int DeleteID)
+        {
+            bool find = false;
+            bool Deleted = false;
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+            JsonWriter writer = new JsonTextWriter(sw);
+
+            JsonTextReader reader1 = new JsonTextReader(new StringReader(s1));
+            while (reader1.Read())
+            {
+                switch (reader1.TokenType)
+                {
+                    case JsonToken.PropertyName:
+                        if (reader1.Value.ToString() == "_reverse_edge")
+                            find = true;
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    case JsonToken.StartArray:
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    case JsonToken.StartObject:
+                        if (!find || Deleted)
+                            insert_reader(ref sb, reader1, ref writer);
+                        else
+                        {
+                            reader1.Read();
+                            reader1.Read();
+                            if ((long)reader1.Value == DeleteID)
+                            {
+                                while (reader1.TokenType != JsonToken.EndObject)
+                                    reader1.Read();
+                                Deleted = true;
+                            }
+                            else
+                            {
+                                writer.WriteStartObject();
+                                writer.WritePropertyName("_ID");
+                                insert_reader(ref sb, reader1, ref writer);
+                            }
+                        }
+                        break;
+                    case JsonToken.EndArray:
+                        if (find)
+                            find = false;
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                    default:
+                        insert_reader(ref sb, reader1, ref writer);
+                        break;
+                }
+            }
+
+            return sb.ToString();
+        }
     }
 }

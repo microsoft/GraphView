@@ -24,9 +24,11 @@ namespace GraphViewUnitTest
 
             const string sqlStr = @"
                 INSERT INTO Node (name, age) VALUES ('A', 10);
+/*
                 INSERT INTO Node (name, age) VALUES ('B', 70);
                 INSERT INTO Node (name, age) VALUES ('C', 60);
                 INSERT INTO Node (name, age) VALUES ('D', 50);
+*/
                 ";
             var command = new GraphViewCommand(sqlStr);
             command.ExecuteNonQuery();
@@ -39,16 +41,17 @@ namespace GraphViewUnitTest
             //InsertNodes();
             
             const string sqlStr = @"
+/*
                 INSERT INTO Edge (Long)
                 SELECT A,B,10
                 FROM Node A, Node B
                 WHERE A.name = 'A' AND B.name = 'B'
-
+*/
                 INSERT INTO Edge (Long)
                 SELECT A,C,30
                 FROM Node A, Node C
                 WHERE A.name = 'A' AND C.name = 'C'
-
+/*
                 INSERT INTO Edge (Long)
                 SELECT A,D,40
                 FROM Node A, Node D
@@ -58,7 +61,8 @@ namespace GraphViewUnitTest
                 SELECT B,C,20
                 FROM Node B, Node C
                 WHERE B.name = 'B' AND C.name = 'C'
-                ";
+*/
+";
             var command = new GraphViewCommand(sqlStr);
             command.ExecuteNonQuery();
             
@@ -71,19 +75,22 @@ namespace GraphViewUnitTest
             using (var graph = new GraphViewConnection(_connStr))
             {
                 graph.Open();
-                const string sqlStr = @"/*
+                const string sqlStr = @"
+/*
                 DELETE EDGE [D]-[Colleagues]->[F]
                 FROM EmployeeNode as D, EmployeeNode as E, EmployeeNode as F
                 MATCH [D]-[COLLEAGUES]->[E]-[COLLEAGUES]->[F]
 */
-                DELETE EDGE [D]-[Edge as c]->[E]
-                FROM Node D, Node E
-                WHERE c.hhh='byeworld' AND D.WorkId = 'D' AND E.WorkId = 'E'
 
+                DELETE EDGE [A]-[Edge as e]->[C]
+                FROM Node A, Node C
+                WHERE e.Long<35 AND A.name = 'A'
+
+/*
                 DELETE EDGE [D]-[Edge]->[A]
                 FROM Node D, Node A
                 WHERE D.WorkId = 'D' AND A.ClientId = 'A'
-/*
+
                 DELETE EDGE [E]-[Clients]->[A]
                 FROM EmployeeNode D, EmployeeNode E, ClientNode A
                 MATCH [D]-[COLLEAGUES]->[E]-[Clients as EdgeEA]->[A]
@@ -104,7 +111,9 @@ namespace GraphViewUnitTest
                 {
                     graph.Open();
                     const string sqlStr = @"
-                        DELETE FROM Node";
+                        DELETE FROM Node
+                        WHERE Node.name = 'A' AND Node.id = 'ad9f8e29-34c3-40a7-ae7b-91aa717b2d5f'
+";
 
                     var command = new GraphViewCommand(sqlStr, graph);
                     command.ExecuteNonQuery();

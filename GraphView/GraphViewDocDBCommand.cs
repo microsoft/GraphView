@@ -338,26 +338,29 @@ namespace GraphView
             }
         }
 
-        static void GetQuery(MatchNode node)
+        public static void GetQuery(MatchNode node)
         {
             string Query = "From " + node.NodeAlias;
             string Edgepredicate = "";
             int edge_predicate_num = 0;
-            foreach (var edge in node.Neighbors)
+            if (node.Neighbors.Count != 0)
             {
-                if (edge.Predicates != null)
+                foreach (var edge in node.Neighbors)
                 {
-                    if (edge_predicate_num != 0) Edgepredicate += " And ";
-                    edge_predicate_num++;
-                    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-                    Edgepredicate += " (";
-                    for (int i = 0; i < edge.Predicates.Count(); i++)
+                    if (edge.Predicates != null)
                     {
-                        if (i != 0)
-                            Edgepredicate += " And ";
-                        Edgepredicate += "(" + edge.Predicates[i] + ")";
+                        if (edge_predicate_num != 0) Edgepredicate += " And ";
+                        edge_predicate_num++;
+                        Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                        Edgepredicate += " (";
+                        for (int i = 0; i < edge.Predicates.Count(); i++)
+                        {
+                            if (i != 0)
+                                Edgepredicate += " And ";
+                            Edgepredicate += "(" + edge.Predicates[i] + ")";
+                        }
+                        Edgepredicate += ") ";
                     }
-                    Edgepredicate += ") ";
                 }
             }
             Query += " Where ";
@@ -373,11 +376,8 @@ namespace GraphView
                     Query += " And ";
             }
 
-
-            if (Edgepredicate != "")
-            {
-                Query += Edgepredicate;
-            }
+            
+            Query += Edgepredicate;
 
             node.DocDBQuery = Query;
         }
@@ -404,7 +404,7 @@ namespace GraphView
             foreach (var node in nodes)
             {
                 int edge_source_num = map[node.Value.NodeAlias];
-                if (node.Value.Neighbors != null)
+                if (node.Value.Neighbors.Count != 0)
                 {
                     for (int i = 0; i < node.Value.Neighbors.Count(); i++)
                     {
@@ -415,8 +415,8 @@ namespace GraphView
                                 {
                                     source_num = edge_source_num,
                                     sink_num = edge_sink_num,
-                                    source_SelectClause = node.Value.DocDBQuery.Replace("'", "\\\""),
-                                    sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\\\""),
+                                    source_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
+                                    sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\""),
                                     source_alias = node.Value.NodeAlias,
                                     sink_alias = edge_sink_alia
                                 }
