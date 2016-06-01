@@ -259,12 +259,12 @@ namespace GraphView
                             if (deletespecification is WDeleteEdgeSpecification)
                             {
                                 var deleteEdgeStatement = deletespecification as WDeleteEdgeSpecification;
-                                code = deleteEdgeStatement.ToDocDbScript(DocDB_conn);
+                                deleteEdgeStatement.RunDocDbScript(DocDB_conn);
                             }
                             else if (deletespecification.Target.ToString() == "Node")
                             {
                                 var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
-                                code = deleteNodeStatement.ToDocDbScript(DocDB_conn);
+                                deleteNodeStatement.RunDocDbScript(DocDB_conn);
                             }
                         }
 

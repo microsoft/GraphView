@@ -630,20 +630,28 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                 flag = false;
                 break;
             }
-            Selectstr = "SELECT * " + "FROM Node ";
-            if (search != null)
-                Selectstr+=@"WHERE " + search.ToString();
-            sum_DeleteNode = docDbConnection.client.CreateDocumentQuery(
-                                           "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId,
-                                           Selectstr);
-
-
-            foreach (var DeleteNode in sum_DeleteNode)
+            if (flag)
             {
-                var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", docDbConnection.DocDB_DatabaseId, docDbConnection.DocDB_CollectionId, DeleteNode.id);
-                await docDbConnection.client.DeleteDocumentAsync(docLink);
-            }
+                Selectstr = "SELECT * " + "FROM Node ";
+                if (search != null)
+                    Selectstr += @"WHERE " + search.ToString();
+                sum_DeleteNode = docDbConnection.client.CreateDocumentQuery(
+                    "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId,
+                    Selectstr);
 
+
+                foreach (var DeleteNode in sum_DeleteNode)
+                {
+                    var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", docDbConnection.DocDB_DatabaseId,
+                        docDbConnection.DocDB_CollectionId, DeleteNode.id);
+                    await docDbConnection.client.DeleteDocumentAsync(docLink);
+                }
+            }
+            else
+            {
+                docDbConnection.DocDB_finish = true;
+                throw new SyntaxErrorException("There are some edges still connect to these nodes.");
+            }
             docDbConnection.DocDB_finish = true;
         }
     }
@@ -752,8 +760,8 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
             var query_nodes = DocDB_graph.ConnectedSubGraphs[0].Nodes;
             foreach (var query_node in query_nodes)
             {
-                string DocDB_from = "Select ";
-                string DocDB_select = "From ";
+                string DocDB_select = "Select ";
+                string DocDB_from = "From ";
                 string DocDB_where = "";
                 if (query_node.Value.Predicates != null)
                 {
@@ -815,6 +823,102 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
             
 
             return "";
+        }
+
+        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        {
+            docDbConnection.DocDB_finish = false;
+
+            var SelectQueryBlock = SelectDeleteExpr as WSelectQueryBlock;
+
+            var source = "";
+            var sink = "";
+            var edgealias = SelectDeleteExpr.MatchClause.Paths[0].PathEdgeList[0].Item2.Alias;
+
+            foreach (var SelectElement in SelectQueryBlock.SelectElements)
+            {
+                var SelectScalar = SelectElement as WSelectScalarExpression;
+                if (SelectScalar != null)
+                {
+                    if (SelectScalar.SelectExpr is WColumnReferenceExpression)
+                    {
+                        var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
+                        if (source == "") source = ColumnReferenceExpression.ToString();
+                        else sink = ColumnReferenceExpression.ToString();
+                    }
+                }
+            }
+
+            string source_query = "";
+            string sink_query = "";
+
+
+
+            Dictionary<string, string> map = new Dictionary<string, string>();
+            foreach (var x in QueryComponent.SelectProcessor(SelectQueryBlock, source, sink))
+            {
+                if (source_query == "" && sink_query == "")
+                {
+                    var DocDB_graph = QueryComponent.graph;
+                    var query_nodes = DocDB_graph.ConnectedSubGraphs[0].Nodes;
+                    var source_node = query_nodes[source];
+                    var sink_node = query_nodes[sink];
+                    GraphViewDocDBCommand.GetQuery(source_node);
+                    GraphViewDocDBCommand.GetQuery(sink_node);
+                    source_query = source_node.DocDBQuery;
+                    sink_query = sink_node.DocDBQuery;
+                }
+
+                foreach (var y in x)
+                {
+                    if (!map.ContainsKey(y.Item1))
+                    {
+                        var documents =
+                            docDbConnection.client.CreateDocumentQuery(
+                                "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
+                                docDbConnection.DocDB_CollectionId,
+                                "SELECT * " +
+                                string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item1));
+                        foreach (var doc in documents)
+                            map[y.Item1] = JsonConvert.SerializeObject(doc);
+                    }
+                    if (!map.ContainsKey(y.Item2))
+                    {
+                        var documents =
+                            docDbConnection.client.CreateDocumentQuery(
+                                "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
+                                docDbConnection.DocDB_CollectionId,
+                                "SELECT * " +
+                                string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item2));
+                        foreach (var doc in documents)
+                            map[y.Item2] = JsonConvert.SerializeObject(doc);
+                    }
+
+                    if (source_query.Substring(source_query.Length - 6, 5) == "Where")
+                        source_query += string.Format(" {0}.id = \"{1}\" and {2}._sink = \"{3}\"", source, y.Item1, edgealias, y.Item2);
+                    else
+                        source_query += string.Format(" And {0}.id = \"{1}\" and {2}._sink = \"{3}\"", source, y.Item1, edgealias, y.Item2);
+
+                    string Query = string.Format("Select {0} As Doc,{1} As Edge ", source, edgealias) + source_query;
+                    
+                    var DeleteEdgeQuery =
+                    docDbConnection.client.CreateDocumentQuery(
+                        "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
+                        docDbConnection.DocDB_CollectionId, Query );
+                    foreach (var cnt in DeleteEdgeQuery)
+                    {
+                        var Edge = ((JObject) cnt)["Edge"];
+                        int ID = (int) Edge["_ID"];
+                        int reverse_ID = (int) Edge["_reverse_ID"];
+                        map[y.Item1] = GraphViewJsonCommand.Delete_edge(map[y.Item1], ID);
+                        map[y.Item2] = GraphViewJsonCommand.Delete_reverse_edge(map[y.Item2], reverse_ID);
+                    }
+                }
+            }
+            foreach (var cnt in map)
+                await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
+            
+            docDbConnection.DocDB_finish = true;
         }
     }
 
