@@ -343,7 +343,7 @@ namespace GraphView
             string Query = "From " + node.NodeAlias;
             string Edgepredicate = "";
             int edge_predicate_num = 0;
-            if (node.Neighbors != null)
+            if (node.Neighbors.Count != 0)
             {
                 foreach (var edge in node.Neighbors)
                 {
@@ -404,7 +404,7 @@ namespace GraphView
             foreach (var node in nodes)
             {
                 int edge_source_num = map[node.Value.NodeAlias];
-                if (node.Value.Neighbors != null)
+                if (node.Value.Neighbors.Count != 0)
                 {
                     for (int i = 0; i < node.Value.Neighbors.Count(); i++)
                     {

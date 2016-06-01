@@ -777,7 +777,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                     DocDB_select += query_node.Key + " As Doc " ;
                     DocDB_from += query_node.Key + " ";
 
-                    if (node.Neighbors != null)
+                    if (node.Neighbors.Count() != 0)
                     {
                         for (int i = 0; i < node.Neighbors.Count(); i++)
                         {
