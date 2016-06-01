@@ -26,20 +26,21 @@ using System.Runtime.Serialization.Formatters.Binary;
 namespace GraphView
 {
     using BindingStatue = Dictionary<string, int>;
-    using LinkStatue = Dictionary<string, HashSet<string>>;
-    using PathStatue = Tuple<Dictionary<string, int>, Dictionary<string, HashSet<string>>>;
+    using BindingList = HashSet<string>;
+    using PathStatue = Tuple<Dictionary<string, int>, HashSet<string>>;
+    using LinkStatue = Dictionary<string,HashSet<string>>;
     public class QueryComponent
     {
         //Database Client
         public static DocumentClient client = null;
-        public static MatchGraph graph = null;
+        public static MatchGraph graph;
     
         //Initialization
         static List<string> ListZero = new List<string>() { };
-        static LinkStatue LinkZero = new LinkStatue() { };
+        static BindingList LinkZero = new BindingList() { };
         static BindingStatue BindZero = new BindingStatue();
-        static PathStatue PathZero = new Tuple<BindingStatue, LinkStatue>(BindZero, LinkZero);
-        static List<PathStatue> StageZero = new List<PathStatue>() { PathZero, new PathStatue(new BindingStatue(), new LinkStatue()) };
+        static PathStatue PathZero = new Tuple<BindingStatue, BindingList>(BindZero, LinkZero);
+        static List<PathStatue> StageZero = new List<PathStatue>() { PathZero, new PathStatue(new BindingStatue(), new BindingList()) };
 
         //Configuration
         static private int MAX_PACKET_SIZE;
@@ -52,7 +53,6 @@ namespace GraphView
             MAX_PACKET_SIZE = MaxPacketsize;
             END_POINT_URL = conn.DocDB_Url;
             PRIMARY_KEY = conn.DocDB_Key;
-            LinkZero.Add("Bindings", new HashSet<string>());
             client = conn.client;
         }
         static private IQueryable<dynamic> ExcuteQuery(string database, string collection, string script)
@@ -104,7 +104,7 @@ namespace GraphView
                         var edge = node.Value.Neighbors[i];
                         string edge_sink_alias = edge.SinkNode.NodeAlias;
                         int edge_sink_num = GraphInfo[edge_sink_alias];
-                        MatchList.Add(new DocDBMatchQuery()
+                        DocDBMatchQuery NewItem = new DocDBMatchQuery()
                         {
                             source_num = edge_source_num,
                             sink_num = edge_sink_num,
@@ -112,7 +112,11 @@ namespace GraphView
                             sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\""),
                             source_alias = node.Value.NodeAlias,
                             sink_alias = edge_sink_alias
-                        });
+                        };
+                        foreach (var x in node.Value.Neighbors) {
+                            NewItem.edge_alias.Add(x.EdgeAlias);
+                                }
+                        MatchList.Add(NewItem);
                     }
                 }
                 else
@@ -207,18 +211,26 @@ namespace GraphView
             }
             yield break;
         }
-        static private IEnumerable<PathStatue> FindNext(int index, List<DocDBMatchQuery> ParaPacket, HashSet<int> ReverseCheckSet = null)//,string From, string where)
+        static private IEnumerable<PathStatue> FindNext(int index, List<DocDBMatchQuery> ParaPacket, HashSet<int> ReverseCheckSet = null)
         {
+            // Initialization
             LinkStatue QueryResult = new LinkStatue();
             List<PathStatue> MiddleStage = new List<PathStatue>();
             List<PathStatue> PathPacket = new List<PathStatue>();
-            // For start nodes which has been binded
             int PacketCnt = 0;
             int to = ParaPacket[index].sink_num;
             int from = ParaPacket[index].source_num;
+            string EdgeAlias = "";
+            foreach(var x in ParaPacket[index].edge_alias)
+            {
+                EdgeAlias += x + ',';
+            }
+            if (EdgeAlias.Length > 0) EdgeAlias = EdgeAlias.Substring(0, EdgeAlias.Length - 1);
+            else EdgeAlias = "node._edge";
             IEnumerable<PathStatue> LastStage;
             if (index != 1) LastStage = FindNext(index - 1, ParaPacket);
             else LastStage = StageZero;
+
             foreach (var paths in LastStage)
             {
                 if (PacketCnt < MAX_PACKET_SIZE && paths.Item2.Count != 0)
@@ -250,14 +262,12 @@ namespace GraphView
                             {
                                 BindingStatue newBinding = new BindingStatue(path.Item1);
                                 newBinding.Add(id.ToString(), from);
-                                LinkStatue newLink = new LinkStatue();
-                                HashSet<string> newList;
+                                BindingList newLink = new BindingList();
                                 foreach (var x in path.Item2)
                                 {
-                                    newList = new HashSet<string>(x.Value);
-                                    newLink.Add(x.Key, newList);
+                                    newLink.Add(x);
                                 }
-                                newLink["Bindings"].Add(from.ToString());
+                                newLink.Add(from.ToString());
                                 PathStatue newPath = new PathStatue(newBinding, newLink);
                                 yield return newPath;
                             }
@@ -266,7 +276,7 @@ namespace GraphView
                 }
                 else
                 {
-                    string script = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
+                    string script = "SELECT {\"id\":node.id, \"edge\":" + EdgeAlias + ", \"reverse\":node._reverse_edge} AS NodeInfo";
 
                     MiddleStage = new List<PathStatue>();
 
@@ -320,14 +330,12 @@ namespace GraphView
                                 {
                                     BindingStatue newBinding = new BindingStatue(path.Item1);
                                     newBinding.Add(id.ToString(), from);
-                                    LinkStatue newLink = new LinkStatue();
-                                    HashSet<string> newList;
+                                    BindingList newLink = new BindingList();
                                     foreach (var x in path.Item2)
                                     {
-                                        newList = new HashSet<string>(x.Value);
-                                        newLink.Add(x.Key, newList);
+                                        newLink.Add(x);
                                     }
-                                    newLink["Bindings"].Add(from.ToString());
+                                    newLink.Add(from.ToString());
                                     PathStatue newPath = new PathStatue(newBinding, newLink);
                                     MiddleStage.Add(newPath);
                                 }
@@ -388,19 +396,10 @@ namespace GraphView
                                         {
                                             if (path.Item1[id.ToString()] == to)
                                             {
-                                                LinkStatue NewLink = new LinkStatue();
+                                                BindingList NewLink = new BindingList();
                                                 foreach (var x in path.Item2)
                                                 {
-                                                    NewLink.Add(x.Key, x.Value);
-                                                }
-                                                if (NewLink.ContainsKey(BindingPair.Key))
-                                                {
-                                                    NewLink[BindingPair.Key].Add(id.ToString());
-                                                }
-                                                else
-                                                {
-                                                    HashSet<string> NewList = new HashSet<string> { id.ToString() };
-                                                    NewLink.Add(BindingPair.Key, NewList);
+                                                    NewLink.Add(x);
                                                 }
                                                 yield return new PathStatue(path.Item1, NewLink);
                                             }
@@ -409,21 +408,12 @@ namespace GraphView
                                         {
                                             BindingStatue NewBinding = new BindingStatue(path.Item1);
                                             NewBinding.Add(id.ToString(), to);
-                                            LinkStatue NewLink = new LinkStatue();
+                                            BindingList NewLink = new BindingList();
                                             foreach (var x in path.Item2)
                                             {
-                                                NewLink.Add(x.Key, x.Value);
+                                                NewLink.Add(x);
                                             }
-                                            if (NewLink.ContainsKey(BindingPair.Key))
-                                            {
-                                                NewLink[BindingPair.Key].Add(id.ToString());
-                                            }
-                                            else
-                                            {
-                                                HashSet<string> NewList = new HashSet<string> { id.ToString() };
-                                                NewLink.Add(BindingPair.Key, NewList);
-                                            }
-                                            NewLink["Bindings"].Add(to.ToString());
+                                            NewLink.Add(to.ToString());
                                             yield return new PathStatue(NewBinding, NewLink);
                                         }
                                     }
@@ -434,7 +424,7 @@ namespace GraphView
                     PacketCnt = 0;
                 }
             }
-            yield return new PathStatue(new BindingStatue(), new LinkStatue());
+            yield return new PathStatue(new BindingStatue(), new BindingList());
             yield break;
         }
         static private IEnumerable<HashSet<Tuple<string, string>>> ExtractNodes(List<DocDBMatchQuery> ParaPacket, int PacketSize)
@@ -466,8 +456,8 @@ namespace GraphView
         }
         static private IEnumerable<HashSet<Tuple<string, string>>> ExtractPairs(List<DocDBMatchQuery> ParaPacket, int PacketSize)
         {
-            HashSet<Tuple<string, string>> packet = new HashSet<Tuple<string, string>>();
             HashSet<Tuple<string, string>> PacketSet = new HashSet<Tuple<string, string>>();
+            HashSet<Tuple<string, string>> packet = new HashSet<Tuple<string, string>>();
             int PacketCnt = 0;
             int first = ParaPacket[0].source_num;
             int second = ParaPacket[0].sink_num;
