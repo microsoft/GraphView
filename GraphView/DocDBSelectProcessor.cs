@@ -91,7 +91,9 @@ namespace GraphView
                     source_num = GraphInfo[source],
                     sink_num = GraphInfo[sink],
                     source_alias = source,
-                    sink_alias = sink
+                    sink_alias = sink,
+                    edge_alias = new List<string>()
+
                 });
             }
             foreach (var node in NodesTable)
@@ -111,9 +113,11 @@ namespace GraphView
                             source_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
                             sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\""),
                             source_alias = node.Value.NodeAlias,
-                            sink_alias = edge_sink_alias
+                            sink_alias = edge_sink_alias,
+                            edge_alias = new List<string>()
                         };
                         foreach (var x in node.Value.Neighbors) {
+                            if (x.Predicates != null)
                             NewItem.edge_alias.Add(x.EdgeAlias);
                                 }
                         MatchList.Add(NewItem);
@@ -128,7 +132,9 @@ namespace GraphView
                         source_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
                         sink_SelectClause = node.Value.DocDBQuery.Replace("'", "\""),
                         source_alias = node.Value.NodeAlias,
-                        sink_alias = node.Value.NodeAlias
+                        sink_alias = node.Value.NodeAlias,
+                        edge_alias = new List<string>()
+
                     });
                 }
             }
@@ -355,7 +361,7 @@ namespace GraphView
                     foreach (var item in LinkRes)
                     {
                         JToken NodeInfo = ((JObject)item)["NodeInfo"];
-                        var edge = NodeInfo["edge"];
+                        var edge = ((JObject)NodeInfo)["edge"];
                         var id = NodeInfo["id"];
                         var reverse = NodeInfo["reverse"];
                         foreach (var y in edge)
