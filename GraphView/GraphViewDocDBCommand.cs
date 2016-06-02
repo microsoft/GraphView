@@ -15,23 +15,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.Net;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Newtonsoft.Json;
-using GraphView;
-using Newtonsoft.Json.Linq;
-
-using GraphView;
-using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 
 
 
@@ -96,8 +79,8 @@ namespace GraphView
         }
         public static MatchGraph DocDB_ConstructGraph(WSelectQueryBlock query)
         {
-            //if (query == null || query.WhereClause.SearchCondition == null)
-                //return null;
+            if (query == null)
+                return null;
 
             var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
@@ -347,11 +330,11 @@ namespace GraphView
             {
                 foreach (var edge in node.Neighbors)
                 {
+                    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
                     if (edge.Predicates != null)
                     {
                         if (edge_predicate_num != 0) Edgepredicate += " And ";
                         edge_predicate_num++;
-                        Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
                         Edgepredicate += " (";
                         for (int i = 0; i < edge.Predicates.Count(); i++)
                         {
@@ -361,6 +344,10 @@ namespace GraphView
                         }
                         Edgepredicate += ") ";
                     }
+                    //else if(edge.EdgeAlias == node.DeleteEdge)
+                    //{
+                    //    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                    //}
                 }
             }
             Query += " Where ";

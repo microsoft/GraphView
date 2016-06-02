@@ -41,12 +41,12 @@ namespace GraphViewUnitTest
             //InsertNodes();
             
             const string sqlStr = @"
-/*
+
                 INSERT INTO Edge (Long)
                 SELECT A,B,10
                 FROM Node A, Node B
                 WHERE A.name = 'A' AND B.name = 'B'
-*/
+
                 INSERT INTO Edge (Long)
                 SELECT A,C,30
                 FROM Node A, Node C
@@ -84,7 +84,8 @@ namespace GraphViewUnitTest
 
                 DELETE EDGE [A]-[Edge as e]->[C]
                 FROM Node A, Node C
-                WHERE e.Long<35 AND A.name = 'A'
+                MATCH [A]-[Edge as f]->[C]
+                WHERE e.Long<20 AND A.name = 'A' AND f.Long>25
 
 /*
                 DELETE EDGE [D]-[Edge]->[A]

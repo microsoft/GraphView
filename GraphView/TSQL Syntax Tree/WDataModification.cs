@@ -857,20 +857,22 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
             Dictionary<string, string> map = new Dictionary<string, string>();
             foreach (var x in QueryComponent.SelectProcessor(SelectQueryBlock, source, sink))
             {
+                MatchNode source_node = null, sink_node = null;
                 if (source_query == "" && sink_query == "")
                 {
                     var DocDB_graph = QueryComponent.graph;
                     var query_nodes = DocDB_graph.ConnectedSubGraphs[0].Nodes;
-                    var source_node = query_nodes[source];
-                    var sink_node = query_nodes[sink];
+                    source_node = query_nodes[source];
+                    sink_node = query_nodes[sink];
                     GraphViewDocDBCommand.GetQuery(source_node);
                     GraphViewDocDBCommand.GetQuery(sink_node);
-                    source_query = source_node.DocDBQuery;
-                    sink_query = sink_node.DocDBQuery;
+                    
                 }
 
                 foreach (var y in x)
                 {
+                    source_query = source_node.DocDBQuery;
+                    sink_query = sink_node.DocDBQuery;
                     if (!map.ContainsKey(y.Item1))
                     {
                         var documents =
