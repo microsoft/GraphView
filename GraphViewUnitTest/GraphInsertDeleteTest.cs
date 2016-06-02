@@ -72,34 +72,15 @@ namespace GraphViewUnitTest
         public void DeleteEdge()
         {
 //            InsertEdges();
-            using (var graph = new GraphViewConnection(_connStr))
-            {
-                graph.Open();
                 const string sqlStr = @"
-/*
-                DELETE EDGE [D]-[Colleagues]->[F]
-                FROM EmployeeNode as D, EmployeeNode as E, EmployeeNode as F
-                MATCH [D]-[COLLEAGUES]->[E]-[COLLEAGUES]->[F]
-*/
-
                 DELETE EDGE [A]-[Edge as e]->[C]
                 FROM Node A, Node C
                 MATCH [A]-[Edge as f]->[C]
-                WHERE e.Long<20 AND A.name = 'A' AND f.Long>25
+                WHERE e.Long<20 AND A.name = 'A' AND f.Long>25"
 
-/*
-                DELETE EDGE [D]-[Edge]->[A]
-                FROM Node D, Node A
-                WHERE D.WorkId = 'D' AND A.ClientId = 'A'
 
-                DELETE EDGE [E]-[Clients]->[A]
-                FROM EmployeeNode D, EmployeeNode E, ClientNode A
-                MATCH [D]-[COLLEAGUES]->[E]-[Clients as EdgeEA]->[A]
-*/                ";
-
-                var command = new GraphViewCommand(sqlStr, graph);
+                var command = new GraphViewCommand(sqlStr);
                 command.ExecuteNonQuery();
-            }
         }
 
         [TestMethod]

@@ -108,10 +108,9 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectTest()
         {
-                const string sqlStr = @"SELECT B, A.age, * , C.*
-                FROM Node A, Node C
-                MATCH [A]-[Edge As e]->[B]-[Edge As f]->[C],[A]-[Edge As g]->[C],[A]-[Edge As h]->[D]
-                WHERE A.age < 20 AND C.age >55 AND g.Long > 55";
+                const string sqlStr = @"SELECT B
+                FROM Node A, Node B, Node C 
+                MATCH [A]-[Edge as e]->[B]-[Edge as f]->[C]";
                 var command = new GraphViewCommand(sqlStr);
                 command.ExecuteNonQuery();
             }

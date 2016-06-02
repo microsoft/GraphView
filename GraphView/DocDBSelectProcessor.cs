@@ -115,9 +115,9 @@ namespace GraphView
                             edge_alias = new List<string>()
                         };
                         foreach (var x in node.Value.Neighbors) {
-                            if (x.Predicates != null)
+                            if (x.SinkNode.NodeAlias == edge_sink_alias)
                             NewItem.edge_alias.Add(x.EdgeAlias);
-                                }
+                            }
                         MatchList.Add(NewItem);
                     }
                 }
