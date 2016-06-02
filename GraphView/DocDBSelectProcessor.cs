@@ -54,7 +54,7 @@ namespace GraphView
             PRIMARY_KEY = conn.DocDB_Key;
             client = conn.client;
         }
-        static private IQueryable<dynamic> ExcuteQuery(string database, string collection, string script)
+        static public IQueryable<dynamic> ExcuteQuery(string database, string collection, string script)
         {
             FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
             IQueryable<dynamic> Result = client.CreateDocumentQuery(

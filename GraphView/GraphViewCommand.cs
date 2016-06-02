@@ -34,6 +34,9 @@ using System.Globalization;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Microsoft.Azure.Documents.Client;
 
 namespace GraphView
 {
@@ -233,7 +236,21 @@ namespace GraphView
                         if (statement is WSelectStatement)
                         {
                             var selectStatement = (statement as WSelectStatement);
-                            var res = selectStatement.Run(DocDB_conn);
+                            var res = "";
+                            var Query = selectStatement.QueryExpr as WSelectQueryBlock;
+                            if (Query.MatchClause == null && Query.WhereClause.LastTokenIndex == 0)
+                            {
+                                var all = QueryComponent.ExcuteQuery("GroupMatch", "GraphSix", "SELECT * FROM ALL");
+                                foreach (var x in all) res += x;
+                            }
+                            else
+                                foreach (var item in QueryComponent.SelectProcessor(Query))
+                                {
+                                    foreach (var x in item)
+                                    {
+                                        res += x.Item1 + "\n";
+                                    }
+                                }
                             Console.WriteLine(res);
                             DocDB_conn.DocDB_finish = true;
                         }

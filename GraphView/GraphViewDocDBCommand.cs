@@ -96,8 +96,8 @@ namespace GraphView
         }
         public static MatchGraph DocDB_ConstructGraph(WSelectQueryBlock query)
         {
-            if (query == null || query.WhereClause.SearchCondition == null)
-                return null;
+            //if (query == null || query.WhereClause.SearchCondition == null)
+                //return null;
 
             var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
