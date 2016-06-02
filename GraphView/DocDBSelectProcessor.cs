@@ -36,11 +36,10 @@ namespace GraphView
         public static MatchGraph graph;
     
         //Initialization
-        static List<string> ListZero = new List<string>() { };
-        static BindingList LinkZero = new BindingList() { };
+        static BindingList ListZero = new BindingList() { };
         static BindingStatue BindZero = new BindingStatue();
-        static PathStatue PathZero = new Tuple<BindingStatue, BindingList>(BindZero, LinkZero);
-        static List<PathStatue> StageZero = new List<PathStatue>() { PathZero, new PathStatue(new BindingStatue(), new BindingList()) };
+        static PathStatue PathZero = new Tuple<BindingStatue, BindingList>(BindZero, ListZero);
+        static List<PathStatue> StageZero = new List<PathStatue>() { PathZero, new PathStatue(new BindingStatue(), null) };
 
         //Configuration
         static private int MAX_PACKET_SIZE;
@@ -93,7 +92,6 @@ namespace GraphView
                     source_alias = source,
                     sink_alias = sink,
                     edge_alias = new List<string>()
-
                 });
             }
             foreach (var node in NodesTable)
@@ -134,7 +132,6 @@ namespace GraphView
                         source_alias = node.Value.NodeAlias,
                         sink_alias = node.Value.NodeAlias,
                         edge_alias = new List<string>()
-
                     });
                 }
             }
@@ -148,6 +145,7 @@ namespace GraphView
             else 
             {
                 foreach (var x in ExtractNodes(MatchList, 50))
+
                 {
                     foreach (var y in x)
                     {
@@ -223,13 +221,15 @@ namespace GraphView
             LinkStatue QueryResult = new LinkStatue();
             List<PathStatue> MiddleStage = new List<PathStatue>();
             List<PathStatue> PathPacket = new List<PathStatue>();
+            Dictionary<string, HashSet<string>> QueryLink = new Dictionary<string, HashSet<string>>();
+
             int PacketCnt = 0;
             int to = ParaPacket[index].sink_num;
             int from = ParaPacket[index].source_num;
             string EdgeAlias = "";
             foreach(var x in ParaPacket[index].edge_alias)
             {
-                EdgeAlias += x + ',';
+                EdgeAlias += x + ",";
             }
             if (EdgeAlias.Length > 0) EdgeAlias = EdgeAlias.Substring(0, EdgeAlias.Length - 1);
             else EdgeAlias = "node._edge";
@@ -239,13 +239,21 @@ namespace GraphView
 
             foreach (var paths in LastStage)
             {
-                if (PacketCnt < MAX_PACKET_SIZE && paths.Item2.Count != 0)
+                if (PacketCnt < MAX_PACKET_SIZE && paths.Item2 != null)
                 {
                     PathPacket.Add(paths);
                     PacketCnt += 1;
                 }
                 else if (to == from)
                 {
+                    bool skipflag = false;
+                    foreach (var path in PathPacket)
+                        if (path.Item2.Contains(to.ToString()))
+                        {
+                            yield return path;
+                            skipflag = true;
+                        }
+                    if (skipflag) continue;
                     string script = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
                     string NodeScript = script;
                     string NodeWhereScript = " " + ParaPacket[index].source_SelectClause;
@@ -282,8 +290,8 @@ namespace GraphView
                 }
                 else
                 {
-                    string script = "SELECT {\"id\":node.id, \"edge\":" + EdgeAlias + ", \"reverse\":node._reverse_edge} AS NodeInfo";
-
+                    string AliasScript= "SELECT {\"id\":node.id, \"edge\":" + EdgeAlias + ", \"reverse\":node._reverse_edge} AS NodeInfo";
+                    string script = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
                     MiddleStage = new List<PathStatue>();
 
                     string InRangeScript = "";
@@ -310,7 +318,7 @@ namespace GraphView
                     // To find not yet binded nodes, bind them to start group and generate new path
                     if (NotYetBind)
                     {
-                        string StartScript = script;
+                        string StartScript = AliasScript;
                         string StartWhereScript = " " + ParaPacket[index].source_SelectClause;
                         StartScript = StartScript.Replace("node", ParaPacket[index].source_alias);
                         if (!(StartWhereScript.Substring(StartWhereScript.Length - 6, 5) == "Where"))
@@ -329,7 +337,6 @@ namespace GraphView
                             {
                                 InRangeScript += "\"" + id.ToString() + "\"" + ",";
                                 LinkSet.Add(id.ToString());
-                            }
                             foreach (var path in PathPacket)
                             {
                                 if (!path.Item1.ContainsKey(id.ToString()))
@@ -347,6 +354,7 @@ namespace GraphView
                                 }
                             }
                         }
+                        }
                     }
 
                     // To find possible end nodes
@@ -354,7 +362,7 @@ namespace GraphView
                     string LinkWhereScript = " " + LinkWhereClause +
                         ((LinkWhereClause.Substring(LinkWhereClause.Length - 6, 5) == "Where") ? "" : " AND ") +
                            ParaPacket[index].source_alias + ".id IN (" + InRangeScript.Substring(0, InRangeScript.Length - 1) + ")";
-                    string LinkScript = script + LinkWhereScript;
+                    string LinkScript = AliasScript + LinkWhereScript;
                     LinkScript = LinkScript.Replace("node", ParaPacket[index].source_alias);
                     var LinkRes = ExcuteQuery("GroupMatch", "GraphSix", LinkScript);
                     InRangeScript = "";
@@ -364,8 +372,10 @@ namespace GraphView
                         var edge = ((JObject)NodeInfo)["edge"];
                         var id = NodeInfo["id"];
                         var reverse = NodeInfo["reverse"];
-                        foreach (var y in edge)
-                            InRangeScript += "\"" + y["_sink"].ToString() + "\"" + ",";
+                        InRangeScript += "\"" + edge["_sink"].ToString() + "\"" + ",";
+                        if (!QueryLink.ContainsKey(edge["_sink"].ToString()))
+                            QueryLink.Add(edge["_sink"].ToString(), new HashSet<string>());
+                        QueryLink[edge["_sink"].ToString()].Add(id.ToString());
                     }
 
                     // Query to determine which possible end nodes satisfied the WHERE Clause
@@ -387,50 +397,51 @@ namespace GraphView
                         var edge = NodeInfo["edge"];
                         var id = NodeInfo["id"];
                         var reverse = NodeInfo["reverse"];
-                        List<string> RevList = new List<string>();
-                        foreach (var x in reverse) RevList.Add(x["_sink"].ToString());
                         // For each path in current stage
                         foreach (var path in MiddleStage)
                         {
-                            // For each binded start node
                             foreach (var BindingPair in path.Item1)
-                                if (BindingPair.Value == from)
-                                {
-                                    if (RevList.Contains(BindingPair.Key))
+                            {
+                                if (BindingPair.Value == from) {
+                                    foreach (var Link in QueryLink[id.ToString()])
                                     {
-                                        if (path.Item1.ContainsKey(id.ToString()))
+                                        if(Link == BindingPair.Key)
                                         {
-                                            if (path.Item1[id.ToString()] == to)
+                                            if (path.Item1.ContainsKey(id.ToString()))
                                             {
+                                                if (path.Item1[id.ToString()] == to)
+                                                {
+                                                    BindingList NewLink = new BindingList();
+                                                    foreach (var x in path.Item2)
+                                                    {
+                                                        NewLink.Add(x);
+                                                    }
+                                                    yield return new PathStatue(path.Item1, NewLink);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                BindingStatue NewBinding = new BindingStatue(path.Item1);
+                                                NewBinding.Add(id.ToString(), to);
                                                 BindingList NewLink = new BindingList();
                                                 foreach (var x in path.Item2)
                                                 {
                                                     NewLink.Add(x);
                                                 }
-                                                yield return new PathStatue(path.Item1, NewLink);
+                                                NewLink.Add(to.ToString());
+                                                yield return new PathStatue(NewBinding, NewLink);
                                             }
-                                        }
-                                        else
-                                        {
-                                            BindingStatue NewBinding = new BindingStatue(path.Item1);
-                                            NewBinding.Add(id.ToString(), to);
-                                            BindingList NewLink = new BindingList();
-                                            foreach (var x in path.Item2)
-                                            {
-                                                NewLink.Add(x);
-                                            }
-                                            NewLink.Add(to.ToString());
-                                            yield return new PathStatue(NewBinding, NewLink);
                                         }
                                     }
                                 }
+                            }
+                         }
                         }
-                    }
                     PathPacket.Clear();
                     PacketCnt = 0;
                 }
             }
-            yield return new PathStatue(new BindingStatue(), new BindingList());
+            yield return new PathStatue(new BindingStatue(), null);
             yield break;
         }
         static private IEnumerable<HashSet<Tuple<string, string>>> ExtractNodes(List<DocDBMatchQuery> ParaPacket, int PacketSize)
