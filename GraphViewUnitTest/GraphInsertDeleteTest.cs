@@ -71,12 +71,12 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void DeleteEdge()
         {
-//            InsertEdges();
-                const string sqlStr = @"
+            //            InsertEdges();
+            const string sqlStr = @"
                 DELETE EDGE [A]-[Edge as e]->[C]
                 FROM Node A, Node C
                 MATCH [A]-[Edge as f]->[C]
-                WHERE e.Long<20 AND A.name = 'A' AND f.Long>25"
+                WHERE e.Long<20 AND A.name = 'A' AND f.Long>25";
 
 
                 var command = new GraphViewCommand(sqlStr);

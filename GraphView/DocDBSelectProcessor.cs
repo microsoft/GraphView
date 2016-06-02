@@ -78,7 +78,7 @@ namespace GraphView
                 attachPredicateVisitor.Invoke(SelectQueryBlock.WhereClause, graph, columnTableMapping);
             foreach (var node in NodesTable)
             {
-                BuildNodes(node.Value);
+                GraphViewDocDBCommand.GetQuery(node.Value);
                 if (!GraphInfo.ContainsKey(node.Value.NodeAlias))
                     GraphInfo[node.Value.NodeAlias] = ++sum;
             }
@@ -325,7 +325,7 @@ namespace GraphView
                         {
                             StartScript += StartWhereScript;
                         }
-                        else StartScript += " From " + ParaPacket[index].source_alias;
+                        else StartScript += StartWhereScript.Substring(0, StartWhereScript.Length - 6);
                         var start = ExcuteQuery("GroupMatch", "GraphSix", StartScript);
                         foreach (var item in start)
                         {
@@ -513,11 +513,11 @@ namespace GraphView
             int edge_predicate_num = 0;
             foreach (var edge in node.Neighbors)
             {
+                Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
                 if (edge.Predicates != null)
                 {
                     if (edge_predicate_num != 0) Edgepredicate += " And ";
                     edge_predicate_num++;
-                    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
                     Edgepredicate += " (";
                     for (int i = 0; i < edge.Predicates.Count(); i++)
                     {
