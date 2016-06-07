@@ -65,23 +65,26 @@ namespace GraphView
         }
         static public IEnumerable<HashSet<Tuple<string, string>>> SelectProcessor(WSelectQueryBlock SelectQueryBlock, string source = "", string sink = "")
         {
-            graph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
-            Dictionary<string, HashSet<string>> GroupDic = new Dictionary<string, HashSet<string>>();
+            // Construct the Graph and attach information onto nodes
             Dictionary<string, int> GraphInfo = new Dictionary<string, int>();
+
+            graph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
             int sum = 0;
             var NodesTable = graph.ConnectedSubGraphs[0].Nodes;
             var attachPredicateVisitor = new AttachWhereClauseVisitor();
             var _context = new WSqlTableContext();
             var _graphMetaData = new GraphMetaData();
             var columnTableMapping = _context.GetColumnToAliasMapping(_graphMetaData.ColumnsOfNodeTables);
-            if (SelectQueryBlock != null)
-                attachPredicateVisitor.Invoke(SelectQueryBlock.WhereClause, graph, columnTableMapping);
+            if (SelectQueryBlock != null) attachPredicateVisitor.Invoke(SelectQueryBlock.WhereClause, graph, columnTableMapping);
+
             foreach (var node in NodesTable)
             {
                 GraphViewDocDBCommand.GetQuery(node.Value);
                 if (!GraphInfo.ContainsKey(node.Value.NodeAlias))
                     GraphInfo[node.Value.NodeAlias] = ++sum;
             }
+
+            // Construct a List contain parameters for each stage of expansion
             List<DocDBMatchQuery> MatchList = new List<DocDBMatchQuery>();
             if (source != "" && sink != "")
             {
@@ -91,7 +94,8 @@ namespace GraphView
                     sink_num = GraphInfo[sink],
                     source_alias = source,
                     sink_alias = sink,
-                    edge_alias = new List<string>()
+                    edge_alias = new List<string>(),
+                    neighbor_edge = null
                 });
             }
             foreach (var node in NodesTable)
@@ -112,7 +116,8 @@ namespace GraphView
                             sink_SelectClause = edge.SinkNode.DocDBQuery.Replace("'", "\""),
                             source_alias = node.Value.NodeAlias,
                             sink_alias = edge_sink_alias,
-                            edge_alias = new List<string>()
+                            edge_alias = new List<string>(),
+                            neighbor_edge = node.Value.Neighbors[i].EdgeAlias
                         };
                         foreach (var x in node.Value.Neighbors) {
                             if (x.SinkNode.NodeAlias == edge_sink_alias)
@@ -135,6 +140,10 @@ namespace GraphView
                     });
                 }
             }
+
+            Dictionary<string, HashSet<string>> GroupDic = new Dictionary<string, HashSet<string>>();
+            
+            // If sink and source are specific, Use ExtractPairs to find pairs of source and sink
             if (sink != "" && source != "")
             {
                 foreach (var x in ExtractPairs(MatchList, 50))
@@ -144,6 +153,7 @@ namespace GraphView
             }
             else 
             {
+                // If no sink or source is specific, turn to SelectElement for the alias that were wanted
                 foreach (var x in ExtractNodes(MatchList, 50))
 
                 {
@@ -176,8 +186,8 @@ namespace GraphView
                         else
                         {
                             var alias = star.Qulifier.Identifiers[0].Value.ToString();
-                            int TargetNode = GraphInfo[alias];
-                            foreach (var node in GroupDic[TargetNode.ToString()])
+                            string TargetNode = GraphInfo[alias].ToString();
+                            foreach (var node in GroupDic[TargetNode])
                                 QueryRange += "\"" + node + "\",";
                             if (QueryRange.Length > 0) QueryRange = QueryRange.Substring(0, QueryRange.Length - 1);
                             script = "SELECT " + alias + " AS NODEINFO " +
@@ -198,7 +208,7 @@ namespace GraphView
                             " FROM " + identifier[0].Value +
                             " WHERE " + identifier[0].Value + ".id IN (" + QueryRange + ")";
                     }
-                    var res = ExcuteQuery("GroupMatch", "GraphSix", script);
+                    var res = ExcuteQuery("GroupMatch", "GraphSeven", script);
                     HashSet<Tuple<string, string>> result = new HashSet<Tuple<string, string>>();
                     string ResString = "";
                     foreach (var item in res)
@@ -226,6 +236,7 @@ namespace GraphView
             int PacketCnt = 0;
             int to = ParaPacket[index].sink_num;
             int from = ParaPacket[index].source_num;
+
             string EdgeAlias = "";
             foreach(var x in ParaPacket[index].edge_alias)
             {
@@ -233,8 +244,9 @@ namespace GraphView
             }
             if (EdgeAlias.Length > 0) EdgeAlias = EdgeAlias.Substring(0, EdgeAlias.Length - 1);
             else EdgeAlias = "node._edge";
+
             IEnumerable<PathStatue> LastStage;
-            if (index != 1) LastStage = FindNext(index - 1, ParaPacket);
+            if (index >= 1) LastStage = FindNext(index - 1, ParaPacket);
             else LastStage = StageZero;
 
             foreach (var paths in LastStage)
@@ -247,6 +259,11 @@ namespace GraphView
                 else if (to == from)
                 {
                     bool skipflag = false;
+                    if (ParaPacket[index].sink_SelectClause.Substring(ParaPacket[index].sink_SelectClause.Length - 6, 5) == "Where")
+                    {
+                        foreach (var path in PathPacket) yield return path;
+                        continue;                        
+                    }
                     foreach (var path in PathPacket)
                         if (path.Item2.Contains(to.ToString()))
                         {
@@ -263,7 +280,7 @@ namespace GraphView
                         NodeScript += NodeWhereScript;
                     }
                     else NodeScript += " From " + ParaPacket[index].source_alias;
-                    var start = ExcuteQuery("GroupMatch", "GraphSix", NodeScript);
+                    var start = ExcuteQuery("GroupMatch", "GraphSeven", NodeScript);
                     foreach (var item in start)
                     {
                         JToken NodeInfo = ((JObject)item)["NodeInfo"];
@@ -326,7 +343,7 @@ namespace GraphView
                             StartScript += StartWhereScript;
                         }
                         else StartScript += StartWhereScript.Substring(0, StartWhereScript.Length - 6);
-                        var start = ExcuteQuery("GroupMatch", "GraphSix", StartScript);
+                        var start = ExcuteQuery("GroupMatch", "GraphSeven", StartScript);
                         foreach (var item in start)
                         {
                             JToken NodeInfo = ((JObject)item)["NodeInfo"];
@@ -359,12 +376,16 @@ namespace GraphView
 
                     // To find possible end nodes
                     string LinkWhereClause = ParaPacket[index].source_SelectClause;
-                    string LinkWhereScript = " " + LinkWhereClause +
-                        ((LinkWhereClause.Substring(LinkWhereClause.Length - 6, 5) == "Where") ? "" : " AND ") +
-                           ParaPacket[index].source_alias + ".id IN (" + InRangeScript.Substring(0, InRangeScript.Length - 1) + ")";
+                    string LinkWhereScript = "";
+                    if (InRangeScript.Length > 0) {
+                        LinkWhereScript = " " + LinkWhereClause +
+                            ((LinkWhereClause.Substring(LinkWhereClause.Length - 6, 5) == "Where") ? "" : " AND ") +
+                               ParaPacket[index].source_alias + ".id IN (" + InRangeScript.Substring(0, InRangeScript.Length - 1) + ")";
+                    }
+                    else LinkWhereScript = " " + LinkWhereClause;
                     string LinkScript = AliasScript + LinkWhereScript;
                     LinkScript = LinkScript.Replace("node", ParaPacket[index].source_alias);
-                    var LinkRes = ExcuteQuery("GroupMatch", "GraphSix", LinkScript);
+                    var LinkRes = ExcuteQuery("GroupMatch", "GraphSeven", LinkScript);
                     InRangeScript = "";
                     foreach (var item in LinkRes)
                     {
@@ -389,7 +410,7 @@ namespace GraphView
                         EndWhereScript = EndWhereScript.Substring(0, EndWhereScript.Length - 4);
                     string EndScript = script + EndWhereScript;
                     EndScript = EndScript.Replace("node", ParaPacket[index].sink_alias);
-                    var res = ExcuteQuery("GroupMatch", "GraphSix", EndScript);
+                    var res = ExcuteQuery("GroupMatch", "GraphSeven", EndScript);
 
                     foreach (var item in res)
                     {
@@ -419,7 +440,7 @@ namespace GraphView
                                                     yield return new PathStatue(path.Item1, NewLink);
                                                 }
                                             }
-                                            else
+                                            else if(!path.Item2.Contains(to.ToString()))
                                             {
                                                 BindingStatue NewBinding = new BindingStatue(path.Item1);
                                                 NewBinding.Add(id.ToString(), to);
@@ -505,49 +526,6 @@ namespace GraphView
             }
             if (PacketCnt != 0) yield return packet;
             yield break;
-        }
-        static private void BuildNodes(MatchNode node)
-        {
-            string Query = "From " + node.NodeAlias;
-            string Edgepredicate = "";
-            int edge_predicate_num = 0;
-            foreach (var edge in node.Neighbors)
-            {
-                Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-                if (edge.Predicates != null)
-                {
-                    if (edge_predicate_num != 0) Edgepredicate += " And ";
-                    edge_predicate_num++;
-                    Edgepredicate += " (";
-                    for (int i = 0; i < edge.Predicates.Count(); i++)
-                    {
-                        if (i != 0)
-                            Edgepredicate += " And ";
-                        Edgepredicate += "(" + edge.Predicates[i] + ")";
-                    }
-                    Edgepredicate += ") ";
-                }
-            }
-            Query += " Where ";
-            if (node.Predicates != null)
-            {
-                for (int i = 0; i < node.Predicates.Count(); i++)
-                {
-                    if (i != 0)
-                        Query += " And ";
-                    Query += node.Predicates[i];
-                }
-                if (Edgepredicate != "")
-                    Query += " And ";
-            }
-
-
-            if (Edgepredicate != "")
-            {
-                Query += Edgepredicate;
-            }
-
-            node.DocDBQuery = Query;
         }
     }
 

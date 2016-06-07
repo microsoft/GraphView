@@ -240,7 +240,7 @@ namespace GraphView
                             var Query = selectStatement.QueryExpr as WSelectQueryBlock;
                             if (Query.MatchClause == null && Query.WhereClause.LastTokenIndex == 0)
                             {
-                                var all = QueryComponent.ExcuteQuery("GroupMatch", "GraphSix", "SELECT * FROM ALL");
+                                var all = QueryComponent.ExcuteQuery("GroupMatch", "GraphSeven", "SELECT * FROM ALL");
                                 foreach (var x in all) res += x;
                             }
                             else

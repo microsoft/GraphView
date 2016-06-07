@@ -423,6 +423,7 @@ namespace GraphView
         public string sink_SelectClause { get; set; }
         public string source_alias { get; set; }
         public string sink_alias { get; set; }
+        public string neighbor_edge { get; set; }
         public List<string> edge_alias { get; set; }
     }
 

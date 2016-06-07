@@ -108,11 +108,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void SelectTest()
         {
-                const string sqlStr = @"SELECT B
-                FROM Node A, Node B, Node C 
-                MATCH [A]-[Edge as e]->[B]-[Edge as f]->[C]";
+                const string sqlStr = @"SELECT saturn
+FROM node AS saturn
+WHERE saturn.name = 'saturn'";
                 var command = new GraphViewCommand(sqlStr);
                 command.ExecuteNonQuery();
+            Console.Write("OK!");
+            Console.ReadKey();
             }
 
         [TestMethod]
