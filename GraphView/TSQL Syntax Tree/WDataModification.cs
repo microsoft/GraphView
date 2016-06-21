@@ -439,7 +439,9 @@ namespace GraphView
 
             
             Dictionary<string, string> map = new Dictionary<string, string>();
-            foreach (var x in QueryComponent.SelectProcessor(SelectQueryBlock, source, sink))
+
+            var selectResults = QueryComponent.SelectProcessor(SelectQueryBlock, source, sink);
+            foreach (var x in selectResults)
                 foreach (var y in x)
                 {
                     if (!map.ContainsKey(y.Item1))

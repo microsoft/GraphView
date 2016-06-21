@@ -26,69 +26,69 @@ namespace GraphViewUnitTest
         
 
         //[TestMethod]
-        public void UpgradeFromV100Test()
-        {
-            using (var conn = new GraphViewConnection(getConnectionString()))
-            {
-                conn.Open();
-                var tx = conn.BeginTransaction("UpgradeFromV100ToV101");
-                try
-                {
-                    var tables = conn.GetNodeTables(tx);
+        //public void UpgradeFromV100Test()
+        //{
+        //    using (var conn = new GraphViewConnection(getConnectionString()))
+        //    {
+        //        conn.Open();
+        //        var tx = conn.BeginTransaction("UpgradeFromV100ToV101");
+        //        try
+        //        {
+        //            var tables = conn.GetNodeTables(tx);
                     
-                    #region Upgrade meta tables
+        //            #region Upgrade meta tables
 
-                    conn.UpgradeMetaTableV100(tx);
-                    Console.WriteLine("Upgrade Meta Table Done!");
+        //            conn.UpgradeMetaTableV100(tx);
+        //            Console.WriteLine("Upgrade Meta Table Done!");
 
-                    #endregion
+        //            #endregion
 
-                    #region Upgrade functions
+        //            #region Upgrade functions
 
-                    foreach (var table in tables)
-                    {
-                        conn.DropNodeTableFunctionV100(table.Item1,table.Item2,tx);
-                    }
-                    //conn.UpgradeGraphViewFunctionV100(tx);
-                    conn.UpgradeNodeTableFunction(tx);
-                    Console.WriteLine("Upgrade functions Done!");
+        //            foreach (var table in tables)
+        //            {
+        //                conn.DropNodeTableFunctionV100(table.Item1,table.Item2,tx);
+        //            }
+        //            //conn.UpgradeGraphViewFunctionV100(tx);
+        //            conn.UpgradeNodeTableFunction(tx);
+        //            Console.WriteLine("Upgrade functions Done!");
 
-                    #endregion
+        //            #endregion
 
-                    #region Upgrade global view
+        //            #region Upgrade global view
 
-                    conn.updateGlobalNodeView("dbo", tx);
-                    Console.WriteLine("Upgrade global view Done!");
+        //            conn.updateGlobalNodeView("dbo", tx);
+        //            Console.WriteLine("Upgrade global view Done!");
                     
-                    #endregion
+        //            #endregion
 
-                    #region Upgrade table statistics
+        //            #region Upgrade table statistics
 
-                    foreach (var table in tables)
-                    {
-                        conn.UpdateTableStatistics(table.Item1, table.Item2, tx);
-                    }
-                    Console.WriteLine("Upgrade table statistics Done!");
+        //            foreach (var table in tables)
+        //            {
+        //                conn.UpdateTableStatistics(table.Item1, table.Item2, tx);
+        //            }
+        //            Console.WriteLine("Upgrade table statistics Done!");
 
-                    #endregion
+        //            #endregion
 
-                    #region Update version number
+        //            #region Update version number
 
-                    conn.UpdateVersionNumber("1.10", tx);
+        //            conn.UpdateVersionNumber("1.10", tx);
 
-                    #endregion
+        //            #endregion
 
-                    tx.Commit();
-                }
-                catch (Exception e)
-                {
-                    tx.Rollback();
-                    throw new Exception(e.Message);
-                }
+        //            tx.Commit();
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            tx.Rollback();
+        //            throw new Exception(e.Message);
+        //        }
                 
 
-            }
-        }
+        //    }
+        //}
 
         //[TestMethod]
         public void UpgradeSelectTest()
