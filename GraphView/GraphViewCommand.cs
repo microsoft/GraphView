@@ -216,7 +216,7 @@ namespace GraphView
 
                 var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSix");
+                    "GroupMatch", "GraphSeven");
                 DocDB_conn.createclient();
                 QueryComponent.init(50,DocDB_conn);
 
@@ -292,13 +292,13 @@ namespace GraphView
 
 #if DEBUG
                         //put the answer into a Temporary Document
-                        FileStream aFile =
-                            new FileStream(
-                                "D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs",
-                                FileMode.Create);
-                        StreamWriter File = new StreamWriter(aFile);
-                        File.Write(code);
-                        File.Close();
+                        //FileStream aFile =
+                        //    new FileStream(
+                        //        "D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs",
+                        //        FileMode.Create);
+                        //StreamWriter File = new StreamWriter(aFile);
+                        //File.Write(code);
+                        //File.Close();
 #endif
                         //var result =
                         //    GraphViewDocDBCommand.CompileFromSource(code);

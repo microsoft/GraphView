@@ -86,7 +86,7 @@ namespace GraphView
 
             // Construct a List contain parameters for each stage of expansion
             List<DocDBMatchQuery> MatchList = new List<DocDBMatchQuery>();
-            if (source != "" && sink != "")
+            /*if (source != "" && sink != "")
             {
                 MatchList.Add(new DocDBMatchQuery()
                 {
@@ -98,6 +98,7 @@ namespace GraphView
                     neighbor_edge = null
                 });
             }
+            */
             foreach (var node in NodesTable)
             {
                 int edge_source_num = GraphInfo[node.Value.NodeAlias];
@@ -146,7 +147,7 @@ namespace GraphView
             // If sink and source are specific, Use ExtractPairs to find pairs of source and sink
             if (sink != "" && source != "")
             {
-                foreach (var x in ExtractPairs(MatchList, 50))
+                foreach (var x in ExtractPairs(MatchList, 50, GraphInfo[source],GraphInfo[sink]))
                 {
                     yield return x;
                 }
@@ -492,13 +493,13 @@ namespace GraphView
             if (PacketCnt != 0) yield return packet;
             yield break;
         }
-        static private IEnumerable<HashSet<Tuple<string, string>>> ExtractPairs(List<DocDBMatchQuery> ParaPacket, int PacketSize)
+        static private IEnumerable<HashSet<Tuple<string, string>>> ExtractPairs(List<DocDBMatchQuery> ParaPacket, int PacketSize, int source, int sink)
         {
             HashSet<Tuple<string, string>> PacketSet = new HashSet<Tuple<string, string>>();
             HashSet<Tuple<string, string>> packet = new HashSet<Tuple<string, string>>();
             int PacketCnt = 0;
-            int first = ParaPacket[0].source_num;
-            int second = ParaPacket[0].sink_num;
+            int first = source;
+            int second = sink;
             string FirstGroup = "";
             string SecondGroup = "";
             foreach (var path in FindNext(ParaPacket.Count - 1, ParaPacket))
