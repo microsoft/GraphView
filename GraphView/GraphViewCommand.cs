@@ -216,7 +216,7 @@ namespace GraphView
 
                 var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSeven");
+                    "GroupMatch", "GraphSix");
                 DocDB_conn.createclient();
                 QueryComponent.init(50,DocDB_conn);
 
@@ -240,7 +240,7 @@ namespace GraphView
                             var Query = selectStatement.QueryExpr as WSelectQueryBlock;
                             if (Query.MatchClause == null && Query.WhereClause.LastTokenIndex == 0)
                             {
-                                var all = QueryComponent.ExcuteQuery("GroupMatch", "GraphSeven", "SELECT * FROM ALL");
+                                var all = QueryComponent.ExcuteQuery("SELECT * FROM ALL");
                                 foreach (var x in all) res += x;
                             }
                             else

@@ -45,6 +45,8 @@ namespace GraphView
         static private int MAX_PACKET_SIZE;
         static private string END_POINT_URL = "";
         static private string PRIMARY_KEY = "";
+        static private string database = "";
+        static private string collection = "";
 
 
         static public void init(int MaxPacketsize, GraphViewConnection conn)
@@ -53,8 +55,10 @@ namespace GraphView
             END_POINT_URL = conn.DocDB_Url;
             PRIMARY_KEY = conn.DocDB_Key;
             client = conn.client;
+            database = conn.DocDB_DatabaseId;
+            collection = conn.DocDB_CollectionId;
         }
-        static public IQueryable<dynamic> ExcuteQuery(string database, string collection, string script)
+        static public IQueryable<dynamic> ExcuteQuery(string script)
         {
             FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
             IQueryable<dynamic> Result = client.CreateDocumentQuery(
@@ -209,7 +213,7 @@ namespace GraphView
                             " FROM " + identifier[0].Value +
                             " WHERE " + identifier[0].Value + ".id IN (" + QueryRange + ")";
                     }
-                    var res = ExcuteQuery("GroupMatch", "GraphSeven", script);
+                    var res = ExcuteQuery(script);
                     HashSet<Tuple<string, string>> result = new HashSet<Tuple<string, string>>();
                     string ResString = "";
                     foreach (var item in res)
@@ -281,7 +285,7 @@ namespace GraphView
                         NodeScript += NodeWhereScript;
                     }
                     else NodeScript += " From " + ParaPacket[index].source_alias;
-                    var start = ExcuteQuery("GroupMatch", "GraphSeven", NodeScript);
+                    var start = ExcuteQuery(NodeScript);
                     foreach (var item in start)
                     {
                         JToken NodeInfo = ((JObject)item)["NodeInfo"];
@@ -344,7 +348,7 @@ namespace GraphView
                             StartScript += StartWhereScript;
                         }
                         else StartScript += StartWhereScript.Substring(0, StartWhereScript.Length - 6);
-                        var start = ExcuteQuery("GroupMatch", "GraphSeven", StartScript);
+                        var start = ExcuteQuery(StartScript);
                         foreach (var item in start)
                         {
                             JToken NodeInfo = ((JObject)item)["NodeInfo"];
@@ -386,7 +390,7 @@ namespace GraphView
                     else LinkWhereScript = " " + LinkWhereClause;
                     string LinkScript = AliasScript + LinkWhereScript;
                     LinkScript = LinkScript.Replace("node", ParaPacket[index].source_alias);
-                    var LinkRes = ExcuteQuery("GroupMatch", "GraphSeven", LinkScript);
+                    var LinkRes = ExcuteQuery(LinkScript);
                     InRangeScript = "";
                     foreach (var item in LinkRes)
                     {
@@ -411,7 +415,7 @@ namespace GraphView
                         EndWhereScript = EndWhereScript.Substring(0, EndWhereScript.Length - 4);
                     string EndScript = script + EndWhereScript;
                     EndScript = EndScript.Replace("node", ParaPacket[index].sink_alias);
-                    var res = ExcuteQuery("GroupMatch", "GraphSeven", EndScript);
+                    var res = ExcuteQuery(EndScript);
 
                     foreach (var item in res)
                     {
