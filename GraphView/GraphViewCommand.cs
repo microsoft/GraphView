@@ -214,9 +214,11 @@ namespace GraphView
 
                 AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
 
-                var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSix");
+                //var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                //    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                //    "GroupMatch", "GraphSix");
+                var DocDB_conn = GraphViewConnection;
+
                 DocDB_conn.createclient();
                 QueryComponent.init(50,DocDB_conn);
 

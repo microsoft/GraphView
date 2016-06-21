@@ -11,7 +11,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void InsertNode()
         {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSix");
+
             GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
             gcmd.CommandText = @"INSERT INTO Node (uid, firstName, lastName, age) VALUES (101, 'Jane', 'Doe', 22);";
             gcmd.ExecuteNonQuery();
 
@@ -25,7 +31,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void DeleteNode()
         {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSix");
+
             GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
             gcmd.CommandText = @"DELETE FROM Node WHERE Node.firstName = 'Jane' AND Node.lastName = 'Doe';";
             gcmd.ExecuteNonQuery();
 
@@ -39,7 +51,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void InsertEdge()
         {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSix");
+
             GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
             gcmd.CommandText = @"INSERT INTO Edge (eid)
                               SELECT n1, n2, 999
                               FROM Node n1, Node n2
@@ -51,7 +69,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void DeleteEdge()
         {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSix");
+
             GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
             gcmd.CommandText = @"
                 DELETE EDGE [A]-[Edge as e]->[C]
                 FROM Node A, Node C
@@ -63,7 +87,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Selectall()
         {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSix");
+
             GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
             gcmd.CommandText = @"
                 Select *
             ";
