@@ -8,10 +8,12 @@ using Microsoft.Azure.Documents.Client;
 
 namespace GraphView
 {
+
     using BindingStatue = Dictionary<string, int>;
     using BindingSet = HashSet<string>;
     using PathStatue = Tuple<Dictionary<string, int>, HashSet<string>>;
     using AdjacentList = Dictionary<string, HashSet<string>>;
+    
     public class DocDBConnection
     {
         public DocDBConnection(int pMaxPacketSize, GraphViewConnection connection)
@@ -94,20 +96,28 @@ namespace GraphView
         static List<PathStatue> StageZero = new List<PathStatue>() { PathZero, new PathStatue(new BindingStatue(), null) };
 
         private DocDBConnection connection;
+        private WSelectQueryBlock SelectBlock;
         private MatchGraph SelectGraph;
         private Dictionary<string, int> GraphDescription;
         private Dictionary<string, MatchNode> NodeTable;
         private QuerySpec spec;
-        private Dictionary<string, HashSet<string>> BindingDic = new Dictionary<string, HashSet<string>>();
         private string SelectResult;
         private string InRangeScript = "";
-        private IQueryable<dynamic> ExcuteQuery(string script)
+        /// <summary>
+        /// Execute a documentDB script on the connection that has already been established 
+        /// and stored on (DocDBconnection) connection
+        /// </summary>
+        private IQueryable<dynamic> ExecuteQuery(string script)
         {
             FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
             IQueryable<dynamic> Result = connection.client.CreateDocumentQuery(
                 UriFactory.CreateDocumentCollectionUri(connection.DatabaseID, connection.CollectionID), script, QueryOptions);
             return Result;
         }
+        /// <summary>
+        /// Consturct a graph that describes the pattern of the select clause with all predicates attached on its nodes.
+        /// (The predicates of edges are attached to its source)
+        /// </summary>
         private void ConstructGraph(WSelectQueryBlock SelectQueryBlock)
         {
             SelectGraph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
@@ -125,6 +135,12 @@ namespace GraphView
                     GraphDescription[node.Value.NodeAlias] = ++GroupNumber;
             }
         }
+        /// <summary>
+        /// Construct a spec that specific the step of querying.
+        /// A spec is consist of two type of specifiers.
+        /// One is NodeQuery, which is used to describe a query about a node with predicates.
+        /// Another is LinkQuery, which is used to describe a link between two nodes and these nodes.
+        /// </summary>
         private void ConstructQuerySpec()
         {
             HashSet<string> AddedNodes = new HashSet<string>();
@@ -149,6 +165,9 @@ namespace GraphView
         {
             return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "Where");
         }
+        /// <summary>
+        /// Break down a JObject that return by server and extract the id and edge infomation from it.
+        /// </summary>
         private Tuple<string, string> DecodeJObject(JObject Item, bool ShowEdge = false)
         {
             JToken NodeInfo = ((JObject)Item)["NodeInfo"];
@@ -183,6 +202,9 @@ namespace GraphView
         {
             return InRangeScript.Length > 0;
         }
+        /// <summary>
+        /// Dealing with NodeQuery specifier, sending query to determine a set of nodes and bind them to a specific group
+        /// </summary>
         private IEnumerable<PathStatue> NodeQueryProcessor(List<PathStatue> PathsFromLastStage, NodeQuery pNodeQuery)
         {
             string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
@@ -191,7 +213,7 @@ namespace GraphView
             if (HasWhereClause(pNodeQuery.NodePredicate))
                 NodeScript += WhereClause;
             else NodeScript += " From " + pNodeQuery.NodeAlias;
-            IQueryable<dynamic> Node = ExcuteQuery(NodeScript);
+            IQueryable<dynamic> Node = ExecuteQuery(NodeScript);
             foreach (var item in Node)
             {
                 Tuple<string, string> ItemInfo = DecodeJObject((JObject)item);
@@ -223,7 +245,11 @@ namespace GraphView
             }
             return InRangeScript;
         }
-
+        /// <summary>
+        /// Dealing with the source of a link
+        /// sending query to determine a set of source nodes and bind them to a specific group
+        /// Also giving a set of possible sink nodes for later use
+        /// </summary>
         private IEnumerable<PathStatue> QueryForSrcNodes(List<PathStatue> PathsFromLastStage, LinkQuery pLinkQuery, AdjacentList Map)
         {
             string SrcScript = "";
@@ -238,7 +264,7 @@ namespace GraphView
                 SrcScript += pLinkQuery.src.NodePredicate;
             }
             else SrcScript += " From " + pLinkQuery.src.NodeAlias;
-            var src = ExcuteQuery(SrcScript);
+            var src = ExecuteQuery(SrcScript);
             var LinkSet = new HashSet<string>();
             foreach (var item in src)
             {
@@ -259,7 +285,11 @@ namespace GraphView
             }
             yield break;
         }
-
+        /// <summary>
+        /// Determine which nodes satisfied the predicates of sink nodes and also in the possible sink node set
+        /// that generated by QueryForSrcNodes function.
+        /// Bind them to sink node group
+        /// </summary>
         private IEnumerable<PathStatue> QueryForDestNodes(List<PathStatue> PathsFromLastStage, LinkQuery pLinkQuery, AdjacentList Map)
         {
             if (InRangeScript.Length == 0) yield break;
@@ -271,7 +301,7 @@ namespace GraphView
             else DestWhereScript += pLinkQuery.dest.NodeAlias + ".id IN(" + InRangeScript + ")";
             string DestScript = ScriptBase + DestWhereScript;
             DestScript = DestScript.Replace("node", pLinkQuery.dest.NodeAlias);
-            var dest = ExcuteQuery(DestScript);
+            var dest = ExecuteQuery(DestScript);
             foreach (var node in dest)
             {
                 Tuple<string, string> ItemInfo = DecodeJObject((JObject)node);
@@ -315,6 +345,11 @@ namespace GraphView
         {
             return new PathStatue(new BindingStatue(), null);
         }
+        /// <summary>
+        /// Read the spec line by line, if the line is NodeQuery Specifier, turn to NodeQueryProcessor
+        /// otherwise turn to LinkQueryProcessor, which is QueryForSrcNodes and QueryForDestNodes function.
+        /// Also do the packing thing, packing the result and send it to next line to be processed.
+        /// </summary>
         private IEnumerable<PathStatue> FindNext(int index)
         {
             AdjacentList MapForCurrentStage = new AdjacentList();
@@ -358,8 +393,18 @@ namespace GraphView
             yield return YieldTailFlag();
             yield break;
         }
-        private void ConstructBingdingDic(PathStatue path)
+        /// <summary>
+        /// Extract result from the path that generated by FindNext function and presented as formated text.
+        /// </summary>
+        private string ExtractResult(WSelectQueryBlock SelectBlock, PathStatue path)
         {
+            if (path.Item1.Count == 0) return "";
+            Dictionary<string, HashSet<string>> BindingDic = new Dictionary<string, HashSet<string>>();
+            var TargetElement = SelectBlock.SelectElements;
+            var script = "";
+            string QueryRange = "";
+            string ResString = "";
+            List<List<string>> Result = new List<List<string>>();
             foreach (var binding in path.Item1)
             {
                 if (!BindingDic.ContainsKey(binding.Value.ToString()))
@@ -369,14 +414,9 @@ namespace GraphView
                 }
                 BindingDic[binding.Value.ToString()].Add(binding.Key);
             }
-        }
-        private string ExtractResult(WSelectQueryBlock SelectBlock)
-        {
-            var TargetElement = SelectBlock.SelectElements;
-            var script = "";
-            string QueryRange = "";
             foreach (var element in TargetElement)
             {
+                QueryRange = "";
                 if (element is WSelectStarExpression)
                 {
                     var star = element as WSelectStarExpression;
@@ -444,31 +484,32 @@ namespace GraphView
                             }
                     }
                 }
-            }
-            var res = ExcuteQuery(script);
-            string ResString = "";
-            foreach (var item in res)
-            {
-                JToken obj = ((JObject)item)["INFO"];
-                string objstring = obj.ToString();
-                ResString += objstring + "\n";
+                var res = ExecuteQuery(script);
+                foreach (var item in res)
+                {
+                    JToken obj = ((JObject)item)["INFO"];
+                    string objstring = obj.ToString();
+                    ResString += objstring + " ";
+                }
             }
             return ResString;
         }
-        public SelectProcessor(WSelectQueryBlock SelectBlock, DocDBConnection pConnection)
+        public SelectProcessor(WSelectQueryBlock pSelectBlock, DocDBConnection pConnection)
         {
+            SelectBlock = pSelectBlock;
             GraphDescription = new Dictionary<string, int>();
             spec = new QuerySpec();
             connection = pConnection;
             ConstructGraph(SelectBlock);
             ConstructQuerySpec();
-            foreach(var path in FindNext(spec.index()))
-                ConstructBingdingDic(path);
-            SelectResult = ExtractResult(SelectBlock);
         }
-        public string Result()
+        public IEnumerable<string> Result()
         {
-            return SelectResult;
+            foreach (var path in FindNext(spec.index()))
+            {
+                yield return ExtractResult(SelectBlock, path);
+            }
+            yield break;
         }
     }
 
