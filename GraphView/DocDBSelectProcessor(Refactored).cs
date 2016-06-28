@@ -263,7 +263,7 @@ namespace GraphView
             {
                 SrcScript += pLinkQuery.src.NodePredicate;
             }
-            else SrcScript += pLinkQuery.src.NodePredicate.Substring(pLinkQuery.src.NodePredicate.Length - 6, 5);
+            else SrcScript += pLinkQuery.src.NodePredicate.Substring(0, pLinkQuery.src.NodePredicate.Length - 6);
             var src = ExecuteQuery(SrcScript);
             var LinkSet = new HashSet<string>();
             foreach (var item in src)
