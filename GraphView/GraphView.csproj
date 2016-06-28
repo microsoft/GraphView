@@ -111,6 +111,7 @@
       <DependentUpon>NodeTableGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="ObjectExtensions.cs" />
+    <Compile Include="DocDBSelectProcessor%28Refactored%29.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
