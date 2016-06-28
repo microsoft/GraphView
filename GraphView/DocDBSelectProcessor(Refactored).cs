@@ -13,7 +13,7 @@ namespace GraphView
     using BindingSet = HashSet<string>;
     using PathStatue = Tuple<Dictionary<string, int>, HashSet<string>>;
     using AdjacentList = Dictionary<string, HashSet<string>>;
-    
+
     public class DocDBConnection
     {
         public DocDBConnection(int pMaxPacketSize, GraphViewConnection connection)
@@ -155,8 +155,8 @@ namespace GraphView
                     }
                 else
                 {
-                    if (!AddedNodes.Contains(node.Value.NodeAlias)) 
-                    spec.add(new NodeQuery(GraphDescription, node.Value));
+                    if (!AddedNodes.Contains(node.Value.NodeAlias))
+                        spec.add(new NodeQuery(GraphDescription, node.Value));
                 }
             }
         }
@@ -263,12 +263,12 @@ namespace GraphView
             {
                 SrcScript += pLinkQuery.src.NodePredicate;
             }
-            else SrcScript += " From " + pLinkQuery.src.NodeAlias;
+            else SrcScript += pLinkQuery.src.NodePredicate.Substring(pLinkQuery.src.NodePredicate.Length - 6, 5);
             var src = ExecuteQuery(SrcScript);
             var LinkSet = new HashSet<string>();
             foreach (var item in src)
             {
-                Tuple<string, string> ItemInfo = DecodeJObject((JObject)item,true);
+                Tuple<string, string> ItemInfo = DecodeJObject((JObject)item, true);
                 InRangeScript += "\"" + ItemInfo.Item2 + "\"" + ",";
                 if (!LinkSet.Contains(ItemInfo.Item1))
                 {
@@ -384,7 +384,7 @@ namespace GraphView
                             TempPathForCurrentStage.Add(res);
                         }
                     }
-                    foreach (var res in QueryForDestNodes(TempPathForCurrentStage, Query,  MapForCurrentStage))
+                    foreach (var res in QueryForDestNodes(TempPathForCurrentStage, Query, MapForCurrentStage))
                     {
                         yield return res;
                     }
@@ -476,7 +476,7 @@ namespace GraphView
                                         if (DestRange.Length != 0 && SrcRange.Length != 0)
                                         {
                                             script = "SELECT " + expr.MultiPartIdentifier.ToString() + " AS INFO " +
-                                             " FROM " + link.src.NodeAlias + " JOIN " + link.src.NodeAlias + "._edge AS " + edge +
+                                             " FROM " + link.src.NodeAlias + " JOIN " + edge +  " IN " + link.src.NodeAlias + "._edge " +
                                              " WHERE " + link.src.NodeAlias + ".id IN (" + CutTheTail(SrcRange) + ")" + " AND " + edge + "._sink IN (" + CutTheTail(DestRange) + ")";
                                         }
                                     }
@@ -488,8 +488,11 @@ namespace GraphView
                 foreach (var item in res)
                 {
                     JToken obj = ((JObject)item)["INFO"];
-                    string objstring = obj.ToString();
-                    ResString += objstring + " ";
+                    if (!(obj == null))
+                    {
+                        string objstring = obj.ToString();
+                        ResString += objstring + " ";
+                    }
                 }
             }
             return ResString;
@@ -513,4 +516,4 @@ namespace GraphView
         }
     }
 
-    }
+}

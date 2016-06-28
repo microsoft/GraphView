@@ -98,7 +98,7 @@ namespace GraphView
                 if (cnt == null) continue;
                 var cnt2 = (cnt as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
                 if (cnt2 == null) continue;
-                nodes.GetOrCreate(cnt2.MultiPartIdentifier.Identifiers[0].Value);
+                //nodes.GetOrCreate(cnt2.MultiPartIdentifier.Identifiers[0].Value);
             }
             if (query.FromClause != null)
             {
