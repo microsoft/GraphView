@@ -442,9 +442,10 @@ namespace GraphView
                         script = "SELECT " + alias + " AS INFO " + " FROM " + alias + " WHERE " + MainAlias + ".id IN (" + QueryRange + ")";
                     }
                 }
-                else
+                else if (element is WSelectScalarExpression)
                 {
                     var exprx = element as WSelectScalarExpression;
+                    if (exprx.SelectExpr is WValueExpression) continue;
                     var expr = exprx.SelectExpr as WColumnReferenceExpression;
                     var identifiers = expr.MultiPartIdentifier.Identifiers;
                     if (GraphDescription.ContainsKey(identifiers[0].Value))
@@ -484,14 +485,17 @@ namespace GraphView
                             }
                     }
                 }
-                var res = ExecuteQuery(script);
-                foreach (var item in res)
+                if (script != "")
                 {
-                    JToken obj = ((JObject)item)["INFO"];
-                    if (!(obj == null))
+                    var res = ExecuteQuery(script);
+                    foreach (var item in res)
                     {
-                        string objstring = obj.ToString();
-                        ResString += objstring + " ";
+                        JToken obj = ((JObject)item)["INFO"];
+                        if (!(obj == null))
+                        {
+                            string objstring = obj.ToString();
+                            ResString += objstring + " ";
+                        }
                     }
                 }
             }
