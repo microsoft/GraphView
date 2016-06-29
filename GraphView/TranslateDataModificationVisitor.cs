@@ -74,14 +74,6 @@ namespace GraphView
             var index = 0;
             for (var count = statements.Count; index < count; ++index)
             {
-                //var insertNodeStatement = statements[index] as WInsertNodeSpecification;
-                //if (insertNodeStatement != null)
-                //{   //put the answer into a Temporary Document
-                //    FileStream aFile = new FileStream("D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs", FileMode.Create);
-                //    StreamWriter File = new StreamWriter(aFile);
-                //    File.Write(insertNodeStatement.ToDocDbScript());
-                //    File.Close();
-                //}
 
                 var insertEdgeStatement = statements[index] as WInsertEdgeSpecification;
                 if (insertEdgeStatement != null)

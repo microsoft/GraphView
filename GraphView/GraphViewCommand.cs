@@ -292,42 +292,9 @@ namespace GraphView
                             System.Threading.Thread.Sleep(100);
                         }
 
-#if DEBUG
-                        //put the answer into a Temporary Document
-                        //FileStream aFile =
-                        //    new FileStream(
-                        //        "D:\\source\\documentdb-dotnet-getting-started-master\\ConsoleApplication1\\Program.cs",
-                        //        FileMode.Create);
-                        //StreamWriter File = new StreamWriter(aFile);
-                        //File.Write(code);
-                        //File.Close();
-#endif
-                        //var result =
-                        //    GraphViewDocDBCommand.CompileFromSource(code);
-                        //if (result.Errors.Count > 0)
-                        //    throw new GraphViewException("");
-                        //Assembly ass = Assembly.LoadFrom(result.PathToAssembly);
-                        //object obj = ass.CreateInstance("ConsoleApplication1.Program");
-                        //MethodInfo mi = obj.GetType().GetMethod("Main");
-
-                        //mi.Invoke(obj, null);
                     }
                 }
 
-                //Command.CommandText = script.ToString();
-                //Command.Transaction = Tx;
-#if DEBUG
-                // For debugging
-                //OutputResult(CommandText, Command.CommandText);
-#endif
-                //int res = Command.ExecuteNonQuery();
-                //if (!externalTransaction)
-                //{
-                //    Tx.Commit();
-                //    Tx.Dispose();
-                //    Tx = null;
-                //}
-                //return res;
                 return 0;
             }
             catch (SqlException e)

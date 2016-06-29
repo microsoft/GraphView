@@ -100,5 +100,22 @@ namespace GraphViewUnitTest
 
             gcmd.ExecuteNonQuery();
         }
+
+        [TestMethod]
+        public void Selecttest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSix");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT e1.type FROM node AS father, node AS son MATCH son-[Edge AS e1]->father WHERE e1.type = 'father'
+            ";
+
+            gcmd.ExecuteNonQuery();
+        }
     }
 }
