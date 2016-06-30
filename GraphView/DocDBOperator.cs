@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    interface DocDBOperator
+    internal interface DocDBOperator
     {
         void Open();
         void Close();
         object Next();
     }
 
-    abstract class DocDBOperatorProcessor : DocDBOperator
+    internal abstract class DocDBOperatorProcessor : DocDBOperator
     {
         public bool statue;
         public void Open()
