@@ -15,7 +15,12 @@ namespace GraphView
 
     internal abstract class DocDBOperatorProcessor : DocDBOperator
     {
-        public bool statue;
+        internal Table InputBuffer;
+        internal Table OutputBuffer;
+        internal int InputBufferSize;
+        internal int OutputBufferSize;
+        internal List<DocDBOperatorProcessor> ChildrenProcessor;
+        internal bool statue;
         public void Open()
         {
             statue = true;
