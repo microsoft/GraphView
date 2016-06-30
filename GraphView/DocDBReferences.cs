@@ -6,6 +6,24 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
+    public class DocDBConnection
+    {
+        public DocDBConnection(int pMaxPacketSize, GraphViewConnection connection)
+        {
+            MaxPacketSize = pMaxPacketSize;
+            EndPointUrl = connection.DocDB_Url;
+            PrimaryKey = connection.DocDB_Key;
+            DatabaseID = connection.DocDB_DatabaseId;
+            CollectionID = connection.DocDB_CollectionId;
+            client = connection.client;
+        }
+        public int MaxPacketSize;
+        public string EndPointUrl;
+        public string PrimaryKey;
+        public string DatabaseID;
+        public string CollectionID;
+        public DocumentClient client;
+    }
     internal class Record
     {
         internal Record()
@@ -44,33 +62,11 @@ namespace GraphView
         internal List<string> ResultsIndex;
         internal List<Record> records;
         internal int RecordIndex;
-        public int Depth
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
         public int FieldCount
         {
             get
             {
                 return BindingIndex.Count + ResultsIndex.Count;
-            }
-        }
-        public bool IsClosed
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        public int RecordsAffected
-        {
-            get
-            {
-                throw new NotImplementedException();
             }
         }
         public object this[Int32 index]
@@ -131,6 +127,7 @@ namespace GraphView
     }
     internal interface DocDBOperator
     {
+        bool Statue();
         void Open();
         void Close();
         object Next();
@@ -144,6 +141,10 @@ namespace GraphView
         internal int OutputBufferSize;
         internal List<DocDBOperatorProcessor> ChildrenProcessor;
         internal bool statue;
+        public bool Statue()
+        {
+            return statue;
+        }
         public void Open()
         {
             statue = true;
