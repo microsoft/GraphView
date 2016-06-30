@@ -196,11 +196,7 @@ namespace GraphView
                 throw new SqlExecutionException("An error occurred when executing the query", e);
             }
         }
-        Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
-        {
-            string s = @"D:\source\graphview\packages\Newtonsoft.Json.6.0.8\lib\net45\" + args.Name.Remove(args.Name.IndexOf(',')) + ".dll";
-            return Assembly.LoadFile(s);
-        }
+        
         public int ExecuteNonQuery()
         {
             try
@@ -211,12 +207,7 @@ namespace GraphView
                 var script = parser.Parse(sr, out errors) as WSqlScript;
                 if (errors.Count > 0)
                     throw new SyntaxErrorException(errors);
-
-                AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(CurrentDomain_AssemblyResolve);
-
-                //var DocDB_conn = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                //    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                //    "GroupMatch", "GraphSix");
+                
                 var DocDB_conn = GraphViewConnection;
 
                 DocDB_conn.createclient();
@@ -233,8 +224,7 @@ namespace GraphView
                     {
                         DocDB_script.Batches[0].Statements.Clear();
                         DocDB_script.Batches[0].Statements.Add(statement);
-
-                        string code = "";
+                        
                         if (statement is WSelectStatement)
                         {
                             var selectStatement = (statement as WSelectStatement);
@@ -286,7 +276,7 @@ namespace GraphView
                                 deleteNodeStatement.RunDocDbScript(DocDB_conn);
                             }
                         }
-
+                        //keep waiting until finish.
                         while (DocDB_conn.DocDB_finish == false)
                         {
                             System.Threading.Thread.Sleep(100);

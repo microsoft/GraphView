@@ -99,10 +99,16 @@ namespace GraphView
         private WSelectQueryBlock SelectBlock;
         private MatchGraph SelectGraph;
         private Dictionary<string, int> GraphDescription;
-        private Dictionary<string, MatchNode> NodeTable;
+        private static Dictionary<string, MatchNode> NodeTable;
         private QuerySpec spec;
         private string SelectResult;
         private string InRangeScript = "";
+
+        public static Dictionary<string, MatchNode> GetNodeTable()
+        {
+            return NodeTable;
+        }
+
         /// <summary>
         /// Execute a documentDB script on the connection that has already been established 
         /// and stored on (DocDBconnection) connection

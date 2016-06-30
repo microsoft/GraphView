@@ -173,11 +173,13 @@ namespace GraphView
                     s2 = '\"' + s2 + '\"';
                 Json_str = GraphViewJsonCommand.insert_property(Json_str, s2, s1).ToString();
             }
+            //Insert "_edge" & "_reverse_edge" into the string.
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
 
             var obj = JObject.Parse(Json_str);
             await docDbConnection.client.CreateDocumentAsync("dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId, obj);
+
             docDbConnection.DocDB_finish = true;
         }
     }
@@ -275,6 +277,7 @@ namespace GraphView
             if (Values.Count() != Columns.Count())
                 throw new SyntaxErrorException("Columns and Values not match");
 
+            //Add properties to Edge
             for (var index = 0; index < Columns.Count(); index++)
             {
                 Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(),
@@ -297,10 +300,11 @@ namespace GraphView
             var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
             identifiers2.Add(iden);
 
-
+            //get source and sink's id from SelectProcessor 
             var selectResults = new SelectProcessor(SelectQueryBlock, new DocDBConnection(50, docDbConnection));
             foreach (var x in selectResults.Result())
             {
+                if (x == "") continue;
                 char[] delimit = new char[] { ' ' };
                 string[] words = x.Split(delimit);
                 Tuple<string,string> y = new Tuple<string, string>(words[0],words[1]);
@@ -334,6 +338,7 @@ namespace GraphView
             identifiers1.RemoveAt(1);
             identifiers2.RemoveAt(1);
 
+            //Replace Documents
             foreach (var cnt in map)
                 await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
 
@@ -456,9 +461,11 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
 
             return sb.ToString();
         }
-        
+
         /// <summary>
-        /// 
+        /// Check if there is eligible nodes with edges.
+        /// If there is , stop delete nodes.
+        /// Else , get those nodes' _id and delete them with it.
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
@@ -467,6 +474,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
             docDbConnection.DocDB_finish = false;
 
             var search = WhereClause.SearchCondition;
+            //build up the query
             string Selectstr = "SELECT * " + "FROM Node ";
             if (search == null)
             {
@@ -638,15 +646,14 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
             var selectResults = new SelectProcessor(SelectQueryBlock, new DocDBConnection(50, docDbConnection));
             foreach (var x in selectResults.Result())
             {
+                if (x == "") continue;
                 if (source_query == "" && sink_query == "")
                 {
-                    var DocDB_graph = QueryComponent.graph;
-                    var query_nodes = DocDB_graph.ConnectedSubGraphs[0].Nodes;
+                    var query_nodes = SelectProcessor.GetNodeTable();
                     source_node = query_nodes[source];
                     sink_node = query_nodes[sink];
                     GraphViewDocDBCommand.GetQuery(source_node);
                     GraphViewDocDBCommand.GetQuery(sink_node);
-                    
                 }
 
                 char[] delimit = new char[] { ' ' };
