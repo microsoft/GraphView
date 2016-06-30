@@ -33,8 +33,8 @@ namespace GraphView
         public DocumentClient client;
     }
 
-    public class ItemQuery { }
-    public class NodeQuery : ItemQuery
+    internal class ItemQuery { }
+    internal class NodeQuery : ItemQuery
     {
         public NodeQuery(Dictionary<string, int> GraphDescription, MatchNode node)
         {
@@ -47,7 +47,7 @@ namespace GraphView
         public string NodeAlias;
         public string NodePredicate;
     }
-    public class LinkQuery : ItemQuery
+    internal class LinkQuery : ItemQuery
     {
         public LinkQuery(Dictionary<string, int> GraphDescription, MatchNode pSrc, MatchNode pDest, MatchEdge Edge)
         {
@@ -72,7 +72,7 @@ namespace GraphView
         public List<string> EdgeAlias;
         public string EdgesToNeghbor;
     }
-    public class QuerySpec
+    internal class QuerySpec
     {
         public QuerySpec()
         {
