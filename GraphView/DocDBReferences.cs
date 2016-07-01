@@ -35,9 +35,10 @@ namespace GraphView
         public string CollectionID;
         public DocumentClient client;
     }
+    
     /// <summary>
-    /// It is a raw data sturcture used to store the result of some process.
-    /// It provides some useful functions to translate the infomation it stores into resonable output with a giving header.
+    /// Record is a raw data sturcture flowing from one data operator to another. 
+    /// The interpretation of the record is specified in a data operator or a table. 
     /// </summary>
     internal class Record
     {
@@ -49,19 +50,19 @@ namespace GraphView
         internal Record()
         {
             Bindings = new List<string>();
-            Results = new List<string>();
-            for (int i = 0; i < ResultNumber; i++) Results.Add("");
+            Fields = new List<string>();
+            for (int i = 0; i < ResultNumber; i++) Fields.Add("");
         }
         internal Record(int pResultNumber)
         {
             Bindings = new List<string>();
-            Results = new List<string>();
-            for (int i = 0; i < pResultNumber; i++) Results.Add("");
+            Fields = new List<string>();
+            for (int i = 0; i < pResultNumber; i++) Fields.Add("");
         }
         internal Record(List<string> pBindings, List<string> pResults)
         {
             Bindings = pBindings;
-            Results = pResults;
+            Fields = pResults;
         }
         public int GetBinding(string pId, List<int> pBindingHeader)
         {
@@ -71,7 +72,7 @@ namespace GraphView
         public string GetId(string ResultIndex, List<string> pResultHeader)
         {
             if (pResultHeader.IndexOf(ResultIndex) == -1) return "";
-            return Results[pResultHeader.IndexOf(ResultIndex)];
+            return Fields[pResultHeader.IndexOf(ResultIndex)];
         }
         public string GetId(int Binding, List<int> pBindingHeader)
         {
@@ -83,12 +84,13 @@ namespace GraphView
             return pResultHeader.IndexOf(Result);
         }
         public List<string> Bindings;
-        public List<string> Results;
+        public List<string> Fields;
     }
+    
     /// <summary>
-    /// Table is a set of record with specified headers that is used to translate the record in it.
+    /// TableBuffer is a buffer that caches a certain number of records. 
     /// </summary>
-    internal class Table
+    internal class TableBuffer
     {
         internal List<int> BindingIndex;
         internal List<string> ResultsIndex;
@@ -114,10 +116,10 @@ namespace GraphView
             get
             {
                 if (ResultsIndex.IndexOf(index) == -1) return "";
-                return records[RecordIndex].Results[ResultsIndex.IndexOf(index)];
+                return records[RecordIndex].Fields[ResultsIndex.IndexOf(index)];
             }
         }
-        internal Table(List<int> pBindingIndex, List<string> pResultsIndex)
+        internal TableBuffer(List<int> pBindingIndex, List<string> pResultsIndex)
         {
             BindingIndex = pBindingIndex;
             ResultsIndex = pResultsIndex;
@@ -144,7 +146,7 @@ namespace GraphView
         public string GetId(string ResultIndex)
         {
             if (ResultsIndex.IndexOf(ResultIndex) == -1) return "";
-            return records[RecordIndex].Results[ResultsIndex.IndexOf(ResultIndex)];
+            return records[RecordIndex].Fields[ResultsIndex.IndexOf(ResultIndex)];
         }
         public string GetId(int Binding)
         {
@@ -158,14 +160,15 @@ namespace GraphView
             records.Clear();
         }
     }
+
     /// <summary>
     /// DocDBOperator is the basic interface of all operator processor function.
     /// It provides three basic interface about the statue of a operator processor function.
     /// And one interface to execute the operator. 
     /// </summary>
-    internal interface DocDBOperator
+    internal interface IGraphViewProcessor
     {
-        bool Statue();
+        bool Status();
         void Open();
         void Close();
         object Next();
@@ -175,15 +178,15 @@ namespace GraphView
     /// which implements some of the basic interface.
     /// and provides some useful sturcture like buffer on both input and output sides
     /// </summary>
-    internal abstract class DocDBOperatorProcessor : DocDBOperator
+    internal abstract class GraphViewOperator : IGraphViewProcessor
     {
         internal Queue<Record> InputBuffer;
         internal Queue<Record> OutputBuffer;
         internal int InputBufferSize;
         internal int OutputBufferSize;
-        internal List<DocDBOperatorProcessor> ChildrenProcessor;
+        internal List<GraphViewOperator> ChildrenProcessor;
         internal bool statue;
-        public bool Statue()
+        public bool Status()
         {
             return statue;
         }

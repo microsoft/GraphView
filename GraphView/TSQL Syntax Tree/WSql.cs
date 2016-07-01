@@ -95,7 +95,11 @@ namespace GraphView
         {
 
         }
-        
+
+        public virtual GraphViewOperator Compile() 
+        {
+            return null;
+        }
     }
 
     public partial class WSqlScript : WSqlFragment

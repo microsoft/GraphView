@@ -12,7 +12,7 @@ namespace GraphView
 
     /// <summary>
     /// Two Type of specifiers
-    /// NodeQuery is specifiers for traversal of isolated node
+    /// NodeQuery is a specification of a DocDB query retrieving individual nodes
     /// LinkQuery is specifiers for traversal of link between two nodes
     /// </summary>
     internal class ItemQuery { }
@@ -20,12 +20,12 @@ namespace GraphView
     {
         public NodeQuery(Dictionary<string, int> GraphDescription, MatchNode node)
         {
-            NodeNum = GraphDescription[node.NodeAlias];
+            NodeId = GraphDescription[node.NodeAlias];
             NodeAlias = node.NodeAlias;
             NodePredicate = node.DocDBQuery.Replace("'", "\"");
         }
         public NodeQuery() { }
-        public int NodeNum;
+        public int NodeId;
         public string NodeAlias;
         public string NodePredicate;
     }
@@ -35,10 +35,10 @@ namespace GraphView
         {
             src = new NodeQuery();
             dest = new NodeQuery();
-            src.NodeNum = GraphDescription[pSrc.NodeAlias];
+            src.NodeId = GraphDescription[pSrc.NodeAlias];
             src.NodeAlias = pSrc.NodeAlias;
             src.NodePredicate = pSrc.DocDBQuery.Replace("'", "\"");
-            dest.NodeNum = GraphDescription[pDest.NodeAlias];
+            dest.NodeId = GraphDescription[pDest.NodeAlias];
             dest.NodeAlias = pDest.NodeAlias;
             dest.NodePredicate = pDest.DocDBQuery.Replace("'", "\"");
             EdgeAlias = new List<string>();
@@ -77,7 +77,7 @@ namespace GraphView
     /// NodeFetchProcessor is used for the most basic interaction with server
     /// NodeFetchProcessor.Next() sends a query to server and return the result it fetched
     /// </summary>
-    internal class NodeFetchProcessor : DocDBOperatorProcessor
+    internal class NodeFetchProcessor : GraphViewOperator
     {
         string script;
         DocDBConnection connection;
@@ -99,7 +99,7 @@ namespace GraphView
     /// TraversalProcessor.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
-    internal class TraversalProcessor : DocDBOperatorProcessor
+    internal class TraversalProcessor : GraphViewOperator
     {
         static Record RecordZero;
         private ItemQuery SpecForCurrent;
@@ -107,7 +107,7 @@ namespace GraphView
         private List<int> BindingIndex;
         private List<string> ResultsIndex;
         private DocDBConnection connection;
-        public TraversalProcessor(DocDBConnection pConnection, ItemQuery pSpec, DocDBOperatorProcessor pChildProcessor, List<int> pBindingIndex, List<string> pResultsIndex, int pInputBufferSize, int pOutputBufferSize)
+        public TraversalProcessor(DocDBConnection pConnection, ItemQuery pSpec, GraphViewOperator pChildProcessor, List<int> pBindingIndex, List<string> pResultsIndex, int pInputBufferSize, int pOutputBufferSize)
         {
             this.Open();
             BindingIndex = pBindingIndex;
@@ -127,7 +127,7 @@ namespace GraphView
             this.Open();
             BindingIndex = pBindingIndex;
             ResultsIndex = pResultsIndex;
-            ChildrenProcessor = new List<DocDBOperatorProcessor>();
+            ChildrenProcessor = new List<GraphViewOperator>();
             SpecForCurrent = pSpecs.lines[index];
             if (index > 0)
             {
@@ -144,11 +144,11 @@ namespace GraphView
         override public object Next()
         {
             AdjacentList MapForCurrentStage = new AdjacentList();
-            Table StartTableFromLastStage = new Table(BindingIndex, ResultsIndex);
-            Table TempRecordForCurrentStage = new Table(BindingIndex, ResultsIndex);
+            TableBuffer StartTableFromLastStage = new TableBuffer(BindingIndex, ResultsIndex);
+            TableBuffer TempRecordForCurrentStage = new TableBuffer(BindingIndex, ResultsIndex);
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildrenProcessor.Count > 0 && !ChildrenProcessor[0].Statue())))
+            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildrenProcessor.Count > 0 && !ChildrenProcessor[0].Status())))
             {
                 return OutputBuffer.Dequeue();
             }
@@ -158,9 +158,9 @@ namespace GraphView
                 if (OutputBuffer.Count == 0) InputBuffer.Enqueue(RecordZero);
             }
             else
-                while (InputBuffer.Count() < InputBufferSize && ChildrenProcessor[0].Statue())
+                while (InputBuffer.Count() < InputBufferSize && ChildrenProcessor[0].Status())
                 {
-                    if (ChildrenProcessor.Count != 0 && ChildrenProcessor[0].Statue())
+                    if (ChildrenProcessor.Count != 0 && ChildrenProcessor[0].Status())
                     {
                         Record Result = (Record)ChildrenProcessor[0].Next();
                         if (Result == null) ChildrenProcessor[0].Close();
@@ -226,7 +226,7 @@ namespace GraphView
             {
                 NewBinding.Add(ItemInfo.Item1);
             }
-            List<string> NewResult = new List<string>(record.Results);
+            List<string> NewResult = new List<string>(record.Fields);
             if (Result != null)
                 for (int i = 0; i < NewResult.Count; i++)
                 {
@@ -243,7 +243,7 @@ namespace GraphView
         /// <summary>
         /// Dealing with NodeQuery specifier, sending query to determine a set of nodes and bind them to a specific group
         /// </summary>
-        private IEnumerable<Record> NodeQueryProcessor(Table RecordFromLastTable, NodeQuery pNodeQuery)
+        private IEnumerable<Record> NodeQueryProcessor(TableBuffer RecordFromLastTable, NodeQuery pNodeQuery)
         {
             List<string> ResultIndexToAppend = new List<string>();
             string ResultIndexString = " ,";
@@ -272,12 +272,12 @@ namespace GraphView
                 Record ResultRecord = new Record();
                 foreach (string ResultIndex in ResultIndexToAppend)
                 {
-                    ResultRecord.Results[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
+                    ResultRecord.Fields[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
                         ((JObject)item)[ResultIndex.Replace(".", "A")].ToString();
                 }
                 foreach (var record in RecordFromLastTable.records)
                 {
-                    Record NewRecord = AddIfNotExist(ItemInfo, record, pNodeQuery, ResultRecord.Results);
+                    Record NewRecord = AddIfNotExist(ItemInfo, record, pNodeQuery, ResultRecord.Fields);
                     yield return NewRecord;
                 }
             }
@@ -288,7 +288,7 @@ namespace GraphView
         /// sending query to determine a set of source nodes and bind them to a specific group
         /// Also giving a set of possible sink nodes for later use
         /// </summary>
-        private IEnumerable<Record> QueryForSrcNodes(Table RecordFromLastTable, LinkQuery pLinkQuery, AdjacentList Map)
+        private IEnumerable<Record> QueryForSrcNodes(TableBuffer RecordFromLastTable, LinkQuery pLinkQuery, AdjacentList Map)
         {
             List<string> ResultIndexToAppend = new List<string>();
             string ResultIndexString = " ,";
@@ -332,12 +332,12 @@ namespace GraphView
                     {
                         var res = (((JObject)item)[ResultIndex.Replace(".", "A")]);
                         if (res != null)
-                            ResultRecord.Results[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
+                            ResultRecord.Fields[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
                                 res.ToString();
                     }
                     foreach (var record in RecordFromLastTable.records)
                     {
-                        Record NewPath = AddIfNotExist(ItemInfo, record, pLinkQuery.src, ResultRecord.Results);
+                        Record NewPath = AddIfNotExist(ItemInfo, record, pLinkQuery.src, ResultRecord.Fields);
                         yield return NewPath;
                     }
                 }
@@ -352,7 +352,7 @@ namespace GraphView
         /// that generated by QueryForSrcNodes function.
         /// Bind them to sink node group
         /// </summary>
-        private IEnumerable<Record> QueryForDestNodes(Table RecordFromLastTable, LinkQuery pLinkQuery, AdjacentList Map)
+        private IEnumerable<Record> QueryForDestNodes(TableBuffer RecordFromLastTable, LinkQuery pLinkQuery, AdjacentList Map)
         {
             List<string> ResultIndexToAppend = new List<string>();
             string ResultIndexString = " ,";
@@ -386,24 +386,24 @@ namespace GraphView
                 {
                     var res = (((JObject)item)[ResultIndex.Replace(".", "A")]);
                     if (res != null)
-                        ResultRecord.Results[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
+                        ResultRecord.Fields[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
                             res.ToString();
                 }
                 foreach (var record in RecordFromLastTable.records)
                 {
-                    if (record.GetId(pLinkQuery.src.NodeNum, BindingIndex) != "")
+                    if (record.GetId(pLinkQuery.src.NodeId, BindingIndex) != "")
                     {
                         foreach (var link in Map[ItemInfo.Item1])
                         {
-                            if (link == record.GetId(pLinkQuery.src.NodeNum, BindingIndex))
+                            if (link == record.GetId(pLinkQuery.src.NodeId, BindingIndex))
                             {
-                                if (record.GetBinding(ItemInfo.Item1, BindingIndex) == pLinkQuery.dest.NodeNum)
+                                if (record.GetBinding(ItemInfo.Item1, BindingIndex) == pLinkQuery.dest.NodeId)
                                 {
                                     yield return record;
                                 }
-                                else if (record.GetId(pLinkQuery.dest.NodeNum, BindingIndex) == "")
+                                else if (record.GetId(pLinkQuery.dest.NodeId, BindingIndex) == "")
                                 {
-                                    yield return AddIfNotExist(ItemInfo, record, pLinkQuery.dest, ResultRecord.Results);
+                                    yield return AddIfNotExist(ItemInfo, record, pLinkQuery.dest, ResultRecord.Fields);
                                 }
                             }
                         }
@@ -417,7 +417,7 @@ namespace GraphView
     /// It extracts needed information from WSelectQueryBlock and generates a set of specifiers.
     /// SelectProcessor.Next() feeds the specifiers it generated to a set of TraversalProcessor and return one result.
     /// </summary>
-    internal class SelectProcessor : DocDBOperatorProcessor
+    internal class SelectProcessor : GraphViewOperator
     {
 
         private DocDBConnection connection;
@@ -454,7 +454,7 @@ namespace GraphView
         }
         private void ConstructChildernProcessors()
         {
-            if (ChildrenProcessor == null) ChildrenProcessor = new List<DocDBOperatorProcessor>();
+            if (ChildrenProcessor == null) ChildrenProcessor = new List<GraphViewOperator>();
             ChildrenProcessor.Add(new TraversalProcessor(connection, spec, spec.index(), BindingHeader, ResultHeader, 10, 10));
         }
         /// <summary>
@@ -512,11 +512,11 @@ namespace GraphView
             ResultHeader = new List<string>();
             foreach (var line in spec.lines)
             {
-                if (line is NodeQuery) BindingHeader.Add((line as NodeQuery).NodeNum);
+                if (line is NodeQuery) BindingHeader.Add((line as NodeQuery).NodeId);
                 if (line is LinkQuery)
                 {
-                    BindingHeader.Add((line as LinkQuery).src.NodeNum);
-                    BindingHeader.Add((line as LinkQuery).dest.NodeNum);
+                    BindingHeader.Add((line as LinkQuery).src.NodeId);
+                    BindingHeader.Add((line as LinkQuery).dest.NodeId);
                 }
             }
 
