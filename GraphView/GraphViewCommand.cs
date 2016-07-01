@@ -230,19 +230,8 @@ namespace GraphView
                             var selectStatement = (statement as WSelectStatement);
                             var res = "";
                             var Query = selectStatement.QueryExpr as WSelectQueryBlock;
-                            if (Query.MatchClause == null && Query.WhereClause.LastTokenIndex == 0)
-                            {
-                                var all = QueryComponent.ExcuteQuery("SELECT * FROM ALL");
-                                foreach (var x in all) res += x;
-                            }
-                            else
-                                foreach (var item in QueryComponent.SelectProcessor(Query))
-                                {
-                                    foreach (var x in item)
-                                    {
-                                        res += x.Item1 + "\n";
-                                    }
-                                }
+                            var SP = new SelectProcessor(Query, new DocDBConnection(50, GraphViewConnection));
+                            var x = SP.Next();
                             Console.WriteLine(res);
                             DocDB_conn.DocDB_finish = true;
                         }

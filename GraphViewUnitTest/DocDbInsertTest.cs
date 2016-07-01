@@ -89,31 +89,66 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSix");
+                    "GroupMatch", "GraphSeven");
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                Select *
+                Select 
             ";
 
             gcmd.ExecuteNonQuery();
         }
 
         [TestMethod]
-        public void Selecttest()
+        public void DocDBLinearSelectTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSix");
+                    "GroupMatch", "GraphSeven");
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                SELECT e1.type FROM node AS father, node AS son MATCH son-[Edge AS e1]->father WHERE e1.type = 'father'
-            ";
+                SELECT grandfather.name, father.name, son.name FROM node AS father, node AS son, node AS grandfather MATCH son-[Edge AS e1]->father-[Edge AS e2]->grandfather 
+ WHERE grandfather.name = 'saturn' AND e1.type = 'father' AND e2.type = 'father'";
+
+            gcmd.ExecuteNonQuery();
+        }
+
+        [TestMethod]
+        public void DocDBBranchSelectTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSeven");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT father.name, mother.name FROM node AS hercules, node AS father, node AS mother 
+ MATCH hercules-[Edge AS e]->father, hercules-[Edge AS f]->mother 
+ WHERE hercules.name = 'hercules' AND e.type = 'father' AND f.type ='mother' ";
+
+            gcmd.ExecuteNonQuery();
+        }
+
+        [TestMethod]
+        public void DocDBEdgeSelectTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSeven");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT n1.name, e.reason, n2.name FROM node AS n1, node AS n2
+ MATCH n1-[Edge AS e]->n2";
 
             gcmd.ExecuteNonQuery();
         }
