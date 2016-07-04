@@ -56,11 +56,11 @@ namespace GraphView
                 field.Add("");
             }
         }
-        internal string RetriveData(List<string> header,string index)
+        internal string RetriveData(List<string> header,string FieldName)
         {
-            if (header.IndexOf(index) == -1) return null;
-            else if (field.Count <= header.IndexOf(index)) return null;
-            else return field[header.IndexOf(index)];
+            if (header.IndexOf(FieldName) == -1) return null;
+            else if (field.Count <= header.IndexOf(FieldName)) return null;
+            else return field[header.IndexOf(FieldName)];
         }
 
         internal int RetriveIndex(string value)

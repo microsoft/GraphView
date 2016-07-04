@@ -158,7 +158,7 @@ namespace GraphView
             string InRangeScript = "";
             foreach (Record record in InputBuffer)
             {
-                InRangeScript += 
+                InRangeScript += record.RetriveData
             }
                 IQueryable<dynamic> Node = (IQueryable<dynamic>)new NodeFetchProcessor(connection, NodeScript).Next();
                 foreach (var item in Node)
