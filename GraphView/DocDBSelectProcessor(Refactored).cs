@@ -155,30 +155,11 @@ namespace GraphView
                             InputBuffer.Enqueue(Result);
                     }
                 }
-
+            string InRangeScript = "";
             foreach (Record record in InputBuffer)
             {
-                List<string> ResultIndexToAppend = new List<string>();
-                string ResultIndexString = " ,";
-                foreach (string ResultIndex in header.GetRange(StartOfResultField, header.Count - StartOfResultField)
-                {
-                    if (ResultIndex.Substring(0, ResultIndex.IndexOf('.')) == dest ||
-                        ResultIndex.Substring(0, ResultIndex.IndexOf('.')) == pLinkQuery.EdgeAlias[0])
-                        ResultIndexToAppend.Add(ResultIndex);
-                }
-                foreach (string ResultIndex in ResultIndexToAppend)
-                {
-                    ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "A") + ",";
-                }
-                if (ResultIndexString == " ,") ResultIndexString = "";
-                ResultIndexString = CutTheTail(ResultIndexString);
-
-                string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
-                string WhereClause = " " + pNodeQuery.NodePredicate;
-                string NodeScript = ScriptBase.Replace("node", pNodeQuery.NodeAlias) + ResultIndexString;
-                if (HasWhereClause(pNodeQuery.NodePredicate))
-                    NodeScript += " " + WhereClause;
-                else NodeScript += " From " + pNodeQuery.NodeAlias;
+                InRangeScript += 
+            }
                 IQueryable<dynamic> Node = (IQueryable<dynamic>)new NodeFetchProcessor(connection, NodeScript).Next();
                 foreach (var item in Node)
                 {
@@ -195,7 +176,6 @@ namespace GraphView
                         yield return NewRecord;
                     }
                 }
-                yield break;
             }
             if (OutputBuffer.Count != 0)
             {

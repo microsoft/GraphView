@@ -601,11 +601,11 @@ namespace GraphView
             if (NodeList.Count != 0)
             {
                 dest = NodeList.Pop();
-                ChildrenProcessor.Add(new TraversalProcessor("", dest, header,StartOfResult, 50, 50));
+                ChildrenProcessor.Add(new TraversalProcessor("", dest, header, StartOfResult, 50, 50));
             }
             src = dest;
             dest = "";
-            while(NodeList.Count != 0)
+            while (NodeList.Count != 0)
             {
                 dest = NodeList.Pop();
                 ChildrenProcessor.Add(new TraversalProcessor(src, dest, header, StartOfResult, 50, 50));
@@ -614,45 +614,77 @@ namespace GraphView
             }
 
         }
-        private void BuildQuerySegementOnNode(MatchNode node)
+        private void BuildQuerySegementOnNode(MatchNode node, List<string> header, int pStartOfResultField)
         {
-            string QuerySegemnt = "From " + node.NodeAlias;
+            string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
             int NumberOfPredicates = 0;
-                foreach (var edge in node.Neighbors)
+            foreach (var edge in node.Neighbors)
+            {
+                if (edge.SinkNode.NodeAlias == node.NodeAlias)
                 {
-                    if (edge.SinkNode.NodeAlias == node.NodeAlias) {
-                        QuerySegemnt += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-                        if (edge.Predicates != null)
+                    AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                    if (edge.Predicates != null)
+                    {
+                        if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
+                        NumberOfPredicates++;
+                        PredicatesOnReverseEdge += " (";
+                        for (int i = 0; i < edge.Predicates.Count(); i++)
                         {
-                            if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
-                            NumberOfPredicates++;
-                            PredicatesOnReverseEdge += " (";
-                            for (int i = 0; i < edge.Predicates.Count(); i++)
-                            {
-                                if (i != 0)
-                                    PredicatesOnReverseEdge += " And ";
-                                PredicatesOnReverseEdge += "(" + edge.Predicates[i] + ")";
-                            }
-                            PredicatesOnReverseEdge += ") ";
+                            if (i != 0)
+                                PredicatesOnReverseEdge += " And ";
+                            PredicatesOnReverseEdge += "(" + edge.Predicates[i] + ")";
                         }
+                        PredicatesOnReverseEdge += ") ";
                     }
                 }
-            QuerySegemnt += " Where ";
+            }
+            AttachedClause += " Where ";
             if (node.Predicates != null)
             {
                 for (int i = 0; i < node.Predicates.Count(); i++)
                 {
                     if (i != 0)
-                        QuerySegemnt += " And ";
-                    QuerySegemnt += node.Predicates[i];
+                        AttachedClause += " And ";
+                    AttachedClause += node.Predicates[i];
                 }
                 if (PredicatesOnReverseEdge != "")
-                    QuerySegemnt += " And ";
+                    AttachedClause += " And ";
             }
-            QuerySegemnt += PredicatesOnReverseEdge;
-            node.AttachedQuerySegment = QuerySegemnt;
+            AttachedClause += PredicatesOnReverseEdge;
+
+            List<string> ResultIndexToAppend = new List<string>();
+            string ResultIndexString = " ,";
+            foreach (string ResultIndex in header.GetRange(pStartOfResultField, header.Count - pStartOfResultField))
+            {
+                if (ResultIndex.Substring(0, ResultIndex.IndexOf('.')) == node.NodeAlias)
+                    ResultIndexToAppend.Add(ResultIndex);
+            }
+            foreach (string ResultIndex in ResultIndexToAppend)
+            {
+                ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
+            }
+            if (ResultIndexString == " ,") ResultIndexString = "";
+            ResultIndexString = CutTheTail(ResultIndexString);
+
+            string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
+            string QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString;
+            if (HasWhereClause(AttachedClause))
+                QuerySegment += " " + AttachedClause;
+            else QuerySegment += " From " + node.NodeAlias;
+
+            node.AttachedQuerySegment = QuerySegment;
         }
+        string CutTheTail(string InRangeScript)
+        {
+            if (InRangeScript.Length == 0) return "";
+            return InRangeScript.Substring(0, InRangeScript.Length - 1);
+        }
+        private bool HasWhereClause(string SelectClause)
+        {
+            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "Where");
+        }
+
         private class UnionFind
         {
             public Dictionary<string, string> Parent;

@@ -44,7 +44,7 @@ namespace GraphView
     /// Given a field name, returns the field's value.
     /// Given a field offset, returns the field's value.
     /// </summary>
-    internal class Record
+    public class Record
     {
         internal Record()
         { 
@@ -81,7 +81,7 @@ namespace GraphView
         bool Status();
         void Open();
         void Close();
-        object Next();
+        Record Next();
     }
     /// <summary>
     /// The most basic class for all operator processor function,
@@ -105,7 +105,7 @@ namespace GraphView
         }
         public abstract Record Next();
 
-        public List<string> OutputHeader;
+        public List<string> header;
     }
 
     internal class InsertEdgeOperator : GraphViewOperator
