@@ -96,7 +96,7 @@ namespace GraphView
 
         }
 
-        public virtual GraphViewOperator Compile() 
+        public virtual GraphViewOperator Generate() 
         {
             return null;
         }

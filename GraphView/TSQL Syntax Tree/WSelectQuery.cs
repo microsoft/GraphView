@@ -87,6 +87,8 @@ namespace GraphView
             if (QueryExpr != null)
                 QueryExpr.Accept(visitor);
             base.AcceptChildren(visitor);
+
+
         }
     }
 
@@ -213,8 +215,9 @@ namespace GraphView
         internal WGroupByClause GroupByClause { get; set; }
         internal WHavingClause HavingClause { get; set; }
         internal WMatchClause MatchClause { get; set; }
+        internal MatchGraph Graph { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
-
+        internal List<TraversalProcessor> ChildrenProcessor;
         public WSelectQueryBlock()
         {
             FromClause = new WFromClause();
@@ -352,7 +355,319 @@ namespace GraphView
 
             base.AcceptChildren(visitor);
         }
-    }
+
+        public override GraphViewOperator Generate()
+        {
+            ConstructGraph();
+
+        }
+
+        private void ConstructGraph()
+        {
+            Dictionary<string, List<string>> EdgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, MatchPath> pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
+
+            UnionFind UnionFind = new UnionFind();
+            Dictionary<string, MatchNode> Nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
+            List<ConnectedComponent> ConnectedSubGraphs = new List<ConnectedComponent>();
+            Dictionary<string, ConnectedComponent> SubGrpahMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> Parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            UnionFind.Parent = Parent;
+
+            foreach (var cnt in SelectElements)
+            {
+                if (cnt is WSelectStarExpression) continue;
+                if (cnt == null) continue;
+                var cnt2 = (cnt as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
+                if (cnt2 == null) continue;
+            }
+            if (FromClause != null)
+            {
+                foreach (WTableReferenceWithAlias cnt in FromClause.TableReferences)
+                {
+                    Nodes.GetOrCreate(cnt.Alias.Value);
+                }
+            }
+
+            if (MatchClause != null)
+            {
+                if (MatchClause.Paths.Count > 0)
+                {
+                    foreach (var path in MatchClause.Paths)
+                    {
+                        var index = 0;
+                        MatchEdge PreEdge = null;
+                        for (var count = path.PathEdgeList.Count; index < count; ++index)
+                        {
+                            var CurrentNodeTableRef = path.PathEdgeList[index].Item1;
+                            var CurrentEdgeColumnRef = path.PathEdgeList[index].Item2;
+                            var CurrentNodeExposedName = CurrentNodeTableRef.BaseIdentifier.Value;
+                            var nextNodeTableRef = index != count - 1
+                                ? path.PathEdgeList[index + 1].Item1
+                                : path.Tail;
+                            var nextNodeExposedName = nextNodeTableRef.BaseIdentifier.Value;
+                            var PatternNode = Nodes.GetOrCreate(CurrentNodeExposedName);
+                            if (PatternNode.NodeAlias == null)
+                            {
+                                PatternNode.NodeAlias = CurrentNodeExposedName;
+                                PatternNode.Neighbors = new List<MatchEdge>();
+                                PatternNode.External = false;
+                            }
+
+                            string pEdgeAlias = CurrentEdgeColumnRef.Alias;
+                            if (pEdgeAlias == null)
+                            {
+                                bool isReversed = path.IsReversed;
+                                var CurrentEdgeName = CurrentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
+                                string originalEdgeName = null;
+
+                                pEdgeAlias = string.Format("{0}_{1}_{2}", CurrentNodeExposedName, CurrentEdgeName,
+                                    nextNodeExposedName);
+
+                                // when current edge is a reversed edge, the key should still be the original edge name
+                                var edgeNameKey = isReversed ? originalEdgeName : CurrentEdgeName;
+                                if (EdgeColumnToAliasesDict.ContainsKey(edgeNameKey))
+                                {
+                                    EdgeColumnToAliasesDict[edgeNameKey].Add(pEdgeAlias);
+                                }
+                                else
+                                {
+                                    EdgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { pEdgeAlias });
+                                }
+                            }
+
+                            MatchEdge edge;
+                            if (CurrentEdgeColumnRef.MinLength == 1 && CurrentEdgeColumnRef.MaxLength == 1)
+                            {
+                                edge = new MatchEdge
+                                {
+                                    SourceNode = PatternNode,
+                                    EdgeColumn = CurrentEdgeColumnRef,
+                                    EdgeAlias = pEdgeAlias,
+                                    BindNodeTableObjName =
+                                        new WSchemaObjectName(
+                                            ),
+                                };
+                            }
+                            else
+                            {
+                                MatchPath matchPath = new MatchPath
+                                {
+                                    SourceNode = PatternNode,
+                                    EdgeColumn = CurrentEdgeColumnRef,
+                                    EdgeAlias = pEdgeAlias,
+                                    BindNodeTableObjName =
+                                        new WSchemaObjectName(
+                                            ),
+                                    MinLength = CurrentEdgeColumnRef.MinLength,
+                                    MaxLength = CurrentEdgeColumnRef.MaxLength,
+                                    ReferencePathInfo = false,
+                                    AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict
+                                };
+                                pathDictionary[pEdgeAlias] = matchPath;
+                                edge = matchPath;
+                            }
+
+                            if (PreEdge != null)
+                            {
+                                PreEdge.SinkNode = PatternNode;
+                            }
+                            PreEdge = edge;
+                            if (!Parent.ContainsKey(CurrentNodeExposedName))
+                                Parent[CurrentNodeExposedName] = CurrentNodeExposedName;
+                            if (!Parent.ContainsKey(nextNodeExposedName))
+                                Parent[nextNodeExposedName] = nextNodeExposedName;
+
+                            UnionFind.Union(CurrentNodeExposedName, nextNodeExposedName);
+
+
+                            PatternNode.Neighbors.Add(edge);
+
+                        }
+                        var tailExposedName = path.Tail.BaseIdentifier.Value;
+                        var tailNode = Nodes.GetOrCreate(tailExposedName);
+                        if (tailNode.NodeAlias == null)
+                        {
+                            tailNode.NodeAlias = tailExposedName;
+                            tailNode.Neighbors = new List<MatchEdge>();
+                        }
+                        if (PreEdge != null)
+                            PreEdge.SinkNode = tailNode;
+                    }
+
+                }
+            }
+            // Puts nodes into subgraphs
+            foreach (var node in Nodes)
+            {
+                string root;
+
+                root = "DocDB_graph";  // put them into the same graph
+
+                var patternNode = node.Value;
+
+                if (patternNode.NodeAlias == null)
+                {
+                    patternNode.NodeAlias = node.Key;
+                    patternNode.Neighbors = new List<MatchEdge>();
+                    patternNode.External = false;
+                }
+
+                if (!SubGrpahMap.ContainsKey(root))
+                {
+                    var subGraph = new ConnectedComponent();
+                    subGraph.Nodes[node.Key] = node.Value;
+                    foreach (var edge in node.Value.Neighbors)
+                    {
+                        subGraph.Edges[edge.EdgeAlias] = edge;
+                    }
+                    SubGrpahMap[root] = subGraph;
+                    ConnectedSubGraphs.Add(subGraph);
+                    subGraph.IsTailNode[node.Value] = false;
+                }
+                else
+                {
+                    var subGraph = SubGrpahMap[root];
+                    subGraph.Nodes[node.Key] = node.Value;
+                    foreach (var edge in node.Value.Neighbors)
+                    {
+                        subGraph.Edges[edge.EdgeAlias] = edge;
+                    }
+                    subGraph.IsTailNode[node.Value] = false;
+                }
+            }
+
+            Graph = new MatchGraph
+            {
+                ConnectedSubGraphs = ConnectedSubGraphs,
+                MainSubGraph = ConnectedSubGraphs[0]
+            };
+
+            AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
+            WSqlTableContext Context = new WSqlTableContext();
+            GraphMetaData GraphMeta = new GraphMetaData();
+            Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
+            AttachPredicateVistor.Invoke(WhereClause, Graph, ColumnTableMapping);
+
+            foreach (var node in Graph.MainSubGraph.Nodes) BuildQuerySegementOnNode(node.Value);
+        }
+        private List<string> ConstructHeader()
+        {
+            List<string> header = new List<string>();
+            foreach(var node in Graph.MainSubGraph.Nodes)
+            {
+                header.Add(node.Key);
+                header.Add(node.Key + "_ADJ");
+                header.Add(node.Key + "_SEG");
+            }
+            foreach (var element in SelectElements)
+            {
+                if (element is WSelectScalarExpression)
+                {
+                    if ((element as WSelectScalarExpression).SelectExpr is WValueExpression) continue;
+                    var expr = (element as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
+                    header.Add(expr.MultiPartIdentifier.ToString());
+                }
+            }
+            return header;
+        }
+        private TraversalProcessor GenerateTraversalProcessor(List<string> header)
+        {
+            Stack<string> NodeList = new Stack<string>();
+            string src = "";
+            string dest = "";
+            foreach (var node in Graph.MainSubGraph.Nodes)
+            {
+                NodeList.Push(node.Key);
+            }
+            int StartOfResult = NodeList.Count * 3;
+            if (NodeList.Count != 0)
+            {
+                dest = NodeList.Pop();
+                ChildrenProcessor.Add(new TraversalProcessor("", dest, header,StartOfResult, 50, 50));
+            }
+            src = dest;
+            dest = "";
+            while(NodeList.Count != 0)
+            {
+                dest = NodeList.Pop();
+                ChildrenProcessor.Add(new TraversalProcessor(src, dest, header, StartOfResult, 50, 50));
+                src = dest;
+                dest = "";
+            }
+
+        }
+        private void BuildQuerySegementOnNode(MatchNode node)
+        {
+            string QuerySegemnt = "From " + node.NodeAlias;
+            string PredicatesOnReverseEdge = "";
+            int NumberOfPredicates = 0;
+                foreach (var edge in node.Neighbors)
+                {
+                    if (edge.SinkNode.NodeAlias == node.NodeAlias) {
+                        QuerySegemnt += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                        if (edge.Predicates != null)
+                        {
+                            if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
+                            NumberOfPredicates++;
+                            PredicatesOnReverseEdge += " (";
+                            for (int i = 0; i < edge.Predicates.Count(); i++)
+                            {
+                                if (i != 0)
+                                    PredicatesOnReverseEdge += " And ";
+                                PredicatesOnReverseEdge += "(" + edge.Predicates[i] + ")";
+                            }
+                            PredicatesOnReverseEdge += ") ";
+                        }
+                    }
+                }
+            QuerySegemnt += " Where ";
+            if (node.Predicates != null)
+            {
+                for (int i = 0; i < node.Predicates.Count(); i++)
+                {
+                    if (i != 0)
+                        QuerySegemnt += " And ";
+                    QuerySegemnt += node.Predicates[i];
+                }
+                if (PredicatesOnReverseEdge != "")
+                    QuerySegemnt += " And ";
+            }
+            QuerySegemnt += PredicatesOnReverseEdge;
+            node.AttachedQuerySegment = QuerySegemnt;
+        }
+        private class UnionFind
+        {
+            public Dictionary<string, string> Parent;
+
+            public string Find(string x)
+            {
+                string k, j, r;
+                r = x;
+                while (Parent[r] != r)
+                {
+                    r = Parent[r];
+                }
+                k = x;
+                while (k != r)
+                {
+                    j = Parent[k];
+                    Parent[k] = r;
+                    k = j;
+                }
+                return r;
+            }
+
+            public void Union(string a, string b)
+            {
+                string aRoot = Find(a);
+                string bRoot = Find(b);
+                if (aRoot == bRoot)
+                    return;
+                Parent[aRoot] = bRoot;
+            }
+        }
 
     public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
     {

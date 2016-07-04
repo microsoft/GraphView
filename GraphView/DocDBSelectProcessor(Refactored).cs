@@ -102,93 +102,100 @@ namespace GraphView
     internal class TraversalProcessor : GraphViewOperator
     {
         static Record RecordZero;
-        private ItemQuery SpecForCurrent;
-        private string InRangeScript = "";
-        private List<int> BindingIndex;
-        private List<string> ResultsIndex;
+        private Queue<Record> InputBuffer;
+        private Queue<Record> OutputBuffer;
+        private int InputBufferSize;
+        private int OutputBufferSize;
+        private GraphViewOperator ChildProcessor;
+
+        //private string InRangeScript = "";
+        private int StartOfResultField;
+
+        private List<string> header;
         private DocDBConnection connection;
-        public TraversalProcessor(DocDBConnection pConnection, ItemQuery pSpec, GraphViewOperator pChildProcessor, List<int> pBindingIndex, List<string> pResultsIndex, int pInputBufferSize, int pOutputBufferSize)
-        {
-            this.Open();
-            BindingIndex = pBindingIndex;
-            ResultsIndex = pResultsIndex;
-            SpecForCurrent = pSpec;
-            InputBufferSize = pInputBufferSize;
-            OutputBufferSize = pOutputBufferSize;
-            ChildrenProcessor.Add(pChildProcessor);
-            InputBuffer = new Queue<Record>();
-            InputBuffer = new Queue<Record>();
-            connection = pConnection;
-            if (RecordZero == null) RecordZero = new Record(new List<string>(), new List<string>());
-        }
 
-        public TraversalProcessor(DocDBConnection pConnection, QuerySpec pSpecs, int index, List<int> pBindingIndex, List<string> pResultsIndex, int pInputBufferSize, int pOutputBufferSize)
+        private string src;
+        private string dest;
+
+        public TraversalProcessor(string pSrc, string pDest, List<string> pheader, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
         {
             this.Open();
-            BindingIndex = pBindingIndex;
-            ResultsIndex = pResultsIndex;
-            ChildrenProcessor = new List<GraphViewOperator>();
-            SpecForCurrent = pSpecs.lines[index];
-            if (index > 0)
-            {
-                ChildrenProcessor.Add(new TraversalProcessor(pConnection, pSpecs, index - 1, pBindingIndex, pResultsIndex, pInputBufferSize, pOutputBufferSize));
-            }
             InputBufferSize = pInputBufferSize;
             OutputBufferSize = pOutputBufferSize;
             InputBuffer = new Queue<Record>();
             InputBuffer = new Queue<Record>();
-            connection = pConnection;
-            if (RecordZero == null) RecordZero = new Record();
+            src = pSrc;
+            dest = pDest;
+            header = pheader;
+            StartOfResultField = pStartOfResultField;
+            if (RecordZero == null) RecordZero = new Record(pheader.Count);
         }
-
         override public object Next()
         {
             AdjacentList MapForCurrentStage = new AdjacentList();
-            TableBuffer StartTableFromLastStage = new TableBuffer(BindingIndex, ResultsIndex);
-            TableBuffer TempRecordForCurrentStage = new TableBuffer(BindingIndex, ResultsIndex);
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildrenProcessor.Count > 0 && !ChildrenProcessor[0].Status())))
+            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildProcessor != null && !ChildProcessor.Status())))
             {
                 return OutputBuffer.Dequeue();
             }
 
-            if (ChildrenProcessor.Count == 0)
+            if (ChildProcessor == null)
             {
                 if (OutputBuffer.Count == 0) InputBuffer.Enqueue(RecordZero);
             }
             else
-                while (InputBuffer.Count() < InputBufferSize && ChildrenProcessor[0].Status())
+                while (InputBuffer.Count() < InputBufferSize && ChildProcessor.Status())
                 {
-                    if (ChildrenProcessor.Count != 0 && ChildrenProcessor[0].Status())
+                    if (ChildProcessor != null && ChildProcessor.Status())
                     {
-                        Record Result = (Record)ChildrenProcessor[0].Next();
-                        if (Result == null) ChildrenProcessor[0].Close();
+                        Record Result = (Record)ChildProcessor.Next();
+                        if (Result == null) ChildProcessor.Close();
                         else
                             InputBuffer.Enqueue(Result);
                     }
                 }
 
-            StartTableFromLastStage.records = ConvertFromBufferAndEmptyIt(InputBuffer);
-
-            if (SpecForCurrent is NodeQuery)
+            foreach (Record record in InputBuffer)
             {
-                NodeQuery Query = SpecForCurrent as NodeQuery;
-                foreach (var res in NodeQueryProcessor(StartTableFromLastStage, Query))
-                    OutputBuffer.Enqueue(res);
-            }
-            else if (SpecForCurrent is LinkQuery)
-            {
-                LinkQuery Query = SpecForCurrent as LinkQuery;
-                foreach (var res in QueryForSrcNodes(StartTableFromLastStage, Query, MapForCurrentStage))
+                List<string> ResultIndexToAppend = new List<string>();
+                string ResultIndexString = " ,";
+                foreach (string ResultIndex in header.GetRange(StartOfResultField, header.Count - StartOfResultField)
                 {
-                    TempRecordForCurrentStage.records.Add(res);
+                    if (ResultIndex.Substring(0, ResultIndex.IndexOf('.')) == dest ||
+                        ResultIndex.Substring(0, ResultIndex.IndexOf('.')) == pLinkQuery.EdgeAlias[0])
+                        ResultIndexToAppend.Add(ResultIndex);
                 }
+                foreach (string ResultIndex in ResultIndexToAppend)
+                {
+                    ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "A") + ",";
+                }
+                if (ResultIndexString == " ,") ResultIndexString = "";
+                ResultIndexString = CutTheTail(ResultIndexString);
 
-                foreach (var res in QueryForDestNodes(TempRecordForCurrentStage, Query, MapForCurrentStage))
+                string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
+                string WhereClause = " " + pNodeQuery.NodePredicate;
+                string NodeScript = ScriptBase.Replace("node", pNodeQuery.NodeAlias) + ResultIndexString;
+                if (HasWhereClause(pNodeQuery.NodePredicate))
+                    NodeScript += " " + WhereClause;
+                else NodeScript += " From " + pNodeQuery.NodeAlias;
+                IQueryable<dynamic> Node = (IQueryable<dynamic>)new NodeFetchProcessor(connection, NodeScript).Next();
+                foreach (var item in Node)
                 {
-                    OutputBuffer.Enqueue(res);
+                    Tuple<string, string> ItemInfo = DecodeJObject((JObject)item);
+                    Record ResultRecord = new Record();
+                    foreach (string ResultIndex in ResultIndexToAppend)
+                    {
+                        ResultRecord.Fields[ResultRecord.GetIndex(ResultIndex, RecordFromLastTable.ResultsIndex)] =
+                            ((JObject)item)[ResultIndex.Replace(".", "A")].ToString();
+                    }
+                    foreach (var record in RecordFromLastTable.records)
+                    {
+                        Record NewRecord = AddIfNotExist(ItemInfo, record, pNodeQuery, ResultRecord.Fields);
+                        yield return NewRecord;
+                    }
                 }
+                yield break;
             }
             if (OutputBuffer.Count != 0)
             {
@@ -197,6 +204,8 @@ namespace GraphView
             }
             return null;
         }
+
+
         private List<Record> ConvertFromBufferAndEmptyIt(Queue<Record> Buffer)
         {
             List<Record> result = new List<Record>();
@@ -417,67 +426,9 @@ namespace GraphView
     /// It extracts needed information from WSelectQueryBlock and generates a set of specifiers.
     /// SelectProcessor.Next() feeds the specifiers it generated to a set of TraversalProcessor and return one result.
     /// </summary>
-    internal class SelectProcessor : GraphViewOperator
+    public class WSelectQueryGenerate
     {
 
-        private DocDBConnection connection;
-        private WSelectQueryBlock SelectBlock;
-        private MatchGraph SelectGraph;
-        private Dictionary<string, int> GraphDescription;
-        private Dictionary<string, MatchNode> NodeTable;
-        private QuerySpec spec;
-        private string SelectResult;
-        private List<int> BindingHeader;
-        private List<string> ResultHeader;
-        public SelectProcessor(WSelectQueryBlock pSelectBlock, DocDBConnection pConnection)
-        {
-            SelectBlock = pSelectBlock;
-            GraphDescription = new Dictionary<string, int>();
-            spec = new QuerySpec();
-            connection = pConnection;
-            ConstructGraph(SelectBlock);
-            ConstructQuerySpec();
-            ConstructHeaderForTable();
-            ResetRecordResultNumber();
-            ConstructChildernProcessors();
-        }
-
-        override public object Next()
-        {
-            return ChildrenProcessor[0].Next();
-        }
-
-        private void ResetRecordResultNumber()
-        {
-            Record Instance = new Record();
-            Instance.ReSetResultNumber(ResultHeader.Count);
-        }
-        private void ConstructChildernProcessors()
-        {
-            if (ChildrenProcessor == null) ChildrenProcessor = new List<GraphViewOperator>();
-            ChildrenProcessor.Add(new TraversalProcessor(connection, spec, spec.index(), BindingHeader, ResultHeader, 10, 10));
-        }
-        /// <summary>
-        /// Consturct a graph that describes the pattern of the select clause with all predicates attached on it's nodes.
-        /// (The predicates of edges are attached to its source)
-        /// </summary
-        private void ConstructGraph(WSelectQueryBlock SelectQueryBlock)
-        {
-            SelectGraph = GraphViewDocDBCommand.DocDB_ConstructGraph(SelectQueryBlock);
-            NodeTable = SelectGraph.ConnectedSubGraphs[0].Nodes;
-            AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
-            WSqlTableContext Context = new WSqlTableContext();
-            GraphMetaData GraphMeta = new GraphMetaData();
-            Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
-            if (SelectQueryBlock != null) AttachPredicateVistor.Invoke(SelectQueryBlock.WhereClause, SelectGraph, ColumnTableMapping);
-            int GroupNumber = 0;
-            foreach (var node in NodeTable)
-            {
-                GraphViewDocDBCommand.GetQuery(node.Value);
-                if (!GraphDescription.ContainsKey(node.Value.NodeAlias))
-                    GraphDescription[node.Value.NodeAlias] = ++GroupNumber;
-            }
-        }
         /// <summary>
         /// Construct a spec that specific the step of querying.
         /// A spec is consist of two type of specifiers.
@@ -506,30 +457,7 @@ namespace GraphView
         /// <summary>
         /// Consturct a Header for the table, which used to translate the infomation in it's records.
         /// </summary>
-        private void ConstructHeaderForTable()
-        {
-            BindingHeader = new List<int>();
-            ResultHeader = new List<string>();
-            foreach (var line in spec.lines)
-            {
-                if (line is NodeQuery) BindingHeader.Add((line as NodeQuery).NodeId);
-                if (line is LinkQuery)
-                {
-                    BindingHeader.Add((line as LinkQuery).src.NodeId);
-                    BindingHeader.Add((line as LinkQuery).dest.NodeId);
-                }
-            }
 
-            foreach (var element in SelectBlock.SelectElements)
-            {
-                if (element is WSelectScalarExpression)
-                {
-                    if ((element as WSelectScalarExpression).SelectExpr is WValueExpression) continue;
-                    var expr = (element as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
-                    ResultHeader.Add(expr.MultiPartIdentifier.ToString());
-                }
-            }
-        }
 
     }
 }

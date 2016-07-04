@@ -321,53 +321,7 @@ namespace GraphView
             }
         }
 
-        public static void GetQuery(MatchNode node)
-        {
-            string Query = "From " + node.NodeAlias;
-            string Edgepredicate = "";
-            int edge_predicate_num = 0;
-            if (node.Neighbors.Count != 0)
-            {
-                foreach (var edge in node.Neighbors)
-                {
-                    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-                    if (edge.Predicates != null)
-                    {
-                        if (edge_predicate_num != 0) Edgepredicate += " And ";
-                        edge_predicate_num++;
-                        Edgepredicate += " (";
-                        for (int i = 0; i < edge.Predicates.Count(); i++)
-                        {
-                            if (i != 0)
-                                Edgepredicate += " And ";
-                            Edgepredicate += "(" + edge.Predicates[i] + ")";
-                        }
-                        Edgepredicate += ") ";
-                    }
-                    //else if(edge.EdgeAlias == node.DeleteEdge)
-                    //{
-                    //    Query += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-                    //}
-                }
-            }
-            Query += " Where ";
-            if (node.Predicates != null)
-            {
-                for (int i = 0; i < node.Predicates.Count(); i++)
-                {
-                    if (i != 0)
-                        Query += " And ";
-                    Query += node.Predicates[i];
-                }
-                if (Edgepredicate != "")
-                    Query += " And ";
-            }
 
-            
-            Query += Edgepredicate;
-
-            node.DocDBQuery = Query;
-        }
         public static List<DocDBMatchQuery> BuildFind(MatchGraph graph,string source,string sink)
         {
             Dictionary<string,int> map = new Dictionary<string, int>();

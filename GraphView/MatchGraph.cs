@@ -414,7 +414,7 @@ namespace GraphView
         public IList<MatchEdge> Neighbors { get; set; }
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
-        public string DocDBQuery { get; set; }
+        public string AttachedQuerySegment { get; set; }
         public string DeleteEdge { get; set; }
 
         /// <summary>
@@ -474,7 +474,7 @@ namespace GraphView
     {
         // Fully-connected components in the graph pattern 
         public IList<ConnectedComponent> ConnectedSubGraphs { get; set; }
-
+        public ConnectedComponent MainSubGraph;
         public bool ContainsNode(string key)
         {
             return ConnectedSubGraphs.Any(e => e.Nodes.ContainsKey(key) && !e.IsTailNode[e.Nodes[key]]);
