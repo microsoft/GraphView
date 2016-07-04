@@ -11,6 +11,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
+using System.Collections;
 
 namespace GraphView
 {
@@ -39,6 +40,9 @@ namespace GraphView
     /// <summary>
     /// Record is a raw data sturcture flowing from one data operator to another. 
     /// The interpretation of the record is specified in a data operator or a table. 
+    /// 
+    /// Given a field name, returns the field's value.
+    /// Given a field offset, returns the field's value.
     /// </summary>
     internal class Record
     {
@@ -99,6 +103,57 @@ namespace GraphView
         {
             statue = false;
         }
-        public abstract object Next();
+        public abstract Record Next();
+
+        public List<string> OutputHeader;
+    }
+
+    internal class InsertEdgeOperator : GraphViewOperator
+    {
+        public TraversalProcessor SelectInput;
+
+        public InsertEdgeOperator(TraversalProcessor SelectInput)
+        {
+            this.SelectInput = SelectInput;
+        }
+
+        public override object Next()
+        {
+            Dictionary<string, List<string>> groupBySource = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>();
+            Dictionary<string, List<string>> groupBySink = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>();
+
+            SelectInput.Open();
+            while (SelectInput.Status())
+            {
+                Record rec = (Record)SelectInput.Next();
+                string source = rec.RetriveData(null, 0);
+                string sink = rec.RetriveData(null, 1);
+
+                if (!groupBySource.ContainsKey(source))
+                {
+                    groupBySource[source] = new System.Collections.Generic.List<string>();
+                }
+                groupBySource[source].Add(sink);
+
+                if (!groupBySink.ContainsKey(sink))
+                {
+                    groupBySink[sink] = new System.Collections.Generic.List<string>();
+                }
+                groupBySink[sink].Add(source);
+            }
+            SelectInput.Close();
+
+            foreach (string source in groupBySource.Keys)
+            {
+                // Insert edges into the source doc
+            }
+
+            foreach (string sink in groupBySink.Keys)
+            {
+                // Insert reverse edges into the sink doc
+            }
+
+            return null;
+        }
     }
 }

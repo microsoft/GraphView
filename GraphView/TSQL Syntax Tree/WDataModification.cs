@@ -344,6 +344,19 @@ namespace GraphView
 
             docDbConnection.DocDB_finish = true;
         }
+
+        public override GraphViewOperator Generate()
+        {
+            GraphViewOperator input = InsertSource.Generate();
+            TraversalProcessor traversalInput = input as TraversalProcessor;
+            if (traversalInput == null)
+            {
+                throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
+            }
+            InsertEdgeOperator insertOp = new InsertEdgeOperator(traversalInput);
+
+            return insertOp;
+        }
     }
 
     
