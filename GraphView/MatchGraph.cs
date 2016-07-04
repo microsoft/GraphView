@@ -412,6 +412,7 @@ namespace GraphView
         public string NodeAlias { get; set; }
         public WSchemaObjectName NodeTableObjectName { get; set; }
         public IList<MatchEdge> Neighbors { get; set; }
+        public IList<MatchEdge> ReverseNeighbors { get; set; }
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         public string AttachedQuerySegment { get; set; }

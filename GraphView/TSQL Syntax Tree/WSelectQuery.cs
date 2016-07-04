@@ -412,6 +412,7 @@ namespace GraphView
                             {
                                 PatternNode.NodeAlias = CurrentNodeExposedName;
                                 PatternNode.Neighbors = new List<MatchEdge>();
+                                PatternNode.ReverseNeighbors = new List<MatchEdge>();
                                 PatternNode.External = false;
                             }
 
@@ -472,6 +473,20 @@ namespace GraphView
                             if (PreEdge != null)
                             {
                                 PreEdge.SinkNode = PatternNode;
+                                //Add ReverseEdge
+                                MatchEdge reverseEdge;
+                                reverseEdge = new MatchEdge
+                                {
+                                    SourceNode = PreEdge.SinkNode,
+                                    SinkNode = PreEdge.SourceNode,
+                                    EdgeColumn = PreEdge.EdgeColumn,
+                                    EdgeAlias = PreEdge.EdgeAlias,
+                                    Predicates = PreEdge.Predicates,
+                                    BindNodeTableObjName =
+                                       new WSchemaObjectName(
+                                           ),
+                                };
+                                PatternNode.ReverseNeighbors.Add(reverseEdge);
                             }
                             PreEdge = edge;
                             if (!Parent.ContainsKey(CurrentNodeExposedName))
@@ -511,6 +526,7 @@ namespace GraphView
                 {
                     patternNode.NodeAlias = node.Key;
                     patternNode.Neighbors = new List<MatchEdge>();
+                    patternNode.ReverseNeighbors = new List<MatchEdge>();
                     patternNode.External = false;
                 }
 
@@ -668,6 +684,7 @@ namespace GraphView
                 Parent[aRoot] = bRoot;
             }
         }
+}
 
     public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
     {
