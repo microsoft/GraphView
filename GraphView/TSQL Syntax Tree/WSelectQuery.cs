@@ -46,7 +46,7 @@ namespace GraphView
         internal override bool OneLine()
         {
             return false;
-        } 
+        }
 
         internal override string ToString(string indent)
         {
@@ -203,10 +203,7 @@ namespace GraphView
         internal WGroupByClause GroupByClause { get; set; }
         internal WHavingClause HavingClause { get; set; }
         internal WMatchClause MatchClause { get; set; }
-        internal MatchGraph Graph { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
-        internal List<TraversalProcessor> ChildrenProcessor;
-        internal Record RecordZero;
         public WSelectQueryBlock()
         {
             FromClause = new WFromClause();
@@ -215,9 +212,9 @@ namespace GraphView
 
         internal override bool OneLine()
         {
-            if (FromClause == null && 
-                WhereClause == null && 
-                OrderByClause == null && 
+            if (FromClause == null &&
+                WhereClause == null &&
+                OrderByClause == null &&
                 GroupByClause == null)
             {
                 return SelectElements.All(sel => sel.OneLine());
@@ -347,13 +344,13 @@ namespace GraphView
 
         public override GraphViewOperator Generate(GraphViewConnection pConnection)
         {
-            ConstructGraph();
-            List<string> header = ConstructHeader();
-            foreach (var node in Graph.MainSubGraph.Nodes) BuildQuerySegementOnNode(node.Value, header, Graph.MainSubGraph.Nodes.Count * 3);
-            return GenerateTraversalProcessor(header, pConnection);
+            MatchGraph graph = ConstructGraph();
+            List<string> header = ConstructHeader(graph);
+            AttachScriptSegment(graph, header);
+            return GenerateTraversalProcessor(graph, header, pConnection);
         }
 
-        private void ConstructGraph()
+        private MatchGraph ConstructGraph()
         {
             Dictionary<string, List<string>> EdgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, MatchPath> pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
@@ -564,26 +561,32 @@ namespace GraphView
                 }
             }
 
-            Graph = new MatchGraph
+            MatchGraph Graph = new MatchGraph
             {
                 ConnectedSubGraphs = ConnectedSubGraphs,
                 MainSubGraph = ConnectedSubGraphs[0]
             };
 
+            return Graph;
+        }
+
+        private void AttachScriptSegment(MatchGraph graph, List<string> header)
+        {
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
             WSqlTableContext Context = new WSqlTableContext();
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
-            AttachPredicateVistor.Invoke(WhereClause, Graph, ColumnTableMapping);
+            AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
+            foreach (var node in graph.MainSubGraph.Nodes) BuildQuerySegementOnNode(node.Value, header, graph.MainSubGraph.Nodes.Count * 2);
         }
-        private List<string> ConstructHeader()
+
+        private List<string> ConstructHeader(MatchGraph graph)
         {
             List<string> header = new List<string>();
-            foreach(var node in Graph.MainSubGraph.Nodes)
+            foreach (var node in graph.MainSubGraph.Nodes)
             {
                 header.Add(node.Key);
                 header.Add(node.Key + "_ADJ");
-                header.Add(node.Key + "_SEG");
             }
             foreach (var element in SelectElements)
             {
@@ -596,32 +599,37 @@ namespace GraphView
             }
             return header;
         }
-        private TraversalProcessor GenerateTraversalProcessor(List<string> header, GraphViewConnection pConnection)
+        private GraphViewOperator GenerateTraversalProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection)
         {
-            RecordZero = new Record(header.Count);
-            foreach (var node in Graph.MainSubGraph.Nodes)
-            {
-                RecordZero.field[header.IndexOf(node.Key + "_SEG")] = node.Value.AttachedQuerySegment;
-            }
+            Record RecordZero = new Record(header.Count);
 
-            ChildrenProcessor = new List<TraversalProcessor>();
-            Queue<string> NodeList = new Queue<string>();
-            string src = "";
-            string dest = "";
-            int StartOfResult = Graph.MainSubGraph.Nodes.Count * 3;
-            foreach (var SrcNode in Graph.MainSubGraph.Nodes)
+            List<GraphViewOperator> ChildrenProcessor = new List<GraphViewOperator>();
+            Stack<MatchNode> SortedNodes = TopoSorting.TopoSort(graph.MainSubGraph.Nodes);
+            int StartOfResult = graph.MainSubGraph.Nodes.Count * 2;
+            while(SortedNodes.Count != 0)
             {
-                if (!NodeList.Contains(SrcNode.Key) && ChildrenProcessor.Count == 0) ChildrenProcessor.Add(new TraversalProcessor(pConnection, null, "", SrcNode.Key, header, StartOfResult, 50, 50));
-                else if (!NodeList.Contains(SrcNode.Key)) ChildrenProcessor.Add(new TraversalProcessor(pConnection, ChildrenProcessor.Last(), "", SrcNode.Key, header, StartOfResult, 50, 50));
-                foreach (var DestNode in SrcNode.Value.Neighbors)
-                    {
-                        ChildrenProcessor.Add(new TraversalProcessor(pConnection, ChildrenProcessor.Last(), SrcNode.Key, DestNode.SinkNode.NodeAlias, header, StartOfResult, 50, 50));
-                        NodeList.Enqueue(DestNode.SinkNode.NodeAlias);
-                    }
+                MatchNode CurrentProcessingNode = SortedNodes.Pop();
+
+
+                if (CurrentProcessingNode.ReverseNeighbors.Count == 0)
+                {
+                    int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
+                    ChildrenProcessor.Add(new FetchNodeProcessor(pConnection, CurrentProcessingNode.AttachedQuerySegment, node,header, StartOfResult,50));
+                }
+                else
+                {
+                    List<int> ReverseCheckList = new List<int>();
+                    int src = header.IndexOf(CurrentProcessingNode.ReverseNeighbors[0].SinkNode.NodeAlias);
+                    int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
+                    foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
+                        ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias));
+                    ChildrenProcessor.Add(new TraversalProcessor(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
+                }
             }
             TraversalProcessor.RecordZero = RecordZero;
             return ChildrenProcessor.Last();
         }
+
         private void BuildQuerySegementOnNode(MatchNode node, List<string> header, int pStartOfResultField)
         {
             string AttachedClause = "From " + node.NodeAlias;
@@ -629,21 +637,21 @@ namespace GraphView
             int NumberOfPredicates = 0;
             foreach (var edge in node.ReverseNeighbors)
             {
-                    AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
-                    if (edge.Predicates != null)
+                AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
+                if (edge.Predicates != null)
+                {
+                    if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
+                    NumberOfPredicates++;
+                    PredicatesOnReverseEdge += " (";
+                    for (int i = 0; i < edge.Predicates.Count(); i++)
                     {
-                        if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
-                        NumberOfPredicates++;
-                        PredicatesOnReverseEdge += " (";
-                        for (int i = 0; i < edge.Predicates.Count(); i++)
-                        {
-                            if (i != 0)
-                                PredicatesOnReverseEdge += " And ";
-                            PredicatesOnReverseEdge += "(" + edge.Predicates[i] + ")";
-                        }
-                        PredicatesOnReverseEdge += ") ";
+                        if (i != 0)
+                            PredicatesOnReverseEdge += " And ";
+                        PredicatesOnReverseEdge += "(" + edge.Predicates[i] + ")";
                     }
-                
+                    PredicatesOnReverseEdge += ") ";
+                }
+
             }
             AttachedClause += " Where ";
             if (node.Predicates != null)
@@ -724,64 +732,90 @@ namespace GraphView
                 Parent[aRoot] = bRoot;
             }
         }
-}
 
-    public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
-    {
-        
-    }
-
-    public partial class WTopRowFilter : WSqlFragment
-    {
-        internal bool Percent { set; get; }
-        internal bool WithTies { get; set; }
-        internal WScalarExpression Expression { get; set; }
-
-        internal override bool OneLine()
+        private class TopoSorting
         {
-            return Expression.OneLine();
-        }
-
-        internal override string ToString(string indent)
-        {
-            var sb = new StringBuilder(32);
-
-            sb.AppendFormat("{0}TOP ", indent);
-
-            if (Expression.OneLine())
+            static internal Stack<MatchNode> TopoSort(Dictionary<string, MatchNode> graph)
             {
-                sb.Append(Expression.ToString(""));
+                Dictionary<MatchNode, int> state = new Dictionary<MatchNode, int>();
+                Stack<MatchNode> list = new Stack<MatchNode>();
+                foreach (var node in graph)
+                    state.Add(node.Value, 0);
+                foreach (var node in graph)
+                    visit(graph, node.Value, list, state);
+                return list;
             }
-            else
+            static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<MatchNode> list, Dictionary<MatchNode, int> state)
             {
-                sb.Append("\r\n");
-                sb.Append(Expression.ToString(indent + "  "));
+                if (state[node] == 1)
+                    return;
+                if (state[node] == 2)
+                    return;
+                state[node] = 2;
+                foreach (var neighbour in node.Neighbors)
+                    visit(graph, neighbour.SinkNode, list, state);
+                state[node] = 1;
+                list.Push(node);
             }
-
-            if (Percent)
-            {
-                sb.Append(" PERCENT");
-            }
-
-            if (WithTies)
-            {
-                sb.Append(" WITH TIES");
-            }
-
-            return sb.ToString();
-        }
-
-        public override void Accept(WSqlFragmentVisitor visitor)
-        {
-            if (visitor != null)
-                visitor.Visit(this);
-        }
-
-        public override void AcceptChildren(WSqlFragmentVisitor visitor)
-        {
-            if (Expression != null)
-                Expression.Accept(visitor);
-            base.AcceptChildren(visitor);
         }
     }
-}
+        public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
+        {
+
+        }
+
+        public partial class WTopRowFilter : WSqlFragment
+        {
+            internal bool Percent { set; get; }
+            internal bool WithTies { get; set; }
+            internal WScalarExpression Expression { get; set; }
+
+            internal override bool OneLine()
+            {
+                return Expression.OneLine();
+            }
+
+            internal override string ToString(string indent)
+            {
+                var sb = new StringBuilder(32);
+
+                sb.AppendFormat("{0}TOP ", indent);
+
+                if (Expression.OneLine())
+                {
+                    sb.Append(Expression.ToString(""));
+                }
+                else
+                {
+                    sb.Append("\r\n");
+                    sb.Append(Expression.ToString(indent + "  "));
+                }
+
+                if (Percent)
+                {
+                    sb.Append(" PERCENT");
+                }
+
+                if (WithTies)
+                {
+                    sb.Append(" WITH TIES");
+                }
+
+                return sb.ToString();
+            }
+
+            public override void Accept(WSqlFragmentVisitor visitor)
+            {
+                if (visitor != null)
+                    visitor.Visit(this);
+            }
+
+            public override void AcceptChildren(WSqlFragmentVisitor visitor)
+            {
+                if (Expression != null)
+                    Expression.Accept(visitor);
+                base.AcceptChildren(visitor);
+            }
+        }
+    }
+
