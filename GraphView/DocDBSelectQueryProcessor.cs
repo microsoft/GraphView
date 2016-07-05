@@ -122,6 +122,11 @@ namespace GraphView
                 UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), script, QueryOptions);
             return Result;
         }
+
+        internal List<string> RetriveHeader()
+        {
+            return header;
+        }
         private List<Record> ConvertFromBufferAndEmptyIt(Queue<Record> Buffer)
         {
             List<Record> result = new List<Record>();

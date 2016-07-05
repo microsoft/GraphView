@@ -237,14 +237,14 @@ namespace GraphView
         public GraphViewConnection(string docdb_EndpointUrl, string docdb_AuthorizationKey, string docdb_DatabaseID, string docdb_CollectionID)
         {
             DocDB_Url = docdb_EndpointUrl;
-            DocDB_Key = docdb_AuthorizationKey;
+            DocDB_PrimaryKey = docdb_AuthorizationKey;
             DocDB_DatabaseId = docdb_DatabaseID;
             DocDB_CollectionId = docdb_CollectionID;
         }
 
         public void createclient()
         {
-            client = new DocumentClient(new Uri(DocDB_Url), DocDB_Key);
+            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
         }
 
         /// <summary>
