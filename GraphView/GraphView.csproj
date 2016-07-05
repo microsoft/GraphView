@@ -73,26 +73,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
     </Compile>
-    <Compile Include="DocDBDeleteEdgeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>DocDBDeleteEdgeTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="DocDBDeleteNodeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>DocDBDeleteNodeTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="DocDBInsertEdgeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>DocDBInsertEdgeTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="DocDBInsertNodeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>DocDBInsertNodeTemplate.tt</DependentUpon>
-    </Compile>
     <Compile Include="EdgeViewGraphViewCodeTemplate.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -126,7 +106,7 @@
     <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
-    <Compile Include="TSQL Syntax Tree\DocDBInsertDeleteOperartor.cs" />
+    <Compile Include="DocDBInsertDeleteOperartor.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
@@ -205,30 +185,6 @@
     <None Include="EdgeViewBfsScriptTemplate.tt">
       <Generator>TextTemplatingFilePreprocessor</Generator>
       <LastGenOutput>EdgeViewBfsScriptTemplate.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="DocDBInsertNodeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>DocDBInsertNodeTemplate.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="DocDBInsertEdgeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>DocDBInsertEdgeTemplate.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="DocDBDeleteNodeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>DocDBDeleteNodeTemplate.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="DocDBDeleteEdgeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>DocDBDeleteEdgeTemplate.cs</LastGenOutput>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
