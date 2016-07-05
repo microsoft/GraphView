@@ -17,9 +17,9 @@ namespace GraphViewUnitTest
         {
             TestInitialization.ClearDatabase();
             TestInitialization.CreateTableAndProc();
-            TestInitialization.InsertDataByProc(NodeNum,NodeDegree);
+            TestInitialization.InsertDataByProc(NodeNum, NodeDegree);
         }
-        
+
 
         [TestMethod]
         public void NodeViewTest()
@@ -99,30 +99,36 @@ namespace GraphViewUnitTest
                     FROM EmployeeNode.Colleagues
                     ");
 
-                conn.UpdateTableStatistics("dbo","NV1");
+                conn.UpdateTableStatistics("dbo", "NV1");
                 conn.UpdateTableStatistics("dbo", "EmployeeNode");
-                conn.UpdateTableStatistics("dbo","GlobalNodeView");
+                conn.UpdateTableStatistics("dbo", "GlobalNodeView");
             }
         }
 
         [TestMethod]
         public void SelectTest()
         {
-                const string sqlStr = @"SELECT saturn
-FROM node AS saturn
-WHERE saturn.name = 'saturn'";
-                var command = new GraphViewCommand(sqlStr);
-                command.ExecuteNonQuery();
-            Console.Write("OK!");
-            Console.ReadKey();
-            }
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSeven");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"SELECT father.id
+    FROM node AS father, node AS saturn
+    MATCH father-[Edge AS e1]->saturn
+    WHERE saturn.name = 'saturn' AND e1.type = 'father'";
+
+            gcmd.ExecuteNonQuery();
+        }
 
         [TestMethod]
         public void GlobalViewTest()
         {
             TestInitialization.ClearDatabase();
             TestInitialization.CreateTableAndProc();
-            TestInitialization.InsertDataByProc(NodeNum,1);
+            TestInitialization.InsertDataByProc(NodeNum, 1);
             using (var conn = new GraphViewConnection(TestInitialization.ConnectionString))
             {
                 conn.Open();
@@ -137,7 +143,7 @@ WHERE saturn.name = 'saturn'";
                     {
                         cnt++;
                     }
-                    if (cnt!=NodeNum)
+                    if (cnt != NodeNum)
                         Assert.Fail();
                 }
             }
@@ -161,7 +167,7 @@ WHERE saturn.name = 'saturn'";
                     {
                         cnt++;
                     }
-                    if (cnt != NodeNum*NodeDegree*NodeDegree)
+                    if (cnt != NodeNum * NodeDegree * NodeDegree)
                         Assert.Fail();
                 }
             }
@@ -220,7 +226,7 @@ WHERE saturn.name = 'saturn'";
                 List<Tuple<string, string>> Edges = new List<Tuple<string, string>>();
                 Edges.Add(Tuple.Create("ClientNode", "Colleagues"));
                 Edges.Add(Tuple.Create("employeenode", "clients"));
-                List<string> edgeAttribute = new List<string>() {"a", "b", "c_new", "d"};
+                List<string> edgeAttribute = new List<string>() { "a", "b", "c_new", "d" };
                 List<Tuple<string, List<Tuple<string, string, string>>>> mapping =
                     new List<Tuple<string, List<Tuple<string, string, string>>>>();
                 mapping.Add(Tuple.Create("a",
@@ -230,9 +236,9 @@ WHERE saturn.name = 'saturn'";
                         Tuple.Create("ClientNode", "Colleagues", "a")
                     }));
                 mapping.Add(Tuple.Create("b",
-                    new List<Tuple<string, string, string>>() {Tuple.Create("employeenode", "clients", "b")}));
+                    new List<Tuple<string, string, string>>() { Tuple.Create("employeenode", "clients", "b") }));
                 mapping.Add(Tuple.Create("c_new",
-                    new List<Tuple<string, string, string>>() {Tuple.Create("ClientNode", "Colleagues", "c")}));
+                    new List<Tuple<string, string, string>>() { Tuple.Create("ClientNode", "Colleagues", "c") }));
                 mapping.Add(Tuple.Create("d", new List<Tuple<string, string, string>>()));
                 graph.CreateEdgeView("dbo", "NodeView", "EdgeView", Edges, edgeAttribute, null, mapping);
 

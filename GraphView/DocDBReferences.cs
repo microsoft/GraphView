@@ -16,28 +16,6 @@ using System.Collections;
 namespace GraphView
 {
     /// <summary>
-    /// DocDBConnection is used to manage the connection with server. 
-    /// </summary>
-    public class DocDBConnection
-    {
-        public DocDBConnection(int pMaxPacketSize, GraphViewConnection connection)
-        {
-            MaxPacketSize = pMaxPacketSize;
-            EndPointUrl = connection.DocDB_Url;
-            PrimaryKey = connection.DocDB_Key;
-            DatabaseID = connection.DocDB_DatabaseId;
-            CollectionID = connection.DocDB_CollectionId;
-            client = connection.client;
-        }
-        public int MaxPacketSize;
-        public string EndPointUrl;
-        public string PrimaryKey;
-        public string DatabaseID;
-        public string CollectionID;
-        public DocumentClient client;
-    }
-    
-    /// <summary>
     /// Record is a raw data sturcture flowing from one data operator to another. 
     /// The interpretation of the record is specified in a data operator or a table. 
     /// 
@@ -49,8 +27,13 @@ namespace GraphView
         internal Record()
         { 
         }
+        internal Record(Record rhs)
+        {
+            field = new List<string>(rhs.field);
+        }
         internal Record(int num)
         {
+            field = new List<string>();
             for (int i = 0; i < num; i++)
             {
                 field.Add("");
@@ -58,11 +41,14 @@ namespace GraphView
         }
         internal string RetriveData(List<string> header,string FieldName)
         {
-            if (header.IndexOf(FieldName) == -1) return null;
-            else if (field.Count <= header.IndexOf(FieldName)) return null;
+            if (header.IndexOf(FieldName) == -1) return "";
+            else if (field.Count <= header.IndexOf(FieldName)) return "";
             else return field[header.IndexOf(FieldName)];
         }
-
+        internal string RetriveData(int index)
+        {
+            return field[index];
+        }
         internal int RetriveIndex(string value)
         {
             if (field.IndexOf(value) == -1) return -1;
@@ -106,54 +92,5 @@ namespace GraphView
         public abstract Record Next();
 
         public List<string> header;
-    }
-
-    internal class InsertEdgeOperator : GraphViewOperator
-    {
-        public TraversalProcessor SelectInput;
-
-        public InsertEdgeOperator(TraversalProcessor SelectInput)
-        {
-            this.SelectInput = SelectInput;
-        }
-
-        public override object Next()
-        {
-            Dictionary<string, List<string>> groupBySource = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>();
-            Dictionary<string, List<string>> groupBySink = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<string>>();
-
-            SelectInput.Open();
-            while (SelectInput.Status())
-            {
-                Record rec = (Record)SelectInput.Next();
-                string source = rec.RetriveData(null, 0);
-                string sink = rec.RetriveData(null, 1);
-
-                if (!groupBySource.ContainsKey(source))
-                {
-                    groupBySource[source] = new System.Collections.Generic.List<string>();
-                }
-                groupBySource[source].Add(sink);
-
-                if (!groupBySink.ContainsKey(sink))
-                {
-                    groupBySink[sink] = new System.Collections.Generic.List<string>();
-                }
-                groupBySink[sink].Add(source);
-            }
-            SelectInput.Close();
-
-            foreach (string source in groupBySource.Keys)
-            {
-                // Insert edges into the source doc
-            }
-
-            foreach (string sink in groupBySink.Keys)
-            {
-                // Insert reverse edges into the sink doc
-            }
-
-            return null;
-        }
     }
 }

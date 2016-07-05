@@ -67,7 +67,6 @@
     <Compile Include="BulkInsert.cs" />
     <Compile Include="CheckTableReferencingVisitor.cs" />
     <Compile Include="DocDBReferences.cs" />
-    <Compile Include="DocDBSelectProcessor.cs" />
     <Compile Include="DocDBCodeGenerator.cs" />
     <Compile Include="DeployScriptTemplate.cs">
       <AutoGen>True</AutoGen>
@@ -112,7 +111,7 @@
       <DependentUpon>NodeTableGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
     <Compile Include="ObjectExtensions.cs" />
-    <Compile Include="DocDBSelectProcessor%28Refactored%29.cs" />
+    <Compile Include="DocDBSelectQueryProcessor.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />

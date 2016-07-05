@@ -62,18 +62,6 @@ namespace GraphView
             return sb.ToString();
         }
 
-        internal string Run(GraphViewConnection DocDB_conn)
-        {
-            var Query = QueryExpr as WSelectQueryBlock;
-            QueryComponent.init(50, DocDB_conn);
-            string reses = "";
-            foreach (var res in QueryComponent.SelectProcessor(Query))
-            {
-                foreach (var x in res)
-                    reses += x.Item1;
-            }
-            return reses;
-        }
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -218,6 +206,7 @@ namespace GraphView
         internal MatchGraph Graph { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
         internal List<TraversalProcessor> ChildrenProcessor;
+        internal Record RecordZero;
         public WSelectQueryBlock()
         {
             FromClause = new WFromClause();
@@ -356,10 +345,12 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
 
-        public override GraphViewOperator Generate()
+        public override GraphViewOperator Generate(GraphViewConnection pConnection)
         {
             ConstructGraph();
-
+            List<string> header = ConstructHeader();
+            foreach (var node in Graph.MainSubGraph.Nodes) BuildQuerySegementOnNode(node.Value, header, Graph.MainSubGraph.Nodes.Count * 3);
+            return GenerateTraversalProcessor(header, pConnection);
         }
 
         private void ConstructGraph()
@@ -446,6 +437,7 @@ namespace GraphView
                                     SourceNode = PatternNode,
                                     EdgeColumn = CurrentEdgeColumnRef,
                                     EdgeAlias = pEdgeAlias,
+                                    Predicates = new List<WBooleanExpression>(),
                                     BindNodeTableObjName =
                                         new WSchemaObjectName(
                                             ),
@@ -458,6 +450,7 @@ namespace GraphView
                                     SourceNode = PatternNode,
                                     EdgeColumn = CurrentEdgeColumnRef,
                                     EdgeAlias = pEdgeAlias,
+                                    Predicates = new List<WBooleanExpression>(),
                                     BindNodeTableObjName =
                                         new WSchemaObjectName(
                                             ),
@@ -506,9 +499,26 @@ namespace GraphView
                         {
                             tailNode.NodeAlias = tailExposedName;
                             tailNode.Neighbors = new List<MatchEdge>();
+                            tailNode.ReverseNeighbors = new List<MatchEdge>();
                         }
                         if (PreEdge != null)
+                        {
                             PreEdge.SinkNode = tailNode;
+                            //Add ReverseEdge
+                            MatchEdge reverseEdge;
+                            reverseEdge = new MatchEdge
+                            {
+                                SourceNode = PreEdge.SinkNode,
+                                SinkNode = PreEdge.SourceNode,
+                                EdgeColumn = PreEdge.EdgeColumn,
+                                EdgeAlias = PreEdge.EdgeAlias,
+                                Predicates = PreEdge.Predicates,
+                                BindNodeTableObjName =
+                                   new WSchemaObjectName(
+                                       ),
+                            };
+                            tailNode.ReverseNeighbors.Add(reverseEdge);
+                        }
                     }
 
                 }
@@ -565,8 +575,6 @@ namespace GraphView
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, Graph, ColumnTableMapping);
-
-            foreach (var node in Graph.MainSubGraph.Nodes) BuildQuerySegementOnNode(node.Value);
         }
         private List<string> ConstructHeader()
         {
@@ -588,42 +596,48 @@ namespace GraphView
             }
             return header;
         }
-        private TraversalProcessor GenerateTraversalProcessor(List<string> header)
+        private TraversalProcessor GenerateTraversalProcessor(List<string> header, GraphViewConnection pConnection)
         {
-            Stack<string> NodeList = new Stack<string>();
+            RecordZero = new Record(header.Count);
+            foreach (var node in Graph.MainSubGraph.Nodes)
+            {
+                RecordZero.field[header.IndexOf(node.Key + "_SEG")] = node.Value.AttachedQuerySegment;
+            }
+
+            ChildrenProcessor = new List<TraversalProcessor>();
+            Queue<string> NodeList = new Queue<string>();
             string src = "";
             string dest = "";
             foreach (var node in Graph.MainSubGraph.Nodes)
             {
-                NodeList.Push(node.Key);
+                NodeList.Enqueue(node.Key);
             }
             int StartOfResult = NodeList.Count * 3;
             if (NodeList.Count != 0)
             {
-                dest = NodeList.Pop();
-                ChildrenProcessor.Add(new TraversalProcessor("", dest, header, StartOfResult, 50, 50));
+                dest = NodeList.Dequeue();
+                ChildrenProcessor.Add(new TraversalProcessor(pConnection, null,"", dest, header, StartOfResult, 50, 50));
             }
             src = dest;
             dest = "";
             while (NodeList.Count != 0)
             {
-                dest = NodeList.Pop();
-                ChildrenProcessor.Add(new TraversalProcessor(src, dest, header, StartOfResult, 50, 50));
+                dest = NodeList.Dequeue();
+                ChildrenProcessor.Add(new TraversalProcessor(pConnection,ChildrenProcessor.Last(), src, dest, header, StartOfResult, 50, 50));
                 src = dest;
                 dest = "";
             }
-
+            TraversalProcessor.RecordZero = RecordZero;
+            return ChildrenProcessor.Last();
         }
         private void BuildQuerySegementOnNode(MatchNode node, List<string> header, int pStartOfResultField)
         {
             string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
             int NumberOfPredicates = 0;
-            foreach (var edge in node.Neighbors)
+            foreach (var edge in node.ReverseNeighbors)
             {
-                if (edge.SinkNode.NodeAlias == node.NodeAlias)
-                {
-                    AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                    AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
                     if (edge.Predicates != null)
                     {
                         if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
@@ -637,7 +651,7 @@ namespace GraphView
                         }
                         PredicatesOnReverseEdge += ") ";
                     }
-                }
+                
             }
             AttachedClause += " Where ";
             if (node.Predicates != null)
@@ -657,7 +671,9 @@ namespace GraphView
             string ResultIndexString = " ,";
             foreach (string ResultIndex in header.GetRange(pStartOfResultField, header.Count - pStartOfResultField))
             {
-                if (ResultIndex.Substring(0, ResultIndex.IndexOf('.')) == node.NodeAlias)
+                int CutPoint = ResultIndex.Length;
+                if (ResultIndex.IndexOf('.') != -1) CutPoint = ResultIndex.IndexOf('.');
+                if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias)
                     ResultIndexToAppend.Add(ResultIndex);
             }
             foreach (string ResultIndex in ResultIndexToAppend)

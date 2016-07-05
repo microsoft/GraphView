@@ -182,11 +182,11 @@ namespace GraphView
         internal const string GraphViewUdfAssemblyName = "GraphViewUDF";
 
         public string DocDB_Url;
-        public string DocDB_Key;
+        public string DocDB_PrimaryKey;
         public string DocDB_DatabaseId;
         public string DocDB_CollectionId;
         public bool DocDB_finish;
-        public DocumentClient client;
+        public DocumentClient DocDBclient;
         /// <summary>
         /// Initializes a new instance of the GraphViewConnection class.
         /// </summary>

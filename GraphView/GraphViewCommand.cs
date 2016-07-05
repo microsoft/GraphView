@@ -211,7 +211,6 @@ namespace GraphView
                 var DocDB_conn = GraphViewConnection;
 
                 DocDB_conn.createclient();
-                QueryComponent.init(50,DocDB_conn);
 
                 foreach (var Batch in script.Batches)
                 {
@@ -230,8 +229,7 @@ namespace GraphView
                             var selectStatement = (statement as WSelectStatement);
                             var res = "";
                             var Query = selectStatement.QueryExpr as WSelectQueryBlock;
-                            var SP = new SelectProcessor(Query, new DocDBConnection(50, GraphViewConnection));
-                            var x = SP.Next();
+                            Query.Generate(DocDB_conn).Next();
                             Console.WriteLine(res);
                             DocDB_conn.DocDB_finish = true;
                         }
