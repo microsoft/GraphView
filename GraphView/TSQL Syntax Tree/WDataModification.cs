@@ -123,7 +123,7 @@ namespace GraphView
                 InsertSource.Accept(visitor);
 
             var index = 0;
-            if (Columns!=null)
+            if (Columns != null)
                 for (var count = Columns.Count; index < count; ++index)
                     Columns[index].Accept(visitor);
 
@@ -151,7 +151,7 @@ namespace GraphView
             if (visitor != null)
                 visitor.Visit(this);
         }
-        
+
         /// <summary>
         /// Construct a Json's string which contains all the information about the new node.
         /// And then Create a document in DocDB with this string
@@ -178,7 +178,7 @@ namespace GraphView
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
 
             var obj = JObject.Parse(Json_str);
-            await docDbConnection.client.CreateDocumentAsync("dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId, obj);
+            await docDbConnection.DocDBclient.CreateDocumentAsync("dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId, obj);
 
             docDbConnection.DocDB_finish = true;
         }
@@ -227,21 +227,12 @@ namespace GraphView
             sb.Append(SelectInsertSource.ToString(indent));
             return sb.ToString();
         }
-        
-        /// <summary>
-        /// Construct a Json's string Contains all the information about the new edge.
-        /// Put it into the node's document.
-        /// Use the new document to replace the old one.
-        /// </summary>
-        /// <param name="docDbConnection">The Connection</param>
-        /// <returns></returns>
-        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
-        {
-            docDbConnection.DocDB_finish = false;
 
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            #region build up Edge(string)
             var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
-            
-            //build up Edge(string)
+
             string Edge = "{}";
             Edge = GraphViewJsonCommand.insert_property(Edge, "", "_ID").ToString();
             Edge = GraphViewJsonCommand.insert_property(Edge, "", "_reverse_ID").ToString();
@@ -283,10 +274,7 @@ namespace GraphView
                 Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(),
                         Columns[index].ToString()).ToString();
             }
-
-            
-            Dictionary<string, string> map = new Dictionary<string, string>();
-
+            #endregion 
 
             //Add "id" after each identifier
             var iden = new Identifier();
@@ -300,72 +288,29 @@ namespace GraphView
             var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
             identifiers2.Add(iden);
 
-            //get source and sink's id from SelectProcessor 
-            var selectResults = new SelectProcessor(SelectQueryBlock, new DocDBConnection(50, docDbConnection));
-            foreach (var x in selectResults.Result())
-            {
-                if (x == "") continue;
-                char[] delimit = new char[] { ' ' };
-                string[] words = x.Split(delimit);
-                Tuple<string,string> y = new Tuple<string, string>(words[0],words[1]);
-
-                if (!map.ContainsKey(y.Item1))
-                {
-                    var documents =
-                        docDbConnection.client.CreateDocumentQuery(
-                            "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
-                            docDbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item1));
-                    foreach (var doc in documents)
-                        map[y.Item1] = JsonConvert.SerializeObject(doc);
-                }
-                if (!map.ContainsKey(y.Item2))
-                {
-                    var documents =
-                        docDbConnection.client.CreateDocumentQuery(
-                            "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
-                            docDbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item2));
-                    foreach (var doc in documents)
-                        map[y.Item2] = JsonConvert.SerializeObject(doc);
-                }
-                DocDBDocumentCommand.INSERT_EDGE(map, Edge, y.Item1, y.Item2);
-                
-            }
-            //delete "id" after each identifier
-            identifiers1.RemoveAt(1);
-            identifiers2.RemoveAt(1);
-
-            //Replace Documents
-            foreach (var cnt in map)
-                await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
-
-            docDbConnection.DocDB_finish = true;
-        }
-
-        public override GraphViewOperator Generate()
-        {
-            GraphViewOperator input = InsertSource.Generate();
+            GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
             TraversalProcessor traversalInput = input as TraversalProcessor;
             if (traversalInput == null)
             {
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
             }
-            InsertEdgeOperator insertOp = new InsertEdgeOperator(traversalInput);
+            InsertEdgeOperator insertOp = new InsertEdgeOperator(dbConnection, traversalInput, Edge, n1.ToString(), n2.ToString());
+
+            //delete "id" after each identifier
+            //identifiers1.RemoveAt(1);
+            //identifiers2.RemoveAt(1);
 
             return insertOp;
         }
     }
 
-    
-    
-       
-    
 
 
-public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
+
+
+
+
+    public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
     {
         public WDeleteSpecification()
         {
@@ -498,7 +443,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                 Selectstr += @"WHERE " + search.ToString() +
                              @" and (ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0)  ";
             }
-            var sum_DeleteNode = docDbConnection.client.CreateDocumentQuery(
+            var sum_DeleteNode = docDbConnection.DocDBclient.CreateDocumentQuery(
                                 "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId,
                                 Selectstr);
             bool flag = true;
@@ -512,7 +457,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                 Selectstr = "SELECT * " + "FROM Node ";
                 if (search != null)
                     Selectstr += @"WHERE " + search.ToString();
-                sum_DeleteNode = docDbConnection.client.CreateDocumentQuery(
+                sum_DeleteNode = docDbConnection.DocDBclient.CreateDocumentQuery(
                     "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId,
                     Selectstr);
 
@@ -521,7 +466,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                 {
                     var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", docDbConnection.DocDB_DatabaseId,
                         docDbConnection.DocDB_CollectionId, DeleteNode.id);
-                    await docDbConnection.client.DeleteDocumentAsync(docLink);
+                    await docDbConnection.DocDBclient.DeleteDocumentAsync(docLink);
                 }
             }
             else
@@ -536,7 +481,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
     public partial class WDeleteEdgeSpecification : WDeleteSpecification
     {
         public WSelectQueryBlock SelectDeleteExpr { get; set; }
-        public WEdgeColumnReferenceExpression EdgeColumn { get; set; } 
+        public WEdgeColumnReferenceExpression EdgeColumn { get; set; }
         public WDeleteEdgeSpecification(WSelectQueryBlock deleteSpec)
         {
             SelectDeleteExpr = deleteSpec;
@@ -611,7 +556,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
 
             return sb.ToString();
         }
-        
+        /*
         public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
         {
             docDbConnection.DocDB_finish = false;
@@ -717,7 +662,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                     map[y.Item1] = GraphViewJsonCommand.Delete_edge(map[y.Item1], ID);
                     map[y.Item2] = GraphViewJsonCommand.Delete_reverse_edge(map[y.Item2], reverse_ID);
                 }
-                
+
             }
 
             //delete "id" after identifiers
@@ -727,9 +672,10 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
 
             foreach (var cnt in map)
                 await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
-            
+
             docDbConnection.DocDB_finish = true;
         }
+        */
     }
 
     public partial class WUpdateSpecification : WUpdateDeleteSpecificationBase
@@ -754,7 +700,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
                 sb.Append(TopRowFilter.ToString(indent));
 
             sb.AppendFormat(" {0} SET \r\n", Target.ToString(indent));
-            
+
             var first = true;
             if (SetClauses != null)
             {
@@ -774,7 +720,7 @@ public partial class WDeleteSpecification : WUpdateDeleteSpecificationBase
 
             if (FromClause != null)
                 sb.AppendFormat("\r\n{0}{1}", indent, FromClause.ToString(indent));
-            if (WhereClause != null && WhereClause.SearchCondition!=null) 
+            if (WhereClause != null && WhereClause.SearchCondition != null)
                 sb.AppendFormat("\r\n{0}{1}", indent, WhereClause.ToString(indent));
             return sb.ToString();
         }

@@ -335,40 +335,43 @@ namespace GraphView
         }
 
 
-        /*
-         * Minghua's work
-         */
 
-
-        public class DocDBDocumentCommand
+        public static void INSERT_EDGE(Dictionary<string, string> map, string Edge, string sourceid, string sinkid)
         {
-            public static void INSERT_EDGE(Dictionary<string, string> map, string Edge, string sourceid, string sinkid)
-            {
-                string source_str = map[sourceid];
-                string sink_str = map[sinkid];
-                var source_edge_num = GraphViewJsonCommand.get_edge_num(source_str);
-                var sink_reverse_edge_num = GraphViewJsonCommand.get_reverse_edge_num(sink_str);
+            string source_str = map[sourceid];
+            string sink_str = map[sinkid];
+            var source_edge_num = GraphViewJsonCommand.get_edge_num(source_str);
+            var sink_reverse_edge_num = GraphViewJsonCommand.get_reverse_edge_num(sink_str);
 
-                Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_ID").ToString();
-                Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_reverse_ID").ToString();
-                Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sinkid + '\"', "_sink").ToString();
-                source_str = GraphViewJsonCommand.insert_edge(source_str, Edge, source_edge_num).ToString();
-                //var new_source = JObject.Parse(source_str);
+            Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_reverse_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sinkid + '\"', "_sink").ToString();
+            source_str = GraphViewJsonCommand.insert_edge(source_str, Edge, source_edge_num).ToString();
+            //var new_source = JObject.Parse(source_str);
 
-                Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_ID").ToString();
-                Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_reverse_ID").ToString();
-                Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sourceid + '\"', "_sink").ToString();
-                sink_str = GraphViewJsonCommand.insert_reverse_edge(sink_str, Edge, sink_reverse_edge_num).ToString();
-                //var new_sink = JObject.Parse(sink_str);
+            Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_reverse_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sourceid + '\"', "_sink").ToString();
+            sink_str = GraphViewJsonCommand.insert_reverse_edge(sink_str, Edge, sink_reverse_edge_num).ToString();
+            //var new_sink = JObject.Parse(sink_str);
 
-                map[sourceid] = source_str;
-                map[sinkid] = sink_str;
+            map[sourceid] = source_str;
+            map[sinkid] = sink_str;
 
-                //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sourceid), new_source);
-                //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sinkid), new_sink);
-            }
+            //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sourceid), new_source);
+            //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sinkid), new_sink);
+        }
 
+        public static async Task Delete_Node(GraphViewConnection conn, string id)
+        {
+            var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", conn.DocDB_DatabaseId, conn.DocDB_CollectionId, id);
+            await conn.DocDBclient.DeleteDocumentAsync(docLink);
+        }
 
+        public static async Task ReplaceDocument(GraphViewConnection conn, string Documentid, string DocumentString)
+        {
+            var new_source = JObject.Parse(DocumentString);
+            await conn.DocDBclient.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, Documentid), new_source);
         }
 
     }

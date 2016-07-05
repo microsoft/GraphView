@@ -126,6 +126,7 @@
     <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
+    <Compile Include="TSQL Syntax Tree\DocDBInsertDeleteOperartor.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
