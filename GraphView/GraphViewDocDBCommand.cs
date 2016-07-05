@@ -368,17 +368,7 @@ namespace GraphView
                 //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sinkid), new_sink);
             }
 
-            public static async Task Delete_Node(GraphViewConnection conn, string id)
-            {
-                var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", conn.DocDB_DatabaseId, conn.DocDB_CollectionId, id);
-                await conn.client.DeleteDocumentAsync(docLink);
-            }
 
-            public static async Task ReplaceDocument(GraphViewConnection conn, string Documentid, string DocumentString)
-            {
-                var new_source = JObject.Parse(DocumentString);
-                await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, Documentid), new_source);
-            }
         }
 
     }

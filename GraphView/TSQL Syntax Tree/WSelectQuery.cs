@@ -608,24 +608,16 @@ namespace GraphView
             Queue<string> NodeList = new Queue<string>();
             string src = "";
             string dest = "";
-            foreach (var node in Graph.MainSubGraph.Nodes)
+            int StartOfResult = Graph.MainSubGraph.Nodes.Count * 3;
+            foreach (var SrcNode in Graph.MainSubGraph.Nodes)
             {
-                NodeList.Enqueue(node.Key);
-            }
-            int StartOfResult = NodeList.Count * 3;
-            if (NodeList.Count != 0)
-            {
-                dest = NodeList.Dequeue();
-                ChildrenProcessor.Add(new TraversalProcessor(pConnection, null,"", dest, header, StartOfResult, 50, 50));
-            }
-            src = dest;
-            dest = "";
-            while (NodeList.Count != 0)
-            {
-                dest = NodeList.Dequeue();
-                ChildrenProcessor.Add(new TraversalProcessor(pConnection,ChildrenProcessor.Last(), src, dest, header, StartOfResult, 50, 50));
-                src = dest;
-                dest = "";
+                if (!NodeList.Contains(SrcNode.Key) && ChildrenProcessor.Count == 0) ChildrenProcessor.Add(new TraversalProcessor(pConnection, null, "", SrcNode.Key, header, StartOfResult, 50, 50));
+                else if (!NodeList.Contains(SrcNode.Key)) ChildrenProcessor.Add(new TraversalProcessor(pConnection, ChildrenProcessor.Last(), "", SrcNode.Key, header, StartOfResult, 50, 50));
+                foreach (var DestNode in SrcNode.Value.Neighbors)
+                    {
+                        ChildrenProcessor.Add(new TraversalProcessor(pConnection, ChildrenProcessor.Last(), SrcNode.Key, DestNode.SinkNode.NodeAlias, header, StartOfResult, 50, 50));
+                        NodeList.Enqueue(DestNode.SinkNode.NodeAlias);
+                    }
             }
             TraversalProcessor.RecordZero = RecordZero;
             return ChildrenProcessor.Last();

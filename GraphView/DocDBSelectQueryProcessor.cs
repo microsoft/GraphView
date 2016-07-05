@@ -98,7 +98,7 @@ namespace GraphView
                     }
                     foreach (var record in InputBuffer)
                     {
-                        if (src == "" || (ReverseEdge.Contains(record.RetriveData(header, src)) && record.RetriveData(header, src + "_ADJ").Contains(edges)))
+                        if (src == "" || (ReverseEdge.Contains(record.RetriveData(header, src)) && record.RetriveData(header, src + "_ADJ").Contains(ID)))
                         {
                             Record NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
                             OutputBuffer.Enqueue(NewRecord);
@@ -131,6 +131,18 @@ namespace GraphView
         {
             List<Record> result = new List<Record>();
             while (Buffer.Count != 0) result.Add(Buffer.Dequeue());
+            return result;
+        }
+        private List<string> DecodeAdjacentList(string AdjString)
+        {
+            List<string> result = new List<string>();
+            string temp = AdjString;
+            while (temp.Contains(","))
+            {
+                result.Add(temp.Substring(0, temp.IndexOf(",")));
+                temp = temp.Substring(temp.IndexOf(",") + 1, temp.Length - temp.IndexOf(","));
+            }
+            result.Add(temp);
             return result;
         }
         private bool HasWhereClause(string SelectClause)
