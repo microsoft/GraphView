@@ -10,14 +10,14 @@ namespace GraphView
 
     internal class InsertEdgeOperator : GraphViewOperator
     {
-        public TraversalProcessor SelectInput;
+        public TraversalOperator SelectInput;
         public string edge;
         public string source, sink;
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
 
 
-        public InsertEdgeOperator(GraphViewConnection dbConnection, TraversalProcessor SelectInput, string edge, string source, string sink)
+        public InsertEdgeOperator(GraphViewConnection dbConnection, TraversalOperator SelectInput, string edge, string source, string sink)
         {
             this.dbConnection = dbConnection;
             this.SelectInput = SelectInput;
@@ -125,13 +125,13 @@ namespace GraphView
 
     internal class DeleteEdgeOperator : GraphViewOperator
     {
-        public TraversalProcessor SelectInput;
+        public TraversalOperator SelectInput;
         public string source, sink;
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
         public string EdgeID_str;
         public string EdgeReverseID_str;
-        public DeleteEdgeOperator(GraphViewConnection dbConnection, TraversalProcessor SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
+        public DeleteEdgeOperator(GraphViewConnection dbConnection, TraversalOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
         {
             this.dbConnection = dbConnection;
             this.SelectInput = SelectInput;

@@ -13,14 +13,14 @@ namespace GraphView
     /// TraversalProcessor.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
-    internal class TraversalProcessor : GraphViewOperator
+    internal class TraversalOperator : GraphViewOperator
     {
         internal static Record RecordZero;
         private Queue<Record> InputBuffer;
         private Queue<Record> OutputBuffer;
         private int InputBufferSize;
         private int OutputBufferSize;
-        private GraphViewOperator ChildProcessor;
+        private GraphViewOperator ChildOperator;
 
         private int StartOfResultField;
 
@@ -30,16 +30,16 @@ namespace GraphView
         private int src;
         private int dest;
 
-        private string ScriptSegment;
+        private string docDbScript;
 
         private List<int> ReverseCheckList;
 
-        public TraversalProcessor(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<int> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
+        public TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<int> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
         {
             this.Open();
-            ChildProcessor = pChildProcessor;
+            ChildOperator = pChildProcessor;
             connection = pConnection;
-            ScriptSegment = pScript;
+            docDbScript = pScript;
             InputBufferSize = pInputBufferSize;
             OutputBufferSize = pOutputBufferSize;
             InputBuffer = new Queue<Record>();
@@ -55,22 +55,22 @@ namespace GraphView
         {
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildProcessor != null && !ChildProcessor.Status())))
+            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildOperator != null && !ChildOperator.Status())))
             {
                 return OutputBuffer.Dequeue();
             }
 
-            if (ChildProcessor == null && this.Status())
+            if (ChildOperator == null && this.Status())
             {
                 if (OutputBuffer.Count == 0) InputBuffer.Enqueue(RecordZero);
             }
             else
-                while (InputBuffer.Count() < InputBufferSize && ChildProcessor.Status())
+                while (InputBuffer.Count() < InputBufferSize && ChildOperator.Status())
                 {
-                    if (ChildProcessor != null && ChildProcessor.Status())
+                    if (ChildOperator != null && ChildOperator.Status())
                     {
-                        Record Result = (Record)ChildProcessor.Next();
-                        if (Result == null) ChildProcessor.Close();
+                        Record Result = (Record)ChildOperator.Next();
+                        if (Result == null) ChildOperator.Close();
                         else
                             InputBuffer.Enqueue(Result);
                     }
@@ -83,7 +83,7 @@ namespace GraphView
             InRangeScript = CutTheTail(InRangeScript);
             if (InputBuffer.Count != 0)
             {
-                string script = ScriptSegment;
+                string script = docDbScript;
                 if (src != -1 && InRangeScript != "") script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
                 IQueryable<dynamic> Node = (IQueryable<dynamic>)FectNode(script, connection);
                 foreach (var item in Node)
@@ -202,7 +202,7 @@ namespace GraphView
         }
     }
 
-    internal class FetchNodeProcessor : GraphViewOperator
+    internal class FetchNodeOperator : GraphViewOperator
     {
         internal static Record RecordZero;
         private Queue<Record> OutputBuffer;
@@ -215,15 +215,15 @@ namespace GraphView
 
         private int node;
 
-        private string ScriptSegment;
+        private string docDbScript;
 
         private List<int> ReverseCheckList;
 
-        public FetchNodeProcessor(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize)
+        public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize)
         {
             this.Open();
             connection = pConnection;
-            ScriptSegment = pScript;
+            docDbScript = pScript;
             OutputBufferSize = pOutputBufferSize;
             node = pnode;
             header = pheader;
@@ -238,7 +238,7 @@ namespace GraphView
             {
                 return OutputBuffer.Dequeue();
             }
-            string script = ScriptSegment;
+            string script = docDbScript;
             IQueryable<dynamic> Node = (IQueryable<dynamic>)FectNode(script, connection);
             foreach (var item in Node)
             {
@@ -308,7 +308,7 @@ namespace GraphView
         }
     }
 
-    internal class CartesianProcessor : GraphViewOperator
+    internal class CartesianProductOperator : GraphViewOperator
     {
         private List<GraphViewOperator> ProcessorOnSubGraph;
 
@@ -318,7 +318,7 @@ namespace GraphView
         private int OutputBufferSize;
 
         private GraphViewConnection connection;
-        public CartesianProcessor(GraphViewConnection pConnection, List<GraphViewOperator> pProcessorOnSubGraph, List<string> pheader, int pInputBufferSize, int pOutputBufferSize)
+        public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewOperator> pProcessorOnSubGraph, List<string> pheader, int pInputBufferSize, int pOutputBufferSize)
         {
             this.Open();
             connection = pConnection;

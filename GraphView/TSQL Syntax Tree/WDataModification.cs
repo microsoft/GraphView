@@ -289,7 +289,7 @@ namespace GraphView
             identifiers2.Add(iden);
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
-            TraversalProcessor traversalInput = input as TraversalProcessor;
+            TraversalOperator traversalInput = input as TraversalOperator;
             if (traversalInput == null)
             {
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
@@ -741,7 +741,7 @@ namespace GraphView
             #endregion
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
-            TraversalProcessor traversalInput = input as TraversalProcessor;
+            TraversalOperator traversalInput = input as TraversalOperator;
             if (traversalInput == null)
             {
                 throw new GraphViewException("The delete source of the DELETE EDGE statement is invalid.");

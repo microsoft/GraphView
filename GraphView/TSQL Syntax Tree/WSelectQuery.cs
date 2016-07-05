@@ -614,7 +614,7 @@ namespace GraphView
                 if (CurrentProcessingNode.ReverseNeighbors.Count == 0)
                 {
                     int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
-                    ChildrenProcessor.Add(new FetchNodeProcessor(pConnection, CurrentProcessingNode.AttachedQuerySegment, node,header, StartOfResult,50));
+                    ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.AttachedQuerySegment, node,header, StartOfResult,50));
                 }
                 else
                 {
@@ -623,10 +623,10 @@ namespace GraphView
                     int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
                     foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
                         ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias));
-                    ChildrenProcessor.Add(new TraversalProcessor(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
+                    ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
                 }
             }
-            TraversalProcessor.RecordZero = RecordZero;
+            TraversalOperator.RecordZero = RecordZero;
             return ChildrenProcessor.Last();
         }
 
