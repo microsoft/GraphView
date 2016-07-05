@@ -581,8 +581,6 @@ namespace GraphView
                 }
             }
 
-            string source_query = "";
-            string sink_query = "";
             MatchNode source_node = null, sink_node = null;
             Dictionary<string, string> map = new Dictionary<string, string>();
 
@@ -591,7 +589,7 @@ namespace GraphView
             //Add "id" after identifiers
             var iden = new Identifier();
             iden.Value = "id";
-
+            
             var n1 = SelectQueryBlock.SelectElements[0] as WSelectScalarExpression;
             var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
             identifiers1.Add(iden);
@@ -599,6 +597,29 @@ namespace GraphView
             var n2 = SelectQueryBlock.SelectElements[1] as WSelectScalarExpression;
             var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
             identifiers2.Add(iden);
+
+
+
+            var edge_name = new Identifier();
+            var edge_id = new Identifier();
+            var edge_reverse_id = new Identifier();
+            edge_name.Value = edgealias;
+            edge_id.Value = "_ID";
+            edge_reverse_id.Value = "_reverse_ID";
+
+            var select3 = new WSelectScalarExpression();    SelectQueryBlock.SelectElements.Add(select3);
+            var select3_SelectExpr = new WColumnReferenceExpression();
+            select3.SelectExpr = select3_SelectExpr;
+            select3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
+            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
+
+            var select4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(select4);
+            var select4_SelectExpr = new WColumnReferenceExpression();
+            select4.SelectExpr = select4_SelectExpr;
+            select4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
+            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
 
 
             var selectResults = new SelectProcessor(SelectQueryBlock, new DocDBConnection(50, docDbConnection));
@@ -671,11 +692,64 @@ namespace GraphView
 
 
             foreach (var cnt in map)
-                await DocDBDocumentCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
+                await GraphViewDocDBCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
 
             docDbConnection.DocDB_finish = true;
         }
         */
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            var SelectQueryBlock = SelectDeleteExpr as WSelectQueryBlock;
+            var edgealias = SelectDeleteExpr.MatchClause.Paths[0].PathEdgeList[0].Item2.Alias;
+
+            #region Add "id" after identifiers
+            //Add "id" after identifiers
+            var iden = new Identifier();
+            iden.Value = "id";
+
+            var n1 = SelectQueryBlock.SelectElements[0] as WSelectScalarExpression;
+            var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
+            identifiers1.Add(iden);
+
+            var n2 = SelectQueryBlock.SelectElements[1] as WSelectScalarExpression;
+            var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
+            identifiers2.Add(iden);
+            #endregion
+
+            #region Add "edge._ID" & "edge._reverse_ID" in Select
+            //Add "edge._ID" & "edge._reverse_ID" in Select
+            var edge_name = new Identifier();
+            var edge_id = new Identifier();
+            var edge_reverse_id = new Identifier();
+            edge_name.Value = edgealias;
+            edge_id.Value = "_ID";
+            edge_reverse_id.Value = "_reverse_ID";
+
+            var select3 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(select3);
+            var select3_SelectExpr = new WColumnReferenceExpression();
+            select3.SelectExpr = select3_SelectExpr;
+            select3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
+            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
+
+            var select4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(select4);
+            var select4_SelectExpr = new WColumnReferenceExpression();
+            select4.SelectExpr = select4_SelectExpr;
+            select4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
+            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_reverse_id);
+            #endregion
+
+            GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
+            TraversalProcessor traversalInput = input as TraversalProcessor;
+            if (traversalInput == null)
+            {
+                throw new GraphViewException("The delete source of the DELETE EDGE statement is invalid.");
+            }
+            DeleteEdgeOperator DeleteOp = new DeleteEdgeOperator(dbConnection, traversalInput, n1.ToString(), n2.ToString(), select3.ToString(), select4.ToString());
+
+            return DeleteOp;
+        }
     }
 
     public partial class WUpdateSpecification : WUpdateDeleteSpecificationBase

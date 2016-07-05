@@ -245,7 +245,8 @@ namespace GraphView
                             else if (insertSpecification.Target.ToString() == "Edge")
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
-                                insertEdgeStatement.RunDocDbScript(DocDB_conn);
+                                var cnt = insertEdgeStatement.Generate(DocDB_conn);
+                                cnt.Next();
                             }
                         }
                         else if (statement is WDeleteSpecification)
@@ -255,7 +256,9 @@ namespace GraphView
                             if (deletespecification is WDeleteEdgeSpecification)
                             {
                                 var deleteEdgeStatement = deletespecification as WDeleteEdgeSpecification;
-                                deleteEdgeStatement.RunDocDbScript(DocDB_conn);
+                                //deleteEdgeStatement.RunDocDbScript(DocDB_conn);
+                                var cnt = deleteEdgeStatement.Generate(DocDB_conn);
+                                cnt.Next();
                             }
                             else if (deletespecification.Target.ToString() == "Node")
                             {
