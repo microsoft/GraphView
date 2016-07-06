@@ -158,8 +158,9 @@ namespace GraphView
                 List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
-                string EdgeID = rec.RetriveData(header, EdgeID_str);
-                string EdgeReverseID = rec.RetriveData(header, EdgeReverseID_str);
+                //The "e" in the Record is "Reverse_e" in fact
+                string EdgeReverseID = rec.RetriveData(header, EdgeID_str);
+                string EdgeID = rec.RetriveData(header, EdgeReverseID_str);
 
                 //Create one if a document not exist.
                 if (!map.ContainsKey(sourceid))
