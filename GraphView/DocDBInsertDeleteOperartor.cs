@@ -11,14 +11,14 @@ namespace GraphView
 
     internal class InsertEdgeOperator : GraphViewOperator
     {
-        public TraversalOperator SelectInput;
+        public GraphViewOperator SelectInput;
         public string edge;
         public string source, sink;
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
 
 
-        public InsertEdgeOperator(GraphViewConnection dbConnection, TraversalOperator SelectInput, string edge, string source, string sink)
+        public InsertEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput, string edge, string source, string sink)
         {
             this.dbConnection = dbConnection;
             this.SelectInput = SelectInput;
@@ -78,7 +78,7 @@ namespace GraphView
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 Record rec = SelectInput.Next();
-                List<string> header = SelectInput.RetriveHeader();
+                List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
 
@@ -129,13 +129,13 @@ namespace GraphView
 
     internal class DeleteEdgeOperator : GraphViewOperator
     {
-        public TraversalOperator SelectInput;
+        public GraphViewOperator SelectInput;
         public string source, sink;
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
         public string EdgeID_str;
         public string EdgeReverseID_str;
-        public DeleteEdgeOperator(GraphViewConnection dbConnection, TraversalOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
+        public DeleteEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
         {
             this.dbConnection = dbConnection;
             this.SelectInput = SelectInput;
@@ -155,7 +155,7 @@ namespace GraphView
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 Record rec = SelectInput.Next();
-                List<string> header = SelectInput.RetriveHeader();
+                List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
                 string EdgeID = rec.RetriveData(header, EdgeID_str);
@@ -188,8 +188,8 @@ namespace GraphView
                 int ID, reverse_ID;
                 int.TryParse(EdgeID, out ID);
                 int.TryParse(EdgeReverseID, out reverse_ID);
-                map[source] = GraphViewJsonCommand.Delete_edge(map[source], ID);
-                map[sink] = GraphViewJsonCommand.Delete_reverse_edge(map[sink], reverse_ID);
+                map[sourceid] = GraphViewJsonCommand.Delete_edge(map[sourceid], ID);
+                map[sinkid] = GraphViewJsonCommand.Delete_reverse_edge(map[sinkid], reverse_ID);
             }
 
             UploadFinish = false;
@@ -285,6 +285,7 @@ namespace GraphView
                     UploadFinish = false;
                     var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", dbConnection.DocDB_DatabaseId,
                         dbConnection.DocDB_CollectionId, DeleteNode.id);
+                    DeleteDocument(docLink);
                     while(!UploadFinish)
                         System.Threading.Thread.Sleep(100);
                 }

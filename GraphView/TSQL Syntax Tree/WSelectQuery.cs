@@ -380,6 +380,8 @@ namespace GraphView
                 foreach (WTableReferenceWithAlias cnt in FromClause.TableReferences)
                 {
                     Nodes.GetOrCreate(cnt.Alias.Value);
+                    if (!Parent.ContainsKey(cnt.Alias.Value))
+                        Parent[cnt.Alias.Value] = cnt.Alias.Value;
                 }
             }
 
@@ -710,9 +712,9 @@ namespace GraphView
                 if (ResultIndex.IndexOf('.') != -1) CutPoint = ResultIndex.IndexOf('.');
                 if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias )
                     ResultIndexToAppend.Add(ResultIndex);
-                foreach(var edge in node.Neighbors)
+                foreach(var edge in node.ReverseNeighbors)
                 {
-                    if (ResultIndex.Substring(0, CutPoint) == node.ReverseNeighbors[0].EdgeAlias)
+                    if (ResultIndex.Substring(0, CutPoint) == edge.EdgeAlias)
                         ResultIndexToAppend.Add(ResultIndex);
                 }
             }

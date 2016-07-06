@@ -312,12 +312,11 @@ namespace GraphView
             identifiers2.Add(iden);
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
-            TraversalOperator traversalInput = input as TraversalOperator;
-            if (traversalInput == null)
+            if (input == null)
             {
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
             }
-            InsertEdgeOperator InsertOp = new InsertEdgeOperator(dbConnection, traversalInput, Edge, n1.ToString(), n2.ToString());
+            InsertEdgeOperator InsertOp = new InsertEdgeOperator(dbConnection, input, Edge, n1.ToString(), n2.ToString());
 
             //delete "id" after each identifier
             //identifiers1.RemoveAt(1);
@@ -644,12 +643,11 @@ namespace GraphView
             #endregion
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
-            TraversalOperator traversalInput = input as TraversalOperator;
-            if (traversalInput == null)
+            if (input == null)
             {
                 throw new GraphViewException("The delete source of the DELETE EDGE statement is invalid.");
             }
-            DeleteEdgeOperator DeleteOp = new DeleteEdgeOperator(dbConnection, traversalInput, n1.ToString(), n2.ToString(), select3.ToString(), select4.ToString());
+            DeleteEdgeOperator DeleteOp = new DeleteEdgeOperator(dbConnection, input, n1.ToString(), n2.ToString(), select3.ToString(), select4.ToString());
 
             return DeleteOp;
         }
