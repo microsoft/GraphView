@@ -57,7 +57,7 @@ namespace GraphViewUnitTest
 
                     #region Upgrade global view
 
-                    conn.updateGlobalNodeView("dbo", tx);
+                    conn.UpdateGlobalNodeView("dbo", tx);
                     Console.WriteLine("Upgrade global view Done!");
                     
                     #endregion

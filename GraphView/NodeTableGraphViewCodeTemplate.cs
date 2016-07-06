@@ -183,7 +183,7 @@ foreach (var variable in variables) {
             
             #line default
             #line hidden
-            this.Write(@"Decoder(SqlBytes array, SqlBytes deleteEdge)
+            this.Write(@"Decoder(SqlBytes array, SqlBytes deleteEdge, long dumb = 0)
 	{
 		//var deleDict =  new Dictionary<Int32, bool>();
 		Dictionary<Int32, bool> deleDict = null;

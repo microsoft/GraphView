@@ -647,7 +647,7 @@ namespace GraphView
             //Upgrade global view
             foreach (var schema in tables.ToLookup(x => x.Item1.ToLower()))
             {
-                updateGlobalNodeView(schema.Key, transaction);
+                UpdateGlobalNodeView(schema.Key, transaction);
             }
 
             //Upgrade table statistics
@@ -676,7 +676,7 @@ namespace GraphView
             //Upgrade global view
             foreach (var schema in tables.ToLookup(x => x.Item1.ToLower()))
             {
-                updateGlobalNodeView(schema.Key, transaction);
+                UpdateGlobalNodeView(schema.Key, transaction);
             }
         }
 
@@ -1007,13 +1007,13 @@ namespace GraphView
                             SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
                             SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
                             FROM [{0}].[{1}] WITH (NOLOCK)
-                            CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol]) AS Edge
+                            CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
                             WHERE 1=0) as EdgeSample",
                             tableSchema, tableName, column.ColumnName.Value);
                         command.ExecuteNonQuery();
                     }
                 }
-                updateGlobalNodeView(tableSchema, tx);
+                //updateGlobalNodeView(tableSchema, tx);
 
                 // check whether adding reversed edges into the current node table column collection are required
                 var reversedEdgeCommandText = String.Empty;
@@ -1067,7 +1067,7 @@ namespace GraphView
                                 SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
                                 SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
                                 FROM [{0}].[{1}] WITH (NOLOCK)
-                                CROSS APPLY {3}_{4}_{5}_Decoder([{2}],[{2}DeleteCol]) AS Edge
+                                CROSS APPLY {3}_{4}_{5}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
                                 WHERE 1=0) as EdgeSample
                                 ",
                                 tableSchema, tableName, reversedEdgeName,
@@ -1128,16 +1128,20 @@ namespace GraphView
                         for (var i = 0; i < reversedMetaCommandTextList.Count; ++i)
                         {
                             command.CommandText = reversedMetaCommandTextList[i];
-                            
-                            if (command.Parameters.Contains("@attrName"))
+
+                            if (command.Parameters.Contains("@tableSchema"))
                             {
                                 command.Parameters.RemoveAt("@tableSchema");
                                 command.Parameters.RemoveAt("@tableName");
                                 command.Parameters.RemoveAt("@columnName");
-                                command.Parameters.RemoveAt("@attrName");
-                                command.Parameters.RemoveAt("@attrType");
-                                command.Parameters.RemoveAt("@attrId");
                                 command.Parameters.RemoveAt("@columnid");
+                                command.Parameters.RemoveAt("@AverageDegree");
+                                if (command.Parameters.Contains("@attrName"))
+                                {
+                                    command.Parameters.RemoveAt("@attrName");
+                                    command.Parameters.RemoveAt("@attrType");
+                                    command.Parameters.RemoveAt("@attrId");
+                                }
                             }
 
                             var reversedColumnId = 0;
@@ -1152,6 +1156,21 @@ namespace GraphView
                                     reversedColumnId = Convert.ToInt32(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture);
                                 }
                             }
+
+                            // EdgeAverageDegreeCollection update
+                            command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                            command.Parameters.AddWithValue("@tableName", tableName);
+                            command.Parameters.AddWithValue("@columnName", command.Parameters["@columnName" + i].Value.ToString());
+                            command.Parameters.Add("@columnid", SqlDbType.Int);
+                            command.Parameters["@columnid"].Value = reversedColumnId;
+                            command.Parameters.Add("@AverageDegree", SqlDbType.Int);
+                            command.Parameters["@AverageDegree"].Value = 5;
+
+                            command.CommandText = string.Format(@"
+                                INSERT INTO [{0}]
+                                ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                                VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
+                            command.ExecuteNonQuery();
                             
                             // get all original attributes
                             var attributes = new List<Tuple<string, string>>();
@@ -1172,22 +1191,16 @@ namespace GraphView
 
                             if (attributes.Count == 0) continue;
 
-                            // EdgeAttributeCollection update
-                            command.Parameters.AddWithValue("@tableSchema", tableSchema);
-                            command.Parameters.AddWithValue("@tableName", tableName);
-                            command.Parameters.AddWithValue("@columnName", command.Parameters["@columnName"+i].Value.ToString());
-                            
+                            // EdgeAttributeCollection update 
                             command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
                             command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
                             command.Parameters.Add("@attrId", SqlDbType.Int);
-                            command.Parameters.Add("@columnid", SqlDbType.Int);
 
                             foreach (var attr in attributes)
                             {
                                 command.Parameters["@attrName"].Value = attr.Item1;
                                 command.Parameters["@attrType"].Value = attr.Item2;
                                 command.Parameters["@attrId"].Value = (createOrder++).ToString();
-                                command.Parameters["@columnid"].Value = reversedColumnId;
 
                                 command.CommandText = String.Format(@"
                                     INSERT INTO [{0}]
@@ -1251,7 +1264,7 @@ namespace GraphView
                                     SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
                                     SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
                                     FROM [{0}].[{1}] WITH (NOLOCK)
-                                    CROSS APPLY {3}_{4}_{5}_Decoder([{2}],[{2}DeleteCol]) AS Edge
+                                    CROSS APPLY {3}_{4}_{5}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
                                     WHERE 1=0) as EdgeSample
                                     ",
                                     refTableSchema, refTableName, reversedEdgeName,
@@ -1300,6 +1313,18 @@ namespace GraphView
                                 }
                             }
 
+                            // EdgeAverageDegreeCollection update
+                            command.Parameters.Add("@columnid", SqlDbType.Int);
+                            command.Parameters["@columnid"].Value = reversedColumnId;
+                            command.Parameters.Add("@AverageDegree", SqlDbType.Int);
+                            command.Parameters["@AverageDegree"].Value = 5;
+
+                            command.CommandText = string.Format(@"
+                                INSERT INTO [{0}]
+                                ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                                VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
+                            command.ExecuteNonQuery();
+
                             command.CommandText = String.Format(@"
                                 SELECT MAX([AttributeEdgeId]) AS maxAttrEdgeId
                                 FROM [{0}]
@@ -1320,14 +1345,12 @@ namespace GraphView
                             command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
                             command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
                             command.Parameters.Add("@attrId", SqlDbType.Int);
-                            command.Parameters.Add("@columnid", SqlDbType.Int);
 
                             foreach (var attr in edgeColumn.Attributes)
                             {
                                 command.Parameters["@attrName"].Value = attr.Item1.Value;
                                 command.Parameters["@attrType"].Value = attr.Item2.ToString();
                                 command.Parameters["@attrId"].Value = (createOrder++).ToString();
-                                command.Parameters["@columnid"].Value = reversedColumnId;
 
                                 command.CommandText = String.Format(@"
                                     INSERT INTO [{0}]
@@ -1338,6 +1361,8 @@ namespace GraphView
                         }
                     }
                 }
+
+                UpdateGlobalNodeView(tableSchema, tx);
 
                 if (externalTransaction == null)
                 {
@@ -1380,8 +1405,10 @@ namespace GraphView
                         var assemblyName = tableSchema + '_' + tableName;
                         foreach (var edgeColumn in edgeColumns)
                         {
+                            // isEdgeView
                             if (edgeColumn.Item3) 
-                                DropEdgeView(tableSchema, tableName, edgeColumn.Item1, tran);
+                                DropEdgeView(tableSchema, tableName, 
+                                    edgeColumn.Item1 /*edgeView name*/, edgeColumn.Item6 /*isRevEdgeView*/, tran);
                             else
                             {
                                 // skip reversed edges since they have no UDF
@@ -1478,8 +1505,10 @@ namespace GraphView
                             var assemblyName = tableSchema + '_' + tableName;
                             foreach (var edgeColumn in edgeColumns)
                             {
+                                // isEdgeView
                                 if (edgeColumn.Item3)
-                                    DropEdgeView(tableSchema, tableName, edgeColumn.Item1, tran);
+                                    DropEdgeView(tableSchema, tableName,
+                                        edgeColumn.Item1 /*edgeView name*/, edgeColumn.Item6 /*isRevEdgeView*/, tran);
                                 else
                                 {
                                     command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
@@ -1525,7 +1554,7 @@ namespace GraphView
                     command.ExecuteNonQuery();
                     foreach (var it in schemaSet)
                     {
-                        updateGlobalNodeView(it, tran);
+                        UpdateGlobalNodeView(it, tran);
                     }
                     if (externalTransaction == null)
                     {
@@ -1852,9 +1881,7 @@ namespace GraphView
                 var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
                 foreach (var edgeColumn in edgeColumns)
                 {
-                    if (!edgeColumn.Item3)
-                        UpdateEdgeSampling(tableSchema, tableName, Tuple.Create(edgeColumn.Item1, edgeColumn.Item4), tx);
-                    UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn.Item1, tx);
+                    UpdateEdgeStatistics(tableSchema, tableName, edgeColumn, false, tx);
                 }
                 if (externalTransaction == null)
                     tx.Commit();
@@ -1866,6 +1893,108 @@ namespace GraphView
                 throw new Exception(e.Message);
             }
 
+        }
+
+        /// <summary>
+        /// Updates a specific edge's statistics
+        /// </summary>
+        /// <param name="tableSchema">The schema of the table to be updated.</param>
+        /// <param name="tableName">The name of the table to be updated.</param>
+        /// <param name="edgeColName">The name of the edge to be updated</param>
+        public void UpdateTableStatistics(string tableSchema, string tableName, string edgeColName, SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx;
+            tx = externalTransaction ?? Conn.BeginTransaction();
+            try
+            {
+                var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
+                var edgeColumn =
+                    edgeColumns.Where(x => x.Item1.Equals(edgeColName, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (!edgeColumn.Any())
+                    throw new Exception(tableName + " doesn't have an edge named " + edgeColName + ".");
+
+                UpdateEdgeStatistics(tableSchema, tableName, edgeColumn[0], true, tx);
+
+                if (externalTransaction == null)
+                    tx.Commit();
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                    tx.Rollback();
+                throw new Exception(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Updates a specific edge statistics
+        /// </summary>
+        /// <param name="tableSchema">The schema of the table to be updated.</param>
+        /// <param name="tableName">The name of the table to be updated.</param>
+        /// <param name="edgeColumn">The edge column info.</param>
+        /// <param name="sameTableRevEdgeUpdate">Whether update the reversed edge if it's in the same table.</param>
+        private void UpdateEdgeStatistics(string tableSchema, string tableName,
+            Tuple<string, bool, bool, string, bool, bool> edgeColumn, bool sameTableRevEdgeUpdate, SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx;
+            tx = externalTransaction ?? Conn.BeginTransaction();
+            try
+            {
+                var edgeColName = edgeColumn.Item1;
+                // !isEdgeView
+                if (!edgeColumn.Item3)
+                    // <edgeColName, edgeUdfPrefix>
+                    UpdateEdgeSampling(tableSchema, tableName, Tuple.Create(edgeColumn.Item1, edgeColumn.Item4), tx);
+                UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn.Item1, tx);
+
+                // hasReversedEdge
+                if (edgeColumn.Item5)
+                {
+                    if (!edgeColumn.Item2 || edgeColumn.Item2 && sameTableRevEdgeUpdate)
+                    {
+                        var refTableName = "";
+                        using (var command = Conn.CreateCommand())
+                        {
+                            command.Transaction = tx;
+                            command.CommandText = string.Format(
+                                @"SELECT Reference
+                            FROM [{0}]
+                            WHERE TableSchema = @tableSchema AND TableName = @tableName
+                            AND ColumnName = @columnName", MetadataTables[1]);
+                            command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                            command.Parameters.AddWithValue("@tableName", tableName);
+                            command.Parameters.AddWithValue("@columnName", edgeColName);
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                    refTableName = reader["Reference"].ToString();
+                            }
+                            var revEdgeName = tableName + "_" + edgeColName + "Reversed";
+                            var revEdgeColumns = GetGraphEdgeColumns(tableSchema, refTableName, tx);
+                            var revEdgeColumn =
+                                revEdgeColumns.Where(x => x.Item1.Equals(revEdgeName, StringComparison.OrdinalIgnoreCase)).ToList();
+                            if (revEdgeColumn.Any())
+                            {
+                                var revEdgeTuple = revEdgeColumn[0];
+                                // !isEdgeView
+                                if (!revEdgeTuple.Item3)
+                                    // <edgeColName, edgeUdfPrefix>
+                                    UpdateEdgeSampling(tableSchema, refTableName, Tuple.Create(revEdgeTuple.Item1, revEdgeTuple.Item4), tx);
+                                UpdateEdgeAverageDegree(tableSchema, refTableName, revEdgeTuple.Item1, tx);
+                            }
+                        }
+                    }
+                }
+
+                if (externalTransaction == null)
+                    tx.Commit();
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                    tx.Rollback();
+                throw new Exception(e.Message);
+            }
         }
 
         /// <summary>
@@ -1965,7 +2094,7 @@ namespace GraphView
             		SELECT [GlobalNodeID] [src], Edge.*
             		FROM [{0}].[{1}]
             		TABLESAMPLE ({3} rows) WITH (NOLOCK)
-            		CROSS APPLY {4}_Decoder([{2}],[{2}DeleteCol]) As Edge
+            		CROSS APPLY {4}_Decoder([{2}],[{2}DeleteCol],0) As Edge
                 ",
                         tableSchema,
                         tableName,

@@ -316,6 +316,19 @@ namespace GraphViewUnitTest
 
 //        }
 
+        //[TestMethod]
+        //public void TestUpdateTableStatistics()
+        //{
+        //    //TestInitialization.Init();
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        graph.UpdateTableStatistics("dbo", "EmployeeNode", "Clients");
+        //        graph.UpdateTableStatistics("dbo", "EmployeeNode", "Colleagues");
+        //        graph.UpdateTableStatistics("dbo", "GlobalNodeView");
+        //    }
+        //}
+
 
         [TestMethod]
         public void TestDropNodeTable()
@@ -353,7 +366,7 @@ namespace GraphViewUnitTest
                 graph.CreateNodeTable(createEmployeeStr);
                 var edges = new List<Tuple<string, string>>() {Tuple.Create("employeeNode", "CLients")};
                 graph.CreateEdgeView("dbo", "Employeenode", "edgeview", edges);
-                graph.DropEdgeView("dbo", "Employeenode", "edgeview");
+                graph.DropEdgeView("dbo", "Employeenode", "edgeview", false);
             }
         }
 

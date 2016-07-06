@@ -26,7 +26,8 @@ GO
 #>
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 	@array varbinary(max),
-	@dele varbinary(max))
+	@dele varbinary(max),
+	@dumb bigint = 0)
 	RETURNS TABLE
 	( 
 		Sink bigint, EdgeId int<#
@@ -80,7 +81,7 @@ return
 with  allPath(sink, varPath) as (
 		select newpath.sink,  
 		dbo.ConvertNumberIntoBinaryForPath(@source, <#=edgeColumnId#>, newpath.EdgeId)
-		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
+		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del, 0) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in variables) {
 		Write("		");
@@ -185,7 +186,7 @@ with  allPath(sink, varPath, PathMessage) as (
 			<#foreach (var it in variables) {#>
 				,newpath.<#=it.Item1#>
 			<#}#>) as PathMessage
-		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
+		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del, 0) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in variables) {
 		Write("		");
@@ -262,8 +263,8 @@ CREATE ASSEMBLY <#=AssemblyName#>_<#=edgeName#>_Assembly FROM <#=Path#>
 GO
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 <#for (int i = 0; i < InputCount; i++) {#>
-@array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
-<#}#>) RETURNS TABLE
+@array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# WriteLine(","); #>
+<#}#>@dumb bigint = 0) RETURNS TABLE
 (
 	Sink bigint, EdgeColumnId int, EdgeId int, _EdgeType nvarchar(max)<#
 	for (var i = 0; i < variables.Count; ++i)

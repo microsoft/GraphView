@@ -282,12 +282,16 @@ namespace GraphViewUnitTest
         private static readonly IDistribution Distribution =
             new Unifrom(AverageDegree);
         //new Pareto(AverageDegree,MaxDegree);
-        enum Edge
+        public enum Edge
         {
             EmployeeColleagues = 0,
             EmployeeClients = 1,
             EmployeeManager = 2,
             ClientColleagues = 3,
+            EmployeeColleaguesReversed = 4,
+            EmployeeClientsReversed = 5,
+            EmployeeManagerReversed = 6,
+            ClientColleaguesReversed = 7,
         }
 
         private static string RandomString(int strLength = 10)
@@ -302,6 +306,16 @@ namespace GraphViewUnitTest
                 rndStr = rndStr + rndChr;
             }
             return rndStr;
+        }
+
+        private static byte[] Combine(byte[] first, byte[] second)
+        {
+            if (first == null) return second;
+            if (second == null) return first;
+            byte[] ret = new byte[first.Length + second.Length];
+            Buffer.BlockCopy(first, 0, ret, 0, first.Length);
+            Buffer.BlockCopy(second, 0, ret, first.Length, second.Length);
+            return ret;
         }
 
         //private static byte[] GenerateBinary(int num, Random rdInt, Edge type )
@@ -328,9 +342,9 @@ namespace GraphViewUnitTest
         //    }
         //    return ret.ToArray();
         //}
-        private static byte[] GenerateBinary(int dstNodeSize, Random rd, Edge type, out int actualEdgeNum)
+        private static byte[] GenerateBinary(long sourceId, int dstNodeSize, Random rd, Edge type, out int actualEdgeNum, 
+            ref Dictionary<long, Tuple<byte[], int>> revBytes)
         {
-
             var ret = new MemoryStream();
             var br = new BinaryWriter(ret);
             var edgeNum = (int)(Distribution.GetOutDegreeNum(rd.NextDouble()));
@@ -353,30 +367,58 @@ namespace GraphViewUnitTest
                 }
                 Int32 next = rd.Next(50);
 
+                var revRet = new MemoryStream();
+                var revBr = new BinaryWriter(revRet);
+                if (type == Edge.EmployeeClients || type == Edge.ClientColleagues)
+                {
+                    next64 += (Convert.ToInt64(2) << 48);
+                }
+                if (type == Edge.ClientColleagues)
+                {
+                    sourceId += (Convert.ToInt64(2) << 48);
+                }
                 if (type == Edge.EmployeeClients)
                 {
                     byte[] w = new byte[1];
                     w[0] = 7;
+                    var doublePara = rd.NextDouble();
+                    var strPara = RandomString();
+
                     br.Write(w);
-                    br.Write(next64 + (Convert.ToInt64(2) << 48));
+                    br.Write(next64);
                     br.Write(next);
-                    br.Write(rd.NextDouble());
-                    br.Write(RandomString());
+                    br.Write(doublePara);
+                    br.Write(strPara);
+
+                    revBr.Write(w);
+                    revBr.Write(sourceId);
+                    revBr.Write(next);
+                    revBr.Write(doublePara);
+                    revBr.Write(strPara);
                 }
                 else if (type == Edge.ClientColleagues)
                 {
-                    br.Write(next64 + (Convert.ToInt64(2) << 48));
+                    br.Write(next64);
+                    revBr.Write(sourceId);
                 }
                 else
                 {
                     br.Write(next64);
+                    revBr.Write(sourceId);
                 }
+                if (!revBytes.ContainsKey(next64))
+                    revBytes[next64] = new Tuple<byte[], int>(null, 0);
+                var tuple = revBytes[next64];
+                var cnt = tuple.Item2;
+                var oldBytes = tuple.Item1;
+                revBytes[next64] = new Tuple<byte[], int>(Combine(oldBytes, revRet.ToArray()), ++cnt);
                 actualEdgeNum++;
             }
             return ret.ToArray();
         }
 
-        public static void InsertDataEmployNode(SqlConnection conn) // binary version
+        public static void InsertDataEmployNode(SqlConnection conn, 
+            ref Dictionary<Edge, Dictionary<long, Tuple<byte[], int>>> revBytesDict) // binary version
         {
             using (var cmd = conn.CreateCommand())
             {
@@ -392,6 +434,9 @@ namespace GraphViewUnitTest
 
                 var tick = (int)DateTime.Now.Ticks + _rep++;
                 var rd = new Random(tick);
+                revBytesDict.Add(Edge.EmployeeColleaguesReversed, new Dictionary<long, Tuple<byte[], int>>());
+                revBytesDict.Add(Edge.EmployeeClientsReversed, new Dictionary<long, Tuple<byte[], int>>());
+                revBytesDict.Add(Edge.EmployeeManagerReversed, new Dictionary<long, Tuple<byte[], int>>());
 
                 for (var i = 0; i < EmployeeNodeSize; ++i)
                 {
@@ -414,13 +459,19 @@ namespace GraphViewUnitTest
                     //cmd.Parameters["@Manager"].Value = GenerateBinary(numberOfManager, rdInt, Edge.Manager);
 
                     int edgeNum;
-                    cmd.Parameters["@Colleagues"].Value = GenerateBinary(EmployeeNodeSize, rd, Edge.EmployeeColleagues, out edgeNum);
+                    var revBytes = revBytesDict[Edge.EmployeeColleaguesReversed];
+                    cmd.Parameters["@Colleagues"].Value = GenerateBinary(i, EmployeeNodeSize, rd, Edge.EmployeeColleagues, 
+                        out edgeNum, ref revBytes);
                     cmd.Parameters["@ColleaguesOutDegree"].Value = edgeNum;
 
-                    cmd.Parameters["@Clients"].Value = GenerateBinary(ClientNodeSize, rd, Edge.EmployeeClients, out edgeNum);
+                    revBytes = revBytesDict[Edge.EmployeeClientsReversed];
+                    cmd.Parameters["@Clients"].Value = GenerateBinary(i, ClientNodeSize, rd, Edge.EmployeeClients,
+                        out edgeNum, ref revBytes);
                     cmd.Parameters["@ClientsOutDegree"].Value = edgeNum;
 
-                    cmd.Parameters["@Manager"].Value = GenerateBinary(EmployeeNodeSize, rd, Edge.EmployeeManager, out edgeNum);
+                    revBytes = revBytesDict[Edge.EmployeeManagerReversed];
+                    cmd.Parameters["@Manager"].Value = GenerateBinary(i, EmployeeNodeSize, rd, Edge.EmployeeManager,
+                        out edgeNum, ref revBytes);
                     cmd.Parameters["@ManagerOutDegree"].Value = edgeNum;
                     try
                     {
@@ -436,7 +487,8 @@ namespace GraphViewUnitTest
             //End Data Generation
         }
 
-        public static void InsertDataClientNode(SqlConnection conn)
+        public static void InsertDataClientNode(SqlConnection conn, 
+            ref Dictionary<Edge, Dictionary<long, Tuple<byte[], int>>> revBytesDict)
         {
             using (var cmd = conn.CreateCommand())
             {
@@ -448,6 +500,8 @@ namespace GraphViewUnitTest
                 cmd.Parameters.Add("@ClientId", SqlDbType.NVarChar, 128);
                 cmd.Parameters.Add("@ColleaguesOutDegree", SqlDbType.Int);
 
+                revBytesDict.Add(Edge.ClientColleaguesReversed, new Dictionary<long, Tuple<byte[], int>>());
+
                 for (var i = 0; i < ClientNodeSize; ++i)
                 {
                     var name = RandomString();
@@ -457,10 +511,56 @@ namespace GraphViewUnitTest
                     cmd.Parameters["@ClientId"].Value = RandomString();
                     int edgeNum;
 
-                    cmd.Parameters["@Colleagues"].Value = GenerateBinary(ClientNodeSize, rd, Edge.ClientColleagues,out edgeNum);
+                    var revBytes = revBytesDict[Edge.ClientColleaguesReversed];
+                    cmd.Parameters["@Colleagues"].Value = GenerateBinary(i, ClientNodeSize, rd, Edge.ClientColleagues,out edgeNum, ref revBytes);
                     cmd.Parameters["@ColleaguesOutDegree"].Value = edgeNum;
 
                     cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public static void InsertReversedData(SqlConnection conn,
+            ref Dictionary<Edge, Dictionary<long, Tuple<byte[], int>>> revBytesDict)
+        {
+            var edgeTypetoTableName = new Dictionary<Edge, string>
+            {
+                {Edge.EmployeeClientsReversed, "ClientNode"},
+                {Edge.EmployeeManagerReversed, "EmployeeNode"},
+                {Edge.EmployeeColleaguesReversed, "EmployeeNode"},
+                {Edge.ClientColleaguesReversed, "ClientNode"},
+            };
+            var edgeTypetoEdgeName = new Dictionary<Edge, string>
+            {
+                {Edge.EmployeeClientsReversed, "EmployeeNode_ClientsReversed"},
+                {Edge.EmployeeManagerReversed, "EmployeeNode_ManagerReversed"},
+                {Edge.EmployeeColleaguesReversed, "EmployeeNode_ColleaguesReversed"},
+                {Edge.ClientColleaguesReversed, "ClientNode_ColleaguesReversed"},
+            };
+            const string updateEdge =
+                @"UPDATE [{0}] SET
+                [{1}].WRITE(@varbinary, null, null), [{1}OutDegree] = [{1}OutDegree] + {2}
+                WHERE [GlobalNodeId] = {3};
+                ";
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.Parameters.Add("@varbinary", SqlDbType.VarBinary, -1);
+                foreach (var it in revBytesDict)
+                {
+                    var edgeType = it.Key;
+                    var edgeName = edgeTypetoEdgeName[edgeType];
+                    var tableName = edgeTypetoTableName[edgeType];
+                    var dict = it.Value;
+                    foreach (var edge in dict)
+                    {
+                        var sourceId = edge.Key;
+                        var varBin = edge.Value.Item1;
+                        var cnt = edge.Value.Item2;
+
+                        cmd.CommandText = string.Format(updateEdge, tableName, edgeName, cnt, sourceId);
+                        cmd.Parameters["@varbinary"].Value = varBin;
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
         }

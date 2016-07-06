@@ -74,7 +74,7 @@ public partial class UserDefinedFunctions
 		IsDeterministic = true,
 		IsPrecise = false
 		)]
-	public static IEnumerable <#=edgeName#>Decoder(SqlBytes array, SqlBytes deleteEdge)
+	public static IEnumerable <#=edgeName#>Decoder(SqlBytes array, SqlBytes deleteEdge, long dumb = 0)
 	{
 		//var deleDict =  new Dictionary<Int32, bool>();
 		Dictionary<Int32, bool> deleDict = null;

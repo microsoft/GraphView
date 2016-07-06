@@ -67,14 +67,19 @@ namespace GraphViewUnitTest
                 WHERE D.WORKID = 'D' AND F.WORKID = 'F'
 
                 INSERT EDGE INTO EmployeeNode.Clients
-                SELECT D,A,null,null,null
+                SELECT D,A,1,null,null
                 FROM EmployeeNode D, ClientNode A
                 WHERE D.WORKID = 'D' AND A.CLIENTID = 'A'
 
                 INSERT EDGE INTO EmployeeNode.Clients
-                SELECT E,A,null,null,null
+                SELECT E,A,3,null,null
                 FROM EmployeeNode E, ClientNode A
                 WHERE E.WORKID = 'E' AND A.CLIENTID = 'A'
+
+                INSERT EDGE INTO EmployeeNode.Clients
+                SELECT F,A,13,null,null
+                FROM EmployeeNode F, ClientNode A
+                WHERE F.WORKID = 'F' AND A.CLIENTID = 'A'
                 
                 INSERT EDGE INTO EmployeeNode.Clients
                 SELECT D,B,590,3.62,'CLB'
@@ -105,6 +110,7 @@ namespace GraphViewUnitTest
                 DELETE EDGE [E]-[Clients]->[A]
                 FROM EmployeeNode D, EmployeeNode E, ClientNode A
                 MATCH [D]-[COLLEAGUES]->[E]-[Clients as EdgeEA]->[A]
+                WHERE EdgeEA.credit < 2
                 ";
 
                 var command = new GraphViewCommand(sqlStr, graph);

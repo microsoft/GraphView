@@ -125,8 +125,10 @@ namespace GraphViewUnitTest
             using (var graph = new GraphViewConnection(ConnStr))
             {
                 graph.Open();
-                DataGenerator.InsertDataEmployNode(graph.Conn);
-                DataGenerator.InsertDataClientNode(graph.Conn);
+                var revBytesDict = new Dictionary<DataGenerator.Edge, Dictionary<long, Tuple<byte[], int>>>();
+                DataGenerator.InsertDataEmployNode(graph.Conn, ref revBytesDict);
+                DataGenerator.InsertDataClientNode(graph.Conn, ref revBytesDict);
+                DataGenerator.InsertReversedData(graph.Conn, ref revBytesDict);
                 foreach (var table in graph.GetNodeTables())
                 {
                     graph.UpdateTableStatistics(table.Item1, table.Item2);

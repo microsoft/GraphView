@@ -2013,7 +2013,7 @@ namespace GraphView
                     MultiPartIdentifier = new WMultiPartIdentifier(
                         new Identifier[]
                         {
-                            new Identifier {Value = edgeCol.Alias??string.Format("{0}_{1}_{2}",sinkTableName,reversedEdgeName,sourceTableName)},
+                            new Identifier {Value = edgeCol.Alias??string.Format("{0}_{1}_{2}",sourceTableName,edgeCol.MultiPartIdentifier.Identifiers.Last().Value,sinkTableName)},
                             new Identifier {Value = "Edgeid"}
                         })
                 },

@@ -113,10 +113,32 @@ namespace GraphViewUnitTest
             {
                 conn.Open();
                 conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId, c1.ClientId, c2.ClientId, NV1.id, NV2.id
+                                FROM 
+                                 EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
+                                MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2, e2-[ev2]->e1
+                                WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
+
+
+                conn.ExecuteNonQuery(@" SELECT e1.WorkId, e2.WorkId
                 FROM 
-                 EmployeeNode AS e1, EmployeeNode AS e2, ClientNode as c1, ClientNode as c2, NV1, NV2
-                MATCH [e1]-[Colleagues as c]->[e2], c1-[Colleagues]->c2, nv1-[ev1]->c1, nv1-[ev2]->nv2, e2-[ev2]->e1
-                WHERE e1.workid != NV1.id and NV1.id = 10 and c.a=1 and ev1.a=1");
+                 EmployeeNode AS e1, EmployeeNode AS e2
+                MATCH e1-[ev2]->e2");
+
+                conn.ExecuteNonQuery(@" SELECT nv1.id, nv2.id
+                FROM 
+                 NV1 as nv1, NV2 as nv2
+                MATCH nv1-[ev2]->nv2");
+
+
+                conn.ExecuteNonQuery(@" SELECT nv1.id, c1.ClientId
+                FROM 
+                 NV1 as nv1, ClientNode as c1
+                MATCH nv1-[ev1]->c1");
+
+                conn.ExecuteNonQuery(@" SELECT e1.WorkId, edge.a, nv1.id
+                FROM 
+                 EmployeeNode as e1, NV1 as nv1
+                MATCH e1-[Colleagues as edge]->nv1");
             }
         }
 

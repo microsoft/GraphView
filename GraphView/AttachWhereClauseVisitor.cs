@@ -123,7 +123,7 @@ namespace GraphView
         {
             var table = _bindTableVisitor.Invoke(expr,_columnTableMapping);
 
-            MatchEdge edge;
+            MatchEdge edge, revEdge;
             MatchNode node;
             if (_graph.TryGetEdge(table,out edge))
             {
@@ -132,6 +132,31 @@ namespace GraphView
                     edge.Predicates = new List<WBooleanExpression>();
                 }
                 edge.Predicates.Add(expr);
+
+                if (_graph.ReversedEdgeDict.TryGetValue(edge.EdgeAlias, out revEdge))
+                {
+                    if (revEdge.Predicates == null)
+                    {
+                        revEdge.Predicates = new List<WBooleanExpression>();
+                    }
+
+                    // take care when an edge is using a default alias
+                    var revExpr = ObjectExtensions.Copy(expr);
+                    var compExpr = revExpr as WBooleanComparisonExpression;
+                    if (compExpr != null)
+                    {
+                        var columnExpr = compExpr.FirstExpr as WColumnReferenceExpression ?? compExpr.SecondExpr as WColumnReferenceExpression;
+                        if (columnExpr != null)
+                        {
+                            var column = columnExpr.MultiPartIdentifier.Identifiers;
+                            if (column.Count >= 2)
+                            {
+                                column[column.Count - 2].Value = revEdge.EdgeAlias;
+                            }
+                        }
+                    }
+                    revEdge.Predicates.Add(revExpr);
+                }
             }
             else if (_graph.TryGetNode(table,out node))
             {
