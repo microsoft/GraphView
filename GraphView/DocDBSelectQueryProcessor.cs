@@ -37,9 +37,9 @@ namespace GraphView
         private string docDbScript;
 
         // Defining which fields should the reverse check have on.
-        private List<int> ReverseCheckList;
+        private Dictionary<int,string> ReverseCheckList;
 
-        public TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<int> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
+        public TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, Dictionary<int, string> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
         {
             this.Open();
             ChildOperator = pChildProcessor;
@@ -88,7 +88,10 @@ namespace GraphView
             if (InputBuffer.Count != 0)
             {
                 string script = docDbScript;
-                if (InRangeScript != "") script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
+                if (InRangeScript != "")
+                    if (!script.Contains("WHERE"))
+                        script += "WHERE " + header[dest] + ".id IN (" + InRangeScript + ")";
+                else script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
 
                 // Send query to server and decode the result.
                 IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
@@ -113,7 +116,8 @@ namespace GraphView
                         // reverse check
                         foreach (var ReverseNode in ReverseCheckList)
                         {
-                            if ((ReverseEdge.Contains(record.RetriveData(ReverseNode)) && record.RetriveData(ReverseNode + 1).Contains(ID)))
+                            string Edge = (((JObject)item)[ReverseNode.Value])["_sink"].ToString();
+                            if ((Edge == record.RetriveData(ReverseNode.Key)) && record.RetriveData(ReverseNode.Key + 1).Contains(ID))
                             {
                                 Record NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
                                 OutputBuffer.Enqueue(NewRecord);
@@ -147,7 +151,7 @@ namespace GraphView
 
         private bool HasWhereClause(string SelectClause)
         {
-            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "Where");
+            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "WHERE");
         }
         /// <summary>
         /// Break down a JObject that return by server and extract the id and edge infomation from it.

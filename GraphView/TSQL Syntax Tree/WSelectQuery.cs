@@ -649,11 +649,11 @@ namespace GraphView
                     }
                     else
                     {
-                        List<int> ReverseCheckList = new List<int>();
+                        Dictionary<int,string> ReverseCheckList = new Dictionary<int, string>();
                         int src = header.IndexOf(CurrentProcessingNode.ReverseNeighbors[0].SinkNode.NodeAlias);
                         int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
                         foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
-                            ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias));
+                            ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias), neighbor.EdgeAlias + "_REV");
                         ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
                     }
                 }
@@ -688,7 +688,7 @@ namespace GraphView
                 }
 
             }
-            AttachedClause += " Where ";
+            AttachedClause += " WHERE ";
             if (node.Predicates != null)
             {
                 for (int i = 0; i < node.Predicates.Count(); i++)
@@ -718,6 +718,14 @@ namespace GraphView
                         ResultIndexToAppend.Add(ResultIndex);
                 }
             }
+
+            string ReverseCheckString = "";
+            foreach (var ReverseEdge in node.ReverseNeighbors)
+            {
+                ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
+            }
+            ReverseCheckString = CutTheTail(ReverseCheckString);
+
             foreach (string ResultIndex in ResultIndexToAppend)
             {
                 ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
@@ -726,10 +734,14 @@ namespace GraphView
             ResultIndexString = CutTheTail(ResultIndexString);
 
             string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
-            string QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString;
+            string QuerySegment = "";
+            if (ResultIndexString != "" && ReverseCheckString != "") 
+                QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + ", " + ReverseCheckString;
+            else
+                QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             if (HasWhereClause(AttachedClause))
-                QuerySegment += " " + AttachedClause;
-            else QuerySegment += " From " + node.NodeAlias;
+                QuerySegment += " " + AttachedClause.Substring(0, AttachedClause.Length - 6) + " ";
+            else QuerySegment += " " + AttachedClause;
 
             node.AttachedQuerySegment = QuerySegment;
         }

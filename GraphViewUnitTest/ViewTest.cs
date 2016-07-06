@@ -115,7 +115,7 @@ namespace GraphViewUnitTest
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
-            gcmd.CommandText = @"SELECT A.name, C.name FROM node AS A, node AS B, node AS C, node AS D MATCH A-[Edge AS e]->B, C-[Edge AS f]->D WHERE  e.type = 'father' AND f.type ='mother' ";
+            gcmd.CommandText = @"SELECT A.name, C.name FROM node AS A, node AS B, node AS C MATCH A-[Edge AS e]->C, B-[Edge AS f]->C";
 
             gcmd.ExecuteNonQuery();
         }
