@@ -234,6 +234,7 @@ namespace GraphView
         {
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
+            if (OutputBuffer.Count == 1) this.Close();
             if (OutputBuffer.Count != 0)
             {
                 return OutputBuffer.Dequeue();
@@ -310,22 +311,19 @@ namespace GraphView
 
     internal class CartesianProductOperator : GraphViewOperator
     {
-        private List<GraphViewOperator> ProcessorOnSubGraph;
+        private List<GraphViewOperator> OperatorOnSubGraphs;
 
-        private Queue<Record> InputBuffer;
         private Queue<Record> OutputBuffer;
-        private int InputBufferSize;
         private int OutputBufferSize;
 
         private GraphViewConnection connection;
-        public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewOperator> pProcessorOnSubGraph, List<string> pheader, int pInputBufferSize, int pOutputBufferSize)
+        public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
         {
             this.Open();
             connection = pConnection;
-            InputBufferSize = pInputBufferSize;
             OutputBufferSize = pOutputBufferSize;
             header = pheader;
-            ProcessorOnSubGraph = pProcessorOnSubGraph;
+            OperatorOnSubGraphs = pProcessorOnSubGraph;
         }
 
         override public Record Next()
@@ -336,14 +334,44 @@ namespace GraphView
             {
                 return OutputBuffer.Dequeue();
             }
-            //------------------------TODO----------------------
-            // Take the result of each processor on different subgraph
-            // And caculate the cartesian product of every two of them from different subgraph
-            // To generate a new record that stores the result from both subgraph
+
+            List<List<Record>> ResultsFromChildrenOperator = new List<List<Record>>();
+            
+            foreach(var ChildOperator in OperatorOnSubGraphs)
+            {
+                ResultsFromChildrenOperator.Add(new List<Record>());
+                Record result = ChildOperator.Next();
+                while(result != null && ChildOperator.Status())
+                {
+                    ResultsFromChildrenOperator.Last().Add(result);
+                    result = ChildOperator.Next();
+                }
+                if (result != null) ResultsFromChildrenOperator.Last().Add(result);
+            }
+            CartesianProductOnRecord(ResultsFromChildrenOperator, 0, new Record(header.Count));
 
             if (OutputBuffer.Count == 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
+        }
+
+        private void CartesianProductOnRecord(List<List<Record>> RecordSet, int IndexOfOperator, Record result)
+        {
+            if (IndexOfOperator == RecordSet.Count)
+            {
+                OutputBuffer.Enqueue(result);
+                return;
+            }
+            foreach(var record in RecordSet[IndexOfOperator])
+            {
+                Record NewResult = new Record(result);
+                for (int i = 0; i < header.Count; i++)
+                {
+                    if (NewResult.field[i] == "" && record.field[i] != "")
+                        NewResult.field[i] = record.field[i];
+                }
+                CartesianProductOnRecord(RecordSet, IndexOfOperator + 1, NewResult);
+            }
         }
     }
 }

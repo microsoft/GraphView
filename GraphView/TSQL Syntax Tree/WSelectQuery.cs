@@ -525,7 +525,7 @@ namespace GraphView
             {
                 string root;
 
-                root = "DocDB_graph";  // put them into the same graph
+                root = UnionFind.Find(node.Key);  // put them into the same graph
 
                 var patternNode = node.Value;
 
@@ -564,7 +564,6 @@ namespace GraphView
             MatchGraph Graph = new MatchGraph
             {
                 ConnectedSubGraphs = ConnectedSubGraphs,
-                MainSubGraph = ConnectedSubGraphs[0]
             };
 
             return Graph;
@@ -577,16 +576,25 @@ namespace GraphView
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
-            foreach (var node in graph.MainSubGraph.Nodes) BuildQuerySegementOnNode(node.Value, header, graph.MainSubGraph.Nodes.Count * 2);
+            int StartOfResult = 0;
+            foreach (var subgraph in graph.ConnectedSubGraphs)
+                StartOfResult += subgraph.Nodes.Count() * 2;
+            foreach (var subgraph in graph.ConnectedSubGraphs)
+            {
+                foreach (var node in subgraph.Nodes) BuildQuerySegementOnNode(node.Value, header, StartOfResult);
+            }
         }
 
         private List<string> ConstructHeader(MatchGraph graph)
         {
             List<string> header = new List<string>();
-            foreach (var node in graph.MainSubGraph.Nodes)
+            foreach (var subgraph in graph.ConnectedSubGraphs)
             {
-                header.Add(node.Key);
-                header.Add(node.Key + "_ADJ");
+                foreach (var node in subgraph.Nodes)
+                {
+                    header.Add(node.Key);
+                    header.Add(node.Key + "_ADJ");
+                }
             }
             foreach (var element in SelectElements)
             {
@@ -604,30 +612,36 @@ namespace GraphView
             Record RecordZero = new Record(header.Count);
 
             List<GraphViewOperator> ChildrenProcessor = new List<GraphViewOperator>();
-            Stack<MatchNode> SortedNodes = TopoSorting.TopoSort(graph.MainSubGraph.Nodes);
-            int StartOfResult = graph.MainSubGraph.Nodes.Count * 2;
-            while(SortedNodes.Count != 0)
+            List<GraphViewOperator> RootProcessor = new List<GraphViewOperator>();
+            int StartOfResult = 0;
+            foreach (var subgraph in graph.ConnectedSubGraphs)
             {
-                MatchNode CurrentProcessingNode = SortedNodes.Pop();
+                Stack<MatchNode> SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                StartOfResult += subgraph.Nodes.Count * 2;
+                while (SortedNodes.Count != 0)
+                {
+                    MatchNode CurrentProcessingNode = SortedNodes.Pop();
 
 
-                if (CurrentProcessingNode.ReverseNeighbors.Count == 0)
-                {
-                    int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
-                    ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.AttachedQuerySegment, node,header, StartOfResult,50));
+                    if (CurrentProcessingNode.ReverseNeighbors.Count == 0)
+                    {
+                        int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
+                        ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.AttachedQuerySegment, node, header, StartOfResult, 50));
+                    }
+                    else
+                    {
+                        List<int> ReverseCheckList = new List<int>();
+                        int src = header.IndexOf(CurrentProcessingNode.ReverseNeighbors[0].SinkNode.NodeAlias);
+                        int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
+                        foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
+                            ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias));
+                        ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
+                    }
                 }
-                else
-                {
-                    List<int> ReverseCheckList = new List<int>();
-                    int src = header.IndexOf(CurrentProcessingNode.ReverseNeighbors[0].SinkNode.NodeAlias);
-                    int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
-                    foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
-                        ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias));
-                    ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
-                }
+                RootProcessor.Add(ChildrenProcessor.Last());
             }
             TraversalOperator.RecordZero = RecordZero;
-            return ChildrenProcessor.Last();
+            return new CartesianProductOperator(pConnection,RootProcessor,header,100);
         }
 
         private void BuildQuerySegementOnNode(MatchNode node, List<string> header, int pStartOfResultField)
