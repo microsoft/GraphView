@@ -182,6 +182,29 @@ namespace GraphView
 
             docDbConnection.DocDB_finish = true;
         }
+
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            string Json_str = "{}";
+
+            var cnt = InsertSource as WValuesInsertSource;
+            for (int i = 0; i < Columns.Count(); i++)
+            {
+                string s1 = Columns[i].MultiPartIdentifier.Identifiers[0].Value;
+                var cnt2 = (cnt.RowValues[0].ColumnValues[i] as WValueExpression);
+                string s2 = cnt2.Value;
+                if (cnt2.SingleQuoted)
+                    s2 = '\"' + s2 + '\"';
+                Json_str = GraphViewJsonCommand.insert_property(Json_str, s2, s1).ToString();
+            }
+            //Insert "_edge" & "_reverse_edge" into the string.
+            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
+            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
+
+            InsertNodeOperator InsertOp = new InsertNodeOperator(dbConnection,Json_str);
+
+            return InsertOp;
+        }
     }
 
     public partial class WInsertEdgeSpecification : WInsertSpecification
@@ -294,13 +317,13 @@ namespace GraphView
             {
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
             }
-            InsertEdgeOperator insertOp = new InsertEdgeOperator(dbConnection, traversalInput, Edge, n1.ToString(), n2.ToString());
+            InsertEdgeOperator InsertOp = new InsertEdgeOperator(dbConnection, traversalInput, Edge, n1.ToString(), n2.ToString());
 
             //delete "id" after each identifier
             //identifiers1.RemoveAt(1);
             //identifiers2.RemoveAt(1);
 
-            return insertOp;
+            return InsertOp;
         }
     }
 
@@ -476,6 +499,26 @@ namespace GraphView
             }
             docDbConnection.DocDB_finish = true;
         }
+
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            var search = WhereClause.SearchCondition;
+            //build up the query
+            string Selectstr = "SELECT * " + "FROM Node ";
+            if (search == null)
+            {
+                Selectstr += @"WHERE ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0 ";
+            }
+            else
+            {
+                Selectstr += @"WHERE " + search.ToString() +
+                             @" and (ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0)  ";
+            }
+            
+            DeleteNodeOperator Deleteop = new DeleteNodeOperator(dbConnection, search, Selectstr);
+
+            return Deleteop;
+        }
     }
 
     public partial class WDeleteEdgeSpecification : WDeleteSpecification
@@ -556,147 +599,7 @@ namespace GraphView
 
             return sb.ToString();
         }
-        /*
-        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
-        {
-            docDbConnection.DocDB_finish = false;
-
-            var SelectQueryBlock = SelectDeleteExpr as WSelectQueryBlock;
-
-            var source = "";
-            var sink = "";
-            var edgealias = SelectDeleteExpr.MatchClause.Paths[0].PathEdgeList[0].Item2.Alias;
-
-            foreach (var SelectElement in SelectQueryBlock.SelectElements)
-            {
-                var SelectScalar = SelectElement as WSelectScalarExpression;
-                if (SelectScalar != null)
-                {
-                    if (SelectScalar.SelectExpr is WColumnReferenceExpression)
-                    {
-                        var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
-                        if (source == "") source = ColumnReferenceExpression.ToString();
-                        else sink = ColumnReferenceExpression.ToString();
-                    }
-                }
-            }
-
-            MatchNode source_node = null, sink_node = null;
-            Dictionary<string, string> map = new Dictionary<string, string>();
-
-
-
-            //Add "id" after identifiers
-            var iden = new Identifier();
-            iden.Value = "id";
-            
-            var n1 = SelectQueryBlock.SelectElements[0] as WSelectScalarExpression;
-            var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
-            identifiers1.Add(iden);
-
-            var n2 = SelectQueryBlock.SelectElements[1] as WSelectScalarExpression;
-            var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
-            identifiers2.Add(iden);
-
-
-
-            var edge_name = new Identifier();
-            var edge_id = new Identifier();
-            var edge_reverse_id = new Identifier();
-            edge_name.Value = edgealias;
-            edge_id.Value = "_ID";
-            edge_reverse_id.Value = "_reverse_ID";
-
-            var select3 = new WSelectScalarExpression();    SelectQueryBlock.SelectElements.Add(select3);
-            var select3_SelectExpr = new WColumnReferenceExpression();
-            select3.SelectExpr = select3_SelectExpr;
-            select3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
-            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
-            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
-
-            var select4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(select4);
-            var select4_SelectExpr = new WColumnReferenceExpression();
-            select4.SelectExpr = select4_SelectExpr;
-            select4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
-            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
-            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
-
-
-            var selectResults = new SelectProcessor(SelectQueryBlock, new DocDBConnection(50, docDbConnection));
-            foreach (var x in selectResults.Result())
-            {
-                if (x == "") continue;
-                if (source_query == "" && sink_query == "")
-                {
-                    var query_nodes = SelectProcessor.GetNodeTable();
-                    source_node = query_nodes[source];
-                    sink_node = query_nodes[sink];
-                    GraphViewDocDBCommand.GetQuery(source_node);
-                    GraphViewDocDBCommand.GetQuery(sink_node);
-                }
-
-                char[] delimit = new char[] { ' ' };
-                string[] words = x.Split(delimit);
-                Tuple<string, string> y = new Tuple<string, string>(words[0], words[1]);
-
-                source_query = source_node.DocDBQuery;
-                sink_query = sink_node.DocDBQuery;
-                if (!map.ContainsKey(y.Item1))
-                {
-                    var documents =
-                        docDbConnection.client.CreateDocumentQuery(
-                            "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
-                            docDbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item1));
-                    foreach (var doc in documents)
-                        map[y.Item1] = JsonConvert.SerializeObject(doc);
-                }
-                if (!map.ContainsKey(y.Item2))
-                {
-                    var documents =
-                        docDbConnection.client.CreateDocumentQuery(
-                            "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
-                            docDbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", y.Item2));
-                    foreach (var doc in documents)
-                        map[y.Item2] = JsonConvert.SerializeObject(doc);
-                }
-
-                if (source_query.Substring(source_query.Length - 6, 5) == "Where")
-                    source_query += string.Format(" {0}.id = \"{1}\" and {2}._sink = \"{3}\"", source, y.Item1, edgealias, y.Item2);
-                else
-                    source_query += string.Format(" And {0}.id = \"{1}\" and {2}._sink = \"{3}\"", source, y.Item1, edgealias, y.Item2);
-
-                string Query = string.Format("Select {0} As Doc,{1} As Edge ", source, edgealias) + source_query;
-
-                var DeleteEdgeQuery =
-                docDbConnection.client.CreateDocumentQuery(
-                    "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" +
-                    docDbConnection.DocDB_CollectionId, Query);
-                foreach (var cnt in DeleteEdgeQuery)
-                {
-                    var Edge = ((JObject)cnt)["Edge"];
-                    int ID = (int)Edge["_ID"];
-                    int reverse_ID = (int)Edge["_reverse_ID"];
-                    map[y.Item1] = GraphViewJsonCommand.Delete_edge(map[y.Item1], ID);
-                    map[y.Item2] = GraphViewJsonCommand.Delete_reverse_edge(map[y.Item2], reverse_ID);
-                }
-
-            }
-
-            //delete "id" after identifiers
-            identifiers1.RemoveAt(1);
-            identifiers2.RemoveAt(1);
-
-
-            foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(docDbConnection, cnt.Key, cnt.Value);
-
-            docDbConnection.DocDB_finish = true;
-        }
-        */
+        
         public override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             var SelectQueryBlock = SelectDeleteExpr as WSelectQueryBlock;

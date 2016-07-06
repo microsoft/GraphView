@@ -240,13 +240,14 @@ namespace GraphView
                             if (insertSpecification.Target.ToString() == "Node")
                             {
                                 var insertNodeStatement = new WInsertNodeSpecification(insertSpecification);
-                                insertNodeStatement.RunDocDbScript(DocDB_conn);
+                                var Insertop = insertNodeStatement.Generate(DocDB_conn);
+                                Insertop.Next();
                             }
                             else if (insertSpecification.Target.ToString() == "Edge")
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
-                                var cnt = insertEdgeStatement.Generate(DocDB_conn);
-                                cnt.Next();
+                                var Insertop = insertEdgeStatement.Generate(DocDB_conn);
+                                Insertop.Next();
                             }
                         }
                         else if (statement is WDeleteSpecification)
@@ -256,22 +257,16 @@ namespace GraphView
                             if (deletespecification is WDeleteEdgeSpecification)
                             {
                                 var deleteEdgeStatement = deletespecification as WDeleteEdgeSpecification;
-                                //deleteEdgeStatement.RunDocDbScript(DocDB_conn);
-                                var cnt = deleteEdgeStatement.Generate(DocDB_conn);
-                                cnt.Next();
+                                var Deleteop = deleteEdgeStatement.Generate(DocDB_conn);
+                                Deleteop.Next();
                             }
                             else if (deletespecification.Target.ToString() == "Node")
                             {
                                 var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
-                                deleteNodeStatement.RunDocDbScript(DocDB_conn);
+                                var Deleteop = deleteNodeStatement.Generate(DocDB_conn);
+                                Deleteop.Next();
                             }
                         }
-                        //keep waiting until finish.
-                        while (DocDB_conn.DocDB_finish == false)
-                        {
-                            System.Threading.Thread.Sleep(100);
-                        }
-
                     }
                 }
 

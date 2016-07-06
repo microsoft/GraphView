@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -24,6 +25,7 @@ namespace GraphView
             this.edge = edge;
             this.source = source;
             this.sink = sink;
+            Open();
         }
 
         #region Unfinish GroupBy-method
@@ -69,6 +71,7 @@ namespace GraphView
 
         public override Record Next()
         {
+            if (!Status()) return null;
             Dictionary<string, string> map = new Dictionary<string, string>();
 
             while (SelectInput.Status())
@@ -112,6 +115,7 @@ namespace GraphView
             while (!UploadFinish)
                 System.Threading.Thread.Sleep(100);
 
+            Close();
             return null;
         }
 
@@ -139,10 +143,12 @@ namespace GraphView
             this.sink = sink;
             this.EdgeID_str = EdgeID_str;
             this.EdgeReverseID_str = EdgeReverseID_str;
+            Open();
         }
 
         public override Record Next()
         {
+            if (!Status()) return null;
             Dictionary<string, string> map = new Dictionary<string, string>();
 
             while (SelectInput.Status())
@@ -192,6 +198,8 @@ namespace GraphView
             while (!UploadFinish)
                 System.Threading.Thread.Sleep(100);
 
+            Close();
+
             return null;
         }
         public async Task ReplaceDocument(Dictionary<string, string> map)
@@ -201,4 +209,100 @@ namespace GraphView
             UploadFinish = true;
         }
     }
+
+    internal class InsertNodeOperator : GraphViewOperator
+    {
+        public string Json_str;
+        public GraphViewConnection dbConnection;
+        public bool UploadFinish;
+
+        public InsertNodeOperator(GraphViewConnection dbConnection, string Json_str)
+        {
+            this.dbConnection = dbConnection;
+            this.Json_str = Json_str;
+            Open();
+        }
+        public override Record Next()
+        {
+            if (!Status()) return null;
+            var obj = JObject.Parse(Json_str);
+
+            UploadFinish = false;
+            CreateDocument(obj);
+
+            while(!UploadFinish)
+                System.Threading.Thread.Sleep(100);
+
+            Close();
+            return null;
+        }
+
+        public async Task CreateDocument(JObject obj)
+        {
+            await dbConnection.DocDBclient.CreateDocumentAsync("dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId, obj);
+            UploadFinish = true;
+        }
+    }
+    internal class DeleteNodeOperator : GraphViewOperator
+    {
+        public WBooleanExpression search;
+        public string Selectstr;
+        public GraphViewConnection dbConnection;
+        public bool UploadFinish;
+
+        public DeleteNodeOperator(GraphViewConnection dbConnection,WBooleanExpression search, string Selectstr)
+        {
+            this.dbConnection = dbConnection;
+            this.search = search;
+            this.Selectstr = Selectstr;
+            Open();
+        }
+        public override Record Next()
+        {
+            if (!Status())
+                return null;
+            var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
+                                "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
+                                Selectstr);
+            bool flag = true;
+            foreach (var DeleteNode in sum_DeleteNode)
+            {
+                flag = false;
+                break;
+            }
+            if (flag)
+            {
+                Selectstr = "SELECT * " + "FROM Node ";
+                if (search != null)
+                    Selectstr += @"WHERE " + search.ToString();
+                sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
+                    "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
+                    Selectstr);
+
+
+                foreach (var DeleteNode in sum_DeleteNode)
+                {
+                    UploadFinish = false;
+                    var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", dbConnection.DocDB_DatabaseId,
+                        dbConnection.DocDB_CollectionId, DeleteNode.id);
+                    while(!UploadFinish)
+                        System.Threading.Thread.Sleep(100);
+                }
+            }
+            else
+            {
+                Close();
+                throw new GraphViewException("There are some edges still connect to these nodes.");
+            }
+            Close();
+            return null;
+        }
+
+        public async Task DeleteDocument(string docLink)
+        {
+            await dbConnection.DocDBclient.DeleteDocumentAsync(docLink);
+            UploadFinish = true;
+        }
+    }
+
 }
