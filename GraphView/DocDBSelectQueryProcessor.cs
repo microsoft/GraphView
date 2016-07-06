@@ -9,29 +9,34 @@ using Microsoft.Azure.Documents.Client;
 namespace GraphView
 {
     /// <summary>
-    /// TraversalProcessor is used to traval a graph pattern and return asked result.
-    /// TraversalProcessor.Next() returns one result of what its specifier specified.
+    /// TraversalOperator is used to traval a graph pattern and return asked result.
+    /// TraversalOperator.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
     internal class TraversalOperator : GraphViewOperator
     {
-        internal static Record RecordZero;
+        // Buffer on both input and output sides.
         private Queue<Record> InputBuffer;
         private Queue<Record> OutputBuffer;
         private int InputBufferSize;
         private int OutputBufferSize;
+        // The operator that gives the current operator input.
         private GraphViewOperator ChildOperator;
 
+        // Addition info to interpret the output record of traversal operator
         private int StartOfResultField;
 
-        private List<string> header;
+        // GraphView connection.
         private GraphViewConnection connection;
 
+        // Defining from which field in the record does the traversal goes to which field.
         private int src;
         private int dest;
 
+        // Segement of DocDb script for querying.
         private string docDbScript;
 
+        // Defining which fields should the reverse check have on.
         private List<int> ReverseCheckList;
 
         public TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<int> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
@@ -49,10 +54,10 @@ namespace GraphView
             ReverseCheckList = pReverseCheckList;
             header = pheader;
             StartOfResultField = pStartOfResultField;
-            if (RecordZero == null) RecordZero = new Record(pheader.Count);
         }
         override public Record Next()
         {
+            // If the output buffer is not empty, return a result.
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
             if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildOperator != null && !ChildOperator.Status())))
@@ -60,21 +65,20 @@ namespace GraphView
                 return OutputBuffer.Dequeue();
             }
 
-            if (ChildOperator == null && this.Status())
+            // Take input from the output buffer of its child operator.
+
+            while (InputBuffer.Count() < InputBufferSize && ChildOperator.Status())
             {
-                if (OutputBuffer.Count == 0) InputBuffer.Enqueue(RecordZero);
-            }
-            else
-                while (InputBuffer.Count() < InputBufferSize && ChildOperator.Status())
+                if (ChildOperator != null && ChildOperator.Status())
                 {
-                    if (ChildOperator != null && ChildOperator.Status())
-                    {
-                        Record Result = (Record)ChildOperator.Next();
-                        if (Result == null) ChildOperator.Close();
-                        else
-                            InputBuffer.Enqueue(Result);
-                    }
+                    Record Result = (Record)ChildOperator.Next();
+                    if (Result == null) ChildOperator.Close();
+                    else
+                        InputBuffer.Enqueue(Result);
                 }
+            }
+
+            // Consturct the "IN" clause
             string InRangeScript = "";
             foreach (Record record in InputBuffer)
             {
@@ -84,8 +88,10 @@ namespace GraphView
             if (InputBuffer.Count != 0)
             {
                 string script = docDbScript;
-                if (src != -1 && InRangeScript != "") script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
-                IQueryable<dynamic> Node = (IQueryable<dynamic>)FectNode(script, connection);
+                if (InRangeScript != "") script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
+
+                // Send query to server and decode the result.
+                IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
                 foreach (var item in Node)
                 {
                     Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
@@ -101,13 +107,10 @@ namespace GraphView
                         ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
 
                     }
+                    // Do reverse check, and put vailed result into output buffer
                     foreach (var record in InputBuffer)
                     {
-                        if (src == -1)
-                        {
-                            Record NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
-                            OutputBuffer.Enqueue(NewRecord);
-                        }
+                        // reverse check
                         foreach (var ReverseNode in ReverseCheckList)
                         {
                             if ((ReverseEdge.Contains(record.RetriveData(ReverseNode)) && record.RetriveData(ReverseNode + 1).Contains(ID)))
@@ -128,7 +131,8 @@ namespace GraphView
             return null;
         }
 
-        private IQueryable<dynamic> FectNode(string script, GraphViewConnection connection)
+        // Send a query to server and retrive result.
+        private IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
         {
             FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
             IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
@@ -140,24 +144,7 @@ namespace GraphView
         {
             return header;
         }
-        private List<Record> ConvertFromBufferAndEmptyIt(Queue<Record> Buffer)
-        {
-            List<Record> result = new List<Record>();
-            while (Buffer.Count != 0) result.Add(Buffer.Dequeue());
-            return result;
-        }
-        private List<string> DecodeAdjacentList(string AdjString)
-        {
-            List<string> result = new List<string>();
-            string temp = AdjString;
-            while (temp.Contains(","))
-            {
-                result.Add(temp.Substring(0, temp.IndexOf(",")));
-                temp = temp.Substring(temp.IndexOf(",") + 1, temp.Length - temp.IndexOf(","));
-            }
-            result.Add(temp);
-            return result;
-        }
+
         private bool HasWhereClause(string SelectClause)
         {
             return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "Where");
@@ -183,6 +170,7 @@ namespace GraphView
             }
             return new Tuple<string, string, string>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID));
         }
+        // Combine two records
         private Record AddIfNotExist(Tuple<string, string, string> ItemInfo, Record record, List<string> Result, List<string> header)
         {
             Record NewRecord = new Record(record);
@@ -202,6 +190,11 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// FetchNodeOperator is used to fetch a certain node.
+    /// FetchNodeOperator.Next() returns one result of what its specifier specified.
+    /// It often used as the input of a traversal operator
+    /// </summary>
     internal class FetchNodeOperator : GraphViewOperator
     {
         internal static Record RecordZero;
@@ -240,7 +233,7 @@ namespace GraphView
                 return OutputBuffer.Dequeue();
             }
             string script = docDbScript;
-            IQueryable<dynamic> Node = (IQueryable<dynamic>)FectNode(script, connection);
+            IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
             foreach (var item in Node)
             {
                 Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
@@ -262,7 +255,7 @@ namespace GraphView
             return null;
         }
 
-        private IQueryable<dynamic> FectNode(string script, GraphViewConnection connection)
+        private IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
         {
             FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
             IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
@@ -308,7 +301,16 @@ namespace GraphView
             return InRangeScript.Substring(0, InRangeScript.Length - 1);
         }
     }
-
+    /// <summary>
+    /// CartesianProductOperator is used to generate cartesian product of the record from different sub graphs
+    /// CartesianProductOperator.Next() returns the combination of all the records that generated from giving operators.
+    /// As example, the cartesian product of 
+    /// |   A   |  empty |   B   |
+    /// and 
+    /// | empty |    C   | empty |
+    /// wii be
+    /// |   A   |    C   |   B   |
+    /// </summary>
     internal class CartesianProductOperator : GraphViewOperator
     {
         private List<GraphViewOperator> OperatorOnSubGraphs;
@@ -336,12 +338,12 @@ namespace GraphView
             }
 
             List<List<Record>> ResultsFromChildrenOperator = new List<List<Record>>();
-            
-            foreach(var ChildOperator in OperatorOnSubGraphs)
+
+            foreach (var ChildOperator in OperatorOnSubGraphs)
             {
                 ResultsFromChildrenOperator.Add(new List<Record>());
                 Record result = ChildOperator.Next();
-                while(result != null && ChildOperator.Status())
+                while (result != null && ChildOperator.Status())
                 {
                     ResultsFromChildrenOperator.Last().Add(result);
                     result = ChildOperator.Next();
@@ -362,7 +364,7 @@ namespace GraphView
                 OutputBuffer.Enqueue(result);
                 return;
             }
-            foreach(var record in RecordSet[IndexOfOperator])
+            foreach (var record in RecordSet[IndexOfOperator])
             {
                 Record NewResult = new Record(result);
                 for (int i = 0; i < header.Count; i++)

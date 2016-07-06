@@ -344,10 +344,14 @@ namespace GraphView
 
         public override GraphViewOperator Generate(GraphViewConnection pConnection)
         {
+            // Construct Match graph for later use
             MatchGraph graph = ConstructGraph();
+            // Construct a header for the processor it will generate to interpret its result
             List<string> header = ConstructHeader(graph);
+            // Attach pre-generated docDB script to the node on Match graph
             AttachScriptSegment(graph, header);
-            return GenerateTraversalProcessor(graph, header, pConnection);
+            // Generate proper processor for the current syntax element
+            return GenerateProcessor(graph, header, pConnection);
         }
 
         private MatchGraph ConstructGraph()
@@ -363,6 +367,7 @@ namespace GraphView
 
             UnionFind.Parent = Parent;
 
+            // Retrive information from the SelectQueryBlcok
             foreach (var cnt in SelectElements)
             {
                 if (cnt is WSelectStarExpression) continue;
@@ -378,6 +383,7 @@ namespace GraphView
                 }
             }
 
+            // Consturct nodes and edges of a match graph defined by the SelectQueryBlock
             if (MatchClause != null)
             {
                 if (MatchClause.Paths.Count > 0)
@@ -520,7 +526,7 @@ namespace GraphView
 
                 }
             }
-            // Puts nodes into subgraphs
+            // Use union find algorithmn to define which subgraph does a node belong to and put it into where it belongs to.
             foreach (var node in Nodes)
             {
                 string root;
@@ -561,6 +567,7 @@ namespace GraphView
                 }
             }
 
+            // Combine all subgraphs into a complete match graph and return it
             MatchGraph Graph = new MatchGraph
             {
                 ConnectedSubGraphs = ConnectedSubGraphs,
@@ -576,6 +583,7 @@ namespace GraphView
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
+            // Calculate how much nodes the whole match graph has.
             int StartOfResult = 0;
             foreach (var subgraph in graph.ConnectedSubGraphs)
                 StartOfResult += subgraph.Nodes.Count() * 2;
@@ -588,6 +596,9 @@ namespace GraphView
         private List<string> ConstructHeader(MatchGraph graph)
         {
             List<string> header = new List<string>();
+            // Construct the first part of the head which is defined as 
+            // |Node's Alias|Node's Adjacent list|Node's Alias|Node's Adjacent list|...
+            // |   "NODE1"  |   "NODE1_ADJ"      |  "NODE2"   |   "NODE2_ADJ"      |...
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 foreach (var node in subgraph.Nodes)
@@ -596,6 +607,9 @@ namespace GraphView
                     header.Add(node.Key + "_ADJ");
                 }
             }
+            // Construct the second part of the head which is defined as 
+            // |Select element|Select element|Select element|...
+            // |  "ELEMENT1"  ||  "ELEMENT2" ||  "ELEMENT3" |...
             foreach (var element in SelectElements)
             {
                 if (element is WSelectScalarExpression)
@@ -607,22 +621,25 @@ namespace GraphView
             }
             return header;
         }
-        private GraphViewOperator GenerateTraversalProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection)
+        private GraphViewOperator GenerateProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection)
         {
             Record RecordZero = new Record(header.Count);
 
             List<GraphViewOperator> ChildrenProcessor = new List<GraphViewOperator>();
             List<GraphViewOperator> RootProcessor = new List<GraphViewOperator>();
             int StartOfResult = 0;
+            // Generate processor subgraph by subgraph 
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
+                // Use Topological Sorting to define the order of nodes it will travel.
                 Stack<MatchNode> SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
                 StartOfResult += subgraph.Nodes.Count * 2;
                 while (SortedNodes.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = SortedNodes.Pop();
-
-
+                    
+                    // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
+                    // Otherwise it will be dealed by a TraversalOperator.
                     if (CurrentProcessingNode.ReverseNeighbors.Count == 0)
                     {
                         int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
@@ -638,21 +655,23 @@ namespace GraphView
                         ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
                     }
                 }
+                // The last processor of a sub graph will be added to root processor list for later use.
                 RootProcessor.Add(ChildrenProcessor.Last());
             }
-            TraversalOperator.RecordZero = RecordZero;
+            // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             return new CartesianProductOperator(pConnection,RootProcessor,header,100);
         }
 
         private void BuildQuerySegementOnNode(MatchNode node, List<string> header, int pStartOfResultField)
         {
+            // Node predicates will be attached here.
             string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
             int NumberOfPredicates = 0;
             foreach (var edge in node.ReverseNeighbors)
             {
                 AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
-                if (edge.Predicates != null)
+                if (edge.Predicates.Count != 0)
                 {
                     if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
                     NumberOfPredicates++;
@@ -681,14 +700,21 @@ namespace GraphView
             }
             AttachedClause += PredicatesOnReverseEdge;
 
+            // Select elements that related to current node will be attached here.
+
             List<string> ResultIndexToAppend = new List<string>();
             string ResultIndexString = " ,";
             foreach (string ResultIndex in header.GetRange(pStartOfResultField, header.Count - pStartOfResultField))
             {
                 int CutPoint = ResultIndex.Length;
                 if (ResultIndex.IndexOf('.') != -1) CutPoint = ResultIndex.IndexOf('.');
-                if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias)
+                if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias )
                     ResultIndexToAppend.Add(ResultIndex);
+                foreach(var edge in node.Neighbors)
+                {
+                    if (ResultIndex.Substring(0, CutPoint) == node.ReverseNeighbors[0].EdgeAlias)
+                        ResultIndexToAppend.Add(ResultIndex);
+                }
             }
             foreach (string ResultIndex in ResultIndexToAppend)
             {
@@ -705,16 +731,20 @@ namespace GraphView
 
             node.AttachedQuerySegment = QuerySegment;
         }
+
+        // Cut the last character of a string.
         string CutTheTail(string InRangeScript)
         {
             if (InRangeScript.Length == 0) return "";
             return InRangeScript.Substring(0, InRangeScript.Length - 1);
         }
+        // Find if a string has Where clause attached at the tail
         private bool HasWhereClause(string SelectClause)
         {
             return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "Where");
         }
 
+        // The implementation of Union find algorithmn.
         private class UnionFind
         {
             public Dictionary<string, string> Parent;
@@ -747,6 +777,7 @@ namespace GraphView
             }
         }
 
+        // The implementation of topological sorting using DFS
         private class TopoSorting
         {
             static internal Stack<MatchNode> TopoSort(Dictionary<string, MatchNode> graph)
