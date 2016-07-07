@@ -207,14 +207,11 @@ namespace GraphView
 
         private int StartOfResultField;
 
-        private List<string> header;
         private GraphViewConnection connection;
 
         private int node;
 
         private string docDbScript;
-
-        private List<int> ReverseCheckList;
 
         public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize)
         {
@@ -312,7 +309,7 @@ namespace GraphView
     /// |   A   |  empty |   B   |
     /// and 
     /// | empty |    C   | empty |
-    /// wii be
+    /// will be
     /// |   A   |    C   |   B   |
     /// </summary>
     internal class CartesianProductOperator : GraphViewOperator
