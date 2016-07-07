@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Data;
 using System.Collections.Generic;
 // Add DocumentDB references
 using Newtonsoft.Json.Linq;
