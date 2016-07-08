@@ -94,32 +94,37 @@ namespace GraphView
 
                 // Send query to server and decode the result.
                 IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
+                HashSet<Tuple<string, string, string>> UniqueRecord = new HashSet<Tuple<string, string, string>>();
                 foreach (var item in Node)
                 {
                     Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
                     string ID = ItemInfo.Item1;
                     string edges = ItemInfo.Item2;
                     string ReverseEdge = ItemInfo.Item3;
-                    Record ResultRecord = new Record(header.Count());
-                    foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+                    if (!UniqueRecord.Contains(ItemInfo))
                     {
-                        string result = "";
-                        if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
-                            result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
-                        ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
-
-                    }
-                    // Do reverse check, and put vailed result into output buffer
-                    foreach (var record in InputBuffer)
-                    {
-                        // reverse check
-                        foreach (var ReverseNode in ReverseCheckList)
+                        UniqueRecord.Add(ItemInfo);
+                        Record ResultRecord = new Record(header.Count());
+                        foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
                         {
-                            string Edge = (((JObject)item)[ReverseNode.Value])["_sink"].ToString();
-                            if ((Edge == record.RetriveData(ReverseNode.Key)) && record.RetriveData(ReverseNode.Key + 1).Contains(ID))
+                            string result = "";
+                            if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
+                                result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
+                            ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+
+                        }
+                        // Do reverse check, and put vailed result into output buffer
+                        foreach (var record in InputBuffer)
+                        {
+                            // reverse check
+                            foreach (var ReverseNode in ReverseCheckList)
                             {
-                                Record NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
-                                OutputBuffer.Enqueue(NewRecord);
+                                string Edge = (((JObject)item)[ReverseNode.Value])["_sink"].ToString();
+                                if ((Edge == record.RetriveData(ReverseNode.Key)) && record.RetriveData(ReverseNode.Key + 1).Contains(ID))
+                                {
+                                    Record NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
+                                    OutputBuffer.Enqueue(NewRecord);
+                                }
                             }
                         }
                     }
@@ -141,11 +146,6 @@ namespace GraphView
             IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
                 UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), script, QueryOptions);
             return Result;
-        }
-
-        internal List<string> RetriveHeader()
-        {
-            return header;
         }
 
         private bool HasWhereClause(string SelectClause)
@@ -225,6 +225,7 @@ namespace GraphView
         }
         override public Record Next()
         {
+            // Set up output buffer
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
             if (OutputBuffer.Count == 1) this.Close();
@@ -233,23 +234,33 @@ namespace GraphView
                 return OutputBuffer.Dequeue();
             }
             string script = docDbScript;
+            // Send query to the server
             IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
+            HashSet<Tuple<string, string, string>> UniqueRecord = new HashSet<Tuple<string, string, string>>();
+            // Decode the result retrived from server and generate new record.
             foreach (var item in Node)
             {
                 Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
                 string ID = ItemInfo.Item1;
                 string edges = ItemInfo.Item2;
-                Record ResultRecord = new Record(header.Count());
-                foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+
+                if (!UniqueRecord.Contains(ItemInfo))
                 {
-                    string result = "";
-                    if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
-                        result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
-                    ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                    UniqueRecord.Add(ItemInfo);
+                    Record ResultRecord = new Record(header.Count());
+
+                    foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+                    {
+                        string result = "";
+                        if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
+                            result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
+                        ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                    }
+                    Record NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
+                    OutputBuffer.Enqueue(NewRecord);
                 }
-                Record NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
-                OutputBuffer.Enqueue(NewRecord);
             }
+            // Close output buffer
             if (OutputBuffer.Count == 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
@@ -357,6 +368,7 @@ namespace GraphView
             return null;
         }
 
+        // Find the cartesian product of giving sets of records.
         private void CartesianProductOnRecord(List<List<Record>> RecordSet, int IndexOfOperator, Record result)
         {
             if (IndexOfOperator == RecordSet.Count)

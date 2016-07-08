@@ -590,7 +590,17 @@ namespace GraphView
                 StartOfResult += subgraph.Nodes.Count() * 2;
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
-                foreach (var node in subgraph.Nodes) BuildQuerySegementOnNode(node.Value, header, StartOfResult);
+                // Use Topological Sort to give a sorted node list.
+                // Note that if there's a cycle in the match graph, a random node will be chose as the start.
+                Stack<MatchNode> SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
+                // Marking down which node has been processed for later reverse checking.  
+                List<string> ProcessedNodeList = new List<string>();
+                while (SortedNodeList.Count != 0)
+                {
+                    MatchNode CurrentProcessingNode = SortedNodeList.Pop();
+                    BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
+                    ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
+                }
             }
         }
 
@@ -635,16 +645,18 @@ namespace GraphView
                 // Use Topological Sorting to define the order of nodes it will travel.
                 Stack<MatchNode> SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
                 StartOfResult += subgraph.Nodes.Count * 2;
+                bool FirstNodeFlag = true;
                 while (SortedNodes.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = SortedNodes.Pop();
                     
                     // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
                     // Otherwise it will be dealed by a TraversalOperator.
-                    if (CurrentProcessingNode.ReverseNeighbors.Count == 0)
+                    if (FirstNodeFlag)
                     {
                         int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
                         ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.AttachedQuerySegment, node, header, StartOfResult, 50));
+                        FirstNodeFlag = false;
                     }
                     else
                     {
@@ -663,15 +675,19 @@ namespace GraphView
             return new CartesianProductOperator(pConnection,RootProcessor,header,100);
         }
 
-        private void BuildQuerySegementOnNode(MatchNode node, List<string> header, int pStartOfResultField)
+        private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField)
         {
             // Node predicates will be attached here.
             string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
             int NumberOfPredicates = 0;
-            foreach (var edge in node.ReverseNeighbors)
+            foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
+                if (node.ReverseNeighbors.Contains(edge))
                 AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
+                else
+                AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+
                 if (edge.Predicates.Count != 0)
                 {
                     if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
@@ -704,7 +720,6 @@ namespace GraphView
             // Select elements that related to current node will be attached here.
 
             List<string> ResultIndexToAppend = new List<string>();
-            string ResultIndexString = " ,";
             foreach (string ResultIndex in header.GetRange(pStartOfResultField, header.Count - pStartOfResultField))
             {
                 int CutPoint = ResultIndex.Length;
@@ -718,13 +733,7 @@ namespace GraphView
                 }
             }
 
-            string ReverseCheckString = "";
-            foreach (var ReverseEdge in node.ReverseNeighbors)
-            {
-                ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
-            }
-            ReverseCheckString = CutTheTail(ReverseCheckString);
-
+            string ResultIndexString = " ,";
             foreach (string ResultIndex in ResultIndexToAppend)
             {
                 ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
@@ -732,13 +741,24 @@ namespace GraphView
             if (ResultIndexString == " ,") ResultIndexString = "";
             ResultIndexString = CutTheTail(ResultIndexString);
 
+            // Reverse checking related script will be attached here.
+            string ReverseCheckString = " ,";
+            foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
+            {
+                if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
+                    ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
+            }
+            if (ReverseCheckString == " ,") ReverseCheckString = "";
+            ReverseCheckString = CutTheTail(ReverseCheckString);
+
+            // The DocDb script that related to the giving node will be assembled here.
             string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
             string QuerySegment = "";
             if (ResultIndexString != "" && ReverseCheckString != "") 
-                QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + ", " + ReverseCheckString;
+                QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             else
                 QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
-            if (HasWhereClause(AttachedClause))
+            if (!HasWhereClause(AttachedClause))
                 QuerySegment += " " + AttachedClause.Substring(0, AttachedClause.Length - 6) + " ";
             else QuerySegment += " " + AttachedClause;
 
@@ -754,7 +774,7 @@ namespace GraphView
         // Find if a string has Where clause attached at the tail
         private bool HasWhereClause(string SelectClause)
         {
-            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "Where");
+            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "WHERE");
         }
 
         // The implementation of Union find algorithmn.
@@ -791,6 +811,7 @@ namespace GraphView
         }
 
         // The implementation of topological sorting using DFS
+        // Note that if is there's a cycle, a random node in the cycle will be pick as the start.
         private class TopoSorting
         {
             static internal Stack<MatchNode> TopoSort(Dictionary<string, MatchNode> graph)
