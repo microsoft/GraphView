@@ -409,6 +409,7 @@ namespace GraphView
                                 PatternNode.Neighbors = new List<MatchEdge>();
                                 PatternNode.ReverseNeighbors = new List<MatchEdge>();
                                 PatternNode.External = false;
+                                PatternNode.Predicates = new List<WBooleanExpression>();
                             }
 
                             string pEdgeAlias = CurrentEdgeColumnRef.Alias;
@@ -504,6 +505,7 @@ namespace GraphView
                             tailNode.NodeAlias = tailExposedName;
                             tailNode.Neighbors = new List<MatchEdge>();
                             tailNode.ReverseNeighbors = new List<MatchEdge>();
+                            tailNode.Predicates = new List<WBooleanExpression>();
                         }
                         if (PreEdge != null)
                         {
@@ -678,44 +680,47 @@ namespace GraphView
         private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField)
         {
             // Node predicates will be attached here.
-            string AttachedClause = "From " + node.NodeAlias;
+            string FromClauseString = node.NodeAlias;
+            string WhereClauseString = "";
+            //string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
-            int NumberOfPredicates = 0;
+            string PredicatesOnNodes = "";
             foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
                 if (node.ReverseNeighbors.Contains(edge))
-                AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
+                    FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
                 else
-                AttachedClause += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-
-                if (edge.Predicates.Count != 0)
-                {
-                    if (NumberOfPredicates != 0) PredicatesOnReverseEdge += " And ";
-                    NumberOfPredicates++;
-                    PredicatesOnReverseEdge += " (";
-                    for (int i = 0; i < edge.Predicates.Count(); i++)
+                    FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                if (edge != node.ReverseNeighbors.Concat(node.Neighbors).Last())
+                    foreach (var predicate in edge.Predicates)
                     {
-                        if (i != 0)
-                            PredicatesOnReverseEdge += " And ";
-                        PredicatesOnReverseEdge += "(" + edge.Predicates[i] + ")";
+                            PredicatesOnReverseEdge += predicate + " AND ";
                     }
-                    PredicatesOnReverseEdge += ") ";
-                }
+                else
+                    foreach (var predicate in edge.Predicates)
+                    {
+                        if (predicate != edge.Predicates.Last())
+                            PredicatesOnReverseEdge += predicate + " AND ";
+                        else PredicatesOnReverseEdge += predicate;
+                    }
+            }
 
-            }
-            AttachedClause += " WHERE ";
-            if (node.Predicates != null)
+            FromClauseString = " FROM " + FromClauseString;
+
+            foreach(var predicate in node.Predicates)
             {
-                for (int i = 0; i < node.Predicates.Count(); i++)
-                {
-                    if (i != 0)
-                        AttachedClause += " And ";
-                    AttachedClause += node.Predicates[i];
-                }
-                if (PredicatesOnReverseEdge != "")
-                    AttachedClause += " And ";
+                if (predicate != node.Predicates.Last())
+                    PredicatesOnNodes += predicate + " AND ";
+                else
+                    PredicatesOnNodes += predicate;
             }
-            AttachedClause += PredicatesOnReverseEdge;
+            if (PredicatesOnNodes != "" || PredicatesOnReverseEdge != "")
+            {
+                WhereClauseString += " WHERE ";
+                if (PredicatesOnNodes != "" && PredicatesOnReverseEdge != "")
+                    WhereClauseString += PredicatesOnNodes + " AND " + PredicatesOnReverseEdge;
+                else WhereClauseString += PredicatesOnNodes + PredicatesOnReverseEdge;
+            }
 
             // Select elements that related to current node will be attached here.
 
@@ -733,35 +738,28 @@ namespace GraphView
                 }
             }
 
-            string ResultIndexString = " ,";
+            string ResultIndexString = ",";
             foreach (string ResultIndex in ResultIndexToAppend)
             {
                 ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
             }
-            if (ResultIndexString == " ,") ResultIndexString = "";
+            if (ResultIndexString == ",") ResultIndexString = "";
             ResultIndexString = CutTheTail(ResultIndexString);
 
             // Reverse checking related script will be attached here.
-            string ReverseCheckString = " ,";
+            string ReverseCheckString = ",";
             foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
                 if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
                     ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
             }
-            if (ReverseCheckString == " ,") ReverseCheckString = "";
+            if (ReverseCheckString == ",") ReverseCheckString = "";
             ReverseCheckString = CutTheTail(ReverseCheckString);
 
             // The DocDb script that related to the giving node will be assembled here.
             string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
-            string QuerySegment = "";
-            if (ResultIndexString != "" && ReverseCheckString != "") 
-                QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
-            else
-                QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
-            if (!HasWhereClause(AttachedClause))
-                QuerySegment += " " + AttachedClause.Substring(0, AttachedClause.Length - 6) + " ";
-            else QuerySegment += " " + AttachedClause;
-
+            string QuerySegment = QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
+            QuerySegment += FromClauseString + WhereClauseString;
             node.AttachedQuerySegment = QuerySegment;
         }
 
