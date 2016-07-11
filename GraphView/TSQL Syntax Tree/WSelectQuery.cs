@@ -385,7 +385,8 @@ namespace GraphView
                     foreach (var path in MatchClause.Paths)
                     {
                         var index = 0;
-                        MatchEdge PreEdge = null;
+                        // Consturct the source node of a path in MatchClause.Paths
+                        MatchEdge EdgeToSrcNode = null;
                         for (var count = path.PathEdgeList.Count; index < count; ++index)
                         {
                             var CurrentNodeTableRef = path.PathEdgeList[index].Item1;
@@ -395,46 +396,47 @@ namespace GraphView
                                 ? path.PathEdgeList[index + 1].Item1
                                 : path.Tail;
                             var nextNodeExposedName = nextNodeTableRef.BaseIdentifier.Value;
-                            var PatternNode = Nodes.GetOrCreate(CurrentNodeExposedName);
-                            if (PatternNode.NodeAlias == null)
+                            var SrcNode = Nodes.GetOrCreate(CurrentNodeExposedName);
+                            if (SrcNode.NodeAlias == null)
                             {
-                                PatternNode.NodeAlias = CurrentNodeExposedName;
-                                PatternNode.Neighbors = new List<MatchEdge>();
-                                PatternNode.ReverseNeighbors = new List<MatchEdge>();
-                                PatternNode.External = false;
-                                PatternNode.Predicates = new List<WBooleanExpression>();
+                                SrcNode.NodeAlias = CurrentNodeExposedName;
+                                SrcNode.Neighbors = new List<MatchEdge>();
+                                SrcNode.ReverseNeighbors = new List<MatchEdge>();
+                                SrcNode.External = false;
+                                SrcNode.Predicates = new List<WBooleanExpression>();
                             }
 
-                            string pEdgeAlias = CurrentEdgeColumnRef.Alias;
-                            if (pEdgeAlias == null)
+                            // Consturct the edge of a path in MatchClause.Paths
+                            string EdgeAlias = CurrentEdgeColumnRef.Alias;
+                            if (EdgeAlias == null)
                             {
                                 bool isReversed = path.IsReversed;
                                 var CurrentEdgeName = CurrentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
                                 string originalEdgeName = null;
 
-                                pEdgeAlias = string.Format("{0}_{1}_{2}", CurrentNodeExposedName, CurrentEdgeName,
+                                EdgeAlias = string.Format("{0}_{1}_{2}", CurrentNodeExposedName, CurrentEdgeName,
                                     nextNodeExposedName);
 
                                 // when current edge is a reversed edge, the key should still be the original edge name
                                 var edgeNameKey = isReversed ? originalEdgeName : CurrentEdgeName;
                                 if (EdgeColumnToAliasesDict.ContainsKey(edgeNameKey))
                                 {
-                                    EdgeColumnToAliasesDict[edgeNameKey].Add(pEdgeAlias);
+                                    EdgeColumnToAliasesDict[edgeNameKey].Add(EdgeAlias);
                                 }
                                 else
                                 {
-                                    EdgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { pEdgeAlias });
+                                    EdgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { EdgeAlias });
                                 }
                             }
 
-                            MatchEdge edge;
+                            MatchEdge EdgeFromSrcNode;
                             if (CurrentEdgeColumnRef.MinLength == 1 && CurrentEdgeColumnRef.MaxLength == 1)
                             {
-                                edge = new MatchEdge
+                                EdgeFromSrcNode = new MatchEdge
                                 {
-                                    SourceNode = PatternNode,
+                                    SourceNode = SrcNode,
                                     EdgeColumn = CurrentEdgeColumnRef,
-                                    EdgeAlias = pEdgeAlias,
+                                    EdgeAlias = EdgeAlias,
                                     Predicates = new List<WBooleanExpression>(),
                                     BindNodeTableObjName =
                                         new WSchemaObjectName(
@@ -445,9 +447,9 @@ namespace GraphView
                             {
                                 MatchPath matchPath = new MatchPath
                                 {
-                                    SourceNode = PatternNode,
+                                    SourceNode = SrcNode,
                                     EdgeColumn = CurrentEdgeColumnRef,
-                                    EdgeAlias = pEdgeAlias,
+                                    EdgeAlias = EdgeAlias,
                                     Predicates = new List<WBooleanExpression>(),
                                     BindNodeTableObjName =
                                         new WSchemaObjectName(
@@ -457,29 +459,31 @@ namespace GraphView
                                     ReferencePathInfo = false,
                                     AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict
                                 };
-                                pathDictionary[pEdgeAlias] = matchPath;
-                                edge = matchPath;
+                                pathDictionary[EdgeAlias] = matchPath;
+                                EdgeFromSrcNode = matchPath;
                             }
 
-                            if (PreEdge != null)
+                            if (EdgeToSrcNode != null)
                             {
-                                PreEdge.SinkNode = PatternNode;
+                                EdgeToSrcNode.SinkNode = SrcNode;
                                 //Add ReverseEdge
                                 MatchEdge reverseEdge;
                                 reverseEdge = new MatchEdge
                                 {
-                                    SourceNode = PreEdge.SinkNode,
-                                    SinkNode = PreEdge.SourceNode,
-                                    EdgeColumn = PreEdge.EdgeColumn,
-                                    EdgeAlias = PreEdge.EdgeAlias,
-                                    Predicates = PreEdge.Predicates,
+                                    SourceNode = EdgeToSrcNode.SinkNode,
+                                    SinkNode = EdgeToSrcNode.SourceNode,
+                                    EdgeColumn = EdgeToSrcNode.EdgeColumn,
+                                    EdgeAlias = EdgeToSrcNode.EdgeAlias,
+                                    Predicates = EdgeToSrcNode.Predicates,
                                     BindNodeTableObjName =
                                        new WSchemaObjectName(
                                            ),
                                 };
-                                PatternNode.ReverseNeighbors.Add(reverseEdge);
+                                SrcNode.ReverseNeighbors.Add(reverseEdge);
                             }
-                            PreEdge = edge;
+
+                            EdgeToSrcNode = EdgeFromSrcNode;
+
                             if (!Parent.ContainsKey(CurrentNodeExposedName))
                                 Parent[CurrentNodeExposedName] = CurrentNodeExposedName;
                             if (!Parent.ContainsKey(nextNodeExposedName))
@@ -487,36 +491,37 @@ namespace GraphView
 
                             UnionFind.Union(CurrentNodeExposedName, nextNodeExposedName);
 
+                            SrcNode.Neighbors.Add(EdgeFromSrcNode);
 
-                            PatternNode.Neighbors.Add(edge);
 
                         }
+                        // Consturct destination node of a path in MatchClause.Paths
                         var tailExposedName = path.Tail.BaseIdentifier.Value;
-                        var tailNode = Nodes.GetOrCreate(tailExposedName);
-                        if (tailNode.NodeAlias == null)
+                        var DestNode = Nodes.GetOrCreate(tailExposedName);
+                        if (DestNode.NodeAlias == null)
                         {
-                            tailNode.NodeAlias = tailExposedName;
-                            tailNode.Neighbors = new List<MatchEdge>();
-                            tailNode.ReverseNeighbors = new List<MatchEdge>();
-                            tailNode.Predicates = new List<WBooleanExpression>();
+                            DestNode.NodeAlias = tailExposedName;
+                            DestNode.Neighbors = new List<MatchEdge>();
+                            DestNode.ReverseNeighbors = new List<MatchEdge>();
+                            DestNode.Predicates = new List<WBooleanExpression>();
                         }
-                        if (PreEdge != null)
+                        if (EdgeToSrcNode != null)
                         {
-                            PreEdge.SinkNode = tailNode;
+                            EdgeToSrcNode.SinkNode = DestNode;
                             //Add ReverseEdge
                             MatchEdge reverseEdge;
                             reverseEdge = new MatchEdge
                             {
-                                SourceNode = PreEdge.SinkNode,
-                                SinkNode = PreEdge.SourceNode,
-                                EdgeColumn = PreEdge.EdgeColumn,
-                                EdgeAlias = PreEdge.EdgeAlias,
-                                Predicates = PreEdge.Predicates,
+                                SourceNode = EdgeToSrcNode.SinkNode,
+                                SinkNode = EdgeToSrcNode.SourceNode,
+                                EdgeColumn = EdgeToSrcNode.EdgeColumn,
+                                EdgeAlias = EdgeToSrcNode.EdgeAlias,
+                                Predicates = EdgeToSrcNode.Predicates,
                                 BindNodeTableObjName =
                                    new WSchemaObjectName(
                                        ),
                             };
-                            tailNode.ReverseNeighbors.Add(reverseEdge);
+                            DestNode.ReverseNeighbors.Add(reverseEdge);
                         }
                     }
 
