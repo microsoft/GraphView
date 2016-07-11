@@ -24,14 +24,14 @@ namespace GraphView
     /// </summary>
     public class Record
     {
-        internal Record()
+        public Record()
         { 
         }
-        internal Record(Record rhs)
+        public Record(Record rhs)
         {
             field = new List<string>(rhs.field);
         }
-        internal Record(int num)
+        public Record(int num)
         {
             field = new List<string>();
             for (int i = 0; i < num; i++)
@@ -39,22 +39,22 @@ namespace GraphView
                 field.Add("");
             }
         }
-        internal string RetriveData(List<string> header,string FieldName)
+        public string RetriveData(List<string> header,string FieldName)
         {
             if (header.IndexOf(FieldName) == -1) return "";
             else if (field.Count <= header.IndexOf(FieldName)) return "";
             else return field[header.IndexOf(FieldName)];
         }
-        internal string RetriveData(int index)
+        public string RetriveData(int index)
         {
             return field[index];
         }
-        internal int RetriveIndex(string value)
+        public int RetriveIndex(string value)
         {
             if (field.IndexOf(value) == -1) return -1;
             else return field.IndexOf(value);
         }
-        public List<string> field;
+        internal List<string> field;
     }
     
     /// <summary>
@@ -76,7 +76,7 @@ namespace GraphView
     /// </summary>
     public abstract class GraphViewOperator : IGraphViewProcessor
     {
-        internal bool statue;
+        private bool statue;
         public bool Status()
         {
             return statue;

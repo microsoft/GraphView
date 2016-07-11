@@ -12,7 +12,7 @@ namespace GraphView
     /// TraversalOperator.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
-    internal class TraversalOperator : GraphViewOperator
+    public class TraversalOperator : GraphViewOperator
     {
         // Buffer on both input and output sides.
         private Queue<Record> InputBuffer;
@@ -198,7 +198,7 @@ namespace GraphView
     /// FetchNodeOperator.Next() returns one result of what its specifier specified.
     /// It often used as the input of a traversal operator
     /// </summary>
-    internal class FetchNodeOperator : GraphViewOperator
+    public class FetchNodeOperator : GraphViewOperator
     {
         internal static Record RecordZero;
         private Queue<Record> OutputBuffer;
@@ -322,7 +322,7 @@ namespace GraphView
     /// will be
     /// |   A   |    C   |   B   |
     /// </summary>
-    internal class CartesianProductOperator : GraphViewOperator
+    public class CartesianProductOperator : GraphViewOperator
     {
         private List<GraphViewOperator> OperatorOnSubGraphs;
 

@@ -766,7 +766,7 @@ namespace GraphView
         }
 
         // Cut the last character of a string.
-        string CutTheTail(string InRangeScript)
+        private string CutTheTail(string InRangeScript)
         {
             if (InRangeScript.Length == 0) return "";
             return InRangeScript.Substring(0, InRangeScript.Length - 1);
