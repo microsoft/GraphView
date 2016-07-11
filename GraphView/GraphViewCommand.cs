@@ -184,16 +184,8 @@ namespace GraphView
 
                 foreach (var Batch in script.Batches)
                 {
-                    var DocDB_script = new WSqlScript();
-                    DocDB_script.Batches = new List<WSqlBatch>();
-                    DocDB_script.Batches.Add(new WSqlBatch());
-                    DocDB_script.Batches[0].Statements = new List<WSqlStatement>();
-
                     foreach (var statement in Batch.Statements)
                     {
-                        DocDB_script.Batches[0].Statements.Clear();
-                        DocDB_script.Batches[0].Statements.Add(statement);
-
                         if (statement is WInsertSpecification)
                         {
                             var insertSpecification = (statement as WInsertSpecification);
