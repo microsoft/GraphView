@@ -388,5 +388,36 @@ namespace GraphView
             }
         }
     }
+
+    public class GraphViewDataReader
+    {
+        private GraphViewOperator DataSource;
+        Record CurrentRecord;
+        internal GraphViewDataReader(GraphViewOperator pDataSource)
+        {
+            DataSource = pDataSource;
+        }
+        public bool Read()
+        {
+            CurrentRecord = DataSource.Next();
+            if (CurrentRecord != null) return true;
+            else return false;
+        }
+        public string this[string FieldName]
+        {
+            get
+            {
+                return CurrentRecord.RetriveData(DataSource.header, FieldName);
+            }
+        }
+        public string this[int index]
+        {
+            get
+            {
+                return CurrentRecord.RetriveData(index);
+            }
+        }
+
+    }
 }
 

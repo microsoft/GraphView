@@ -37,6 +37,7 @@ using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents;
 
 namespace GraphView
 {
@@ -82,7 +83,7 @@ namespace GraphView
             get { return Command.CommandTimeout; }
             set { Command.CommandTimeout = value; }
         }
-        public SqlParameterCollection Parameters
+        public System.Data.SqlClient.SqlParameterCollection Parameters
         {
             get { return Command.Parameters; }
         }
@@ -134,20 +135,10 @@ namespace GraphView
         }
 #endif
 
-        public SqlDataReader ExecuteReader()
+        public GraphViewDataReader ExecuteReader()
         {
             try
             {
-                if (CommandType == CommandType.StoredProcedure)
-                {
-                    if (Tx != null)
-                    {
-                        Command.Transaction = Tx;
-                    }
-                    Command.CommandText = CommandText;
-                    return Command.ExecuteReader();
-                }
-
                 var sr = new StringReader(CommandText);
                 var parser = new GraphViewParser();
                 IList<ParseError> errors;
@@ -155,43 +146,22 @@ namespace GraphView
                 if (errors.Count > 0)
                     throw new SyntaxErrorException(errors);
 
-                if (Tx == null)
-                {
-                    var translationConnection = GraphViewConnection.TranslationConnection;
+                var DocumentDBConnection = GraphViewConnection;
 
-                    using (SqlTransaction translationTx = translationConnection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
-                    {
-                        var visitor = new TranslateMatchClauseVisitor(translationTx);
-                        visitor.Invoke(script);
+                DocumentDBConnection.SetupClient();
 
-                        // Executes translated SQL 
-                        Command.CommandText = script.ToString();
-#if DEBUG
-                        // For debugging
-                        OutputResult(CommandText, Command.CommandText);
-                        //throw new GraphViewException("No Execution");
-#endif
-                        var reader = Command.ExecuteReader();
-                        translationTx.Commit();
-                        return reader;
-                    }
-                }
-                else
-                {
-                    var visitor = new TranslateMatchClauseVisitor(Tx);
-                    visitor.Invoke(script);
-                    // Executes translated SQL 
-                    Command.CommandText = script.ToString();
-#if DEBUG
-                    // For debugging
-                    OutputResult(CommandText, Command.CommandText);
-                    //throw new GraphViewException("No Execution");
-#endif
-                    var reader = Command.ExecuteReader();
-                    return reader;
-                }
+                foreach (var Batch in script.Batches)
+                    foreach (var statement in Batch.Statements)
+                        if (statement is WSelectStatement)
+                        {
+                            var selectStatement = (statement as WSelectStatement);
+                            var Query = selectStatement.QueryExpr as WSelectQueryBlock;
+                            GraphViewDataReader Reader = new GraphViewDataReader(Query.Generate(DocumentDBConnection));
+                            return Reader;
+                        }
+                return null;
             }
-            catch (SqlException e)
+            catch (DocumentClientException e)
             {
                 throw new SqlExecutionException("An error occurred when executing the query", e);
             }
@@ -208,9 +178,9 @@ namespace GraphView
                 if (errors.Count > 0)
                     throw new SyntaxErrorException(errors);
                 
-                var DocDB_conn = GraphViewConnection;
+                var DocumentDBConnection = GraphViewConnection;
 
-                DocDB_conn.createclient();
+                DocumentDBConnection.SetupClient();
 
                 foreach (var Batch in script.Batches)
                 {
@@ -223,16 +193,7 @@ namespace GraphView
                     {
                         DocDB_script.Batches[0].Statements.Clear();
                         DocDB_script.Batches[0].Statements.Add(statement);
-                        
-                        if (statement is WSelectStatement)
-                        {
-                            var selectStatement = (statement as WSelectStatement);
-                            var res = "";
-                            var Query = selectStatement.QueryExpr as WSelectQueryBlock;
-                            Query.Generate(DocDB_conn).Next();
-                            Console.WriteLine(res);
-                            DocDB_conn.DocDB_finish = true;
-                        }
+
                         if (statement is WInsertSpecification)
                         {
                             var insertSpecification = (statement as WInsertSpecification);
@@ -240,13 +201,13 @@ namespace GraphView
                             if (insertSpecification.Target.ToString() == "Node")
                             {
                                 var insertNodeStatement = new WInsertNodeSpecification(insertSpecification);
-                                var Insertop = insertNodeStatement.Generate(DocDB_conn);
+                                var Insertop = insertNodeStatement.Generate(DocumentDBConnection);
                                 Insertop.Next();
                             }
                             else if (insertSpecification.Target.ToString() == "Edge")
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
-                                var Insertop = insertEdgeStatement.Generate(DocDB_conn);
+                                var Insertop = insertEdgeStatement.Generate(DocumentDBConnection);
                                 Insertop.Next();
                             }
                         }
@@ -257,13 +218,13 @@ namespace GraphView
                             if (deletespecification is WDeleteEdgeSpecification)
                             {
                                 var deleteEdgeStatement = deletespecification as WDeleteEdgeSpecification;
-                                var Deleteop = deleteEdgeStatement.Generate(DocDB_conn);
+                                var Deleteop = deleteEdgeStatement.Generate(DocumentDBConnection);
                                 Deleteop.Next();
                             }
                             else if (deletespecification.Target.ToString() == "Node")
                             {
                                 var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
-                                var Deleteop = deleteNodeStatement.Generate(DocDB_conn);
+                                var Deleteop = deleteNodeStatement.Generate(DocumentDBConnection);
                                 Deleteop.Next();
                             }
                         }
@@ -272,7 +233,7 @@ namespace GraphView
 
                 return 0;
             }
-            catch (SqlException e)
+            catch (DocumentClientException e)
             {
                 throw new SqlExecutionException("An error occurred when executing the query", e);
             }

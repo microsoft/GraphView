@@ -242,7 +242,7 @@ namespace GraphView
             DocDB_CollectionId = docdb_CollectionID;
         }
 
-        public void createclient()
+        public void SetupClient()
         {
             DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
         }
