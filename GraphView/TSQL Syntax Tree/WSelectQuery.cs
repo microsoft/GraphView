@@ -367,20 +367,13 @@ namespace GraphView
             UnionFind.Parent = Parent;
 
             // Retrive information from the SelectQueryBlcok
-            foreach (var cnt in SelectElements)
-            {
-                if (cnt is WSelectStarExpression) continue;
-                if (cnt == null) continue;
-                var cnt2 = (cnt as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
-                if (cnt2 == null) continue;
-            }
             if (FromClause != null)
             {
-                foreach (WTableReferenceWithAlias cnt in FromClause.TableReferences)
+                foreach (WTableReferenceWithAlias FromReference in FromClause.TableReferences)
                 {
-                    Nodes.GetOrCreate(cnt.Alias.Value);
-                    if (!Parent.ContainsKey(cnt.Alias.Value))
-                        Parent[cnt.Alias.Value] = cnt.Alias.Value;
+                    Nodes.GetOrCreate(FromReference.Alias.Value);
+                    if (!Parent.ContainsKey(FromReference.Alias.Value))
+                        Parent[FromReference.Alias.Value] = FromReference.Alias.Value;
                 }
             }
 
