@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Data;
+using System.Runtime.Remoting.Messaging;
+using System.Security.Policy;
 // Add DocumentDB references
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
@@ -389,13 +392,14 @@ namespace GraphView
         }
     }
 
-    public class GraphViewDataReader
+    public class GraphViewDataReader : IDataReader
     {
         private GraphViewOperator DataSource;
         Record CurrentRecord;
         internal GraphViewDataReader(GraphViewOperator pDataSource)
         {
             DataSource = pDataSource;
+            FieldCount = DataSource.header.Count;
         }
         public bool Read()
         {
@@ -403,14 +407,14 @@ namespace GraphView
             if (CurrentRecord != null) return true;
             else return false;
         }
-        public string this[string FieldName]
+        public object this[string FieldName]
         {
             get
             {
                 return CurrentRecord.RetriveData(DataSource.header, FieldName);
             }
         }
-        public string this[int index]
+        public object this[int index]
         {
             get
             {
@@ -418,6 +422,36 @@ namespace GraphView
             }
         }
 
+        public int Depth { get; set; }
+        public bool IsClosed { get; set; }
+        public int RecordsAffected { get; set; }
+        public int FieldCount { get; set; }
+        public void Close() { throw new NotImplementedException(); }
+        public void Dispose() { throw new NotImplementedException();}
+        public bool GetBoolean(int x) { throw new NotImplementedException(); }
+        public byte GetByte(Int32 x) { throw new NotImplementedException(); }
+        public long GetBytes(Int32 x, Int64 y, Byte[] z, Int32 w, Int32 u) { throw new NotImplementedException(); }
+        public char GetChar(Int32 x) { throw new NotImplementedException(); }
+        public long GetChars(Int32 x, Int64 y, Char[] z, Int32 w, Int32 u) { throw new NotImplementedException(); }
+        public IDataReader GetData(Int32 x) { throw new NotImplementedException(); }
+        public string GetDataTypeName(Int32 x) { throw new NotImplementedException(); }
+        public DateTime GetDateTime(Int32 x) { throw new NotImplementedException(); }
+        public decimal GetDecimal(Int32 x) { throw new NotImplementedException(); }
+        public double GetDouble(Int32 x) { throw new NotImplementedException(); }
+        public Type GetFieldType(Int32 x) { throw new NotImplementedException(); }
+        public float GetFloat(Int32 x) { throw new NotImplementedException(); }
+        public Guid GetGuid(Int32 x) { throw new NotImplementedException(); }
+        public Int16 GetInt16(Int32 x) { throw new NotImplementedException(); }
+        public Int32 GetInt32(Int32 x) { throw new NotImplementedException(); }
+        public Int64 GetInt64(Int32 x) { throw new NotImplementedException(); }
+        public DataTable GetSchemaTable() { throw new NotImplementedException(); }
+        public string GetName(Int32 x) { return DataSource.header[x]; }
+        public int GetOrdinal(string x) { throw new NotImplementedException(); }
+        public string GetString(Int32 x) { return CurrentRecord.RetriveData(x); }
+        public object GetValue(Int32 x) { return CurrentRecord.RetriveData(x); }
+        public int GetValues(object[] x) { throw new NotImplementedException(); }
+        public bool IsDBNull(Int32 x) { throw new NotImplementedException(); }
+        public bool NextResult() { throw new NotImplementedException(); }
     }
 }
 
