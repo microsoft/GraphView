@@ -203,7 +203,7 @@ namespace GraphView
     /// </summary>
     public class FetchNodeOperator : GraphViewOperator
     {
-        internal static Record RecordZero;
+        private Record RecordZero;
         private Queue<Record> OutputBuffer;
         private int OutputBufferSize;
 
@@ -224,7 +224,7 @@ namespace GraphView
             node = pnode;
             header = pheader;
             StartOfResultField = pStartOfResultField;
-            if (RecordZero == null) RecordZero = new Record(pheader.Count);
+            RecordZero = new Record(pheader.Count);
         }
         override public Record Next()
         {
