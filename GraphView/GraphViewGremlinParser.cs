@@ -194,7 +194,21 @@ namespace GraphView
         }
 
 
-
+        internal WSqlStatement Parse(string Script)
+        {
+            string ErrorKey = "";
+            var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"Script", ref ErrorKey);
+            Identifiers = para.Item2;
+            TokenList = para.Item1;
+            NextToken = 0;
+            FarestError = -1;
+            var ParserTree = ParseTree();
+            var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);
+            SematicAnalyser.Analyse();
+            SematicAnalyser.Transform();
+            SqlTree = (SematicAnalyser.SqlTree as WSelectStatement).QueryExpr;
+            return SqlTree;
+        }
         internal static class LexicalAnalyzer
         {
             internal static Dictionary<Regex, TokenType> TokenRules = null;
@@ -391,6 +405,7 @@ namespace GraphView
         internal List<Token> TokenList;
         internal int NextToken;
         internal int FarestError;
+        internal WSqlStatement SqlTree;
 
         internal GraphViewGremlinParser(List<Token> pTokens, List<string> pIdentifiers)
         {
@@ -399,7 +414,7 @@ namespace GraphView
             NextToken = 0;
             FarestError = -1;
         }
-        internal WProgram Parse()
+        internal WProgram ParseTree()
         {
             WPath pPath;
             WProgram result = new WProgram();

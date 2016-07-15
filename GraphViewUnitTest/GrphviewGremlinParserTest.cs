@@ -13,7 +13,7 @@ namespace GraphViewUnitTest
             string ErrorKey = "";
             var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"g.V.has('name','hercules').out('father').out('father').name", ref ErrorKey);
             GraphViewGremlinParser parser = new GraphViewGremlinParser(para.Item1, para.Item2);
-            WSyntaxTree ParserTree = parser.Parse();
+            WSyntaxTree ParserTree = parser.ParseTree();
         }
 
         [TestMethod]
@@ -22,7 +22,7 @@ namespace GraphViewUnitTest
             string ErrorKey = "";
             var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"g.V.has('name','hercules').out('father').out('father').name", ref ErrorKey);
             GraphViewGremlinParser parser = new GraphViewGremlinParser(para.Item1, para.Item2);
-            var ParserTree = parser.Parse();
+            var ParserTree = parser.ParseTree();
             var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);
             SematicAnalyser.Analyse();
         }
@@ -32,7 +32,7 @@ namespace GraphViewUnitTest
             string ErrorKey = "";
             var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"g.V(saturn).in('father').in('father').values('name')", ref ErrorKey);
             GraphViewGremlinParser parser = new GraphViewGremlinParser(para.Item1, para.Item2);
-            var ParserTree = parser.Parse();
+            var ParserTree = parser.ParseTree();
             var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);
             SematicAnalyser.Analyse();
             SematicAnalyser.Transform();
