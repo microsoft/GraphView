@@ -102,8 +102,6 @@ namespace GraphView
                 {
                     Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
                     string ID = ItemInfo.Item1;
-                    string edges = ItemInfo.Item2;
-                    string ReverseEdge = ItemInfo.Item3;
                     if (!UniqueRecord.Contains(ItemInfo))
                     {
                         UniqueRecord.Add(ItemInfo);
@@ -151,13 +149,6 @@ namespace GraphView
             return Result;
         }
 
-        private bool HasWhereClause(string SelectClause)
-        {
-            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "WHERE");
-        }
-        /// <summary>
-        /// Break down a JObject that return by server and extract the id and edge infomation from it.
-        /// </summary>
         private Tuple<string, string, string> DecodeJObject(JObject Item, bool ShowEdge = false)
         {
             JToken NodeInfo = ((JObject)Item)["NodeInfo"];
@@ -224,7 +215,7 @@ namespace GraphView
             node = pnode;
             header = pheader;
             StartOfResultField = pStartOfResultField;
-            if (RecordZero == null) RecordZero = new Record(pheader.Count);
+            RecordZero = new Record(pheader.Count);
         }
         override public Record Next()
         {
@@ -244,8 +235,6 @@ namespace GraphView
             foreach (var item in Node)
             {
                 Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
-                string ID = ItemInfo.Item1;
-                string edges = ItemInfo.Item2;
 
                 if (!UniqueRecord.Contains(ItemInfo))
                 {

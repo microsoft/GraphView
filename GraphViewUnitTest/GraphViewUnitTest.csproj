@@ -70,21 +70,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="DataGenerator.cs" />
-    <Compile Include="EdgePropertiesTest.cs" />
-    <Compile Include="GraphDbTest.cs" />
-    <Compile Include="ParseMatchTest.cs" />
-    <Compile Include="PatentMatchExperimentTest.cs" />
-    <Compile Include="PathTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="GraphOptimizationTest.cs" />
-    <Compile Include="GraphInsertDeleteTest.cs" />
-    <Compile Include="TestInitialization.cs" />
-    <Compile Include="GraphSelectQueryTest.cs" />
-    <Compile Include="DocDbInsertTest.cs" />
-    <Compile Include="ValidateTests.cs" />
-    <Compile Include="UpgradeTest.cs" />
-    <Compile Include="ViewTest.cs" />
+    <Compile Include="DocDbInsertDeleteTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GraphView\GraphView.csproj">

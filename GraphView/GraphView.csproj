@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -65,72 +66,41 @@
   <ItemGroup>
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BulkInsert.cs" />
-    <Compile Include="CheckTableReferencingVisitor.cs" />
     <Compile Include="DocDBReferences.cs" />
     <Compile Include="DocDBCodeGenerator.cs" />
-    <Compile Include="DeployScriptTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>DeployScriptTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="EdgeViewGraphViewCodeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>EdgeViewGraphViewCodeTemplate.tt</DependentUpon>
-    </Compile>
     <Compile Include="GraphViewDocDBCommand.cs" />
     <Compile Include="GraphViewJsonCommand.cs" />
-    <Compile Include="MetaGraphViewCodeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>MetaGraphViewCodeTemplate.tt</DependentUpon>
-    </Compile>
-    <Compile Include="NodeTableGraphViewCodeTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>NodeTableGraphViewCodeTemplate.tt</DependentUpon>
-    </Compile>
     <Compile Include="ObjectExtensions.cs" />
     <Compile Include="DocDBSelectQueryProcessor.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="DictionaryExtensions.cs" />
-    <Compile Include="EdgeViewBfsScriptTemplate.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>EdgeViewBfsScriptTemplate.tt</DependentUpon>
-    </Compile>
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
     <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
     <Compile Include="DocDBInsertDeleteOperartor.cs" />
+    <Compile Include="TranslateMatchClauseVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />
     <Compile Include="TranslateDataModificationVisitor.cs" />
     <Compile Include="GetQueryTablesVisitor.cs" />
     <Compile Include="TableSizeEstimator.cs" />
-    <Compile Include="TranslateMatchClauseVisitor.cs" />
     <Compile Include="GraphDataModificationAnnotation.cs" />
     <Compile Include="GraphViewConnection.cs" />
     <Compile Include="GraphViewException.cs" />
     <Compile Include="MatchClauseVisitor.cs" />
     <Compile Include="GraphViewParser.cs" />
     <Compile Include="MatchGraph.cs" />
-    <None Include="EdgeViewGraphViewCodeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>EdgeViewGraphViewCodeTemplate.cs</LastGenOutput>
-    </None>
     <Compile Include="GraphViewDefinedFunctionGenerator.cs" />
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
     <Compile Include="TSQL Syntax Tree\WCommonTableExpression .cs" />
     <Compile Include="TSQL Syntax Tree\WConstraintDefinition.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateTableStatement.cs" />
-    <Compile Include="CollectVariableVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WDropTableStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WIdentifierOrValueExpression.cs" />
     <Compile Include="TSQL Syntax Tree\WTableHint.cs" />
@@ -160,32 +130,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="DeployScriptTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>DeployScriptTemplate.cs</LastGenOutput>
-    </None>
-    <None Include="NodeTableGraphViewCodeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>NodeTableGraphViewCodeTemplate.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="MetaGraphViewCodeTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>MetaGraphViewCodeTemplate.cs</LastGenOutput>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="EdgeViewBfsScriptTemplate.tt">
-      <Generator>TextTemplatingFilePreprocessor</Generator>
-      <LastGenOutput>EdgeViewBfsScriptTemplate.cs</LastGenOutput>
-    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Microsoft.Azure.DocumentDB.1.8.0\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\packages\Microsoft.Azure.DocumentDB.1.8.0\build\Microsoft.Azure.DocumentDB.targets')" />

@@ -767,12 +767,6 @@ namespace GraphView
             if (InRangeScript.Length == 0) return "";
             return InRangeScript.Substring(0, InRangeScript.Length - 1);
         }
-        // Find if a string has Where clause attached at the tail
-        private bool HasWhereClause(string SelectClause)
-        {
-            return !(SelectClause.Length < 6 || SelectClause.Substring(SelectClause.Length - 6, 5) == "WHERE");
-        }
-
         // The implementation of Union find algorithmn.
         private class UnionFind
         {

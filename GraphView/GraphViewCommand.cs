@@ -125,15 +125,7 @@ namespace GraphView
         {
             Command.Cancel();
         }
-
-#if DEBUG
-        // For debugging
-        private void OutputResult(string input, string output)
-        {
-            Trace.WriteLine("Input string: \n" + input + "\n");
-            Trace.WriteLine("Output string: \n" + output);
-        }
-#endif
+        
 
         public GraphViewDataReader ExecuteReader()
         {

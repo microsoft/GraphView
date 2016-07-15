@@ -265,65 +265,6 @@ namespace GraphView
                 throw new GraphViewException("Cannot assign modification annotations back.");
             }
         } 
-
-        /// <summary>
-        /// convert statements in annotation to according graph data modification statements
-        /// </summary>
-        /// <param name="script">SQL script</param>
-        /// <param name="annotations">stores information of data modification statements</param>
-        /// <returns>Converted script</returns>
-        private void ConvertToGraphModificationStatement(IList<WSqlStatement> statements)
-        {
-            for (var j = 0; j < statements.Count; ++j)
-            {
-                var stmt = statements[j];
-                if (_nodeCount >= _annotations.Count)
-                    break;
-                if (stmt is WSelectStatement && stmt.FirstTokenIndex == _annotations[_nodeCount].Position)
-                {
-                    var newStmt = (stmt as WSelectStatement).QueryExpr as WSelectQueryBlock;
-                    var annotation = _annotations[_nodeCount] as DeleteEdgeAnnotation;
-                    if (annotation != null)
-                        newStmt.MatchClause = new WMatchClause
-                        {
-                            Paths = new List<WMatchPath>
-                            {
-                                annotation.Path
-                            }
-                        };
-                    statements[j] = new WDeleteEdgeSpecification(newStmt);
-                    _nodeCount++;
-                }
-
-                if (!(stmt is WInsertSpecification) &&
-                    !(stmt is WDeleteSpecification))
-                    continue;
-
-                if (stmt.LastTokenIndex < _annotations[_nodeCount].Position)
-                {
-                    continue;
-                }
-                if (_annotations[_nodeCount] is InsertNodeAnnotation)
-                {
-                    statements[j] = new WInsertNodeSpecification(stmt as WInsertSpecification);
-                }
-                else if (_annotations[_nodeCount] is InsertEdgeAnnotation)
-                {
-                    var annotation = _annotations[_nodeCount] as InsertEdgeAnnotation;
-                    statements[j] = new WInsertEdgeSpecification(stmt as WInsertSpecification)
-                    {
-                        EdgeColumn = new WColumnReferenceExpression
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier(annotation.EdgeColumn)
-                        },
-                    };
-                }
-                else if (_annotations[_nodeCount] is DeleteNodeAnnotation)
-                {
-                    statements[j] = new WDeleteNodeSpecification(stmt as WDeleteSpecification);
-                }
-                _nodeCount++;
-            }
-        }
+        
     }
 }

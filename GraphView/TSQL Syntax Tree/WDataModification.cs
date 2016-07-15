@@ -154,35 +154,10 @@ namespace GraphView
 
         /// <summary>
         /// Construct a Json's string which contains all the information about the new node.
-        /// And then Create a document in DocDB with this string
+        /// And then Create a InsertNodeOperator with this string
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
-        {
-            string Json_str = "{}";
-            docDbConnection.DocDB_finish = false;
-
-            var cnt = InsertSource as WValuesInsertSource;
-            for (int i = 0; i < Columns.Count(); i++)
-            {
-                string s1 = Columns[i].MultiPartIdentifier.Identifiers[0].Value;
-                var cnt2 = (cnt.RowValues[0].ColumnValues[i] as WValueExpression);
-                string s2 = cnt2.Value;
-                if (cnt2.SingleQuoted)
-                    s2 = '\"' + s2 + '\"';
-                Json_str = GraphViewJsonCommand.insert_property(Json_str, s2, s1).ToString();
-            }
-            //Insert "_edge" & "_reverse_edge" into the string.
-            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
-            Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
-
-            var obj = JObject.Parse(Json_str);
-            await docDbConnection.DocDBclient.CreateDocumentAsync("dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId, obj);
-
-            docDbConnection.DocDB_finish = true;
-        }
-
         public override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             string Json_str = "{}";
@@ -273,6 +248,7 @@ namespace GraphView
                 {
                     if (SelectScalar.SelectExpr is WValueExpression)
                     {
+
                         var ValueExpression = SelectScalar.SelectExpr as WValueExpression;
                         Values.Add(ValueExpression);
                     }
@@ -445,60 +421,10 @@ namespace GraphView
         /// <summary>
         /// Check if there is eligible nodes with edges.
         /// If there is , stop delete nodes.
-        /// Else , get those nodes' _id and delete them with it.
+        /// Else , create a DeleteNodeOperator.
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        public override async Task RunDocDbScript(GraphViewConnection docDbConnection)
-        {
-            docDbConnection.DocDB_finish = false;
-
-            var search = WhereClause.SearchCondition;
-            //build up the query
-            string Selectstr = "SELECT * " + "FROM Node ";
-            if (search == null)
-            {
-                Selectstr += @"WHERE ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0 ";
-            }
-            else
-            {
-                Selectstr += @"WHERE " + search.ToString() +
-                             @" and (ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0)  ";
-            }
-            var sum_DeleteNode = docDbConnection.DocDBclient.CreateDocumentQuery(
-                                "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId,
-                                Selectstr);
-            bool flag = true;
-            foreach (var DeleteNode in sum_DeleteNode)
-            {
-                flag = false;
-                break;
-            }
-            if (flag)
-            {
-                Selectstr = "SELECT * " + "FROM Node ";
-                if (search != null)
-                    Selectstr += @"WHERE " + search.ToString();
-                sum_DeleteNode = docDbConnection.DocDBclient.CreateDocumentQuery(
-                    "dbs/" + docDbConnection.DocDB_DatabaseId + "/colls/" + docDbConnection.DocDB_CollectionId,
-                    Selectstr);
-
-
-                foreach (var DeleteNode in sum_DeleteNode)
-                {
-                    var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", docDbConnection.DocDB_DatabaseId,
-                        docDbConnection.DocDB_CollectionId, DeleteNode.id);
-                    await docDbConnection.DocDBclient.DeleteDocumentAsync(docLink);
-                }
-            }
-            else
-            {
-                docDbConnection.DocDB_finish = true;
-                throw new SyntaxErrorException("There are some edges still connect to these nodes.");
-            }
-            docDbConnection.DocDB_finish = true;
-        }
-
         public override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             var search = WhereClause.SearchCondition;
