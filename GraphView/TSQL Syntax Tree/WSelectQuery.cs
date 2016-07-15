@@ -542,6 +542,7 @@ namespace GraphView
                     patternNode.Neighbors = new List<MatchEdge>();
                     patternNode.ReverseNeighbors = new List<MatchEdge>();
                     patternNode.External = false;
+                    patternNode.Predicates = new List<WBooleanExpression>();
                 }
 
                 if (!SubGrpahMap.ContainsKey(root))
