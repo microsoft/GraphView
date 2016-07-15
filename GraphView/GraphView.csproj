@@ -65,9 +65,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AttachWhereClauseVisitor.cs" />
-    <Compile Include="BulkInsert.cs" />
+    <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBReferences.cs" />
-    <Compile Include="DocDBCodeGenerator.cs" />
     <Compile Include="GraphViewDocDBCommand.cs" />
     <Compile Include="GraphViewJsonCommand.cs" />
     <Compile Include="ObjectExtensions.cs" />
@@ -75,27 +74,19 @@
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
-    <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
-    <Compile Include="GraphViewQuickAccess.cs" />
-    <Compile Include="MatchComponent.cs" />
-    <Compile Include="MatchGraphInterface.cs" />
     <Compile Include="DocDBInsertDeleteOperartor.cs" />
     <Compile Include="TranslateMatchClauseVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
-    <Compile Include="View.cs" />
     <Compile Include="TranslateDataModificationVisitor.cs" />
-    <Compile Include="GetQueryTablesVisitor.cs" />
-    <Compile Include="TableSizeEstimator.cs" />
     <Compile Include="GraphDataModificationAnnotation.cs" />
     <Compile Include="GraphViewConnection.cs" />
     <Compile Include="GraphViewException.cs" />
     <Compile Include="MatchClauseVisitor.cs" />
     <Compile Include="GraphViewParser.cs" />
     <Compile Include="MatchGraph.cs" />
-    <Compile Include="GraphViewDefinedFunctionGenerator.cs" />
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
     <Compile Include="TSQL Syntax Tree\WCommonTableExpression .cs" />

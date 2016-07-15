@@ -126,39 +126,6 @@ namespace GraphView
             Command.Cancel();
         }
         
-
-        public GraphViewDataReader ExecuteReader()
-        {
-            try
-            {
-                var sr = new StringReader(CommandText);
-                var parser = new GraphViewParser();
-                IList<ParseError> errors;
-                var script = parser.Parse(sr, out errors) as WSqlScript;
-                if (errors.Count > 0)
-                    throw new SyntaxErrorException(errors);
-
-                var DocumentDBConnection = GraphViewConnection;
-
-                DocumentDBConnection.SetupClient();
-
-                foreach (var Batch in script.Batches)
-                    foreach (var statement in Batch.Statements)
-                        if (statement is WSelectStatement)
-                        {
-                            var selectStatement = (statement as WSelectStatement);
-                            var Query = selectStatement.QueryExpr as WSelectQueryBlock;
-                            GraphViewDataReader Reader = new GraphViewDataReader(Query.Generate(DocumentDBConnection));
-                            return Reader;
-                        }
-                return null;
-            }
-            catch (DocumentClientException e)
-            {
-                throw new SqlExecutionException("An error occurred when executing the query", e);
-            }
-        }
-        
         public int ExecuteNonQuery()
         {
             try

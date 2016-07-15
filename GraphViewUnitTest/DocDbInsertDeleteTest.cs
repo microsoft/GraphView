@@ -441,6 +441,84 @@ namespace GraphViewUnitTest
                 MATCH n1-[Edge AS e]->n2";
 
             gcmd.ExecuteNonQuery();
+
+            connection.ResetCollection();
+        }
+
+        [TestMethod]
+        public void DocDBTriangleSelectTest()
+        {
+            InsertBigGraphWithoutDeleteCollection();
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphTest");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT n1.name, n2.name
+                FROM node n1, node n2,node n3
+                MATCH n1-[Edge AS e1]->n2,
+                      n3-[Edge AS e2]->n2,
+                      n1-[Edge AS e3]->n3
+            ";
+
+            gcmd.ExecuteNonQuery();
+
+            connection.ResetCollection();
+        }
+
+        [TestMethod]
+        public void DocDBTwoTriangleSelectTest()
+        {
+            InsertBigGraphWithoutDeleteCollection();
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphTest");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT n1.name, n2.name, n3.name, n4.name
+                FROM node n1, node n2,node n3, node n4,node n5, node n6
+                MATCH n1-[Edge AS e1]->n2,
+                      n3-[Edge AS e2]->n2,
+                      n1-[Edge AS e3]->n3,
+                      n4-[Edge AS e4]->n5,
+                      n5-[Edge AS e5]->n6,
+                      n6-[Edge AS e6]->n4
+            ";
+
+            gcmd.ExecuteNonQuery();
+
+            connection.ResetCollection();
+        }
+
+        [TestMethod]
+        public void DocDBSquareSelectTest()
+        {
+            InsertBigGraphWithoutDeleteCollection();
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphTest");
+
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT n1.name, n2.name, n3.name, n4.name
+                FROM node n1, node n2,node n3, node n4
+                MATCH n1-[Edge AS e1]->n2,
+                      n2-[Edge AS e2]->n3,
+                      n3-[Edge AS e3]->n4,
+                      n4-[Edge AS e4]->n1
+            ";
+
+            gcmd.ExecuteNonQuery();
+
+            connection.ResetCollection();
         }
     }
 }
