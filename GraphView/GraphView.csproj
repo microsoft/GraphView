@@ -68,7 +68,15 @@
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBReferences.cs" />
     <Compile Include="GraphViewDocDBCommand.cs" />
+    <Compile Include="GraphViewGremlinParser.cs" />
     <Compile Include="GraphViewJsonCommand.cs" />
+    <Compile Include="Gremlin Parser Tree\WFragment.cs" />
+    <Compile Include="Gremlin Parser Tree\WFunction.cs" />
+    <Compile Include="Gremlin Parser Tree\WParameter.cs" />
+    <Compile Include="Gremlin Parser Tree\WParameters.cs" />
+    <Compile Include="Gremlin Parser Tree\WPath.cs" />
+    <Compile Include="Gremlin Parser Tree\WProgram.cs" />
+    <Compile Include="Gremlin Parser Tree\WSyntaxTree.cs" />
     <Compile Include="ObjectExtensions.cs" />
     <Compile Include="DocDBSelectQueryProcessor.cs" />
     <Compile Include="Statistics.cs" />
