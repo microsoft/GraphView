@@ -194,7 +194,7 @@ namespace GraphView
     /// </summary>
     public class FetchNodeOperator : GraphViewOperator
     {
-        internal static Record RecordZero;
+        private Record RecordZero;
         private Queue<Record> OutputBuffer;
         private int OutputBufferSize;
 
