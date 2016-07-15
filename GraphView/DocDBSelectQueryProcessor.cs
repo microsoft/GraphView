@@ -353,8 +353,8 @@ namespace GraphView
                 }
                 if (result != null) ResultsFromChildrenOperator.Last().Add(result);
             }
-            CartesianProductOnRecord(ResultsFromChildrenOperator, 0, new Record(header.Count));
-
+            if (OperatorOnSubGraphs.Count != 0) CartesianProductOnRecord(ResultsFromChildrenOperator, 0, new Record(header.Count));
+            OperatorOnSubGraphs.Clear();
             if (OutputBuffer.Count == 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
