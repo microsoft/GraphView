@@ -361,6 +361,38 @@ namespace GraphView
                     };
                     break;
                 }
+                case "AlterTableAddTableElementStatement":
+                {
+                    var alterTableAddEleStat = tsqlStat as AlterTableAddTableElementStatement;
+                    wstat = new WAlterTableAddTableElementStatement()
+                    {
+                        FirstTokenIndex = alterTableAddEleStat.FirstTokenIndex,
+                        LastTokenIndex = alterTableAddEleStat.LastTokenIndex,
+                        SchemaObjectName = ParseSchemaObjectName(alterTableAddEleStat.SchemaObjectName),
+                        Definition = ParseTableDefinition(alterTableAddEleStat.Definition),
+                    };
+                    break;
+                }
+                case "AlterTableDropTableElementStatement":
+                {
+                    var alterTableDropEleStat = tsqlStat as AlterTableDropTableElementStatement;
+                    var wastat = new WAlterTableDropTableElementStatement()
+                    {
+                        FirstTokenIndex = alterTableDropEleStat.FirstTokenIndex,
+                        LastTokenIndex = alterTableDropEleStat.LastTokenIndex,
+                        SchemaObjectName = ParseSchemaObjectName(alterTableDropEleStat.SchemaObjectName),
+                    };
+                    if (alterTableDropEleStat.AlterTableDropTableElements != null)
+                    {
+                        wastat.AlterTableDropTableElements = new List<WAlterTableDropTableElement>();
+                        foreach (var element in alterTableDropEleStat.AlterTableDropTableElements)
+                        {
+                            wastat.AlterTableDropTableElements.Add(ParseTableDropTableElement(element));
+                        }
+                    }
+                    wstat = wastat;
+                    break;
+                }
                 default:
                     {
                         wstat = new WSqlUnknownStatement(tsqlStat)
@@ -591,6 +623,22 @@ namespace GraphView
             foreach (var param in pDataType.Parameters)
                 wDataType.Parameters.Add(param);
             return wDataType;
+        }
+
+        private WAlterTableDropTableElement ParseTableDropTableElement(AlterTableDropTableElement tableElement)
+        {
+            if (tableElement == null)
+                return null;
+
+            var wTableElement = new WAlterTableDropTableElement
+            {
+                FirstTokenIndex = tableElement.FirstTokenIndex,
+                LastTokenIndex = tableElement.LastTokenIndex,
+                Name = tableElement.Name,
+                TableElementType = tableElement.TableElementType,
+            };
+            
+            return wTableElement;
         }
 
         private WSqlStatement ParseInsertStatement(InsertSpecification insSpec)

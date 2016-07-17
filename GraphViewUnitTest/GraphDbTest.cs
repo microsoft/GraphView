@@ -1093,6 +1093,75 @@ namespace GraphViewUnitTest
             }
 
         }
+
+        [TestMethod]
+        public void AddNodeTableProperty()
+        {
+            TestInitialization.ClearDatabase();
+            TestInitialization.CreateGraphTable();
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+
+                const string addPropertyStr = @"
+                    ALTER TABLE [dbo].[EmployeeNode]
+                    ADD [ColumnRole: ""Property""]
+                        phone varchar(32),
+                        [ColumnRole: ""Edge"", Reference: ""EmployeeNode""]
+                        EtoE varchar(max),
+                        [ColumnRole: ""Edge"", Reference: ""ClientNode"", Attributes: {int32: ""int"", str: ""string""}]
+                        EtoC varchar(max),
+                        [ColumnRole: ""Edge"", Reference: ""Nonexist""]
+                        EtoNon int
+                ";
+
+                graph.AddNodeTableColumn(addPropertyStr);
+            }
+        }
+
+        [TestMethod]
+        public void DropNodeTableColumn()
+        {
+            AddNodeTableProperty();
+
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+
+                //graph.CreateNodeView(@"
+                //    CREATE NODE VIEW NV1 AS
+                //    SELECT Workid as id, name, phone
+                //    FROM EmployeeNode
+                //    UNION ALL
+                //    SELECT Clientid as id, null, null
+                //    FROM ClientNode");
+                
+                //graph.CreateEdgeView(@"
+                //    CREATE EDGE VIEW NV1.EV1 AS
+                //    SELECT *
+                //    FROM EmployeeNode.EtoC
+                //    UNION ALL
+                //    SELECT *
+                //    FROM ClientNode.Colleagues
+                //    ");
+                
+                //graph.CreateEdgeView(@"
+                //    CREATE EDGE VIEW EmployeeNode.EV2 AS
+                //    SELECT *
+                //    FROM EmployeeNode.Clients
+                //    UNION ALL
+                //    SELECT *
+                //    FROM EmployeeNode.EtoE
+                //    ");
+
+                const string dropPropertyStr = @"
+                    ALTER TABLE [dbo].[EmployeeNode]
+                    DROP COLUMN [phone], EtoE, [EtoC], EtoNon
+                ";
+
+                graph.DropNodeTableColumn(dropPropertyStr);
+            }
+        }
     }
 
 }

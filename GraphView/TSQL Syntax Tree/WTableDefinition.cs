@@ -83,6 +83,52 @@ namespace GraphView
             }
             return sb.ToString();
         }
+
+        internal string ToString(string indent, string indent2)
+        {
+            var sb = new StringBuilder(1024);
+            bool first = true;
+            foreach (var t in ColumnDefinitions)
+            {
+                if (first)
+                {
+                    first = false;
+                    sb.AppendFormat("{0}{1}", indent, t);
+                }
+                else
+                {
+                    sb.Append(",\r\n");
+                    sb.AppendFormat("{0}{1}", indent2, t);
+                }
+            }
+            foreach (var t in TableConstraints)
+            {
+                if (first)
+                {
+                    first = false;
+                    sb.AppendFormat("{0}{1}", indent, t);
+                }
+                else
+                {
+                    sb.Append(",\r\n");
+                    sb.AppendFormat("{0}{1}", indent2, t);
+                }
+            }
+            foreach (var t in Indexes)
+            {
+                if (first)
+                {
+                    first = false;
+                    sb.AppendFormat("{0}{1}", indent, t);
+                }
+                else
+                {
+                    sb.Append(",\r\n");
+                    sb.AppendFormat("{0}{1}", indent2, t);
+                }
+            }
+            return sb.ToString();
+        }
     }
 
     public partial class WDeclareTableVariable : WSqlStatement
