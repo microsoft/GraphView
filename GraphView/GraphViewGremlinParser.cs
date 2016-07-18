@@ -627,13 +627,13 @@ namespace GraphView
                         MultiPartIdentifier =
                             new WMultiPartIdentifier()
                             {
-                                Identifiers = new List<Identifier>() {new Identifier() {Value = property.Key}}
+                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key } }
                             }
                     };
                 }
                 var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
                 var source = new WValuesInsertSource() { RowValues = row };
-                var target = new WNamedTableReference() {TableObjectString = "Node"};
+                var target = new WNamedTableReference() { TableObjectString = "Node" };
                 var InsertStatement = new WInsertSpecification()
                 {
                     Columns = columnK,
@@ -672,12 +672,24 @@ namespace GraphView
             {
                 var SelectStatement = new WSelectStatement();
                 var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
+
+
                 var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
                 foreach (var a in SematicContext.InternalAliasList)
                 {
-                    var TR = new WNamedTableReference() { Alias = new Identifier() { Value = a } };
-                    NewFromClause.TableReferences.Add(TR);
+                    if (a.Contains("N_"))
+                    {
+                        var TR = new WNamedTableReference()
+                        {
+                            Alias = new Identifier() { Value = a },
+                            TableObjectString = "node",
+                            TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
+                        };
+                        NewFromClause.TableReferences.Add(TR);
+                    }
                 }
+
+
                 var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
                 foreach (var path in SematicContext.Paths)
                 {
@@ -695,7 +707,7 @@ namespace GraphView
                                 MultiPartIdentifier =
                                     new WMultiPartIdentifier()
                                     {
-                                        Identifiers = new List<Identifier>() {new Identifier() {Value = path.Item2}}
+                                        Identifiers = new List<Identifier>() { new Identifier() { Value = "Edge" } }
                                     },
                                 Alias = path.Item2
                             }));
@@ -709,6 +721,8 @@ namespace GraphView
                     var NewPath = new WMatchPath() { PathEdgeList = PathEdges, Tail = TailNode };
                     NewMatchClause.Paths.Add((NewPath));
                 }
+
+
                 var NewSelectElementClause = new List<WSelectElement>();
                 foreach (var alias in SematicContext.PrimaryInternalAlias)
                 {
@@ -725,6 +739,8 @@ namespace GraphView
                     var element = new WSelectScalarExpression() { SelectExpr = SelectExpr };
                     NewSelectElementClause.Add(element);
                 }
+
+
                 var NewWhereClause = new WWhereClause();
                 var Condition = new WBooleanBinaryExpression();
                 List<WBooleanExpression> BooleanList = new List<WBooleanExpression>();
@@ -750,8 +766,7 @@ namespace GraphView
                         pIdentifiers.Add(new Identifier() { Value = secondExpr.Substring(0, cutpoint2) });
                         secondExpr = secondExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
                     }
-                    pIdentifiers.Add(new Identifier() { Value = secondExpr });
-                    var SecondRef = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers } };
+                    var SecondRef = new WValueExpression(secondExpr, false);
                     WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
                     {
                         ComparisonType = BooleanComparisonType.Equals,
@@ -760,11 +775,11 @@ namespace GraphView
                     };
                     BooleanList.Add(BBE);
                 }
-                if (BooleanList.Count > 1)
+                if (BooleanList.Count > 0)
                 {
                     if (BooleanList.Count == 1)
                     {
-                        NewWhereClause = new WWhereClause() {SearchCondition = BooleanList[0]};
+                        NewWhereClause = new WWhereClause() { SearchCondition = BooleanList[0] };
                     }
                     else
                     {
@@ -785,8 +800,9 @@ namespace GraphView
                         }
                     }
                 }
-
                 NewWhereClause = new WWhereClause() { SearchCondition = Condition };
+
+
                 SelectBlock = new WSelectQueryBlock()
                 {
                     FromClause = NewFromClause,

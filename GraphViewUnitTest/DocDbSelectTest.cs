@@ -185,6 +185,33 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void DocDBNoResonTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphSeven");
+
+            connection.SetupClient();
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT n2.name, n3.name
+                FROM node n1, node n2,node n3
+                MATCH n1-[Edge AS e1]->n2,
+                      n2-[Edge AS e2]->n3
+                WHERE n1.name = 'pluto' AND e1.type = 'brother' AND e2.type = 'lives'        
+            ";
+
+            var reader = gcmd.ExecuteReader();
+            while (reader.Read())
+            {
+            }
+
+            connection.ResetCollection();
+        }
+
+        [TestMethod]
         public void InsertBigGraphWithoutDeleteCollection(bool flag = true)
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
