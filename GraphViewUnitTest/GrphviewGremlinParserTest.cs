@@ -30,7 +30,7 @@ namespace GraphViewUnitTest
         public void TransformToSqlTreeTest()
         {
             string ErrorKey = "";
-            var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"g.V().has('name', 'hercules').out('father','mother').values('name')", ref ErrorKey);
+            var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"g.V(hercules).outE('battled').type", ref ErrorKey);
             GraphViewGremlinParser parser = new GraphViewGremlinParser(para.Item1, para.Item2);
             var ParserTree = parser.ParseTree();
             var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);

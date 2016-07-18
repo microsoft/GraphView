@@ -798,9 +798,10 @@ namespace GraphView
                                 SecondExpr = BooleanList[i]
                             };
                         }
+                        NewWhereClause = new WWhereClause() { SearchCondition = Condition };
                     }
                 }
-                NewWhereClause = new WWhereClause() { SearchCondition = Condition };
+
 
 
                 SelectBlock = new WSelectQueryBlock()

@@ -17,6 +17,7 @@ namespace GraphView
             string SrcNode;
             string DestNode;
             string Edge;
+            string Parameter;
             List<string> NewPrimaryInternalAlias = new List<string>();
             switch (KeywordIndex)
             {
@@ -119,7 +120,12 @@ namespace GraphView
                     pContext.NodeCount++;
                     Edge = "E_" + pContext.EdgeCount.ToString();
                     pContext.InternalAliasList.Add(Edge);
-                    pContext.AliasPredicates.Add("");
+                    if (Parameters != null)
+                    {
+                        Parameter = Parameters.Parameter[0].QuotedString;
+                        pContext.AliasPredicates.Add(Edge + ".type = " +Parameter);
+                    }
+                    else pContext.AliasPredicates.Add("");
                     pContext.EdgeCount++;
                     pContext.PrimaryInternalAlias.Clear();
                     pContext.PrimaryInternalAlias.Add(Edge);
@@ -138,7 +144,12 @@ namespace GraphView
                     pContext.NodeCount++;
                     Edge = "E_" + pContext.EdgeCount.ToString();
                     pContext.InternalAliasList.Add(Edge);
-                    pContext.AliasPredicates.Add("");
+                    if (Parameters != null)
+                    {
+                        Parameter = Parameters.Parameter[0].QuotedString;
+                        pContext.AliasPredicates.Add(Edge + ".type = " + Parameter);
+                    }
+                    else pContext.AliasPredicates.Add("");
                     pContext.EdgeCount++;
                     pContext.PrimaryInternalAlias.Clear();
                     pContext.PrimaryInternalAlias.Add(Edge);
