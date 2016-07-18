@@ -1112,20 +1112,46 @@ namespace GraphView
                         sinkNodeId.Item3, sourceNodeId.Item1);
                     command.ExecuteNonQuery();
 
+                    var revEdgeName = sourceTableName + "_" + edgeColumnName + "Reversed";
+
                     const string updateReversedEdgeData = @"
-                        UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
-                        From (
-                            Select tempTable.[{1}] as Sink, count(*) as sourceCount
-                            From {2} tempTable
-                            Join [{5}]
-                            On [{5}].[{6}] = tempTable.[{7}]
-                            Group by tempTable.[{1}]
-                        ) as [GraphView_InsertEdgeInternalTable]
-                        Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
-                    command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
-                        randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
-                        sourceNodeId.Item3);
+                    Select [{0}].globalnodeid, [GraphView_InsertEdgeInternalTable].binary, [GraphView_InsertEdgeInternalTable].sinkCount into #ParallelOptimalTempTable
+					From 
+					(
+					Select tempTable.[{2}] source, [{3}].{4} as binary, count([sinkTable].[GlobalNodeId]) as sinkCount
+                    From {5} tempTable
+                    Join [{3}].[{6}] sinkTable
+                    On sinkTable.[{7}] = tempTable.[{8}]
+                    Group by tempTable.[{2}]
+					)
+                    as [GraphView_InsertEdgeInternalTable],
+					[{3}].[{0}]
+                    Where [{0}].[{9}] = [GraphView_InsertEdgeInternalTable].source;
+                    UPDATE [{3}].[{0}] SET {1} .WRITE(temp.[binary], null, null), {1}OutDegree += sinkCount
+					from #ParallelOptimalTempTable temp
+					where temp.globalnodeid = [{0}].globalnodeid;
+                    drop table #ParallelOptimalTempTable;";
+                    command.Parameters.Clear();
+                    command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, revEdgeName,
+                        sinkNodeId.Item3,
+                        tableSchema, aggregateFunction, randomTempTableName, sourceTableName, sourceNodeId.Item1,
+                        sourceNodeId.Item3, sinkNodeId.Item1);
                     command.ExecuteNonQuery();
+
+//                    const string updateReversedEdgeData = @"
+//                        UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
+//                        From (
+//                            Select tempTable.[{1}] as Sink, count(*) as sourceCount
+//                            From {2} tempTable
+//                            Join [{5}]
+//                            On [{5}].[{6}] = tempTable.[{7}]
+//                            Group by tempTable.[{1}]
+//                        ) as [GraphView_InsertEdgeInternalTable]
+//                        Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
+//                    command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
+//                        randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
+//                        sourceNodeId.Item3);
+//                    command.ExecuteNonQuery();
                 }
                 else
                 {
@@ -1375,19 +1401,45 @@ namespace GraphView
                         command.ExecuteNonQuery();
                     }
 
+//                    const string updateReversedEdgeData = @"
+//                        UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
+//                        From (
+//                            Select tempTable.[{1}] as Sink, count(*) as sourceCount
+//                            From {2} tempTable
+//                            Join [{5}]
+//                            On [{5}].[{6}] = tempTable.[{7}]
+//                            Group by tempTable.[{1}]
+//                        ) as [GraphView_InsertEdgeInternalTable]
+//                        Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
+//                    command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
+//                        randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
+//                        sourceNodeId.Item3);
+//                    command.ExecuteNonQuery();
+
+                    var revEdgeName = sourceTableName + "_" + edgeColumnName + "Reversed";
+
                     const string updateReversedEdgeData = @"
-                        UPDATE [{3}].[{0}] SET [InDegree] += sourceCount
-                        From (
-                            Select tempTable.[{1}] as Sink, count(*) as sourceCount
-                            From {2} tempTable
-                            Join [{5}]
-                            On [{5}].[{6}] = tempTable.[{7}]
-                            Group by tempTable.[{1}]
-                        ) as [GraphView_InsertEdgeInternalTable]
-                        Where [GraphView_InsertEdgeInternalTable].Sink = [{0}].[{4}]";
-                    command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, sinkNodeId.Item3,
-                        randomTempTableName, tableSchema, sinkNodeId.Item1, sourceTableName, sourceNodeId.Item1,
-                        sourceNodeId.Item3);
+                    Select [{0}].globalnodeid, [GraphView_InsertEdgeInternalTable].binary, [GraphView_InsertEdgeInternalTable].sinkCount into #ParallelOptimalTempTable
+					From 
+					(
+					Select tempTable.[{2}] source, [{3}].{4} as binary, count([sinkTable].[GlobalNodeId]) as sinkCount
+                    From {5} tempTable
+                    Join [{3}].[{6}] sinkTable
+                    On sinkTable.[{7}] = tempTable.[{8}]
+                    Group by tempTable.[{2}]
+					)
+                    as [GraphView_InsertEdgeInternalTable],
+					[{3}].[{0}]
+                    Where [{0}].[{9}] = [GraphView_InsertEdgeInternalTable].source;
+                    UPDATE [{3}].[{0}] SET {1} .WRITE(temp.[binary], null, null), {1}OutDegree += sinkCount
+					from #ParallelOptimalTempTable temp
+					where temp.globalnodeid = [{0}].globalnodeid;
+                    drop table #ParallelOptimalTempTable;";
+                    command.Parameters.Clear();
+                    command.CommandText = string.Format(updateReversedEdgeData, sinkTableName, revEdgeName,
+                        sinkNodeId.Item3,
+                        tableSchema, aggregateFunction, randomTempTableName, sourceTableName, sourceNodeId.Item1,
+                        sourceNodeId.Item3, sinkNodeId.Item1);
                     command.ExecuteNonQuery();
                 }
 
