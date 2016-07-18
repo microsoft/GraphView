@@ -37,6 +37,7 @@ namespace GraphView
     public class WAlterTableAddTableElementStatement : WAlterTableStatement
     {
         // Omit ExistingRowsCheckEnforcement
+
         private WTableDefinition _definition;
         public WTableDefinition Definition
         {
@@ -70,6 +71,7 @@ namespace GraphView
     public class WAlterTableDropTableElement : WSqlFragment
     {
         // Omit DropClusteredConstraintOptions
+
         public Identifier Name { get; set; }
         public TableElementType TableElementType { get; set; }
 

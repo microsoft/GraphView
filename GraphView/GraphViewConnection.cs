@@ -2299,10 +2299,8 @@ namespace GraphView
                     command.Transaction = tx;
                     command.CommandText = string.Format(@"
                     select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ntc.ColumnRole, ntc.HasReversedEdge, ntc.IsReversedEdge, ntc.RefTableSchema, ntc.Reference
-                    from
-                    {0} as nt
-                    join
-                    {1} as ntc
+                    from {0} as nt
+                    join {1} as ntc
                     on ntc.TableId = nt.TableId
                     where ntc.ColumnRole = @role0 or ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2
                     order by ntc.TableId", MetadataTables[0], MetadataTables[1]);

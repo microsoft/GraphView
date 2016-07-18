@@ -1614,7 +1614,10 @@ namespace GraphView
                         {
                             // reference table haven't been created yet
                             if (!reader.Read())
+                            {
+                                hasRevEdgeView = false;
                                 return;
+                            }
                         }
                     }
 
@@ -1864,7 +1867,7 @@ namespace GraphView
         /// <param name="edgeView">The name of Edge View</param>
         /// <param name="isRevEdgeView"></param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the drop edge view will occur.</param>
-        public void DropEdgeView(string tableSchema, string tableName, string edgeView, bool isRevEdgeView,
+        private void DropEdgeView(string tableSchema, string tableName, string edgeView, bool isRevEdgeView,
             SqlTransaction externalTransaction = null)
         {
             var transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -1911,8 +1914,14 @@ namespace GraphView
                 {
                     if (!reader.Read())
                     {
-                        throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.",
-                            tableSchema, _nodeName, edgeView));
+                        if (!isRevEdgeView)
+                            throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.",
+                                tableSchema, _nodeName, edgeView));
+                        // an reversed edge view dosen't exist because 
+                        // some edges in the original edge view have no corresponding reversed edges
+                        // or reference tables haven't been created
+                        else
+                            return;
                     }
                 }
                 const string dropAttribtueRef = @"
@@ -1984,6 +1993,45 @@ namespace GraphView
                 if (externalTransaction == null)
                     transaction.Commit();
 #endif
+            }
+            catch (Exception error)
+            {
+                if (externalTransaction == null)
+                {
+                    transaction.Rollback();
+                }
+                throw new EdgeViewException("Drop edge view:" + error.Message);
+            }
+        }
+
+        /// <summary>
+        /// Drop Edge View
+        /// </summary>
+        /// <param name="tableSchema">The name of schema. Default(null or "") by "dbo".</param>
+        /// <param name="tableName">The name of node table.</param>
+        /// <param name="edgeView">The name of Edge View</param>
+        /// <param name="externalTransaction">An existing SqlTransaction instance under which the drop edge view will occur.</param>
+        public void DropEdgeView(string tableSchema, string tableName, string edgeView,
+            SqlTransaction externalTransaction = null)
+        {
+            var transaction = externalTransaction ?? Conn.BeginTransaction();
+
+            if (string.IsNullOrEmpty(tableSchema))
+                tableSchema = "dbo";
+
+            if (string.IsNullOrEmpty(tableName))
+                throw new EdgeViewException("The string of table name is null or empty.");
+
+            if (string.IsNullOrEmpty(edgeView))
+                throw new EdgeViewException("The string of edge view name is null or empty.");
+            try
+            {
+                var revEdgeView = tableName + "_" + edgeView + "Reversed";
+                DropEdgeView(tableSchema, tableName, edgeView, false, transaction);
+                DropEdgeView(tableSchema, tableName, revEdgeView, true, transaction);
+
+                if (externalTransaction == null)
+                    transaction.Commit();
             }
             catch (Exception error)
             {

@@ -366,7 +366,7 @@ namespace GraphViewUnitTest
                 graph.CreateNodeTable(createEmployeeStr);
                 var edges = new List<Tuple<string, string>>() {Tuple.Create("employeeNode", "CLients")};
                 graph.CreateEdgeView("dbo", "Employeenode", "edgeview", edges);
-                graph.DropEdgeView("dbo", "Employeenode", "edgeview", false);
+                graph.DropEdgeView("dbo", "Employeenode", "edgeview");
             }
         }
 
@@ -1095,7 +1095,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void AddNodeTableProperty()
+        public void AddNodeTableColumn()
         {
             TestInitialization.ClearDatabase();
             TestInitialization.CreateGraphTable();
@@ -1103,7 +1103,7 @@ namespace GraphViewUnitTest
             {
                 graph.Open();
 
-                const string addPropertyStr = @"
+                const string addColumnStr = @"
                     ALTER TABLE [dbo].[EmployeeNode]
                     ADD [ColumnRole: ""Property""]
                         phone varchar(32),
@@ -1115,14 +1115,14 @@ namespace GraphViewUnitTest
                         EtoNon int
                 ";
 
-                graph.AddNodeTableColumn(addPropertyStr);
+                graph.AddNodeTableColumn(addColumnStr);
             }
         }
 
         [TestMethod]
         public void DropNodeTableColumn()
         {
-            AddNodeTableProperty();
+            AddNodeTableColumn();
 
             using (var graph = new GraphViewConnection(_connStr))
             {
@@ -1154,12 +1154,12 @@ namespace GraphViewUnitTest
                 //    FROM EmployeeNode.EtoE
                 //    ");
 
-                const string dropPropertyStr = @"
+                const string dropColumnStr = @"
                     ALTER TABLE [dbo].[EmployeeNode]
                     DROP COLUMN [phone], EtoE, [EtoC], EtoNon
                 ";
 
-                graph.DropNodeTableColumn(dropPropertyStr);
+                graph.DropNodeTableColumn(dropColumnStr);
             }
         }
     }
