@@ -46,6 +46,10 @@ namespace GraphView
                     pContext.PrimaryInternalAlias.Add(Edge);
                     pContext.Paths.Add((new Tuple<string, string, string>(SrcNode, Edge, DestNode)));
                     break;
+                case (int)GraphViewGremlinParser.Keywords.next:
+                    for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
+                        pContext.PrimaryInternalAlias[i] += ".id";
+                    break;
                 case (int)GraphViewGremlinParser.Keywords.has:
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
