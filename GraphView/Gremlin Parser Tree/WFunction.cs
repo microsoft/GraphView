@@ -49,9 +49,8 @@ namespace GraphView
                 case (int)GraphViewGremlinParser.Keywords.has:
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
-                        index = pContext.PrimaryInternalAlias.IndexOf(alias);
+                        index = pContext.InternalAliasList.IndexOf(alias);
                         string QuotedString = Parameters.Parameter[0].QuotedString;
-                        QuotedString = QuotedString.Substring(1, QuotedString.Length - 2);
                         pContext.AliasPredicates[index] += alias + "." + QuotedString + " = " +
                                                            Parameters.Parameter[1].QuotedString;
                     }
@@ -209,24 +208,59 @@ namespace GraphView
                 case (int)GraphViewGremlinParser.Keywords.addV:
                     foreach (var a in Parameters.Parameter.FindAll(p => Parameters.Parameter.IndexOf(p) % 2 == 0))
                     {
-
-                    }
-                    break;
-                case (int)GraphViewGremlinParser.Keywords.addOutE:
-                    DestNode = Parameters.Parameter.First().QuotedString;
-                    foreach (var a in Parameters.Parameter.GetRange(1, Parameters.Parameter.Count - 1).FindAll(p => Parameters.Parameter.IndexOf(p) % 2 == 0))
-                    {
-                        pContext.Properties.Add(a.QuotedString, Parameters.Parameter[Parameters.Parameter.IndexOf(a) + 1].QuotedString);
-                    }
-                    pContext.AddEMark = true;
-                    break;
-                case (int)GraphViewGremlinParser.Keywords.addInE:
-                    SrcNode = Parameters.Parameter.First().QuotedString;
-                    foreach (var a in Parameters.Parameter.GetRange(1, Parameters.Parameter.Count - 1).FindAll(p => Parameters.Parameter.IndexOf(p) % 2 == 0))
-                    {
                         pContext.Properties.Add(a.QuotedString, Parameters.Parameter[Parameters.Parameter.IndexOf(a) + 1].QuotedString);
                     }
                     pContext.AddVMark = true;
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.addOutE:
+                    pContext.AddEMark = true;
+                    SrcNode = Parameters.Parameter.First().QuotedString;
+                    if (!pContext.ExplictAliasToInternalAlias.ContainsKey(SrcNode))
+                    {
+                        SrcNode = pContext.PrimaryInternalAlias[0];
+                        DestNode = pContext.ExplictAliasToInternalAlias[Parameters.Parameter[1].QuotedString];
+                        pContext.Properties.Add("type",Parameters.Parameter[0].QuotedString);
+                        for (int i = 2; i < Parameters.Parameter.Count; i += 2)
+                            pContext.Properties.Add(Parameters.Parameter[i].QuotedString,
+                                Parameters.Parameter[i + 1].QuotedString);
+                    }
+                    else
+                    {
+                        SrcNode = pContext.ExplictAliasToInternalAlias[Parameters.Parameter[0].QuotedString];
+                        DestNode = pContext.ExplictAliasToInternalAlias[Parameters.Parameter[2].QuotedString];
+                        pContext.Properties.Add("type",Parameters.Parameter[1].QuotedString);
+                        for (int i = 3; i < Parameters.Parameter.Count; i += 2)
+                            pContext.Properties.Add(Parameters.Parameter[i].QuotedString,
+                                Parameters.Parameter[i + 1].QuotedString);
+                    }
+                    pContext.PrimaryInternalAlias.Clear();
+                    pContext.PrimaryInternalAlias.Add(SrcNode);
+                    pContext.PrimaryInternalAlias.Add(DestNode);
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.addInE:
+                    pContext.AddEMark = true;
+                    SrcNode = Parameters.Parameter.First().QuotedString;
+                    if (!pContext.ExplictAliasToInternalAlias.ContainsKey(SrcNode))
+                    {
+                        DestNode = pContext.PrimaryInternalAlias[0];
+                        SrcNode = Parameters.Parameter[1].QuotedString;
+                        pContext.Properties.Add("type",Parameters.Parameter[0].QuotedString);
+                        for (int i = 2; i < Parameters.Parameter.Count; i += 2)
+                            pContext.Properties.Add(Parameters.Parameter[i].QuotedString,
+                                Parameters.Parameter[i + 1].QuotedString);
+                    }
+                    else
+                    {
+                        SrcNode = pContext.ExplictAliasToInternalAlias[Parameters.Parameter[0].QuotedString];
+                        DestNode = pContext.ExplictAliasToInternalAlias[Parameters.Parameter[2].QuotedString];
+                        pContext.Properties.Add("type",Parameters.Parameter[1].QuotedString);
+                        for (int i = 3; i < Parameters.Parameter.Count; i += 2)
+                            pContext.Properties.Add(Parameters.Parameter[i].QuotedString,
+                                Parameters.Parameter[i + 1].QuotedString);
+                    }
+                    pContext.PrimaryInternalAlias.Clear();
+                    pContext.PrimaryInternalAlias.Add(SrcNode);
+                    pContext.PrimaryInternalAlias.Add(DestNode);
                     break;
                 case (int)GraphViewGremlinParser.Keywords.values:
                     string ValuePara = Parameters.Parameter[0].QuotedString;

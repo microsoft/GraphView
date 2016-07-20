@@ -194,7 +194,7 @@ namespace GraphView
         }
 
 
-        internal WSqlStatement Parse(string Script)
+        public WSqlStatement Parse(string Script)
         {
             string ErrorKey = "";
             var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"Script", ref ErrorKey);
@@ -414,6 +414,12 @@ namespace GraphView
             NextToken = 0;
             FarestError = -1;
         }
+
+        internal GraphViewGremlinParser()
+        {
+            NextToken = 0;
+            FarestError = -1;
+        }
         internal WProgram ParseTree()
         {
             WPath pPath;
@@ -486,10 +492,14 @@ namespace GraphView
             result.Parameter = new List<WParameter>();
             while ((pParameter = ParseParameter()) != null && ParseColon())
             {
+                if (pParameter.QuotedString.First()=='\'' && pParameter.QuotedString.Last() == '\'')
+                    pParameter.QuotedString = pParameter.QuotedString.Substring(1, pParameter.QuotedString.Length - 2);
                 result.Parameter.Add(pParameter);
             }
             if (pParameter != null)
             {
+                if (pParameter.QuotedString.First() == '\'' && pParameter.QuotedString.Last() == '\'')
+                    pParameter.QuotedString = pParameter.QuotedString.Substring(1, pParameter.QuotedString.Length - 2);
                 result.Parameter.Add(pParameter);
                 return result;
             }
@@ -602,7 +612,8 @@ namespace GraphView
                 NodeCount = 0,
                 EdgeCount = 0,
                 AddEMark = false,
-                AddVMark = false
+                AddVMark = false,
+                Properties = new Dictionary<string, string>()
             };
             ParserTree = pParserTree;
         }
@@ -614,62 +625,6 @@ namespace GraphView
 
         public void Transform()
         {
-            if (SematicContext.AddVMark)
-            {
-                var columnV = new List<WScalarExpression>();
-                var columnK = new List<WColumnReferenceExpression>();
-                foreach (var property in SematicContext.Properties)
-                {
-                    var value = new WValueExpression(property.Value, true);
-                    columnV.Add(value);
-                    var key = new WColumnReferenceExpression()
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier()
-                            {
-                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key } }
-                            }
-                    };
-                }
-                var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
-                var source = new WValuesInsertSource() { RowValues = row };
-                var target = new WNamedTableReference() { TableObjectString = "Node" };
-                var InsertStatement = new WInsertSpecification()
-                {
-                    Columns = columnK,
-                    InsertSource = source,
-                    Target = target
-                };
-            }
-            if (SematicContext.AddVMark)
-            {
-                var columnV = new List<WScalarExpression>();
-                var columnK = new List<WColumnReferenceExpression>();
-                foreach (var property in SematicContext.Properties)
-                {
-                    var value = new WValueExpression(property.Value, true);
-                    columnV.Add(value);
-                    var key = new WColumnReferenceExpression()
-                    {
-                        MultiPartIdentifier =
-                            new WMultiPartIdentifier()
-                            {
-                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key } }
-                            }
-                    };
-                }
-                var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
-                var source = new WValuesInsertSource() { RowValues = row };
-                var target = new WNamedTableReference() { TableObjectString = "Edge" };
-                var InsertStatement = new WInsertSpecification()
-                {
-                    Columns = columnK,
-                    InsertSource = source,
-                    Target = target
-                };
-            }
-            if (!SematicContext.AddEMark && !SematicContext.AddVMark)
-            {
                 var SelectStatement = new WSelectStatement();
                 var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
 
@@ -749,7 +704,7 @@ namespace GraphView
                     if (expr == "") continue;
                     int cutpoint = expr.IndexOf('=');
                     string firstExpr = expr.Substring(0, cutpoint);
-                    string secondExpr = expr.Substring(cutpoint + 1, expr.Length - cutpoint - 1);
+                    string secondExpr = expr.Substring(cutpoint + 2, expr.Length - cutpoint - 2);
                     var pIdentifiers = new List<Identifier>();
                     while (firstExpr.IndexOf('.') != -1)
                     {
@@ -758,7 +713,7 @@ namespace GraphView
                         firstExpr = firstExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
                     }
                     pIdentifiers.Add(new Identifier() { Value = firstExpr });
-                    var FirstRef = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers } };
+                    var FirstRef = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers }};
                     pIdentifiers = new List<Identifier>();
                     while (secondExpr.IndexOf('.') != -1)
                     {
@@ -766,7 +721,7 @@ namespace GraphView
                         pIdentifiers.Add(new Identifier() { Value = secondExpr.Substring(0, cutpoint2) });
                         secondExpr = secondExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
                     }
-                    var SecondRef = new WValueExpression(secondExpr, false);
+                    var SecondRef = new WValueExpression(secondExpr, true);
                     WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
                     {
                         ComparisonType = BooleanComparisonType.Equals,
@@ -812,10 +767,75 @@ namespace GraphView
                     MatchClause = NewMatchClause
                 };
                 SelectStatement = new WSelectStatement() { QueryExpr = SelectBlock };
+
                 SqlTree = SelectStatement;
+
+            if (SematicContext.AddVMark)
+            {
+                var columnV = new List<WScalarExpression>();
+                var columnK = new List<WColumnReferenceExpression>();
+                foreach (var property in SematicContext.Properties)
+                {
+                    var value = new WValueExpression(property.Value, true);
+                    columnV.Add(value);
+                    var key = new WColumnReferenceExpression()
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier()
+                            {
+                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key } }
+                            }
+                    };
+                    columnK.Add(key);
+                }
+                var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
+                var source = new WValuesInsertSource() { RowValues = row };
+                var target = new WNamedTableReference() { TableObjectString = "Node" };
+                var InsertStatement = new WInsertSpecification()
+                {
+                    Columns = columnK,
+                    InsertSource = source,
+                    Target = target
+                };
+                var InsertNode = new WInsertNodeSpecification(InsertStatement);
+                SqlTree = InsertNode;
             }
+            if (SematicContext.AddEMark)
+            {
+                var columnV = new List<WScalarExpression>();
+                var columnK = new List<WColumnReferenceExpression>();
+
+                foreach (var property in SematicContext.Properties)
+                {
+                    var value = new WValueExpression(property.Value, true);
+                    columnV.Add(value);
+                    var key = new WColumnReferenceExpression()
+                    {
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier()
+                            {
+                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key }}
+                            }
+                    };
+                    SelectBlock.SelectElements.Add(new WSelectScalarExpression() {SelectExpr = new WValueExpression(property.Value,true)});
+                    columnK.Add(key);
+                }
+                var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
+                var source = new WValuesInsertSource() { RowValues = row };
+                var target = new WNamedTableReference() { TableObjectString = "Edge" };
+                var InsertStatement = new WInsertSpecification()
+                {
+                    Columns = columnK,
+                    InsertSource = new WSelectInsertSource() { Select = SelectBlock },
+                    Target = target
+                };
+                var InsertEdge = new WInsertEdgeSpecification(InsertStatement) {SelectInsertSource = new WSelectInsertSource() {Select = SelectBlock} };
+                SqlTree = InsertEdge;
+            }
+
+        }
         }
 
     }
-}
+
 
