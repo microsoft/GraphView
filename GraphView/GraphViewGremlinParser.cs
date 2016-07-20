@@ -36,7 +36,7 @@ namespace GraphView
             AsToken,
             Space,
             Keyword,
-            Identifier
+            Identifier,
         };
         internal enum Keywords
         {
@@ -60,7 +60,7 @@ namespace GraphView
             fold,
             group,
             groupCount,
-            has,//20
+            has,//20// supported
             inject,
             Is,
             limit,
@@ -92,20 +92,26 @@ namespace GraphView
             Out, // supported
             In,//50 // supported
             both,
-            outE,
-            inE,
+            outE,// supported
+            inE,// supported
             bothE,
-            outV,//55
-            inV,
+            outV,//55// supported
+            inV,// supported
             bothV,
             otherV,
             where,
-            values,//60
+            values,//60// supported
             label,
             V, // supported
             E,// supported
             next,
-            g//65// supported
+            g,//65// supported
+            eq,
+            neq,
+            lt,
+            lte,
+            gt, //70
+            gte,
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
@@ -174,7 +180,13 @@ namespace GraphView
            {"V", Keywords.V },
            {"E", Keywords.E },
            {"g",Keywords.g },
-           {"next", Keywords.next }
+           {"next", Keywords.next },
+           {"eq",Keywords.eq},
+            {"neq",Keywords.neq},
+            {"lt",Keywords.lt},
+            {"lte",Keywords.lte},
+            {"gt",Keywords.gt},
+            {"gte",Keywords.gte}
         };
         internal class Token
         {
@@ -492,13 +504,13 @@ namespace GraphView
             result.Parameter = new List<WParameter>();
             while ((pParameter = ParseParameter()) != null && ParseColon())
             {
-                if (pParameter.QuotedString.First()=='\'' && pParameter.QuotedString.Last() == '\'')
+                if (pParameter.QuotedString != null && pParameter.QuotedString.First()=='\'' && pParameter.QuotedString.Last() == '\'')
                     pParameter.QuotedString = pParameter.QuotedString.Substring(1, pParameter.QuotedString.Length - 2);
                 result.Parameter.Add(pParameter);
             }
             if (pParameter != null)
             {
-                if (pParameter.QuotedString.First() == '\'' && pParameter.QuotedString.Last() == '\'')
+                if (pParameter.QuotedString != null && pParameter.QuotedString.First() == '\'' && pParameter.QuotedString.Last() == '\'')
                     pParameter.QuotedString = pParameter.QuotedString.Substring(1, pParameter.QuotedString.Length - 2);
                 result.Parameter.Add(pParameter);
                 return result;
@@ -509,15 +521,25 @@ namespace GraphView
 
         internal WParameter ParseParameter()
         {
+            double pConstValue = ParseNumber();
+            if (!Double.IsNaN(pConstValue)) return new WParameter() {Number = pConstValue, IdentifierIndex = -1};
             string pQuotedString = ParseQuotedString();
-            if (pQuotedString != null) return new WParameter() { QuotedString = pQuotedString, IdentifierIndex = -1 };
+            if (pQuotedString != null) return new WParameter() { QuotedString = pQuotedString, IdentifierIndex = -1, Number = double.NaN};
             int pidentifier = ParseIdentifier();
-            if (pidentifier != -1) return new WParameter() { IdentifierIndex = pidentifier };
+            if (pidentifier != -1) return new WParameter() { IdentifierIndex = pidentifier,Number = double.NaN};
             WFunction pfunction = ParseFunction();
-            if (pfunction != null) return new WParameter() { Function = pfunction, IdentifierIndex = -1 };
+            if (pfunction != null) return new WParameter() { Function = pfunction, IdentifierIndex = -1, Number = double.NaN };
             return null;
         }
-
+        internal double ParseNumber()
+        {
+            string value = "";
+            if (ReadToken(TokenList, TokenType.Double, ref NextToken, ref value, ref FarestError))
+                return double.Parse(value);
+            if (ReadToken(TokenList, TokenType.Integer, ref NextToken, ref value, ref FarestError))
+                return Int32.Parse(value);
+            else return double.NaN;
+        }
         internal int ParseIdentifier()
         {
             int index = 0;
@@ -702,8 +724,34 @@ namespace GraphView
                 foreach (var expr in SematicContext.AliasPredicates)
                 {
                     if (expr == "") continue;
-                    int cutpoint = expr.IndexOf('=');
-                    string firstExpr = expr.Substring(0, cutpoint);
+                    int cutpoint = 0;
+                    BooleanComparisonType CompType = BooleanComparisonType.Equals;
+                    if (expr.IndexOf('=') != -1)
+                    {
+                        cutpoint = expr.IndexOf('=');
+                        CompType = BooleanComparisonType.Equals;
+                    }
+                    if (expr.IndexOf('<') != -1)
+                    {
+                        cutpoint = expr.IndexOf('<');
+                        CompType = BooleanComparisonType.LessThan;
+                    }
+                if (expr.IndexOf('>') != -1)
+                    {
+                    cutpoint = expr.IndexOf('>');
+                    CompType = BooleanComparisonType.GreaterThan;
+                    if (expr.IndexOf('[') != -1)
+                    {
+                        cutpoint = expr.IndexOf('[');
+                        CompType = BooleanComparisonType.LessThanOrEqualTo;
+                    }
+                    if (expr.IndexOf(']') != -1)
+                    {
+                        cutpoint = expr.IndexOf(']');
+                        CompType = BooleanComparisonType.GreaterThanOrEqualTo;
+                    }
+                }
+                string firstExpr = expr.Substring(0, cutpoint);
                     string secondExpr = expr.Substring(cutpoint + 2, expr.Length - cutpoint - 2);
                     var pIdentifiers = new List<Identifier>();
                     while (firstExpr.IndexOf('.') != -1)
@@ -721,10 +769,15 @@ namespace GraphView
                         pIdentifiers.Add(new Identifier() { Value = secondExpr.Substring(0, cutpoint2) });
                         secondExpr = secondExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
                     }
-                    var SecondRef = new WValueExpression(secondExpr, true);
+                    double temp;
+                    WValueExpression SecondRef = null;
+                    if (double.TryParse(secondExpr, out temp))
+                        SecondRef = new WValueExpression(secondExpr, false);
+                    else 
+                        SecondRef = new WValueExpression(secondExpr, true);
                     WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
                     {
-                        ComparisonType = BooleanComparisonType.Equals,
+                        ComparisonType = CompType,
                         FirstExpr = FirstRef,
                         SecondExpr = SecondRef
                     };

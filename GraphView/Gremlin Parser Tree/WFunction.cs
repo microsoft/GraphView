@@ -51,8 +51,30 @@ namespace GraphView
                     {
                         index = pContext.InternalAliasList.IndexOf(alias);
                         string QuotedString = Parameters.Parameter[0].QuotedString;
-                        pContext.AliasPredicates[index] += alias + "." + QuotedString + " = " +
-                                                           Parameters.Parameter[1].QuotedString;
+                        if (pContext.AliasPredicates[index] != "") pContext.AliasPredicates[index] += " AND ";
+                        if (Parameters.Parameter[1].Function != null)
+                        {
+                            if (Parameters.Parameter[1].Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.lt)
+                                pContext.AliasPredicates[index] += alias + "." + QuotedString + " < " +
+                                   Parameters.Parameter[1].Function.Parameters.Parameter[0].Number.ToString();
+                            if (Parameters.Parameter[1].Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.gt)
+                                pContext.AliasPredicates[index] += alias + "." + QuotedString + " > " +
+                                   Parameters.Parameter[1].Function.Parameters.Parameter[0].Number.ToString();
+                            if (Parameters.Parameter[1].Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.eq)
+                                pContext.AliasPredicates[index] += alias + "." + QuotedString + " = " +
+                                   Parameters.Parameter[1].Function.Parameters.Parameter[0].Number.ToString();
+                            if (Parameters.Parameter[1].Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.lte)
+                                pContext.AliasPredicates[index] += alias + "." + QuotedString + " [ " +
+                                   Parameters.Parameter[1].Function.Parameters.Parameter[0].Number.ToString();
+                            if (Parameters.Parameter[1].Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.gte)
+                                pContext.AliasPredicates[index] += alias + "." + QuotedString + " ] " +
+                                   Parameters.Parameter[1].Function.Parameters.Parameter[0].Number.ToString();
+                        }
+                        else
+                        {
+                            pContext.AliasPredicates[index] += alias + "." + QuotedString + " = " +
+                                                               Parameters.Parameter[1].QuotedString;
+                        }
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.Out:
@@ -63,6 +85,7 @@ namespace GraphView
                         pContext.AliasPredicates.Add("");
                         pContext.EdgeCount++;
                         index = pContext.InternalAliasList.Count;
+                        if (pContext.AliasPredicates[index - 1] != "") pContext.AliasPredicates[index] += " AND ";
                         pContext.AliasPredicates[index - 1] += Edge + ".type" + " = " +
                                                                para.QuotedString;
                         foreach (var alias in pContext.PrimaryInternalAlias)
@@ -91,6 +114,7 @@ namespace GraphView
                         pContext.AliasPredicates.Add("");
                         pContext.EdgeCount++;
                         index = pContext.InternalAliasList.Count;
+                        if (pContext.AliasPredicates[index - 1] != "") pContext.AliasPredicates[index] += " AND ";
                         pContext.AliasPredicates[index - 1] += Edge + ".type" + " = " +
                                                                para.QuotedString;
                         foreach (var alias in pContext.PrimaryInternalAlias)
@@ -264,7 +288,6 @@ namespace GraphView
                     break;
                 case (int)GraphViewGremlinParser.Keywords.values:
                     string ValuePara = Parameters.Parameter[0].QuotedString;
-                    ValuePara = ValuePara.Substring(1, ValuePara.Length - 2);
                     for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
                         pContext.PrimaryInternalAlias[i] += "." + ValuePara;
                     break;
