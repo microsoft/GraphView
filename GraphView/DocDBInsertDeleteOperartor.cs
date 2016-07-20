@@ -113,7 +113,7 @@ namespace GraphView
             ReplaceDocument(map);
 
             while (!UploadFinish)
-                System.Threading.Thread.Sleep(100);
+                System.Threading.Thread.Sleep(10);
 
             Close();
             return null;
@@ -197,7 +197,7 @@ namespace GraphView
             ReplaceDocument(map);
 
             while (!UploadFinish)
-                System.Threading.Thread.Sleep(100);
+                System.Threading.Thread.Sleep(10);
 
             Close();
 
@@ -232,7 +232,7 @@ namespace GraphView
             CreateDocument(obj);
 
             while(!UploadFinish)
-                System.Threading.Thread.Sleep(100);
+                System.Threading.Thread.Sleep(10);
 
             Close();
             return null;
@@ -288,7 +288,7 @@ namespace GraphView
                         dbConnection.DocDB_CollectionId, DeleteNode.id);
                     DeleteDocument(docLink);
                     while(!UploadFinish)
-                        System.Threading.Thread.Sleep(100);
+                        System.Threading.Thread.Sleep(10);
                 }
             }
             else

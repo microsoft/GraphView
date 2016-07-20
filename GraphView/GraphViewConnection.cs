@@ -255,7 +255,7 @@ namespace GraphView
             DocDB_finish = false;
             BuildUp();
             while (!DocDB_finish)
-                Thread.Sleep(100);
+                System.Threading.Thread.Sleep(10);
         }
 
         public async Task BuildUp()
@@ -307,7 +307,7 @@ namespace GraphView
             DocDB_finish = false;
             DeleteCollection();
             while (!DocDB_finish)
-                Thread.Sleep(100);
+                System.Threading.Thread.Sleep(10);
         }
         
         /// <summary>
