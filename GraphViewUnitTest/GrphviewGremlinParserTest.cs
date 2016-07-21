@@ -38,7 +38,7 @@ namespace GraphViewUnitTest
             SematicAnalyser.Transform();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
         "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-        "GroupMatch", "GraphSix");
+        "GroupMatch", "GraphTest");
             connection.SetupClient();
             var insertNode = SematicAnalyser.SqlTree as WInsertEdgeSpecification;
             var op = insertNode.Generate(connection);
