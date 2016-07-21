@@ -10,7 +10,6 @@ namespace GraphView
     {
         internal int KeywordIndex;
         internal WParameters Parameters;
-
         internal void Transform(ref GraphViewGremlinSematicAnalyser.Context pContext)
         {
             int index;

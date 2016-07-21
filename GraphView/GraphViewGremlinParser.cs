@@ -104,14 +104,14 @@ namespace GraphView
             label,
             V, // supported
             E,// supported
-            next,
+            next,// supported
             g,//65// supported
-            eq,
+            eq,// supported
             neq,
-            lt,
-            lte,
-            gt, //70
-            gte,
+            lt,// supported
+            lte,// supported
+            gt, //70// supported
+            gte,// supported
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
@@ -251,7 +251,9 @@ namespace GraphView
                     {new Regex(@"(\s+)"), TokenType.Space}
                 };
             }
-
+            /// <summary>
+            /// Tokenize the input script
+            /// </summary>
             internal static Tuple<List<Token>, List<string>> Tokenize(string text, ref string ErrorKey)
             {
                 if (TokenRules == null) Initialize();
@@ -264,6 +266,7 @@ namespace GraphView
                 while (position < text.Length)
                 {
                     Type = TokenType.Null;
+                    // Find the fitest token type
                     var result = TokenRules
                         .Select(p => Tuple.Create(p.Key.Match(text, position), p.Value))
                         .FirstOrDefault(t => t.Item1.Index == position && t.Item1.Success);
@@ -273,14 +276,18 @@ namespace GraphView
                         return null;
                     }
 
+                    // Mark as Keyword
                     if (KeyWordDic.ContainsKey(result.Item1.Value)) Type = TokenType.Keyword;
+                    // Mark as Identifier
                     if (result.Item2 == TokenType.NameToken && !KeyWordDic.ContainsKey(result.Item1.Value))
                         Type = TokenType.Identifier;
+                    // Mark as other token type
                     if (Type == TokenType.Null)
                         Type = result.Item2;
 
                     if (Type != TokenType.Space)
                     {
+                        // add double quoted string
                         if (Type == TokenType.DoubleQuotedString)
                         {
                             tokens.Add(new Token()
@@ -290,6 +297,7 @@ namespace GraphView
                                 position = position
                             });
                         }
+                        // add keyword
                         if (Type == TokenType.Keyword)
                         {
                             tokens.Add(new Keyword()
@@ -300,6 +308,7 @@ namespace GraphView
                                 KeywordIndex = KeyWordDic[result.Item1.Value]
                             });
                         }
+                        // add identifier
                         else if (Type == TokenType.Identifier)
                         {
                             int identifier = -1;
@@ -320,6 +329,7 @@ namespace GraphView
                         }
                         else
                         {
+                            // add other token
                             tokens.Add(new Token()
                             {
                                 type = Type,
@@ -335,6 +345,9 @@ namespace GraphView
             }
         }
 
+/// <summary>
+/// Read a spcific token by type at pNextToken, and return the value of it
+/// </summary>
         internal static bool ReadToken(
             List<Token> tokens,
             TokenType type,
@@ -359,7 +372,9 @@ namespace GraphView
                 return false;
             }
         }
-
+        /// <summary>
+        /// Read a spcific token by type at pNextToken, and return the index of keyword/identifier
+        /// </summary>
         internal static bool ReadToken(
     List<Token> tokens,
     TokenType type,
@@ -387,7 +402,9 @@ namespace GraphView
                 return false;
             }
         }
-
+        /// <summary>
+        /// Read a spcific token by value at pNextToken
+        /// </summary>
         internal static bool ReadToken(
             List<Token> tokens,
             string text,
@@ -502,6 +519,7 @@ namespace GraphView
             WParameters result = new WParameters();
             WParameter pParameter;
             result.Parameter = new List<WParameter>();
+            // the quote of the parameter will be cut off here
             while ((pParameter = ParseParameter()) != null && ParseColon())
             {
                 if (pParameter.QuotedString != null && pParameter.QuotedString.First()=='\'' && pParameter.QuotedString.Last() == '\'')
@@ -533,6 +551,7 @@ namespace GraphView
         }
         internal double ParseNumber()
         {
+            // All the number value will be return as a double.
             string value = "";
             if (ReadToken(TokenList, TokenType.Double, ref NextToken, ref value, ref FarestError))
                 return double.Parse(value);
@@ -603,6 +622,7 @@ namespace GraphView
 
     public class GraphViewGremlinSematicAnalyser
     {
+        // Internal representation of the traversal statue, which maintains a statue of current "traversal steps"
         internal struct Context
         {
             internal List<string> PrimaryInternalAlias { get; set; }
@@ -619,7 +639,9 @@ namespace GraphView
         }
 
         internal Context SematicContext;
+        // Gremlin syntax tree
         internal WProgram ParserTree;
+        // TSQL(Graphview) syntax tree
         internal WSqlStatement SqlTree;
         internal GraphViewGremlinSematicAnalyser(WProgram pParserTree, List<string> pIdentifiers)
         {
@@ -645,12 +667,13 @@ namespace GraphView
             ParserTree.Transform(ref SematicContext);
         }
 
+        // Transform the Gremlin Parser Tree into TSQL Parser tree
         public void Transform()
         {
                 var SelectStatement = new WSelectStatement();
                 var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
 
-
+            // Consturct the new From Clause
                 var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
                 foreach (var a in SematicContext.InternalAliasList)
                 {
@@ -666,8 +689,8 @@ namespace GraphView
                     }
                 }
 
-
-                var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
+            // Consturct the new Match Clause
+            var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
                 foreach (var path in SematicContext.Paths)
                 {
                     var PathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
@@ -699,8 +722,9 @@ namespace GraphView
                     NewMatchClause.Paths.Add((NewPath));
                 }
 
+            // Consturct the new Select Component
 
-                var NewSelectElementClause = new List<WSelectElement>();
+            var NewSelectElementClause = new List<WSelectElement>();
                 foreach (var alias in SematicContext.PrimaryInternalAlias)
                 {
                     var pIdentifiers = new List<Identifier>();
@@ -717,8 +741,9 @@ namespace GraphView
                     NewSelectElementClause.Add(element);
                 }
 
+            // Consturct the new Where Clause
 
-                var NewWhereClause = new WWhereClause();
+            var NewWhereClause = new WWhereClause();
                 var Condition = new WBooleanBinaryExpression();
                 List<WBooleanExpression> BooleanList = new List<WBooleanExpression>();
                 foreach (var expr in SematicContext.AliasPredicates)
@@ -810,8 +835,6 @@ namespace GraphView
                     }
                 }
 
-
-
                 SelectBlock = new WSelectQueryBlock()
                 {
                     FromClause = NewFromClause,
@@ -823,6 +846,7 @@ namespace GraphView
 
                 SqlTree = SelectStatement;
 
+            // If needed to add vertex, consturct new InsertNodeStatement
             if (SematicContext.AddVMark)
             {
                 var columnV = new List<WScalarExpression>();
@@ -853,6 +877,9 @@ namespace GraphView
                 var InsertNode = new WInsertNodeSpecification(InsertStatement);
                 SqlTree = InsertNode;
             }
+
+            // If needed to add edge, consturct new InsertEdgeStatement
+
             if (SematicContext.AddEMark)
             {
                 var columnV = new List<WScalarExpression>();
