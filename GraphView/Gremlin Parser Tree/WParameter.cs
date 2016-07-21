@@ -11,6 +11,6 @@ namespace GraphView
         internal double Number { get; set; }
         internal string QuotedString { get; set; }
         internal int IdentifierIndex { get; set; }
-        internal WFunction Function { get; set; }
+        internal WFragment Fragment { get; set; }
     }
 }

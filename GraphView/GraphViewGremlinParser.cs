@@ -209,7 +209,7 @@ namespace GraphView
         public WSqlStatement Parse(string Script)
         {
             string ErrorKey = "";
-            var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(@"Script", ref ErrorKey);
+            var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(Script, ref ErrorKey);
             Identifiers = para.Item2;
             TokenList = para.Item1;
             NextToken = 0;
@@ -345,9 +345,9 @@ namespace GraphView
             }
         }
 
-/// <summary>
-/// Read a spcific token by type at pNextToken, and return the value of it
-/// </summary>
+        /// <summary>
+        /// Read a spcific token by type at pNextToken, and return the value of it
+        /// </summary>
         internal static bool ReadToken(
             List<Token> tokens,
             TokenType type,
@@ -522,7 +522,7 @@ namespace GraphView
             // the quote of the parameter will be cut off here
             while ((pParameter = ParseParameter()) != null && ParseColon())
             {
-                if (pParameter.QuotedString != null && pParameter.QuotedString.First()=='\'' && pParameter.QuotedString.Last() == '\'')
+                if (pParameter.QuotedString != null && pParameter.QuotedString.First() == '\'' && pParameter.QuotedString.Last() == '\'')
                     pParameter.QuotedString = pParameter.QuotedString.Substring(1, pParameter.QuotedString.Length - 2);
                 result.Parameter.Add(pParameter);
             }
@@ -540,13 +540,13 @@ namespace GraphView
         internal WParameter ParseParameter()
         {
             double pConstValue = ParseNumber();
-            if (!Double.IsNaN(pConstValue)) return new WParameter() {Number = pConstValue, IdentifierIndex = -1};
+            if (!Double.IsNaN(pConstValue)) return new WParameter() { Number = pConstValue, IdentifierIndex = -1 };
             string pQuotedString = ParseQuotedString();
-            if (pQuotedString != null) return new WParameter() { QuotedString = pQuotedString, IdentifierIndex = -1, Number = double.NaN};
+            if (pQuotedString != null) return new WParameter() { QuotedString = pQuotedString, IdentifierIndex = -1, Number = double.NaN };
             int pidentifier = ParseIdentifier();
-            if (pidentifier != -1) return new WParameter() { IdentifierIndex = pidentifier,Number = double.NaN};
-            WFunction pfunction = ParseFunction();
-            if (pfunction != null) return new WParameter() { Function = pfunction, IdentifierIndex = -1, Number = double.NaN };
+            if (pidentifier != -1) return new WParameter() { IdentifierIndex = pidentifier, Number = double.NaN };
+            WFragment pFragment = ParseFragment();
+            if (pFragment != null) return new WParameter() { Fragment = pFragment, IdentifierIndex = -1, Number = double.NaN };
             return null;
         }
         internal double ParseNumber()
@@ -627,7 +627,7 @@ namespace GraphView
         {
             internal List<string> PrimaryInternalAlias { get; set; }
             internal List<string> InternalAliasList { get; set; }
-            internal List<string> AliasPredicates { get; set; }
+            internal List<List<string>> AliasPredicates { get; set; }
             internal List<Tuple<string, string, string>> Paths { get; set; }
             internal List<string> Identifiers { get; set; }
             internal Dictionary<string, string> Properties { get; set; }
@@ -649,7 +649,7 @@ namespace GraphView
             {
                 PrimaryInternalAlias = new List<string>(),
                 InternalAliasList = new List<string>(),
-                AliasPredicates = new List<string>(),
+                AliasPredicates = new List<List<string>>(),
                 Paths = new List<Tuple<string, string, string>>(),
                 Identifiers = pIdentifiers,
                 ExplictAliasToInternalAlias = new Dictionary<string, string>(),
@@ -670,83 +670,85 @@ namespace GraphView
         // Transform the Gremlin Parser Tree into TSQL Parser tree
         public void Transform()
         {
-                var SelectStatement = new WSelectStatement();
-                var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
+            var SelectStatement = new WSelectStatement();
+            var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
 
             // Consturct the new From Clause
-                var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
-                foreach (var a in SematicContext.InternalAliasList)
+            var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
+            foreach (var a in SematicContext.InternalAliasList)
+            {
+                if (a.Contains("N_"))
                 {
-                    if (a.Contains("N_"))
+                    var TR = new WNamedTableReference()
                     {
-                        var TR = new WNamedTableReference()
-                        {
-                            Alias = new Identifier() { Value = a },
-                            TableObjectString = "node",
-                            TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
-                        };
-                        NewFromClause.TableReferences.Add(TR);
-                    }
+                        Alias = new Identifier() { Value = a },
+                        TableObjectString = "node",
+                        TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
+                    };
+                    NewFromClause.TableReferences.Add(TR);
                 }
+            }
 
             // Consturct the new Match Clause
             var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
-                foreach (var path in SematicContext.Paths)
-                {
-                    var PathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
-                    PathEdges.Add(new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>
-                        (new WSchemaObjectName()
-                        {
-                            Identifiers = new List<Identifier>()
-                            {
-                                new Identifier() {Value = path.Item1}
-                            }
-                        },
-                            new WEdgeColumnReferenceExpression()
-                            {
-                                MultiPartIdentifier =
-                                    new WMultiPartIdentifier()
-                                    {
-                                        Identifiers = new List<Identifier>() { new Identifier() { Value = "Edge" } }
-                                    },
-                                Alias = path.Item2
-                            }));
-                    var TailNode = new WSchemaObjectName()
+            foreach (var path in SematicContext.Paths)
+            {
+                var PathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
+                PathEdges.Add(new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>
+                    (new WSchemaObjectName()
                     {
                         Identifiers = new List<Identifier>()
+                        {
+                                new Identifier() {Value = path.Item1}
+                        }
+                    },
+                        new WEdgeColumnReferenceExpression()
+                        {
+                            MultiPartIdentifier =
+                                new WMultiPartIdentifier()
+                                {
+                                    Identifiers = new List<Identifier>() { new Identifier() { Value = "Edge" } }
+                                },
+                            Alias = path.Item2
+                        }));
+                var TailNode = new WSchemaObjectName()
+                {
+                    Identifiers = new List<Identifier>()
                             {
                                 new Identifier() {Value = path.Item3}
                             }
-                    };
-                    var NewPath = new WMatchPath() { PathEdgeList = PathEdges, Tail = TailNode };
-                    NewMatchClause.Paths.Add((NewPath));
-                }
+                };
+                var NewPath = new WMatchPath() { PathEdgeList = PathEdges, Tail = TailNode };
+                NewMatchClause.Paths.Add((NewPath));
+            }
 
             // Consturct the new Select Component
 
             var NewSelectElementClause = new List<WSelectElement>();
-                foreach (var alias in SematicContext.PrimaryInternalAlias)
+            foreach (var alias in SematicContext.PrimaryInternalAlias)
+            {
+                var pIdentifiers = new List<Identifier>();
+                var TempString = alias;
+                while (TempString.IndexOf('.') != -1)
                 {
-                    var pIdentifiers = new List<Identifier>();
-                    var TempString = alias;
-                    while (TempString.IndexOf('.') != -1)
-                    {
-                        int cutpoint = TempString.IndexOf('.');
-                        pIdentifiers.Add(new Identifier() { Value = TempString.Substring(0, cutpoint) });
-                        TempString = TempString.Substring(cutpoint + 1, TempString.Length - cutpoint - 1);
-                    }
-                    pIdentifiers.Add(new Identifier() { Value = TempString });
-                    var SelectExpr = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers } };
-                    var element = new WSelectScalarExpression() { SelectExpr = SelectExpr };
-                    NewSelectElementClause.Add(element);
+                    int cutpoint = TempString.IndexOf('.');
+                    pIdentifiers.Add(new Identifier() { Value = TempString.Substring(0, cutpoint) });
+                    TempString = TempString.Substring(cutpoint + 1, TempString.Length - cutpoint - 1);
                 }
+                pIdentifiers.Add(new Identifier() { Value = TempString });
+                var SelectExpr = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers } };
+                var element = new WSelectScalarExpression() { SelectExpr = SelectExpr };
+                NewSelectElementClause.Add(element);
+            }
 
             // Consturct the new Where Clause
 
             var NewWhereClause = new WWhereClause();
-                var Condition = new WBooleanBinaryExpression();
-                List<WBooleanExpression> BooleanList = new List<WBooleanExpression>();
-                foreach (var expr in SematicContext.AliasPredicates)
+            var Condition = new WBooleanBinaryExpression();
+            List<WBooleanExpression> BooleanList = new List<WBooleanExpression>();
+            foreach (var exprs in SematicContext.AliasPredicates)
+            {
+                foreach (var expr in exprs)
                 {
                     if (expr == "") continue;
                     int cutpoint = 0;
@@ -761,10 +763,11 @@ namespace GraphView
                         cutpoint = expr.IndexOf('<');
                         CompType = BooleanComparisonType.LessThan;
                     }
-                if (expr.IndexOf('>') != -1)
+                    if (expr.IndexOf('>') != -1)
                     {
-                    cutpoint = expr.IndexOf('>');
-                    CompType = BooleanComparisonType.GreaterThan;
+                        cutpoint = expr.IndexOf('>');
+                        CompType = BooleanComparisonType.GreaterThan;
+                    }
                     if (expr.IndexOf('[') != -1)
                     {
                         cutpoint = expr.IndexOf('[');
@@ -775,8 +778,12 @@ namespace GraphView
                         cutpoint = expr.IndexOf(']');
                         CompType = BooleanComparisonType.GreaterThanOrEqualTo;
                     }
-                }
-                string firstExpr = expr.Substring(0, cutpoint);
+                    if (expr.IndexOf('!') != -1)
+                    {
+                        cutpoint = expr.IndexOf('!');
+                        CompType = BooleanComparisonType.NotEqualToExclamation;
+                    }
+                    string firstExpr = expr.Substring(0, cutpoint);
                     string secondExpr = expr.Substring(cutpoint + 2, expr.Length - cutpoint - 2);
                     var pIdentifiers = new List<Identifier>();
                     while (firstExpr.IndexOf('.') != -1)
@@ -786,19 +793,23 @@ namespace GraphView
                         firstExpr = firstExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
                     }
                     pIdentifiers.Add(new Identifier() { Value = firstExpr });
-                    var FirstRef = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers }};
+                    var FirstRef = new WColumnReferenceExpression()
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers }
+                    };
                     pIdentifiers = new List<Identifier>();
                     while (secondExpr.IndexOf('.') != -1)
                     {
                         int cutpoint2 = secondExpr.IndexOf('.');
                         pIdentifiers.Add(new Identifier() { Value = secondExpr.Substring(0, cutpoint2) });
-                        secondExpr = secondExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
+                        secondExpr = secondExpr.Substring(cutpoint2 + 1, secondExpr.Length - cutpoint2 - 1);
                     }
+                    pIdentifiers.Add(new Identifier() { Value = secondExpr });
                     double temp;
                     WValueExpression SecondRef = null;
                     if (double.TryParse(secondExpr, out temp))
                         SecondRef = new WValueExpression(secondExpr, false);
-                    else 
+                    else
                         SecondRef = new WValueExpression(secondExpr, true);
                     WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
                     {
@@ -808,43 +819,44 @@ namespace GraphView
                     };
                     BooleanList.Add(BBE);
                 }
-                if (BooleanList.Count > 0)
+            }
+            if (BooleanList.Count > 0)
+            {
+                if (BooleanList.Count == 1)
                 {
-                    if (BooleanList.Count == 1)
+                    NewWhereClause = new WWhereClause() { SearchCondition = BooleanList[0] };
+                }
+                else
+                {
+                    Condition = new WBooleanBinaryExpression()
                     {
-                        NewWhereClause = new WWhereClause() { SearchCondition = BooleanList[0] };
-                    }
-                    else
+                        BooleanExpressionType = BooleanBinaryExpressionType.And,
+                        FirstExpr = BooleanList[0],
+                        SecondExpr = BooleanList[1]
+                    };
+                    for (int i = 2; i < BooleanList.Count; i++)
                     {
                         Condition = new WBooleanBinaryExpression()
                         {
                             BooleanExpressionType = BooleanBinaryExpressionType.And,
-                            FirstExpr = BooleanList[0],
-                            SecondExpr = BooleanList[1]
+                            FirstExpr = Condition,
+                            SecondExpr = BooleanList[i]
                         };
-                        for (int i = 2; i < BooleanList.Count; i++)
-                        {
-                            Condition = new WBooleanBinaryExpression()
-                            {
-                                BooleanExpressionType = BooleanBinaryExpressionType.And,
-                                FirstExpr = Condition,
-                                SecondExpr = BooleanList[i]
-                            };
-                        }
-                        NewWhereClause = new WWhereClause() { SearchCondition = Condition };
                     }
+                    NewWhereClause = new WWhereClause() { SearchCondition = Condition };
                 }
+            }
 
-                SelectBlock = new WSelectQueryBlock()
-                {
-                    FromClause = NewFromClause,
-                    SelectElements = NewSelectElementClause,
-                    WhereClause = NewWhereClause,
-                    MatchClause = NewMatchClause
-                };
-                SelectStatement = new WSelectStatement() { QueryExpr = SelectBlock };
+            SelectBlock = new WSelectQueryBlock()
+            {
+                FromClause = NewFromClause,
+                SelectElements = NewSelectElementClause,
+                WhereClause = NewWhereClause,
+                MatchClause = NewMatchClause
+            };
+            SelectStatement = new WSelectStatement() { QueryExpr = SelectBlock };
 
-                SqlTree = SelectStatement;
+            SqlTree = SelectStatement;
 
             // If needed to add vertex, consturct new InsertNodeStatement
             if (SematicContext.AddVMark)
@@ -894,10 +906,10 @@ namespace GraphView
                         MultiPartIdentifier =
                             new WMultiPartIdentifier()
                             {
-                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key }}
+                                Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key } }
                             }
                     };
-                    SelectBlock.SelectElements.Add(new WSelectScalarExpression() {SelectExpr = new WValueExpression(property.Value,true)});
+                    SelectBlock.SelectElements.Add(new WSelectScalarExpression() { SelectExpr = new WValueExpression(property.Value, true) });
                     columnK.Add(key);
                 }
                 var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
@@ -909,13 +921,13 @@ namespace GraphView
                     InsertSource = new WSelectInsertSource() { Select = SelectBlock },
                     Target = target
                 };
-                var InsertEdge = new WInsertEdgeSpecification(InsertStatement) {SelectInsertSource = new WSelectInsertSource() {Select = SelectBlock} };
+                var InsertEdge = new WInsertEdgeSpecification(InsertStatement) { SelectInsertSource = new WSelectInsertSource() { Select = SelectBlock } };
                 SqlTree = InsertEdge;
             }
 
         }
-        }
-
     }
+
+}
 
 
