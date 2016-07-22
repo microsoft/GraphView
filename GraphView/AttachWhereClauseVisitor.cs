@@ -104,7 +104,7 @@ namespace GraphView
         private MatchGraph _graph;
         private Dictionary<string, string> _columnTableMapping;
         private readonly BindTableVisitor _bindTableVisitor = new BindTableVisitor();
-
+        internal List<WBooleanExpression> FailedToAssign = new List<WBooleanExpression>();
         public void Invoke(WWhereClause node, MatchGraph graph, Dictionary<string, string> columnTableMapping)
         {
             _graph = graph;
@@ -136,6 +136,7 @@ namespace GraphView
                 }
                 node.Predicates.Add(expr);
             }
+            else FailedToAssign.Add(expr);
         }
 
         public override void Visit(WBooleanBinaryExpression node)

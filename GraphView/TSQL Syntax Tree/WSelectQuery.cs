@@ -28,6 +28,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Microsoft.VisualBasic;
 
 namespace GraphView
 {
@@ -348,9 +349,9 @@ namespace GraphView
             // Construct a header for the processor it will generate to interpret its result
             List<string> header = ConstructHeader(graph);
             // Attach pre-generated docDB script to the node on Match graph
-            AttachScriptSegment(graph, header);
+            List<ComparisonBooleanFunction> Functions = AttachScriptSegment(graph, header);
             // Generate proper processor for the current syntax element
-            return GenerateProcessor(graph, header, pConnection);
+            return GenerateProcessor(graph, header, pConnection,Functions);
         }
 
         private MatchGraph ConstructGraph()
@@ -578,13 +579,45 @@ namespace GraphView
             return Graph;
         }
 
-        private void AttachScriptSegment(MatchGraph graph, List<string> header)
+        private List<ComparisonBooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header)
         {
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
             WSqlTableContext Context = new WSqlTableContext();
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
+            List<ComparisonBooleanFunction> BooleanList = new List<ComparisonBooleanFunction>();
+            //BooleanFunction RootBooleanFunction = null;
+            foreach (var predicate in AttachPredicateVistor.FailedToAssign)
+            {
+                string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
+                string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
+                header.Add(FirstExpr);
+                header.Add(SecondExpr);
+                FieldComparisonFunction NewCBF = null;
+                if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.Equals)
+                    NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2, ComparisonBooleanFunction.ComparisonType.eq);
+                if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.NotEqualToExclamation)
+                    NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2, ComparisonBooleanFunction.ComparisonType.neq);
+                BooleanList.Add(NewCBF);
+            }
+            //if (BooleanList.Count > 0)
+            //{
+            //    if (BooleanList.Count == 1)
+            //    {
+            //        RootBooleanFunction = BooleanList[0];
+            //    }
+            //    else
+            //    {
+            //        RootBooleanFunction = new BinaryFunction(BooleanList[1], BooleanList[2],
+            //            BinaryBooleanFunction.BinaryType.and);
+            //        for (int i = 2; i < BooleanList.Count; i++)
+            //        {
+            //            RootBooleanFunction = new BinaryFunction(RootBooleanFunction, BooleanList[i],
+            //                BinaryBooleanFunction.BinaryType.and);
+            //        }
+            //    }
+            //}
             // Calculate how much nodes the whole match graph has.
             int StartOfResult = 0;
             foreach (var subgraph in graph.ConnectedSubGraphs)
@@ -603,6 +636,7 @@ namespace GraphView
                     ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                 }
             }
+            return BooleanList;
         }
 
         private List<string> ConstructHeader(MatchGraph graph)
@@ -633,12 +667,17 @@ namespace GraphView
             }
             return header;
         }
-        private GraphViewOperator GenerateProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection)
+        private GraphViewOperator GenerateProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<ComparisonBooleanFunction> functions)
         {
             Record RecordZero = new Record(header.Count);
 
             List<GraphViewOperator> ChildrenProcessor = new List<GraphViewOperator>();
             List<GraphViewOperator> RootProcessor = new List<GraphViewOperator>();
+            List<int> FunctionVaildalityCheck = new List<int>();
+            foreach (var i in functions)
+            {
+                FunctionVaildalityCheck.Add(0);
+            }
             int StartOfResult = 0;
             // Generate processor subgraph by subgraph 
             foreach (var subgraph in graph.ConnectedSubGraphs)
@@ -650,7 +689,6 @@ namespace GraphView
                 while (SortedNodes.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = SortedNodes.Pop();
-                    
                     // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
                     // Otherwise it will be dealed by a TraversalOperator.
                     if (FirstNodeFlag)
@@ -667,6 +705,17 @@ namespace GraphView
                         foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
                             ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias), neighbor.EdgeAlias + "_REV");
                         ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
+                    }
+                    for (int i = 0; i < functions.Count; i++)
+                    {
+                        string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
+                        string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
+                        if (CurrentProcessingNode.AttachedQuerySegment.Contains(lhs))
+                            FunctionVaildalityCheck[i]++;
+                        if (CurrentProcessingNode.AttachedQuerySegment.Contains(rhs))
+                            FunctionVaildalityCheck[i]++;
+                        if (FunctionVaildalityCheck[i] == 2)
+                            (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck = functions[i];
                     }
                 }
                 // The last processor of a sub graph will be added to root processor list for later use.

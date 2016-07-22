@@ -12,18 +12,21 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSix");
+                    "GroupMatch", "GremlinTest");
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                Select A
-                From Node A
+                Select A, B, C
+                From Node A, Node B, Node C
+                Match A-[edge as e]->B, B-[edge as f]->C
+                Where A.id = C.id
             ";
 
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
+                var rc = reader;
             }
 
             connection.ResetCollection();

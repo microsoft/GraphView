@@ -15,7 +15,7 @@ namespace GraphView
     /// TraversalOperator.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
-    public class TraversalOperator : GraphViewOperator
+    internal class TraversalOperator : GraphViewOperator
     {
         // Buffer on both input and output sides.
         private Queue<Record> InputBuffer;
@@ -40,8 +40,9 @@ namespace GraphView
 
         // Defining which fields should the reverse check have on.
         private Dictionary<int,string> ReverseCheckList;
+        internal BooleanFunction BooleanCheck;
 
-        public TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, Dictionary<int, string> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize)
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, Dictionary<int, string> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             ChildOperator = pChildProcessor;
@@ -56,6 +57,7 @@ namespace GraphView
             ReverseCheckList = pReverseCheckList;
             header = pheader;
             StartOfResultField = pStartOfResultField;
+            BooleanCheck = pBooleanCheck;
         }
         override public Record Next()
         {
@@ -124,6 +126,7 @@ namespace GraphView
                                 if ((Edge == record.RetriveData(ReverseNode.Key)) && record.RetriveData(ReverseNode.Key + 1).Contains(ID))
                                 {
                                     Record NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
+                                    if (RecordFilter(NewRecord))
                                     OutputBuffer.Enqueue(NewRecord);
                                 }
                             }
@@ -149,6 +152,11 @@ namespace GraphView
             return Result;
         }
 
+        private bool RecordFilter(Record r)
+        {
+            if (BooleanCheck == null) return true;
+            else return BooleanCheck.eval(r);
+        }
         private Tuple<string, string, string> DecodeJObject(JObject Item, bool ShowEdge = false)
         {
             JToken NodeInfo = ((JObject)Item)["NodeInfo"];
