@@ -306,6 +306,13 @@ namespace GraphView
                         }
                     }
                     break;
+                case (int)GraphViewGremlinParser.Keywords.aggregate:
+                    pContext.ExplictAliasToInternalAlias.Add(Parameters.Parameter[0].QuotedString, pContext.PrimaryInternalAlias[0]);
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.and:
+                    foreach(var piece in Parameters.Parameter)
+                        if (piece.Fragment != null) piece.Fragment.Transform(ref pContext);
+                    break;
                 default:
                     break;
             }

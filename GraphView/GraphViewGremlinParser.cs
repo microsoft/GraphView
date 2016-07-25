@@ -44,8 +44,8 @@ namespace GraphView
             addInE,// supported
             addV,// supported
             property,
-            aggregate,
-            and,//5
+            aggregate,// supported
+            and,//5 // supported
             As,// supported
             by,
             cap,
@@ -75,7 +75,7 @@ namespace GraphView
             order,
             path,
             range,
-            repeat,//35
+            repeat,//35 // supported
             sack,
             sample,
             select,// supported
@@ -91,17 +91,17 @@ namespace GraphView
             valueMap,
             Out, // supported
             In,//50 // supported
-            both,
+            both,// supported
             outE,// supported
             inE,// supported
-            bothE,
+            bothE,// supported
             outV,//55// supported
             inV,// supported
-            bothV,
-            otherV,
+            bothV,// supported
+            otherV,// supported
             where,// supported
             values,//60// supported
-            label,
+            label,// supported
             V, // supported
             E,// supported
             next,// supported
@@ -113,7 +113,7 @@ namespace GraphView
             gt, //70// supported
             gte,// supported
             placeholder,// supported
-            times
+            times// supported
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
