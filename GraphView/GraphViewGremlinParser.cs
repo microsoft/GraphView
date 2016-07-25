@@ -67,7 +67,7 @@ namespace GraphView
             local,
             mapKeys,//25
             mapValues,
-            match,
+            match,// supported
             max,
             mean,
             min,//30
@@ -99,7 +99,7 @@ namespace GraphView
             inV,// supported
             bothV,
             otherV,
-            where,
+            where,// supported
             values,//60// supported
             label,
             V, // supported
@@ -107,11 +107,13 @@ namespace GraphView
             next,// supported
             g,//65// supported
             eq,// supported
-            neq,
+            neq,// supported
             lt,// supported
             lte,// supported
             gt, //70// supported
             gte,// supported
+            placeholder,// supported
+            times
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
@@ -186,7 +188,9 @@ namespace GraphView
             {"lt",Keywords.lt},
             {"lte",Keywords.lte},
             {"gt",Keywords.gt},
-            {"gte",Keywords.gte}
+            {"gte",Keywords.gte},
+            {"__",Keywords.placeholder},
+            {"times",Keywords.times}
         };
         internal class Token
         {

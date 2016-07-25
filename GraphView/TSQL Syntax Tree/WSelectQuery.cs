@@ -349,9 +349,9 @@ namespace GraphView
             // Construct a header for the processor it will generate to interpret its result
             List<string> header = ConstructHeader(graph);
             // Attach pre-generated docDB script to the node on Match graph
-            List<ComparisonBooleanFunction> Functions = AttachScriptSegment(graph, header);
+            List<BooleanFunction> Functions = AttachScriptSegment(graph, header);
             // Generate proper processor for the current syntax element
-            return GenerateProcessor(graph, header, pConnection,Functions);
+            return GenerateProcessor(graph, header, pConnection, Functions);
         }
 
         private MatchGraph ConstructGraph()
@@ -579,45 +579,49 @@ namespace GraphView
             return Graph;
         }
 
-        private List<ComparisonBooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header)
+        private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header)
         {
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
             WSqlTableContext Context = new WSqlTableContext();
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
-            List<ComparisonBooleanFunction> BooleanList = new List<ComparisonBooleanFunction>();
-            //BooleanFunction RootBooleanFunction = null;
+            List<BooleanFunction> BooleanList = new List<BooleanFunction>();
             foreach (var predicate in AttachPredicateVistor.FailedToAssign)
             {
-                string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
-                string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
-                header.Add(FirstExpr);
-                header.Add(SecondExpr);
-                FieldComparisonFunction NewCBF = null;
-                if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.Equals)
-                    NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2, ComparisonBooleanFunction.ComparisonType.eq);
-                if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.NotEqualToExclamation)
-                    NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2, ComparisonBooleanFunction.ComparisonType.neq);
-                BooleanList.Add(NewCBF);
+                if (predicate is WBooleanComparisonExpression)
+                {
+                    string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
+                    string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
+                    header.Add(FirstExpr);
+                    header.Add(SecondExpr);
+                    FieldComparisonFunction NewCBF = null;
+                    if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.Equals)
+                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                            ComparisonBooleanFunction.ComparisonType.eq);
+                    if ((predicate as WBooleanComparisonExpression).ComparisonType ==
+                        BooleanComparisonType.NotEqualToExclamation)
+                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                            ComparisonBooleanFunction.ComparisonType.neq);
+                    if ((predicate as WBooleanComparisonExpression).ComparisonType ==
+    BooleanComparisonType.LessThan)
+                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                            ComparisonBooleanFunction.ComparisonType.lt);
+                    if ((predicate as WBooleanComparisonExpression).ComparisonType ==
+    BooleanComparisonType.GreaterThan)
+                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                            ComparisonBooleanFunction.ComparisonType.gt);
+                    if ((predicate as WBooleanComparisonExpression).ComparisonType ==
+    BooleanComparisonType.GreaterThanOrEqualTo)
+                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                            ComparisonBooleanFunction.ComparisonType.gte);
+                    if ((predicate as WBooleanComparisonExpression).ComparisonType ==
+    BooleanComparisonType.LessThanOrEqualTo)
+                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                            ComparisonBooleanFunction.ComparisonType.lte);
+                    BooleanList.Add(NewCBF);
+                }
             }
-            //if (BooleanList.Count > 0)
-            //{
-            //    if (BooleanList.Count == 1)
-            //    {
-            //        RootBooleanFunction = BooleanList[0];
-            //    }
-            //    else
-            //    {
-            //        RootBooleanFunction = new BinaryFunction(BooleanList[1], BooleanList[2],
-            //            BinaryBooleanFunction.BinaryType.and);
-            //        for (int i = 2; i < BooleanList.Count; i++)
-            //        {
-            //            RootBooleanFunction = new BinaryFunction(RootBooleanFunction, BooleanList[i],
-            //                BinaryBooleanFunction.BinaryType.and);
-            //        }
-            //    }
-            //}
             // Calculate how much nodes the whole match graph has.
             int StartOfResult = 0;
             foreach (var subgraph in graph.ConnectedSubGraphs)
@@ -667,7 +671,7 @@ namespace GraphView
             }
             return header;
         }
-        private GraphViewOperator GenerateProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<ComparisonBooleanFunction> functions)
+        private GraphViewOperator GenerateProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
             Record RecordZero = new Record(header.Count);
 
@@ -699,7 +703,7 @@ namespace GraphView
                     }
                     else
                     {
-                        Dictionary<int,string> ReverseCheckList = new Dictionary<int, string>();
+                        Dictionary<int, string> ReverseCheckList = new Dictionary<int, string>();
                         int src = header.IndexOf(CurrentProcessingNode.ReverseNeighbors[0].SinkNode.NodeAlias);
                         int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
                         foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
@@ -708,21 +712,32 @@ namespace GraphView
                     }
                     for (int i = 0; i < functions.Count; i++)
                     {
-                        string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
-                        string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
-                        if (CurrentProcessingNode.AttachedQuerySegment.Contains(lhs))
-                            FunctionVaildalityCheck[i]++;
-                        if (CurrentProcessingNode.AttachedQuerySegment.Contains(rhs))
-                            FunctionVaildalityCheck[i]++;
-                        if (FunctionVaildalityCheck[i] == 2)
-                            (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck = functions[i];
+                        if (functions[i] is FieldComparisonFunction)
+                        {
+                            string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
+                            string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
+                            if (CurrentProcessingNode.AttachedQuerySegment.Contains(lhs))
+                                FunctionVaildalityCheck[i]++;
+                            if (CurrentProcessingNode.AttachedQuerySegment.Contains(rhs))
+                                FunctionVaildalityCheck[i]++;
+                            if (FunctionVaildalityCheck[i] == 2)
+                            {
+                                if ((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck == null)
+                                    (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck = functions[i];
+                                else
+                                    (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck =
+                                        new BinaryFunction((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck, functions[i], BinaryBooleanFunction.BinaryType.and);
+                                FunctionVaildalityCheck[i] = 0;
+
+                            }
+                        }
                     }
                 }
                 // The last processor of a sub graph will be added to root processor list for later use.
                 RootProcessor.Add(ChildrenProcessor.Last());
             }
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
-            return new CartesianProductOperator(pConnection,RootProcessor,header,100);
+            return new CartesianProductOperator(pConnection, RootProcessor, header, 100);
         }
 
         private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField)
@@ -742,7 +757,7 @@ namespace GraphView
                 if (edge != node.ReverseNeighbors.Concat(node.Neighbors).Last())
                     foreach (var predicate in edge.Predicates)
                     {
-                            PredicatesOnReverseEdge += predicate + " AND ";
+                        PredicatesOnReverseEdge += predicate + " AND ";
                     }
                 else
                     foreach (var predicate in edge.Predicates)
@@ -755,7 +770,7 @@ namespace GraphView
 
             FromClauseString = " FROM " + FromClauseString;
 
-            foreach(var predicate in node.Predicates)
+            foreach (var predicate in node.Predicates)
             {
                 if (predicate != node.Predicates.Last())
                     PredicatesOnNodes += predicate + " AND ";
@@ -777,9 +792,9 @@ namespace GraphView
             {
                 int CutPoint = ResultIndex.Length;
                 if (ResultIndex.IndexOf('.') != -1) CutPoint = ResultIndex.IndexOf('.');
-                if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias )
+                if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias)
                     ResultIndexToAppend.Add(ResultIndex);
-                foreach(var edge in node.ReverseNeighbors)
+                foreach (var edge in node.ReverseNeighbors)
                 {
                     if (ResultIndex.Substring(0, CutPoint) == edge.EdgeAlias)
                         ResultIndexToAppend.Add(ResultIndex);
@@ -878,63 +893,63 @@ namespace GraphView
             }
         }
     }
-        public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
-        {
+    public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
+    {
 
+    }
+
+    public partial class WTopRowFilter : WSqlFragment
+    {
+        internal bool Percent { set; get; }
+        internal bool WithTies { get; set; }
+        internal WScalarExpression Expression { get; set; }
+
+        internal override bool OneLine()
+        {
+            return Expression.OneLine();
         }
 
-        public partial class WTopRowFilter : WSqlFragment
+        internal override string ToString(string indent)
         {
-            internal bool Percent { set; get; }
-            internal bool WithTies { get; set; }
-            internal WScalarExpression Expression { get; set; }
+            var sb = new StringBuilder(32);
 
-            internal override bool OneLine()
+            sb.AppendFormat("{0}TOP ", indent);
+
+            if (Expression.OneLine())
             {
-                return Expression.OneLine();
+                sb.Append(Expression.ToString(""));
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(Expression.ToString(indent + "  "));
             }
 
-            internal override string ToString(string indent)
+            if (Percent)
             {
-                var sb = new StringBuilder(32);
-
-                sb.AppendFormat("{0}TOP ", indent);
-
-                if (Expression.OneLine())
-                {
-                    sb.Append(Expression.ToString(""));
-                }
-                else
-                {
-                    sb.Append("\r\n");
-                    sb.Append(Expression.ToString(indent + "  "));
-                }
-
-                if (Percent)
-                {
-                    sb.Append(" PERCENT");
-                }
-
-                if (WithTies)
-                {
-                    sb.Append(" WITH TIES");
-                }
-
-                return sb.ToString();
+                sb.Append(" PERCENT");
             }
 
-            public override void Accept(WSqlFragmentVisitor visitor)
+            if (WithTies)
             {
-                if (visitor != null)
-                    visitor.Visit(this);
+                sb.Append(" WITH TIES");
             }
 
-            public override void AcceptChildren(WSqlFragmentVisitor visitor)
-            {
-                if (Expression != null)
-                    Expression.Accept(visitor);
-                base.AcceptChildren(visitor);
-            }
+            return sb.ToString();
+        }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            if (Expression != null)
+                Expression.Accept(visitor);
+            base.AcceptChildren(visitor);
         }
     }
+}
 

@@ -146,6 +146,38 @@ namespace GraphViewUnitTest
             }
         }
         [TestMethod]
+        public void SelectWithMatch()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            var ParserTree = parser.Parse("g.V().match(__.as('a').out('father').as('b')).select('a','b').name");
+            var op = ParserTree.Generate(connection);
+            Record rc = null;
+            while (op.Status())
+            {
+                rc = op.Next();
+            }
+        }
+        [TestMethod]
+        public void SelectWithRepeat()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            var ParserTree = parser.Parse("g.V.has('name','saturn').repeat(__.in('father')).times(2).name");
+            var op = ParserTree.Generate(connection);
+            Record rc = null;
+            while (op.Status())
+            {
+                rc = op.Next();
+            }
+        }
+        [TestMethod]
         public void ComplicatedSelect()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",

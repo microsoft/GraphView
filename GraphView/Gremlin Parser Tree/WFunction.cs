@@ -34,6 +34,7 @@ namespace GraphView
             string DestNode;
             string Edge;
             string Parameter;
+            List<string> StatueKeeper = new List<string>();
             List<string> NewPrimaryInternalAlias = new List<string>();
             switch (KeywordIndex)
             {
@@ -287,6 +288,21 @@ namespace GraphView
                                 pContext.AliasPredicates[index].Add(alias + ".id = " + CompId);
                             if (Parameters.Parameter[0].Fragment.Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.neq)
                                 pContext.AliasPredicates[index].Add(alias + ".id = " + CompId);
+                        }
+                    }
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.match:
+                    foreach (var x in pContext.PrimaryInternalAlias)
+                    {
+                        StatueKeeper.Add(x);
+                    }
+                    foreach (var piece in Parameters.Parameter)
+                    {
+                        if (piece.Fragment != null) piece.Fragment.Transform(ref pContext);
+                        pContext.PrimaryInternalAlias.Clear();
+                        foreach (var x in StatueKeeper)
+                        {
+                            pContext.PrimaryInternalAlias.Add(x);
                         }
                     }
                     break;
