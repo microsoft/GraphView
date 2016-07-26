@@ -56,7 +56,7 @@ namespace GraphViewUnitTest
                     "GroupMatch", "GraphTest");
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
+   
             gcmd.CommandText = @"
                     DELETE FROM Node
                     WHERE  Node.name = 'saturn'

@@ -292,6 +292,7 @@ namespace GraphView
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.match:
+                    StatueKeeper.Clear();
                     foreach (var x in pContext.PrimaryInternalAlias)
                     {
                         StatueKeeper.Add(x);
@@ -312,6 +313,34 @@ namespace GraphView
                 case (int)GraphViewGremlinParser.Keywords.and:
                     foreach(var piece in Parameters.Parameter)
                         if (piece.Fragment != null) piece.Fragment.Transform(ref pContext);
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.or:
+                    StatueKeeper.Clear();
+                    foreach (var x in pContext.PrimaryInternalAlias)
+                    {
+                        StatueKeeper.Add(x);
+                    }
+                    NewPrimaryInternalAlias.Clear();
+                    foreach (var piece in Parameters.Parameter)
+                    {
+                        if (piece.Fragment != null) piece.Fragment.Transform(ref pContext);
+                        foreach (var x in pContext.PrimaryInternalAlias)
+                        {
+                            NewPrimaryInternalAlias.Add(x);
+                        }
+                        pContext.PrimaryInternalAlias.Clear();
+                        foreach (var x in StatueKeeper)
+                        {
+                            pContext.PrimaryInternalAlias.Add(x);
+                        }
+                    }
+                    foreach (var x in NewPrimaryInternalAlias)
+                    {
+                        pContext.PrimaryInternalAlias.Add(x);
+                    }
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.drop:
+                    pContext.RemoveMark = true;
                     break;
                 default:
                     break;

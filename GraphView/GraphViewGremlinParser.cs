@@ -40,87 +40,84 @@ namespace GraphView
         };
         internal enum Keywords
         {
-            addOutE,//0 // supported
-            addInE,// supported
-            addV,// supported
-            property,
-            aggregate,// supported
-            and,//5 // supported
-            As,// supported
-            by,
-            cap,
-            coalesce,
-            count,//10
-            choose,
-            coin,
-            constant,
-            cyclicPath,
-            dedup,//15
-            drop,
-            fold,
-            group,
-            groupCount,
-            has,//20// supported
-            inject,
-            Is,
-            limit,
-            local,
-            mapKeys,//25
-            mapValues,
-            match,// supported
-            max,
-            mean,
-            min,//30
-            or,
-            order,
-            path,
-            range,
-            repeat,//35 // supported
-            sack,
-            sample,
-            select,// supported
-            simplePath,
-            store,//40
-            subGraph,
-            sum,
-            tail,
-            timeLimit,
-            tree,//45
-            unfold,
-            union,
-            valueMap,
-            Out, // supported
-            In,//50 // supported
-            both,// supported
-            outE,// supported
-            inE,// supported
-            bothE,// supported
-            outV,//55// supported
-            inV,// supported
-            bothV,// supported
-            otherV,// supported
-            where,// supported
-            values,//60// supported
-            label,// supported
-            V, // supported
-            E,// supported
-            next,// supported
-            g,//65// supported
-            eq,// supported
-            neq,// supported
-            lt,// supported
-            lte,// supported
-            gt, //70// supported
-            gte,// supported
-            placeholder,// supported
-            times// supported
+            addOutE,//0      // Supported
+            addInE,          // Supported
+            addV,            // Supported
+            aggregate,       // Supported
+            and,//5          // Supported
+            As,              // Supported
+            by,              // Group-by requested
+            cap,             // Group-by requested
+            coalesce,        // Runtime evaluation requested
+            count,//10       // Runtime evaluation requested
+            choose,          // Runtime evaluation requested
+            coin,            // Runtime evaluation requested
+            constant,        // Not meaningful
+            cyclicPath,      // Runtime evaluation requested
+            dedup,//15       // Could be Supported
+            drop,            // Supported
+            fold,            // Mapping requested
+            group,           // Group-by requested
+            groupCount,      // Group-by requested
+            has,//20         // Supported
+            inject,          // Updating on Nodes and Edges requested
+            Is,              // Runtime evaluation requested
+            limit,           // Runtime evaluation requested
+            mapKeys,//25     // Mapping requested
+            mapValues,       // Mapping requested
+            match,           // Supported
+            max,             // Group-by requested
+            mean,            // Group-by requested
+            min,//30         // Group-by requested
+            or,              // Supported
+            order,           // Group-by requested
+            path,            // Runtime evaluation requested
+            range,           // Runtime evaluation requested
+            repeat,//35      // Supported
+            sack,            // Runtime evaluation requested
+            sample,          // Runtime evaluation requested
+            select,          // Supported
+            simplePath,      // Runtime evaluation requested
+            store,//40       // Runtime evaluation requested
+            subGraph,        // Not meaningful
+            sum,             // Group-by requested
+            tail,            // Group-by requested
+            timeLimit,       // Runtime evaluation requested
+            tree,//45        // Runtime evaluation requested
+            unfold,          // Runtime evaluation requested
+            union,           // Runtime evaluation requested
+            valueMap,        // Mapping requested
+            Out,             // Supported
+            In,//50          // Supported
+            both,            // Supported
+            outE,            // Supported
+            inE,             // Supported
+            bothE,           // Supported
+            outV,//55        // Supported
+            inV,             // Supported
+            bothV,           // Supported
+            otherV,          // Supported
+            where,           // Supported
+            values,//60      // Supported
+            label,           // Supported
+            V,               // Supported
+            E,               // Supported
+            next,            // Supported
+            g,//65           // Supported
+            eq,              // Supported
+            neq,             // Supported
+            lt,              // Supported
+            lte,             // Supported
+            gt, //70         // Supported
+            gte,             // Supported
+            placeholder,     // Supported
+            times            // Supported
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
            {"addOutE", Keywords.addOutE},
            {"addInE", Keywords.addInE},
            {"addV", Keywords.addV},
-           {"property", Keywords.property},
            {"aggregate", Keywords.aggregate},
            {"and", Keywords.and},
            {"as", Keywords.As},
@@ -141,7 +138,6 @@ namespace GraphView
            {"inject", Keywords.inject},
            {"Is", Keywords.Is},
            {"limit", Keywords.limit},
-           {"local", Keywords.local},
            {"mapKeys", Keywords.mapKeys},
            {"mapValues", Keywords.mapValues},
            {"match", Keywords.match},
@@ -640,6 +636,7 @@ namespace GraphView
             internal int EdgeCount;
             internal bool AddEMark;
             internal bool AddVMark;
+            internal bool RemoveMark;
         }
 
         internal Context SematicContext;
@@ -661,6 +658,7 @@ namespace GraphView
                 EdgeCount = 0,
                 AddEMark = false,
                 AddVMark = false,
+                RemoveMark = false,
                 Properties = new Dictionary<string, string>()
             };
             ParserTree = pParserTree;
@@ -929,9 +927,49 @@ namespace GraphView
                 SqlTree = InsertEdge;
             }
 
+            // If needed to remove node/edge, construct new deleteEdge/Node Specification
+            if (SematicContext.RemoveMark)
+            {
+                if (SematicContext.PrimaryInternalAlias[0].IndexOf("N_") != -1)
+                {
+                    var TargetClause = new WNamedTableReference()
+                    {
+                        TableObjectName =
+                            new WSchemaObjectName()
+                            {
+                                Identifiers = new List<Identifier>() {new Identifier() {Value = "Node"}}
+                            },
+                        TableObjectString = "Node",
+                        Alias = new Identifier() {Value = SematicContext.PrimaryInternalAlias.First()}
+                    };
+                    var DeleteNodeSp = new WDeleteSpecification()
+                    {
+                       WhereClause = NewWhereClause,
+                       FromClause = NewFromClause,
+                       Target = TargetClause
+                    };
+                    SqlTree = DeleteNodeSp;
+                }
+                if (SematicContext.PrimaryInternalAlias[0].IndexOf("E_") != -1)
+                {
+                    var EC = new WEdgeColumnReferenceExpression()
+                    {
+                        Alias = SematicContext.PrimaryInternalAlias.First(),
+                        MultiPartIdentifier =
+                            new WMultiPartIdentifier()
+                            {
+                                Identifiers = new List<Identifier>() {new Identifier() {Value = "Edge"}}
+                            }
+                    };
+                    var DeleteEdgeSp = new WDeleteEdgeSpecification(SelectBlock);
+                    SqlTree = DeleteEdgeSp;
+                }
+            }
         }
-    }
 
+    }
 }
+
+
 
 
