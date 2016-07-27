@@ -154,11 +154,9 @@ namespace GraphView
 
         /// <summary>
         /// Construct a Json's string which contains all the information about the new node.
-        /// And then Create a InsertNodeOperator with this string
         /// </summary>
-        /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        public string ConstructNode()
         {
             string Json_str = "{}";
 
@@ -175,6 +173,19 @@ namespace GraphView
             //Insert "_edge" & "_reverse_edge" into the string.
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_edge").ToString();
             Json_str = GraphViewJsonCommand.insert_property(Json_str, "[]", "_reverse_edge").ToString();
+
+            return Json_str;
+        }
+
+        /// <summary>
+        /// Construct a Json's string which contains all the information about the new node.
+        /// And then Create a InsertNodeOperator with this string
+        /// </summary>
+        /// <param name="docDbConnection">The Connection</param>
+        /// <returns></returns>
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            string Json_str = ConstructNode();
 
             InsertNodeOperator InsertOp = new InsertNodeOperator(dbConnection,Json_str);
 
@@ -226,9 +237,12 @@ namespace GraphView
             return sb.ToString();
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        /// <summary>
+        /// Construct an edge's string with all informations.
+        /// </summary>
+        /// <returns></returns>
+        public string ConstructEdge()
         {
-            #region build up Edge(string)
             var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
 
             string Edge = "{}";
@@ -273,7 +287,14 @@ namespace GraphView
                 Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(),
                         Columns[index].ToString()).ToString();
             }
-            #endregion 
+            return Edge;
+        }
+
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
+            
+            string Edge = ConstructEdge();
 
             //Add "id" after each identifier
             var iden = new Identifier();
@@ -289,15 +310,10 @@ namespace GraphView
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
             if (input == null)
-            {
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
-            }
+            
             InsertEdgeOperator InsertOp = new InsertEdgeOperator(dbConnection, input, Edge, n1.ToString(), n2.ToString());
-
-            //delete "id" after each identifier
-            //identifiers1.RemoveAt(1);
-            //identifiers2.RemoveAt(1);
-
+            
             return InsertOp;
         }
     }
@@ -524,8 +540,8 @@ namespace GraphView
 
             return sb.ToString();
         }
-        
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+
+        internal void ChangeSelectQuery()
         {
             var SelectQueryBlock = SelectDeleteExpr as WSelectQueryBlock;
             var edgealias = SelectDeleteExpr.MatchClause.Paths[0].PathEdgeList[0].Item2.Alias;
@@ -553,27 +569,42 @@ namespace GraphView
             edge_id.Value = "_ID";
             edge_reverse_id.Value = "_reverse_ID";
 
-            var select3 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(select3);
-            var select3_SelectExpr = new WColumnReferenceExpression();
-            select3.SelectExpr = select3_SelectExpr;
-            select3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
-            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
-            select3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
+            var n3 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n3);
+            var n3_SelectExpr = new WColumnReferenceExpression();
+            n3.SelectExpr = n3_SelectExpr;
+            n3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
+            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_id);
 
-            var select4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(select4);
-            var select4_SelectExpr = new WColumnReferenceExpression();
-            select4.SelectExpr = select4_SelectExpr;
-            select4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
-            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
-            select4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_reverse_id);
+            var n4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n4);
+            var n4_SelectExpr = new WColumnReferenceExpression();
+            n4.SelectExpr = n4_SelectExpr;
+            n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
+            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_reverse_id);
             #endregion
+        }
+
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            ChangeSelectQuery();
+
+            var SelectQueryBlock = SelectDeleteExpr as WSelectQueryBlock;
+
+            var n1 = SelectQueryBlock.SelectElements[0] as WSelectScalarExpression;
+
+            var n2 = SelectQueryBlock.SelectElements[1] as WSelectScalarExpression;
+
+            var n3 = SelectQueryBlock.SelectElements[2] as WSelectScalarExpression;
+
+            var n4 = SelectQueryBlock.SelectElements[3] as WSelectScalarExpression;
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
             if (input == null)
             {
                 throw new GraphViewException("The delete source of the DELETE EDGE statement is invalid.");
             }
-            DeleteEdgeOperator DeleteOp = new DeleteEdgeOperator(dbConnection, input, n1.ToString(), n2.ToString(), select3.ToString(), select4.ToString());
+            DeleteEdgeOperator DeleteOp = new DeleteEdgeOperator(dbConnection, input, n1.ToString(), n2.ToString(), n3.ToString(), n4.ToString());
 
             return DeleteOp;
         }

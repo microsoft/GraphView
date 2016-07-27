@@ -16,6 +16,7 @@ namespace GraphView
         public string source, sink;
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
+        internal Dictionary<string, string> map;
 
 
         public InsertEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput, string edge, string source, string sink)
@@ -72,54 +73,66 @@ namespace GraphView
         public override Record Next()
         {
             if (!Status()) return null;
-            Dictionary<string, string> map = new Dictionary<string, string>();
+            map = new Dictionary<string, string>();
 
             while (SelectInput.Status())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 Record rec = SelectInput.Next();
+                if (rec == null) break;
                 List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
 
-                //Create one if a document not exist.
-                if (!map.ContainsKey(sourceid))
-                {
-                    var documents =
-                        dbConnection.DocDBclient.CreateDocumentQuery(
-                            "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                            dbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", sourceid));
-                    foreach (var doc in documents)
-                        map[sourceid] = JsonConvert.SerializeObject(doc);
-                }
-                if (!map.ContainsKey(sinkid))
-                {
-                    var documents =
-                        dbConnection.DocDBclient.CreateDocumentQuery(
-                            "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                            dbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", sinkid));
-                    foreach (var doc in documents)
-                        map[sinkid] = JsonConvert.SerializeObject(doc);
-                }
-
-                GraphViewDocDBCommand.INSERT_EDGE(map, edge, sourceid, sinkid);
+                InsertEdgeInMap(sourceid, sinkid);
             }
 
-            UploadFinish = false;
-            ReplaceDocument(map);
-
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            Upload();
 
             Close();
             return null;
         }
 
-        public async Task ReplaceDocument(Dictionary<string, string> map)
+        internal void InsertEdgeInMap(string sourceid, string sinkid)
+        {
+            //Create one if a document not exist locally.
+            if (!map.ContainsKey(sourceid))
+            {
+                var documents =
+                    dbConnection.DocDBclient.CreateDocumentQuery(
+                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
+                        dbConnection.DocDB_CollectionId,
+                        "SELECT * " +
+                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sourceid));
+                foreach (var doc in documents)
+                    map[sourceid] = JsonConvert.SerializeObject(doc);
+            }
+            if (!map.ContainsKey(sinkid))
+            {
+                var documents =
+                    dbConnection.DocDBclient.CreateDocumentQuery(
+                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
+                        dbConnection.DocDB_CollectionId,
+                        "SELECT * " +
+                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sinkid));
+                foreach (var doc in documents)
+                    map[sinkid] = JsonConvert.SerializeObject(doc);
+            }
+
+            GraphViewDocDBCommand.INSERT_EDGE(map, edge, sourceid, sinkid);
+        }
+
+        internal void Upload()
+        {
+            UploadFinish = false;
+            ReplaceDocument();
+
+            //Wait until finish replacing.
+            while (!UploadFinish)
+                System.Threading.Thread.Sleep(10);
+        }
+
+        public async Task ReplaceDocument()
         {
             foreach (var cnt in map)
                 await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
@@ -135,6 +148,8 @@ namespace GraphView
         private bool UploadFinish;
         public string EdgeID_str;
         public string EdgeReverseID_str;
+        internal Dictionary<string, string> map;
+
         public DeleteEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
         {
             this.dbConnection = dbConnection;
@@ -149,61 +164,74 @@ namespace GraphView
         public override Record Next()
         {
             if (!Status()) return null;
-            Dictionary<string, string> map = new Dictionary<string, string>();
+            map = new Dictionary<string, string>();
 
             while (SelectInput.Status())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 Record rec = SelectInput.Next();
+                if (rec == null) break;
                 List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
                 //The "e" in the Record is "Reverse_e" in fact
                 string EdgeReverseID = rec.RetriveData(header, EdgeID_str);
                 string EdgeID = rec.RetriveData(header, EdgeReverseID_str);
-
-                //Create one if a document not exist.
-                if (!map.ContainsKey(sourceid))
-                {
-                    var documents =
-                        dbConnection.DocDBclient.CreateDocumentQuery(
-                            "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                            dbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", sourceid));
-                    foreach (var doc in documents)
-                        map[sourceid] = JsonConvert.SerializeObject(doc);
-                }
-                if (!map.ContainsKey(sinkid))
-                {
-                    var documents =
-                        dbConnection.DocDBclient.CreateDocumentQuery(
-                            "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                            dbConnection.DocDB_CollectionId,
-                            "SELECT * " +
-                            string.Format("FROM doc WHERE doc.id = \"{0}\"", sinkid));
-                    foreach (var doc in documents)
-                        map[sinkid] = JsonConvert.SerializeObject(doc);
-                }
-
                 int ID, reverse_ID;
                 int.TryParse(EdgeID, out ID);
                 int.TryParse(EdgeReverseID, out reverse_ID);
-                map[sourceid] = GraphViewJsonCommand.Delete_edge(map[sourceid], ID);
-                map[sinkid] = GraphViewJsonCommand.Delete_reverse_edge(map[sinkid], reverse_ID);
+
+                DeleteEdgeInMap(sourceid,sinkid,ID,reverse_ID);
             }
 
-            UploadFinish = false;
-            ReplaceDocument(map);
-
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            Upload();
 
             Close();
 
             return null;
         }
-        public async Task ReplaceDocument(Dictionary<string, string> map)
+
+        internal void DeleteEdgeInMap(string sourceid, string sinkid, int ID, int reverse_ID)
+        {
+
+            //Create one if a document not exist locally.
+            if (!map.ContainsKey(sourceid))
+            {
+                var documents =
+                    dbConnection.DocDBclient.CreateDocumentQuery(
+                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
+                        dbConnection.DocDB_CollectionId,
+                        "SELECT * " +
+                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sourceid));
+                foreach (var doc in documents)
+                    map[sourceid] = JsonConvert.SerializeObject(doc);
+            }
+            if (!map.ContainsKey(sinkid))
+            {
+                var documents =
+                    dbConnection.DocDBclient.CreateDocumentQuery(
+                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
+                        dbConnection.DocDB_CollectionId,
+                        "SELECT * " +
+                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sinkid));
+                foreach (var doc in documents)
+                    map[sinkid] = JsonConvert.SerializeObject(doc);
+            }
+
+            map[sourceid] = GraphViewJsonCommand.Delete_edge(map[sourceid], ID);
+            map[sinkid] = GraphViewJsonCommand.Delete_reverse_edge(map[sinkid], reverse_ID);
+        }
+
+        internal void Upload()
+        {
+            UploadFinish = false;
+            ReplaceDocument();
+            //wait until finish replacing.
+            while (!UploadFinish)
+                System.Threading.Thread.Sleep(10);
+        }
+
+        public async Task ReplaceDocument()
         {
             foreach (var cnt in map)
                 await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
@@ -226,16 +254,23 @@ namespace GraphView
         public override Record Next()
         {
             if (!Status()) return null;
+
             var obj = JObject.Parse(Json_str);
 
-            UploadFinish = false;
-            CreateDocument(obj);
-
-            while(!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            Upload(obj);
 
             Close();
             return null;
+        }
+
+        void Upload(JObject obj)
+        {
+            UploadFinish = false;
+            CreateDocument(obj);
+
+            //Wait until finish Creating documents.
+            while (!UploadFinish)
+                System.Threading.Thread.Sleep(10);
         }
 
         public async Task CreateDocument(JObject obj)
@@ -258,38 +293,59 @@ namespace GraphView
             this.Selectstr = Selectstr;
             Open();
         }
+
+        /// <summary>
+        /// Check if there are some edges still connect to these nodes.
+        /// </summary>
+        /// <returns></returns>
+        internal bool CheckNodes()
+        {
+            var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
+                                "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
+                                Selectstr);
+            foreach (var DeleteNode in sum_DeleteNode)
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Get those nodes.
+        /// And then delete it.
+        /// </summary>
+        internal void DeleteNodes()
+        {
+            Selectstr = "SELECT * " + "FROM Node ";
+            if (search != null)
+                Selectstr += @"WHERE " + search.ToString();
+            var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
+                "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
+                Selectstr);
+
+            foreach (var DeleteNode in sum_DeleteNode)
+            {
+                UploadFinish = false;
+                var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", dbConnection.DocDB_DatabaseId,
+                    dbConnection.DocDB_CollectionId, DeleteNode.id);
+                DeleteDocument(docLink);
+                //wait until finish deleting
+                while (!UploadFinish)
+                    System.Threading.Thread.Sleep(10);
+            }
+        }
+
+        /// <summary>
+        /// First check if there are some edges still connect to these nodes.
+        /// If not, delete them.
+        /// </summary>
+        /// <returns></returns>
         public override Record Next()
         {
             if (!Status())
                 return null;
-            var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
-                                "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
-                                Selectstr);
-            bool flag = true;
-            foreach (var DeleteNode in sum_DeleteNode)
+            
+            if (CheckNodes())
             {
-                flag = false;
-                break;
-            }
-            if (flag)
-            {
-                Selectstr = "SELECT * " + "FROM Node ";
-                if (search != null)
-                    Selectstr += @"WHERE " + search.ToString();
-                sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
-                    "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
-                    Selectstr);
-
-
-                foreach (var DeleteNode in sum_DeleteNode)
-                {
-                    UploadFinish = false;
-                    var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", dbConnection.DocDB_DatabaseId,
-                        dbConnection.DocDB_CollectionId, DeleteNode.id);
-                    DeleteDocument(docLink);
-                    while(!UploadFinish)
-                        System.Threading.Thread.Sleep(10);
-                }
+                DeleteNodes();
             }
             else
             {

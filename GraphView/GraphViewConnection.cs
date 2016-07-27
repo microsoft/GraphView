@@ -252,10 +252,10 @@ namespace GraphView
         {
             DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
             // Check to verify a database with the id=GroupMatch does not exist
-            DocDB_finish = false;
-            BuildUp();
-            while (!DocDB_finish)
-                System.Threading.Thread.Sleep(10);
+            //DocDB_finish = false;
+            //BuildUp();
+            //while (!DocDB_finish)
+            //    System.Threading.Thread.Sleep(10);
         }
 
         public async Task BuildUp()
@@ -296,7 +296,6 @@ namespace GraphView
         public async Task DeleteCollection()
         {
             await DocDBclient.DeleteDocumentCollectionAsync(DocDB_Collection.SelfLink);
-            //client.Dispose();
             Console.WriteLine("deleted collection");
 
             DocDB_finish = true;

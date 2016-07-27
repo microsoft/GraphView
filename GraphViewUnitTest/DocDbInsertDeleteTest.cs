@@ -18,14 +18,16 @@ namespace GraphViewUnitTest
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
+            connection.SetupClient();
+
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
                 INSERT INTO Node (name, age, type) VALUES ('jupiter', 5000, 'god');
                 INSERT INTO Node (name, type) VALUES ('sky', 'location');
-            ";
+";
             gcmd.ExecuteNonQuery();
 
-            connection.ResetCollection();
+            //connection.ResetCollection();
         }
 
         [TestMethod]
@@ -37,6 +39,8 @@ namespace GraphViewUnitTest
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
+
+            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
@@ -56,7 +60,9 @@ namespace GraphViewUnitTest
                     "GroupMatch", "GraphTest");
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-   
+
+            connection.SetupClient();
+            
             gcmd.CommandText = @"
                     DELETE FROM Node
                     WHERE  Node.name = 'saturn'
@@ -77,6 +83,8 @@ namespace GraphViewUnitTest
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
+
+            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Edge (type, reason)
@@ -102,6 +110,8 @@ namespace GraphViewUnitTest
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
+            connection.SetupClient();
+
             gcmd.CommandText = @"
                 INSERT INTO Edge (type, reason)
                 SELECT A, B, 'lives', 'loves fresh breezes'
@@ -123,6 +133,8 @@ namespace GraphViewUnitTest
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
+            connection.SetupClient();
+
             gcmd.CommandText = @"
                 DELETE EDGE [D]-[Edge as e]->[A]
                 FROM   Node D, Node A
@@ -143,6 +155,8 @@ namespace GraphViewUnitTest
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
+
+            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
@@ -259,6 +273,8 @@ namespace GraphViewUnitTest
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
+            connection.SetupClient();
+
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
                 INSERT INTO Node (name, type) VALUES ('sky', 'location');
@@ -360,7 +376,28 @@ namespace GraphViewUnitTest
 ";
 
             gcmd.ExecuteNonQuery();
-            
+
+        }
+
+        [TestMethod]
+        public void ResetCollection()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "GraphTest");
+            connection.SetupClient();
+
+            connection.DocDB_finish = false;
+            connection.BuildUp();
+            while (!connection.DocDB_finish)
+                System.Threading.Thread.Sleep(10);
+
+            connection.ResetCollection();
+
+            connection.DocDB_finish = false;
+            connection.BuildUp();
+            while (!connection.DocDB_finish)
+                System.Threading.Thread.Sleep(10);
         }
     }
 }

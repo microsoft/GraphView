@@ -76,6 +76,7 @@
     <Compile Include="DocDbInsertDeleteTest.cs" />
     <Compile Include="GrphviewGremlinParserTest.cs" />
     <Compile Include="DocDbSelectTest.cs" />
+    <Compile Include="DocDbPerformanceTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GraphView\GraphView.csproj">
