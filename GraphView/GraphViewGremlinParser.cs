@@ -5,6 +5,19 @@ using System.Text.RegularExpressions;
 using GraphView;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
+/* 
+ *  BNF for the Gremlin Language
+ *  
+ *  S → Path
+ *  T → Identifier | Keyword | QuotedString | Number
+ *  
+ *  Path ::= Identifier "=" Fragment | Fragment
+ *  Fragment ::= Function | Function"."Fragment | Identifier | Identifier"."Fragment
+ *  Function ::= Keyword"("Parameters")" | Keyword
+ *  Parameters ::= Parameter | Parameter","Parameters
+ *  Parameter ::= Fragment | QuotedString | Number | Function
+ *  
+*/
 namespace GraphView
 {
     public class GraphViewGremlinParser
