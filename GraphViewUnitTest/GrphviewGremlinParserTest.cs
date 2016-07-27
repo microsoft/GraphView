@@ -194,4 +194,30 @@ namespace GraphViewUnitTest
             }
         }
     }
+
+    [TestClass]
+    public class GremlinInsertDeleteTest
+    {
+        [TestMethod]
+        public void AddNode()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
+            var ParserTree1 = parser1.Parse("g.addV('label','person','name','stephen')");
+            var op1 = ParserTree1.Generate(connection);
+            op1.Next();
+            GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
+            var ParserTree2 = parser2.Parse("g.V.has('label','person').name");
+            var op2 = ParserTree2.Generate(connection);
+            Record rc = null;
+            while (op2.Status())
+            {
+                rc = op2.Next();
+            }
+            Assert.AreEqual(rc.RetriveData(2), "stephen");
+        }
+    }
 }

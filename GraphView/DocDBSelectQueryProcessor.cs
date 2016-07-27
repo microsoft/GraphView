@@ -66,6 +66,7 @@ namespace GraphView
                 OutputBuffer = new Queue<Record>();
             if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildOperator != null && !ChildOperator.Status())))
             {
+                if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
 
@@ -135,11 +136,8 @@ namespace GraphView
                 }
                 InputBuffer.Clear();
             }
-            if (OutputBuffer.Count != 0)
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
+            if (OutputBuffer.Count <= 1) this.Close();
+            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
 
@@ -230,9 +228,9 @@ namespace GraphView
             // Set up output buffer
             if (OutputBuffer == null)
                 OutputBuffer = new Queue<Record>();
-            if (OutputBuffer.Count == 1) this.Close();
             if (OutputBuffer.Count != 0)
             {
+                if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
             string script = docDbScript;
@@ -261,7 +259,7 @@ namespace GraphView
                 }
             }
             // Close output buffer
-            if (OutputBuffer.Count == 1) this.Close();
+            if (OutputBuffer.Count <= 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
@@ -345,6 +343,7 @@ namespace GraphView
                 OutputBuffer = new Queue<Record>();
             if (OutputBuffer.Count != 0)
             {
+                if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
 
@@ -363,7 +362,7 @@ namespace GraphView
             }
             if (OperatorOnSubGraphs.Count != 0) CartesianProductOnRecord(ResultsFromChildrenOperator, 0, new Record(header.Count));
             OperatorOnSubGraphs.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
+            if (OutputBuffer.Count == 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }

@@ -231,7 +231,7 @@ namespace GraphView
             var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);
             SematicAnalyser.Analyse();
             SematicAnalyser.Transform();
-            SqlTree = (SematicAnalyser.SqlTree as WSelectStatement).QueryExpr;
+            SqlTree = SematicAnalyser.SqlTree; 
             return SqlTree;
         }
         internal static class LexicalAnalyzer
@@ -869,9 +869,8 @@ namespace GraphView
                 WhereClause = NewWhereClause,
                 MatchClause = NewMatchClause
             };
-            SelectStatement = new WSelectStatement() { QueryExpr = SelectBlock };
 
-            SqlTree = SelectStatement;
+            SqlTree = SelectBlock;
 
             // If needed to add vertex, consturct new InsertNodeStatement
             if (SematicContext.AddVMark)
