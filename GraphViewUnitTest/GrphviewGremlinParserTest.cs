@@ -57,7 +57,7 @@ namespace GraphViewUnitTest
 "GroupMatch", "GremlinTest");
             connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            var ParserTree = parser.Parse("g.V().has('name', 'saturn').next()");
+            var ParserTree = parser.Parse("g.V().has('name','pluto').as('pluto').place_x.as('x').select('pluto').out().place_x.where(neq('x'))");
             var op = ParserTree.Generate(connection);
             Record rc = null;
             while (op.Status())
@@ -196,10 +196,10 @@ namespace GraphViewUnitTest
     }
 
     [TestClass]
-    public class GremlinInsertDeleteTest
+    public class GraphViewGremlinInsertDeleteTest
     {
         [TestMethod]
-        public void AddNode()
+        public void AddSimpleNode()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",

@@ -91,6 +91,22 @@ namespace GraphView
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.Out:
+                    if (Parameters == null)
+                    {
+                        Edge = "E_" + pContext.EdgeCount.ToString();
+                        AddNewAlias(Edge, ref pContext);
+                        index = pContext.InternalAliasList.Count;
+                        foreach (var alias in pContext.PrimaryInternalAlias)
+                        {
+                            DestNode = "N_" + pContext.NodeCount.ToString();
+                            AddNewAlias(DestNode, ref pContext);
+                            SrcNode = alias;
+                            pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                DestNode));
+                            NewPrimaryInternalAlias.Add(DestNode);
+                        }
+                    }
+                    else 
                     foreach (var para in Parameters.Parameter)
                     {
                         Edge = "E_" + pContext.EdgeCount.ToString();
@@ -276,18 +292,25 @@ namespace GraphView
                 case (int)GraphViewGremlinParser.Keywords.@where:
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
-                        index = pContext.InternalAliasList.IndexOf(alias);
+                        index = pContext.InternalAliasList.IndexOf(alias.IndexOf('.') == -1? alias : alias.Substring(0,alias.IndexOf('.')));
                         string QuotedString = Parameters.Parameter[0].QuotedString;
                         if (Parameters.Parameter[0].Fragment != null)
                         {
-                            var CompId =
-                                pContext.ExplictAliasToInternalAlias[
-                                    Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString]+".id";
+                            string Comp1 = alias;
+                            string Comp2 = "";
+                            if (Comp1.IndexOf('.') == -1)
+                                Comp1 += ".id";
+                            if (Comp2.IndexOf('.') == -1)
+                                Comp2 = pContext.ExplictAliasToInternalAlias[
+                                    Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString];
+                            else
+                                Comp2 = pContext.ExplictAliasToInternalAlias[
+        Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString] + ".id";
                             if (Parameters.Parameter[0].Fragment.Function.KeywordIndex ==
                                 (int) GraphViewGremlinParser.Keywords.eq)
-                                pContext.AliasPredicates[index].Add(alias + ".id = " + CompId);
+                                pContext.AliasPredicates[index].Add(Comp1 + " = " + Comp2);
                             if (Parameters.Parameter[0].Fragment.Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.neq)
-                                pContext.AliasPredicates[index].Add(alias + ".id = " + CompId);
+                                pContext.AliasPredicates[index].Add(Comp1 + " ! " + Comp2);
                         }
                     }
                     break;

@@ -504,10 +504,17 @@ namespace GraphView
             {
                 WFragment pFragment = ParseFragment();
                 if (pIdentifier != -1 && pFullStop && pFragment != null)
-                    return new WFragment() { Identifer = pIdentifier, Function = pFunction };
+                    return new WFragment() { Identifer = pIdentifier, Fragment = pFragment };
             }
             if (pIdentifier != -1)
-                return new WFragment() { Identifer = pIdentifier };
+            {
+                WFragment pFragment = ParseFragment();
+                if (pIdentifier != null && pFullStop && pFragment != null)
+                    return new WFragment() { Fragment = pFragment, Function = pFunction, Identifer = -1 };
+                else 
+                return new WFragment() {Identifer = pIdentifier, Fragment = pFragment};
+            }
+
             return null;
         }
 
@@ -521,6 +528,8 @@ namespace GraphView
                 bool pRightBrace = ParseRightBrace();
                 if (pKeyword != -1 && pLeftBrace && pParameters != null && pRightBrace)
                     return new WFunction() { KeywordIndex = pKeyword, Parameters = pParameters };
+                if (pKeyword != -1 && pLeftBrace && pRightBrace)
+                    return new WFunction() { KeywordIndex = pKeyword};
             }
             if (pKeyword != -1)
                 return new WFunction() { KeywordIndex = pKeyword };
@@ -804,29 +813,37 @@ namespace GraphView
                     while (firstExpr.IndexOf('.') != -1)
                     {
                         int cutpoint2 = firstExpr.IndexOf('.');
-                        pIdentifiers.Add(new Identifier() { Value = firstExpr.Substring(0, cutpoint2) });
+                        pIdentifiers.Add(new Identifier() {Value = firstExpr.Substring(0, cutpoint2)});
                         firstExpr = firstExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
                     }
-                    pIdentifiers.Add(new Identifier() { Value = firstExpr });
+                    pIdentifiers.Add(new Identifier() {Value = firstExpr});
                     var FirstRef = new WColumnReferenceExpression()
                     {
-                        MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers }
+                        MultiPartIdentifier = new WMultiPartIdentifier() {Identifiers = pIdentifiers}
                     };
                     pIdentifiers = new List<Identifier>();
                     while (secondExpr.IndexOf('.') != -1)
                     {
                         int cutpoint2 = secondExpr.IndexOf('.');
-                        pIdentifiers.Add(new Identifier() { Value = secondExpr.Substring(0, cutpoint2) });
+                        pIdentifiers.Add(new Identifier() {Value = secondExpr.Substring(0, cutpoint2)});
                         secondExpr = secondExpr.Substring(cutpoint2 + 1, secondExpr.Length - cutpoint2 - 1);
                     }
-                    pIdentifiers.Add(new Identifier() { Value = secondExpr });
+                    pIdentifiers.Add(new Identifier() {Value = secondExpr});
                     double temp;
-                    WValueExpression SecondRef = null;
-                    if (double.TryParse(secondExpr, out temp))
-                        SecondRef = new WValueExpression(secondExpr, false);
+                    WScalarExpression SecondRef = null;
+                    if (pIdentifiers.Count > 1)
+                        SecondRef = new WColumnReferenceExpression()
+                        {
+                            MultiPartIdentifier = new WMultiPartIdentifier() {Identifiers = pIdentifiers}
+                        };
                     else
-                        SecondRef = new WValueExpression(secondExpr, true);
-                    WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
+                    {
+                        if (double.TryParse(secondExpr, out temp))
+                            SecondRef = new WValueExpression(secondExpr, false);
+                        else
+                            SecondRef = new WValueExpression(secondExpr, true);
+                    }
+                WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
                     {
                         ComparisonType = CompType,
                         FirstExpr = FirstRef,

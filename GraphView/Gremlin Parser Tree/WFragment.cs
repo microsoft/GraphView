@@ -14,6 +14,10 @@ namespace GraphView
 
         internal void Transform(ref GraphViewGremlinSematicAnalyser.Context pContext)
         {
+            var Identifiers = pContext.Identifiers;
+            if (Identifer != -1)
+                for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
+                    pContext.PrimaryInternalAlias[i] += "." + Identifiers[Identifer];
             if (Fragment != null && Function != null && Function.KeywordIndex == (int) GraphViewGremlinParser.Keywords.repeat)
             {
                 int times = 0;
@@ -30,10 +34,7 @@ namespace GraphView
                 if (Function != null) Function.Transform(ref pContext);
                 if (Fragment != null) Fragment.Transform(ref pContext);
             }
-            var Identifiers = pContext.Identifiers;
-            if (Identifer != -1)
-                for (int i = 0; i<pContext.PrimaryInternalAlias.Count;i++)
-                pContext.PrimaryInternalAlias[i] += "." + Identifiers[Identifer];
+
         }
     }
 }
