@@ -299,6 +299,8 @@ namespace GraphView
             //Add "id" after each identifier
             var iden = new Identifier();
             iden.Value = "id";
+            var dic_iden = new Identifier();
+            dic_iden.Value = "doc";
 
             var n1 = SelectQueryBlock.SelectElements[0] as WSelectScalarExpression;
             var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
@@ -307,6 +309,20 @@ namespace GraphView
             var n2 = SelectQueryBlock.SelectElements[1] as WSelectScalarExpression;
             var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
             identifiers2.Add(iden);
+
+            var n3 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n3);
+            var n3_SelectExpr = new WColumnReferenceExpression();
+            n3.SelectExpr = n3_SelectExpr;
+            n3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
+            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+
+            var n4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n4);
+            var n4_SelectExpr = new WColumnReferenceExpression();
+            n4.SelectExpr = n4_SelectExpr;
+            n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
+            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
 
             GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
             if (input == null)

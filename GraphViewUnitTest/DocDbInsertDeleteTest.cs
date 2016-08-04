@@ -260,7 +260,7 @@ namespace GraphViewUnitTest
 
             gcmd.ExecuteNonQuery();
 
-            connection.ResetCollection();
+            //connection.ResetCollection();
         }
 
         [TestMethod]

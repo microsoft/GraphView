@@ -804,7 +804,9 @@ namespace GraphView
             string ResultIndexString = ",";
             foreach (string ResultIndex in ResultIndexToAppend)
             {
-                ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
+                if (ResultIndex.Substring(ResultIndex.Length - 3,3) == "doc")
+                ResultIndexString += ResultIndex.Substring(0, ResultIndex.Length - 4) + " AS " + ResultIndex.Replace(".", "_") + ",";
+                else ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
             }
             if (ResultIndexString == ",") ResultIndexString = "";
             ResultIndexString = CutTheTail(ResultIndexString);
@@ -820,7 +822,7 @@ namespace GraphView
             ReverseCheckString = CutTheTail(ReverseCheckString);
 
             // The DocDb script that related to the giving node will be assembled here.
-            string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo, node AS Doc";
+            string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
             string QuerySegment = QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             QuerySegment += FromClauseString + WhereClauseString;
             node.AttachedQuerySegment = QuerySegment;
