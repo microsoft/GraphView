@@ -112,7 +112,7 @@ namespace GraphView
                         foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
                         {
                             string result = "";
-                            if (ResultFieldName.IndexOf("doc") != -1) result = ((JObject)item).ToString();
+                            if (ResultFieldName.IndexOf("doc") != -1) result = ((JObject)item)["Doc"].ToString();
                             else if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
                                 result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
                             ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
@@ -251,7 +251,7 @@ namespace GraphView
                     foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
                     {
                         string result = "";
-                        if (ResultFieldName.IndexOf("doc") != -1) result = ((JObject) item).ToString();
+                        if (ResultFieldName.IndexOf("doc") != -1) result = ((JObject) item)["Doc"].ToString();
                         else if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
                             result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
                         ResultRecord.field[header.IndexOf(ResultFieldName)] = result;

@@ -820,7 +820,7 @@ namespace GraphView
             ReverseCheckString = CutTheTail(ReverseCheckString);
 
             // The DocDb script that related to the giving node will be assembled here.
-            string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
+            string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo, node AS Doc";
             string QuerySegment = QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             QuerySegment += FromClauseString + WhereClauseString;
             node.AttachedQuerySegment = QuerySegment;

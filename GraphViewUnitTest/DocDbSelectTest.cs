@@ -225,7 +225,7 @@ namespace GraphViewUnitTest
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                SELECT n2.name, n3.name, n2.doc
+                SELECT n2.name, n3.name, n1.doc
                 FROM node n1, node n2,node n3
                 MATCH n1-[Edge AS e1]->n2,
                       n2-[Edge AS e2]->n3
