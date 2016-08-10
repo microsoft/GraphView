@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using GraphView;
+using GraphView.TSQL_Syntax_Tree;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 /* 
@@ -53,78 +54,69 @@ namespace GraphView
         };
         internal enum Keywords
         {
-            addOutE,//0      // Supported
+            addOutE,         // Supported
             addInE,          // Supported
             addV,            // Supported
             aggregate,       // Supported
-            and,//5          // Supported
+            and,             // Supported
             As,              // Supported
             by,              // Group-by requested
             cap,             // Group-by requested
-            coalesce,        // Runtime evaluation requested
-            count,//10       // Runtime evaluation requested
-            choose,          // Runtime evaluation requested
-            coin,            // Runtime evaluation requested
-            constant,        // Not meaningful
-            cyclicPath,      // Runtime evaluation requested
-            dedup,//15       // Could be Supported
+            coalesce,        // Supported
+            count,           // Group-by requested
+            choose,          // Supported
+            coin,            // Group-by requested
             drop,            // Supported
             fold,            // Mapping requested
             group,           // Group-by requested
             groupCount,      // Group-by requested
-            has,//20         // Supported
+            has,             // Supported
             inject,          // Updating on Nodes and Edges requested
-            Is,              // Runtime evaluation requested
-            limit,           // Runtime evaluation requested
-            mapKeys,//25     // Mapping requested
+            limit,           // Supported
+            mapKeys,         // Mapping requested
             mapValues,       // Mapping requested
             match,           // Supported
             max,             // Group-by requested
             mean,            // Group-by requested
-            min,//30         // Group-by requested
+            min,             // Group-by requested
             or,              // Supported
             order,           // Group-by requested
-            path,            // Runtime evaluation requested
-            range,           // Runtime evaluation requested
-            repeat,//35      // Supported
-            sack,            // Runtime evaluation requested
-            sample,          // Runtime evaluation requested
+            repeat,          // Supported
             select,          // Supported
-            simplePath,      // Runtime evaluation requested
-            store,//40       // Runtime evaluation requested
-            subGraph,        // Not meaningful
+            store,           // Supported
             sum,             // Group-by requested
             tail,            // Group-by requested
-            timeLimit,       // Runtime evaluation requested
-            tree,//45        // Runtime evaluation requested
-            unfold,          // Runtime evaluation requested
-            union,           // Runtime evaluation requested
+            tree,            // Group-by requested
+            unfold,          // Group-by requested
+            union,           // Group-by requested
             valueMap,        // Mapping requested
             Out,             // Supported
-            In,//50          // Supported
+            In,              // Supported
             both,            // Supported
             outE,            // Supported
             inE,             // Supported
             bothE,           // Supported
-            outV,//55        // Supported
+            outV,            // Supported
             inV,             // Supported
             bothV,           // Supported
             otherV,          // Supported
             where,           // Supported
-            values,//60      // Supported
+            values,          // Supported
             label,           // Supported
             V,               // Supported
             E,               // Supported
             next,            // Supported
-            g,//65           // Supported
+            g,               // Supported
             eq,              // Supported
             neq,             // Supported
             lt,              // Supported
             lte,             // Supported
-            gt, //70         // Supported
+            gt,              // Supported
             gte,             // Supported
             placeholder,     // Supported
-            times            // Supported
+            times,           // Supported
+            option,          // Supported   
+            Is               // Supported 
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
@@ -140,16 +132,12 @@ namespace GraphView
            {"count", Keywords.count},
            {"choose", Keywords.choose},
            {"coin", Keywords.coin},
-           {"constant", Keywords.constant},
-           {"cyclicPath", Keywords.cyclicPath},
-           {"dedup", Keywords.dedup},
            {"drop", Keywords.drop},
            {"fold", Keywords.fold},
            {"group", Keywords.group},
            {"groupCount", Keywords.groupCount},
            {"has", Keywords.has},
            {"inject", Keywords.inject},
-           {"Is", Keywords.Is},
            {"limit", Keywords.limit},
            {"mapKeys", Keywords.mapKeys},
            {"mapValues", Keywords.mapValues},
@@ -159,18 +147,11 @@ namespace GraphView
            {"min", Keywords.min},
            {"or", Keywords.or},
            {"order", Keywords.order},
-           {"path", Keywords.path},
-           {"range", Keywords.range},
            {"repeat", Keywords.repeat},
-           {"sack", Keywords.sack},
-           {"sample", Keywords.sample},
            {"select", Keywords.select},
-           {"simplePath", Keywords.simplePath},
            {"store", Keywords.store},
-           {"subGraph", Keywords.subGraph},
            {"sum", Keywords.sum},
            {"tail", Keywords.tail},
-           {"timeLimit", Keywords.timeLimit},
            {"tree", Keywords.tree},
            {"unfold", Keywords.unfold},
            {"union", Keywords.union},
@@ -199,7 +180,9 @@ namespace GraphView
             {"gt",Keywords.gt},
             {"gte",Keywords.gte},
             {"__",Keywords.placeholder},
-            {"times",Keywords.times}
+            {"times",Keywords.times},
+            {"option",Keywords.option },
+             {"Is",Keywords.Is }
         };
         internal class Token
         {
@@ -230,8 +213,31 @@ namespace GraphView
             var ParserTree = ParseTree();
             var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);
             SematicAnalyser.Analyse();
-            SematicAnalyser.Transform();
-            SqlTree = SematicAnalyser.SqlTree; 
+            if (SematicAnalyser.SematicContext.BranchContexts.Count != 0 && SematicAnalyser.SematicContext.BranchNote != null)
+            {
+                var choose = new WChoose() {InputExpr = new List<WSelectQueryBlock>()};
+                foreach (var x in SematicAnalyser.SematicContext.BranchContexts)
+                {
+                    var branch = SematicAnalyser.Transform(x);
+                    choose.InputExpr.Add(branch as WSelectQueryBlock);
+                }
+                SqlTree = choose;
+            }
+            else if (SematicAnalyser.SematicContext.BranchContexts.Count != 0 && SematicAnalyser.SematicContext.BranchNote == null)
+            {
+                var choose = new WCoalesce() { InputExpr = new List<WSelectQueryBlock>(),CoalesceNumber = SematicAnalyser.SematicContext.NodeCount};
+                foreach (var x in SematicAnalyser.SematicContext.BranchContexts)
+                {
+                    var branch = SematicAnalyser.Transform(x);
+                    choose.InputExpr.Add(branch as WSelectQueryBlock);
+                }
+                SqlTree = choose;
+            }
+            else 
+            {
+                SematicAnalyser.Transform(SematicAnalyser.SematicContext);
+                SqlTree = SematicAnalyser.SqlTree;
+            }
             return SqlTree;
         }
         internal static class LexicalAnalyzer
@@ -645,7 +651,7 @@ namespace GraphView
     public class GraphViewGremlinSematicAnalyser
     {
         // Internal representation of the traversal statue, which maintains a statue of current "traversal steps"
-        internal struct Context
+        internal class Context
         {
             internal List<string> PrimaryInternalAlias { get; set; }
             internal List<string> InternalAliasList { get; set; }
@@ -654,11 +660,66 @@ namespace GraphView
             internal List<string> Identifiers { get; set; }
             internal Dictionary<string, string> Properties { get; set; }
             internal Dictionary<string, string> ExplictAliasToInternalAlias { get; set; }
+            internal List<Context> BranchContexts;
+            internal string BranchNote;
             internal int NodeCount;
             internal int EdgeCount;
             internal bool AddEMark;
             internal bool AddVMark;
             internal bool RemoveMark;
+            internal bool ChooseMark;
+            internal int limit;
+
+            internal Context(Context rhs)
+            {
+                PrimaryInternalAlias = new List<string>();
+                foreach(var x in rhs.PrimaryInternalAlias)
+                PrimaryInternalAlias.Add(x);
+                InternalAliasList = new List<string>();
+                foreach (var x in rhs.InternalAliasList)
+                    InternalAliasList.Add(x);
+                AliasPredicates = new List<List<string>>();
+                foreach (var x in rhs.AliasPredicates)
+                {
+                    AliasPredicates.Add(new List<string>());
+                    foreach (var y in x)
+                    {
+                        AliasPredicates.Last().Add(y);
+                    }
+                }
+                Paths = new List<Tuple<string, string, string>>();
+                foreach (var x in rhs.Paths)
+                {
+                    Paths.Add(x);
+                }
+                Identifiers = new List<string>();
+                foreach (var x in rhs.Identifiers)
+                {
+                    Identifiers.Add(x);
+                }
+                Properties = new Dictionary<string, string>();
+                foreach (var x in rhs.Properties)
+                {
+                    Properties.Add(x.Key,x.Value);
+                }
+                ExplictAliasToInternalAlias = new Dictionary<string, string>();
+                foreach (var x in rhs.ExplictAliasToInternalAlias)
+                {
+                    ExplictAliasToInternalAlias.Add(x.Key, x.Value);
+                }
+                BranchNote = rhs.BranchNote;
+                NodeCount = rhs.NodeCount;
+                EdgeCount = rhs.EdgeCount;
+                AddEMark = rhs.AddEMark;
+                AddVMark = rhs.AddVMark;
+                RemoveMark = rhs.RemoveMark;
+                ChooseMark = rhs.ChooseMark;
+            }
+
+            internal Context()
+            {
+                
+            }
         }
 
         internal Context SematicContext;
@@ -681,7 +742,10 @@ namespace GraphView
                 AddEMark = false,
                 AddVMark = false,
                 RemoveMark = false,
-                Properties = new Dictionary<string, string>()
+                ChooseMark = false,
+                Properties = new Dictionary<string, string>(),
+                limit = -1,
+                BranchContexts = new List<Context>()
             };
             ParserTree = pParserTree;
         }
@@ -692,14 +756,14 @@ namespace GraphView
         }
 
         // Transform the Gremlin Parser Tree into TSQL Parser tree
-        public void Transform()
+        internal WSqlStatement Transform(Context context)
         {
             var SelectStatement = new WSelectStatement();
             var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
 
             // Consturct the new From Clause
             var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
-            foreach (var a in SematicContext.InternalAliasList)
+            foreach (var a in context.InternalAliasList)
             {
                 if (a.Contains("N_"))
                 {
@@ -715,7 +779,7 @@ namespace GraphView
 
             // Consturct the new Match Clause
             var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
-            foreach (var path in SematicContext.Paths)
+            foreach (var path in context.Paths)
             {
                 var PathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
                 PathEdges.Add(new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>
@@ -749,7 +813,7 @@ namespace GraphView
             // Consturct the new Select Component
 
             var NewSelectElementClause = new List<WSelectElement>();
-            foreach (var alias in SematicContext.PrimaryInternalAlias)
+            foreach (var alias in context.PrimaryInternalAlias)
             {
                 var pIdentifiers = new List<Identifier>();
                 var TempString = alias;
@@ -770,7 +834,7 @@ namespace GraphView
             var NewWhereClause = new WWhereClause();
             var Condition = new WBooleanBinaryExpression();
             List<WBooleanExpression> BooleanList = new List<WBooleanExpression>();
-            foreach (var exprs in SematicContext.AliasPredicates)
+            foreach (var exprs in context.AliasPredicates)
             {
                 foreach (var expr in exprs)
                 {
@@ -890,11 +954,11 @@ namespace GraphView
             SqlTree = SelectBlock;
 
             // If needed to add vertex, consturct new InsertNodeStatement
-            if (SematicContext.AddVMark)
+            if (context.AddVMark)
             {
                 var columnV = new List<WScalarExpression>();
                 var columnK = new List<WColumnReferenceExpression>();
-                foreach (var property in SematicContext.Properties)
+                foreach (var property in context.Properties)
                 {
                     var value = new WValueExpression(property.Value, true);
                     columnV.Add(value);
@@ -919,16 +983,17 @@ namespace GraphView
                 };
                 var InsertNode = new WInsertNodeSpecification(InsertStatement);
                 SqlTree = InsertNode;
+                return SqlTree;
             }
 
             // If needed to add edge, consturct new InsertEdgeStatement
 
-            if (SematicContext.AddEMark)
+            if (context.AddEMark)
             {
                 var columnV = new List<WScalarExpression>();
                 var columnK = new List<WColumnReferenceExpression>();
 
-                foreach (var property in SematicContext.Properties)
+                foreach (var property in context.Properties)
                 {
                     var value = new WValueExpression(property.Value, true);
                     columnV.Add(value);
@@ -954,12 +1019,13 @@ namespace GraphView
                 };
                 var InsertEdge = new WInsertEdgeSpecification(InsertStatement) { SelectInsertSource = new WSelectInsertSource() { Select = SelectBlock } };
                 SqlTree = InsertEdge;
+                return SqlTree;
             }
 
             // If needed to remove node/edge, construct new deleteEdge/Node Specification
-            if (SematicContext.RemoveMark)
+            if (context.RemoveMark)
             {
-                if (SematicContext.PrimaryInternalAlias[0].IndexOf("N_") != -1)
+                if (context.PrimaryInternalAlias[0].IndexOf("N_") != -1)
                 {
                     var TargetClause = new WNamedTableReference()
                     {
@@ -969,7 +1035,7 @@ namespace GraphView
                                 Identifiers = new List<Identifier>() {new Identifier() {Value = "Node"}}
                             },
                         TableObjectString = "Node",
-                        Alias = new Identifier() {Value = SematicContext.PrimaryInternalAlias.First()}
+                        Alias = new Identifier() {Value = context.PrimaryInternalAlias.First()}
                     };
                     var DeleteNodeSp = new WDeleteSpecification()
                     {
@@ -978,12 +1044,13 @@ namespace GraphView
                        Target = TargetClause
                     };
                     SqlTree = DeleteNodeSp;
+                    return SqlTree;
                 }
-                if (SematicContext.PrimaryInternalAlias[0].IndexOf("E_") != -1)
+                if (context.PrimaryInternalAlias[0].IndexOf("E_") != -1)
                 {
                     var EC = new WEdgeColumnReferenceExpression()
                     {
-                        Alias = SematicContext.PrimaryInternalAlias.First(),
+                        Alias = context.PrimaryInternalAlias.First(),
                         MultiPartIdentifier =
                             new WMultiPartIdentifier()
                             {
@@ -992,8 +1059,10 @@ namespace GraphView
                     };
                     var DeleteEdgeSp = new WDeleteEdgeSpecification(SelectBlock);
                     SqlTree = DeleteEdgeSp;
+                    return SqlTree;
                 }
             }
+            return SqlTree;
         }
 
     }

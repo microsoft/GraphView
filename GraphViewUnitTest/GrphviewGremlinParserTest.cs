@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphViewUnitTest
 {
@@ -35,7 +36,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.ParseTree();
             var SematicAnalyser = new GraphViewGremlinSematicAnalyser(ParserTree, para.Item2);
             SematicAnalyser.Analyse();
-            SematicAnalyser.Transform();
+            SematicAnalyser.Transform(SematicAnalyser.SematicContext);
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
         "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
         "GroupMatch", "GraphTest");
@@ -186,6 +187,47 @@ namespace GraphViewUnitTest
             connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.E().has('reason', 'loves waves').as('source').values('reason').as('reason').select('source').outV().values('name').as('god').select('source').inV().values('name').as('thing').select('god', 'reason', 'thing')");
+            var op = ParserTree.Generate(connection);
+            Record rc = null;
+            while (op.Status())
+            {
+                rc = op.Next();
+            }
+        }
+        [TestMethod]
+        public void SelectWithCoalesce()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
+            var ParserTree1 = parser1.Parse("g.V().coalesce(values('type'), values('age'))");
+            var op1 = ParserTree1.Generate(connection);
+            Record rc1 = null;
+            while (op1.Status())
+            {
+                rc1 = op1.Next();
+            }
+            GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
+            var ParserTree2 = parser2.Parse("g.V().coalesce( values('age'), values('type'))");
+            var op2 = ParserTree2.Generate(connection);
+            Record rc2 = null;
+            while (op2.Status())
+            {
+                rc2 = op2.Next();
+            }
+        }
+
+        [TestMethod]
+        public void SelectWithChoose()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            var ParserTree = parser.Parse("g.V().has('name','person'). choose(values('age')). option(27, __.in()). option(32, __.out()).values('name')");
             var op = ParserTree.Generate(connection);
             Record rc = null;
             while (op.Status())

@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Policy;
 // Add DocumentDB references
@@ -364,7 +365,7 @@ namespace GraphView
             }
             if (OperatorOnSubGraphs.Count != 0) CartesianProductOnRecord(ResultsFromChildrenOperator, 0, new Record(header.Count));
             OperatorOnSubGraphs.Clear();
-            if (OutputBuffer.Count == 1) this.Close();
+            if (OutputBuffer.Count < 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
@@ -386,6 +387,78 @@ namespace GraphView
                         NewResult.field[i] = record.field[i];
                 }
                 CartesianProductOnRecord(RecordSet, IndexOfOperator + 1, NewResult);
+            }
+        }
+    }
+
+    public class UnionOperator : GraphViewOperator
+    {
+        internal List<GraphViewOperator> Sources;
+        internal GraphViewConnection connection;
+        internal int FromWhichSource;
+        internal Record result;
+        public UnionOperator(GraphViewConnection pConnection, List<GraphViewOperator> pSources, List<string> pheader)
+        {
+            this.Open();
+            connection = pConnection;
+            header = pheader;
+            Sources = pSources;
+            FromWhichSource = 0;
+        }
+
+        override public Record Next()
+        {
+            if (!Sources[FromWhichSource].Status() || (result = Sources[FromWhichSource].Next()) != null)
+            {
+                if (FromWhichSource == Sources.Count - 1)
+                {
+                    this.Close();
+                    return null;
+                }
+                FromWhichSource++;
+                return Sources[FromWhichSource].Next();
+            }
+            else
+            {
+                return Sources[FromWhichSource].Next();
+            }
+        }
+    }
+
+    public class CoalesceOperator : GraphViewOperator
+    {
+        internal List<GraphViewOperator> Sources;
+        internal GraphViewConnection connection;
+        internal int FromWhichSource;
+        internal Record result;
+        internal int CoalesceNumber;
+        public CoalesceOperator(GraphViewConnection pConnection, List<GraphViewOperator> pSources, int pCoalesceNumber, List<string> pheader)
+        {
+            this.Open();
+            connection = pConnection;
+            header = pheader;
+            Sources = pSources;
+            FromWhichSource = 0;
+            CoalesceNumber = pCoalesceNumber;
+        }
+
+        override public Record Next()
+        {
+            HashSet<string> ResultSet = new HashSet<string>();
+            while (FromWhichSource < Sources.Count && (result = Sources[FromWhichSource].Next()) == null)
+                FromWhichSource++;
+            if (FromWhichSource == Sources.Count) return null;
+            else
+            {
+                for (int i = FromWhichSource + 1; i < Sources.Count; i++) Sources[i].Close();
+                string Temp = "";
+                for (int i = 0; i < CoalesceNumber * 2; i++) Temp += result.RetriveData(i);
+                if (!ResultSet.Contains(Temp))
+                {
+                    ResultSet.Add(Temp);
+                    return result;
+                }
+                else return this.Next();
             }
         }
     }

@@ -203,6 +203,7 @@ namespace GraphView
         internal WGroupByClause GroupByClause { get; set; }
         internal WHavingClause HavingClause { get; set; }
         internal WMatchClause MatchClause { get; set; }
+        internal WLimitClause LimitClause { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
         public WSelectQueryBlock()
         {

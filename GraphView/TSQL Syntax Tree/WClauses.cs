@@ -549,4 +549,9 @@ namespace GraphView
         }
     }
 
+    public partial class WLimitClause : WSqlFragment
+    {
+        internal int Limit { get; set; }
+    }
+
 }

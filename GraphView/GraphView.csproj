@@ -88,6 +88,7 @@
     <Compile Include="GraphViewKeywords.cs" />
     <Compile Include="DocDBInsertDeleteOperartor.cs" />
     <Compile Include="TranslateMatchClauseVisitor.cs" />
+    <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="TranslateDataModificationVisitor.cs" />
