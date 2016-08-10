@@ -83,8 +83,13 @@ namespace GraphView
                 List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
+                string source_tital = source[0] + ".doc";
+                string sink_tital = sink[0] + ".doc";
 
-                InsertEdgeInMap(sourceid, sinkid);
+                string source_json_str = rec.RetriveData(header, source_tital);
+                string sink_json_str = rec.RetriveData(header, sink_tital);
+                
+                InsertEdgeInMap(sourceid, sinkid,source_json_str, sink_json_str);
             }
 
             Upload();
@@ -93,32 +98,14 @@ namespace GraphView
             return null;
         }
 
-        internal void InsertEdgeInMap(string sourceid, string sinkid)
+        internal void InsertEdgeInMap(string sourceid, string sinkid, string source_doc, string sink_doc)
         {
-            //Create one if a document not exist locally.
             if (!map.ContainsKey(sourceid))
-            {
-                var documents =
-                    dbConnection.DocDBclient.CreateDocumentQuery(
-                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                        dbConnection.DocDB_CollectionId,
-                        "SELECT * " +
-                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sourceid));
-                foreach (var doc in documents)
-                    map[sourceid] = JsonConvert.SerializeObject(doc);
-            }
+                map[sourceid] = source_doc;
+            
             if (!map.ContainsKey(sinkid))
-            {
-                var documents =
-                    dbConnection.DocDBclient.CreateDocumentQuery(
-                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                        dbConnection.DocDB_CollectionId,
-                        "SELECT * " +
-                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sinkid));
-                foreach (var doc in documents)
-                    map[sinkid] = JsonConvert.SerializeObject(doc);
-            }
-
+                map[sinkid] = sink_doc;
+            
             GraphViewDocDBCommand.INSERT_EDGE(map, edge, sourceid, sinkid);
         }
 

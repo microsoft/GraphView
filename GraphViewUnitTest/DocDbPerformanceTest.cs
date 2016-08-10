@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using GraphView;
@@ -8,6 +9,14 @@ namespace GraphViewUnitTest
     [TestClass]
     public class PerformanceTest
     {
+        int count;
+        internal async Task IN(GraphViewCommand gcmd)
+        {
+            await Task.Delay(1);
+            gcmd.ExecuteNonQuery();
+
+            count++;
+        }
         [TestMethod]
         public void InsertNode()
         {
@@ -1022,8 +1031,22 @@ INSERT INTO Node (name, age, type) VALUES ('node998', 10, 'human');
 INSERT INTO Node (name, age, type) VALUES ('node999', 10, 'human');                
 INSERT INTO Node (name, age, type) VALUES ('node1000', 10, 'human');
 ";
-#endregion 
-            gcmd.ExecuteNonQuery();
+#endregion
+
+            count = 0;
+
+            IN(gcmd);
+            IN(gcmd);
+            IN(gcmd);
+            IN(gcmd);
+            IN(gcmd);
+            IN(gcmd);
+            IN(gcmd);
+            IN(gcmd);
+
+            while (count != 8)
+                System.Threading.Thread.Sleep(10);
+            
 
             //connection.ResetCollection();
         }
