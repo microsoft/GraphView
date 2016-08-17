@@ -202,7 +202,7 @@ namespace GraphViewUnitTest
 "GroupMatch", "GremlinTest");
             connection.SetupClient();
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
-            var ParserTree1 = parser1.Parse("g.V().coalesce(values('type'), values('age'))");
+            var ParserTree1 = parser1.Parse("g.V().has('name','saturn')coalesce(values('type'), values('age'))");
             var op1 = ParserTree1.Generate(connection);
             Record rc1 = null;
             while (op1.Status())
@@ -210,7 +210,7 @@ namespace GraphViewUnitTest
                 rc1 = op1.Next();
             }
             GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-            var ParserTree2 = parser2.Parse("g.V().coalesce( values('age'), values('type'))");
+            var ParserTree2 = parser2.Parse("g.V().has('name','saturn').coalesce( values('age'), values('type'))");
             var op2 = ParserTree2.Generate(connection);
             Record rc2 = null;
             while (op2.Status())

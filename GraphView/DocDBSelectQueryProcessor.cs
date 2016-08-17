@@ -408,7 +408,7 @@ namespace GraphView
         {
             if (!Sources[FromWhichSource].Status() || (result = Sources[FromWhichSource].Next()) != null)
             {
-                if (FromWhichSource == Sources.Count - 1)
+                if (FromWhichSource == Sources.Count)
                 {
                     this.Close();
                     return null;
@@ -443,9 +443,13 @@ namespace GraphView
         override public Record Next()
         {
             HashSet<string> ResultSet = new HashSet<string>();
-            while (FromWhichSource < Sources.Count && (result = Sources[FromWhichSource].Next()) == null)
+            while (FromWhichSource < Sources.Count && (!Sources[FromWhichSource].Status() || (result = Sources[FromWhichSource].Next()) == null))
                 FromWhichSource++;
-            if (FromWhichSource == Sources.Count) return null;
+            if (FromWhichSource == Sources.Count)
+            {
+                this.Close();
+                return null;
+            }
             else
             {
                 for (int i = FromWhichSource + 1; i < Sources.Count; i++) Sources[i].Close();

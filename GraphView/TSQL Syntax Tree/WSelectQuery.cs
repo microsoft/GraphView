@@ -805,7 +805,7 @@ namespace GraphView
             string ResultIndexString = ",";
             foreach (string ResultIndex in ResultIndexToAppend)
             {
-                if (ResultIndex.Substring(ResultIndex.Length - 3,3) == "doc")
+                if (ResultIndex.Length > 3 && ResultIndex.Substring(ResultIndex.Length - 3,3) == "doc")
                 ResultIndexString += ResultIndex.Substring(0, ResultIndex.Length - 4) + " AS " + ResultIndex.Replace(".", "_") + ",";
                 else ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
             }
