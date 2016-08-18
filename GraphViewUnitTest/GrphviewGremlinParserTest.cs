@@ -235,8 +235,38 @@ namespace GraphViewUnitTest
                 rc = op.Next();
             }
         }
-    }
 
+        [TestMethod]
+        public void NativeAPITest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GremlinPipeline g1 = new GremlinPipeline();
+            var r1 =
+                g1.V()
+                    .has("name", "saturn")
+                    .In("father")
+                    .In("father")
+                    .outE("battled")
+                    .has("time", GremlinPipeline.gt(1))
+                    .inV()
+                    .values("name");
+            var g2 = new GremlinPipeline();
+            var r2 = g2.V().has("name", "saturn").In("father").In("father").Out("father", "mother").values("name");
+            r2.connection = connection;
+            r1.connection = connection;
+            foreach (var x in r1)
+            {
+                var y = x;
+            }
+            foreach (var y in r2)
+            {
+                var z = y;
+            }
+        }
+    }
     [TestClass]
     public class GraphViewGremlinInsertDeleteTest
     {

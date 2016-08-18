@@ -707,6 +707,11 @@ namespace GraphView
                 {
                     ExplictAliasToInternalAlias.Add(x.Key, x.Value);
                 }
+                if(rhs.BranchContexts != null)
+                foreach (var x in rhs.BranchContexts)
+                {
+                    BranchContexts.Add(x);
+                }
                 BranchNote = rhs.BranchNote;
                 NodeCount = rhs.NodeCount;
                 EdgeCount = rhs.EdgeCount;
@@ -718,7 +723,21 @@ namespace GraphView
 
             internal Context()
             {
-                
+                PrimaryInternalAlias = new List<string>();
+                InternalAliasList = new List<string>();
+                AliasPredicates = new List<List<string>>();
+                Paths = new List<Tuple<string, string, string>>();
+                ExplictAliasToInternalAlias = new Dictionary<string, string>();
+                NodeCount = 0;
+                EdgeCount = 0;
+                AddEMark = false;
+                AddVMark = false;
+                RemoveMark = false;
+                ChooseMark = false;
+                Properties = new Dictionary<string, string>();
+                limit = -1;
+                BranchContexts = new List<Context>();
+                Identifiers = new List<string>();
             }
         }
 
@@ -748,6 +767,11 @@ namespace GraphView
                 BranchContexts = new List<Context>()
             };
             ParserTree = pParserTree;
+        }
+
+        internal GraphViewGremlinSematicAnalyser()
+        {
+            
         }
 
         public void Analyse()
