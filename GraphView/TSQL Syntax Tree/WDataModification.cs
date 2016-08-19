@@ -574,6 +574,7 @@ namespace GraphView
             var n2 = SelectQueryBlock.SelectElements[1] as WSelectScalarExpression;
             var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
             identifiers2.Add(iden);
+
             #endregion
 
             #region Add "edge._ID" & "edge._reverse_ID" in Select
@@ -598,6 +599,24 @@ namespace GraphView
             n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_name);
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(edge_reverse_id);
+            #endregion
+
+            #region Add ".doc" in Select
+            var dic_iden = new Identifier();
+            dic_iden.Value = "doc";
+            var n5 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n5);
+            var n5_SelectExpr = new WColumnReferenceExpression();
+            n5.SelectExpr = n5_SelectExpr;
+            n5_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n5_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
+            n5_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+
+            var n6 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n6);
+            var n6_SelectExpr = new WColumnReferenceExpression();
+            n6.SelectExpr = n6_SelectExpr;
+            n6_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n6_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
+            n6_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
             #endregion
         }
 

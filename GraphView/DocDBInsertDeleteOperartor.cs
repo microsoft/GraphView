@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -17,6 +19,7 @@ namespace GraphView
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
         internal Dictionary<string, string> map;
+        private int thread_num;
 
 
         public InsertEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput, string edge, string source, string sink)
@@ -83,8 +86,8 @@ namespace GraphView
                 List<string> header = SelectInput.header;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
-                string source_tital = source[0] + ".doc";
-                string sink_tital = sink[0] + ".doc";
+                string source_tital = source.Substring(0,source.Length-3) + ".doc";
+                string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
 
                 string source_json_str = rec.RetriveData(header, source_tital);
                 string sink_json_str = rec.RetriveData(header, sink_tital);
@@ -164,11 +167,20 @@ namespace GraphView
                 //The "e" in the Record is "Reverse_e" in fact
                 string EdgeReverseID = rec.RetriveData(header, EdgeID_str);
                 string EdgeID = rec.RetriveData(header, EdgeReverseID_str);
+
+                //get source.doc and sink.doc
+                string source_tital = source.Substring(0, source.Length - 3) + ".doc";
+                string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
+                string source_json_str = rec.RetriveData(header, source_tital);
+                string sink_json_str = rec.RetriveData(header, sink_tital);
+
                 int ID, reverse_ID;
                 int.TryParse(EdgeID, out ID);
                 int.TryParse(EdgeReverseID, out reverse_ID);
 
-                DeleteEdgeInMap(sourceid,sinkid,ID,reverse_ID);
+
+
+                DeleteEdgeInMap(sourceid, sinkid, ID, reverse_ID, source_json_str, sink_json_str);
             }
 
             Upload();
@@ -178,32 +190,14 @@ namespace GraphView
             return null;
         }
 
-        internal void DeleteEdgeInMap(string sourceid, string sinkid, int ID, int reverse_ID)
+        internal void DeleteEdgeInMap(string sourceid, string sinkid, int ID, int reverse_ID, string source_json_str, string sink_json_str)
         {
 
             //Create one if a document not exist locally.
             if (!map.ContainsKey(sourceid))
-            {
-                var documents =
-                    dbConnection.DocDBclient.CreateDocumentQuery(
-                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                        dbConnection.DocDB_CollectionId,
-                        "SELECT * " +
-                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sourceid));
-                foreach (var doc in documents)
-                    map[sourceid] = JsonConvert.SerializeObject(doc);
-            }
+                map[sourceid] = source_json_str;
             if (!map.ContainsKey(sinkid))
-            {
-                var documents =
-                    dbConnection.DocDBclient.CreateDocumentQuery(
-                        "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" +
-                        dbConnection.DocDB_CollectionId,
-                        "SELECT * " +
-                        string.Format("FROM doc WHERE doc.id = \"{0}\"", sinkid));
-                foreach (var doc in documents)
-                    map[sinkid] = JsonConvert.SerializeObject(doc);
-            }
+                map[sinkid] = sink_json_str;
 
             map[sourceid] = GraphViewJsonCommand.Delete_edge(map[sourceid], ID);
             map[sinkid] = GraphViewJsonCommand.Delete_reverse_edge(map[sinkid], reverse_ID);

@@ -285,11 +285,21 @@ namespace GraphView
             if (DocDB_Collection == null)
             {
                 DocDB_Collection = await DocDBclient.CreateDocumentCollectionAsync("dbs/" + DocDB_Database.Id,
-                    new DocumentCollection
-                    {
-                        Id = DocDB_CollectionId
-                    });
+                    new DocumentCollection{Id = DocDB_CollectionId},
+                    new RequestOptions { OfferType = "S3" });
             }
+
+            /*
+             using (DocumentClient client = new DocumentClient(new Uri("service endpoint"), "auth key"))
+{
+    //Create a new collection with an Offer set to S3
+    //Not passing in RequestOptions.OfferType will result in a collection with the default Offer set. 
+    DocumentCollection coll = await client.CreateDocumentCollectionAsync(databaseLink,
+        new DocumentCollection { Id = "My Collection" }, 
+        new RequestOptions { OfferType = "S3"} );
+}
+             */
+
             DocDB_finish = true;
         }
 
