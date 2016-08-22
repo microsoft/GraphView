@@ -291,5 +291,33 @@ namespace GraphViewUnitTest
             }
             Assert.AreEqual(rc.RetriveData(2), "stephen");
         }
+        [TestMethod]
+        public void AddSimpleEdge()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
+            var ParserTree1 = parser1.Parse("g.addV('label','person','name','Adams')");
+            var op1 = ParserTree1.Generate(connection);
+            op1.Next();
+            GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
+            var ParserTree2 = parser2.Parse("g.addV('label','person','name','Bob')");
+            var op2 = ParserTree2.Generate(connection);
+            op2.Next();
+            GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
+            var ParserTree3 = parser3.Parse("g.V.as('v').has('name','Adams').as('a').select('v').has('name','Bob').as('b').select('a','b').addOutE('a','isfriend','b','for','10y')");
+            var op3 = ParserTree3.Generate(connection);
+            op3.Next();
+            GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
+            var ParserTree4 = parser4.Parse("g.V.has('name','Adams').out('isfriend').name");
+            var op4 = ParserTree2.Generate(connection);
+            Record rc = null;
+            while (op2.Status())
+            {
+                rc = op2.Next();
+            }
+        }
     }
 }

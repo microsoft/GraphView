@@ -44,6 +44,7 @@ namespace GraphView
         internal GraphViewOperator CurrentOperator;
         internal GremlinPipelineIterator it;
         internal GraphViewConnection connection;
+        internal string AppendExecutableString;
 
         internal static GremlinPipeline held;
         public IEnumerator GetEnumerator()
@@ -94,12 +95,19 @@ namespace GraphView
         {
             CurrentOperator = null;
             pContext = Context;
+           AppendExecutableString = "";
         }
 
         public GremlinPipeline()
         {
             CurrentOperator = null;
             pContext = new GraphViewGremlinSematicAnalyser.Context();
+            AppendExecutableString = "";
+        }
+
+        public GremlinPipeline(GraphViewGremlinSematicAnalyser.Context Context, string pAES)
+        {
+            AppendExecutableString = pAES;
         }
 
         internal void AddNewAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context, string predicates = "")
@@ -189,7 +197,7 @@ namespace GraphView
 
         }
 
-        public static GremlinPipeline hold()
+        public static GremlinPipeline _underscore()
         {
             GremlinPipeline HeldPipe = new GremlinPipeline(held.pContext);
             HeldPipe.pContext.HoldMark = false;
@@ -201,6 +209,9 @@ namespace GraphView
             AddNewAlias(SrcNode, ref pContext);
             ChangePrimaryAlias(SrcNode, ref pContext);
             if (pContext.HoldMark == true) held = this;
+
+            AppendExecutableString += "V().";
+
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
 
@@ -216,6 +227,8 @@ namespace GraphView
             pContext.Paths.Add((new Tuple<string, string, string>(SrcNode, Edge, DestNode)));
             if (pContext.HoldMark == true) held = this;
 
+            AppendExecutableString += "E().";
+
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
 
@@ -224,6 +237,8 @@ namespace GraphView
             for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
                 pContext.PrimaryInternalAlias[i] += ".id";
             if (pContext.HoldMark == true) held = this;
+
+            AppendExecutableString += "next.";
 
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
@@ -237,36 +252,45 @@ namespace GraphView
             }
             if (pContext.HoldMark == true) held = this;
 
+            AppendExecutableString += "has(\'" + name + "\', " + "\'" + value + "\').";
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
 
         public GremlinPipeline has(string name, Tuple<int, GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
             Tuple<int, GraphViewGremlinParser.Keywords> des = ComparisonFunc;
+            AppendExecutableString += "has(\'" + name + "\', ";
             foreach (var alias in pContext.PrimaryInternalAlias)
             {
                 switch (des.Item2)
                 {
                     case GraphViewGremlinParser.Keywords.lt:
+                        AppendExecutableString += "lt("+des.Item1+ ")";
                         pContext.AliasPredicates[index].Add(alias + "." + name + " < " + des.Item1.ToString());
                         break;
                     case GraphViewGremlinParser.Keywords.gt:
+                        AppendExecutableString += "gt(" + des.Item1 + ")";
                         pContext.AliasPredicates[index].Add(alias + "." + name + " > " + des.Item1.ToString());
                         break;
                     case GraphViewGremlinParser.Keywords.eq:
+                        AppendExecutableString += "eq(" + des.Item1 + ")";
                         pContext.AliasPredicates[index].Add(alias + "." + name + " = " + des.Item1.ToString());
                         break;
                     case GraphViewGremlinParser.Keywords.lte:
+                        AppendExecutableString += "lte(" + des.Item1 + ")";
                         pContext.AliasPredicates[index].Add(alias + "." + name + " [ " + des.Item1.ToString());
                         break;
                     case GraphViewGremlinParser.Keywords.gte:
+                        AppendExecutableString += "gte(" + des.Item1 + ")";
                         pContext.AliasPredicates[index].Add(alias + "." + name + " ] " + des.Item1.ToString());
                         break;
                     case GraphViewGremlinParser.Keywords.neq:
+                        AppendExecutableString += "neq(" + des.Item1 + ")";
                         pContext.AliasPredicates[index].Add(alias + "." + name + " ! " + des.Item1.ToString());
                         break;
                 }
             }
+            AppendExecutableString += ").";
             if (pContext.HoldMark == true) held = this;
 
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
@@ -288,15 +312,17 @@ namespace GraphView
                         DestNode));
                     NewPrimaryInternalAlias.Add(DestNode);
                 }
+                AppendExecutableString += "out().";
             }
             else
+            {
                 foreach (var para in Parameters)
                 {
                     Edge = "E_" + pContext.EdgeCount.ToString();
                     AddNewAlias(Edge, ref pContext);
                     index = pContext.InternalAliasList.Count;
                     pContext.AliasPredicates[index - 1].Add(Edge + ".type" + " = " +
-                                                           para);
+                                                            para);
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
                         DestNode = "N_" + pContext.NodeCount.ToString();
@@ -307,6 +333,8 @@ namespace GraphView
                         NewPrimaryInternalAlias.Add(DestNode);
                     }
                 }
+                AppendExecutableString += "out(\'"+string.Join("\', \'",Parameters)+"\')";
+            }
             pContext.PrimaryInternalAlias.Clear();
             foreach (var a in NewPrimaryInternalAlias)
             {
@@ -333,15 +361,17 @@ namespace GraphView
                         DestNode));
                     NewPrimaryInternalAlias.Add(SrcNode);
                 }
+                AppendExecutableString += "in().";
             }
             else
+            {
                 foreach (var para in Parameters)
                 {
                     Edge = "E_" + pContext.EdgeCount.ToString();
                     AddNewAlias(Edge, ref pContext);
                     index = pContext.InternalAliasList.Count;
                     pContext.AliasPredicates[index - 1].Add(Edge + ".type" + " = " +
-                                                           para);
+                                                            para);
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
                         SrcNode = "N_" + pContext.NodeCount.ToString();
@@ -352,6 +382,8 @@ namespace GraphView
                         NewPrimaryInternalAlias.Add(SrcNode);
                     }
                 }
+                AppendExecutableString += "out(\'" + string.Join("\', \'", Parameters) + "\')";
+            }
             pContext.PrimaryInternalAlias.Clear();
             foreach (var a in NewPrimaryInternalAlias)
             {
@@ -376,8 +408,13 @@ namespace GraphView
                 Parameter = Parameters[0];
                 pContext.AliasPredicates.Add(new List<string>());
                 pContext.AliasPredicates.Last().Add(Edge + ".type = " + Parameter);
+                AppendExecutableString += "outE(\'" + Parameter + "\').";
             }
-            else pContext.AliasPredicates.Add(new List<string>());
+            else
+            {
+                AppendExecutableString += "outE().";
+                pContext.AliasPredicates.Add(new List<string>());
+            }
             pContext.EdgeCount++;
             pContext.PrimaryInternalAlias.Clear();
             pContext.PrimaryInternalAlias.Add(Edge);
@@ -404,8 +441,13 @@ namespace GraphView
                 Parameter = Parameters[0];
                 pContext.AliasPredicates.Add(new List<string>());
                 pContext.AliasPredicates.Last().Add(Edge + ".type = " + Parameter);
+                AppendExecutableString += "inE(\'" + Parameter + "\').";
             }
-            else pContext.AliasPredicates.Add(new List<string>());
+            else
+            {
+                AppendExecutableString += "inE().";
+                pContext.AliasPredicates.Add(new List<string>());
+            }
             pContext.EdgeCount++;
             ChangePrimaryAlias(Edge, ref pContext);
             foreach (var alias in pContext.PrimaryInternalAlias)
@@ -426,6 +468,8 @@ namespace GraphView
             ChangePrimaryAlias(ExistInPath.Item3, ref pContext);
             if (pContext.HoldMark == true) held = this;
 
+            AppendExecutableString += "inV().";
+
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
 
@@ -436,12 +480,16 @@ namespace GraphView
             ChangePrimaryAlias(ExistOutPath.Item1, ref pContext);
             if (pContext.HoldMark == true) held = this;
 
+            AppendExecutableString += "outE().";
+
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
         public GremlinPipeline As(string alias)
         {
             pContext.ExplictAliasToInternalAlias.Add(alias, pContext.PrimaryInternalAlias[0]);
             if (pContext.HoldMark == true) held = this;
+
+            AppendExecutableString += "as(\'"+alias+"\').";
 
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
         }
@@ -451,6 +499,7 @@ namespace GraphView
             pContext.PrimaryInternalAlias.Clear();
             if (Parameters == null)
             {
+                AppendExecutableString += "select().";
                 foreach (var a in pContext.ExplictAliasToInternalAlias)
                     pContext.PrimaryInternalAlias.Add(a.Value);
             }
@@ -627,7 +676,7 @@ namespace GraphView
             NewPrimaryInternalAlias.Clear();
             foreach (var pipe in pipes)
             {
-                GremlinPipeline NewPipe = pipes;
+                GremlinPipeline NewPipe = pipe;
                 pContext = NewPipe.pContext;
                 foreach (var x in pContext.PrimaryInternalAlias)
                 {
@@ -690,7 +739,6 @@ namespace GraphView
             if (pContext.HoldMark == true) held = this;
 
             return new GremlinPipeline(new GraphViewGremlinSematicAnalyser.Context(pContext));
-
         }
     }
 }

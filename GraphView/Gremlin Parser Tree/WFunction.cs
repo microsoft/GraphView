@@ -58,6 +58,9 @@ namespace GraphView
                         pContext.PrimaryInternalAlias[i] += ".id";
                     break;
                 case (int)GraphViewGremlinParser.Keywords.has:
+                    SrcNode = "N_" + pContext.NodeCount.ToString();
+                    AddNewAlias(SrcNode, ref pContext);
+                    ChangePrimaryAlias(SrcNode, ref pContext);
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
                         index = pContext.InternalAliasList.IndexOf(alias);
