@@ -668,6 +668,8 @@ namespace GraphView
             internal bool AddVMark;
             internal bool RemoveMark;
             internal bool ChooseMark;
+            internal bool RepeatMark;
+            internal bool HoldMark;
             internal int limit;
 
             internal Context(Context rhs)

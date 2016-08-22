@@ -29,6 +29,7 @@ namespace GraphViewUnitTest
                 var rc = reader;
             }
 
+
             connection.ResetCollection();
         }
 
@@ -182,6 +183,7 @@ namespace GraphViewUnitTest
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
+                var rc = reader;
             }
 
            connection.ResetCollection();
@@ -209,6 +211,7 @@ namespace GraphViewUnitTest
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
+                var rc = reader;
             }
 
             connection.ResetCollection();
@@ -233,11 +236,11 @@ namespace GraphViewUnitTest
             ";
 
             var reader = gcmd.ExecuteReader();
+
             while (reader.Read())
             {
+                var rc = reader;
             }
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
