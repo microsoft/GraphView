@@ -791,8 +791,18 @@ namespace GraphView
             var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
             foreach (var a in context.InternalAliasList)
             {
+                bool AddToFromFlag = false;
                 if (a.Contains("N_"))
                 {
+                    foreach (var x in context.PrimaryInternalAlias)
+                    {
+                        if (x.IndexOf(a) != -1) AddToFromFlag = true;
+                    }
+                    foreach (var x in context.AliasPredicates)
+                    {
+                        foreach(var y in x) if (y.IndexOf(a) != -1) AddToFromFlag = true;
+                    }
+                    if (!AddToFromFlag) continue;
                     var TR = new WNamedTableReference()
                     {
                         Alias = new Identifier() { Value = a },

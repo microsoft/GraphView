@@ -352,7 +352,7 @@ namespace GraphView
             // Attach pre-generated docDB script to the node on Match graph
             List<BooleanFunction> Functions = AttachScriptSegment(graph, header);
             // Generate proper processor for the current syntax element
-            return GenerateProcessor(graph, header, pConnection, Functions);
+            return ConstructOperator(graph, header, pConnection, Functions);
         }
 
         private MatchGraph ConstructGraph()
@@ -672,7 +672,7 @@ namespace GraphView
             }
             return header;
         }
-        private GraphViewOperator GenerateProcessor(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
+        private GraphViewOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
             Record RecordZero = new Record(header.Count);
 
@@ -737,6 +737,7 @@ namespace GraphView
                 // The last processor of a sub graph will be added to root processor list for later use.
                 RootProcessor.Add(ChildrenProcessor.Last());
             }
+            if (RootProcessor.Count == 1) return RootProcessor[0];
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             return new CartesianProductOperator(pConnection, RootProcessor, header, 100);
         }
