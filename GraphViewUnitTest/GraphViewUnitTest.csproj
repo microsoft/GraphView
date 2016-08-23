@@ -72,6 +72,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="GraphViewMarvelTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DocDbInsertDeleteTest.cs" />
     <Compile Include="GrphviewGremlinParserTest.cs" />
