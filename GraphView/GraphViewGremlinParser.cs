@@ -252,6 +252,7 @@ namespace GraphView
                     {new Regex(@"\)"), TokenType.RightParenthesis},
                     {new Regex(@"{"), TokenType.LeftBrace},
                     {new Regex(@"}"), TokenType.RightBrace},
+                    {new Regex(@"(""([^""\\]|\\.)*"")"), TokenType.DoubleQuotedString},
                     {new Regex(@"(\+|-|~|&|\^|\|)"), TokenType.ArithmeticOperator1},
                     {new Regex(@"(\*|/|%)"), TokenType.ArithmeticOperator2},
                     {new Regex(@"(\<=|\>=|=|\<\>|\<|\>|!\>|!\<|!=)"), TokenType.ComparisonOperator},
@@ -260,7 +261,6 @@ namespace GraphView
                     {new Regex(@"(0[x|X][0-9a-fA-F]+)"), TokenType.Binary},
                     {new Regex(@"([0-9]+\.[0-9]+)"), TokenType.Double},
                     {new Regex(@"([0-9]+)"), TokenType.Integer},
-                    {new Regex(@"(""([^""\\]|\\.)*"")"), TokenType.DoubleQuotedString},
                     {new Regex(@"('([^'\\]|\\.)*')"), TokenType.SingleQuotedString},
                     {new Regex(@"([a-zA-Z_][0-9a-zA-Z_]*)"), TokenType.NameToken},
                     {new Regex(@"\."), TokenType.DotToken},
@@ -721,6 +721,7 @@ namespace GraphView
                 AddVMark = rhs.AddVMark;
                 RemoveMark = rhs.RemoveMark;
                 ChooseMark = rhs.ChooseMark;
+                HoldMark = rhs.HoldMark;
             }
 
             internal Context()
@@ -740,6 +741,7 @@ namespace GraphView
                 limit = -1;
                 BranchContexts = new List<Context>();
                 Identifiers = new List<string>();
+                HoldMark = true;
             }
         }
 

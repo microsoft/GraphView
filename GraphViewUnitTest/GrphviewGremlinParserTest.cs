@@ -245,16 +245,10 @@ namespace GraphViewUnitTest
             connection.SetupClient();
             GremlinPipeline g1 = new GremlinPipeline();
             var r1 =
-                g1.V()
-                    .has("name", "saturn")
-                    .In("father")
-                    .In("father")
-                    .outE("battled")
-                    .has("time", GremlinPipeline.gt(1))
-                    .inV()
-                    .values("name");
+                g1.V().has("character", "HAWK").Out("appeared");
             var g2 = new GremlinPipeline();
-            var r2 = g2.V().has("name", "saturn").In("father").In("father").Out("father", "mother").values("name");
+            var r2 = g2.V().has("name", "saturn").coalesce(GremlinPipeline._underscore().values("type"), GremlinPipeline._underscore().values("age"));
+
             r2.connection = connection;
             r1.connection = connection;
             foreach (var x in r1)
@@ -266,8 +260,54 @@ namespace GraphViewUnitTest
                 var z = y;
             }
         }
+        [TestMethod]
+        public void TutorTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+    "GroupMatch", "GremlinTutor");
+            connection.SetupClient();
+            ResetCollection("GremlinTutor");
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            parser.Parse("g.addV('character','VENUS II','weapon','shiled')").Generate(connection).Next();
+            parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
+            parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            parser.Parse("g.addV('character','WOODGOD','weapon','lass')").Generate(connection).Next();
+            parser.Parse("g.addV('comicbook','H2 252')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            var res = parser.Parse("g.V().has('character', 'HAWK').out('appeared').comicbook").Generate(connection);
+            while (res.Status())
+            {
+                var x = res.Next();
+            }
+
+        }
+        [TestMethod]
+        public void ResetCollection(string collection)
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", collection);
+            connection.SetupClient();
+
+            connection.DocDB_finish = false;
+            connection.BuildUp();
+            while (!connection.DocDB_finish)
+                System.Threading.Thread.Sleep(10);
+
+            connection.ResetCollection();
+
+            connection.DocDB_finish = false;
+            connection.BuildUp();
+            while (!connection.DocDB_finish)
+                System.Threading.Thread.Sleep(10);
+        }
+
     }
-    [TestClass]
+[TestClass]
     public class GraphViewGremlinInsertDeleteTest
     {
         [TestMethod]
@@ -299,7 +339,7 @@ namespace GraphViewUnitTest
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinModification");
             connection.SetupClient();
-            ResetCollection("GremlinModification");
+            //ResetCollection("GremlinModification");
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.addV('label','person','name','Adams')");
             var op1 = ParserTree1.Generate(connection);

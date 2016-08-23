@@ -114,7 +114,7 @@ namespace GraphViewUnitTest
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             parser.Parse("g.addV('character','VENUS II','weapon','shiled')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comic-book','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
             parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
             parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
