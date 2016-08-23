@@ -19,13 +19,14 @@ namespace GraphView
                 CurrentOperator = pCurrentOperator;
             }
             private Func<GraphViewGremlinSematicAnalyser.Context> Modifier;
+            internal Record CurrentRecord;
             public bool MoveNext()
             {
                 if (CurrentOperator == null) Reset();
 
                 if (CurrentOperator.Status())
                 {
-                    Current = CurrentOperator.Next();
+                    CurrentRecord = CurrentOperator.Next();
                     return true;
                 }
                 else return false;
@@ -36,8 +37,8 @@ namespace GraphView
                
             }
 
-            object IEnumerator.Current { get; }
-            public Record Current { get; set; }
+            object IEnumerator.Current { get {return CurrentRecord;} }
+            public Record Current { get {return CurrentRecord;}}
 
             public void Dispose()
             {
@@ -61,6 +62,7 @@ namespace GraphView
                 RecordList.Add(x);
             return RecordList;
         }
+
         public IEnumerator<Record> GetEnumerator()
         {
             if (it == null)
@@ -77,7 +79,7 @@ namespace GraphView
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return null;
+            return GetEnumerator();
         }
        public GremlinPipeline(GraphViewGremlinSematicAnalyser.Context Context)
         {
