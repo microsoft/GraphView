@@ -9,15 +9,14 @@ namespace GraphViewUnitTest
     public class GraphViewMarvelSelectTest
     {
         [TestMethod]
-        public void SelectMarvel1()
+        public void SelectMarvelQuery1()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "GremlinTest");
             connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            var ParserTree = parser.Parse("g.V().has('character', 'HAWK').out('appeared')");
-            var op = ParserTree.Generate(connection);
+            var op = parser.Parse("g.V().as('character').has('weapon', 'shield').out('appeared').as('comicbook').select('character', 'comicbook')").Generate(connection);
             Record rc = null;
 
             while (op.Status())
@@ -26,6 +25,60 @@ namespace GraphViewUnitTest
                 Console.WriteLine(rc.RetriveData(4));
             }
         }
+        [TestMethod]
+        public void SelectMarvelQuery2()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            var ParserTree = parser.Parse("");
+            var op = parser.Parse("g.V().as('character').has('weapon', 'lasso').out('appeared').as('comicbook').select('character', 'comicbook')").Generate(connection);
+            Record rc = null;
+
+            while (op.Status())
+            {
+                rc = op.Next();
+                Console.WriteLine(rc.RetriveData(4));
+            }
+        }
+        [TestMethod]
+        public void SelectMarvelQuery3()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            var op = parser.Parse("g.V().has('comicbook', 'AVF 4').in('appeared').values('character')").Generate(connection);
+            Record rc = null;
+
+            while (op.Status())
+            {
+                rc = op.Next();
+                Console.WriteLine(rc.RetriveData(4));
+            }
+        }
+        [TestMethod]
+        public void SelectMarvelQuery4()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            var op = parser.Parse("g.V().has('comicbook', 'AVF 4').in('appeared').has('weapon', 'shield').values('character')").Generate(connection);
+            Record rc = null;
+
+            while (op.Status())
+            {
+                rc = op.Next();
+                Console.WriteLine(rc.RetriveData(4));
+            }
+        }
+
+
     }
 
     [TestClass]
@@ -112,7 +165,7 @@ namespace GraphViewUnitTest
             connection.SetupClient();
             ResetCollection("GremlinModificationMarvel");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            parser.Parse("g.addV('character','VENUS II','weapon','shiled')").Generate(connection).Next();
+            parser.Parse("g.addV('character','VENUS II','weapon','shield')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
             parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comic-book','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
             parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
