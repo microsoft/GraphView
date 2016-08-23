@@ -9,9 +9,9 @@ using GraphView.TSQL_Syntax_Tree;
 
 namespace GraphView
 {
-    class GremlinPipeline : IEnumerable
+    class GremlinPipeline : IEnumerable<Record>
     {
-        public class GremlinPipelineIterator :IEnumerator
+        public class GremlinPipelineIterator :IEnumerator<Record>
         {
             private GraphViewOperator CurrentOperator;
             internal GremlinPipelineIterator(GraphViewOperator pCurrentOperator)
@@ -36,7 +36,13 @@ namespace GraphView
                
             }
 
-            public object Current { get; set; }
+            object IEnumerator.Current { get; }
+            public Record Current { get; set; }
+
+            public void Dispose()
+            {
+                
+            }
         }
 
         internal GraphViewOperator CurrentOperator;
@@ -47,7 +53,15 @@ namespace GraphView
         internal bool HoldMark;
 
         internal static GremlinPipeline held;
-        public IEnumerator GetEnumerator()
+
+        public List<Record> ToList()
+        {
+            List<Record> RecordList = new List<Record>(); 
+            foreach (var x in this)
+                RecordList.Add(x);
+            return RecordList;
+        }
+        public IEnumerator<Record> GetEnumerator()
         {
             if (it == null)
             {
@@ -59,6 +73,11 @@ namespace GraphView
                 it = new GremlinPipelineIterator(CurrentOperator);
             }
             return it;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return null;
         }
        public GremlinPipeline(GraphViewGremlinSematicAnalyser.Context Context)
         {
