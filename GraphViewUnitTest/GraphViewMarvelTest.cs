@@ -77,7 +77,74 @@ namespace GraphViewUnitTest
                 Console.WriteLine(rc.RetriveData(4));
             }
         }
+        [TestMethod]
+        public void SelectMarvelQueryNativeAPI1()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GremlinPipeline g1 = new GremlinPipeline();
+            var r1 = g1.V().As("character").has("weapon", "shield").Out("appeared").As("comicbook").select("character", "comicbook");
+            r1.connection = connection;
 
+            foreach (var x in r1)
+            {
+                var y = x;
+                Console.WriteLine(y.RetriveData(0));
+            }
+        }
+        [TestMethod]
+        public void SelectMarvelQueryNativeAPI2()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GremlinPipeline g1 = new GremlinPipeline();
+            var r1 = g1.V().As("character").has("weapon", "lasso").Out("appeared").As("comicbook").select("character", "comicbook");
+            r1.connection = connection;
+
+            foreach (var x in r1)
+            {
+                var y = x;
+                Console.WriteLine(y.RetriveData(0));
+            }
+        }
+        [TestMethod]
+        public void SelectMarvelQueryNativeAPI3()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GremlinPipeline g1 = new GremlinPipeline();
+            var r1 = g1.V().As("character").has("comicbook", "AVF 4").In("appeared").values("character");
+            r1.connection = connection;
+
+            foreach (var x in r1)
+            {
+                var y = x;
+                Console.WriteLine(y.RetriveData(0));
+            }
+        }
+        [TestMethod]
+        public void SelectMarvelQueryNativeAPI4()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            GremlinPipeline g1 = new GremlinPipeline();
+            var r1 = g1.V().As("character").has("comicbook", "AVF 4").In("appeared").has("weapon", "shield").values("character");
+            r1.connection = connection;
+
+            foreach (var x in r1)
+            {
+                var y = x;
+                Console.WriteLine(y.RetriveData(0));
+            }
+        }
 
     }
 
@@ -163,7 +230,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "GremlinTest");
             connection.SetupClient();
-            ResetCollection("GremlinModificationMarvel");
+            ResetCollection("GremlinTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             parser.Parse("g.addV('character','VENUS II','weapon','shield')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
@@ -174,6 +241,34 @@ namespace GraphViewUnitTest
             parser.Parse("g.addV('character','WOODGOD','weapon','lasso')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','H2 252')").Generate(connection).Next();
             parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+        }
+        [TestMethod]
+        public void AddSimpleEdgeMarvelNativeAPIAllRecords()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinTest");
+            connection.SetupClient();
+            ResetCollection("GremlinTest");
+            GremlinPipeline g = new GremlinPipeline();
+            var r1 = g.V().addV("character", "VENUS II", "weapon", "shield");
+            r1.connection = connection;
+            var r2 = g.V().addV("comicbook", "AVF 4");
+            r2.connection = connection;
+            var r3 = g.V().As("v").has("character", "VENUS II").As("a").select("v").has("comicbook", "AVF 4").As("b").select("a", "b").addOutE("a", "appeared", "b");
+            r3.connection = connection;
+            var r4 = g.V().addV("character", "HAWK", "weapon", "claws");
+            r4.connection = connection;
+            var r5 = g.V().addV("comicbook", "AVF 4");
+            r5.connection = connection;
+            var r6 = g.V().As("v").has("character", "HAWK").As("a").select("v").has("comicbook", "AVF 4").As("b").select("a", "b").addOutE("a", "appeared", "b");
+            r6.connection = connection;
+            var r7 = g.V().addV("character", "WOODGOD", "weapon", "lasso");
+            r7.connection = connection;
+            var r8 = g.V().addV("comicbook", "H2 252");
+            r8.connection = connection;
+            var r9 = g.V().As("v").has("character", "WOODGOD").As("a").select("v").has("comicbook", "H2 252").As("b").select("a", "b").addOutE("a", "appeared", "b");
+            r9.connection = connection;
         }
         [TestMethod]
         public void AddSimpleEdgeMarvelRecord1()

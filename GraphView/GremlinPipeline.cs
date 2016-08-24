@@ -289,7 +289,7 @@ namespace GraphView
                     case GraphViewGremlinParser.Keywords.neq:
                         AppendExecutableString += "neq(" + des.Item1 + ")";
                         break;
-                }
+                  }
             AppendExecutableString += ").";
             if (HoldMark == true) held = this;
 
