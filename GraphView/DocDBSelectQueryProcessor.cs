@@ -490,7 +490,7 @@ namespace GraphView
                 {
                     results.Add(ChildOperator.Next());
                 }
-                results.Sort((x,y) =>string.Compare(y.RetriveData(header,bywhat), x.RetriveData(header, bywhat),StringComparison.OrdinalIgnoreCase));
+                results.Sort((x,y) =>string.Compare(x.RetriveData(header, bywhat), y.RetriveData(header, bywhat),StringComparison.OrdinalIgnoreCase));
                 ResultQueue = new Queue<Record>();
                 foreach (var x in results)
                     ResultQueue.Enqueue(x);
