@@ -137,11 +137,8 @@ namespace GraphView
         internal void AddNewAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context, string predicates = "")
         {
             context.InternalAliasList.Add(alias);
-            context.AliasPredicates.Add(new List<string>());
             if (alias[0] == 'N') context.NodeCount++;
             else context.EdgeCount++;
-            if (predicates != "")
-                context.AliasPredicates.Last().Add(predicates);
         }
 
         internal void ChangePrimaryAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context)

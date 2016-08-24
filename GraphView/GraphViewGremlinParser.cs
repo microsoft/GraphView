@@ -215,7 +215,7 @@ namespace GraphView
             SematicAnalyser.Analyse();
             if (SematicAnalyser.SematicContext.BranchContexts.Count != 0 && SematicAnalyser.SematicContext.BranchNote != null)
             {
-                var choose = new WChoose() {InputExpr = new List<WSelectQueryBlock>()};
+                var choose = new WChoose() { InputExpr = new List<WSelectQueryBlock>() };
                 foreach (var x in SematicAnalyser.SematicContext.BranchContexts)
                 {
                     var branch = SematicAnalyser.Transform(x);
@@ -225,7 +225,7 @@ namespace GraphView
             }
             else if (SematicAnalyser.SematicContext.BranchContexts.Count != 0 && SematicAnalyser.SematicContext.BranchNote == null)
             {
-                var choose = new WCoalesce() { InputExpr = new List<WSelectQueryBlock>(),CoalesceNumber = SematicAnalyser.SematicContext.NodeCount};
+                var choose = new WCoalesce() { InputExpr = new List<WSelectQueryBlock>(), CoalesceNumber = SematicAnalyser.SematicContext.NodeCount };
                 foreach (var x in SematicAnalyser.SematicContext.BranchContexts)
                 {
                     var branch = SematicAnalyser.Transform(x);
@@ -233,7 +233,7 @@ namespace GraphView
                 }
                 SqlTree = choose;
             }
-            else 
+            else
             {
                 SematicAnalyser.Transform(SematicAnalyser.SematicContext);
                 SqlTree = SematicAnalyser.SqlTree;
@@ -478,6 +478,7 @@ namespace GraphView
         }
         internal WProgram ParseTree()
         {
+            int FT = NextToken;
             WPath pPath;
             WProgram result = new WProgram();
             result.paths = new List<WPath>();
@@ -485,68 +486,125 @@ namespace GraphView
             {
                 result.paths.Add((pPath));
             }
+            int LT = NextToken;
+            result.FirstToken = FT;
+            result.LastToken = LT;
             return result;
         }
         internal WPath ParsePath()
         {
+            int FT = NextToken;
             int pIdentifier = ParseIdentifier();
             bool pEqual = ParseEqual();
             WFragment pFragment = ParseFragment();
             if (pIdentifier != null && pEqual && pFragment != null)
-                return new WPath() { Fragment = pFragment, IdentifierIndex = pIdentifier };
+            {
+                int LT = NextToken;
+                return new WPath() { Fragment = pFragment, IdentifierIndex = pIdentifier, FirstToken = FT, LastToken = LT };
+            }
             if (pFragment != null)
-                return new WPath() { Fragment = pFragment, IdentifierIndex = -1 };
+            {
+                int LT = NextToken;
+                return new WPath() { Fragment = pFragment, IdentifierIndex = -1, FirstToken = FT, LastToken = LT };
+            }
             return null;
-
         }
 
         internal WFragment ParseFragment()
         {
+            int FT = NextToken;
             WFunction pFunction = ParseFunction();
             bool pFullStop = ParseFullStop();
             if (pFullStop)
             {
                 WFragment pFragment = ParseFragment();
+                if (pFragment != null && pFragment.Function == null && pFragment.Fragment == null)
+                    throw new SyntaxErrorException("A syntax error is found near \"..." +
+                                                   TokenList[pFragment.FirstToken - 1].value + TokenList[pFragment.FirstToken].value +
+                                                   TokenList[pFragment.FirstToken + 1].value + "...\"");
                 if (pFunction != null && pFullStop && pFragment != null)
-                    return new WFragment() { Fragment = pFragment, Function = pFunction, Identifer = -1 };
+                {
+                    int LT = NextToken;
+                    return new WFragment() { Fragment = pFragment, Function = pFunction, Identifer = -1, FirstToken = FT, LastToken = LT };
+                }
             }
             if (pFunction != null)
-                return new WFragment() { Function = pFunction, Identifer = -1 };
+            {
+                int LT = NextToken;
+                return new WFragment() { Function = pFunction, Identifer = -1, FirstToken = FT, LastToken = LT };
+            }
             int pIdentifier = ParseIdentifier();
             pFullStop = ParseFullStop();
             if (pFullStop)
             {
                 WFragment pFragment = ParseFragment();
                 if (pIdentifier != -1 && pFullStop && pFragment != null)
-                    return new WFragment() { Identifer = pIdentifier, Fragment = pFragment };
+                {
+                    int LT = NextToken;
+                    return new WFragment() { Identifer = pIdentifier, Fragment = pFragment, FirstToken = FT, LastToken = LT };
+                }
             }
             if (pIdentifier != -1)
             {
                 WFragment pFragment = ParseFragment();
                 if (pIdentifier != null && pFullStop && pFragment != null)
-                    return new WFragment() { Fragment = pFragment, Function = pFunction, Identifer = -1 };
-                else 
-                return new WFragment() {Identifer = pIdentifier, Fragment = pFragment};
+                {
+                    int LT = NextToken;
+                    return new WFragment()
+                    {
+                        Fragment = pFragment,
+                        Function = pFunction,
+                        Identifer = -1,
+                        FirstToken = FT,
+                        LastToken = LT
+                    };
+                }
+                else
+                {
+                    int LT = NextToken;
+                    return new WFragment()
+                    {
+                        Identifer = pIdentifier,
+                        Fragment = pFragment,
+                        FirstToken = FT,
+                        LastToken = LT
+                    };
+                }
             }
-
             return null;
         }
 
         internal WFunction ParseFunction()
         {
+            int FT = NextToken;
             int pKeyword = ParseKeyword();
             bool pLeftBrace = ParseLeftBrace();
             if (pLeftBrace)
             {
-                WParameters pParameters = ParseParameters();
                 bool pRightBrace = ParseRightBrace();
+                if (pRightBrace && pKeyword != -1)
+                {
+                    int LT = NextToken;
+                    return new WFunction() { KeywordIndex = pKeyword, FirstToken = FT, LastToken = LT };
+                }
+                WParameters pParameters = ParseParameters();
+                pRightBrace = ParseRightBrace();
                 if (pKeyword != -1 && pLeftBrace && pParameters != null && pRightBrace)
-                    return new WFunction() { KeywordIndex = pKeyword, Parameters = pParameters };
+                {
+                    int LT = NextToken;
+                    return new WFunction() {KeywordIndex = pKeyword, Parameters = pParameters,FirstToken = FT,LastToken = LT};
+                }
                 if (pKeyword != -1 && pLeftBrace && pRightBrace)
-                    return new WFunction() { KeywordIndex = pKeyword};
+                {
+                    int LT = NextToken;
+                    return new WFunction() {KeywordIndex = pKeyword, FirstToken = FT, LastToken = LT };
+                }
             }
             if (pKeyword != -1)
-                return new WFunction() { KeywordIndex = pKeyword };
+            {
+                int LT = NextToken;
+                return new WFunction() {KeywordIndex = pKeyword, FirstToken = FT, LastToken = LT };
+            }
             return null;
         }
 
@@ -663,7 +721,7 @@ namespace GraphView
         {
             internal List<string> PrimaryInternalAlias { get; set; }
             internal List<string> InternalAliasList { get; set; }
-            internal List<List<string>> AliasPredicates { get; set; }
+            internal WBooleanExpression AliasPredicates { get; set; }
             internal List<Tuple<string, string, string>> Paths { get; set; }
             internal List<string> Identifiers { get; set; }
             internal Dictionary<string, string> Properties { get; set; }
@@ -683,20 +741,12 @@ namespace GraphView
             internal Context(Context rhs)
             {
                 PrimaryInternalAlias = new List<string>();
-                foreach(var x in rhs.PrimaryInternalAlias)
-                PrimaryInternalAlias.Add(x);
+                foreach (var x in rhs.PrimaryInternalAlias)
+                    PrimaryInternalAlias.Add(x);
                 InternalAliasList = new List<string>();
                 foreach (var x in rhs.InternalAliasList)
                     InternalAliasList.Add(x);
-                AliasPredicates = new List<List<string>>();
-                foreach (var x in rhs.AliasPredicates)
-                {
-                    AliasPredicates.Add(new List<string>());
-                    foreach (var y in x)
-                    {
-                        AliasPredicates.Last().Add(y);
-                    }
-                }
+                AliasPredicates = rhs.AliasPredicates;
                 Paths = new List<Tuple<string, string, string>>();
                 foreach (var x in rhs.Paths)
                 {
@@ -710,18 +760,18 @@ namespace GraphView
                 Properties = new Dictionary<string, string>();
                 foreach (var x in rhs.Properties)
                 {
-                    Properties.Add(x.Key,x.Value);
+                    Properties.Add(x.Key, x.Value);
                 }
                 ExplictAliasToInternalAlias = new Dictionary<string, string>();
                 foreach (var x in rhs.ExplictAliasToInternalAlias)
                 {
                     ExplictAliasToInternalAlias.Add(x.Key, x.Value);
                 }
-                if(rhs.BranchContexts != null)
-                foreach (var x in rhs.BranchContexts)
-                {
-                    BranchContexts.Add(x);
-                }
+                if (rhs.BranchContexts != null)
+                    foreach (var x in rhs.BranchContexts)
+                    {
+                        BranchContexts.Add(x);
+                    }
                 BranchNote = rhs.BranchNote;
                 NodeCount = rhs.NodeCount;
                 EdgeCount = rhs.EdgeCount;
@@ -736,7 +786,7 @@ namespace GraphView
             {
                 PrimaryInternalAlias = new List<string>();
                 InternalAliasList = new List<string>();
-                AliasPredicates = new List<List<string>>();
+                AliasPredicates = null;
                 Paths = new List<Tuple<string, string, string>>();
                 ExplictAliasToInternalAlias = new Dictionary<string, string>();
                 NodeCount = 0;
@@ -764,7 +814,7 @@ namespace GraphView
             {
                 PrimaryInternalAlias = new List<string>(),
                 InternalAliasList = new List<string>(),
-                AliasPredicates = new List<List<string>>(),
+                AliasPredicates = null,
                 Paths = new List<Tuple<string, string, string>>(),
                 Identifiers = pIdentifiers,
                 ExplictAliasToInternalAlias = new Dictionary<string, string>(),
@@ -783,7 +833,7 @@ namespace GraphView
 
         internal GraphViewGremlinSematicAnalyser()
         {
-            
+
         }
 
         public void Analyse()
@@ -808,9 +858,10 @@ namespace GraphView
                     {
                         if (x.IndexOf(a) != -1) AddToFromFlag = true;
                     }
-                    foreach (var x in context.AliasPredicates)
+                    foreach (var x in context.Paths)
                     {
-                        foreach(var y in x) if (y.IndexOf(a) != -1) AddToFromFlag = true;
+                        if ((x.Item1.IndexOf(a) != -1) || (x.Item3.IndexOf(a) != -1))
+                        AddToFromFlag = true;
                     }
                     if (!AddToFromFlag) continue;
                     var TR = new WNamedTableReference()
@@ -877,117 +928,7 @@ namespace GraphView
 
             // Consturct the new Where Clause
 
-            var NewWhereClause = new WWhereClause();
-            var Condition = new WBooleanBinaryExpression();
-            List<WBooleanExpression> BooleanList = new List<WBooleanExpression>();
-            foreach (var exprs in context.AliasPredicates)
-            {
-                foreach (var expr in exprs)
-                {
-                    if (expr == "") continue;
-                    int cutpoint = 0;
-                    BooleanComparisonType CompType = BooleanComparisonType.Equals;
-                    if (expr.IndexOf('=') != -1)
-                    {
-                        cutpoint = expr.IndexOf('=');
-                        CompType = BooleanComparisonType.Equals;
-                    }
-                    if (expr.IndexOf('<') != -1)
-                    {
-                        cutpoint = expr.IndexOf('<');
-                        CompType = BooleanComparisonType.LessThan;
-                    }
-                    if (expr.IndexOf('>') != -1)
-                    {
-                        cutpoint = expr.IndexOf('>');
-                        CompType = BooleanComparisonType.GreaterThan;
-                    }
-                    if (expr.IndexOf('[') != -1)
-                    {
-                        cutpoint = expr.IndexOf('[');
-                        CompType = BooleanComparisonType.LessThanOrEqualTo;
-                    }
-                    if (expr.IndexOf(']') != -1)
-                    {
-                        cutpoint = expr.IndexOf(']');
-                        CompType = BooleanComparisonType.GreaterThanOrEqualTo;
-                    }
-                    if (expr.IndexOf('!') != -1)
-                    {
-                        cutpoint = expr.IndexOf('!');
-                        CompType = BooleanComparisonType.NotEqualToExclamation;
-                    }
-                    string firstExpr = expr.Substring(0, cutpoint);
-                    string secondExpr = expr.Substring(cutpoint + 2, expr.Length - cutpoint - 2);
-                    var pIdentifiers = new List<Identifier>();
-                    while (firstExpr.IndexOf('.') != -1)
-                    {
-                        int cutpoint2 = firstExpr.IndexOf('.');
-                        pIdentifiers.Add(new Identifier() {Value = firstExpr.Substring(0, cutpoint2)});
-                        firstExpr = firstExpr.Substring(cutpoint2 + 1, firstExpr.Length - cutpoint2 - 1);
-                    }
-                    pIdentifiers.Add(new Identifier() {Value = firstExpr});
-                    var FirstRef = new WColumnReferenceExpression()
-                    {
-                        MultiPartIdentifier = new WMultiPartIdentifier() {Identifiers = pIdentifiers}
-                    };
-                    pIdentifiers = new List<Identifier>();
-                    while (secondExpr.IndexOf('.') != -1)
-                    {
-                        int cutpoint2 = secondExpr.IndexOf('.');
-                        pIdentifiers.Add(new Identifier() {Value = secondExpr.Substring(0, cutpoint2)});
-                        secondExpr = secondExpr.Substring(cutpoint2 + 1, secondExpr.Length - cutpoint2 - 1);
-                    }
-                    pIdentifiers.Add(new Identifier() {Value = secondExpr});
-                    double temp;
-                    WScalarExpression SecondRef = null;
-                    if (pIdentifiers.Count > 1)
-                        SecondRef = new WColumnReferenceExpression()
-                        {
-                            MultiPartIdentifier = new WMultiPartIdentifier() {Identifiers = pIdentifiers}
-                        };
-                    else
-                    {
-                        if (double.TryParse(secondExpr, out temp))
-                            SecondRef = new WValueExpression(secondExpr, false);
-                        else
-                            SecondRef = new WValueExpression(secondExpr, true);
-                    }
-                WBooleanComparisonExpression BBE = new WBooleanComparisonExpression()
-                    {
-                        ComparisonType = CompType,
-                        FirstExpr = FirstRef,
-                        SecondExpr = SecondRef
-                    };
-                    BooleanList.Add(BBE);
-                }
-            }
-            if (BooleanList.Count > 0)
-            {
-                if (BooleanList.Count == 1)
-                {
-                    NewWhereClause = new WWhereClause() { SearchCondition = BooleanList[0] };
-                }
-                else
-                {
-                    Condition = new WBooleanBinaryExpression()
-                    {
-                        BooleanExpressionType = BooleanBinaryExpressionType.And,
-                        FirstExpr = BooleanList[0],
-                        SecondExpr = BooleanList[1]
-                    };
-                    for (int i = 2; i < BooleanList.Count; i++)
-                    {
-                        Condition = new WBooleanBinaryExpression()
-                        {
-                            BooleanExpressionType = BooleanBinaryExpressionType.And,
-                            FirstExpr = Condition,
-                            SecondExpr = BooleanList[i]
-                        };
-                    }
-                    NewWhereClause = new WWhereClause() { SearchCondition = Condition };
-                }
-            }
+            var NewWhereClause = new WWhereClause() {SearchCondition = SematicContext.AliasPredicates};
 
             SelectBlock = new WSelectQueryBlock()
             {
@@ -1078,16 +1019,16 @@ namespace GraphView
                         TableObjectName =
                             new WSchemaObjectName()
                             {
-                                Identifiers = new List<Identifier>() {new Identifier() {Value = "Node"}}
+                                Identifiers = new List<Identifier>() { new Identifier() { Value = "Node" } }
                             },
                         TableObjectString = "Node",
-                        Alias = new Identifier() {Value = context.PrimaryInternalAlias.First()}
+                        Alias = new Identifier() { Value = context.PrimaryInternalAlias.First() }
                     };
                     var DeleteNodeSp = new WDeleteSpecification()
                     {
-                       WhereClause = NewWhereClause,
-                       FromClause = NewFromClause,
-                       Target = TargetClause
+                        WhereClause = NewWhereClause,
+                        FromClause = NewFromClause,
+                        Target = TargetClause
                     };
                     SqlTree = DeleteNodeSp;
                     return SqlTree;
@@ -1100,7 +1041,7 @@ namespace GraphView
                         MultiPartIdentifier =
                             new WMultiPartIdentifier()
                             {
-                                Identifiers = new List<Identifier>() {new Identifier() {Value = "Edge"}}
+                                Identifiers = new List<Identifier>() { new Identifier() { Value = "Edge" } }
                             }
                     };
                     var DeleteEdgeSp = new WDeleteEdgeSpecification(SelectBlock);

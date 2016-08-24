@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Deployment.Internal;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView.TSQL_Syntax_Tree;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -12,9 +14,38 @@ namespace GraphView
         internal WFunction Function { get; set; }
         internal WFragment Fragment { get; set; }
         internal int Identifer { get; set; }
+        internal void AddNewAndPredicates(ref GraphViewGremlinSematicAnalyser.Context sink, WBooleanExpression source)
+        {
+            if (source != null && sink.AliasPredicates != null)
+                sink.AliasPredicates = new WBooleanBinaryExpression()
+                {
+                    BooleanExpressionType = BooleanBinaryExpressionType.And,
+                    FirstExpr = source,
+                    SecondExpr = sink.AliasPredicates
+                };
+            if (source != null && sink.AliasPredicates == null)
+                sink.AliasPredicates = source;
+        }
 
+        internal WMultiPartIdentifier CutStringIntoMultiPartIdentifier(string identifier)
+        {
+            var MultiIdentifierList = new List<Identifier>();
+            while (identifier.IndexOf('.') != -1)
+            {
+                int cutpoint = identifier.IndexOf('.');
+                MultiIdentifierList.Add(new Identifier()
+                {
+                    Value = identifier.Substring(0, cutpoint)
+                });
+                identifier = identifier.Substring(cutpoint + 1,
+                    identifier.Length - cutpoint - 1);
+            }
+            MultiIdentifierList.Add(new Identifier() { Value = identifier });
+            return new WMultiPartIdentifier() { Identifiers = MultiIdentifierList };
+        }
         internal void Transform(ref GraphViewGremlinSematicAnalyser.Context pContext)
         {
+            WBooleanExpression GeneratedBooleanExpression = null;
             var Identifiers = pContext.Identifiers;
             if (Identifer != -1)
                 for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
@@ -47,9 +78,42 @@ namespace GraphView
                 GraphViewGremlinSematicAnalyser.Context BranchContext =
                     new GraphViewGremlinSematicAnalyser.Context(pContext);
                 BranchContext.ChooseMark = false;
-                BranchContext.AliasPredicates.Last().Add(pContext.BranchNote + " = " + (Function.Parameters.Parameter[0].QuotedString == null
-                        ? Function.Parameters.Parameter[0].Number.ToString()
-                        : Function.Parameters.Parameter[0].QuotedString));
+                if (Function.Parameters.Parameter[0].QuotedString == null)
+                {
+                    GeneratedBooleanExpression = new WBooleanComparisonExpression()
+                    {
+                        ComparisonType = BooleanComparisonType.Equals,
+                        FirstExpr =
+                            new WColumnReferenceExpression()
+                            {
+                                MultiPartIdentifier = CutStringIntoMultiPartIdentifier(pContext.BranchNote)
+                            },
+                        SecondExpr = new WColumnReferenceExpression()
+                        {
+                            MultiPartIdentifier =
+                                CutStringIntoMultiPartIdentifier(Function.Parameters.Parameter[0].Number.ToString())
+                        }
+                    };
+                    AddNewAndPredicates(ref BranchContext, GeneratedBooleanExpression);
+                }
+                else
+                {
+                    GeneratedBooleanExpression = new WBooleanComparisonExpression()
+                    {
+                        ComparisonType = BooleanComparisonType.Equals,
+                        FirstExpr =
+                            new WColumnReferenceExpression()
+                            {
+                                MultiPartIdentifier = CutStringIntoMultiPartIdentifier(pContext.BranchNote)
+                            },
+                        SecondExpr = new WColumnReferenceExpression()
+                        {
+                            MultiPartIdentifier =
+                                CutStringIntoMultiPartIdentifier(Function.Parameters.Parameter[0].QuotedString)
+                        }
+                    };
+                    AddNewAndPredicates(ref BranchContext, GeneratedBooleanExpression);
+                }
                 Function.Parameters.Parameter[1].Fragment.Transform(ref BranchContext);
                 Fragment.Transform(ref BranchContext);
                 pContext.BranchContexts.Add(BranchContext);
@@ -67,7 +131,7 @@ namespace GraphView
                 }
                 if (Fragment.Fragment != null) Fragment.Fragment.Transform(ref pContext);
             }
-            else if (Function != null && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.choose  && pContext.ChooseMark == false && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.coalesce)
+            else if (Function != null && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.choose && pContext.ChooseMark == false && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.coalesce)
             {
                 if (Function != null) Function.Transform(ref pContext);
                 if (Fragment != null) Fragment.Transform(ref pContext);
