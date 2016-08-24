@@ -116,7 +116,9 @@ namespace GraphView
             placeholder,     // Supported
             times,           // Supported
             option,          // Supported   
-            Is               // Supported 
+            Is,              // Supported
+            within,          // Supported
+            without,         // Supported 
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
@@ -182,7 +184,9 @@ namespace GraphView
             {"__",Keywords.placeholder},
             {"times",Keywords.times},
             {"option",Keywords.option },
-             {"Is",Keywords.Is }
+             {"Is",Keywords.Is },
+            {"within",Keywords.within },
+            {"without",Keywords.without }
         };
         internal class Token
         {

@@ -26,7 +26,7 @@ namespace GraphView
             context.PrimaryInternalAlias.Add(alias);
         }
 
-        internal void AddNewAndPredicates(ref GraphViewGremlinSematicAnalyser.Context sink, WBooleanExpression source)
+        internal void AddNewPredicates(ref GraphViewGremlinSematicAnalyser.Context sink, WBooleanExpression source)
         {
             if (source != null && sink.AliasPredicates != null)
                 sink.AliasPredicates = new WBooleanBinaryExpression()
@@ -47,6 +47,23 @@ namespace GraphView
                 if (x != null && res != null)
                     res = new WBooleanBinaryExpression()
                     {
+                        BooleanExpressionType = BooleanBinaryExpressionType.Or,
+                        FirstExpr = x,
+                        SecondExpr = res
+                    };
+                if (x != null && res == null)
+                    res = x;
+            }
+            return res;
+        }
+        internal WBooleanExpression AddNewAndPredicates(List<WBooleanExpression> ListOfBoolean)
+        {
+            WBooleanExpression res = null;
+            foreach (var x in ListOfBoolean)
+            {
+                if (x != null && res != null)
+                    res = new WBooleanBinaryExpression()
+                    {
                         BooleanExpressionType = BooleanBinaryExpressionType.And,
                         FirstExpr = x,
                         SecondExpr = res
@@ -54,6 +71,7 @@ namespace GraphView
                 if (x != null && res == null)
                     res = x;
             }
+            return res;
         }
         internal WMultiPartIdentifier CutStringIntoMultiPartIdentifier(string identifier)
         {
@@ -196,6 +214,46 @@ namespace GraphView
                                         SecondExpr = ValueExpression
                                     };
                                     break;
+                                case (int)GraphViewGremlinParser.Keywords.within:
+                                    List<WBooleanExpression> BooleanListOr = new List<WBooleanExpression>();
+                                    foreach (var x in Parameters.Parameter[1].Fragment.Function.Parameters.Parameter)
+                                    {
+                                        if (x.QuotedString != null)
+                                        {
+                                            BooleanListOr.Add(new WBooleanComparisonExpression()
+                                            {
+                                                ComparisonType = BooleanComparisonType.Equals,
+                                                FirstExpr =
+                                            new WColumnReferenceExpression()
+                                            {
+                                                MultiPartIdentifier = MultiIdentifierName
+                                            },
+                                                SecondExpr = new WValueExpression(x.QuotedString,true)
+                                            });
+                                        }
+                                    }
+                                    GeneratedBooleanExpression = AddNewOrPredicates(BooleanListOr);
+                                    break;
+                                case (int)GraphViewGremlinParser.Keywords.without:
+                                    List<WBooleanExpression> BooleanListAnd = new List<WBooleanExpression>();
+                                    foreach (var x in Parameters.Parameter[1].Fragment.Function.Parameters.Parameter)
+                                    {
+                                        if (x.QuotedString != null)
+                                        {
+                                            BooleanListAnd.Add(new WBooleanComparisonExpression()
+                                            {
+                                                ComparisonType = BooleanComparisonType.NotEqualToExclamation,
+                                                FirstExpr =
+                                            new WColumnReferenceExpression()
+                                            {
+                                                MultiPartIdentifier = MultiIdentifierName
+                                            },
+                                                SecondExpr = new WValueExpression(x.QuotedString, true)
+                                            });
+                                        }
+                                    }
+                                    GeneratedBooleanExpression = AddNewAndPredicates(BooleanListAnd);
+                                    break;
                             }
                         }
                         else
@@ -216,7 +274,8 @@ namespace GraphView
                                 SecondExpr = ValueExpression
                             };
                         }
-                        AddNewAndPredicates(ref pContext, GeneratedBooleanExpression);
+                        if(GeneratedBooleanExpression != null)
+                        AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.Out:
@@ -251,7 +310,7 @@ namespace GraphView
                                     },
                                 SecondExpr = new WValueExpression(para.QuotedString,true)
                             };
-                            AddNewAndPredicates(ref pContext,GeneratedBooleanExpression);
+                            AddNewPredicates(ref pContext,GeneratedBooleanExpression);
                             foreach (var alias in pContext.PrimaryInternalAlias)
                             {
                                 DestNode = "N_" + pContext.NodeCount.ToString();
@@ -300,7 +359,7 @@ namespace GraphView
                                     },
                                 SecondExpr = new WValueExpression(para.QuotedString, true)
                             };
-                            AddNewAndPredicates(ref pContext, GeneratedBooleanExpression);
+                            AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                             foreach (var alias in pContext.PrimaryInternalAlias)
                             {
                                 SrcNode = "N_" + pContext.NodeCount.ToString();
@@ -337,7 +396,7 @@ namespace GraphView
                                 },
                             SecondExpr = new WValueExpression(Parameter, true)
                         };
-                        AddNewAndPredicates(ref pContext, GeneratedBooleanExpression);
+                        AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                     }
                     pContext.EdgeCount++;
                     pContext.PrimaryInternalAlias.Clear();
@@ -368,7 +427,7 @@ namespace GraphView
                                 },
                             SecondExpr = new WValueExpression(Parameter, true)
                         };
-                        AddNewAndPredicates(ref pContext, GeneratedBooleanExpression);
+                        AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                     }
                     pContext.EdgeCount++;
                     ChangePrimaryAlias(Edge, ref pContext);
@@ -500,7 +559,7 @@ namespace GraphView
                                         MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp2)
                                     }
                                 };
-                                AddNewAndPredicates(ref pContext, GeneratedBooleanExpression);
+                                AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                             }
                             if (Parameters.Parameter[0].Fragment.Function.KeywordIndex ==
                                 (int) GraphViewGremlinParser.Keywords.neq)
@@ -518,7 +577,7 @@ namespace GraphView
                                         MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp2)
                                     }
                                 };
-                                AddNewAndPredicates(ref pContext, GeneratedBooleanExpression);
+                                AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                             }
                         }
                     }

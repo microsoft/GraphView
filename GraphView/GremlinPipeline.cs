@@ -36,7 +36,6 @@ namespace GraphView
 
             public void Reset()
             {
-               
             }
 
             object IEnumerator.Current
@@ -215,9 +214,17 @@ namespace GraphView
         public static Tuple<string, GraphViewGremlinParser.Keywords> neq(string i)
         {
             return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.neq);
-
         }
 
+        public static Tuple<string[], GraphViewGremlinParser.Keywords> within(params string[] i)
+        {
+            return new Tuple<string[], GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.within);
+        }
+
+        public static Tuple<string[], GraphViewGremlinParser.Keywords> without(params string[] i)
+        {
+            return new Tuple<string[], GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.without);
+        }
         public static GremlinPipeline _underscore()
         {
             GremlinPipeline HeldPipe = new GremlinPipeline();
@@ -291,7 +298,24 @@ namespace GraphView
             if (HoldMark == true) held = this;
 
             return new GremlinPipeline(AppendExecutableString);
+        }
+        public GremlinPipeline has(string name, Tuple<string[], GraphViewGremlinParser.Keywords> ComparisonFunc)
+        {
+            Tuple<string[], GraphViewGremlinParser.Keywords> des = ComparisonFunc;
+            AppendExecutableString += "has(\'" + name + "\', ";
+            switch (des.Item2)
+            {
+                case GraphViewGremlinParser.Keywords.within:
+                    AppendExecutableString += "within(\'" + String.Join("\',\'", des.Item1) + "\')";
+                    break;
+                case GraphViewGremlinParser.Keywords.without:
+                    AppendExecutableString += "without(\'" + String.Join("\',\'", des.Item1) + "\')";
+                    break;
+            }
+            AppendExecutableString += ").";
+            if (HoldMark == true) held = this;
 
+            return new GremlinPipeline(AppendExecutableString);
         }
 
         public GremlinPipeline Out(params string[] Parameters)
