@@ -40,7 +40,7 @@ namespace GraphViewUnitTest
             while (op.Status())
             {
                 rc = op.Next();
-                Console.WriteLine(rc.RetriveData(4));
+                //Console.WriteLine(rc.RetriveData(4));
             }
         }
         [TestMethod]
