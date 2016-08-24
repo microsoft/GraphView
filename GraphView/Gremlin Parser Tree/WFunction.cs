@@ -637,6 +637,29 @@ namespace GraphView
                     if (Parameters.Parameter[0] != null)
                         pContext.limit = (int)Parameters.Parameter[0].Number;
                     break;
+                case (int)GraphViewGremlinParser.Keywords.order:
+                    pContext.ByWhat = new WOrderByClause() {OrderByElements = new List<WExpressionWithSortOrder>()};
+                    pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder() { ScalarExpr = new WValueExpression(pContext.PrimaryInternalAlias[0], false), SortOrder = SortOrder.NotSpecified });
+                    pContext.OrderMark = true;
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.by:
+                    SortOrder order = SortOrder.NotSpecified;
+                    if (Parameters.Parameter.Last().Fragment != null)
+                    {
+                        if(Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
+                        (int) GraphViewGremlinParser.Keywords.decr)
+                            order = SortOrder.Descending;
+                        if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
+  (int)GraphViewGremlinParser.Keywords.incr)
+                            order = SortOrder.Ascending;
+                    }
+                    foreach (var x in Parameters.Parameter)
+                        {
+                        if(x.QuotedString != null)
+                            pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder() {ScalarExpr = new WValueExpression(x.QuotedString,false),SortOrder = order});
+                        }
+                    pContext.OrderMark = false;
+                    break;
                 default:
                     break;
             }

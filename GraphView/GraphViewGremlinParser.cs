@@ -119,6 +119,8 @@ namespace GraphView
             Is,              // Supported
             within,          // Supported
             without,         // Supported 
+            decr,            // Supported
+            incr             // Supported
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
@@ -186,7 +188,9 @@ namespace GraphView
             {"option",Keywords.option },
              {"Is",Keywords.Is },
             {"within",Keywords.within },
-            {"without",Keywords.without }
+            {"without",Keywords.without },
+            {"incr",Keywords.incr },
+            {"decr", Keywords.decr }
         };
         internal class Token
         {
@@ -740,6 +744,8 @@ namespace GraphView
             internal bool ChooseMark;
             internal bool RepeatMark;
             internal bool HoldMark;
+            internal bool OrderMark;
+            internal WOrderByClause ByWhat;
             internal int limit;
 
             internal Context(Context rhs)
@@ -784,6 +790,8 @@ namespace GraphView
                 RemoveMark = rhs.RemoveMark;
                 ChooseMark = rhs.ChooseMark;
                 HoldMark = rhs.HoldMark;
+                OrderMark = rhs.OrderMark;
+                ByWhat = rhs.ByWhat;
             }
 
             internal Context()
@@ -804,6 +812,8 @@ namespace GraphView
                 BranchContexts = new List<Context>();
                 Identifiers = new List<string>();
                 HoldMark = true;
+                OrderMark = false;
+                ByWhat = new WOrderByClause();
             }
         }
 
@@ -939,7 +949,8 @@ namespace GraphView
                 FromClause = NewFromClause,
                 SelectElements = NewSelectElementClause,
                 WhereClause = NewWhereClause,
-                MatchClause = NewMatchClause
+                MatchClause = NewMatchClause,
+                OrderByClause = SematicContext.ByWhat
             };
 
             SqlTree = SelectBlock;

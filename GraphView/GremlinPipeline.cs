@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView.TSQL_Syntax_Tree;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -225,6 +226,17 @@ namespace GraphView
         {
             return new Tuple<string[], GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.without);
         }
+
+        public static string incr()
+        {
+            return "incr";
+        }
+
+        public static string decr()
+        {
+            return "decr";
+        }
+
         public static GremlinPipeline _underscore()
         {
             GremlinPipeline HeldPipe = new GremlinPipeline();
@@ -559,6 +571,17 @@ AppendExecutableString += "\'" + x + "\'";
             return new GremlinPipeline(AppendExecutableString);
         }
 
+        public GremlinPipeline order()
+        {
+            AppendExecutableString += "order().";
+            return new GremlinPipeline(AppendExecutableString);
+        }
+
+        public GremlinPipeline by(string bywhat,string order ="")
+        {
+            AppendExecutableString += "by(\'" + bywhat + "\', "+order +").";
+            return new GremlinPipeline(AppendExecutableString);
+        }
         internal string CutTail(string some)
         {
             if (some.Length < 1) return null;

@@ -737,9 +737,13 @@ namespace GraphView
                 // The last processor of a sub graph will be added to root processor list for later use.
                 RootProcessor.Add(ChildrenProcessor.Last());
             }
-            if (RootProcessor.Count == 1) return RootProcessor[0];
+            GraphViewOperator root = null;
+            if (RootProcessor.Count == 1) root =  RootProcessor[0];
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
-            return new CartesianProductOperator(pConnection, RootProcessor, header, 100);
+            else root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
+            if (OrderByClause != null)
+                root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header);
+            return root;
         }
 
         private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField)

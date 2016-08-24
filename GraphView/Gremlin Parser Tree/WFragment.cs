@@ -50,7 +50,6 @@ namespace GraphView
             if (Identifer != -1)
                 for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
                     pContext.PrimaryInternalAlias[i] += "." + Identifiers[Identifer];
-
             if (Fragment != null && Function != null &&
                 Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.choose)
             {

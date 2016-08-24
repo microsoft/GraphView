@@ -465,6 +465,41 @@ namespace GraphView
         }
     }
 
+    public class OrderbyOperator : GraphViewOperator
+    {
+        internal GraphViewOperator ChildOperator;
+        internal GraphViewConnection connection;
+        internal List<Record> results;
+        internal Queue<Record> ResultQueue;
+        internal string bywhat;
+        public OrderbyOperator(GraphViewConnection pConnection, GraphViewOperator pChildOperator, string pBywhat, List<string> pheader)
+        {
+            this.Open();
+            connection = pConnection;
+            header = pheader;
+            ChildOperator = pChildOperator;
+            bywhat = pBywhat;
+        }
+
+        override public Record Next()
+        {
+            if (results == null)
+            {
+                results = new List<Record>();
+                while (ChildOperator.Status())
+                {
+                    results.Add(ChildOperator.Next());
+                }
+                results.Sort((x,y) =>string.Compare(y.RetriveData(header,bywhat), x.RetriveData(header, bywhat),StringComparison.OrdinalIgnoreCase));
+                ResultQueue = new Queue<Record>();
+                foreach (var x in results)
+                    ResultQueue.Enqueue(x);
+            }
+            if (ResultQueue.Count <= 1) this.Close();
+            return ResultQueue.Dequeue();
+        }
+    }
+
     public class GraphViewDataReader : IDataReader
     {
         private GraphViewOperator DataSource;

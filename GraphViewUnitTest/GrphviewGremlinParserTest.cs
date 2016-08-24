@@ -245,7 +245,7 @@ namespace GraphViewUnitTest
             connection.SetupClient();
             GremlinPipeline g1 = new GremlinPipeline();
             var r1 =
-                g1.V().has("character", GremlinPipeline.within("HAWK","IRONMAN")).Out("appeared");
+                g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
             var g2 = new GremlinPipeline();
             var r2 = g2.V().has("name", "saturn").coalesce(GremlinPipeline._underscore().values("type"), GremlinPipeline._underscore().values("age"));
 
