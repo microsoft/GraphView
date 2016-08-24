@@ -238,6 +238,10 @@ namespace GraphView
                 SematicAnalyser.Transform(SematicAnalyser.SematicContext);
                 SqlTree = SematicAnalyser.SqlTree;
             }
+            foreach (var x in SematicAnalyser.SematicContext.PrimaryInternalAlias)
+            {
+                elements.Add(x);
+            }
             return SqlTree;
         }
         internal static class LexicalAnalyzer
@@ -454,6 +458,7 @@ namespace GraphView
         internal int NextToken;
         internal int FarestError;
         internal WSqlStatement SqlTree;
+        internal List<string> elements;
 
         internal GraphViewGremlinParser(List<Token> pTokens, List<string> pIdentifiers)
         {
@@ -461,12 +466,15 @@ namespace GraphView
             TokenList = pTokens;
             NextToken = 0;
             FarestError = -1;
+            elements = new List<string>();
         }
 
         internal GraphViewGremlinParser()
         {
             NextToken = 0;
             FarestError = -1;
+            elements = new List<string>();
+
         }
         internal WProgram ParseTree()
         {

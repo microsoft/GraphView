@@ -17,9 +17,11 @@ namespace GraphView
             internal GremlinPipelineIterator(GraphViewOperator pCurrentOperator)
             {
                 CurrentOperator = pCurrentOperator;
+                elements = new List<int>();
             }
             private Func<GraphViewGremlinSematicAnalyser.Context> Modifier;
             internal Record CurrentRecord;
+            internal List<int> elements;
             public bool MoveNext()
             {
                 if (CurrentOperator == null) Reset();
@@ -37,8 +39,33 @@ namespace GraphView
                
             }
 
-            object IEnumerator.Current { get {return CurrentRecord;} }
-            public Record Current { get {return CurrentRecord;}}
+            object IEnumerator.Current
+            {
+                get
+                {
+                    Record res = new Record();
+                    res.field = new List<string>();
+                    foreach (var x in elements)
+                    {
+                        res.field.Add(CurrentRecord.RetriveData(x));
+                    }
+                    return res;
+                }
+            }
+
+            public Record Current
+            {
+                get
+                {
+                    Record res = new Record();
+                    res.field = new List<string>();
+                    foreach (var x in elements)
+                    {
+                     res.field.Add(CurrentRecord.RetriveData(x));   
+                    }
+                    return res;
+                }
+            }
 
             public void Dispose()
             {
@@ -52,6 +79,7 @@ namespace GraphView
         internal List<int> TokenIndex;
         internal string AppendExecutableString;
         internal bool HoldMark;
+        internal List<string> elements;
 
         internal static GremlinPipeline held;
 
@@ -71,8 +99,9 @@ namespace GraphView
                 {
                     GraphViewGremlinParser parser = new GraphViewGremlinParser();
                     CurrentOperator = parser.Parse(CutTail(AppendExecutableString)).Generate(connection);
+                    it = new GremlinPipelineIterator(CurrentOperator);
+                    foreach (var x in parser.elements) it.elements.Add(CurrentOperator.header.IndexOf(x));
                 }
-                it = new GremlinPipelineIterator(CurrentOperator);
             }
             return it;
         }
