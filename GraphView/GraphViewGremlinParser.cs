@@ -60,7 +60,7 @@ namespace GraphView
             aggregate,       // Supported
             and,             // Supported
             As,              // Supported
-            by,              // Group-by requested
+            by,              // Supported
             cap,             // Group-by requested
             coalesce,        // Supported
             count,           // Group-by requested
@@ -85,8 +85,6 @@ namespace GraphView
             select,          // Supported
             store,           // Supported
             sum,             // Group-by requested
-            tail,            // Group-by requested
-            tree,            // Group-by requested
             unfold,          // Group-by requested
             union,           // Group-by requested
             valueMap,        // Mapping requested
@@ -155,8 +153,6 @@ namespace GraphView
            {"select", Keywords.select},
            {"store", Keywords.store},
            {"sum", Keywords.sum},
-           {"tail", Keywords.tail},
-           {"tree", Keywords.tree},
            {"unfold", Keywords.unfold},
            {"union", Keywords.union},
            {"valueMap", Keywords.valueMap},
@@ -746,6 +742,7 @@ namespace GraphView
             internal bool HoldMark;
             internal bool OrderMark;
             internal WOrderByClause ByWhat;
+            internal WGroupByClause Group;
             internal int limit;
 
             internal Context(Context rhs)

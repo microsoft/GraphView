@@ -691,7 +691,68 @@ namespace GraphView
                     pContext.OrderMark = false;
                     break;
                 case (int)GraphViewGremlinParser.Keywords.count:
-
+                    pContext.Group = new WGroupByClause()
+                    {
+                        GroupingSpecifications =
+                            new List<WGroupingSpecification>()
+                            {
+                                new WExpressionGroupingSpec() {Expression = pContext.PrimaryInternalAlias.First()}
+                            }
+                    };
+                    pContext.PrimaryInternalAlias.Clear();
+                    pContext.PrimaryInternalAlias.Add(new WFunctionCall() {FunctionName = new Identifier() {Value = "count"} });
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.max:
+                    pContext.Group = new WGroupByClause()
+                    {
+                        GroupingSpecifications =
+                            new List<WGroupingSpecification>()
+                            {
+                                new WExpressionGroupingSpec() {Expression = pContext.PrimaryInternalAlias.First()}
+                            }
+                    };
+                    WFunctionCall max = new WFunctionCall()
+                    {
+                        FunctionName = new Identifier() {Value = "max"},
+                        Parameters = new List<WScalarExpression>() {pContext.PrimaryInternalAlias.First()}
+                    };
+                    pContext.PrimaryInternalAlias.Clear();
+                    pContext.PrimaryInternalAlias.Add(max);
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.min:
+                    pContext.Group = new WGroupByClause()
+                    {
+                        GroupingSpecifications =
+                            new List<WGroupingSpecification>()
+                            {
+                                new WExpressionGroupingSpec() {Expression = pContext.PrimaryInternalAlias.First()}
+                            }
+                    };
+                    WFunctionCall min = new WFunctionCall()
+                    {
+                        FunctionName = new Identifier() { Value = "min" },
+                        Parameters = new List<WScalarExpression>() { pContext.PrimaryInternalAlias.First() }
+                    };
+                    pContext.PrimaryInternalAlias.Clear();
+                    pContext.PrimaryInternalAlias.Add(min);
+                    break;
+                case (int)GraphViewGremlinParser.Keywords.mean:
+                    pContext.Group = new WGroupByClause()
+                    {
+                        GroupingSpecifications =
+                            new List<WGroupingSpecification>()
+                            {
+                                new WExpressionGroupingSpec() {Expression = pContext.PrimaryInternalAlias.First()}
+                            }
+                    };
+                    WFunctionCall mean = new WFunctionCall()
+                    {
+                        FunctionName = new Identifier() { Value = "mean" },
+                        Parameters = new List<WScalarExpression>() { pContext.PrimaryInternalAlias.First() }
+                    };
+                    pContext.PrimaryInternalAlias.Clear();
+                    pContext.PrimaryInternalAlias.Add(mean);
+                    break;
                 default:
                     break;
             }

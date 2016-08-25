@@ -568,6 +568,27 @@ AppendExecutableString += "\'" + x + "\'";
             AppendExecutableString += "by(\'" + bywhat + "\', "+order +").";
             return new GremlinPipeline(AppendExecutableString);
         }
+
+        public GremlinPipeline max()
+        {
+            AppendExecutableString += "max().";
+            return new GremlinPipeline(AppendExecutableString);
+        }
+        public GremlinPipeline count()
+        {
+            AppendExecutableString += "count().";
+            return new GremlinPipeline(AppendExecutableString);
+        }
+        public GremlinPipeline min()
+        {
+            AppendExecutableString += "min().";
+            return new GremlinPipeline(AppendExecutableString);
+        }
+        public GremlinPipeline mean()
+        {
+            AppendExecutableString += "mean().";
+            return new GremlinPipeline(AppendExecutableString);
+        }
         internal string CutTail(string some)
         {
             if (some.Length < 1) return null;
