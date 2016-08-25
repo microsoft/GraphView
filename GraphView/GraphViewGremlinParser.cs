@@ -80,7 +80,7 @@ namespace GraphView
             mean,            // Group-by requested
             min,             // Group-by requested
             or,              // Supported
-            order,           // Group-by requested
+            order,           // Supported
             repeat,          // Supported
             select,          // Supported
             store,           // Supported
