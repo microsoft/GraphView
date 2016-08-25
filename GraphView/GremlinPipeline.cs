@@ -133,20 +133,6 @@ namespace GraphView
             HoldMark = true;
             TokenIndex = new List<int>();
         }
-
-        internal void AddNewAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context, string predicates = "")
-        {
-            context.InternalAliasList.Add(alias);
-            if (alias[0] == 'N') context.NodeCount++;
-            else context.EdgeCount++;
-        }
-
-        internal void ChangePrimaryAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context)
-        {
-            context.PrimaryInternalAlias.Clear();
-            context.PrimaryInternalAlias.Add(alias);
-        }
-
         private int index;
         private string SrcNode;
         private string DestNode;

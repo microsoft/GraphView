@@ -49,14 +49,17 @@ namespace GraphView
             var Identifiers = pContext.Identifiers;
             if (Identifer != -1)
                 for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
-                    pContext.PrimaryInternalAlias[i] += "." + Identifiers[Identifer];
+                    (pContext.PrimaryInternalAlias[i] as WColumnReferenceExpression).MultiPartIdentifier.Identifiers.Add(new Identifier() {Value = Identifiers[Identifer]});
             if (Fragment != null && Function != null &&
                 Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.choose)
             {
-                string OrigianlPath = pContext.PrimaryInternalAlias[0];
+                string OrigianlPath = pContext.PrimaryInternalAlias[0].ToString();
                 Function.Parameters.Parameter[0].Fragment.Function.Transform(ref pContext);
-                pContext.BranchNote = pContext.PrimaryInternalAlias[0];
-                pContext.PrimaryInternalAlias[0] = OrigianlPath;
+                pContext.BranchNote = pContext.PrimaryInternalAlias[0].ToString();
+                pContext.PrimaryInternalAlias[0] = new WColumnReferenceExpression()
+                {
+                    MultiPartIdentifier = CutStringIntoMultiPartIdentifier(OrigianlPath)
+                };
                 pContext.ChooseMark = true;
                 Fragment.Transform(ref pContext);
             }

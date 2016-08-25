@@ -248,7 +248,7 @@ namespace GraphView
             }
             foreach (var x in SematicAnalyser.SematicContext.PrimaryInternalAlias)
             {
-                elements.Add(x);
+                elements.Add(x.ToString());
             }
             return SqlTree;
         }
@@ -727,7 +727,7 @@ namespace GraphView
         // Internal representation of the traversal statue, which maintains a statue of current "traversal steps"
         internal class Context
         {
-            internal List<string> PrimaryInternalAlias { get; set; }
+            internal List<WScalarExpression> PrimaryInternalAlias { get; set; }
             internal List<string> InternalAliasList { get; set; }
             internal WBooleanExpression AliasPredicates { get; set; }
             internal List<Tuple<string, string, string>> Paths { get; set; }
@@ -750,7 +750,7 @@ namespace GraphView
 
             internal Context(Context rhs)
             {
-                PrimaryInternalAlias = new List<string>();
+                PrimaryInternalAlias = new List<WScalarExpression>();
                 foreach (var x in rhs.PrimaryInternalAlias)
                     PrimaryInternalAlias.Add(x);
                 InternalAliasList = new List<string>();
@@ -796,7 +796,7 @@ namespace GraphView
 
             internal Context()
             {
-                PrimaryInternalAlias = new List<string>();
+                PrimaryInternalAlias = new List<WScalarExpression>();
                 InternalAliasList = new List<string>();
                 AliasPredicates = null;
                 Paths = new List<Tuple<string, string, string>>();
@@ -826,7 +826,7 @@ namespace GraphView
         {
             SematicContext = new Context()
             {
-                PrimaryInternalAlias = new List<string>(),
+                PrimaryInternalAlias = new List<WScalarExpression>(),
                 InternalAliasList = new List<string>(),
                 AliasPredicates = null,
                 Paths = new List<Tuple<string, string, string>>(),
@@ -870,7 +870,7 @@ namespace GraphView
                 {
                     foreach (var x in context.PrimaryInternalAlias)
                     {
-                        if (x.IndexOf(a) != -1) AddToFromFlag = true;
+                        if (x.ToString().IndexOf(a) != -1) AddToFromFlag = true;
                     }
                     foreach (var x in context.Paths)
                     {
@@ -926,18 +926,7 @@ namespace GraphView
             var NewSelectElementClause = new List<WSelectElement>();
             foreach (var alias in context.PrimaryInternalAlias)
             {
-                var pIdentifiers = new List<Identifier>();
-                var TempString = alias;
-                while (TempString.IndexOf('.') != -1)
-                {
-                    int cutpoint = TempString.IndexOf('.');
-                    pIdentifiers.Add(new Identifier() { Value = TempString.Substring(0, cutpoint) });
-                    TempString = TempString.Substring(cutpoint + 1, TempString.Length - cutpoint - 1);
-                }
-                pIdentifiers.Add(new Identifier() { Value = TempString });
-                var SelectExpr = new WColumnReferenceExpression() { MultiPartIdentifier = new WMultiPartIdentifier() { Identifiers = pIdentifiers } };
-                var element = new WSelectScalarExpression() { SelectExpr = SelectExpr };
-                NewSelectElementClause.Add(element);
+                NewSelectElementClause.Add(new WSelectScalarExpression() {SelectExpr = alias});
             }
 
             // Consturct the new Where Clause
@@ -1027,7 +1016,7 @@ namespace GraphView
             // If needed to remove node/edge, construct new deleteEdge/Node Specification
             if (context.RemoveMark)
             {
-                if (context.PrimaryInternalAlias[0].IndexOf("N_") != -1)
+                if (context.PrimaryInternalAlias[0].ToString().IndexOf("N_") != -1)
                 {
                     var TargetClause = new WNamedTableReference()
                     {
@@ -1037,7 +1026,7 @@ namespace GraphView
                                 Identifiers = new List<Identifier>() { new Identifier() { Value = "Node" } }
                             },
                         TableObjectString = "Node",
-                        Alias = new Identifier() { Value = context.PrimaryInternalAlias.First() }
+                        Alias = new Identifier() { Value = context.PrimaryInternalAlias.First().ToString() }
                     };
                     var DeleteNodeSp = new WDeleteSpecification()
                     {
@@ -1048,11 +1037,11 @@ namespace GraphView
                     SqlTree = DeleteNodeSp;
                     return SqlTree;
                 }
-                if (context.PrimaryInternalAlias[0].IndexOf("E_") != -1)
+                if (context.PrimaryInternalAlias[0].ToString().IndexOf("E_") != -1)
                 {
                     var EC = new WEdgeColumnReferenceExpression()
                     {
-                        Alias = context.PrimaryInternalAlias.First(),
+                        Alias = context.PrimaryInternalAlias.First().ToString(),
                         MultiPartIdentifier =
                             new WMultiPartIdentifier()
                             {

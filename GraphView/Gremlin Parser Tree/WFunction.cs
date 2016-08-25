@@ -20,10 +20,14 @@ namespace GraphView
             else context.EdgeCount++;
         }
 
+        internal void AddNewPrimaryAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context)
+        {
+            context.PrimaryInternalAlias.Add(new WColumnReferenceExpression() { MultiPartIdentifier = CutStringIntoMultiPartIdentifier(alias)});
+        }
         internal void ChangePrimaryAlias(string alias, ref GraphViewGremlinSematicAnalyser.Context context)
         {
             context.PrimaryInternalAlias.Clear();
-            context.PrimaryInternalAlias.Add(alias);
+            context.PrimaryInternalAlias.Add(new WColumnReferenceExpression() {MultiPartIdentifier = CutStringIntoMultiPartIdentifier(alias) });
         }
 
         internal void AddNewPredicates(ref GraphViewGremlinSematicAnalyser.Context sink, WBooleanExpression source)
@@ -96,7 +100,7 @@ namespace GraphView
             string DestNode;
             string Edge;
             string Parameter;
-            List<string> StatueKeeper = new List<string>();
+            List<WScalarExpression> StatueKeeper = new List<WScalarExpression>();
             List<string> NewPrimaryInternalAlias = new List<string>();
             WBooleanExpression GeneratedBooleanExpression = null;
             switch (KeywordIndex)
@@ -118,7 +122,8 @@ namespace GraphView
                     break;
                 case (int)GraphViewGremlinParser.Keywords.next:
                     for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
-                        pContext.PrimaryInternalAlias[i] += ".id";
+                        if(pContext.PrimaryInternalAlias[i] is WColumnReferenceExpression)
+                        (pContext.PrimaryInternalAlias[i] as WColumnReferenceExpression).MultiPartIdentifier.Identifiers.Add(new Identifier() {Value = "id"});
                     break;
                 case (int)GraphViewGremlinParser.Keywords.has:
                     SrcNode = "N_" + pContext.NodeCount.ToString();
@@ -286,12 +291,15 @@ namespace GraphView
                         index = pContext.InternalAliasList.Count;
                         foreach (var alias in pContext.PrimaryInternalAlias)
                         {
-                            DestNode = "N_" + pContext.NodeCount.ToString();
-                            AddNewAlias(DestNode, ref pContext);
-                            SrcNode = alias;
-                            pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
-                                DestNode));
-                            NewPrimaryInternalAlias.Add(DestNode);
+                            if (alias is WColumnReferenceExpression)
+                            {
+                                DestNode = "N_" + pContext.NodeCount.ToString();
+                                AddNewAlias(DestNode, ref pContext);
+                                SrcNode = alias.ToString();
+                                pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                    DestNode));
+                                NewPrimaryInternalAlias.Add(DestNode);
+                            }
                         }
                     }
                     else
@@ -313,18 +321,21 @@ namespace GraphView
                             AddNewPredicates(ref pContext,GeneratedBooleanExpression);
                             foreach (var alias in pContext.PrimaryInternalAlias)
                             {
-                                DestNode = "N_" + pContext.NodeCount.ToString();
-                                AddNewAlias(DestNode, ref pContext);
-                                SrcNode = alias;
-                                pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
-                                    DestNode));
-                                NewPrimaryInternalAlias.Add(DestNode);
+                                if (alias is WColumnReferenceExpression)
+                                {
+                                    DestNode = "N_" + pContext.NodeCount.ToString();
+                                    AddNewAlias(DestNode, ref pContext);
+                                    SrcNode = alias.ToString();
+                                    pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                        DestNode));
+                                    NewPrimaryInternalAlias.Add(DestNode);
+                                }
                             }
                         }
                     pContext.PrimaryInternalAlias.Clear();
                     foreach (var a in NewPrimaryInternalAlias)
                     {
-                        pContext.PrimaryInternalAlias.Add(a);
+                        AddNewPrimaryAlias(a,ref pContext);
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.In:
@@ -335,12 +346,15 @@ namespace GraphView
                         index = pContext.InternalAliasList.Count;
                         foreach (var alias in pContext.PrimaryInternalAlias)
                         {
-                            SrcNode = "N_" + pContext.NodeCount.ToString();
-                            AddNewAlias(SrcNode, ref pContext);
-                            DestNode = alias;
-                            pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
-                                DestNode));
-                            NewPrimaryInternalAlias.Add(SrcNode);
+                            if (alias is WColumnReferenceExpression)
+                            {
+                                SrcNode = "N_" + pContext.NodeCount.ToString();
+                                AddNewAlias(SrcNode, ref pContext);
+                                DestNode = alias.ToString();
+                                pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                    DestNode));
+                                NewPrimaryInternalAlias.Add(SrcNode);
+                            }
                         }
                     }
                     else
@@ -362,22 +376,25 @@ namespace GraphView
                             AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                             foreach (var alias in pContext.PrimaryInternalAlias)
                             {
-                                SrcNode = "N_" + pContext.NodeCount.ToString();
-                                AddNewAlias(SrcNode, ref pContext);
-                                DestNode = alias;
-                                pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
-                                    DestNode));
-                                NewPrimaryInternalAlias.Add(SrcNode);
+                                if (alias is WColumnReferenceExpression)
+                                {
+                                    SrcNode = "N_" + pContext.NodeCount.ToString();
+                                    AddNewAlias(SrcNode, ref pContext);
+                                    DestNode = alias.ToString();
+                                    pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                        DestNode));
+                                    NewPrimaryInternalAlias.Add(SrcNode);
+                                }
                             }
                         }
                     pContext.PrimaryInternalAlias.Clear();
                     foreach (var a in NewPrimaryInternalAlias)
                     {
-                        pContext.PrimaryInternalAlias.Add(a);
+                        AddNewPrimaryAlias(a,ref pContext);
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.outE:
-                    SrcNode = pContext.PrimaryInternalAlias[0];
+                    SrcNode = pContext.PrimaryInternalAlias[0].ToString();
                     DestNode = "N_" + pContext.NodeCount.ToString();
                     pContext.InternalAliasList.Add(DestNode);
                     pContext.NodeCount++;
@@ -399,17 +416,19 @@ namespace GraphView
                         AddNewPredicates(ref pContext, GeneratedBooleanExpression);
                     }
                     pContext.EdgeCount++;
-                    pContext.PrimaryInternalAlias.Clear();
-                    pContext.PrimaryInternalAlias.Add(Edge);
+                    ChangePrimaryAlias(Edge, ref pContext);
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
-                        Edge = alias;
-                        pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
-                             DestNode));
+                        if (alias is WColumnReferenceExpression)
+                        {
+                            Edge = alias.ToString();
+                            pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                DestNode));
+                        }
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.inE:
-                    DestNode = pContext.PrimaryInternalAlias[0];
+                    DestNode = pContext.PrimaryInternalAlias[0].ToString();
                     SrcNode = "N_" + pContext.NodeCount.ToString();
                     AddNewAlias(SrcNode, ref pContext);
                     Edge = "E_" + pContext.EdgeCount.ToString();
@@ -433,35 +452,38 @@ namespace GraphView
                     ChangePrimaryAlias(Edge, ref pContext);
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
-                        Edge = alias;
-                        pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
-                             DestNode));
+                        if (alias is WColumnReferenceExpression)
+                        {
+                            Edge = alias.ToString();
+                            pContext.Paths.Add(new Tuple<string, string, string>(SrcNode, Edge,
+                                DestNode));
+                        }
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.inV:
-                    Edge = pContext.PrimaryInternalAlias[0];
+                    Edge = pContext.PrimaryInternalAlias[0].ToString();
                     var ExistInPath = pContext.Paths.Find(p => p.Item2 == Edge);
                     ChangePrimaryAlias(ExistInPath.Item3, ref pContext);
                     break;
                 case (int)GraphViewGremlinParser.Keywords.outV:
-                    Edge = pContext.PrimaryInternalAlias[0];
+                    Edge = pContext.PrimaryInternalAlias[0].ToString();
                     var ExistOutPath = pContext.Paths.Find(p => p.Item2 == Edge);
                     ChangePrimaryAlias(ExistOutPath.Item1, ref pContext);
                     break;
                 case (int)GraphViewGremlinParser.Keywords.As:
-                    pContext.ExplictAliasToInternalAlias.Add(Parameters.Parameter[0].QuotedString, pContext.PrimaryInternalAlias[0]);
+                    pContext.ExplictAliasToInternalAlias.Add(Parameters.Parameter[0].QuotedString, pContext.PrimaryInternalAlias[0].ToString());
                     break;
                 case (int)GraphViewGremlinParser.Keywords.@select:
                     pContext.PrimaryInternalAlias.Clear();
                     if (Parameters == null)
                     {
                         foreach (var a in pContext.ExplictAliasToInternalAlias)
-                            pContext.PrimaryInternalAlias.Add(a.Value);
+                            AddNewPrimaryAlias(a.Value, ref pContext);
                     }
                     else
                     {
                         foreach (var a in Parameters.Parameter)
-                            pContext.PrimaryInternalAlias.Add(pContext.ExplictAliasToInternalAlias[a.QuotedString]);
+                            AddNewPrimaryAlias(pContext.ExplictAliasToInternalAlias[a.QuotedString],ref pContext);
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.addV:
@@ -476,7 +498,7 @@ namespace GraphView
                     SrcNode = Parameters.Parameter.First().QuotedString;
                     if (!pContext.ExplictAliasToInternalAlias.ContainsKey(SrcNode))
                     {
-                        SrcNode = pContext.PrimaryInternalAlias[0];
+                        SrcNode = pContext.PrimaryInternalAlias[0].ToString();
                         DestNode = pContext.ExplictAliasToInternalAlias[Parameters.Parameter[1].QuotedString];
                         pContext.Properties.Add("type", Parameters.Parameter[0].QuotedString);
                         for (int i = 2; i < Parameters.Parameter.Count; i += 2)
@@ -493,15 +515,15 @@ namespace GraphView
                                 Parameters.Parameter[i + 1].QuotedString);
                     }
                     pContext.PrimaryInternalAlias.Clear();
-                    pContext.PrimaryInternalAlias.Add(SrcNode);
-                    pContext.PrimaryInternalAlias.Add(DestNode);
+                    AddNewPrimaryAlias(SrcNode,ref pContext);
+                    AddNewPrimaryAlias(DestNode, ref pContext);
                     break;
                 case (int)GraphViewGremlinParser.Keywords.addInE:
                     pContext.AddEMark = true;
                     SrcNode = Parameters.Parameter.First().QuotedString;
                     if (!pContext.ExplictAliasToInternalAlias.ContainsKey(SrcNode))
                     {
-                        DestNode = pContext.PrimaryInternalAlias[0];
+                        DestNode = pContext.PrimaryInternalAlias[0].ToString();
                         SrcNode = Parameters.Parameter[1].QuotedString;
                         pContext.Properties.Add("type", Parameters.Parameter[0].QuotedString);
                         for (int i = 2; i < Parameters.Parameter.Count; i += 2)
@@ -518,66 +540,74 @@ namespace GraphView
                                 Parameters.Parameter[i + 1].QuotedString);
                     }
                     pContext.PrimaryInternalAlias.Clear();
-                    pContext.PrimaryInternalAlias.Add(SrcNode);
-                    pContext.PrimaryInternalAlias.Add(DestNode);
+                    AddNewPrimaryAlias(SrcNode, ref pContext);
+                    AddNewPrimaryAlias(DestNode, ref pContext);
                     break;
                 case (int)GraphViewGremlinParser.Keywords.values:
                     string ValuePara = Parameters.Parameter[0].QuotedString;
                     for (int i = 0; i < pContext.PrimaryInternalAlias.Count; i++)
-                        pContext.PrimaryInternalAlias[i] += "." + ValuePara;
+                        if (pContext.PrimaryInternalAlias[i] is WColumnReferenceExpression)
+                            (pContext.PrimaryInternalAlias[i] as WColumnReferenceExpression).MultiPartIdentifier.Identifiers.Add(new Identifier() { Value = ValuePara });
                     break;
                 case (int)GraphViewGremlinParser.Keywords.@where:
                     foreach (var alias in pContext.PrimaryInternalAlias)
                     {
-                        index = pContext.InternalAliasList.IndexOf(alias.IndexOf('.') == -1 ? alias : alias.Substring(0, alias.IndexOf('.')));
-                        string QuotedString = Parameters.Parameter[0].QuotedString;
-                        if (Parameters.Parameter[0].Fragment != null)
+                        if (alias is WColumnReferenceExpression)
                         {
-                            string Comp1 = alias;
-                            string Comp2 = "";
-                            if (Comp1.IndexOf('.') == -1)
-                                Comp1 += ".id";
-                            if (Comp2.IndexOf('.') == -1)
-                                Comp2 = pContext.ExplictAliasToInternalAlias[
-                                    Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString];
-                            else
-                                Comp2 = pContext.ExplictAliasToInternalAlias[
-        Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString] + ".id";
-                            if (Parameters.Parameter[0].Fragment.Function.KeywordIndex ==
-                                (int) GraphViewGremlinParser.Keywords.eq)
+                            index =
+                                pContext.InternalAliasList.IndexOf(alias.ToString().IndexOf('.') == -1
+                                    ? alias.ToString()
+                                    : alias.ToString().Substring(0, alias.ToString().IndexOf('.')));
+                            string QuotedString = Parameters.Parameter[0].QuotedString;
+                            if (Parameters.Parameter[0].Fragment != null)
                             {
-                                GeneratedBooleanExpression = new WBooleanComparisonExpression()
+                                string Comp1 = alias.ToString();
+                                string Comp2 = "";
+                                if (Comp1.IndexOf('.') == -1)
+                                    Comp1 += ".id";
+                                if (Comp2.IndexOf('.') == -1)
+                                    Comp2 = pContext.ExplictAliasToInternalAlias[
+                                        Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString];
+                                else
+                                    Comp2 = pContext.ExplictAliasToInternalAlias[
+                                        Parameters.Parameter[0].Fragment.Function.Parameters.Parameter[0].QuotedString] +
+                                            ".id";
+                                if (Parameters.Parameter[0].Fragment.Function.KeywordIndex ==
+                                    (int) GraphViewGremlinParser.Keywords.eq)
                                 {
-                                    ComparisonType = BooleanComparisonType.NotEqualToExclamation,
-                                    FirstExpr =
-                                        new WColumnReferenceExpression()
-                                        {
-                                            MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp1)
-                                        },
-                                    SecondExpr = new WColumnReferenceExpression()
+                                    GeneratedBooleanExpression = new WBooleanComparisonExpression()
                                     {
-                                        MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp2)
-                                    }
-                                };
-                                AddNewPredicates(ref pContext, GeneratedBooleanExpression);
-                            }
-                            if (Parameters.Parameter[0].Fragment.Function.KeywordIndex ==
-                                (int) GraphViewGremlinParser.Keywords.neq)
-                            {
-                                GeneratedBooleanExpression = new WBooleanComparisonExpression()
+                                        ComparisonType = BooleanComparisonType.NotEqualToExclamation,
+                                        FirstExpr =
+                                            new WColumnReferenceExpression()
+                                            {
+                                                MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp1)
+                                            },
+                                        SecondExpr = new WColumnReferenceExpression()
+                                        {
+                                            MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp2)
+                                        }
+                                    };
+                                    AddNewPredicates(ref pContext, GeneratedBooleanExpression);
+                                }
+                                if (Parameters.Parameter[0].Fragment.Function.KeywordIndex ==
+                                    (int) GraphViewGremlinParser.Keywords.neq)
                                 {
-                                    ComparisonType = BooleanComparisonType.NotEqualToExclamation,
-                                    FirstExpr =
-                                        new WColumnReferenceExpression()
-                                        {
-                                            MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp1)
-                                        },
-                                    SecondExpr = new WColumnReferenceExpression()
+                                    GeneratedBooleanExpression = new WBooleanComparisonExpression()
                                     {
-                                        MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp2)
-                                    }
-                                };
-                                AddNewPredicates(ref pContext, GeneratedBooleanExpression);
+                                        ComparisonType = BooleanComparisonType.NotEqualToExclamation,
+                                        FirstExpr =
+                                            new WColumnReferenceExpression()
+                                            {
+                                                MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp1)
+                                            },
+                                        SecondExpr = new WColumnReferenceExpression()
+                                        {
+                                            MultiPartIdentifier = CutStringIntoMultiPartIdentifier(Comp2)
+                                        }
+                                    };
+                                    AddNewPredicates(ref pContext, GeneratedBooleanExpression);
+                                }
                             }
                         }
                     }
@@ -599,7 +629,7 @@ namespace GraphView
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.aggregate:
-                    pContext.ExplictAliasToInternalAlias.Add(Parameters.Parameter[0].QuotedString, pContext.PrimaryInternalAlias[0]);
+                    pContext.ExplictAliasToInternalAlias.Add(Parameters.Parameter[0].QuotedString, pContext.PrimaryInternalAlias[0].ToString());
                     break;
                 case (int)GraphViewGremlinParser.Keywords.and:
                     foreach (var piece in Parameters.Parameter)
@@ -617,7 +647,7 @@ namespace GraphView
                         if (piece.Fragment != null) piece.Fragment.Transform(ref pContext);
                         foreach (var x in pContext.PrimaryInternalAlias)
                         {
-                            NewPrimaryInternalAlias.Add(x);
+                            NewPrimaryInternalAlias.Add(x.ToString());
                         }
                         pContext.PrimaryInternalAlias.Clear();
                         foreach (var x in StatueKeeper)
@@ -627,7 +657,7 @@ namespace GraphView
                     }
                     foreach (var x in NewPrimaryInternalAlias)
                     {
-                        pContext.PrimaryInternalAlias.Add(x);
+                        AddNewPrimaryAlias(x, ref pContext);
                     }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.drop:
@@ -639,18 +669,18 @@ namespace GraphView
                     break;
                 case (int)GraphViewGremlinParser.Keywords.order:
                     pContext.ByWhat = new WOrderByClause() {OrderByElements = new List<WExpressionWithSortOrder>()};
-                    pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder() { ScalarExpr = new WValueExpression(pContext.PrimaryInternalAlias[0], false), SortOrder = SortOrder.NotSpecified });
+                    pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder() { ScalarExpr = new WValueExpression(pContext.PrimaryInternalAlias[0].ToString(), false), SortOrder = SortOrder.NotSpecified });
                     pContext.OrderMark = true;
                     break;
                 case (int)GraphViewGremlinParser.Keywords.by:
                     SortOrder order = SortOrder.NotSpecified;
                     if (Parameters.Parameter.Last().Fragment != null)
                     {
-                        if(Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
-                        (int) GraphViewGremlinParser.Keywords.decr)
+                        if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
+                            (int) GraphViewGremlinParser.Keywords.decr)
                             order = SortOrder.Descending;
                         if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
-  (int)GraphViewGremlinParser.Keywords.incr)
+                            (int) GraphViewGremlinParser.Keywords.incr)
                             order = SortOrder.Ascending;
                     }
                     foreach (var x in Parameters.Parameter)
@@ -660,6 +690,8 @@ namespace GraphView
                         }
                     pContext.OrderMark = false;
                     break;
+                case (int)GraphViewGremlinParser.Keywords.count:
+
                 default:
                     break;
             }
