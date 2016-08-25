@@ -85,7 +85,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "GremlinTest");
             connection.SetupClient();
             GremlinPipeline g1 = new GremlinPipeline();
-            var r1 = g1.V().As("character").has("weapon", "shield").Out("appeared").As("comicbook").select("character", "comicbook");
+            var r1 = g1.V().As("character").has("weapon", GremlinPipeline.within("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
             r1.connection = connection;
 
             foreach (var x in r1)
@@ -119,7 +119,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "GremlinTest");
             connection.SetupClient();
             GremlinPipeline g1 = new GremlinPipeline();
-            var r1 = g1.V().As("character").has("comicbook", "AVF 4").In("appeared").values("character");
+            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
             r1.connection = connection;
 
             foreach (var x in r1)
@@ -136,7 +136,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "GremlinTest");
             connection.SetupClient();
             GremlinPipeline g1 = new GremlinPipeline();
-            var r1 = g1.V().As("character").has("comicbook", "AVF 4").In("appeared").has("weapon", "shield").values("character");
+            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GremlinPipeline.without("shield", "claws")).values("character").order();
             r1.connection = connection;
 
             foreach (var x in r1)
