@@ -211,6 +211,7 @@ namespace GraphView
             DocDB_PrimaryKey = docdb_AuthorizationKey;
             DocDB_DatabaseId = docdb_DatabaseID;
             DocDB_CollectionId = docdb_CollectionID;
+            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
         }
 
         /// <summary>

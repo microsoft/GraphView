@@ -110,28 +110,32 @@ namespace GraphView
         {
             return GetEnumerator();
         }
-       public GremlinPipeline(GraphViewGremlinSematicAnalyser.Context Context)
+
+        public GremlinPipeline(GremlinPipeline rhs)
         {
-            CurrentOperator = null;
-           AppendExecutableString = "";
-           HoldMark = true;
-            TokenIndex = new List<int>();
+            CurrentOperator = rhs.CurrentOperator;
+            AppendExecutableString = rhs.AppendExecutableString;
+            HoldMark = rhs.HoldMark;
+            TokenIndex = rhs.TokenIndex;
+            connection = rhs.connection;
         }
 
-        public GremlinPipeline()
+        public GremlinPipeline(ref GraphViewConnection pConnection)
         {
             CurrentOperator = null;
             AppendExecutableString = "";
             HoldMark = true;
             TokenIndex = new List<int>();
+            connection = pConnection;
         }
 
-        public GremlinPipeline(string pAES)
+        public GremlinPipeline(GremlinPipeline rhs, string NewAES)
         {
-            CurrentOperator = null;
-            AppendExecutableString = pAES;
-            HoldMark = true;
-            TokenIndex = new List<int>();
+            CurrentOperator = rhs.CurrentOperator;
+            AppendExecutableString = NewAES;
+            HoldMark = rhs.HoldMark;
+            TokenIndex = rhs.TokenIndex;
+            connection = rhs.connection;
         }
         private int index;
         private string SrcNode;
@@ -225,7 +229,8 @@ namespace GraphView
 
         public static GremlinPipeline _underscore()
         {
-            GremlinPipeline HeldPipe = new GremlinPipeline();
+            GraphViewConnection NullConnection = new GraphViewConnection();
+            GremlinPipeline HeldPipe = new GremlinPipeline(ref NullConnection);
             HeldPipe.HoldMark = false;
             HeldPipe.AppendExecutableString += "__.";
             return HeldPipe;
@@ -234,17 +239,14 @@ namespace GraphView
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "V().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "V().");
         }
 
         public GremlinPipeline E()
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "E().";
-
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "E().");
 
         }
 
@@ -252,9 +254,7 @@ namespace GraphView
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "next().";
-
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "next().");
 
         }
 
@@ -262,125 +262,129 @@ namespace GraphView
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "has(\'" + name + "\', " + "\'" + value + "\').";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "has(\'" + name + "\', " + "\'" + value + "\').");
 
         }
 
         public GremlinPipeline has(string name, Tuple<int, GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
             Tuple<int, GraphViewGremlinParser.Keywords> des = ComparisonFunc;
-            AppendExecutableString += "has(\'" + name + "\', ";
+            string AES = AppendExecutableString;
+            AES += "has(\'" + name + "\', ";
                 switch (des.Item2)
                 {
                     case GraphViewGremlinParser.Keywords.lt:
-                        AppendExecutableString += "lt("+des.Item1+ ")";
+                        AES += "lt("+des.Item1+ ")";
                         break;
                     case GraphViewGremlinParser.Keywords.gt:
-                        AppendExecutableString += "gt(" + des.Item1 + ")";
+                        AES += "gt(" + des.Item1 + ")";
                         break;
                     case GraphViewGremlinParser.Keywords.eq:
-                        AppendExecutableString += "eq(" + des.Item1 + ")";
+                        AES += "eq(" + des.Item1 + ")";
                         break;
                     case GraphViewGremlinParser.Keywords.lte:
-                        AppendExecutableString += "lte(" + des.Item1 + ")";
+                        AES += "lte(" + des.Item1 + ")";
                         break;
                     case GraphViewGremlinParser.Keywords.gte:
-                        AppendExecutableString += "gte(" + des.Item1 + ")";
+                        AES += "gte(" + des.Item1 + ")";
                         break;
                     case GraphViewGremlinParser.Keywords.neq:
-                        AppendExecutableString += "neq(" + des.Item1 + ")";
+                        AES += "neq(" + des.Item1 + ")";
                         break;
                   }
-            AppendExecutableString += ").";
+            AES += ").";
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AES);
         }
         public GremlinPipeline has(string name, Tuple<string[], GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
             Tuple<string[], GraphViewGremlinParser.Keywords> des = ComparisonFunc;
-            AppendExecutableString += "has(\'" + name + "\', ";
+            string AES = AppendExecutableString;
+            AES += "has(\'" + name + "\', ";
             switch (des.Item2)
             {
                 case GraphViewGremlinParser.Keywords.within:
-                    AppendExecutableString += "within(\'" + String.Join("\',\'", des.Item1) + "\')";
+                    AES += "within(\'" + String.Join("\',\'", des.Item1) + "\')";
                     break;
                 case GraphViewGremlinParser.Keywords.without:
-                    AppendExecutableString += "without(\'" + String.Join("\',\'", des.Item1) + "\')";
+                    AES += "without(\'" + String.Join("\',\'", des.Item1) + "\')";
                     break;
             }
-            AppendExecutableString += ").";
+            AES += ").";
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AES);
         }
 
         public GremlinPipeline Out(params string[] Parameters)
         {
+            string AES = AppendExecutableString;
             if (Parameters == null)
-                AppendExecutableString += "out().";
+                AES += "out().";
             else
-                AppendExecutableString += "out(\'"+string.Join("\', \'",Parameters)+"\').";
+                AES += "out(\'"+string.Join("\', \'",Parameters)+"\').";
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AES);
 
         }
 
         public GremlinPipeline In(params string[] Parameters)
         {
+            string AES = AppendExecutableString;
             if (Parameters == null)
-                AppendExecutableString += "in().";
+                AES += "in().";
             else
-                AppendExecutableString += "in(\'" + string.Join("\', \'", Parameters) + "\').";
+                AES += "in(\'" + string.Join("\', \'", Parameters) + "\').";
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AES);
 
         }
 
         public GremlinPipeline outE(params string[] Parameters)
         {
+            string AES = AppendExecutableString;
             if (Parameters != null)
             {
                 List<string> StringList = new List<string>();
-                AppendExecutableString += "outE(";
+                AES += "outE(";
                 foreach (var x in Parameters)
-AppendExecutableString += "\'" + x + "\'";
-                AppendExecutableString += ").";
+AES += "\'" + x + "\'";
+                AES += ").";
             }
             else
-                AppendExecutableString += "outE().";
+                AES += "outE().";
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
 
         }
 
         public GremlinPipeline inE(params string[] Parameters)
         {
+            string AES = AppendExecutableString;
             if (Parameters != null)
             {
                 List<string> StringList = new List<string>();
-                AppendExecutableString += "inE(";
+                AES += "inE(";
                 foreach (var x in Parameters)
-                    AppendExecutableString += "\'" + x + "\'";
-                AppendExecutableString += ").";
+                    AES += "\'" + x + "\'";
+                AES += ").";
             }
             else
-                AppendExecutableString += "inE().";
+                AES += "inE().";
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
         }
 
         public GremlinPipeline inV()
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "inV().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "inV().");
 
         }
 
@@ -388,58 +392,63 @@ AppendExecutableString += "\'" + x + "\'";
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "outE().";
-
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "outE().");
 
         }
         public GremlinPipeline As(string alias)
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "as(\'"+alias+"\').";
-
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "as(\'" + alias + "\').");
 
         }
 
         public GremlinPipeline select(params string[] Parameters)
         {
+            string AES = AppendExecutableString;
             if (Parameters == null)
-                AppendExecutableString += "select().";
+                AES += "select().";
             else
-                AppendExecutableString += "select(\'"+ string.Join("\',\'",Parameters)+"\').";
+                AES += "select(\'"+ string.Join("\',\'",Parameters)+"\').";
             if (HoldMark == true) held = this;
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this,AES);
 
         }
 
         public GremlinPipeline addV(params string[] Parameters)
         {
+
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
+
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "addV(\'" + string.Join("\',\'", Parameters) + "\').";
-
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
 
         }
 
         public GremlinPipeline addOutE(params string[] Parameters)
         {
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            parser.Parse(CutTail(AppendExecutableString + "addOutE(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
 
-            AppendExecutableString += "addOutE(\'" + string.Join("\',\'", Parameters) + "\').";
-            return new GremlinPipeline(AppendExecutableString);
+            if (HoldMark == true) held = this;
+
+
+            return new GremlinPipeline(this);
 
         }
 
         public GremlinPipeline addInE(params string[] Parameters)
         {
 
+
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            parser.Parse(CutTail(AppendExecutableString + "addInE(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
+
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "addInE(\'" + string.Join("\',\'", Parameters) + "\').";
-
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
 
         }
 
@@ -449,36 +458,38 @@ AppendExecutableString += "\'" + x + "\'";
 
             AppendExecutableString += "values(\'" + name + "\').";
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "values(\'" + name + "\').");
 
         }
 
         public GremlinPipeline where(Tuple<string, GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
 
+            string AES = AppendExecutableString;
             if (HoldMark == true) held = this;
 
             if (ComparisonFunc.Item2 == GraphViewGremlinParser.Keywords.eq)
-                AppendExecutableString += "where(eq(\'" + ComparisonFunc.Item1 + "\')).";
+                AES += "where(eq(\'" + ComparisonFunc.Item1 + "\')).";
             if (ComparisonFunc.Item2 == GraphViewGremlinParser.Keywords.neq)
-                AppendExecutableString += "where(neq(\'" + ComparisonFunc.Item1 + "\')).";
+                AES += "where(neq(\'" + ComparisonFunc.Item1 + "\')).";
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this,AES);
         }
 
         public GremlinPipeline match(params GremlinPipeline[] pipes)
         {
+            string AES = AppendExecutableString;
             List<string> StringList = new List<string>();
             foreach (var x in pipes) StringList.Add(x.AppendExecutableString);
-            AppendExecutableString += "match(\'" + String.Join(",", StringList) + ").";
-            return new GremlinPipeline(AppendExecutableString);
+            AES += "match(\'" + String.Join(",", StringList) + ").";
+            return new GremlinPipeline(this,AES);
         }
 
         public GremlinPipeline aggregate(string name)
         {
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
         }
 
         public GremlinPipeline and(params GremlinPipeline[] pipes)
@@ -486,108 +497,96 @@ AppendExecutableString += "\'" + x + "\'";
 
             List<string> PipeString = new List<string>();
             foreach(var x in pipes) PipeString.Add(x.AppendExecutableString);
-            AppendExecutableString += "and(" + String.Join(",", PipeString)+").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "and(" + String.Join(",", PipeString) + ").");
         }
 
         public GremlinPipeline or(params GremlinPipeline[] pipes)
         {
             List<string> PipeString = new List<string>();
             foreach (var x in pipes) PipeString.Add(x.AppendExecutableString);
-            AppendExecutableString += "or(" + String.Join(",", PipeString) + ").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "or(" + String.Join(",", PipeString) + ").");
         }
 
         public GremlinPipeline drop()
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "drop().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "drop().");
         }
 
         public GremlinPipeline Is(Tuple<string, GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
+            string AES = AppendExecutableString;
             if (HoldMark == true) held = this;
 
             if (ComparisonFunc.Item2 == GraphViewGremlinParser.Keywords.eq)
-                AppendExecutableString += "is(eq(\'" + ComparisonFunc.Item1 + "\')).";
+                AES += "is(eq(\'" + ComparisonFunc.Item1 + "\')).";
             if (ComparisonFunc.Item2 == GraphViewGremlinParser.Keywords.neq)
-                AppendExecutableString += "is(neq(\'" + ComparisonFunc.Item1 + "\')).";
+                AES += "is(neq(\'" + ComparisonFunc.Item1 + "\')).";
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
         }
 
         public GremlinPipeline Limit(int i)
         {
             if (HoldMark == true) held = this;
 
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this);
         }
 
         public GremlinPipeline repeat(GremlinPipeline pipe)
         {
-            AppendExecutableString += "repeat(" + CutTail(pipe.AppendExecutableString)+").";
-            return new GremlinPipeline(AppendExecutableString);
+
+            return new GremlinPipeline(this, AppendExecutableString + "repeat(" + CutTail(pipe.AppendExecutableString) + ").");
         }
 
         public GremlinPipeline times(int i)
         {
-                AppendExecutableString += "times(" + i + ").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "times(" + i + ").");
         }
 
         public GremlinPipeline choose(GremlinPipeline pipe)
         {
-            AppendExecutableString += "choose(" + CutTail(pipe.AppendExecutableString) + ").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "choose(" + CutTail(pipe.AppendExecutableString) + ").");
         }
 
         public GremlinPipeline option(string name, GremlinPipeline pipe)
         {
-            AppendExecutableString += "option(\'"+name+"\'" + CutTail(pipe.AppendExecutableString)+").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "option(\'" + name + "\'" + CutTail(pipe.AppendExecutableString) + ").");
         }
 
         public GremlinPipeline coalesce(params GremlinPipeline[] pipes)
         {
             List<string> StringList = new List<string>();
             foreach(var x in pipes) StringList.Add(CutTail(x.AppendExecutableString));
-            AppendExecutableString += "coalesce(" + String.Join(",", StringList)+").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "coalesce(" + String.Join(",", StringList) + ").");
         }
 
         public GremlinPipeline order()
         {
-            AppendExecutableString += "order().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "order().");
         }
 
         public GremlinPipeline by(string bywhat,string order ="")
         {
-            AppendExecutableString += "by(\'" + bywhat + "\', "+order +").";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "by(\'" + bywhat + "\', " + order + ").");
         }
 
         public GremlinPipeline max()
         {
-            AppendExecutableString += "max().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "max().");
         }
         public GremlinPipeline count()
         {
-            AppendExecutableString += "count().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "count().");
         }
         public GremlinPipeline min()
         {
-            AppendExecutableString += "min().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "min().");
         }
         public GremlinPipeline mean()
         {
-            AppendExecutableString += "mean().";
-            return new GremlinPipeline(AppendExecutableString);
+            return new GremlinPipeline(this, AppendExecutableString + "mean().");
         }
         internal string CutTail(string some)
         {

@@ -741,7 +741,7 @@ namespace GraphView
             if (RootProcessor.Count == 1) root =  RootProcessor[0];
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             else root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
-            if (OrderByClause.OrderByElements != null)
+            if (OrderByClause != null && OrderByClause.OrderByElements != null)
                 root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header);
             return root;
         }
