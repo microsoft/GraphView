@@ -513,6 +513,43 @@ namespace GraphView
         }
     }
 
+    public class ProjectionOperator : GraphViewOperator
+    {
+        internal GraphViewOperator ChildOperator;
+        internal GraphViewConnection connection;
+
+        public ProjectionOperator(GraphViewConnection pConnection, GraphViewOperator pChildOperator,
+            List<string> NewHeader)
+        {
+            this.Open();
+            connection = pConnection;
+            header = NewHeader;
+            ChildOperator = pChildOperator;
+        }
+
+        override public Record Next()
+        {
+            Record OutputRecord = new Record(header.Count);
+            Record InputRecord = null;
+            if (ChildOperator.Status())
+            {
+                InputRecord = ChildOperator.Next();
+                for (int i = 0; i < header.Count; i++)
+                {
+                    OutputRecord.field[i] = (ChildOperator.header.IndexOf(header[i]) != -1)
+                        ? InputRecord.RetriveData(ChildOperator.header, header[i])
+                        : "";
+                }
+                return OutputRecord;
+            }
+            else
+            {
+                this.Close();
+                return null;
+            }
+        }
+    }
+
     public class GraphViewDataReader : IDataReader
     {
         private GraphViewOperator DataSource;
