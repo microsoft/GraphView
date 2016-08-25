@@ -456,8 +456,6 @@ AES += "\'" + x + "\'";
         {
             if (HoldMark == true) held = this;
 
-            AppendExecutableString += "values(\'" + name + "\').";
-
             return new GremlinPipeline(this, AppendExecutableString + "values(\'" + name + "\').");
 
         }
@@ -569,6 +567,10 @@ AES += "\'" + x + "\'";
 
         public GremlinPipeline by(string bywhat,string order ="")
         {
+            if (order == "" && bywhat =="incr")
+                return new GremlinPipeline(this, AppendExecutableString + "by(incr).");
+            if (order == "" && bywhat == "decr")
+                return new GremlinPipeline(this, AppendExecutableString + "by(decr).");
             return new GremlinPipeline(this, AppendExecutableString + "by(\'" + bywhat + "\', " + order + ").");
         }
 

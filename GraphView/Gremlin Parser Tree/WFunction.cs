@@ -683,7 +683,7 @@ namespace GraphView
                             (int) GraphViewGremlinParser.Keywords.incr)
                             order = SortOrder.Ascending;
                     }
-                    foreach (var x in Parameters.Parameter)
+                    foreach (var x in Parameters.Parameter.GetRange(0,Parameters.Parameter.Count))
                         {
                         if(x.QuotedString != null)
                             pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder() {ScalarExpr = new WValueExpression(x.QuotedString,false),SortOrder = order});

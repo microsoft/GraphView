@@ -109,7 +109,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinTest");
+                "GroupMatch", "MarvelTest");
             GremlinPipeline g1 = new GremlinPipeline(ref connection);
             var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
 
@@ -123,9 +123,9 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinTest");
+                "GroupMatch", "MarvelTest");
             GremlinPipeline g1 = new GremlinPipeline(ref connection);
-            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GremlinPipeline.without("shield", "claws")).values("character").order();
+            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GremlinPipeline.without("shield", "claws")).values("character");
 
             foreach (var x in r1)
             {

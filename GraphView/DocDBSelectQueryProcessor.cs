@@ -472,13 +472,22 @@ namespace GraphView
         internal List<Record> results;
         internal Queue<Record> ResultQueue;
         internal string bywhat;
-        public OrderbyOperator(GraphViewConnection pConnection, GraphViewOperator pChildOperator, string pBywhat, List<string> pheader)
+        internal Order order;
+
+        public enum Order
+        {
+            Decr,
+            Incr,
+            NotSpecified
+        }
+        public OrderbyOperator(GraphViewConnection pConnection, GraphViewOperator pChildOperator, string pBywhat, List<string> pheader, Order pOrder = Order.NotSpecified)
         {
             this.Open();
             connection = pConnection;
             header = pheader;
             ChildOperator = pChildOperator;
             bywhat = pBywhat;
+            order = pOrder;
         }
 
         override public Record Next()
@@ -490,7 +499,11 @@ namespace GraphView
                 {
                     results.Add(ChildOperator.Next());
                 }
+                if (order == Order.Incr || order == Order.NotSpecified)
                 results.Sort((x,y) =>string.Compare(x.RetriveData(header, bywhat), y.RetriveData(header, bywhat),StringComparison.OrdinalIgnoreCase));
+                if (order == Order.Decr)
+                results.Sort((x, y) => string.Compare(y.RetriveData(header, bywhat), x.RetriveData(header, bywhat), StringComparison.OrdinalIgnoreCase));
+
                 ResultQueue = new Queue<Record>();
                 foreach (var x in results)
                     ResultQueue.Enqueue(x);

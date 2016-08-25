@@ -742,7 +742,14 @@ namespace GraphView
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             else root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
-                root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header);
+            {
+                if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Ascending)
+                root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Incr);
+                if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Descending)
+                    root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Decr);
+                if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.NotSpecified)
+                    root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.NotSpecified);
+            }
             return root;
         }
 
