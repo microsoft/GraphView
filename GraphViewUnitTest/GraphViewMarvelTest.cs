@@ -80,6 +80,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow().ToString());
+                }
             }
         }
         [TestMethod]
@@ -94,6 +98,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow()); 
+                }
             }
         }
         [TestMethod]
@@ -108,6 +116,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow());
+                }
             }
         }
         [TestMethod]
@@ -122,6 +134,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow());
+                }
             }
         }
 

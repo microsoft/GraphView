@@ -54,6 +54,16 @@ namespace GraphView
             if (field.IndexOf(value) == -1) return -1;
             else return field.IndexOf(value);
         }
+        public String RetriveRow()
+        {
+            String row = "";
+            if (field == null) return row;
+            for(int i = 0; i < field.Count; i++)
+            {
+                row += field[i].ToString() + ",";
+            }
+            return row;
+        }
         internal List<string> field;
     }
     
