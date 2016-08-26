@@ -750,6 +750,13 @@ namespace GraphView
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.NotSpecified)
                     root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.NotSpecified);
             }
+            List<string> SelectedElement = new List<string>();
+            foreach (var x in SelectElements)
+            {
+                if ((x as WSelectScalarExpression).SelectExpr is WColumnReferenceExpression)
+                    SelectedElement.Add(x.ToString());
+            }
+            root = new OutputOperator(root,pConnection,SelectedElement,root.header);
             return root;
         }
 

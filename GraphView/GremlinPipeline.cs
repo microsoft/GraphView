@@ -43,13 +43,7 @@ namespace GraphView
             {
                 get
                 {
-                    Record res = new Record();
-                    res.field = new List<string>();
-                    foreach (var x in elements)
-                    {
-                        res.field.Add(CurrentRecord.RetriveData(x));
-                    }
-                    return res;
+                    return CurrentRecord;
                 }
             }
 
@@ -57,13 +51,7 @@ namespace GraphView
             {
                 get
                 {
-                    Record res = new Record();
-                    res.field = new List<string>();
-                    foreach (var x in elements)
-                    {
-                     res.field.Add(CurrentRecord.RetriveData(x));   
-                    }
-                    return res;
+                    return CurrentRecord;
                 }
             }
 

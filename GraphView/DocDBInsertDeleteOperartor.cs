@@ -83,7 +83,7 @@ namespace GraphView
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 Record rec = SelectInput.Next();
                 if (rec == null) break;
-                List<string> header = SelectInput.header;
+                List<string> header = (SelectInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
                 string source_tital = source.Substring(0,source.Length-3) + ".doc";
@@ -161,7 +161,7 @@ namespace GraphView
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 Record rec = SelectInput.Next();
                 if (rec == null) break;
-                List<string> header = SelectInput.header;
+                List<string> header = (SelectInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
                 //The "e" in the Record is "Reverse_e" in fact

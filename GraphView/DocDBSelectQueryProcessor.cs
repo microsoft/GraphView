@@ -513,33 +513,35 @@ namespace GraphView
         }
     }
 
-    public class ProjectionOperator : GraphViewOperator
+    public class OutputOperator : GraphViewOperator
     {
         internal GraphViewOperator ChildOperator;
         internal GraphViewConnection connection;
+        internal List<string> SelectedElement;
 
-        public ProjectionOperator(GraphViewConnection pConnection, GraphViewOperator pChildOperator,
-            List<string> NewHeader)
+        public OutputOperator(GraphViewOperator pChildOperator, GraphViewConnection pConnection, List<string> pSelectedElement, List<string> pHeader)
         {
             this.Open();
-            connection = pConnection;
-            header = NewHeader;
             ChildOperator = pChildOperator;
+            connection = pConnection;
+            SelectedElement = pSelectedElement;
+            header = pHeader;
         }
 
         override public Record Next()
         {
-            Record OutputRecord = new Record(header.Count);
+            Record OutputRecord = new Record(SelectedElement.Count);
             Record InputRecord = null;
             if (ChildOperator.Status())
             {
-                InputRecord = ChildOperator.Next();
-                for (int i = 0; i < header.Count; i++)
+                while((InputRecord = ChildOperator.Next()) == null && ChildOperator.Status());
+                if (!ChildOperator.Status())
                 {
-                    OutputRecord.field[i] = (ChildOperator.header.IndexOf(header[i]) != -1)
-                        ? InputRecord.RetriveData(ChildOperator.header, header[i])
-                        : "";
+                    this.Close();
+                    return null;
                 }
+                foreach (var x in SelectedElement)
+                    OutputRecord.field[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(header, x);
                 return OutputRecord;
             }
             else
