@@ -497,8 +497,9 @@ namespace GraphView
                 results = new List<Record>();
                 while (ChildOperator.Status())
                 {
-                    if(ChildOperator != null)
-                    results.Add(ChildOperator.Next());
+                    Record Temp = ChildOperator.Next();
+                    if (Temp != null)
+                    results.Add(Temp);
                 }
                 if (order == Order.Incr || order == Order.NotSpecified)
                 results.Sort((x,y) =>string.Compare(x.RetriveData(header, bywhat), y.RetriveData(header, bywhat),StringComparison.OrdinalIgnoreCase));
