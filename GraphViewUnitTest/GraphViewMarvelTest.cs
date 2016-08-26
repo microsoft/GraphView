@@ -89,7 +89,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             GremlinPipeline g1 = new GremlinPipeline(ref connection);
-            var r1 = g1.V().As("character").has("weapon", "lasso").Out("appeared").As("comicbook").select("character", "comicbook");
+            var r1 = g1.V().As("character").has("weapon", GremlinPipeline.without("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
 
             foreach (var x in r1)
             {
@@ -117,7 +117,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             GremlinPipeline g1 = new GremlinPipeline(ref connection);
-            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GremlinPipeline.without("shield", "claws")).values("character");
+            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GremlinPipeline.without("shield", "claws")).values("character").order();
 
             foreach (var x in r1)
             {
@@ -183,8 +183,8 @@ namespace GraphViewUnitTest
             var r5 = g.V().addV("comicbook", "AVF 4");
             var r6 = g.V().As("v").has("character", "HAWK").As("a").select("v").has("comicbook", "AVF 4").As("b").select("a", "b").addOutE("a", "appeared", "b");
             var r7 = g.V().addV("character", "WOODGOD", "weapon", "lasso");
-            var r8 = g.V().addV("comicbook", "H2 252");
-            var r9 = g.V().As("v").has("character", "WOODGOD").As("a").select("v").has("comicbook", "H2 252").As("b").select("a", "b").addOutE("a", "appeared", "b");
+            //var r8 = g.V().addV("comicbook", "H2 252");
+            var r9 = g.V().As("v").has("character", "WOODGOD").As("a").select("v").has("comicbook", "AVF 4").As("b").select("a", "b").addOutE("a", "appeared", "b");
         }
         [TestMethod]
         public void AddSimpleEdgeMarvelRecord1()
