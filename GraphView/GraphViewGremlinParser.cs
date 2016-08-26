@@ -522,10 +522,10 @@ namespace GraphView
             if (pFullStop)
             {
                 WFragment pFragment = ParseFragment();
-                if (pFragment != null && pFragment.Function == null && pFragment.Fragment == null)
+                if (pFragment != null && pFragment.Function == null && pFragment.Fragment == null && pFragment.Identifer == -1)
                     throw new SyntaxErrorException("A syntax error is found near \"..." +
-                                                   TokenList[pFragment.FirstToken - 1].value + TokenList[pFragment.FirstToken].value +
-                                                   TokenList[pFragment.FirstToken + 1].value + "...\"");
+                                                   TokenList[pFragment.FirstToken].value +
+                                                    "...\"");
                 if (pFunction != null && pFullStop && pFragment != null)
                 {
                     int LT = NextToken;

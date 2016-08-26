@@ -198,11 +198,11 @@ namespace GraphViewUnitTest
             var op1 = ParserTree1.Generate(connection);
             op1.Next();
             GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-            var ParserTree2 = parser2.Parse("g.addV('comic-book','AVF 4')");
+            var ParserTree2 = parser2.Parse("g.addV('comicbook','AVF 4')");
             var op2 = ParserTree2.Generate(connection);
             op2.Next();
             GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-            var ParserTree3 = parser3.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comic-book','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')");
+            var ParserTree3 = parser3.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')");
             var op3 = ParserTree3.Generate(connection);
             op3.Next();
             GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
@@ -221,16 +221,17 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
+            ResetCollection("MarvelTest");
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.addV('character','VENUS II','weapon','claws')");
             var op1 = ParserTree1.Generate(connection);
             op1.Next();
             GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-            var ParserTree2 = parser2.Parse("g.addV('comic-book','AVF 4')");
+            var ParserTree2 = parser2.Parse("g.addV('comicbook','AVF 4')");
             var op2 = ParserTree2.Generate(connection);
             op2.Next();
             GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-            var ParserTree3 = parser3.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comic-book','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')");
+            var ParserTree3 = parser3.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')");
             var op3 = ParserTree3.Generate(connection);
             op3.Next();
             GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
@@ -248,16 +249,17 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
+            ResetCollection("MarvelTest");
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.addV('character','WOODGOD','weapon','lasso')");
             var op1 = ParserTree1.Generate(connection);
             op1.Next();
             GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-            var ParserTree2 = parser2.Parse("g.addV('comic-book','H2 252')");
+            var ParserTree2 = parser2.Parse("g.addV('comicbook','H2 252')");
             var op2 = ParserTree2.Generate(connection);
             op2.Next();
             GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-            var ParserTree3 = parser3.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comic-book','H2 252').as('b').select('a','b').addOutE('a','appeared','b')");
+            var ParserTree3 = parser3.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')");
             var op3 = ParserTree3.Generate(connection);
             op3.Next();
             GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
