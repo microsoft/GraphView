@@ -108,7 +108,7 @@ namespace GraphView
                     string ID = ItemInfo.Item1;
                     if (!UniqueRecord.Contains(ItemInfo))
                     {
-                        UniqueRecord.Add(ItemInfo);
+                        //UniqueRecord.Add(ItemInfo);
                         Record ResultRecord = new Record(header.Count());
                         foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
                         {
@@ -540,11 +540,14 @@ namespace GraphView
                 if (!ChildOperator.Status())
                 {
                     this.Close();
-                    return null;
                 }
-                foreach (var x in SelectedElement)
-                    OutputRecord.field[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(header, x);
-                return OutputRecord;
+                if (InputRecord != null)
+                {
+                    foreach (var x in SelectedElement)
+                        OutputRecord.field[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(header, x);
+                    return OutputRecord;
+                }
+                else return null;
             }
             else
             {
