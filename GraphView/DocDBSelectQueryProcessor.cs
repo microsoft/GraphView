@@ -497,6 +497,7 @@ namespace GraphView
                 results = new List<Record>();
                 while (ChildOperator.Status())
                 {
+                    if(ChildOperator != null)
                     results.Add(ChildOperator.Next());
                 }
                 if (order == Order.Incr || order == Order.NotSpecified)
