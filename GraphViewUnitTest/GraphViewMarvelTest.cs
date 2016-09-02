@@ -2,7 +2,19 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
-
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using GraphView;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Newtonsoft.Json;
+using System.Text;
+using Newtonsoft.Json.Linq;
+using System.IO;
 namespace GraphViewUnitTest
 {
     [TestClass]
@@ -122,6 +134,7 @@ namespace GraphViewUnitTest
                 }
             }
         }
+
         [TestMethod]
         public void SelectMarvelQueryNativeAPI4()
         {
@@ -139,6 +152,17 @@ namespace GraphViewUnitTest
                     Console.WriteLine(y.RetriveRow());
                 }
             }
+        }
+
+        
+        public void parseInEdge()
+        {
+
+        }
+
+        public void parseOutEdge()
+        {
+
         }
 
     }
