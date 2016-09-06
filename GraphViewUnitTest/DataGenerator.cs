@@ -272,8 +272,10 @@ namespace GraphViewUnitTest
 
     class DataGenerator
     {
-        private const int EmployeeNodeSize = 100;
-        private const int ClientNodeSize = 100;
+        private const int EmployeeNodeSize = 400;
+        private const int ClientNodeSize = 300;
+        private const int UserNodeSize = 600;
+        private const int TempNodeSize = 600;
         private const int AverageDegree = 40;
         private const int MaxDegree = EmployeeNodeSize;
         private static int Ran = new Random().Next(0, EmployeeNodeSize);
@@ -292,6 +294,31 @@ namespace GraphViewUnitTest
             EmployeeClientsReversed = 5,
             EmployeeManagerReversed = 6,
             ClientColleaguesReversed = 7,
+        }
+
+        private static string RandomString(HashSet<string> strSet, int strLength = 10)
+        {
+            var tick = (int)DateTime.Now.Ticks + _rep++;
+            var rd = new Random(tick);
+
+            var res = RandomString(rd, strLength);
+            while (strSet.Contains(res))
+                res = RandomString(rd, strLength);
+            strSet.Add(res);
+
+            return res;
+        }
+
+        private static string RandomString(Random rd, int strLength = 10)
+        {
+            var rndStr = "";
+
+            for (var i = 0; i < strLength; ++i)
+            {
+                var rndChr = (char)rd.Next(65, 90);
+                rndStr = rndStr + rndChr;
+            }
+            return rndStr;
         }
 
         private static string RandomString(int strLength = 10)
@@ -432,6 +459,7 @@ namespace GraphViewUnitTest
                 cmd.Parameters.Add("@ColleaguesOutDegree", SqlDbType.Int);
                 cmd.Parameters.Add("@ManagerOutDegree", SqlDbType.Int);
 
+                var idSet = new HashSet<string>();
                 var tick = (int)DateTime.Now.Ticks + _rep++;
                 var rd = new Random(tick);
                 revBytesDict.Add(Edge.EmployeeColleaguesReversed, new Dictionary<long, Tuple<byte[], int>>());
@@ -441,7 +469,7 @@ namespace GraphViewUnitTest
                 for (var i = 0; i < EmployeeNodeSize; ++i)
                 {
                     var name = RandomString();
-                    var workId = RandomString();
+                    var workId = RandomString(idSet);
 
 
                     //var numberOfClients = rdInt.Next(1, 2 * AverageDegree);
@@ -493,6 +521,7 @@ namespace GraphViewUnitTest
             using (var cmd = conn.CreateCommand())
             {
                 //Start Data Generation
+                var idSet = new HashSet<string>();
                 var tick = (int)DateTime.Now.Ticks + _rep++;
                 var rd = new Random(tick);
                 cmd.Parameters.Add("@name", SqlDbType.NVarChar, 128);
@@ -508,12 +537,64 @@ namespace GraphViewUnitTest
                     cmd.CommandText = "INSERT ClientNode (ClientId, name, Colleagues,ColleaguesOutDegree) VALUES (@ClientId, @name, @Colleagues,@ColleaguesOutDegree)";
                     cmd.Parameters["@name"].Value = name;
                     //cmd.Parameters["@Colleagues"].Value = GenerateBinary(numberOfColleagues, rdInt, Edge.Colleagues);
-                    cmd.Parameters["@ClientId"].Value = RandomString();
+                    cmd.Parameters["@ClientId"].Value = RandomString(idSet);
                     int edgeNum;
 
                     var revBytes = revBytesDict[Edge.ClientColleaguesReversed];
                     cmd.Parameters["@Colleagues"].Value = GenerateBinary(i, ClientNodeSize, rd, Edge.ClientColleagues,out edgeNum, ref revBytes);
                     cmd.Parameters["@ColleaguesOutDegree"].Value = edgeNum;
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        // No edge data
+        public static void InsertDataUserNode(SqlConnection conn,
+            ref Dictionary<Edge, Dictionary<long, Tuple<byte[], int>>> revBytesDict)
+        {
+            using (var cmd = conn.CreateCommand())
+            {
+                //Start Data Generation
+                var idSet = new HashSet<string>();
+                var tick = (int)DateTime.Now.Ticks + _rep++;
+                var rd = new Random(tick);
+                cmd.Parameters.Add("@name", SqlDbType.NVarChar, 128);
+                cmd.Parameters.Add("@income", SqlDbType.Int);
+
+                for (var i = 0; i < UserNodeSize; ++i)
+                {
+                    var name = RandomString();
+                    cmd.CommandText = "INSERT UserNode (name, income) VALUES (@name, @income)";
+                    cmd.Parameters["@name"].Value = name;
+                    //cmd.Parameters["@Colleagues"].Value = GenerateBinary(numberOfColleagues, rdInt, Edge.Colleagues);
+                    cmd.Parameters["@income"].Value = rd.Next();
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        // No edge data
+        public static void InsertDataTempNode(SqlConnection conn,
+            ref Dictionary<Edge, Dictionary<long, Tuple<byte[], int>>> revBytesDict)
+        {
+            using (var cmd = conn.CreateCommand())
+            {
+                //Start Data Generation
+                var idSet = new HashSet<string>();
+                var tick = (int)DateTime.Now.Ticks + _rep++;
+                var rd = new Random(tick);
+                cmd.Parameters.Add("@name", SqlDbType.NVarChar, 128);
+                cmd.Parameters.Add("@income", SqlDbType.Int);
+
+                for (var i = 0; i < TempNodeSize; ++i)
+                {
+                    var name = RandomString();
+                    cmd.CommandText = "INSERT TempNode (name, income) VALUES (@name, @income)";
+                    cmd.Parameters["@name"].Value = name;
+                    //cmd.Parameters["@Colleagues"].Value = GenerateBinary(numberOfColleagues, rdInt, Edge.Colleagues);
+                    cmd.Parameters["@income"].Value = rd.Next();
 
                     cmd.ExecuteNonQuery();
                 }

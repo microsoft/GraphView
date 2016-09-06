@@ -88,6 +88,17 @@ namespace GraphViewUnitTest
                     [testBwtUserAndClient] [varchar](max),
                 )";
                 graph.CreateNodeTable(createUserStr);
+
+                const string createTempStr = @"
+                CREATE TABLE [TempNode] (
+                    [ColumnRole: ""Property""]
+                    [name] [varchar](32),
+                    [ColumnRole: ""Property""]
+                    [income] [int],
+                    [ColumnRole: ""Edge"", Reference: ""EmployeeNode"", Attributes: {db: ""double"", str: ""string""} ]
+                    [test] [varchar](max),
+                )";
+                graph.CreateNodeTable(createTempStr);
             }
         }
 
@@ -107,7 +118,7 @@ namespace GraphViewUnitTest
                     [Colleagues2] [varchar](max)
                 )";
                 graph.CreateNodeTable(createClientStr);
-                
+
                 const string createEmployeeStr = @"
                     CREATE TABLE [EmployeeNode] (
                     [ColumnRole: ""NodeId""]
@@ -128,6 +139,8 @@ namespace GraphViewUnitTest
                 var revBytesDict = new Dictionary<DataGenerator.Edge, Dictionary<long, Tuple<byte[], int>>>();
                 DataGenerator.InsertDataEmployNode(graph.Conn, ref revBytesDict);
                 DataGenerator.InsertDataClientNode(graph.Conn, ref revBytesDict);
+                DataGenerator.InsertDataUserNode(graph.Conn, ref revBytesDict);
+                DataGenerator.InsertDataTempNode(graph.Conn, ref revBytesDict);
                 DataGenerator.InsertReversedData(graph.Conn, ref revBytesDict);
                 foreach (var table in graph.GetNodeTables())
                 {
@@ -137,6 +150,10 @@ namespace GraphViewUnitTest
                     "ClientNode"));
                 graph.ExecuteNonQuery(string.Format("UPDATE STATISTICS {0}.{1} {0}{1}_PK_GlobalNodeId", "dbo",
                     "EmployeeNode"));
+                graph.ExecuteNonQuery(string.Format("UPDATE STATISTICS {0}.{1} {0}{1}_PK_GlobalNodeId", "dbo",
+                    "UserNode"));
+                graph.ExecuteNonQuery(string.Format("UPDATE STATISTICS {0}.{1} {0}{1}_PK_GlobalNodeId", "dbo",
+                    "TempNode"));
             }
         }
 

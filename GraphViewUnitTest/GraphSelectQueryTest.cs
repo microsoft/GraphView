@@ -371,7 +371,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void TestCheckWorngTailReference()
+        public void TestCheckWrongTailReference()
         {
             using (var graph = new GraphViewConnection(_connStr))
             {
@@ -401,7 +401,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void TestCheckWorngSourceReference()
+        public void TestCheckWrongSourceReference()
         {
             using (var graph = new GraphViewConnection(_connStr))
             {
@@ -431,7 +431,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void TestCheckWorngEdgeReference()
+        public void TestCheckWrongEdgeReference()
         {
             using (var graph = new GraphViewConnection(_connStr))
             {
@@ -502,6 +502,7 @@ namespace GraphViewUnitTest
                 WHERE EXISTS (select * from ClientNode where name=e1.workid);
 
                 select e1.* from employeenode e1, employeenode e2 match [e1]-[colleagues]->[e2]";
+
                 using (var command = new GraphViewCommand(q2, graph))
                 {
                     using (var reader = command.ExecuteReader())
