@@ -57,39 +57,43 @@ namespace GraphView
         public List<MatchEdge> PostMatIncomingEdges { get; set; }
         // Outgoing edges being transposed after Join
         public List<MatchEdge> PostMatOutgoingEdges { get; set; }
+
         // TreeRoot's outgoing edges that are materialized by Transpose() functions.
         public List<MatchEdge> MaterializedEdges { get; set; }
         // TreeRoot's edges that are not yet materialized. Lazy materialization may be beneficial for performance, 
         // because it reduces the number of intermediate resutls. 
         public List<MatchEdge> UnmaterializedEdges { get; set; }
 
-        private double _edgeDegrees = -1;
-        public double EdgeDegrees
-        {
-            get
-            {
-                if (_edgeDegrees < 0)
-                {
-                    double matEdgeDegrees = MaterializedEdges.Aggregate(1.0, (cur, next) => cur*next.AverageDegree);
-                    double unMatEdgeDegrees = UnmaterializedEdges.Aggregate(1.0, (cur, next) => cur * next.AverageDegree);
-                    _edgeDegrees = unMatEdgeDegrees*matEdgeDegrees;
-                }
-                return _edgeDegrees;
-            }
-        }
+        // Join Hint
+        public JoinHint JoinHint { get; set; } 
 
-        private double _sqlEstimatedEdgeDegrees = -1;
-        public double SqlEstimatedEdgeDegrees
-        {
-            get
-            {
-                if (_sqlEstimatedEdgeDegrees < 0)
-                {
-                    _sqlEstimatedEdgeDegrees = Math.Pow(1000, MaterializedEdges.Count + UnmaterializedEdges.Count);
-                }
-                return _sqlEstimatedEdgeDegrees;
-            }
-        }
+        //private double _edgeDegrees = -1;
+        //public double EdgeDegrees
+        //{
+        //    get
+        //    {
+        //        if (_edgeDegrees < 0)
+        //        {
+        //            double matEdgeDegrees = MaterializedEdges.Aggregate(1.0, (cur, next) => cur*next.AverageDegree);
+        //            double unMatEdgeDegrees = UnmaterializedEdges.Aggregate(1.0, (cur, next) => cur * next.AverageDegree);
+        //            _edgeDegrees = unMatEdgeDegrees*matEdgeDegrees;
+        //        }
+        //        return _edgeDegrees;
+        //    }
+        //}
+
+        //private double _sqlEstimatedEdgeDegrees = -1;
+        //public double SqlEstimatedEdgeDegrees
+        //{
+        //    get
+        //    {
+        //        if (_sqlEstimatedEdgeDegrees < 0)
+        //        {
+        //            _sqlEstimatedEdgeDegrees = Math.Pow(1000, MaterializedEdges.Count + UnmaterializedEdges.Count);
+        //        }
+        //        return _sqlEstimatedEdgeDegrees;
+        //    }
+        //}
 
         //public WTableReference ToTableReference(string nodeAlias, GraphMetaData metaData)
         //{
@@ -130,18 +134,11 @@ namespace GraphView
         }
     }
 
-    internal enum MaterializedOrder
-    {
-        Pre,
-        Post
-    }
+    internal enum EdgeDir : byte { In, Out };
 
-    //internal enum PreToPostEdgeType
-    //{
-    //    NoPositionChange,
-    //    InPreToPost,
-    //    OutPreToPost
-    //}
+    internal enum MaterializedOrder { Pre, Post }
+
+    internal enum DumbType { Node, Edge }
 
     /// <summary>
     /// The Component in the joining process
@@ -168,6 +165,15 @@ namespace GraphView
         // and new edges point to this sink node. 
         public Dictionary<MatchNode, Statistics> SinkNodeStatisticsDict { get; set; }
 
+        // Numbder of edges cross applied after the last JOIN operator
+        public int LastJoinPostMatEdgesCount { get; set; }
+
+        // Estimated number of rows of the input going through the last JOIN operator
+        public double LastJoinSqlEstCardinality { get; set; }
+
+        // Last join hint
+        public JoinHint LastJoinHint { get; set; }
+
         // Total memory used by the current execution plan
         public double TotalMemory { get; set; }
 
@@ -175,8 +181,15 @@ namespace GraphView
         // the left-deep hash join or the loop join. 
         public double DeltaMemory { get; set; }
 
+        // The last table in the component
+        public MatchNode LastTable { get; set; }
+
         // The alias of the last table in the component
-        public string LastTableAlias { get; set; } 
+        public string LastTableAlias { get; set; }
+
+        // The alias of the last post materialized edge
+        public string LastPostMatEdgeAlias { get; set; }
+
         // The alias of the rightest probe table in the join
         public string RightestTableAlias { get; set; }
 
@@ -206,6 +219,10 @@ namespace GraphView
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
+            LastPostMatEdgeAlias = null;
+            LastJoinPostMatEdgesCount = 0;
+            LastJoinSqlEstCardinality = 1.0;
+            LastJoinHint = JoinHint.None;
             Cardinality = 1.0;
             Cost = 0.0;
             TotalMemory = 0.0;
@@ -230,6 +247,7 @@ namespace GraphView
                 TableObjectName = node.NodeTableObjectName
             };
             LastTableAlias = node.RefAlias;
+            LastTable = null;
 
             foreach (var edge in node.Neighbors)
             {
@@ -254,6 +272,11 @@ namespace GraphView
             }
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>(component.SinkNodeStatisticsDict);
             TableRef = component.TableRef;
+            LastPostMatEdgeAlias = component.LastPostMatEdgeAlias;
+            LastJoinPostMatEdgesCount = component.LastJoinPostMatEdgesCount;
+            LastJoinSqlEstCardinality = component.LastJoinSqlEstCardinality;
+            LastJoinHint = component.LastJoinHint;
+            LastTable = component.LastTable;
             Cardinality = component.Cardinality;
             Cost = component.Cost;
             DeltaMemory = component.DeltaMemory;
@@ -349,6 +372,45 @@ namespace GraphView
                             {
                                 new WValueExpression {Value = adjustValue.ToString()}
                             },
+                        Alias = new Identifier
+                        {
+                            Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8),
+                        }
+                    },
+                    UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+                };
+                pow--;
+                affectedEstimatedSize *= adjustValue;
+            }
+            return tableRef;
+        }
+
+        private static WTableReference ConstructUpSizeTableReference(WTableReference tableRef, double upSizeScalar, string dumb, DumbType dumbType, out double affectedEstimatedSize)
+        {
+            affectedEstimatedSize = 1.0;
+            int pow = (int)(Math.Floor(Math.Log(upSizeScalar, 1000)) + 1);
+            int adjustValue = (int)Math.Pow(upSizeScalar, 1.0 / pow);
+            while (pow > 0)
+            {
+                tableRef = new WUnqualifiedJoin
+                {
+                    FirstTableRef = tableRef,
+                    SecondTableRef = new WSchemaObjectFunctionTableReference
+                    {
+                        SchemaObject = new WSchemaObjectName(
+                            new Identifier { Value = "dbo" },
+                            new Identifier { Value = "UpSizeFunction2" }),
+                        Parameters = new List<WScalarExpression>
+                        {
+                            new WValueExpression {Value = adjustValue.ToString()},
+                            new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier =
+                                    new WMultiPartIdentifier(
+                                        new Identifier {Value = dumb},
+                                        new Identifier {Value = dumbType == DumbType.Node ? "GlobalNodeId" : "Sink"})
+                            }
+                        },
                         Alias = new Identifier
                         {
                             Value = Path.GetRandomFileName().Replace(".", "").Substring(0, 8),
@@ -491,214 +553,135 @@ namespace GraphView
         /// </summary>
         /// <param name="nodeUnitCandidate"></param>
         /// <param name="joinCondition"></param>
-        /// <param name="joinSelectivity"></param>
+        /// <param name="preJoinSelectivity"></param>
+        /// <param name="postJoinSelectivity"></param>
         /// <param name="estimatedSelectivity"></param>
         /// <param name="metaData"></param>
         /// <param name="isExecutable"></param>
         private void ConstructPhysicalJoinAndUpdateCost(
             CandidateJoinUnit nodeUnitCandidate,
             WBooleanExpression joinCondition, 
-            double joinSelectivity,
+            double preJoinSelectivity,
+            double postJoinSelectivity,
             double estimatedSelectivity,
-            GraphMetaData metaData,
-            out bool isExecutable)
+            GraphMetaData metaData)
         {
+            const double scaleFactor = 1.5;
+            const int sqlInPreMatEdgeSelectivityThreshold = 5;
             var firstJoin = MaterializedNodeSplitCount.Count == 2;
 
             var inPreMatEdges = nodeUnitCandidate.PreMatIncomingEdges;
             var inPostMatEdges = nodeUnitCandidate.PostMatIncomingEdges;
             var outPreMatEdges = nodeUnitCandidate.PreMatOutgoingEdges;
             var outPostMatEdges = nodeUnitCandidate.PostMatOutgoingEdges;
+            var postMatEdges = inPostMatEdges.Select(e => new Tuple<MatchEdge, EdgeDir>(e, EdgeDir.In))
+                               .Union(
+                                   outPostMatEdges.Select(e => new Tuple<MatchEdge, EdgeDir>(e, EdgeDir.Out)))
+                               .OrderBy(t => t.Item1.AverageDegree)
+                               .ToList();
+
             var compDegrees = inPreMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur*next);
             var nodeDegrees = outPreMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur * next);
 
             var root = nodeUnitCandidate.TreeRoot;
             var componentSize = Cardinality;
-            var newCompEstSize = SqlEstimatedSize*Math.Pow(1000, inPreMatEdges.Count + inPostMatEdges.Count)*
-                                 root.EstimatedRows*Math.Pow(1000, outPreMatEdges.Count + outPostMatEdges.Count)*
-                                 estimatedSelectivity;
-            newCompEstSize = newCompEstSize < 1.0 ? 1.0 : newCompEstSize;
 
-            double sizeFactor = 5;//1000;
-            var loopCost = inPreMatEdges.Any() && !outPreMatEdges.Any() 
-                ? componentSize * compDegrees * Math.Log(root.EstimatedRows, 512) * 0.20
+            double sizeFactor = 5; // 1000;
+            var loopCost = nodeUnitCandidate.JoinHint == JoinHint.Loop 
+                ? componentSize * compDegrees * Math.Log(root.EstimatedRows, 512)
                 : double.MaxValue;
             // only calc the size of table used to join
             var matCompSizeWhenJoin = componentSize*compDegrees;
             var matUnitSizeWhenJoin = root.EstimatedRows*nodeDegrees;
             var hashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
 
-            //var preToPostType = PreToPostEdgeType.NoPositionChange;
-            //var hasShrinkInEdge = inPreMatEdges.Any(e => e.AverageDegree < 1);
-            //var hasShrinkOutEdge = outPreMatEdges.Any(e => e.AverageDegree < 1);
-            //var matCompSizeWhenJoin = 0.0;
-            //var matUnitSizeWhenJoin = 0.0;
-            //if (hasShrinkInEdge && hasShrinkOutEdge)
-            //{
-            //    if (componentSize*compDegrees + root.EstimatedRows < componentSize + root.EstimatedRows*nodeDegrees)
-            //    {
-            //        matCompSizeWhenJoin = componentSize * compDegrees;
-            //        matUnitSizeWhenJoin = root.EstimatedRows;
-            //        hashCost = leftDeepHashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
-            //        preToPostType = PreToPostEdgeType.OutPreToPost;
-            //    }
-            //    else
-            //    {
-            //        matCompSizeWhenJoin = componentSize;
-            //        matUnitSizeWhenJoin = root.EstimatedRows * nodeDegrees;
-            //        hashCost = rightDeepHashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
-            //        preToPostType = PreToPostEdgeType.InPreToPost;
-            //    }
-            //}
-            //else if (hasShrinkInEdge) // && !hasShrinkOutEdge
-            //{
-            //    hashCost = leftDeepHashCost = componentSize*compDegrees + root.EstimatedRows;
-            //    preToPostType = PreToPostEdgeType.OutPreToPost;
-            //}
-            //else if (hasShrinkOutEdge) // && !hasShrinkInEdge
-            //{
-            //    hashCost = rightDeepHashCost = componentSize + root.EstimatedRows*nodeDegrees;
-            //    preToPostType = PreToPostEdgeType.InPreToPost;
-            //}
-            //else //if (!hasShrinkInEdge && !hasShrinkOutEdge)
-            //{
-            //    if (inPreMatEdges.Any() && outPreMatEdges.Any())
-            //    {
-            //        if (componentSize*compDegrees + root.EstimatedRows < componentSize + root.EstimatedRows*nodeDegrees)
-            //        {
-            //            matCompSizeWhenJoin = componentSize*compDegrees;
-            //            matUnitSizeWhenJoin = root.EstimatedRows;
-            //            hashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
-            //            preToPostType = PreToPostEdgeType.OutPreToPost;
-            //            if ((firstJoin && matCompSizeWhenJoin < matUnitSizeWhenJoin) ||
-            //                (!firstJoin && matCompSizeWhenJoin*sizeFactor < matUnitSizeWhenJoin))
-            //            {
-            //                leftDeepHashCost = hashCost;
-            //            }
-            //            else
-            //            {
-            //                rightDeepHashCost = hashCost;
-            //            }
-            //        }
-            //        else
-            //        {
-            //            matCompSizeWhenJoin = componentSize;
-            //            matUnitSizeWhenJoin = root.EstimatedRows*nodeDegrees;
-            //            hashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
-            //            preToPostType = PreToPostEdgeType.InPreToPost;
-            //            if ((firstJoin && matCompSizeWhenJoin < matUnitSizeWhenJoin) ||
-            //                (!firstJoin && matCompSizeWhenJoin * sizeFactor < matUnitSizeWhenJoin))
-            //            {
-            //                leftDeepHashCost = hashCost;
-            //            }
-            //            else
-            //            {
-            //                rightDeepHashCost = hashCost;
-            //            }
-            //        }
-            //    }
-            //    else if (inPreMatEdges.Any() && !outPreMatEdges.Any())
-            //    {
-            //        matCompSizeWhenJoin = componentSize*compDegrees;
-            //        matUnitSizeWhenJoin = root.EstimatedRows;
-            //        hashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
-            //        if ((firstJoin && matCompSizeWhenJoin < matUnitSizeWhenJoin) ||
-            //            (!firstJoin && matCompSizeWhenJoin*sizeFactor < matUnitSizeWhenJoin))
-            //        {
-            //            leftDeepHashCost = hashCost;
-            //        }
-            //        else
-            //        {
-            //            rightDeepHashCost = hashCost;
-            //        }
-            //    }
-            //    else if (!inPreMatEdges.Any() && outPreMatEdges.Any())
-            //    {
-            //        matCompSizeWhenJoin = componentSize;
-            //        matUnitSizeWhenJoin = root.EstimatedRows * nodeDegrees;
-            //        hashCost = matCompSizeWhenJoin + matUnitSizeWhenJoin;
-            //        if ((firstJoin && matCompSizeWhenJoin < matUnitSizeWhenJoin) ||
-            //            (!firstJoin && matCompSizeWhenJoin * sizeFactor < matUnitSizeWhenJoin))
-            //        {
-            //            leftDeepHashCost = hashCost;
-            //        }
-            //        else
-            //        {
-            //            rightDeepHashCost = hashCost;
-            //        }
-            //    }
-            //}
-
-            isExecutable = true;
             double loopJoinOuterThreshold = 1e4;//1e6;
             double maxMemory = 1e8;
             double cost;
 
             // loop join
-            if (
-                inPreMatEdges.Any() && !outPreMatEdges.Any() &&
-                (
-                    //componentSize < loopJoinOuterThreshold ||     // the outer table is relatively small
-                    loopCost < hashCost ||
-                    (DeltaMemory + matCompSizeWhenJoin > maxMemory && DeltaMemory + matUnitSizeWhenJoin > maxMemory)
-                    // memory is in pressure
-                    )
+            if (nodeUnitCandidate.JoinHint == JoinHint.Loop
+                    //inPreMatEdges.Any() && !outPreMatEdges.Any() &&
+                    //(
+                    //    //componentSize < loopJoinOuterThreshold ||     // the outer table is relatively small
+                    //    loopCost < hashCost ||
+                    //    (DeltaMemory + matCompSizeWhenJoin > maxMemory && DeltaMemory + matUnitSizeWhenJoin > maxMemory)
+                    //    // memory is in pressure
+                    //)
                 )
             {
-                //outPostMatEdges.AddRange(outPreMatEdges);
-                //outPostMatEdges.AddRange(inPostMatEdges);
-                //var postMatEdges = outPostMatEdges.OrderBy(e => e.AverageDegree).ToList();
-                //outPreMatEdges.Clear();
-
-                //foreach (var edge in inPreMatEdges)
-                //{
-                //    joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, edgeToConditionDict[edge.EdgeAlias]);
-                //}
-                //foreach (var edge in postMatEdges)
-                //{
-                //    whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, edgeToConditionDict[edge.EdgeAlias]);
-                //}
-                 
                 if (firstJoin)
                 {
                     RightestTableRefSize = nodeUnitCandidate.TreeRoot.EstimatedRows;
                     RightestTableAlias = root.RefAlias;
+                    LastTable = Nodes.First(n => n.NodeAlias != root.NodeAlias);
+                    //LastTableAlias = LastTable.RefAlias;
+                    LastJoinHint = JoinHint.Loop;
+                    LastJoinSqlEstCardinality = LastTable.TableRowCount;
                 }
-
-                TotalMemory = DeltaMemory;
-                SqlEstimatedTotalMemory = SqlEstimatedDeltaMemory;
-                // TODO: lack join selectivity
-                SqlEstimatedSize = SqlEstimatedSize*root.EstimatedRows/root.TableRowCount
-                                   *inPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur*next)
-                                   *outPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur*next);
 
                 cost = loopCost;
-                foreach (var edge in inPreMatEdges)
+
+                var sqlInPreMatEdgesSelectivity = 1.0;
+                for (var i = 1; i < inPreMatEdges.Count && i <= sqlInPreMatEdgeSelectivityThreshold; ++i)
+                    sqlInPreMatEdgesSelectivity = Math.Sqrt(sqlInPreMatEdgesSelectivity)/10;
+
+                var sqlEstPreJoinEdgeSize = Math.Pow(100, LastJoinPostMatEdgesCount)*Math.Pow(1000, inPreMatEdges.Count)*
+                                            sqlInPreMatEdgesSelectivity;
+                var sqlEstPreJoinInputSize = LastJoinSqlEstCardinality * (LastJoinHint == JoinHint.Loop 
+                                             ? LastTable.EstimatedRows / LastTable.TableRowCount 
+                                             : 1.0) *
+                                             sqlEstPreJoinEdgeSize;
+
+                var estimateFactor = 0;
+                if (matCompSizeWhenJoin >= sqlEstPreJoinInputSize * scaleFactor)
+                    estimateFactor = (int) Math.Ceiling(matCompSizeWhenJoin/sqlEstPreJoinInputSize);
+                else if (matCompSizeWhenJoin*scaleFactor < sqlEstPreJoinInputSize)
+                    estimateFactor = -1;
+
+                var affectedUpsize = 1.0;
+                if (estimateFactor >= (int) Math.Ceiling(scaleFactor))
                 {
-                    TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
+                    if (LastJoinHint == JoinHint.Loop)
+                        TableRef = ConstructUpSizeTableReference(TableRef, estimateFactor, LastTableAlias, DumbType.Node, out affectedUpsize);
+                    else if (LastJoinPostMatEdgesCount > 0)
+                        TableRef = ConstructUpSizeTableReference(TableRef, estimateFactor, LastPostMatEdgeAlias, DumbType.Edge, out affectedUpsize);
+                    else
+                        TableRef = ConstructUpSizeTableReference(TableRef, estimateFactor, out affectedUpsize);
                 }
+                else if (estimateFactor == -1 && LastJoinHint == JoinHint.Loop)
+                {
+                    sqlEstPreJoinInputSize = LastJoinSqlEstCardinality*
+                                             Math.Sqrt(LastTable.EstimatedRows/LastTable.TableRowCount)/
+                                             LastTable.TableRowCount * 1.5 * sqlEstPreJoinEdgeSize;
+
+                    if (matCompSizeWhenJoin >= sqlEstPreJoinInputSize*scaleFactor)
+                        TableRef = ConstructUpSizeTableReference(TableRef, (int) Math.Ceiling(matCompSizeWhenJoin/sqlEstPreJoinInputSize), 
+                            LastTableAlias, DumbType.Node, out affectedUpsize);
+                }
+                
+                foreach (var edge in inPreMatEdges)
+                    TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
 
                 WTableReference table = new WQualifiedJoin
                 {
                     FirstTableRef = TableRef,
                     SecondTableRef =
                         nodeUnitCandidate.ToTableReference(root.RefAlias, root.RefAlias, metaData),
-                    JoinCondition = joinCondition,
+                    JoinCondition = estimateFactor == -1 
+                                    ? WBooleanBinaryExpression.Conjunction(joinCondition, ConstructDownSizeJoinCondition(LastTableAlias)) 
+                                    : joinCondition,
                     QualifiedJoinType = QualifiedJoinType.Inner,
                     JoinHint = JoinHint.Loop
                 };
 
-                table = inPostMatEdges.Aggregate(table, (current, edge) => new WUnqualifiedJoin
+                table = postMatEdges.Aggregate(table, (current, next) => new WUnqualifiedJoin
                 {
                     FirstTableRef = current,
-                    SecondTableRef = edge.ToSchemaObjectFunction(edge.SourceNode.RefAlias, root.RefAlias, metaData),
-                    UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
-                });
-
-                table = outPostMatEdges.Aggregate(table, (current, edge) => new WUnqualifiedJoin
-                {
-                    FirstTableRef = current,
-                    SecondTableRef = edge.ToSchemaObjectFunction(root.RefAlias, LastTableAlias, metaData),
+                    SecondTableRef =
+                        next.Item1.ToSchemaObjectFunction(next.Item1.SourceNode.RefAlias,
+                                                          next.Item2 == EdgeDir.In ? root.RefAlias : LastTableAlias,
+                                                          metaData),
                     UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
                 });
 
@@ -707,186 +690,175 @@ namespace GraphView
                     Table = table,
                 };
 
+                LastTable = root;
                 LastTableAlias = root.RefAlias;
+                LastJoinHint = JoinHint.Loop;
+                LastJoinSqlEstCardinality = sqlEstPreJoinInputSize*affectedUpsize;
+                LastJoinPostMatEdgesCount = postMatEdges.Count;
+                LastPostMatEdgeAlias = LastJoinPostMatEdgesCount > 0 ? postMatEdges.Last().Item1.EdgeAlias : null;
+                SqlEstimatedSize = sqlEstPreJoinInputSize*root.EstimatedRows/root.TableRowCount*
+                                   Math.Pow(100, postMatEdges.Count);
+                SqlEstimatedSize = SqlEstimatedSize < 1.0 ? 1.0 : SqlEstimatedSize;
+
+                Cardinality = matCompSizeWhenJoin *
+                                inPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur * next) *
+                              matUnitSizeWhenJoin *
+                                outPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur * next) *
+                              preJoinSelectivity / root.TableRowCount * postJoinSelectivity;
             }
             // hash join
             else
             {
-                //if (preToPostType == PreToPostEdgeType.InPreToPost)
-                //{
-                //    inPostMatEdges.AddRange(inPreMatEdges);
-                //    inPostMatEdges = inPostMatEdges.OrderBy(e => e.AverageDegree).ToList();
-                //    inPreMatEdges.Clear();
-                //}
-                //else if (preToPostType == PreToPostEdgeType.OutPreToPost)
-                //{
-                //    outPostMatEdges.AddRange(outPreMatEdges);
-                //    outPostMatEdges = outPostMatEdges.OrderBy(e => e.AverageDegree).ToList();
-                //    outPreMatEdges.Clear();
-                //}
-                
-                //foreach (var edge in inPreMatEdges)
-                //{
-                //    joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, edgeToConditionDict[edge.EdgeAlias]);
-                //}
-                //foreach (var edge in outPreMatEdges)
-                //{
-                //    joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, edgeToConditionDict[edge.EdgeAlias]);
-                //}
-                //foreach (var edge in inPostMatEdges)
-                //{
-                //    whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, edgeToConditionDict[edge.EdgeAlias]);
-                //}
-                //foreach (var edge in outPostMatEdges)
-                //{
-                //    whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, edgeToConditionDict[edge.EdgeAlias]);
-                //}
-
                 cost = hashCost;
-                WBooleanExpression adjustedJoincondition;
-                double adjustedSqlEstimatedSize;
-                WTableReference buildTableReference;
-                WTableReference probeTableReference;
+                WBooleanExpression adjustedJoincondition = null;
+                WTableReference buildTableReference = nodeUnitCandidate.ToTableReference(root.RefAlias, root.RefAlias, metaData);
+                double affectedUpsize = 1.0, sqlEstPreJoinEdgeSize;
+                int estimateFactor;
+                var sqlEstPreJoinInputSize = root.EstimatedRows;
 
                 if (firstJoin)
                 {
-                    var nodeInComp = MaterializedNodeSplitCount.Keys.First(e => e != root);
-                    if (matCompSizeWhenJoin < matUnitSizeWhenJoin)
+                    LastTable = Nodes.First(n => n.NodeAlias != root.NodeAlias);
+                    //LastTableAlias = LastTable.RefAlias;
+                    LastJoinHint = JoinHint.Loop;
+                    LastJoinSqlEstCardinality = LastTable.TableRowCount;
+                }
+
+                // Build table adjustment
+                if (outPreMatEdges.Any())
+                {
+                    var sqlOutPreMatEdgesSelectivity = 1.0;
+                    foreach (var group in outPreMatEdges.GroupBy(e => e.SinkNode))
                     {
-                        foreach (var edge in inPreMatEdges)
-                        {
-                            TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
-                        }
-
-                        buildTableReference = AdjustEstimation(this, inPreMatEdges, out adjustedJoincondition, out adjustedSqlEstimatedSize);
-                        probeTableReference =
-                            nodeUnitCandidate.ToTableReference(root.RefAlias, root.RefAlias, metaData);
-
-                        TotalMemory = DeltaMemory = matCompSizeWhenJoin;
-                        SqlEstimatedTotalMemory =
-                            SqlEstimatedDeltaMemory = SqlEstimatedSize * Math.Pow(1000, inPreMatEdges.Count);
-                        RightestTableRefSize = root.EstimatedRows;
-                        RightestTableAlias = root.RefAlias;
+                        var selectivity = 1.0;
+                        for (var i = 1; i < group.Count() && i <= sqlInPreMatEdgeSelectivityThreshold; ++i)
+                            selectivity = Math.Sqrt(selectivity) / 10;
+                        sqlOutPreMatEdgesSelectivity *= selectivity;
                     }
+                    
+                    sqlEstPreJoinEdgeSize = Math.Pow(1000, outPreMatEdges.Count) * sqlOutPreMatEdgesSelectivity;
+                    sqlEstPreJoinInputSize *= sqlEstPreJoinEdgeSize;
+
+                    estimateFactor = 0;
+                    if (matUnitSizeWhenJoin >= sqlEstPreJoinInputSize*scaleFactor)
+                        estimateFactor = (int) Math.Ceiling(matUnitSizeWhenJoin/sqlEstPreJoinInputSize);
+                    else if (matUnitSizeWhenJoin*scaleFactor < sqlEstPreJoinInputSize)
+                    {
+                        estimateFactor = -1;
+                        adjustedJoincondition = ConstructDownSizeJoinCondition(root.RefAlias);
+                    }
+                        
+                    if (estimateFactor >= (int) Math.Ceiling(scaleFactor))
+                        buildTableReference = ConstructUpSizeTableReference(buildTableReference, estimateFactor, 
+                            root.RefAlias, DumbType.Node, out affectedUpsize);
+                    else if (estimateFactor == -1)
+                    {
+                        sqlEstPreJoinInputSize = Math.Sqrt(root.EstimatedRows/root.TableRowCount)*1.5*sqlEstPreJoinEdgeSize;
+
+                        if (matUnitSizeWhenJoin >= sqlEstPreJoinInputSize*scaleFactor)
+                            buildTableReference = ConstructUpSizeTableReference(buildTableReference, 
+                                (int)Math.Ceiling(matUnitSizeWhenJoin / sqlEstPreJoinInputSize),
+                                root.RefAlias, DumbType.Node, out affectedUpsize);
+                    }
+                }
+                sqlEstPreJoinInputSize *= affectedUpsize;
+
+                // Cardinality update
+                Cardinality = matCompSizeWhenJoin *
+                                inPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur * next) *
+                              matUnitSizeWhenJoin *
+                                outPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur * next) *
+                              preJoinSelectivity / root.TableRowCount * postJoinSelectivity;
+
+                // Output adjustment
+                var postJoinUpsizeFactor = -1;
+
+                var sqlInPreMatEdgesSelectivity = 1.0;
+                for (var i = 1; i < inPreMatEdges.Count; ++i)
+                    sqlInPreMatEdgesSelectivity = Math.Sqrt(sqlInPreMatEdgesSelectivity) / 10;
+
+                sqlEstPreJoinEdgeSize = Math.Pow(100, LastJoinPostMatEdgesCount) * Math.Pow(1000, inPreMatEdges.Count) *
+                                            sqlInPreMatEdgesSelectivity;
+                var probeSqlEstCardinality = LastJoinSqlEstCardinality * (LastJoinHint == JoinHint.Loop
+                                             ? LastTable.EstimatedRows / LastTable.TableRowCount
+                                             : 1.0)
+                                             * sqlEstPreJoinEdgeSize;
+
+                var hashJoinSqlSelectivity = outPreMatEdges.Any()
+                    ? Math.Pow(Math.Sqrt(0.001), outPreMatEdges.GroupBy(e => e.SinkNode).Count())
+                    : (root.EstimatedRows/root.TableRowCount) / root.EstimatedRows;
+
+                var sqlEstHashCardinality = sqlEstPreJoinInputSize*probeSqlEstCardinality*hashJoinSqlSelectivity*
+                                            Math.Pow(100, postMatEdges.Count);
+
+                estimateFactor = 0;
+                if (Cardinality >= sqlEstHashCardinality*scaleFactor)
+                    estimateFactor = (int) Math.Ceiling(Cardinality/sqlEstHashCardinality);
+                else if (Cardinality*scaleFactor < sqlEstHashCardinality)
+                {
+                    estimateFactor = -1;
+                    adjustedJoincondition = WBooleanBinaryExpression.Conjunction(adjustedJoincondition,
+                        ConstructDownSizeJoinCondition(LastTableAlias));
+                }
+                    
+                if (estimateFactor >= (int) Math.Ceiling(scaleFactor))
+                    postJoinUpsizeFactor = estimateFactor;
+                else if (estimateFactor == -1 && LastJoinHint == JoinHint.Loop)
+                {
+                    probeSqlEstCardinality = LastJoinSqlEstCardinality*
+                                             Math.Sqrt(LastTable.EstimatedRows/LastTable.TableRowCount)/
+                                             LastTable.TableRowCount * 1.5 * sqlEstPreJoinEdgeSize;
+                    sqlEstHashCardinality = sqlEstPreJoinInputSize*probeSqlEstCardinality*hashJoinSqlSelectivity*
+                                            Math.Pow(100, postMatEdges.Count);
+
+                    if (Cardinality >= sqlEstHashCardinality*scaleFactor)
+                        postJoinUpsizeFactor = (int) Math.Ceiling(Cardinality/sqlEstHashCardinality);
+                }
+                
+                foreach (var edge in inPreMatEdges)
+                    TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
+
+                WTableReference table = new WQualifiedJoin
+                {
+                    FirstTableRef = buildTableReference,
+                    SecondTableRef = TableRef,
+                    JoinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, adjustedJoincondition),
+                    QualifiedJoinType = QualifiedJoinType.Inner,
+                    JoinHint = JoinHint.Hash
+                };
+
+                table = postMatEdges.Aggregate(table, (current, next) => new WUnqualifiedJoin
+                {
+                    FirstTableRef = current,
+                    SecondTableRef =
+                        next.Item1.ToSchemaObjectFunction(next.Item1.SourceNode.RefAlias,
+                                                          next.Item2 == EdgeDir.In ? root.RefAlias : LastTableAlias,
+                                                          metaData),
+                    UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
+                });
+
+                if (postJoinUpsizeFactor != -1)
+                {
+                    if (postMatEdges.Any())
+                        table = ConstructUpSizeTableReference(table, postJoinUpsizeFactor,
+                            postMatEdges.Last().Item1.EdgeAlias, DumbType.Edge, out affectedUpsize);
                     else
-                    {
-                        if (inPreMatEdges.Any() && outPreMatEdges.Any())
-                        {
-                            isExecutable = false;
-                            return;
-                        }
-                        RightestTableRefSize = nodeInComp.EstimatedRows;
-                        RightestTableAlias = GetNodeRefName(nodeInComp);
-
-                        buildTableReference = AdjustEstimation(nodeUnitCandidate, root.RefAlias,
-                             metaData, out adjustedJoincondition, out adjustedSqlEstimatedSize);
-
-                        foreach (var edge in inPreMatEdges)
-                        {
-                            TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
-                        }
-                        probeTableReference = TableRef;
-
-                        TotalMemory = DeltaMemory = matUnitSizeWhenJoin;
-                        SqlEstimatedTotalMemory =
-                            SqlEstimatedDeltaMemory = root.EstimatedRows * Math.Pow(1000, outPreMatEdges.Count);
-                        RightestTableRefSize = nodeInComp.EstimatedRows;
-                        RightestTableAlias = nodeInComp.RefAlias;
-                    }
+                        table = ConstructUpSizeTableReference(table, postJoinUpsizeFactor, out affectedUpsize);
                 }
-                // left deep
-                else if (matCompSizeWhenJoin*sizeFactor < matUnitSizeWhenJoin)
-                {
-                    foreach (var edge in inPreMatEdges)
-                    {
-                        TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
-                    }
-
-                    buildTableReference = AdjustEstimation(this, inPreMatEdges, out adjustedJoincondition, out adjustedSqlEstimatedSize);
-                    probeTableReference =
-                        nodeUnitCandidate.ToTableReference(root.RefAlias, root.RefAlias, metaData);
-                    var curDeltaMemory = matCompSizeWhenJoin;
-                    TotalMemory = DeltaMemory + curDeltaMemory;
-                    DeltaMemory = curDeltaMemory;
-                    var curDeltaEstimateMemory = SqlEstimatedSize * Math.Pow(1000, inPreMatEdges.Count);
-                    SqlEstimatedTotalMemory = SqlEstimatedDeltaMemory + curDeltaEstimateMemory;
-                    SqlEstimatedDeltaMemory = curDeltaEstimateMemory;
-
-                    RightestTableAlias = root.RefAlias;
-                    RightestTableRefSize = root.EstimatedRows;
-                }
-                // right deep
-                else
-                {
-                    // not a executable plan
-                    if (inPreMatEdges.Any() && outPreMatEdges.Any())
-                    {
-                        isExecutable = false;
-                        return;
-                    }
-                    //buildTableReference = nodeUnitCandidate.ToTableReference(outPreMatEdges, node.RefAlias,
-                    //        node.RefAlias, metaData);
-                    buildTableReference = AdjustEstimation(nodeUnitCandidate, root.RefAlias,
-                         metaData, out adjustedJoincondition, out adjustedSqlEstimatedSize);
-
-                    foreach (var edge in inPreMatEdges)
-                    {
-                        TableRef = SpanTableRef(TableRef, edge, edge.SourceNode.RefAlias, LastTableAlias, metaData);
-                    }
-                    probeTableReference = TableRef;
-
-                    TotalMemory += matUnitSizeWhenJoin;
-                    DeltaMemory = TotalMemory;
-                    SqlEstimatedTotalMemory += root.EstimatedRows * Math.Pow(1000, outPreMatEdges.Count);
-                    SqlEstimatedDeltaMemory = SqlEstimatedTotalMemory;
-                }
-
-                WTableReference table =
-                    new WQualifiedJoin
-                    {
-                        FirstTableRef = buildTableReference,
-                        SecondTableRef = probeTableReference,
-                        //JoinCondition = joinCondition,
-                        JoinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, adjustedJoincondition),
-                        QualifiedJoinType = QualifiedJoinType.Inner,
-                        JoinHint = JoinHint.Hash
-                    };
-
-                table = inPostMatEdges.Aggregate(table, (current, edge) => new WUnqualifiedJoin
-                {
-                    FirstTableRef = current,
-                    SecondTableRef = edge.ToSchemaObjectFunction(edge.SourceNode.RefAlias, root.RefAlias, metaData),
-                    UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
-                });
-
-                table = outPostMatEdges.Aggregate(table, (current, edge) => new WUnqualifiedJoin
-                {
-                    FirstTableRef = current,
-                    SecondTableRef = edge.ToSchemaObjectFunction(root.RefAlias, LastTableAlias, metaData),
-                    UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
-                });
 
                 TableRef = new WParenthesisTableReference
                 {
                     Table = table,
                 };
 
-                if (matCompSizeWhenJoin < matUnitSizeWhenJoin)
-                {
-                    LastTableAlias = root.RefAlias;
-                }
-
-                newCompEstSize *= adjustedSqlEstimatedSize;
-                SqlEstimatedSize = newCompEstSize < 1.0 ? 1.0 : newCompEstSize;
+                LastJoinHint = JoinHint.Hash;
+                LastJoinSqlEstCardinality = sqlEstHashCardinality * affectedUpsize;
+                LastJoinPostMatEdgesCount = 0;
+                LastPostMatEdgeAlias = null;
+                SqlEstimatedSize = LastJoinSqlEstCardinality;
+                SqlEstimatedSize = SqlEstimatedSize < 1.0 ? 1.0 : SqlEstimatedSize;
             }
 
-            Cardinality = matCompSizeWhenJoin*
-                              inPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur*next)*
-                          matUnitSizeWhenJoin*
-                              outPostMatEdges.Select(e => e.AverageDegree).Aggregate(1.0, (cur, next) => cur*next)*
-                          joinSelectivity;
-
-            //WhereCondition = WBooleanBinaryExpression.Conjunction(WhereCondition, whereCondition);
             Cost += cost;
 
             // Debug
@@ -895,29 +867,12 @@ namespace GraphView
             //{
             //    Trace.Write(item.Key.RefAlias + ",");
             //}
-            //Trace.Write(node.RefAlias);
+            //Trace.Write(root.RefAlias);
             //Trace.Write(" Size:" + Cardinality + " Cost:" + cost);
             //Trace.Write(" Method:" + ((TableRef as WParenthesisTableReference).Table as WQualifiedJoin).JoinHint);
             //Trace.WriteLine(" --> Total Cost:" + Cost);
 #endif
-
-
-            // Update Cost
-            //Cost += cost;
-            
-
         }
-
-        //public WTableReference SpanTableRef(WTableReference tableRef, MatchEdge edge, string nodeAlias, GraphMetaData metaData)
-        //{
-        //    tableRef = new WUnqualifiedJoin
-        //    {
-        //        FirstTableRef = tableRef,
-        //        SecondTableRef = edge.ToSchemaObjectFunction(nodeAlias, metaData),
-        //        UnqualifiedJoinType = UnqualifiedJoinType.CrossApply,
-        //    };
-        //    return tableRef;
-        //}
 
         /// <summary>
         /// Span the table given the edge using cross apply
@@ -951,12 +906,22 @@ namespace GraphView
             CandidateJoinUnit candidateTree,
             IMatchJoinStatisticsCalculator statisticsCalculator,
             GraphMetaData metaData,
-            out double joinSelectivity, 
+            Dictionary<Tuple<string, bool>, Statistics> srcNodeStatisticsDict,
+            out double preJoinSelectivity,
+            out double postJoinSelectivity,
             out double sqlEstimatedJoinSelectivity)
         {
-            joinSelectivity = 1.0;
+            const double sizeThreshold = 1e8;
+            const int loopJoinFactorThreshold = 20;
+
+            preJoinSelectivity = 1.0;
+            postJoinSelectivity = 1.0;
             sqlEstimatedJoinSelectivity = 1.0;
 
+            var firstJoin = MaterializedNodeSplitCount.Count == 1;
+            MatchNode firstNode = null;
+            if (firstJoin)
+                firstNode = Nodes.First();
             var root = candidateTree.TreeRoot;
 
             WBooleanExpression joinCondition = null;
@@ -983,30 +948,31 @@ namespace GraphView
                             e => new Tuple<MaterializedOrder, MatchEdge>(MaterializedOrder.Post, e)))
                     .ToList();
 
-            //var inEdges = candidateTree.IncomingEdges;
-            //var inPreMatEdges = inEdges.Any(e => e.AverageDegree < 1) 
-            //    ? (from e in inEdges where e.AverageDegree < 1 orderby e.AverageDegree select e).ToList() 
-            //    : (from e in inEdges orderby e.AverageDegree select e).Take(1).ToList();
-            //var inPostMatEdges = inEdges.Except(inPreMatEdges).OrderBy(e => e.AverageDegree).ToList();
-
-            //var outEdges = candidateTree.OutgoingEdges;
-            //var outPreMatEdges = outEdges.Any(e => e.AverageDegree < 1)
-            //    ? (from e in outEdges where e.AverageDegree < 1 orderby e.AverageDegree select e).ToList()
-            //    : (from e in outEdges orderby e.AverageDegree select e).Take(1).ToList();
-            //var outPostMatEdges = outEdges.Except(outPreMatEdges).OrderBy(e => e.AverageDegree).ToList();
-
             var densityList = new List<double>();
+            var inPostCount = 0;
+            var outPostCount = 0;
 
             if (inEdges.Any())
             {
                 UnmaterializedNodeMapping.Remove(root);
-                joinSelectivity *= 1.0 / root.TableRowCount;
+                //joinSelectivity *= 1.0 / root.TableRowCount;
 
                 Statistics statistics = null;
+                Statistics srcNodeStat = null;
                 foreach (var t in inEdges)
                 {
                     var order = t.Item1;
                     var edge = t.Item2;
+
+                    var globalNodeIdRef = new WColumnReferenceExpression
+                    {
+                        ColumnType = ColumnType.Regular,
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                            new Identifier {Value = nodeName},
+                            new Identifier {Value = "GlobalNodeId"}
+                            )
+                    }; 
+
                     var newCondition = new WBooleanComparisonExpression
                     {
                         FirstExpr = new WColumnReferenceExpression
@@ -1017,35 +983,60 @@ namespace GraphView
                                 new Identifier {Value = "Sink"}
                                 ),
                         },
-                        SecondExpr = new WColumnReferenceExpression
-                        {
-                            ColumnType = ColumnType.Regular,
-                            MultiPartIdentifier = new WMultiPartIdentifier(
-                                new Identifier {Value = nodeName},
-                                new Identifier {Value = "GlobalNodeId"}
-                                )
-                        },
+                        SecondExpr = order == MaterializedOrder.Post && inPostCount > 0
+                            ? new WBinaryExpression
+                            {
+                                ExpressionType = BinaryExpressionType.Add,
+                                FirstExpr = globalNodeIdRef,
+                                SecondExpr = new WValueExpression
+                                {
+                                    SingleQuoted = false,
+                                    Value = "0",
+                                }
+                            }
+                            : (WScalarExpression)globalNodeIdRef,
                         ComparisonType = BooleanComparisonType.Equals
                     };
-
                     EdgeMaterilizedDict[edge] = true;
-                    if (order == MaterializedOrder.Pre)
-                    {
-                        joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, newCondition);
-                    }
-                    else
-                    {
-                        whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, newCondition);
-                    }
 
                     double selectivity;
                     statistics = Statistics.UpdateHistogram(statistics,
                         edge.Statistics, out selectivity);
-                    joinSelectivity *= selectivity;
+
+                    if (order == MaterializedOrder.Pre)
+                    {
+                        preJoinSelectivity *= selectivity;
+                        joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, newCondition);
+                    }
+                    else
+                    {
+                        ++inPostCount;
+                        postJoinSelectivity *= selectivity;
+                        whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, newCondition);
+                    }
+
+                    if (firstJoin)
+                    {
+                        double srcNodeSelectivity;
+                        srcNodeStat = Statistics.UpdateHistogram(srcNodeStat, 
+                            srcNodeStatisticsDict[new Tuple<string, bool>(edge.EdgeAlias, edge.IsReversedEdge)],
+                            out srcNodeSelectivity); 
+                    }
+
                     densityList.Add(root.GlobalNodeIdDensity);
                 }
 
+                if (firstJoin)
+                    SinkNodeStatisticsDict[firstNode] = srcNodeStat;
                 SinkNodeStatisticsDict[root] = statistics;
+            }
+
+            if (candidateTree.JoinHint == JoinHint.Loop)
+            {
+                var size = Cardinality*candidateTree.PreMatIncomingEdges.Select(e => e.AverageDegree)
+                    .Aggregate(1.0, (cur, next) => cur*next)*preJoinSelectivity;
+                if (size >= sizeThreshold && size > root.EstimatedRows * loopJoinFactorThreshold)
+                    candidateTree.JoinHint = JoinHint.Hash;
             }
 
             if (outEdges.Any())
@@ -1055,6 +1046,16 @@ namespace GraphView
                     var order = t.Item1;
                     var edge = t.Item2;
                     var sinkNode = edge.SinkNode;
+
+                    var globalNodeIdRef = new WColumnReferenceExpression
+                    {
+                        ColumnType = ColumnType.Regular,
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                            new Identifier {Value = sinkNode.RefAlias},
+                            new Identifier {Value = "GlobalNodeId"}
+                            )
+                    };
+
                     var newCondition = new WBooleanComparisonExpression
                     {
                         FirstExpr = new WColumnReferenceExpression
@@ -1065,37 +1066,44 @@ namespace GraphView
                                 new Identifier {Value = "Sink"}
                                 ),
                         },
-                        SecondExpr = new WColumnReferenceExpression
-                        {
-                            ColumnType = ColumnType.Regular,
-                            MultiPartIdentifier = new WMultiPartIdentifier(
-                                new Identifier {Value = sinkNode.RefAlias},
-                                new Identifier {Value = "GlobalNodeId"}
-                                )
-                        },
+                        SecondExpr = order == MaterializedOrder.Post && outPostCount > 0
+                            ? new WBinaryExpression
+                            {
+                                ExpressionType = BinaryExpressionType.Add,
+                                FirstExpr = globalNodeIdRef,
+                                SecondExpr = new WValueExpression
+                                {
+                                    SingleQuoted = false,
+                                    Value = "0",
+                                }
+                            }
+                            : (WScalarExpression)globalNodeIdRef,
                         ComparisonType = BooleanComparisonType.Equals
                     };
                     EdgeMaterilizedDict[edge] = true;
-
-                    if (order == MaterializedOrder.Pre)
-                    {
-                        joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, newCondition);
-                    }
-                    else
-                    {
-                        whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, newCondition);
-                    }
 
                     Statistics sinkNodeStatistics;
                     if (!SinkNodeStatisticsDict.TryGetValue(sinkNode, out sinkNodeStatistics))
                     {
                         sinkNodeStatistics = null;
-                        joinSelectivity *= 1.0 / sinkNode.TableRowCount;
+                        //joinSelectivity *= 1.0 / sinkNode.TableRowCount;
                     }
                     double selectivity;
                     var statistics = Statistics.UpdateHistogram(sinkNodeStatistics,
                         edge.Statistics, out selectivity);
-                    joinSelectivity *= selectivity;
+
+                    if (order == MaterializedOrder.Pre)
+                    {
+                        preJoinSelectivity *= selectivity;
+                        joinCondition = WBooleanBinaryExpression.Conjunction(joinCondition, newCondition);
+                    }
+                    else
+                    {
+                        ++outPostCount;
+                        postJoinSelectivity *= selectivity;
+                        whereCondition = WBooleanBinaryExpression.Conjunction(whereCondition, newCondition);
+                    }
+
                     SinkNodeStatisticsDict[sinkNode] = statistics;
                     densityList.Add(sinkNode.GlobalNodeIdDensity);
                 }
@@ -1127,31 +1135,28 @@ namespace GraphView
         /// <param name="candidateTree"></param>
         /// <param name="statisticsCalculator"></param>
         /// <param name="metaData"></param>
+        /// <param name="srcNodeStatisticsDict"></param>
         /// <returns></returns>
         public MatchComponent GetNextState(
             CandidateJoinUnit candidateTree, 
             IMatchJoinStatisticsCalculator statisticsCalculator,
-            GraphMetaData metaData)
+            GraphMetaData metaData,
+            Dictionary<Tuple<string, bool>, Statistics> srcNodeStatisticsDict )
         {
             // Deep copy the component
             var newComponent = new MatchComponent(this);
 
             // Constrcuts join conditions and retrieves join selectivity
-            double joinSelectivity;
-            double sqlEstimatedJoinSelectivity;
-            //var joinCondition = newComponent.ConstructJoinCondition(candidateTree, statisticsCalculator, metaData, out joinSelectivity,
-            //    out sqlEstimatedJoinSelectivity);
-            var joinCondition = newComponent.ConstructJoinCondition(candidateTree, statisticsCalculator, metaData,
-                out joinSelectivity, out sqlEstimatedJoinSelectivity);
+            double preJoinSelectivity, postJoinSelectivity, sqlEstimatedJoinSelectivity;
+
+            var joinCondition = newComponent.ConstructJoinCondition(candidateTree, statisticsCalculator, metaData, srcNodeStatisticsDict,
+                out preJoinSelectivity, out postJoinSelectivity, out sqlEstimatedJoinSelectivity);
 
             // Constructs physical join method and join table references
-            //newComponent.ConstructPhysicalJoinAndUpdateCost(candidateTree, joinCondition,
-            //   joinSelectivity, sqlEstimatedJoinSelectivity,metaData);
-            bool isExecutable;
             newComponent.ConstructPhysicalJoinAndUpdateCost(candidateTree, joinCondition,
-               joinSelectivity, sqlEstimatedJoinSelectivity, metaData, out isExecutable);
+               preJoinSelectivity, postJoinSelectivity, sqlEstimatedJoinSelectivity, metaData);
 
-            return isExecutable ? newComponent : null;
+            return newComponent;
         }
     }
 }

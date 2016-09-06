@@ -1241,10 +1241,18 @@ for (var i = 0; i < variables.Count; ++i)
             
             #line default
             #line hidden
-            this.Write("Assembly.UserDefinedFunctions.SingletonTable\r\nGO\r\n\r\nCREATE FUNCTION DownSizeFunct" +
-                    "ion\r\n(@id int)\r\nRETURNS INT\r\nAS\r\n EXTERNAL NAME ");
+            this.Write("Assembly.UserDefinedFunctions.SingletonTable\r\nGO\r\n\r\nCREATE FUNCTION SingletonTabl" +
+                    "e2(@dumb bigint) RETURNS TABLE\r\n(\r\n\tmemoBit bit\r\n)\r\nas EXTERNAL NAME ");
             
             #line 351 "D:\Source\GraphView\DeployScriptTemplate.tt"
+            this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
+            
+            #line default
+            #line hidden
+            this.Write("Assembly.UserDefinedFunctions.SingletonTable2\r\nGO\r\n\r\nCREATE FUNCTION DownSizeFunc" +
+                    "tion\r\n(@id int)\r\nRETURNS INT\r\nAS\r\n EXTERNAL NAME ");
+            
+            #line 358 "D:\Source\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
@@ -1257,26 +1265,34 @@ AS
 RETURN
 	SELECT TOP(@topvalue) * FROM SingletonTable()
 GO
+
+CREATE FUNCTION UpSizeFunction2(@topvalue int, @dumb bigint) RETURNS TABLE
+AS
+RETURN
+	SELECT TOP(@topvalue) * FROM SingletonTable2(@dumb)
+GO
+
 CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b int, @c int)
 RETURNS varbinary(max)
 EXTERNAL NAME ");
             
-            #line 361 "D:\Source\GraphView\DeployScriptTemplate.tt"
+            #line 375 "D:\Source\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
-            this.Write("Assembly.UserDefinedFunctions.ConvertNumberIntoBinaryForPath;\r\nGO\r\nCREATE FUNCTIO" +
-                    "N ConvertInt64IntoVarbinary(@a bigint)\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME ");
+            this.Write("Assembly.UserDefinedFunctions.ConvertNumberIntoBinaryForPath;\r\nGO\r\n\r\nCREATE FUNCT" +
+                    "ION ConvertInt64IntoVarbinary(@a bigint)\r\nRETURNS varbinary(max)\r\nEXTERNAL NAME " +
+                    "");
             
-            #line 365 "D:\Source\GraphView\DeployScriptTemplate.tt"
+            #line 380 "D:\Source\GraphView\DeployScriptTemplate.tt"
             this.Write(this.ToStringHelper.ToStringWithCulture(AssemblyName));
             
             #line default
             #line hidden
             this.Write("Assembly.UserDefinedFunctions.ConvertInt64IntoVarbinary;\r\nGO\r\n");
             
-            #line 367 "D:\Source\GraphView\DeployScriptTemplate.tt"
+            #line 382 "D:\Source\GraphView\DeployScriptTemplate.tt"
 }
             
             #line default

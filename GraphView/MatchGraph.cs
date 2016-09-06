@@ -554,6 +554,11 @@ namespace GraphView
         // Mapping between one edge and its reversed edge
         public Dictionary<string, MatchEdge> ReversedEdgeDict { get; set; }
 
+        // Mapping between one edge and its source node's statistics
+        // Used when there are back edges pointed to the first node table in the whole join plan
+        // Tuple<edgeAlias, isReversed>
+        public Dictionary<Tuple<string, bool>, Statistics> SourceNodeStatisticsDict { get; set; }
+
         public MatchGraph()
         {
             ReversedEdgeDict = new Dictionary<string, MatchEdge>();

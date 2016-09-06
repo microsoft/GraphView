@@ -1033,6 +1033,7 @@ namespace GraphView
             {
                 ReversedEdgeDict = reversedEdgeDict,
                 ConnectedSubGraphs = connectedSubGraphs,
+                SourceNodeStatisticsDict = new Dictionary<Tuple<string, bool>, Statistics>(),
             };
             unionFind.Parent = null;
 
@@ -1363,6 +1364,7 @@ namespace GraphView
                                    '{1}' as TableName, 
                                    '{2}' as ColumnName,
                                    '{3}' as Alias,
+                                   [dbo].[GraphViewUDFGlobalNodeIdEncoder](Src) as Src,
                                    [dbo].[GraphViewUDFGlobalNodeIdEncoder](Sink) as Sink,
                                    0 as IsReversed,
                                    NULL as OriginalEdgeAlias 
@@ -1400,6 +1402,7 @@ namespace GraphView
                                        '{1}' as TableName, 
                                        '{2}' as ColumnName,
                                        '{3}' as Alias,
+                                        [dbo].[GraphViewUDFGlobalNodeIdEncoder](Src) as Src,
                                         [dbo].[GraphViewUDFGlobalNodeIdEncoder](Sink) as Sink,
                                         1 as IsReversed,
                                        '{4}' as OriginalEdgeAlias
@@ -1429,6 +1432,7 @@ namespace GraphView
                 command.CommandText = declareParameter + sb.ToString();
                 using (var reader = command.ExecuteReader())
                 {
+                    var srcNodeStatisticsDict = graph.SourceNodeStatisticsDict;
                     while (reader.Read())
                     {
                         MatchEdge edge = null;
@@ -1439,6 +1443,24 @@ namespace GraphView
                             throw new GraphViewException(string.Format("Edge {0} not exists", reader["OriginalEdgeAlias"].ToString()));
                         if (isReversed)
                             edge = graph.ReversedEdgeDict[edge.EdgeAlias];
+
+                        var srcBytes = reader["Src"] as byte[];
+                        var cursor = 0;
+                        if (srcBytes != null)
+                        {
+                            var srcList = new List<long>();
+                            while (cursor < srcBytes.Length)
+                            {
+                                var src = BitConverter.ToInt64(srcBytes, cursor);
+                                cursor += 8;
+                                srcList.Add(src);
+                            }
+                            var tmpEdge = new MatchEdge();
+                            Statistics.UpdateEdgeHistogram(tmpEdge, srcList);
+                            srcNodeStatisticsDict[new Tuple<string, bool>(edge.EdgeAlias, isReversed)] = tmpEdge.Statistics;
+                        }
+                        else
+                            srcNodeStatisticsDict[new Tuple<string, bool>(edge.EdgeAlias, isReversed)] = null;
 
                         var sinkBytes = reader["Sink"] as byte[];
                         if (sinkBytes == null)
@@ -1454,7 +1476,7 @@ namespace GraphView
                             continue;
                         }
                         List<long> sinkList = new List<long>();
-                        var cursor = 0;
+                        cursor = 0;
                         while (cursor < sinkBytes.Length)
                         {
                             var sink = BitConverter.ToInt64(sinkBytes, cursor);
@@ -1604,8 +1626,10 @@ namespace GraphView
         /// </summary>
         /// <param name="subGraph"></param>
         /// <param name="revEdgeDict"></param>
+        /// <param name="srcNodeStatisticsDict"></param>
         /// <returns></returns>
-        private MatchComponent ConstructComponent(ConnectedComponent subGraph, Dictionary<string, MatchEdge> revEdgeDict)
+        private MatchComponent ConstructComponent(ConnectedComponent subGraph, Dictionary<string, MatchEdge> revEdgeDict,
+            Dictionary<Tuple<string, bool>, Statistics> srcNodeStatisticsDict)
         {
             //var componentStates = new List<MatchComponent>();
             MatchComponent optimalFinalComponent = null;
@@ -1646,19 +1670,19 @@ namespace GraphView
                         // > current optimal join cost, prunes this component.
                         if (optimalFinalComponent != null)
                         {
-                            /*double candidateSize = candidateUnit.TreeRoot.EstimatedRows*
-                                                   candidateUnit.UnmaterializedEdges.Select(e => e.AverageDegree)
-                                                       .Aggregate(1.0, (cur, next) => cur*next)*
-                                                   candidateUnit.MaterializedEdges.Select(e => e.AverageDegree)
-                                                       .Aggregate(1.0, (cur, next) => cur*next);*/
                             double candidateSize = candidateUnit.TreeRoot.EstimatedRows*
                                                    candidateUnit.PreMatOutgoingEdges.Select(e => e.AverageDegree)
                                                        .Aggregate(1.0, (cur, next) => cur*next)*
                                                    candidateUnit.PostMatOutgoingEdges.Select(e => e.AverageDegree)
+                                                       .Aggregate(1.0, (cur, next) => cur*next)*
+                                                   candidateUnit.UnmaterializedEdges.Select(e => e.AverageDegree)
                                                        .Aggregate(1.0, (cur, next) => cur*next);
-                            double costLowerBound = curComponent.Cardinality + candidateSize;
-                            //if (candidateUnit.MaterializedEdges.Count == 0)
-                            if (candidateUnit.PreMatIncomingEdges.Count > 0 && candidateUnit.PreMatOutgoingEdges.Count == 0)
+                            double costLowerBound = curComponent.Cardinality*
+                                                    candidateUnit.PreMatIncomingEdges.Select(e => e.AverageDegree)
+                                                       .Aggregate(1.0, (cur, next) => cur * next) 
+                                                    + candidateSize;
+
+                            if (candidateUnit.JoinHint == JoinHint.Loop)
                                 costLowerBound = Math.Min(costLowerBound,
                                     Math.Log(candidateUnit.TreeRoot.EstimatedRows, 512));
                             if (curComponent.Cost + costLowerBound >
@@ -1668,8 +1692,8 @@ namespace GraphView
                             }
                         }
 
-                        var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator, _graphMetaData);
-                        if (newComponent == null) continue;
+                        var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator, _graphMetaData, srcNodeStatisticsDict);
+
                         if (nextCompnentStates.Count >= MaxStates)
                         {
                             if (maxIndex < 0)
@@ -1834,7 +1858,7 @@ namespace GraphView
                 {
 
 
-                    components.Add(ConstructComponent(subGraph, graph.ReversedEdgeDict));
+                    components.Add(ConstructComponent(subGraph, graph.ReversedEdgeDict, graph.SourceNodeStatisticsDict));
 #if DEBUG
                     foreach (var matchNode in subGraph.Nodes.Values)
                     {

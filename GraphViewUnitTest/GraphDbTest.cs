@@ -158,32 +158,33 @@ namespace GraphViewUnitTest
                 command.ExecuteNonQuery();
             }
         }
-        [TestMethod]
-        public void BulkInsertTest()
-        {
-            TestInitialization.ClearDatabase();
-            TestInitialization.CreateGraphTable();
-            using (var graph = new GraphViewConnection(_connStr))
-            {
-                graph.Open();
-                const string filedterminator = @",";
-                const string rowterminator = "\r\n";
-                var columnList1 = new List<string> {"WorkId"};
-                var columnList2 = new List<string> {"ClientId"};
-                var propetyList = new List<string> {"aaa", "credit", "hhh"};
-                graph.BulkInsertNode(@"d:\data\nodedata2.txt", "EmployeeNode", "dbo", columnList1, filedterminator,
-                    rowterminator);
-                graph.BulkInsertNode(@"d:\data\nodedata2.txt", "ClientNode", "dbo", columnList2, filedterminator,
-                    rowterminator);
-                var sw = new Stopwatch();
-                sw.Start();
-                graph.BulkInsertEdge(@"d:\data\edgedata2.txt", "dbo", "EmployeeNode", "workid", "ClientNode", "clientid",
-                    "clients",
-                   propetyList, filedterminator, "\r\n");
-                sw.Stop();
-                Trace.WriteLine(sw.ElapsedMilliseconds.ToString());
-            }
-        }
+
+        //[TestMethod]
+        //public void BulkInsertTest()
+        //{
+        //    TestInitialization.ClearDatabase();
+        //    TestInitialization.CreateGraphTable();
+        //    using (var graph = new GraphViewConnection(_connStr))
+        //    {
+        //        graph.Open();
+        //        const string filedterminator = @",";
+        //        const string rowterminator = "\r\n";
+        //        var columnList1 = new List<string> {"WorkId"};
+        //        var columnList2 = new List<string> {"ClientId"};
+        //        var propetyList = new List<string> {"aaa", "credit", "hhh"};
+        //        graph.BulkInsertNode(@"d:\data\nodedata2.txt", "EmployeeNode", "dbo", columnList1, filedterminator,
+        //            rowterminator);
+        //        graph.BulkInsertNode(@"d:\data\nodedata2.txt", "ClientNode", "dbo", columnList2, filedterminator,
+        //            rowterminator);
+        //        var sw = new Stopwatch();
+        //        sw.Start();
+        //        graph.BulkInsertEdge(@"d:\data\edgedata2.txt", "dbo", "EmployeeNode", "workid", "ClientNode", "clientid",
+        //            "clients",
+        //           propetyList, filedterminator, "\r\n");
+        //        sw.Stop();
+        //        Trace.WriteLine(sw.ElapsedMilliseconds.ToString());
+        //    }
+        //}
 
         [TestMethod]
         public void TestStoreProcedure()
@@ -912,117 +913,115 @@ namespace GraphViewUnitTest
         }
 
         //#region Work Load Test
-        //public void CreateGraphTable()
-        //{
-        //    using (var graph = new GraphViewConnection(_connStr))
-        //    {
-        //        graph.Open();
+        public void CreateGraphTable()
+        {
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
 
-        //        const string createPatentStr = @"
-        //        CREATE TABLE [Patent_NT] (
-        //            [ColumnRole: ""NodeId""]
-        //            patentId INT NOT NULL,
-        //            [ColumnRole: ""Property""]
-        //            gyear INT,
-        //            [ColumnRole: ""Property""]
-        //            gdate INT,
-        //            [ColumnRole: ""Property""]
-        //            ayear INT,
-        //            [ColumnRole: ""Property""]
-        //            country VARCHAR(10),
-        //            [ColumnRole: ""Property""]
-        //            postate VARCHAR(10),
-        //            [ColumnRole: ""Property""]
-        //            assignee INT,
-        //            [ColumnRole: ""Property""]
-        //            asscode INT,
-        //            [ColumnRole: ""Property""]
-        //            claims INT,
-        //            [ColumnRole: ""Property""]
-        //            nclass INT,
-        //            [ColumnRole: ""Property""]
-        //            cat INT,
-        //            [ColumnRole: ""Property""]
-        //            subcat INT,
-        //            [ColumnRole: ""Property""]
-        //            cmade INT,
-        //            [ColumnRole: ""Property""]
-        //            creceive INT,
-        //            [ColumnRole: ""Property""]
-        //            ratiocit DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            general DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            original DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            fwdaplag DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            bckgtlag DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            selfctub DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            selfctlb DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            secdupbd DECIMAL(12,5),
-        //            [ColumnRole: ""Property""]
-        //            secdlwbd DECIMAL(12,5),
-        //            [ColumnRole: ""Edge"", Reference: ""Patent_NT""]
-        //            adjacencyList varbinary(8000)
-        //        )";
-        //        graph.CreateNodeTable(createPatentStr);
-        //    }
-        //}
+                const string createPatentStr = @"
+                CREATE TABLE [Patent_NT] (
+                    [ColumnRole: ""NodeId""]
+                    patentId INT NOT NULL,
+                    [ColumnRole: ""Property""]
+                    gyear INT,
+                    [ColumnRole: ""Property""]
+                    gdate INT,
+                    [ColumnRole: ""Property""]
+                    ayear INT,
+                    [ColumnRole: ""Property""]
+                    country VARCHAR(10),
+                    [ColumnRole: ""Property""]
+                    postate VARCHAR(10),
+                    [ColumnRole: ""Property""]
+                    assignee INT,
+                    [ColumnRole: ""Property""]
+                    asscode INT,
+                    [ColumnRole: ""Property""]
+                    claims INT,
+                    [ColumnRole: ""Property""]
+                    nclass INT,
+                    [ColumnRole: ""Property""]
+                    cat INT,
+                    [ColumnRole: ""Property""]
+                    subcat INT,
+                    [ColumnRole: ""Property""]
+                    cmade INT,
+                    [ColumnRole: ""Property""]
+                    creceive INT,
+                    [ColumnRole: ""Property""]
+                    ratiocit DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    general DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    original DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    fwdaplag DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    bckgtlag DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    selfctub DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    selfctlb DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    secdupbd DECIMAL(12,5),
+                    [ColumnRole: ""Property""]
+                    secdlwbd DECIMAL(12,5),
+                    [ColumnRole: ""Edge"", Reference: ""Patent_NT""]
+                    adjacencyList varbinary(8000)
+                )";
+                graph.CreateNodeTable(createPatentStr);
+            }
+        }
 
-        //public void BulkInsertNode()
-        //{
-        //    using (var graph = new GraphViewConnection(_connStr))
-        //    {
-        //        graph.Open();
-        //        const string filedterminator = @",";
-        //        const string rowterminator = "\n";
-        //        graph.BulkInsertNode(@"D:\data2\apat63_99.txt", "Patent_NT", "dbo", null, filedterminator, rowterminator);
-        //    }
-        //}
+        public void BulkInsertNode()
+        {
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+                const string filedterminator = @",";
+                const string rowterminator = "\n";
+                graph.BulkInsertNode(@"D:\data\apat63_99.txt", "Patent_NT", "dbo", null, filedterminator, rowterminator);
+            }
+        }
 
-        //public void BulkInsertEdge()
-        //{
-        //    using (var graph = new GraphViewConnection(_connStr))
-        //    {
-        //        graph.Open();
-        //        const string filedterminator = @",";
-        //        const string rowterminator = "\n";
-        //        graph.BulkInsertEdge(@"D:\data2\cite75_99.txt", "dbo", "Patent_NT", "patentid", "Patent_NT", "patentid",
-        //            "adjacencyList",
-        //            null, filedterminator, rowterminator);
-        //    graph.UpdateTableStatistics("dbo", "Patent_NT");
-        //    }
-        //}
+        public void BulkInsertEdge()
+        {
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+                const string filedterminator = @",";
+                const string rowterminator = "\n";
+                graph.BulkInsertEdge(@"D:\data\cite75_99.txt", "dbo", "Patent_NT", "patentid", "Patent_NT", "patentid",
+                    "adjacencyList",
+                    null, filedterminator, rowterminator);
+                graph.UpdateTableStatistics("dbo", "Patent_NT");
+            }
+        }
 
-        //[TestMethod]
-        //public void BuildIndex()
-        //{
+        public void BuildIndex()
+        {
 
-        //    using (var graph = new GraphViewConnection(_connStr))
-        //    {
-        //        graph.Open();
-        //        string query = @"
-        //        CREATE NONCLUSTERED COLUMNSTORE INDEX cli
-        //            ON dbo.Patent_NT(gyear,gdate,GlobalNodeId);
-        //        CREATE NONCLUSTERED INDEX igear on dbo.Patent_NT(gyear);
-        //        CREATE NONCLUSTERED INDEX igdate on dbo.Patent_NT(gdate);";
-        //        graph.ExecuteNonQuery(query);
-        //    }
-        //}
+            using (var graph = new GraphViewConnection(_connStr))
+            {
+                graph.Open();
+                string query = @"
+                CREATE NONCLUSTERED COLUMNSTORE INDEX cli
+                    ON dbo.Patent_NT(gyear,gdate,GlobalNodeId);
+                CREATE NONCLUSTERED INDEX igear on dbo.Patent_NT(gyear);
+                CREATE NONCLUSTERED INDEX igdate on dbo.Patent_NT(gdate);";
+                graph.ExecuteNonQuery(query);
+            }
+        }
 
-        //[TestMethod]
-        //public void SetUpWorkLoadTest()
-        //{
-        //    TestInitialization.ClearDatabase();
-        //    CreateGraphTable();
-        //    BulkInsertNode();
-        //    BulkInsertEdge();
-        //    BuildIndex();
-        //}
+        public void SetUpWorkLoadTest()
+        {
+            TestInitialization.ClearDatabase();
+            CreateGraphTable();
+            BulkInsertNode();
+            BulkInsertEdge();
+            BuildIndex();
+        }
 
         //[TestMethod]
         //public void ExecuteQuery()

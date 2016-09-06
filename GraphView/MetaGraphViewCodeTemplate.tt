@@ -43,6 +43,35 @@ public partial class UserDefinedFunctions
       };
     }
 
+  private class SingletonTable2DecoderResult
+  {
+    public bool bit { get; set; }
+  }
+
+  public static void SingletonTable2_FillRow(
+      object tableTypeObject,
+      out SqlBoolean bit)
+  {
+    var decoderResult = (SingletonTable2DecoderResult)tableTypeObject;
+    bit = decoderResult.bit;
+  }
+
+  [SqlFunction(
+      DataAccess = DataAccessKind.None,
+      TableDefinition = "ghostbit bit",
+      FillRowMethodName = "SingletonTable2_FillRow",
+      IsDeterministic = true,
+      IsPrecise = false
+      )]
+    public static IEnumerable SingletonTable2(SqlInt64 dumb)
+    {
+
+      yield return new SingletonTable2DecoderResult
+      {
+        bit = true,
+      };
+    }
+
 	[Microsoft.SqlServer.Server.SqlFunction]
     public static SqlInt32 DownSizeFunction(SqlInt32 Checksum)
     {

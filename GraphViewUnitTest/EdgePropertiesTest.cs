@@ -68,7 +68,7 @@ namespace GraphViewUnitTest
                 DELETE EDGE [e1]-[Colleagues]->[c1]
                 FROM ClientNode e1, ClientNode c1
                 WHERE e1.name = 'PatrickClient'";
-                var command = new GraphViewCommand(q2,graph);
+                var command = new GraphViewCommand(q2, graph);
 
                 command.ExecuteNonQuery();
             }

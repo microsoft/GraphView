@@ -111,38 +111,53 @@ namespace GraphView
             new List<Tuple<string, string>>
             {
                 Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
-                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
-                Tuple.Create("FUNCTION","SingletonTable"),
-                Tuple.Create("FUNCTION","DownSizeFunction"),
-                Tuple.Create("FUNCTION","UpSizeFunction"),
-                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly")
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly")
             };
 
         internal static readonly List<Tuple<string, string>> Version111MetaUdf= 
             new List<Tuple<string, string>>
             {
                 Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
-                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
-                Tuple.Create("FUNCTION","SingletonTable"),
-                Tuple.Create("FUNCTION","DownSizeFunction"),
-                Tuple.Create("FUNCTION","UpSizeFunction"),
-                Tuple.Create("FUNCTION","ConvertNumberIntoBinaryForPath"),
-                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly"),
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("FUNCTION", "ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly"),
             };
 
         internal static readonly List<Tuple<string, string>> Version200MetaUdf= 
             new List<Tuple<string, string>>
             {
                 Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
-                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
-                Tuple.Create("FUNCTION","SingletonTable"),
-                Tuple.Create("FUNCTION","DownSizeFunction"),
-                Tuple.Create("FUNCTION","UpSizeFunction"),
-                Tuple.Create("FUNCTION","ConvertNumberIntoBinaryForPath"),
-                Tuple.Create("FUNCTION","ConvertInt64IntoVarbinary"),
-                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly"),
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("FUNCTION", "ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("FUNCTION", "ConvertInt64IntoVarbinary"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly"),
             };
-        
+
+        internal static readonly List<Tuple<string, string>> Version210MetaUdf =
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "SingletonTable2"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction2"),
+                Tuple.Create("FUNCTION", "ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("FUNCTION", "ConvertInt64IntoVarbinary"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly"),
+            };
+
         internal static readonly List<Tuple<string, string>> Version111TableUdf = 
             new List<Tuple<string, string>>
             {
@@ -169,12 +184,13 @@ namespace GraphView
                 Tuple.Create("FUNCTION", "PathMessageDecoder"),
                 Tuple.Create("FUNCTION", "ExclusiveNodeGenerator"),
             };
+        internal static readonly List<Tuple<string, string>> Version210TableUdf = Version200TableUdf;
 
         private static readonly string VersionTable = "VERSION";
 
-        private readonly List<Tuple<string, string>> _currentMetaUdf = Version200MetaUdf;
-        private readonly List<Tuple<string, string>> _currentTableUdf = Version200TableUdf;
-        private static readonly string version = "2.00";
+        private readonly List<Tuple<string, string>> _currentMetaUdf = Version210MetaUdf;
+        private readonly List<Tuple<string, string>> _currentTableUdf = Version210TableUdf;
+        private static readonly string version = "2.10";
         private string currentVersion = "";
         public string CurrentVersion { get { return currentVersion; } }
 
@@ -597,6 +613,12 @@ namespace GraphView
 
                 if (currentVersion == "2.00")
                 {
+                    UpgradeFromV200ToV210(transaction);
+                }
+
+                if (currentVersion == "2.10")
+                {
+                    
                 }
 
                 if (currentVersion != version)
@@ -683,29 +705,42 @@ namespace GraphView
         // Add reversed edge support
         private void UpgradeFromV111ToV200(SqlTransaction transaction)
         {
-            //Upgrade meta tables
+            // Upgrade meta tables
             UpgradeMetaTableV111(transaction);
 
             var tables = GetNodeTables(transaction);
 
-            //drop table functions, assemblies and global udf
+            // Drop table functions, assemblies and global udf
             foreach (var table in tables)
             {
                 DropNodeTableFunctionAndAssembly(table.Item1, table.Item2, Version111TableUdf, transaction);
             }
             DropAssemblyAndMetaUdf(Version111MetaUdf, transaction);
 
-            //Upgrade global udf and assembly
+            // Upgrade global udf and assembly
             const string assemblyName = GraphViewUdfAssemblyName;
             GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
             register.Register(Conn, transaction);
 
-            //Upgrade table functions and assemblies
+            // Upgrade table functions and assemblies
             UpgradeNodeTableFunction(null, transaction);
 
-            //Update version number
+            // Update version number
             UpdateVersionNumber("2.00", transaction);
+        }
 
+        // Add Upsize function version 2 with @dumb
+        private void UpgradeFromV200ToV210(SqlTransaction transaction)
+        {
+            DropAssemblyAndMetaUdf(Version200MetaUdf, transaction);
+
+            // Upgrade global udf and assembly
+            const string assemblyName = GraphViewUdfAssemblyName;
+            GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
+            register.Register(Conn, transaction);
+
+            // Update version number
+            UpdateVersionNumber("2.10", transaction);
         }
 
         /// <summary>

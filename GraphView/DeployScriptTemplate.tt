@@ -344,6 +344,13 @@ CREATE FUNCTION SingletonTable() RETURNS TABLE
 as EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.SingletonTable
 GO
 
+CREATE FUNCTION SingletonTable2(@dumb bigint) RETURNS TABLE
+(
+	memoBit bit
+)
+as EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.SingletonTable2
+GO
+
 CREATE FUNCTION DownSizeFunction
 (@id int)
 RETURNS INT
@@ -356,10 +363,18 @@ AS
 RETURN
 	SELECT TOP(@topvalue) * FROM SingletonTable()
 GO
+
+CREATE FUNCTION UpSizeFunction2(@topvalue int, @dumb bigint) RETURNS TABLE
+AS
+RETURN
+	SELECT TOP(@topvalue) * FROM SingletonTable2(@dumb)
+GO
+
 CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b int, @c int)
 RETURNS varbinary(max)
 EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.ConvertNumberIntoBinaryForPath;
 GO
+
 CREATE FUNCTION ConvertInt64IntoVarbinary(@a bigint)
 RETURNS varbinary(max)
 EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.ConvertInt64IntoVarbinary;
