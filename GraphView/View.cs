@@ -63,7 +63,7 @@ namespace GraphView
 
 
         //For edge view
-        private Dictionary<Tuple<string, string>, long> _edgeColumnToColumnId; //<NodeTable, Edge> => ColumnId
+        private Dictionary<Tuple<string, string>, int> _edgeColumnToColumnId; //<NodeTable, Edge> => ColumnId
         private Dictionary<string, List<long>> _dictionaryAttribute; //<EdgeViewAttributeName> => List<AttributeId>
         private Dictionary<string, string> _attributeType; //<EdgeViewAttribute> => <Type>
 
@@ -728,7 +728,7 @@ namespace GraphView
             try
             {
                 const string getSubEdgeView = @"
-                Select ColumnName
+                Select ColumnName, IsReversedEdge
                 From {0} NTC
                 join {1} NTCC
                 on NTC.TableId = NTCC.TableId
@@ -738,18 +738,21 @@ namespace GraphView
                 command.Parameters.AddWithValue("role", WNodeTableColumnRole.EdgeView);
                 command.CommandText = string.Format(getSubEdgeView, MetadataTables[0], MetadataTables[1]);
 
-                var edgeViewList = new List<string>();
+                // <edgeViewName, isReversedEdgeView>
+                var edgeViewList = new List<Tuple<string, bool>>();
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        edgeViewList.Add(reader["columnName"].ToString().ToLower());
+                        edgeViewList.Add(new Tuple<string, bool>(reader["columnName"].ToString().ToLower(),
+                            bool.Parse(reader["IsReversedEdge"].ToString())));
                     }
                 }
 
                 foreach (var it in edgeViewList)
                 {
-                    DropEdgeView(nodeViewSchema, nodeViewName, it, transaction);
+                    // <edgeViewName, isReversedEdgeView>
+                    DropEdgeView(nodeViewSchema, nodeViewName, it.Item1, it.Item2, transaction);
                 }
 
                 //drop view
@@ -833,9 +836,19 @@ namespace GraphView
 
             try
             {
-                CreateEdgeViewWithoutRecord(tableSchema, nodeName, edgeViewName, edges, edgeAttribute, transaction,
+                bool hasRevEdgeView;
+                Dictionary<Tuple<string, string>, int> revEdgeColumnToColumnId;
+                CreateEdgeViewWithoutRecord(tableSchema, nodeName, edgeViewName, edges, 
+                    out hasRevEdgeView, out revEdgeColumnToColumnId,
+                    edgeAttribute, transaction,
                     attributeMapping);
-                UpdateEdgeViewMetaData(tableSchema, edgeViewName, transaction);
+                UpdateEdgeViewMetaData(tableSchema, edgeViewName, _edgeColumnToColumnId, hasRevEdgeView, false,
+                    transaction);
+                if (hasRevEdgeView)
+                {
+                    var revEdgeViewName = nodeName + "_" + edgeViewName + "Reversed";
+                    UpdateEdgeViewMetaData(tableSchema, revEdgeViewName, revEdgeColumnToColumnId, false, true, transaction);
+                }
 
                 if (externalTransaction == null)
                 {
@@ -898,28 +911,29 @@ namespace GraphView
 
         }
 
-        ///  <summary>
-        ///  Edge View:create edge view decoder function
-        ///  </summary>
-        ///  <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
-        ///  <param name="nodeName"> The name of supper node. </param>
-        ///  <param name="edgeViewName"> The name of supper edge. </param>
-        ///  <param name="edges"> The list of message of edges for merging.
-        ///  The message is stored in tuple, containing (node table name, edge column name).</param>
-        ///  <param name="edgeAttribute"> The attributes' names in the supper edge.</param>
-        /// <param name="externalTransaction">An existing SqlTransaction instance under which create edge view will occur.</param>
-        /// <param name="attributeMapping"> User-supplied attribute-mapping.
-        ///  Type is List<Tuple<string, List<Tuple<string, string, string>>>>.
-        ///  That is, every attribute in supper edge is mapped into a list of attributes,
-        ///  with the message of <node table name, edge column name, attribute name>
-        ///
-        ///  When "attributeMapping" is empty or null, the program will map the atrributes of edge view
-        ///  to all the same-name attributes of all the user-supplied edges.
-        ///  When "attributeMapping" is empty or null and "edgeAttribute" is null,
-        ///  the program will map all the attributes of edges into edge View(merging attributes with same name)
-        ///  </param>
+        ///   <summary>
+        ///   Edge View:create edge view decoder function
+        ///   </summary>
+        ///   <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
+        ///   <param name="nodeName"> The name of supper node. </param>
+        ///   <param name="edgeViewName"> The name of supper edge. </param>
+        ///   <param name="edges"> The list of message of edges for merging.
+        ///   The message is stored in tuple, containing (node table name, edge column name).</param>
+        ///   <param name="hasRevEdgeView">Whether a reversed edge view can be created.</param>
+        ///   <param name="edgeAttribute"> The attributes' names in the supper edge.</param>
+        ///   <param name="externalTransaction">An existing SqlTransaction instance under which create edge view will occur.</param>
+        ///   <param name="attributeMapping"> User-supplied attribute-mapping.
+        ///    Type is List<Tuple<string, List<Tuple<string, string, string>>>>.
+        ///    That is, every attribute in supper edge is mapped into a list of attributes,
+        ///    with the message of <node table name, edge column name, attribute name>
+        /// 
+        ///    When "attributeMapping" is empty or null, the program will map the atrributes of edge view
+        ///    to all the same-name attributes of all the user-supplied edges.
+        ///    When "attributeMapping" is empty or null and "edgeAttribute" is null,
+        ///    the program will map all the attributes of edges into edge View(merging attributes with same name)
+        ///   </param>
         private void CreateEdgeViewWithoutRecord(string tableSchema, string nodeName, string edgeViewName,
-            List<Tuple<string, string>> edges,
+            List<Tuple<string, string>> edges, out bool hasRevEdgeView, out Dictionary<Tuple<string, string>, int> revEdgeColumnToColumnId,
             List<string> edgeAttribute = null, SqlTransaction externalTransaction = null,
             List<Tuple<string, List<Tuple<string, string, string>>>> attributeMapping = null)
         {
@@ -999,7 +1013,7 @@ namespace GraphView
                 }
 
                 edges = edges.Select(x => Tuple.Create(x.Item1.ToLower(), x.Item2.ToLower())).ToList();
-                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2), x => (long)-1);
+                _edgeColumnToColumnId = edges.ToDictionary(x => Tuple.Create(x.Item1, x.Item2), x => -1);
                 //<NodeTable, Edge> => ColumnId
 
                 var subViewToEdges = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase); //Subview is made up of the tables with non-zero indegree. <table name> => list<edge column>
@@ -1543,6 +1557,120 @@ namespace GraphView
                     string.Join("UNION ALL\n", subQueryList));
                 command.ExecuteNonQuery();
 
+                // Create reversed view sampling table
+                // Key = <tableName, edgeName>, Value = <hasReversed, refTableName>>
+                var edgeColumns = new Dictionary<Tuple<string, string>, Tuple<bool, string>>();
+                
+                revEdgeColumnToColumnId = new Dictionary<Tuple<string, string>, int>();
+                const string checkAllHasReversed =
+                    @"SELECT ColumnName, TableName, Reference, RefTableSchema, ColumnRole, HasReversedEdge
+                  FROM [{0}]
+                  WHERE TableSchema = @tableSchema
+                  AND ColumnRole = @columnRole";
+                command.Parameters.AddWithValue("@columnRole", (int)WNodeTableColumnRole.Edge);
+                command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                command.CommandText = string.Format(checkAllHasReversed, MetadataTables[1]);
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var refTableSchema = reader["RefTableSchema"].ToString().ToLower();
+                        var refTableName = reader["Reference"].ToString().ToLower();
+                        var tableName = reader["TableName"].ToString().ToLower();
+                        var edgeName = reader["ColumnName"].ToString().ToLower();
+                        var hasRevEdge = bool.Parse(reader["HasReversedEdge"].ToString());
+                        var tableTuple = new Tuple<string, string>(tableName, edgeName);
+                        edgeColumns[tableTuple] = new Tuple<bool, string>(hasRevEdge, refTableName);
+                    }
+                }
+
+                hasRevEdgeView = edges.All(it => edgeColumns[it].Item1 != false);
+                // a reversed edge view can only be created when all edges has their corresponding reversed edge
+                // and their reference table are already created
+                if (hasRevEdgeView)
+                {
+                    var toRemove = edgeColumns.Where(it => !edges.Contains(it.Key)).ToList();
+                    foreach (var it in toRemove)
+                    {
+                        edgeColumns.Remove(it.Key);
+                    }
+                    // <schema, tableName>
+                    var refTableSet = new HashSet<Tuple<string, string>>();
+                    foreach (var it in edgeColumns)
+                    {
+                        refTableSet.Add(new Tuple<string, string>("dbo", it.Value.Item2));
+                    }
+                    command.Parameters.Clear();
+                    command.Parameters.Add("@tableSchema", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@tableName", SqlDbType.NVarChar, 128);
+                    command.CommandText = string.Format(
+                        @"SELECT TableId FROM [{0}] WHERE TableSchema = @tableSchema AND TableName = @tableName",
+                        MetadataTables[0]);
+                    foreach (var tuple in refTableSet)
+                    {
+                        command.Parameters["@tableSchema"].Value = tuple.Item1;
+                        command.Parameters["@tableName"].Value = tuple.Item2;
+                        using (var reader = command.ExecuteReader())
+                        {
+                            // reference table haven't been created yet
+                            if (!reader.Read())
+                            {
+                                hasRevEdgeView = false;
+                                return;
+                            }
+                        }
+                    }
+
+                    command.Parameters.Add("@columnName", SqlDbType.NVarChar, 128);
+                    // get reversed edge's column id
+                    const string getColumnId =
+                        @"SELECT ColumnId
+                        FROM [{0}]
+                        WHERE TableSchema = @tableSchema AND TableName = @tableName AND ColumnName = @columnName";
+                    foreach (var it in edgeColumns)
+                    {
+                        var refTableName = it.Value.Item2;
+                        var columnName = it.Key.Item1 + "_" + it.Key.Item2 + "Reversed";
+                        command.Parameters["@tableName"].Value = refTableName;
+                        command.Parameters["@columnName"].Value = columnName;
+                        command.CommandText = string.Format(getColumnId, MetadataTables[1]);
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                revEdgeColumnToColumnId[new Tuple<string, string>(refTableName, columnName)] =
+                                    int.Parse(reader["columnId"].ToString());
+                            }
+                        }
+                    }
+                    revEdgeColumnToColumnId = revEdgeColumnToColumnId.OrderBy(x => x.Value)
+                       .ToDictionary(x => x.Key, x => x.Value);
+
+                    samplingTableName = tableSchema + "_" + nodeName + "_" + nodeName + "_" + edgeViewName + "Reversed" + "_Sampling";
+                    subQueryList.Clear();
+                    rowCount = 0;
+                    foreach (var it in edges)
+                    {
+                        var array = attributeView2DArray[rowCount];
+                        string elementlist = string.Join(", ", array);
+                        if (!string.IsNullOrEmpty(elementlist))
+                        {
+                            elementlist = ", " + elementlist;
+                        }
+                        var refTableName = edgeColumns[it].Item2;
+                        var revEdgeName = (refTableName + "_" + it.Item1 + "_" + it.Item2 + "Reversed").ToLower();
+                        string subQuery = string.Format(selectTemplate, elementlist,
+                            tableSchema + "_" + revEdgeName + "_Sampling");
+                        subQueryList.Add(subQuery);
+                        rowCount++;
+                    }
+                    command.Parameters.Clear();
+                    command.CommandText = string.Format(createEdgeSampling, samplingTableName,
+                        string.Join("UNION ALL\n", subQueryList));
+                    command.ExecuteNonQuery();
+                }
+
                 if (externalTransaction == null)
                 {
                     transaction.Commit();
@@ -1563,8 +1691,12 @@ namespace GraphView
         /// </summary>
         /// <param name="tableSchema"> The Schema name of node table. Default(null or "") by "dbo".</param>
         /// <param name="edgeViewName"> The name of supper edge. </param>
+        /// <param name="isRevEdgeView"></param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which create edge view will occur.</param>
-        private void UpdateEdgeViewMetaData(string tableSchema, string edgeViewName,
+        /// <param name="hasRevEdgeView"></param>
+        private void UpdateEdgeViewMetaData(string tableSchema, string edgeViewName, 
+            Dictionary<Tuple<string, string>, int> edgeColumnToColumnId, 
+            bool hasRevEdgeView, bool isRevEdgeView,
             SqlTransaction externalTransaction = null)
         {
             SqlTransaction transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -1592,13 +1724,26 @@ namespace GraphView
 
                 //Insert edge view message into "_NodeTableColumnCollection" MetaDataTable
                 const string insertGraphEdgeView = @"
-                INSERT INTO [{0}] ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
+                INSERT INTO [{0}] ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [RefTableSchema], [HasReversedEdge], [IsReversedEdge], [EdgeUdfPrefix])
                 OUTPUT [Inserted].[ColumnId]
-                VALUES (@tableschema, @TableName, @tableid, @columnname, @columnrole, @reference)";
+                VALUES (@tableschema, @TableName, @tableid, @columnname, @columnrole, @reference, @refTableSchema, @hasRevEdge, @isRevEdge, @udfPrefix)";
                 command.Parameters.AddWithValue("columnname", edgeViewName);
                 command.Parameters.AddWithValue("columnrole", 3);
                 command.Parameters.AddWithValue("reference", _nodeName);
+                command.Parameters.AddWithValue("refTableSchema", "dbo");
                 command.Parameters.AddWithValue("tableid", tableId);
+                command.Parameters.AddWithValue("hasRevEdge", hasRevEdgeView ? 1 : 0);
+                command.Parameters.AddWithValue("isRevEdge", isRevEdgeView ? 1 : 0);
+
+                var udfEdgeViewName = edgeViewName;
+                if (isRevEdgeView)
+                {
+                    var index = edgeViewName.IndexOf(_nodeName, StringComparison.Ordinal);
+                    index += _nodeName.Length;
+                    udfEdgeViewName = edgeViewName.Substring(index + 1,
+                    edgeViewName.Length - "Reversed".Length - index - 1);
+                }
+                command.Parameters.AddWithValue("udfPrefix", tableSchema + "_" + _nodeName + "_" + udfEdgeViewName);
 
                 command.CommandText = string.Format(insertGraphEdgeView, MetadataTables[1]);
                 //_NodeTableColumnCollection
@@ -1634,7 +1779,7 @@ namespace GraphView
                 column = new DataColumn("ColumnId", Type.GetType("System.Int64"));
                 table.Columns.Add(column);
 
-                foreach (var it in _edgeColumnToColumnId)
+                foreach (var it in edgeColumnToColumnId)
                 {
                     row = table.NewRow();
                     row["NodeViewColumnId"] = edgeViewId;
@@ -1720,8 +1865,9 @@ namespace GraphView
         /// <param name="tableSchema">The name of schema. Default(null or "") by "dbo".</param>
         /// <param name="tableName">The name of node table.</param>
         /// <param name="edgeView">The name of Edge View</param>
+        /// <param name="isRevEdgeView"></param>
         /// <param name="externalTransaction">An existing SqlTransaction instance under which the drop edge view will occur.</param>
-        public void DropEdgeView(string tableSchema, string tableName, string edgeView,
+        private void DropEdgeView(string tableSchema, string tableName, string edgeView, bool isRevEdgeView,
             SqlTransaction externalTransaction = null)
         {
             var transaction = externalTransaction ?? Conn.BeginTransaction();
@@ -1768,8 +1914,14 @@ namespace GraphView
                 {
                     if (!reader.Read())
                     {
-                        throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.",
-                            tableSchema, _nodeName, edgeView));
+                        if (!isRevEdgeView)
+                            throw new EdgeViewException(string.Format("Edge view name \"{0}.{1}.{2}\" is not existed.",
+                                tableSchema, _nodeName, edgeView));
+                        // an reversed edge view dosen't exist because 
+                        // some edges in the original edge view have no corresponding reversed edges
+                        // or reference tables haven't been created
+                        else
+                            return;
                     }
                 }
                 const string dropAttribtueRef = @"
@@ -1809,6 +1961,14 @@ namespace GraphView
                 command.CommandText = string.Format(dropNodeTableColumnCollection, MetadataTables[1]);
                 command.ExecuteNonQuery();
 
+                const string dropSamplingView = @"
+                Drop View [{0}_Sampling]";
+                command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
+                command.ExecuteNonQuery();
+                
+                // skip reversed edge view
+                if (isRevEdgeView) return;
+
                 const string dropFunction = @"
                 Drop function [{0}]";
                 command.Parameters.Clear();
@@ -1825,10 +1985,9 @@ namespace GraphView
                 command.CommandText = string.Format(dropAssembly, tableSchema + '_' + _nodeName + '_' + edgeView);
                 command.ExecuteNonQuery();
 
-                const string dropSamplingView = @"
-                Drop View [{0}_Sampling]
+                const string dropSubView = @"
                 Drop View [{0}_SubView]";
-                command.CommandText = string.Format(dropSamplingView, tableSchema + '_' + _nodeName + '_' + edgeView);
+                command.CommandText = string.Format(dropSubView, tableSchema + '_' + _nodeName + '_' + edgeView);
                 command.ExecuteNonQuery();
 #if !DEBUG
                 if (externalTransaction == null)
@@ -1845,7 +2004,46 @@ namespace GraphView
             }
         }
 
-        public void updateGlobalNodeView(string schema = "dbo", SqlTransaction externalTransaction = null)
+        /// <summary>
+        /// Drop Edge View
+        /// </summary>
+        /// <param name="tableSchema">The name of schema. Default(null or "") by "dbo".</param>
+        /// <param name="tableName">The name of node table.</param>
+        /// <param name="edgeView">The name of Edge View</param>
+        /// <param name="externalTransaction">An existing SqlTransaction instance under which the drop edge view will occur.</param>
+        public void DropEdgeView(string tableSchema, string tableName, string edgeView,
+            SqlTransaction externalTransaction = null)
+        {
+            var transaction = externalTransaction ?? Conn.BeginTransaction();
+
+            if (string.IsNullOrEmpty(tableSchema))
+                tableSchema = "dbo";
+
+            if (string.IsNullOrEmpty(tableName))
+                throw new EdgeViewException("The string of table name is null or empty.");
+
+            if (string.IsNullOrEmpty(edgeView))
+                throw new EdgeViewException("The string of edge view name is null or empty.");
+            try
+            {
+                var revEdgeView = tableName + "_" + edgeView + "Reversed";
+                DropEdgeView(tableSchema, tableName, edgeView, false, transaction);
+                DropEdgeView(tableSchema, tableName, revEdgeView, true, transaction);
+
+                if (externalTransaction == null)
+                    transaction.Commit();
+            }
+            catch (Exception error)
+            {
+                if (externalTransaction == null)
+                {
+                    transaction.Rollback();
+                }
+                throw new EdgeViewException("Drop edge view:" + error.Message);
+            }
+        }
+
+        public void UpdateGlobalNodeView(string schema = "dbo", SqlTransaction externalTransaction = null)
         {
             SqlTransaction transaction = externalTransaction ?? Conn.BeginTransaction();
             var command = Conn.CreateCommand();
@@ -1867,7 +2065,7 @@ namespace GraphView
                 command.CommandText = string.Format(checkGlobalView,"sys.schemas", "sys.objects", "sys.all_views");
                 command.Parameters.AddWithValue("name", globalViewName);
                 command.Parameters.AddWithValue("schema", schema);
-                using (var reader = command.ExecuteReader())
+                using ( var reader = command.ExecuteReader())
                 {
                     if (reader.Read())
                     {

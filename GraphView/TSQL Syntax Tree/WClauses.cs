@@ -457,6 +457,11 @@ namespace GraphView
         /// </summary>
         internal WSchemaObjectName Tail { get; set; }
 
+        /// <summary>
+        /// True if paths in PathEdgeList are reversed edges
+        /// </summary>
+        internal bool IsReversed { get; set; }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)

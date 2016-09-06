@@ -121,6 +121,9 @@ namespace GraphView
         public HashSet<string> SinkNodes;
         public List<Tuple<string, string>> EdgeColumns;
         public IList<string> ColumnAttributes;
+        public bool HasReversedEdge;
+        public bool IsReversedEdge;
+        public string EdgeUdfPrefix;
     }
 
     public class GraphMetaData
@@ -134,6 +137,11 @@ namespace GraphView
         // (Schema name, Table name) -> set of the node table name included in the node view
         public readonly Dictionary<Tuple<string, string>, HashSet<string>> NodeViewMapping =
             new Dictionary<Tuple<string, string>, HashSet<string>>();
+
+        // Reversed Edges orders are sorted by their original edges' column Ids
+        // (Schema name, Table name) -> (Reversed column name -> Order)
+        public readonly Dictionary<Tuple<string, string>, Dictionary<string, int>> ReversedEdgeOrder =
+            new Dictionary<Tuple<string, string>, Dictionary<string, int>>();
 
     }
 
@@ -189,6 +197,7 @@ namespace GraphView
             _graphMetaData = new GraphMetaData();
             var columnsOfNodeTables = _graphMetaData.ColumnsOfNodeTables;
             var nodeViewMapping = _graphMetaData.NodeViewMapping;
+            var revEdgeOrderDict = _graphMetaData.ReversedEdgeOrder;
 
             using (var command = Tx.Connection.CreateCommand())
             {
@@ -196,15 +205,15 @@ namespace GraphView
                 command.CommandText = string.Format(
                     @"
                     SELECT [TableSchema] as [Schema], [TableName] as [Name1], [ColumnName] as [Name2], 
-                           [ColumnRole] as [Role], [Reference] as [Name3], null as [EdgeViewTable], null as [ColumnId]
+                           [ColumnRole] as [Role], [Reference] as [Name3], [HasReversedEdge] as [HasRevEdge], [IsReversedEdge] as [IsRevEdge], [EdgeUdfPrefix] as [UdfPrefix], null as [EdgeViewTable], null as [ColumnId]
                     FROM [{0}]
                     UNION ALL
                     SELECT [TableSchema] as [Schema], [TableName] as [Name1], [ColumnName] as [Name2], 
-                           -1 as [Role], [AttributeName] as [Name3], null, [AttributeId]
+                           -1 as [Role], [AttributeName] as [Name3], 0, 0, null, null, [AttributeId]
                     FROM [{1}]
                     UNION ALL
                     SELECT [NV].[TableSchema] as [Schema], [NV].[TableName] as [Name1], [NT].[TableName] as [Name2], 
-                           -2 as [Role], null as [Name3], null, null
+                           -2 as [Role], null as [Name3], 0, 0, null, null, null
                     FROM 
                         [{2}] as [NV_NT_Mapping]
                         JOIN
@@ -215,7 +224,7 @@ namespace GraphView
                         ON NV_NT_Mapping.TableId = NT.TableId
                     UNION ALL
                     SELECT [EV].[TableSchema] as [Schema], [EV].[ColumnName] as [Name1], [ED].[ColumnName]as [Name2],
-                           -3 as [Role], [ED].[TableName] as [Name3], [EV].[TableName] as [EdgeViewTable], [ED].[ColumnId] as [ColumnId]
+                           -3 as [Role], [ED].[TableName] as [Name3], 0, 0, null, [EV].[TableName] as [EdgeViewTable], [ED].[ColumnId] as [ColumnId]
                     FROM 
                         [{4}] as [EV_ED_Mapping]
                         JOIN
@@ -228,6 +237,7 @@ namespace GraphView
                     GraphViewConnection.MetadataTables[2], GraphViewConnection.MetadataTables[7],
                     GraphViewConnection.MetadataTables[0], GraphViewConnection.MetadataTables[5]);
 
+                var revEdgeOrder = 0;
                 using (var reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -236,6 +246,10 @@ namespace GraphView
                         string schema = reader["Schema"].ToString().ToLower(CultureInfo.CurrentCulture);
                         string name1 = reader["Name1"].ToString().ToLower(CultureInfo.CurrentCulture);
                         string name2 = reader["Name2"].ToString().ToLower(CultureInfo.CurrentCulture);
+                        bool hasRevEdge = reader["HasRevEdge"].ToString().Equals("1");
+                        bool isRevEdge = reader["IsRevEdge"].ToString().Equals("1");
+                        string udfPrefix = reader["UdfPrefix"].ToString().ToLower(CultureInfo.CurrentCulture);
+
                         // Retrieve columns of node tables
                         var tableTuple = new Tuple<string, string>(schema, name1);
                         if (tag >= 0)
@@ -260,8 +274,25 @@ namespace GraphView
                                             reader["Name3"].ToString().ToLower(CultureInfo.CurrentCulture)
                                         }
                                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                                    HasReversedEdge = hasRevEdge,
+                                    IsReversedEdge = isRevEdge,
+                                    EdgeUdfPrefix = udfPrefix,
                                 };
 
+                                if (role == WNodeTableColumnRole.Edge)
+                                {
+                                    var tableSchema = reader["Schema"].ToString();
+                                    var tableName = reader["Name1"].ToString();
+                                    var edgeName = reader["Name2"].ToString();
+                                    var refTableName = reader["Name3"].ToString();
+                                    var revEdgeName = (tableName + "_" + edgeName + "Reversed").ToLower();
+                                    var tuple = new Tuple<string, string>(tableSchema.ToLower(), refTableName.ToLower());
+                                    if (!revEdgeOrderDict.ContainsKey(tuple))
+                                        revEdgeOrderDict[tuple] =
+                                            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                                    revEdgeOrderDict[tuple][revEdgeName] = revEdgeOrder;
+                                    ++revEdgeOrder;
+                                }
                             }
                             columnDict.Add(name2,
                                 new NodeColumns
@@ -309,6 +340,22 @@ namespace GraphView
                         }
                     }
 
+                    // sort reversed edgeViews' EdgeColumn according to the order of their corresponding original edges' column Ids
+                    // to match the rule of edgeView's decoder function parameters placing order 
+                    foreach (var it in columnsOfNodeTables)
+                    {
+                        foreach (var edge in it.Value)
+                        {
+                            if (edge.Value.Role == WNodeTableColumnRole.EdgeView && edge.Value.EdgeInfo.IsReversedEdge)
+                            {
+                                var edgeInfo = edge.Value.EdgeInfo;
+                                edgeInfo.EdgeColumns =
+                                    edgeInfo.EdgeColumns.OrderBy(
+                                        x => revEdgeOrderDict[new Tuple<string, string>("dbo", x.Item1)][x.Item2])
+                                        .ToList();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -669,9 +716,12 @@ namespace GraphView
             if (query == null || query.MatchClause == null)
                 return null;
 
+            var columnsOfNodeTables = _graphMetaData.ColumnsOfNodeTables;
+            var nodeViewMapping = _graphMetaData.NodeViewMapping;
             var unionFind = new UnionFind();
             var edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             var pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
+            var reversedEdgeDict = new Dictionary<string, MatchEdge>();
             var matchClause = query.MatchClause;
             var nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
             var connectedSubGraphs = new List<ConnectedComponent>();
@@ -708,43 +758,115 @@ namespace GraphView
                         }
                     }
 
-                    string edgeAlias = currentEdgeColumnRef.Alias;
-                    if (edgeAlias == null)
-                    {
-                        var currentEdgeName = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
-                        edgeAlias = string.Format("{0}_{1}_{2}", currentNodeExposedName, currentEdgeName,
-                            nextNodeExposedName);
-                        if (edgeColumnToAliasesDict.ContainsKey(currentEdgeName))
-                        {
-                            edgeColumnToAliasesDict[currentEdgeName].Add(edgeAlias);
-                        }
-                        else
-                        {
-                            edgeColumnToAliasesDict.Add(currentEdgeName, new List<string> { edgeAlias });
-                        }
-                    }
-
                     Identifier edgeIdentifier = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last();
                     string schema = patternNode.NodeTableObjectName.SchemaIdentifier.Value.ToLower();
                     string nodeTableName = patternNode.NodeTableObjectName.BaseIdentifier.Value;
                     string bindTableName =
                         _context.EdgeNodeBinding[
                             new Tuple<string, string>(nodeTableName.ToLower(), edgeIdentifier.Value.ToLower())].ToLower();
-                    MatchEdge edge;
+                    var bindNodeTableObjName = new WSchemaObjectName(
+                        new Identifier {Value = schema},
+                        new Identifier {Value = bindTableName}
+                        );
+                    var edgeColumn =
+                        columnsOfNodeTables[
+                            WNamedTableReference.SchemaNameToTuple(bindNodeTableObjName)][
+                                currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value];
+                    string edgeAlias = currentEdgeColumnRef.Alias;
+                    //string revEdgeAlias = edgeAlias;
+                    bool isReversed = path.IsReversed || edgeColumn.EdgeInfo.IsReversedEdge;
+                    string currentRevEdgeName = null;
+
+                    // get original edge name
+                    var currentEdgeName = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
+                    var originalSourceName = isReversed ?
+                        (_context[nextNodeExposedName] as WNamedTableReference).TableObjectName.BaseIdentifier.Value
+                        : (_context[currentNodeExposedName] as WNamedTableReference).TableObjectName.BaseIdentifier.Value;
+
+                    if (isReversed)
+                    {
+                        var i = currentEdgeName.IndexOf(originalSourceName, StringComparison.OrdinalIgnoreCase) +
+                            originalSourceName.Length;
+                        currentRevEdgeName = currentEdgeName.Substring(i + 1,
+                            currentEdgeName.Length - "Reversed".Length - i - 1);
+                    }
+                    else
+                    {
+                        var srcTuple = WNamedTableReference.SchemaNameToTuple(patternNode.NodeTableObjectName);
+                        // [nodeView]-[edge]->[node/nodeView]
+                        if (edgeColumn.Role == WNodeTableColumnRole.Edge && nodeViewMapping.ContainsKey(srcTuple))
+                        {
+                            var physicalNodeName =
+                                _context.EdgeNodeBinding[new Tuple<string, string>(srcTuple.Item2, currentEdgeName.ToLower())];
+                            currentRevEdgeName = physicalNodeName + "_" + currentEdgeName + "Reversed";
+                        }
+                        else
+                        {
+                            currentRevEdgeName = originalSourceName + "_" + currentEdgeName + "Reversed";
+                        }
+                    }
+
+                    if (edgeAlias == null)
+                    {
+                        edgeAlias = !isReversed 
+                            ? string.Format("{0}_{1}_{2}", currentNodeExposedName, currentEdgeName, nextNodeExposedName) 
+                            : string.Format("{0}_{1}_{2}", nextNodeExposedName, currentRevEdgeName, currentNodeExposedName);
+
+                        //when the current edge is a reversed edge, the key should still be the original edge name
+                        //e.g.: TestDeleteEdgeWithTableAlias
+                        var edgeNameKey = isReversed ? currentRevEdgeName : currentEdgeName;
+                        if (edgeColumnToAliasesDict.ContainsKey(edgeNameKey))
+                        {
+                            edgeColumnToAliasesDict[edgeNameKey].Add(edgeAlias);
+                        }
+                        else
+                        {
+                            edgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { edgeAlias });
+                        }
+                    }
+
+                    MatchEdge edge, revEdge;
                     if (currentEdgeColumnRef.MinLength == 1 && currentEdgeColumnRef.MaxLength == 1)
                     {
+                        var isEdgeView = edgeColumn.Role == WNodeTableColumnRole.EdgeView;
+                        var hasRevEdge = edgeColumn.EdgeInfo.HasReversedEdge;
                         edge = new MatchEdge
                         {
+                            IsEdgeView = isEdgeView,
+                            IsReversedEdge = false,
+                            HasReversedEdge = hasRevEdge,
                             SourceNode = patternNode,
                             EdgeColumn = currentEdgeColumnRef,
                             EdgeAlias = edgeAlias,
-                            BindNodeTableObjName =
-                                new WSchemaObjectName(
-                                    new Identifier {Value = schema},
-                                    new Identifier {Value = bindTableName}
-                                    ),
+                            BindNodeTableObjName = bindNodeTableObjName,
                         };
                         _context.AddEdgeReference(edge);
+
+                        if (hasRevEdge)
+                        {
+                            revEdge = new MatchEdge
+                            {
+                                IsEdgeView = isEdgeView,
+                                IsReversedEdge = true,
+                                SinkNode = patternNode,
+                                EdgeColumn = new WEdgeColumnReferenceExpression()
+                                {
+                                    ColumnType = currentEdgeColumnRef.ColumnType,
+                                    Alias = currentEdgeColumnRef.Alias,
+                                    MaxLength = currentEdgeColumnRef.MaxLength,
+                                    MinLength = currentEdgeColumnRef.MinLength,
+                                    AttributeValueDict = currentEdgeColumnRef.AttributeValueDict,
+                                    MultiPartIdentifier = new WMultiPartIdentifier(new Identifier()
+                                    {
+                                        QuoteType = currentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().QuoteType,
+                                        Value = currentRevEdgeName,
+                                    }),
+                                },
+                                EdgeAlias = edgeAlias,
+                                //EdgeAlias = revEdgeAlias,
+                            };
+                            reversedEdgeDict[edge.EdgeAlias] = revEdge;
+                        }
                     }
                     else
                     {
@@ -771,6 +893,42 @@ namespace GraphView
                     if (preEdge != null)
                     {
                         preEdge.SinkNode = patternNode;
+                        if (preEdge.HasReversedEdge)
+                        {
+                            //var preSourceNode = preEdge.SourceNode;
+                            var preEdgeBindNodeTableObjName = preEdge.BindNodeTableObjName;
+                            var preEdgeColName = preEdge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
+                            var preEdgeColumn =
+                                columnsOfNodeTables[
+                                    WNamedTableReference.SchemaNameToTuple(preEdgeBindNodeTableObjName)][
+                                        preEdgeColName];
+                            var isEdgeView = preEdgeColumn.Role == WNodeTableColumnRole.EdgeView;
+                            var isNodeView =
+                                _graphMetaData.NodeViewMapping.ContainsKey(
+                                    WNamedTableReference.SchemaNameToTuple(patternNode.NodeTableObjectName));
+
+                            reversedEdgeDict[preEdge.EdgeAlias].SourceNode = patternNode;
+                            // [node/nodeView]-[edgeView]->[node/nodeView]
+                            if (isEdgeView)
+                            {
+                                reversedEdgeDict[preEdge.EdgeAlias].BindNodeTableObjName = preEdgeBindNodeTableObjName;
+                            }
+                            // [node/nodeView]-[edge]->[nodeView]
+                            else if (!isEdgeView && isNodeView)
+                            {
+                                reversedEdgeDict[preEdge.EdgeAlias].BindNodeTableObjName = new WSchemaObjectName(
+                                    new Identifier { Value = "dbo" },
+                                    new Identifier { Value = preEdgeColumn.EdgeInfo.SinkNodes.First() }
+                                    );
+                            }
+                            else
+                            {
+                                reversedEdgeDict[preEdge.EdgeAlias].BindNodeTableObjName = new WSchemaObjectName(
+                                    new Identifier { Value = schema },
+                                    new Identifier { Value = bindTableName }
+                                    );
+                            }
+                        }
                     }
                     preEdge = edge;
 
@@ -801,7 +959,46 @@ namespace GraphView
                     }
                 }
                 if (preEdge != null)
+                {
                     preEdge.SinkNode = tailNode;
+                    if (preEdge.HasReversedEdge)
+                    {
+                        var schema = tailNode.NodeTableObjectName.SchemaIdentifier.Value.ToLower();
+                        var nodeTableName = tailNode.NodeTableObjectName.BaseIdentifier.Value;
+                        //var preSourceNode = preEdge.SourceNode;
+                        var preEdgeBindNodeTableObjName = preEdge.BindNodeTableObjName;
+                        var preEdgeColName = preEdge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
+                        var preEdgeColumn =
+                            columnsOfNodeTables[
+                                WNamedTableReference.SchemaNameToTuple(preEdgeBindNodeTableObjName)][
+                                    preEdgeColName];
+                        var isEdgeView = preEdgeColumn.Role == WNodeTableColumnRole.EdgeView;
+                        var isNodeView =
+                            _graphMetaData.NodeViewMapping.ContainsKey(
+                                WNamedTableReference.SchemaNameToTuple(tailNode.NodeTableObjectName));
+                        reversedEdgeDict[preEdge.EdgeAlias].SourceNode = tailNode;
+                        // [node/nodeView]-[edgeView]->[node/nodeView]
+                        if (isEdgeView)
+                        {
+                            reversedEdgeDict[preEdge.EdgeAlias].BindNodeTableObjName = preEdgeBindNodeTableObjName;
+                        }
+                        // [node/nodeView]-[edge]->[nodeView]
+                        else if (!isEdgeView && isNodeView)
+                        {
+                            reversedEdgeDict[preEdge.EdgeAlias].BindNodeTableObjName = new WSchemaObjectName(
+                                new Identifier { Value = "dbo" },
+                                new Identifier { Value = preEdgeColumn.EdgeInfo.SinkNodes.First() }
+                                );
+                        }
+                        else
+                        {
+                            reversedEdgeDict[preEdge.EdgeAlias].BindNodeTableObjName = new WSchemaObjectName(
+                                new Identifier { Value = schema },
+                                new Identifier { Value = nodeTableName.ToLower() }
+                                );
+                        }
+                    }
+                }  
             }
 
             // Puts nodes into subgraphs
@@ -834,7 +1031,9 @@ namespace GraphView
 
             var graph = new MatchGraph
             {
+                ReversedEdgeDict = reversedEdgeDict,
                 ConnectedSubGraphs = connectedSubGraphs,
+                SourceNodeStatisticsDict = new Dictionary<Tuple<string, bool>, Statistics>(),
             };
             unionFind.Parent = null;
 
@@ -1164,8 +1363,11 @@ namespace GraphView
                             SELECT '{0}' as TableSchema, 
                                    '{1}' as TableName, 
                                    '{2}' as ColumnName,
-                                   '{3}' as Alias, 
-                                    [dbo].[GraphViewUDFGlobalNodeIdEncoder](Sink) as Sink
+                                   '{3}' as Alias,
+                                   [dbo].[GraphViewUDFGlobalNodeIdEncoder](Src) as Src,
+                                   [dbo].[GraphViewUDFGlobalNodeIdEncoder](Sink) as Sink,
+                                   0 as IsReversed,
+                                   NULL as OriginalEdgeAlias 
                             FROM [{0}_{1}_{2}_Sampling] as [{3}]", schema,
                         bindTableName,
                         edgeName,
@@ -1173,7 +1375,48 @@ namespace GraphView
                 var predicatesExpr = edge.RetrievePredicatesExpression();
                 if (predicatesExpr!=null)
                     sb.AppendFormat("\n WHERE {0}", predicatesExpr);
+
+                MatchEdge revEdge;
+                if (graph.ReversedEdgeDict.TryGetValue(edge.EdgeAlias, out revEdge))
+                {
+                    sb.Append("\nUNION ALL\n");
+                    var isEdgeView = revEdge.IsEdgeView;
+                    var revTableObjectName = revEdge.SourceNode.NodeTableObjectName;
+                    var revSchema = revTableObjectName.SchemaIdentifier.Value.ToLower();
+                    var revEdgeName = revEdge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
+                    var revBindTableName = revEdge.BindNodeTableObjName.Identifiers.Last().Value.ToLower();
+                    var revSamplingTableName = revSchema + "_" + revBindTableName + "_" + revEdgeName;
+                    var revSrcTuple = WNamedTableReference.SchemaNameToTuple(revEdge.BindNodeTableObjName);
+                    //var revSinkTuple = WNamedTableReference.SchemaNameToTuple(revEdge.SinkNode.NodeTableObjectName);
+                    var originalEdgeName = edge.EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
+                    // [node/nodeView]-[edgeView]->[node/nodeView]
+                    if (isEdgeView)
+                    {
+                        revEdgeName = revSrcTuple.Item2 + "_" + originalEdgeName + "Reversed";
+                        revSamplingTableName = revSrcTuple.Item1 + "_" + revSrcTuple.Item2 + "_" + revEdgeName;
                     }
+
+                    sb.Append(
+                        string.Format(@"
+                                SELECT '{0}' as TableSchema, 
+                                       '{1}' as TableName, 
+                                       '{2}' as ColumnName,
+                                       '{3}' as Alias,
+                                        [dbo].[GraphViewUDFGlobalNodeIdEncoder](Src) as Src,
+                                        [dbo].[GraphViewUDFGlobalNodeIdEncoder](Sink) as Sink,
+                                        1 as IsReversed,
+                                       '{4}' as OriginalEdgeAlias
+                                FROM [{5}_Sampling] as [{3}]", revSchema,
+                            revBindTableName,
+                            revEdgeName,
+                            revEdge.EdgeAlias,
+                            edge.EdgeAlias,
+                            revSamplingTableName));
+                    var revPredicatesExpr = revEdge.RetrievePredicatesExpression();
+                    if (revPredicatesExpr != null)
+                        sb.AppendFormat("\n WHERE {0}", revPredicatesExpr);
+                }
+            }
             sb.Append("\n) as Edge \n");
             sb.Append(String.Format(@"
                         INNER JOIN
@@ -1189,11 +1432,36 @@ namespace GraphView
                 command.CommandText = declareParameter + sb.ToString();
                 using (var reader = command.ExecuteReader())
                 {
+                    var srcNodeStatisticsDict = graph.SourceNodeStatisticsDict;
                     while (reader.Read())
                     {
-                        MatchEdge edge;
-                        if (!graph.TryGetEdge(reader["Alias"].ToString(), out edge))
+                        MatchEdge edge = null;
+                        bool isReversed = reader["isReversed"].ToString().Equals("1");
+                        if (!isReversed && !graph.TryGetEdge(reader["Alias"].ToString(), out edge))
                             throw new GraphViewException(string.Format("Edge {0} not exists", reader["Alias"].ToString()));
+                        if (isReversed && !graph.TryGetEdge(reader["OriginalEdgeAlias"].ToString(), out edge))
+                            throw new GraphViewException(string.Format("Edge {0} not exists", reader["OriginalEdgeAlias"].ToString()));
+                        if (isReversed)
+                            edge = graph.ReversedEdgeDict[edge.EdgeAlias];
+
+                        var srcBytes = reader["Src"] as byte[];
+                        var cursor = 0;
+                        if (srcBytes != null)
+                        {
+                            var srcList = new List<long>();
+                            while (cursor < srcBytes.Length)
+                            {
+                                var src = BitConverter.ToInt64(srcBytes, cursor);
+                                cursor += 8;
+                                srcList.Add(src);
+                            }
+                            var tmpEdge = new MatchEdge();
+                            Statistics.UpdateEdgeHistogram(tmpEdge, srcList);
+                            srcNodeStatisticsDict[new Tuple<string, bool>(edge.EdgeAlias, isReversed)] = tmpEdge.Statistics;
+                        }
+                        else
+                            srcNodeStatisticsDict[new Tuple<string, bool>(edge.EdgeAlias, isReversed)] = null;
+
                         var sinkBytes = reader["Sink"] as byte[];
                         if (sinkBytes == null)
                         {
@@ -1208,7 +1476,7 @@ namespace GraphView
                             continue;
                         }
                         List<long> sinkList = new List<long>();
-                        var cursor = 0;
+                        cursor = 0;
                         while (cursor < sinkBytes.Length)
                         {
                             var sink = BitConverter.ToInt64(sinkBytes, cursor);
@@ -1327,38 +1595,24 @@ namespace GraphView
         /// <param name="graph"></param>
         /// <param name="component"></param>
         /// <returns></returns>
-        private IEnumerable<Tuple<OneHeightTree, bool>> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
+        private IEnumerable<OneHeightTree> GetNodeUnits(ConnectedComponent graph, MatchComponent component)
         {
-            var nodes = graph.Nodes;
-            foreach (var node in nodes.Values.Where(e => !graph.IsTailNode[e]))
+            //var nodes = graph.Nodes;
+            //foreach (var node in graph.Nodes.Values)
+            foreach (var node in graph.Nodes.Values.Where(n => !component.Nodes.Contains(n)))
             {
                 var remainingEdges = node.Neighbors.Where(e => !component.EdgeMaterilizedDict.ContainsKey(e)).ToList();
-
-                // If there exists a component's edge pointing to the 1-heright tree's root
-                // or a 1-height tree's edge pointing to the component's node, then generates a valid
-                // 1-height tree with edges. Otherwise, if a node can be joint to component as a single
-                // split node with unmaterialized edges, generates a 1-height tree with a tag set to true.
                 if (component.UnmaterializedNodeMapping.ContainsKey(node) ||
                     remainingEdges.Any(e => component.Nodes.Contains(e.SinkNode)))
                 {
-                    yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
+                    yield return new OneHeightTree
                     {
                         TreeRoot = node,
                         Edges = remainingEdges
-                    }, false);
-                }
-                else if (remainingEdges.Count > 0 && component.MaterializedNodeSplitCount.Count > 1 &&
-                         component.MaterializedNodeSplitCount.ContainsKey(node))
-                {
-                    yield return new Tuple<OneHeightTree, bool>(new OneHeightTree
-                    {
-                        TreeRoot = node,
-                        Edges = remainingEdges
-                    }, true);
+                    };
                 }
             }
         }
-
 
 
         /// <summary>
@@ -1371,38 +1625,18 @@ namespace GraphView
         /// 3. If all the components has reached its end states, return the component with the smallest join cost
         /// </summary>
         /// <param name="subGraph"></param>
+        /// <param name="revEdgeDict"></param>
+        /// <param name="srcNodeStatisticsDict"></param>
         /// <returns></returns>
-        private MatchComponent ConstructComponent(ConnectedComponent subGraph)
+        private MatchComponent ConstructComponent(ConnectedComponent subGraph, Dictionary<string, MatchEdge> revEdgeDict,
+            Dictionary<Tuple<string, bool>, Statistics> srcNodeStatisticsDict)
         {
-            var componentStates = new List<MatchComponent>();
+            //var componentStates = new List<MatchComponent>();
             MatchComponent optimalFinalComponent = null;
 
             //Init
             double maxValue = Double.MinValue;
-            foreach (var node in subGraph.Nodes)
-            {
-                if (!subGraph.IsTailNode[node.Value])
-                {
-                    // Enumerate on each edge for a node to generate the intial states
-                    var nodeEdgeCount = node.Value.Neighbors.Count;
-                    int eNum = (int) Math.Pow(2, nodeEdgeCount) - 1;
-                    while (eNum > 0)
-                    {
-                        var nodeInitialEdges = new List<MatchEdge>();
-                        for (int i = 0; i < nodeEdgeCount; i++)
-                        {
-                            int index = (1 << i);
-                            if ((eNum & index) != 0)
-                            {
-                                nodeInitialEdges.Add(node.Value.Neighbors[i]);
-                            }
-                        }
-                        componentStates.Add(new MatchComponent(node.Value, nodeInitialEdges, _graphMetaData));
-                        eNum--;
-                    }
-                }
-            }
-
+            var componentStates = subGraph.Nodes.Select(node => new MatchComponent(node.Value)).ToList();
 
             // DP
             while (componentStates.Any())
@@ -1416,7 +1650,7 @@ namespace GraphView
                     var nodeUnits = GetNodeUnits(subGraph, curComponent);
                     if (!nodeUnits.Any()
                         && curComponent.ActiveNodeCount == subGraph.ActiveNodeCount
-                        && curComponent.EdgeMaterilizedDict.Count == subGraph.EdgeCount
+                        && curComponent.EdgeMaterilizedDict.Count(e => e.Value == true) == subGraph.EdgeCount
                         )
                     {
                         if (optimalFinalComponent == null || curComponent.Cost < optimalFinalComponent.Cost)
@@ -1427,7 +1661,7 @@ namespace GraphView
                         continue;
                     }
 
-                    var candidateUnits = _pruningStrategy.GetCandidateUnits(nodeUnits, curComponent);
+                    var candidateUnits = _pruningStrategy.GetCandidateUnits(nodeUnits, curComponent, revEdgeDict);
 
                     // Iterates on the candidate node units & add it to the current component to generate next states
                     foreach (var candidateUnit in candidateUnits)
@@ -1437,12 +1671,18 @@ namespace GraphView
                         if (optimalFinalComponent != null)
                         {
                             double candidateSize = candidateUnit.TreeRoot.EstimatedRows*
-                                                   candidateUnit.UnmaterializedEdges.Select(e => e.AverageDegree)
+                                                   candidateUnit.PreMatOutgoingEdges.Select(e => e.AverageDegree)
                                                        .Aggregate(1.0, (cur, next) => cur*next)*
-                                                   candidateUnit.MaterializedEdges.Select(e => e.AverageDegree)
+                                                   candidateUnit.PostMatOutgoingEdges.Select(e => e.AverageDegree)
+                                                       .Aggregate(1.0, (cur, next) => cur*next)*
+                                                   candidateUnit.UnmaterializedEdges.Select(e => e.AverageDegree)
                                                        .Aggregate(1.0, (cur, next) => cur*next);
-                            double costLowerBound = curComponent.Cardinality + candidateSize;
-                            if (candidateUnit.MaterializedEdges.Count == 0)
+                            double costLowerBound = curComponent.Cardinality*
+                                                    candidateUnit.PreMatIncomingEdges.Select(e => e.AverageDegree)
+                                                       .Aggregate(1.0, (cur, next) => cur * next) 
+                                                    + candidateSize;
+
+                            if (candidateUnit.JoinHint == JoinHint.Loop)
                                 costLowerBound = Math.Min(costLowerBound,
                                     Math.Log(candidateUnit.TreeRoot.EstimatedRows, 512));
                             if (curComponent.Cost + costLowerBound >
@@ -1452,7 +1692,8 @@ namespace GraphView
                             }
                         }
 
-                        var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator,_graphMetaData);
+                        var newComponent = curComponent.GetNextState(candidateUnit, _statisticsCalculator, _graphMetaData, srcNodeStatisticsDict);
+
                         if (nextCompnentStates.Count >= MaxStates)
                         {
                             if (maxIndex < 0)
@@ -1498,62 +1739,42 @@ namespace GraphView
             var removeSchemaVisitor = new RemoveSchemanameInIdentifersVisitor();
             removeSchemaVisitor.Visit(node);
 
-            string newWhereString = "";
             foreach (var component in components)
             {
-                // Adds predicates for split nodes
-                var component1 = component;
-                foreach (
-                    var compNode in
-                        component.MaterializedNodeSplitCount.Where(
-                            e => e.Value > 0 && e.Key.Predicates != null && e.Key.Predicates.Any()))
-                {
-                    var matchNode = compNode.Key;
-
-                    WBooleanExpression newExpression =
-                        matchNode.Predicates.Aggregate<WBooleanExpression, WBooleanExpression>(null,
-                            WBooleanBinaryExpression.Conjunction);
-                    string predicateString = newExpression.ToString();
-                    var nodeCount = component1.MaterializedNodeSplitCount[matchNode];
-
-                    while (nodeCount > 0)
-                    {
-                        newWhereString += " AND ";
-                        string tempStr = predicateString.Replace(string.Format("[{0}]", matchNode.RefAlias.ToUpper()),
-                            string.Format("[{0}_{1}]", matchNode.RefAlias.ToUpper(), nodeCount));
-                        tempStr = tempStr.Replace(string.Format("[{0}]", matchNode.RefAlias.ToLower()),
-                            string.Format("[{0}_{1}]", matchNode.RefAlias.ToLower(), nodeCount));
-                        newWhereString += tempStr;
-                        nodeCount--;
-                    }
-                }
-
-                // Cross apply the unmaterilized edges which point to the optimized tail nodes
-                Dictionary<MatchNode,MatchEdge> UnMatEdgeJoinDict = new Dictionary<MatchNode, MatchEdge>();
-                foreach (var unMatEdge in component.EdgeMaterilizedDict.Where(e => !e.Value).Select(e=>e.Key))
-                {
-                    component.TableRef = component.SpanTableRef(component.TableRef,
-                        unMatEdge, component.GetNodeRefName(unMatEdge.SourceNode),_graphMetaData);
-                    MatchEdge joinEdge;
-                    if (UnMatEdgeJoinDict.TryGetValue(unMatEdge.SinkNode, out joinEdge))
-                    {
-                        if (!string.IsNullOrEmpty(newWhereString))
-                            newWhereString += " AND ";
-                        newWhereString += string.Format("{0}.Sink = {1}.Sink", joinEdge.EdgeAlias, unMatEdge.EdgeAlias);
-                    }
-                    else
-                    {
-                        UnMatEdgeJoinDict[unMatEdge.SinkNode] = unMatEdge;
-                    }
-                }
+                //// Cross apply the unmaterilized edges which point to the optimized tail nodes
+                //Dictionary<MatchNode, MatchEdge> UnMatEdgeJoinDict = new Dictionary<MatchNode, MatchEdge>();
+                //foreach (var unMatEdge in component.EdgeMaterilizedDict.Where(e => !e.Value).Select(e => e.Key))
+                //{
+                //    component.TableRef = component.SpanTableRef(component.TableRef,
+                //        unMatEdge, component.GetNodeRefName(unMatEdge.SourceNode), _graphMetaData);
+                //    MatchEdge joinEdge;
+                //    if (UnMatEdgeJoinDict.TryGetValue(unMatEdge.SinkNode, out joinEdge))
+                //    {
+                //        if (!string.IsNullOrEmpty(newWhereString))
+                //            newWhereString += " AND ";
+                //        newWhereString += string.Format("{0}.Sink = {1}.Sink", joinEdge.EdgeAlias, unMatEdge.EdgeAlias);
+                //    }
+                //    else
+                //    {
+                //        UnMatEdgeJoinDict[unMatEdge.SinkNode] = unMatEdge;
+                //    }
+                //}
 
                 // Updates from clause
                 node.FromClause.TableReferences.Add(component.TableRef);
             }
 
-            if (!string.IsNullOrEmpty(newWhereString))
+
+            WBooleanExpression attachWhereCondition = null;
+            foreach (var component in components)
             {
-                if (node.WhereClause!=null && node.WhereClause.SearchCondition!=null)
+                attachWhereCondition = WBooleanBinaryExpression.Conjunction(attachWhereCondition,
+                    component.WhereCondition);
+            }
+
+            if (attachWhereCondition != null)
+            {
+                if (node.WhereClause != null && node.WhereClause.SearchCondition != null)
                     node.WhereClause.SearchCondition = new WBooleanParenthesisExpression
                     {
                         Expression = node.WhereClause.SearchCondition
@@ -1562,9 +1783,9 @@ namespace GraphView
                 {
                     node.WhereClause = new WWhereClause();
                 }
-                node.WhereClause.GhostString = newWhereString;
+                node.WhereClause.SearchCondition = WBooleanBinaryExpression.Conjunction(attachWhereCondition,
+                    node.WhereClause.SearchCondition);
             }
-            
         }
 
         /// <summary>
@@ -1627,7 +1848,7 @@ namespace GraphView
 
             if (graph != null)
             {
-                OptimizeTail(node, graph);
+                //OptimizeTail(node, graph);
                 AttachPredicates(node.WhereClause,graph);
                 EstimateRows(graph);
                 RetrieveStatistics(graph);
@@ -1637,7 +1858,7 @@ namespace GraphView
                 {
 
 
-                    components.Add(ConstructComponent(subGraph));
+                    components.Add(ConstructComponent(subGraph, graph.ReversedEdgeDict, graph.SourceNodeStatisticsDict));
 #if DEBUG
                     foreach (var matchNode in subGraph.Nodes.Values)
                     {

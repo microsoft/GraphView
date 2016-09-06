@@ -30,6 +30,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -39,79 +40,150 @@ namespace GraphView
     /// </summary>
     internal interface IMatchJoinPruning
     {
-        IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component);
+        IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<OneHeightTree> trees,
+            MatchComponent component, Dictionary<string, MatchEdge> revEdgeDict);
     }
 
     internal class PruneJointEdge : IMatchJoinPruning
     {
-        public IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<Tuple<OneHeightTree, bool>> treeTuples, MatchComponent component)
+        public IEnumerable<CandidateJoinUnit> GetCandidateUnits(IEnumerable<OneHeightTree> trees, 
+            MatchComponent component, Dictionary<string, MatchEdge> revEdgeDict)
         {
-            foreach (var treeTuple in treeTuples)
+            foreach (var tree in trees)
             {
-                var tree = treeTuple.Item1;
-                bool singleNode = treeTuple.Item2;
+                //bool singleNode = treeTuple.Item2;
                 var root = tree.TreeRoot;
 
-                List<MatchEdge> jointEdges = new List<MatchEdge>();
-                List<MatchEdge> unpopEdges = new List<MatchEdge>();
-
-                if (singleNode)
+                List<MatchEdge> inEdges;
+                component.UnmaterializedNodeMapping.TryGetValue(root, out inEdges);
+                var outEdges = new List<MatchEdge>();
+                var unpopEdges = new List<MatchEdge>();
+                foreach (var edge in tree.Edges)
                 {
-                    unpopEdges = tree.Edges;
+                    if (component.Nodes.Contains(edge.SinkNode))
+                        outEdges.Add(edge);
+                    else
+                        unpopEdges.Add(edge);
                 }
-                else
+
+                var rawEdges = new Dictionary<string, Tuple<MatchEdge, EdgeDir>>();
+                var extInEdges = new Dictionary<string, MatchEdge>();
+                if (inEdges != null)
                 {
-                    foreach (var edge in tree.Edges)
+                    rawEdges = inEdges.ToDictionary(edge => edge.EdgeAlias,
+                        edge => new Tuple<MatchEdge, EdgeDir>(edge, EdgeDir.In));
+                    extInEdges = inEdges.ToDictionary(edge => edge.EdgeAlias);
+                }
+                foreach (var edge in outEdges)
+                {
+                    var key = edge.EdgeAlias;
+                    rawEdges.Add(key, new Tuple<MatchEdge, EdgeDir>(edge, EdgeDir.Out));
+                    if (edge.HasReversedEdge)
+                        extInEdges.Add(key, revEdgeDict[key]);
+                }
+
+                var extOutEdges = outEdges.ToDictionary(edge => edge.EdgeAlias);
+                if (inEdges != null)
+                {
+                    foreach (var key in inEdges.Where(edge => edge.HasReversedEdge).Select(edge => edge.EdgeAlias))
                     {
-                        if (component.Nodes.Contains(edge.SinkNode))
-                            jointEdges.Add(edge);
-                        else
-                            unpopEdges.Add(edge);
+                        extOutEdges.Add(key, revEdgeDict[key]);
                     }
                 }
-                //var jointEdges = tree.MaterializedEdges;
-                //var unpopEdges = tree.UnmaterializedEdges;
-                int joinEdgesCount = jointEdges.Count;
-                int unpopEdgesCount = unpopEdges.Count;
 
-                int num = (int)Math.Pow(2, joinEdgesCount) - 1;
-                while (num >= 0)
+                var sortedExtInEdges = (from entry in extInEdges
+                    orderby entry.Value.AverageDegree ascending
+                    select entry).ToList();
+                var sortedExtOutEdges = (from entry in extOutEdges
+                    orderby entry.Value.AverageDegree ascending
+                    select entry).ToList();
+
+                // plan type 1: A => B, Loop Join, might use Hash if |A|/|B| is too large
+                if (sortedExtInEdges.Any())
                 {
-                    if (joinEdgesCount>0 && num==0) break;
-                    var newJointEdges = new List<MatchEdge>();
-                    for (int i = 0; i < joinEdgesCount; i++)
+                    var preMatInEdges = new Dictionary<string, MatchEdge>
                     {
-                        int index = (1 << i);
-                        if ((num & index) != 0)
+                        {sortedExtInEdges[0].Key, sortedExtInEdges[0].Value}
+                    };
+                    for (var i = 1; i < sortedExtInEdges.Count; ++i)
+                    {
+                        if (sortedExtInEdges[i].Value.AverageDegree < 1)
                         {
-                            var edge = jointEdges[i];
-                            newJointEdges.Add(edge);
+                            preMatInEdges.Add(sortedExtInEdges[i].Key, sortedExtInEdges[i].Value);
                         }
                     }
-
-                    int eNum = (int)Math.Pow(2, unpopEdgesCount) - 1;
-                    while (eNum >= 0)
+                    var postMatEdges =
+                            rawEdges.Where(entry => !preMatInEdges.ContainsKey(entry.Key))
+                                .Select(entry => entry.Value).ToList();
+                    for (var i = 0; i < postMatEdges.Count; ++i)
                     {
-                        if (eNum == 0 && singleNode) break;
-                        var newUnpopEdges = new List<MatchEdge>();
-                        for (int i = 0; i < unpopEdgesCount; i++)
-                        {
-                            int index = (1 << i);
-                            if ((eNum & index) != 0)
-                            {
-                                newUnpopEdges.Add(unpopEdges[i]);
-                            }
-                        }
-                        
-                        yield return new CandidateJoinUnit
-                        {
-                            TreeRoot = root,
-                            MaterializedEdges = newJointEdges,
-                            UnmaterializedEdges = newUnpopEdges,
-                        };
-                        eNum--;
+                        var t = postMatEdges[i];
+                        var edge = t.Item1;
+                        var dir = t.Item2;
+                        if (!edge.HasReversedEdge) continue;
+
+                        var revEdge = revEdgeDict[edge.EdgeAlias];
+                        if (revEdge.AverageDegree < edge.AverageDegree)
+                            postMatEdges[i] = new Tuple<MatchEdge, EdgeDir>(revEdge,
+                                dir == EdgeDir.In ? EdgeDir.Out : EdgeDir.In);
                     }
-                    num--;
+
+                    yield return new CandidateJoinUnit
+                    {
+                        TreeRoot = root,
+                        PreMatIncomingEdges = preMatInEdges.Select(entry => entry.Value)
+                                                  .OrderBy(edge => edge.AverageDegree).ToList(),
+                        PreMatOutgoingEdges = new List<MatchEdge>(),
+                        PostMatIncomingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.In)
+                                                   .Select(entry => entry.Item1).ToList(),
+                        PostMatOutgoingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.Out)
+                                                   .Select(entry => entry.Item1).ToList(),
+                        UnmaterializedEdges = unpopEdges,
+                        JoinHint = JoinHint.Loop,
+                    };
+                }
+                // plan type 2: A <= B, Hash join
+                else if (sortedExtOutEdges.Any())
+                {
+                    var preMatOutEdges = new Dictionary<string, MatchEdge>
+                    {
+                        {sortedExtOutEdges[0].Key, sortedExtOutEdges[0].Value}
+                    };
+                    for (var i = 1; i < sortedExtOutEdges.Count; ++i)
+                    {
+                        if (sortedExtOutEdges[i].Value.AverageDegree < 1)
+                        {
+                            preMatOutEdges.Add(sortedExtOutEdges[i].Key, sortedExtOutEdges[i].Value);
+                        }
+                    }
+                    var postMatEdges =
+                        rawEdges.Where(entry => !preMatOutEdges.ContainsKey(entry.Key))
+                            .Select(entry => entry.Value).ToList();
+                    for (var i = 0; i < postMatEdges.Count; ++i)
+                    {
+                        var t = postMatEdges[i];
+                        var edge = t.Item1;
+                        var dir = t.Item2;
+                        if (!edge.HasReversedEdge) continue;
+
+                        var revEdge = revEdgeDict[edge.EdgeAlias];
+                        if (revEdge.AverageDegree < edge.AverageDegree)
+                            postMatEdges[i] = new Tuple<MatchEdge, EdgeDir>(revEdge,
+                                dir == EdgeDir.In ? EdgeDir.Out : EdgeDir.In);
+                    }
+
+                    yield return new CandidateJoinUnit
+                    {
+                        TreeRoot = root,
+                        PreMatIncomingEdges = new List<MatchEdge>(),
+                        PreMatOutgoingEdges = preMatOutEdges.Select(entry => entry.Value).ToList(),
+                        PostMatIncomingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.In)
+                                                   .Select(entry => entry.Item1).ToList(),
+                        PostMatOutgoingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.Out)
+                                                   .Select(entry => entry.Item1).ToList(),
+                        UnmaterializedEdges = unpopEdges,
+                        JoinHint = JoinHint.Hash,
+                    };
                 }
             }
         }

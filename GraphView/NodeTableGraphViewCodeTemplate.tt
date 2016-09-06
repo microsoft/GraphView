@@ -74,14 +74,20 @@ public partial class UserDefinedFunctions
 		IsDeterministic = true,
 		IsPrecise = false
 		)]
-	public static IEnumerable <#=edgeName#>Decoder(SqlBytes array, SqlBytes deleteEdge)
+	public static IEnumerable <#=edgeName#>Decoder(SqlBytes array, SqlBytes deleteEdge, long dumb = 0)
 	{
-		var deleDict =  new Dictionary<Int32, bool>();
+		//var deleDict =  new Dictionary<Int32, bool>();
+		Dictionary<Int32, bool> deleDict = null;
 		if (deleteEdge != null && !deleteEdge.IsNull)
 		{	
 			var delebr = new BinaryReader(deleteEdge.Stream);
 			while (delebr.BaseStream.Position != delebr.BaseStream.Length)
 			{
+                if (deleDict == null)
+                {
+                    deleDict = new Dictionary<int, bool>();
+                }
+				//deleDict.Add(delebr.ReadInt32(), true);
 				deleDict[delebr.ReadInt32()] = true;
 			}
 		}
@@ -89,42 +95,58 @@ public partial class UserDefinedFunctions
 			yield break;
 		var br = new BinaryReader(array.Stream);
 		var edgeid = (Int32)0;
-		if (deleDict.Count == 0)
+		if (deleDict == null || deleDict.Count == 0)
 		{
-			while (br.BaseStream.Position != br.BaseStream.Length)
-			{
-				edgeid++;
 			<#if (byteSize != 0) {#>
-			byte[] bitmap = br.ReadBytes(<#=byteSize#>);
-			<#}#>
-				var sink = br.ReadInt64();
-<#
-					indent += "    ";
-					var count = 0;
-					foreach (var variable in variables)
-					{
-						var variableName = variable.Item1;
-						var variableType = variable.Item2;
-						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
-						if (attributeSize == 0) {
-							str = "";
-						}
-						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
-						count++;
-					}
-#>
-				yield return new <#=edgeName#>DecoderResult
+				while (br.BaseStream.Position != br.BaseStream.Length)
 				{
-					Sink = sink, EdgeId = edgeid,
-<#
-					indent += "    ";
-					for (var i = 0; i < variables.Count; ++i)
+					edgeid++;
+				<#if (byteSize != 0) {#>
+				byte[] bitmap = br.ReadBytes(<#=byteSize#>);
+				<#}#>
+					var sink = br.ReadInt64();
+	<#
+						indent += "    ";
+						var count = 0;
+						foreach (var variable in variables)
+						{
+							var variableName = variable.Item1;
+							var variableType = variable.Item2;
+							var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+							if (attributeSize == 0) {
+								str = "";
+							}
+							WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
+							count++;
+						}
+	#>
+					yield return new <#=edgeName#>DecoderResult
 					{
-						WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
-					}
-#>
-				};
-			}
+						Sink = sink, EdgeId = edgeid,
+	<#
+						indent += "    ";
+						for (var i = 0; i < variables.Count; ++i)
+						{
+							WriteLine(indent + variables[i].Item1 + " = _" + variables[i].Item1 + ",");
+						}
+	#>
+					};
+				}
+			<#} else {#>
+
+				var len = (int) array.Length;
+				var longArray = new long[len >> 3];
+				Buffer.BlockCopy(array.Buffer, 0, longArray, 0, len);
+				len = len >> 3;
+				for (int i = 0; i < len; i++)
+				{
+					edgeid++;
+					yield return new <#=edgeName#>DecoderResult
+					{
+						Sink = longArray[i], EdgeId = edgeid,
+					};
+				}
+			<#}#>
 		}
 		else 
 		{
@@ -137,17 +159,17 @@ public partial class UserDefinedFunctions
 				var sink = br.ReadInt64();
 <#
 					indent += "    ";
-					count = 0;
+					var count2 = 0;
 					foreach (var variable in variables)
 					{
 						var variableName = variable.Item1;
 						var variableType = variable.Item2;
-						var str = "((bitmap["+ (count / 8).ToString() + "]" + " & " + (1 << (count%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
+						var str = "((bitmap["+ (count2 / 8).ToString() + "]" + " & " + (1 << (count2%8)).ToString() + ") == 0)? Sql" + typeDictionary[variableType].Item2 + ".Null" +" :";
 						if (attributeSize == 0) {
 							str = "";
 						}
 						WriteLine(indent + "var _" + variableName + " = " + str + "br.Read" + typeDictionary[variableType].Item2 + "();");
-						count++;
+						count2++;
 					}
 #>
 				if (!deleDict.ContainsKey(edgeid)) {
@@ -171,7 +193,7 @@ public partial class UserDefinedFunctions
 	private class <#=edgeName#>ExclusiveEdgeGeneratorResult 
 	{
 		public int EdgeId{get; set;}
-		public long EdgeColumnId {get; set;}
+		public int EdgeColumnId {get; set;}
 		public long SinkId{get; set;}
 <#foreach (var variable in variables) {#>
 		public Sql<#=typeDictionary[variable.Item2].Item2#> <#=variable.Item1#> { get; set; }
@@ -180,7 +202,7 @@ public partial class UserDefinedFunctions
 
 	public static void <#=edgeName#>ExclusiveEdgeGenerator_FillRow(
 		object tableTypeObject,
-		out SqlInt32 EdgeId, out SqlInt64 EdgeColumnId, out SqlInt64 SinkId <#
+		out SqlInt32 EdgeId, out SqlInt32 EdgeColumnId, out SqlInt64 SinkId <#
 		for (var i = 0; i < variables.Count; ++i)
 		{
 			WriteLine(",");
@@ -199,7 +221,7 @@ public partial class UserDefinedFunctions
 	
 		[SqlFunction(
 		DataAccess = DataAccessKind.None,
-		TableDefinition = "EdgeId int, EdgeColumnId bigint, SinkId bigint",
+		TableDefinition = "EdgeId int, EdgeColumnId int, SinkId bigint",
 		FillRowMethodName = "<#=edgeName#>ExclusiveEdgeGenerator_FillRow",
 		IsDeterministic = true,
 		IsPrecise = false
@@ -208,23 +230,55 @@ public partial class UserDefinedFunctions
 	{
 		if (array == null || array.IsNull)
 			yield break;
-		//var PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? new MemoryStream(PathVarbinary.Value) : new MemoryStream();
-		Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
-		var brPath = new BinaryReader(PathMemory);
-		var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		//Stream PathMemory = (PathVarbinary != null && !PathVarbinary.IsNull) ? PathVarbinary.Stream : new MemoryStream();
+		//var brPath = new BinaryReader(PathMemory);
+		//var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		//if (PathVarbinary != null && !PathVarbinary.IsNull) {
+		//	while (brPath.BaseStream.Position != brPath.BaseStream.Length)
+		//	{
+		//		var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
+		//		PathDict[Edgeid] = true;
+		//	}
+		//}
+
+		var len = (int) PathVarbinary.Length;
+		var longArray = new long[len >> 3];
+		Buffer.BlockCopy(PathVarbinary.Buffer, 0, longArray, 0, len);
+		//var PathDict =  new Dictionary<int, bool>();
+		Dictionary<int, bool> PathDict = null;
+		len = len >> 3;
 		if (PathVarbinary != null && !PathVarbinary.IsNull) {
-			while (brPath.BaseStream.Position != brPath.BaseStream.Length)
+			for (int i = 0; i < len; i += 2) 
 			{
-				var Edgeid = Tuple.Create(brPath.ReadInt64(), brPath.ReadInt64(), brPath.ReadInt32());
-				PathDict[Edgeid] = true;
+				if (longArray[i] == nodeid.Value) {
+					var Edgeid = (int)longArray[i+1];
+					if (PathDict == null) {
+						PathDict = new Dictionary<int, bool>();
+					}
+					PathDict.Add(Edgeid,true);
+				}
 			}
 		}
-		if (PathDict.Count == 0) 
+		
+
+		//var len = (int) PathVarbinary.Length;
+		//var PathDict =  new Dictionary<Tuple<long, long, Int32>, bool>();
+		//if (PathVarbinary != null && !PathVarbinary.IsNull) {
+		//	for (int i = 0; i < len; i += 24) 
+		//	{
+		//		var Edgeid = Tuple.Create(BitConverter.ToInt64(PathVarbinary.Buffer, i),
+		//								BitConverter.ToInt64(PathVarbinary.Buffer, i + 8),
+		//								(int)BitConverter.ToInt64(PathVarbinary.Buffer, i + 16));
+		//		PathDict[Edgeid] = true;
+		//	}
+		//}
+
+		if (PathDict == null || PathDict.Count == 0) 
 		{
 			foreach (var it in <#=edgeName#>Decoder(array, dele))
 			{
 				var  adjacent = it as <#=edgeName#>DecoderResult;
-				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+				var EdgeId = Tuple.Create(nodeid.Value, <#=edgeColumnId#>, adjacent.EdgeId);
 					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
 					{
 						EdgeId = adjacent.EdgeId,
@@ -243,7 +297,7 @@ public partial class UserDefinedFunctions
 			foreach (var it in <#=edgeName#>Decoder(array, dele))
 			{
 				var  adjacent = it as <#=edgeName#>DecoderResult;
-				var EdgeId = Tuple.Create(nodeid.Value, (long) <#=edgeColumnId#>, adjacent.EdgeId);
+				var EdgeId = adjacent.EdgeId;
 				if (!PathDict.ContainsKey(EdgeId))
 				{
 					yield return new <#=edgeName#>ExclusiveEdgeGeneratorResult
@@ -262,6 +316,59 @@ public partial class UserDefinedFunctions
 		}
 		yield break;
 	}
+	
+    //Path Decoder(differ nodes)
+    private class <#=edgeName#>ExclusiveNodeGeneratorResult 
+    {
+      public long SinkId{get; set;}
+    }
+
+    public static void <#=edgeName#>ExclusiveNodeGenerator_FillRow(
+      object tableTypeObject,
+      out SqlInt64 SinkId)
+    {
+      var decoderResult = (<#=edgeName#>ExclusiveNodeGeneratorResult)tableTypeObject;
+      SinkId = decoderResult.SinkId;
+    }
+	
+		[SqlFunction(
+		DataAccess = DataAccessKind.None,
+		TableDefinition = "SinkId bigint",
+		FillRowMethodName = "<#=edgeName#>ExclusiveNodeGenerator_FillRow",
+		IsDeterministic = true,
+		IsPrecise = false
+		)]
+    public static IEnumerable <#=edgeName#>ExclusiveNodeGenerator(SqlBytes  PathVarbinary, SqlBytes array, SqlBytes dele)
+    {
+      if (array == null || array.IsNull)
+        yield break;
+
+      bool temp;
+      var len = (int) PathVarbinary.Length;
+      var longArray = new long[len >> 3];
+      Buffer.BlockCopy(PathVarbinary.Buffer, 0, longArray, 0, len);
+
+      var PathDict = new Dictionary<long, bool>();
+      len = len >> 3;
+		for (int i = 0; i < len; i++) 
+		{
+			PathDict.Add(longArray[i],true);
+		}
+      
+      foreach (var it in <#=edgeName#>Decoder(array, dele))
+      {
+        var  adjacent = it as <#=edgeName#>DecoderResult;
+        if (!PathDict.TryGetValue(adjacent.Sink, out temp))
+        {
+          yield return new <#=edgeName#>ExclusiveNodeGeneratorResult
+          {
+            SinkId = adjacent.Sink
+          };
+        }
+      }
+
+      yield break;
+    }
 
 	[Microsoft.SqlServer.Server.SqlFunction(
 		DataAccess = DataAccessKind.None,

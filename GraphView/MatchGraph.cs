@@ -39,6 +39,9 @@ namespace GraphView
         public WColumnReferenceExpression EdgeColumn { get; set; }
         public string EdgeAlias { get; set; }
         public MatchNode SinkNode { get; set; }
+        public bool IsEdgeView { get; set; }
+        public bool IsReversedEdge { get; set; }
+        public bool HasReversedEdge { get; set; }
 
 
         /// <summary>
@@ -58,6 +61,7 @@ namespace GraphView
         /// Constructs parameters for the edge table-valued function when translation the MATCH clause
         /// </summary>
         /// <param name="nodeAlias">Source node alias</param>
+        /// <param name="dumbNode">Dumb node parameter alias</param>
         /// <param name="nodeTableNameSet">Node table names mapping to the source node of the edge. 
         /// If null, the source node is mapped to a physical table in the syntax tree. Otherewise, 
         /// the source node is mapped to a node view</param>
@@ -65,7 +69,7 @@ namespace GraphView
         /// If null, the edge is mapped to an edge column in a physical node table. Ohterwise,
         /// the edge is mapped to an edge view</param>
         /// <returns>Parameters in the table-valued function</returns>
-        protected List<WScalarExpression> ConstructEdgeTvfParameters(string nodeAlias, 
+        protected List<WScalarExpression> ConstructEdgeTvfParameters(string nodeAlias, string dumbNode,
             HashSet<string> nodeTableNameSet = null, List<Tuple<string, string>> edgeNameTuples=null)
         {
             var edgeIdentifiers = EdgeColumn.MultiPartIdentifier.Identifiers;
@@ -93,20 +97,29 @@ namespace GraphView
                 // The edge is an edge view
                 else
                 {
+                    var sourceTableName = WNamedTableReference.SchemaNameToTuple(SourceNode.NodeTableObjectName).Item2;
                     foreach (var column in edgeNameTuples)
                     {
-                        Identifier includedEdgeColumnIdentifier = new Identifier { Value = column.Item2 };
-                        parameters.Add(new WColumnReferenceExpression
+                        if (sourceTableName.Equals(column.Item1, StringComparison.OrdinalIgnoreCase))
                         {
-                            MultiPartIdentifier =
-                                new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
-                        });
-                        parameters.Add(new WColumnReferenceExpression
+                            Identifier includedEdgeColumnIdentifier = new Identifier {Value = column.Item2};
+                            parameters.Add(new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier =
+                                    new WMultiPartIdentifier(srcNodeIdentifier, includedEdgeColumnIdentifier)
+                            });
+                            parameters.Add(new WColumnReferenceExpression
+                            {
+                                MultiPartIdentifier =
+                                    new WMultiPartIdentifier(srcNodeIdentifier,
+                                        new Identifier {Value = includedEdgeColumnIdentifier.Value + "DeleteCol"})
+                            });
+                        }   
+                        else
                         {
-                            MultiPartIdentifier =
-                                new WMultiPartIdentifier(srcNodeIdentifier,
-                                    new Identifier { Value = includedEdgeColumnIdentifier.Value + "DeleteCol" })
-                        });
+                            parameters.Add(new WValueExpression { Value = "null" });
+                            parameters.Add(new WValueExpression { Value = "null" });
+                        }
                     }
                 }
             }
@@ -165,36 +178,113 @@ namespace GraphView
                     }
                 }
             }
+            // dumbNode == NULL -> pathFunction, no dumb alias
+            if (dumbNode != null)
+            {
+                if (string.IsNullOrEmpty(dumbNode))
+                    parameters.Add(new WValueExpression { Value = "0" });
+                else
+                {
+                    parameters.Add(new WColumnReferenceExpression
+                    {
+                        MultiPartIdentifier = new WMultiPartIdentifier(
+                            new Identifier {Value = dumbNode},
+                            new Identifier {Value = "GlobalNodeId"}
+                            ),
+                    });
+                }
+            }
+
             return parameters;
         }
+
+        //public virtual WSchemaObjectFunctionTableReference ToSchemaObjectFunction(string nodeAlias, GraphMetaData metaData)
+        //{
+        //    var edgeIdentifiers = EdgeColumn.MultiPartIdentifier.Identifiers;
+        //    var edgeColIdentifier = edgeIdentifiers.Last();
+        //    var edgeColName = edgeColIdentifier.Value;
+
+        //    HashSet<string> nodeSet;
+        //    if (!metaData.NodeViewMapping.TryGetValue(
+        //        WNamedTableReference.SchemaNameToTuple(SourceNode.NodeTableObjectName), out nodeSet))
+        //        nodeSet = null;
+        //    NodeColumns columnInfo = metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)][
+        //        edgeColIdentifier.Value];
+        //    EdgeInfo edgeInfo = columnInfo.EdgeInfo;
+        //    List<Tuple<string, string>> edgeTuples = edgeInfo.EdgeColumns;
+        //    var parameters = ConstructEdgeTvfParameters(nodeAlias, "", nodeSet, edgeTuples);
+
+        //    //var isRevEdge = columnInfo.IsReversedEdge;
+        //    //string refTableName = null, originalEdgeName = null;
+        //    //if (isRevEdge)
+        //    //{
+        //    //    var index = edgeColName.IndexOf('_');
+        //    //    refTableName = edgeColName.Substring(0, index);
+        //    //    originalEdgeName = edgeColName.Substring(index + 1,
+        //    //        edgeColName.Length - "Reversed".Length - index - 1);
+        //    //}
+        //    //var decoderSchemaName = isRevEdge ? columnInfo.RefTableSchema : BindNodeTableObjName.SchemaIdentifier.Value;
+        //    //var decoderTableName = isRevEdge ? refTableName : BindNodeTableObjName.BaseIdentifier.Value;
+        //    //var decoderEdgeName = isRevEdge ? originalEdgeName : EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value;
+        //    //var decoderStr = decoderSchemaName + "_" + decoderTableName + "_" + decoderEdgeName + "_Decoder";
+
+        //    var decoderFunction = new Identifier
+        //    {
+        //        Value = edgeInfo.EdgeUdfPrefix + "_Decoder",
+        //    };
+        //    return new WSchemaObjectFunctionTableReference
+        //    {
+        //        SchemaObject = new WSchemaObjectName(
+        //            new Identifier { Value = "dbo" },
+        //            decoderFunction),
+        //        Parameters = parameters,
+        //        Alias = new Identifier
+        //        {
+        //            Value = EdgeAlias,
+        //        }
+        //    };
+        //}
 
         /// <summary>
         /// Converts the edge to the table-valued function
         /// </summary>
         /// <param name="nodeAlias">Source node alias</param>
+        /// <param name="dumbNode">Dumb node parameter alias</param>
         /// <param name="metaData">Meta data</param>
         /// <returns>A syntax tree node representing the table-valued function</returns>
-        public virtual WSchemaObjectFunctionTableReference ToSchemaObjectFunction(string nodeAlias, GraphMetaData metaData)
+        public virtual WSchemaObjectFunctionTableReference ToSchemaObjectFunction(string nodeAlias, string dumbNode, GraphMetaData metaData)
         {
             var edgeIdentifiers = EdgeColumn.MultiPartIdentifier.Identifiers;
             var edgeColIdentifier = edgeIdentifiers.Last();
+            var edgeColName = edgeColIdentifier.Value;
+            var bindNodeTableTuple = WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName);
 
             HashSet<string> nodeSet;
             if (!metaData.NodeViewMapping.TryGetValue(
                 WNamedTableReference.SchemaNameToTuple(SourceNode.NodeTableObjectName), out nodeSet))
                 nodeSet = null;
-            EdgeInfo edgeInfo =
+
+            if (IsEdgeView && IsReversedEdge)
+            {
+                var sinkNodeTableTuple = WNamedTableReference.SchemaNameToTuple(SinkNode.NodeTableObjectName);
+                var index = edgeColName.IndexOf(sinkNodeTableTuple.Item2, StringComparison.OrdinalIgnoreCase);
+                index += sinkNodeTableTuple.Item2.Length;
+                var originalEdgeViewName = edgeColName.Substring(index + 1,
+                    edgeColName.Length - "Reversed".Length - index - 1);
+                edgeColName = bindNodeTableTuple.Item2 + "_" + originalEdgeViewName + "Reversed";
+            }
+                
+            NodeColumns columnInfo =
                 metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)][
-                    edgeColIdentifier.Value].EdgeInfo;
+                    edgeColName];
+            EdgeInfo edgeInfo = columnInfo.EdgeInfo;
             List<Tuple<string, string>> edgeTuples = edgeInfo.EdgeColumns;
-            var parameters = ConstructEdgeTvfParameters(nodeAlias, nodeSet, edgeTuples);
+
+            var parameters = ConstructEdgeTvfParameters(nodeAlias, dumbNode, nodeSet, edgeTuples);
 
             var decoderFunction = new Identifier
             {
-                Value = BindNodeTableObjName.SchemaIdentifier.Value + '_' +
-                        BindNodeTableObjName.BaseIdentifier.Value + '_' +
-                        EdgeColumn.MultiPartIdentifier.Identifiers.Last().Value + '_' +
-                        "Decoder"
+                Value = edgeInfo.EdgeUdfPrefix + "_Decoder",
             };
             return new WSchemaObjectFunctionTableReference
             {
@@ -251,9 +341,10 @@ namespace GraphView
         /// Converts the edge to the table-valued function
         /// </summary>
         /// <param name="nodeAlias">Source node alias</param>
+        /// <param name="dumbNode"></param>
         /// <param name="metaData">Meta data</param>
         /// <returns>A syntax tree node representing the table-valued function</returns>
-        public override WSchemaObjectFunctionTableReference ToSchemaObjectFunction(string nodeAlias, GraphMetaData metaData)
+        public override WSchemaObjectFunctionTableReference ToSchemaObjectFunction(string nodeAlias, string dumbNode, GraphMetaData metaData)
         {
             var edgeIdentifiers = EdgeColumn.MultiPartIdentifier.Identifiers;
             var edgeColIdentifier = edgeIdentifiers.Last();
@@ -265,7 +356,7 @@ namespace GraphView
                 metaData.ColumnsOfNodeTables[WNamedTableReference.SchemaNameToTuple(BindNodeTableObjName)];
             var edgeInfo = sourceNodeColumns[edgeColIdentifier.Value].EdgeInfo;
             List<Tuple<string, string>> edgeTuples = edgeInfo.EdgeColumns;
-            var parameters = ConstructEdgeTvfParameters(nodeAlias, nodeSet, edgeTuples);
+            var parameters = ConstructEdgeTvfParameters(nodeAlias, null, nodeSet, edgeTuples);
 
             Identifier decoderFunction;
             if (ReferencePathInfo)
@@ -459,6 +550,19 @@ namespace GraphView
     {
         // Fully-connected components in the graph pattern 
         public IList<ConnectedComponent> ConnectedSubGraphs { get; set; }
+
+        // Mapping between one edge and its reversed edge
+        public Dictionary<string, MatchEdge> ReversedEdgeDict { get; set; }
+
+        // Mapping between one edge and its source node's statistics
+        // Used when there are back edges pointed to the first node table in the whole join plan
+        // Tuple<edgeAlias, isReversed>
+        public Dictionary<Tuple<string, bool>, Statistics> SourceNodeStatisticsDict { get; set; }
+
+        public MatchGraph()
+        {
+            ReversedEdgeDict = new Dictionary<string, MatchEdge>();
+        }
 
         public bool ContainsNode(string key)
         {

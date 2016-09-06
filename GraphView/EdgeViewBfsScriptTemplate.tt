@@ -57,7 +57,9 @@ with  allPath(sink, varPath) as (
 			WriteLine(", ");
 			Write("		");
 			Write("@del" + i.ToString());
-		}#>) as newpath
+		}
+		WriteLine(",");
+		Write("		0");#>) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in Attribute) {
 		Write("		");
@@ -146,7 +148,9 @@ with  allPath(sink, varPath, PathMessage) as (
 			WriteLine(", ");
 			Write("		");
 			Write("@del" + i.ToString());
-		}#>) as newpath
+		}
+		WriteLine(",");
+		Write("		0");#>) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in Attribute) {
 		Write("		");

@@ -423,6 +423,7 @@ namespace GraphView
         {
             node.AcceptChildren(this);
         }
+
         public virtual void Visit(WRowValue node)
         {
             node.AcceptChildren(this);
@@ -442,6 +443,11 @@ namespace GraphView
         }
 
         public virtual void Visit(WCommonTableExpression node)
+        {
+            node.AcceptChildren(this);
+        }
+
+        public virtual void Visit(WMultiCommonTableExpression node)
         {
             node.AcceptChildren(this);
         }

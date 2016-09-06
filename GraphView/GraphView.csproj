@@ -74,6 +74,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>NodeTableGraphViewCodeTemplate.tt</DependentUpon>
     </Compile>
+    <Compile Include="ObjectExtensions.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="CreateViewVisitor.cs" />
@@ -88,6 +89,7 @@
     <Compile Include="GraphViewQuickAccess.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="MatchGraphInterface.cs" />
+    <Compile Include="TSQL Syntax Tree\WAlterTableStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
     <Compile Include="TSQL Syntax Tree\WDeclareVariableStatement.cs" />
     <Compile Include="View.cs" />

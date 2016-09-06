@@ -77,7 +77,9 @@
         Write(indent + "SqlBytes array" + i.ToString());
         WriteLine(",");
         Write(indent + "SqlBytes dele" + i.ToString());
-    }#>)
+    }
+    WriteLine(",");
+    Write(indent + "long dumb = 0");#>)
     {
         var edgeid = (Int32)0;
 		var deleDict = new Dictionary<Int32, bool>();
@@ -235,7 +237,9 @@
         Write(indent + "array" + i.ToString());
         WriteLine(",");
         Write(indent + "dele" + i.ToString());
-}#>))
+	}
+    WriteLine(",");
+    Write(indent + "0");#>))
         {
             var  adjacent = it as <#=EdgeName#>DecoderResult;
             var EdgeId = Tuple.Create(nodeid.Value, adjacent.ColumnId, adjacent.EdgeId);

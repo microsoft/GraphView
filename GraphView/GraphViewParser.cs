@@ -1281,7 +1281,168 @@ namespace GraphView
             return fragment;
         }
 
+        /// <summary>
+        /// Parses a ALTER TABLE ADD PROPERTY/EDGE statement. The parser first replaces column annotations with white space, 
+        /// then uses T-SQL parser to parse it, and finally interprets the column annotations.
+        /// </summary>
+        /// <param name="queryStr">The CREATE TABLE statement creating a ndoe table</param>
+        /// <param name="nodeTableColumns">A list of columns of the node table</param>
+        /// <param name="errors">Parsing errors</param>
+        /// <returns>The syntax tree of the CREATE TABLE statement</returns>
+        public WSqlFragment ParseAlterTableAddNodeTableColumnStatement(
+            string queryStr,
+            out List<WNodeTableColumn> nodeTableColumns,
+            out IList<ParseError> errors)
+        {
+            // Gets token stream
+            var tsqlParser = new TSql110Parser(true);
+            var sr = new StringReader(queryStr);
+            var tokens = new List<TSqlParserToken>(tsqlParser.GetTokenStream(sr, out errors));
+            if (errors.Count > 0)
+            {
+                nodeTableColumns = null;
+                return null;
+            }
 
+            // Retrieves node table columns
+            var currentToken = 0;
+            var farestError = 0;
+            nodeTableColumns = new List<WNodeTableColumn>();
+            while (currentToken < tokens.Count)
+            {
+                WNodeTableColumn column = null;
+                if (ParseNodeTableColumn(tokens, ref currentToken, ref column, ref farestError))
+                    nodeTableColumns.Add(column);
+                else
+                    currentToken++;
+            }
+
+            // Replaces column annotations with whitespace
+            foreach (var t in nodeTableColumns)
+            {
+                tokens[t.FirstTokenIndex].TokenType = TSqlTokenType.WhiteSpace;
+                tokens[t.FirstTokenIndex].Text = "";
+            }
+
+            // Parses the remaining statement using the T-SQL parser
+            //IList<ParseError> errors;
+            var parser = new WSqlParser();
+            var fragment = parser.Parse(tokens, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                return null;
+
+            var deltaColumnDefList = new List<WColumnDefinition>();
+            var stmt = fragment.Batches[0].Statements[0] as WAlterTableAddTableElementStatement;
+            if (stmt == null || stmt.Definition == null || stmt.Definition.ColumnDefinitions == null)
+            {
+                return null;
+            }
+            else if (stmt.Definition.ColumnDefinitions.Count != nodeTableColumns.Count)
+            {
+                var error = tokens[stmt.FirstTokenIndex];
+                errors.Add(new ParseError(0, error.Offset, error.Line, error.Column,
+                    "Metadata should be specified for each column when altering a node table"));
+            }
+            
+            var graphColIndex = 0;
+            var rawColumnDef = stmt.Definition.ColumnDefinitions;
+            for (var i = 0; i < rawColumnDef.Count && graphColIndex < nodeTableColumns.Count; ++i, ++graphColIndex)
+            {
+                var nextGraphColumn = nodeTableColumns[graphColIndex];
+                // Skips columns without annotations
+                while (i < rawColumnDef.Count && rawColumnDef[i].LastTokenIndex < nextGraphColumn.FirstTokenIndex)
+                {
+                    ++i;
+                }
+
+                switch (nextGraphColumn.ColumnRole)
+                {
+                    case WNodeTableColumnRole.Edge:
+                        // For an adjacency-list column, its data type is always varbinary(max)
+                        var def = rawColumnDef[i];
+                        def.DataType = new WParameterizedDataTypeReference
+                        {
+                            Name = new WSchemaObjectName(new Identifier { Value = "varbinary" }),
+                            Parameters = new List<Literal> { new MaxLiteral { Value = "max" } }
+                        };
+                        def.Constraints.Add(new WNullableConstraintDefinition { Nullable = false });
+                        def.DefaultConstraint = new WDefaultConstraintDefinition
+                        {
+                            Expression = new WValueExpression
+                            {
+                                Value = "0x"
+                            }
+                        };
+                        // For each adjacency-list column, adds a "delta" column to 
+                        // facilitate deleting edges.
+                        deltaColumnDefList.Add(new WColumnDefinition
+                        {
+                            ColumnIdentifier = new Identifier { Value = def.ColumnIdentifier.Value + "DeleteCol" },
+                            ComputedColumnExpression = def.ComputedColumnExpression,
+                            Constraints = def.Constraints,
+                            DataType = def.DataType,
+                            DefaultConstraint = def.DefaultConstraint,
+                        });
+                        // For each adjacency-list column, adds an integer column to record the list's outgoing degree
+                        deltaColumnDefList.Add(new WColumnDefinition
+                        {
+                            ColumnIdentifier = new Identifier {Value = def.ColumnIdentifier.Value + "OutDegree"},
+                            Constraints = def.Constraints,
+                            DataType = new WParameterizedDataTypeReference
+                            {
+                                Name = new WSchemaObjectName(new Identifier {Value = "int"}),
+                            },
+                            DefaultConstraint = new WDefaultConstraintDefinition
+                            {
+                                Expression = new WValueExpression
+                                {
+                                    Value = "0"
+                                }
+                            }
+                        });
+                        break;
+                    case WNodeTableColumnRole.Property:
+                        break;
+                    default:
+                        var error = tokens[nextGraphColumn.FirstTokenIndex];
+                        errors.Add(new ParseError(0, error.Offset, error.Line, error.Column,
+                            "Only edge or property can be added to the node table"));
+                        break;
+                }
+            }
+
+            foreach (var definition in deltaColumnDefList)
+                stmt.Definition.ColumnDefinitions.Add(definition);
+
+            return fragment;
+        }
+
+        /// <summary>
+        /// Parses a ALTER TABLE DROP COLUMN statement.  
+        /// </summary>
+        /// <param name="queryStr">The CREATE TABLE statement creating a ndoe table</param>
+        /// <param name="errors">Parsing errors</param>
+        /// <returns>The syntax tree of the CREATE TABLE statement</returns>
+        public WSqlFragment ParseAlterTableDropNodeTableColumnStatement(
+            string queryStr,
+            out IList<ParseError> errors)
+        {
+            // Gets token stream
+            var tsqlParser = new TSql110Parser(true);
+            var sr = new StringReader(queryStr);
+            var tokens = new List<TSqlParserToken>(tsqlParser.GetTokenStream(sr, out errors));
+            if (errors.Count > 0)
+                return null;
+
+            // Parses the remaining statement using the T-SQL parser
+            //IList<ParseError> errors;
+            var parser = new WSqlParser();
+            var fragment = parser.Parse(tokens, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                return null;
+
+            return fragment;
+        }
 
         private void ExtractMatchClause()
         {
@@ -1313,7 +1474,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Finds all graph modification statements (INSERT NODE, INSERT EDGE, DELETE NOTE, DELETE EDGE), 
+        /// Finds all graph modification statements (INSERT NODE, INSERT EDGE, DELETE NODE, DELETE EDGE), 
         /// records their positions in the script as a list of annotations, and replaces them by INSERT and DELETE,
         /// so that the token list can be parsed by the T-SQL parser.
         /// </summary>
@@ -1335,7 +1496,6 @@ namespace GraphView
                         ret.Add(new InsertNodeAnnotation { Position = pos });
                         _tokens[pos].TokenType = TSqlTokenType.MultilineComment;
                         _tokens[pos].Text = "/*__GRAPHVIEW_INSERT_NODE*/";
-                        currentToken = nextToken;
                     }
                     else if (ReadToken(_tokens, "edge", ref nextToken, ref farestError))
                     {
@@ -1380,10 +1540,7 @@ namespace GraphView
                     var pos = nextToken;
                     if (ReadToken(_tokens, "node", ref nextToken, ref farestError))
                     {
-                        ret.Add(new DeleteNodeAnnotation
-                        {
-                            Position = pos,
-                        });
+                        ret.Add(new DeleteNodeAnnotation { Position = pos });
                         _tokens[pos].TokenType = TSqlTokenType.MultilineComment;
                         _tokens[pos].Text = "/*__GRAPHVIEW_DELETE_NODE*/";
                         currentToken = nextToken;
@@ -1430,6 +1587,7 @@ namespace GraphView
                         currentToken = nextToken;
                     }
                 }
+                
                 currentToken++;
             }
             

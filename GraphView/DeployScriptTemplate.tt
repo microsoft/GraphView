@@ -14,6 +14,7 @@
 				{"bool", new Tuple<string, string, int>("bit", "SqlBoolean", 1)}
 			};
 #>
+--NodeTable UDF
 <# if (Type == 0) {#> 
 CREATE ASSEMBLY <#=AssemblyName#>_Assembly FROM <#=Path#>
 GO
@@ -25,7 +26,8 @@ GO
 #>
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 	@array varbinary(max),
-	@dele varbinary(max))
+	@dele varbinary(max),
+	@dumb bigint = 0)
 	RETURNS TABLE
 	( 
 		Sink bigint, EdgeId int<#
@@ -43,7 +45,7 @@ GO
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @PathVarbinary varbinary(max), @nodeid bigint, @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
 (
-	EdgeId int, EdgeColumnId bigint, Sink bigint<#
+	EdgeId int, EdgeColumnId int, Sink bigint<#
 	for (var i = 0; i < variables.Count; ++i)
 	{
 		WriteLine(",");
@@ -53,6 +55,14 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 #>
 )
   AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveEdgeGenerator;
+GO
+
+CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveNodeGenerator(
+@PathVarbinary varbinary(max), @array varbinary(max), @array2 varbinary(max)) RETURNs TABLE
+(
+   Sink bigint
+)
+  AS EXTERNAL NAME <#=AssemblyName#>_Assembly.UserDefinedFunctions.<#=edgeName#>ExclusiveNodeGenerator;
 GO
 
 create function <#=AssemblyName#>_<#=edgeName#>_bfsPath(@source bigint, 
@@ -71,7 +81,7 @@ return
 with  allPath(sink, varPath) as (
 		select newpath.sink,  
 		dbo.ConvertNumberIntoBinaryForPath(@source, <#=edgeColumnId#>, newpath.EdgeId)
-		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
+		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del, 0) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in variables) {
 		Write("		");
@@ -88,7 +98,7 @@ with  allPath(sink, varPath) as (
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 16)
 <#foreach (var it in variables) {
 		Write("		");
 		Write("and (");
@@ -98,10 +108,42 @@ with  allPath(sink, varPath) as (
 )
 select @source as sink, CAST(0x as varbinary(max)) as varPath
 where @minlength = 0
-union
+union all
 select *
 from allPath
-where DATALENGTH(allPath.varPath) >= @minlength * 20
+where DATALENGTH(allPath.varPath) >= @minlength * 16
+GO
+
+create function <#=AssemblyName#>_<#=edgeName#>_bfsPath_DifferNodes(@source bigint, 
+		@minlength bigint, @maxlength bigint,
+		@edgeColumn varbinary(max), @Del varbinary(max)
+)
+returns table
+as 
+return 
+with  allPath(sink, varPath) as (
+		select newpath.sink,  
+		dbo.ConvertInt64IntoVarbinary(@source) + dbo.ConvertInt64IntoVarbinary(newpath.sink)
+		from <#=AssemblyName#>_<#=edgeName#>_ExclusiveNodeGenerator(dbo.ConvertInt64IntoVarbinary(@source), @edgeColumn, @Del) as newpath
+		Where (@maxlength != 0)
+
+		union all
+
+		select newpath.Sink, allpath.varPath + 
+		dbo.ConvertInt64IntoVarbinary(newpath.sink) as Path
+
+		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
+		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveNodeGenerator(allPath.varPath,
+		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
+
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength) * 8)
+)
+select @source as sink, dbo.ConvertInt64IntoVarbinary(@source) as varPath
+where @minlength = 0
+union all
+select *
+from allPath
+where DATALENGTH(allPath.varPath) >= (@minlength + 1) * 8 
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_PathMessageEncoder(
@@ -144,7 +186,7 @@ with  allPath(sink, varPath, PathMessage) as (
 			<#foreach (var it in variables) {#>
 				,newpath.<#=it.Item1#>
 			<#}#>) as PathMessage
-		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del) as newpath
+		from <#=AssemblyName#>_<#=edgeName#>_Decoder(@edgeColumn, @Del, 0) as newpath
 		Where (@maxlength != 0)
 <#foreach (var it in variables) {
 		Write("		");
@@ -172,7 +214,7 @@ with  allPath(sink, varPath, PathMessage) as (
 		from (allPath join <#=NodeTable#> on  allPath.sink = <#=NodeTable#>.GlobalNodeId)
 		cross apply <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(allPath.varPath,<#=NodeTable#>.GlobalNodeId,
 		  <#=NodeTable#>.<#=edgeName#>, <#=NodeTable#>.<#=edgeName#>DeleteCol) as newPath
-		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 20)
+		Where (@maxlength = -1 or DATALENGTH(allPath.varPath) <= (@maxlength - 1) * 16)
 <#foreach (var it in variables) {
 		Write("		");
 		Write("and (");
@@ -182,10 +224,10 @@ with  allPath(sink, varPath, PathMessage) as (
 )
 select @source as sink, CAST(0x as varbinary(max)) as varPath, CAST(0x as varbinary(max)) as PathMessage
 where @minlength = 0
-union
+union all
 select *
 from allPath
-where DATALENGTH(allPath.varPath) >= @minlength * 20
+where DATALENGTH(allPath.varPath) >= @minlength * 16
 GO
 
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Recycle(@src varbinary(max), @toRecycle varbinary(max))
@@ -211,7 +253,7 @@ GO
 <#}#>
 <#}#>
 
-
+--Edge view UDF
 <# if (Type == 1) {#>
 <#foreach (var edge in EdgeList) {
 	var edgeName = edge.Item1;
@@ -221,10 +263,10 @@ CREATE ASSEMBLY <#=AssemblyName#>_<#=edgeName#>_Assembly FROM <#=Path#>
 GO
 CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_Decoder(
 <#for (int i = 0; i < InputCount; i++) {#>
-@array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
-<#}#>) RETURNS TABLE
+@array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# WriteLine(","); #>
+<#}#>@dumb bigint = 0) RETURNS TABLE
 (
-	Sink bigint, EdgeColumnId bigint, EdgeId int, _EdgeType nvarchar(max)<#
+	Sink bigint, EdgeColumnId int, EdgeId int, _EdgeType nvarchar(max)<#
 	for (var i = 0; i < variables.Count; ++i)
 	{
 		WriteLine(",");
@@ -242,7 +284,7 @@ CREATE FUNCTION <#=AssemblyName#>_<#=edgeName#>_ExclusiveEdgeGenerator(
 @array<#=i#> varbinary(max), @dele<#=i#> varbinary(max)<# if (i != InputCount - 1) WriteLine(","); #>
 <#}#>) RETURNs TABLE
 (
-	EdgeId int, EdgeColumnId bigint, Sink bigint, _EdgeType nvarchar(max)<#
+	EdgeId int, EdgeColumnId int, Sink bigint, _EdgeType nvarchar(max)<#
 	for (var i = 0; i < variables.Count; ++i)
 	{
 		WriteLine(",");
@@ -275,7 +317,7 @@ GO
 <#}#>
 <#}#>
 
-
+--Meta UDF
 <# if (Type == 2) {#>
 CREATE ASSEMBLY <#=AssemblyName#>Assembly FROM <#=Path#>
 GO
@@ -302,6 +344,13 @@ CREATE FUNCTION SingletonTable() RETURNS TABLE
 as EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.SingletonTable
 GO
 
+CREATE FUNCTION SingletonTable2(@dumb bigint) RETURNS TABLE
+(
+	memoBit bit
+)
+as EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.SingletonTable2
+GO
+
 CREATE FUNCTION DownSizeFunction
 (@id int)
 RETURNS INT
@@ -314,8 +363,20 @@ AS
 RETURN
 	SELECT TOP(@topvalue) * FROM SingletonTable()
 GO
-CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b bigint, @c int)
+
+CREATE FUNCTION UpSizeFunction2(@topvalue int, @dumb bigint) RETURNS TABLE
+AS
+RETURN
+	SELECT TOP(@topvalue) * FROM SingletonTable2(@dumb)
+GO
+
+CREATE FUNCTION ConvertNumberIntoBinaryForPath(@a bigint, @b int, @c int)
 RETURNS varbinary(max)
 EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.ConvertNumberIntoBinaryForPath;
+GO
+
+CREATE FUNCTION ConvertInt64IntoVarbinary(@a bigint)
+RETURNS varbinary(max)
+EXTERNAL NAME <#=AssemblyName#>Assembly.UserDefinedFunctions.ConvertInt64IntoVarbinary;
 GO
 <#}#>

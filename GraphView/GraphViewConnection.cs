@@ -111,17 +111,86 @@ namespace GraphView
             new List<Tuple<string, string>>
             {
                 Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
-                Tuple.Create("AGGREGATE","GraphViewUDFEdgeIdEncoder"),
-                Tuple.Create("FUNCTION","SingletonTable"),
-                Tuple.Create("FUNCTION","DownSizeFunction"),
-                Tuple.Create("FUNCTION","UpSizeFunction"),
-                Tuple.Create("ASSEMBLY","GraphViewUDFAssembly")
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly")
             };
 
-        private BitArray _a = new BitArray(1);
+        internal static readonly List<Tuple<string, string>> Version111MetaUdf= 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("FUNCTION", "ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly"),
+            };
+
+        internal static readonly List<Tuple<string, string>> Version200MetaUdf= 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("FUNCTION", "ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("FUNCTION", "ConvertInt64IntoVarbinary"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly"),
+            };
+
+        internal static readonly List<Tuple<string, string>> Version210MetaUdf =
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("AGGREGATE", "GraphViewUDFGlobalNodeIdEncoder"),
+                Tuple.Create("AGGREGATE", "GraphViewUDFEdgeIdEncoder"),
+                Tuple.Create("FUNCTION", "SingletonTable"),
+                Tuple.Create("FUNCTION", "SingletonTable2"),
+                Tuple.Create("FUNCTION", "DownSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction"),
+                Tuple.Create("FUNCTION", "UpSizeFunction2"),
+                Tuple.Create("FUNCTION", "ConvertNumberIntoBinaryForPath"),
+                Tuple.Create("FUNCTION", "ConvertInt64IntoVarbinary"),
+                Tuple.Create("ASSEMBLY", "GraphViewUDFAssembly"),
+            };
+
+        internal static readonly List<Tuple<string, string>> Version111TableUdf = 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("FUNCTION", "Decoder"),
+                Tuple.Create("FUNCTION", "Recycle"),
+                Tuple.Create("AGGREGATE", "Encoder"),
+                Tuple.Create("FUNCTION", "ExclusiveEdgeGenerator"),
+                Tuple.Create("FUNCTION", "bfsPath"),
+                Tuple.Create("FUNCTION", "bfsPathWithMessage"),
+                Tuple.Create("FUNCTION", "PathMessageEncoder"),
+                Tuple.Create("FUNCTION", "PathMessageDecoder"),
+            };
+        internal static readonly List<Tuple<string, string>> Version200TableUdf = 
+            new List<Tuple<string, string>>
+            {
+                Tuple.Create("FUNCTION", "Decoder"),
+                Tuple.Create("FUNCTION", "Recycle"),
+                Tuple.Create("AGGREGATE", "Encoder"),
+                Tuple.Create("FUNCTION", "ExclusiveEdgeGenerator"),
+                Tuple.Create("FUNCTION", "bfsPath"),
+                Tuple.Create("FUNCTION", "bfsPath_DifferNodes"),
+                Tuple.Create("FUNCTION", "bfsPathWithMessage"),
+                Tuple.Create("FUNCTION", "PathMessageEncoder"),
+                Tuple.Create("FUNCTION", "PathMessageDecoder"),
+                Tuple.Create("FUNCTION", "ExclusiveNodeGenerator"),
+            };
+        internal static readonly List<Tuple<string, string>> Version210TableUdf = Version200TableUdf;
+
         private static readonly string VersionTable = "VERSION";
 
-        private static readonly string version = "1.11";
+        private readonly List<Tuple<string, string>> _currentMetaUdf = Version210MetaUdf;
+        private readonly List<Tuple<string, string>> _currentTableUdf = Version210TableUdf;
+        private static readonly string version = "2.10";
         private string currentVersion = "";
         public string CurrentVersion { get { return currentVersion; } }
 
@@ -232,6 +301,10 @@ namespace GraphView
                             [ColumnName] [nvarchar](128) NOT NULL,
                             [ColumnRole] [int] NOT NULL,
                             [Reference] [nvarchar](128) NULL,
+                            [RefTableSchema] [nvarchar](128) NULL,
+                            [HasReversedEdge] [bit] NOT NULL DEFAULT 0,
+                            [IsReversedEdge] [bit] NOT NULL DEFAULT 0,
+                            [EdgeUdfPrefix] [nvarchar](512) NULL,
                             PRIMARY KEY CLUSTERED ([ColumnId] ASC)
                         )", MetadataTables[1]);
 
@@ -492,16 +565,12 @@ namespace GraphView
                 }
 
                 //Drop assembly and UDF
-                const string dropAssembly = @"
-                DROP AGGREGATE GraphViewUDFGlobalNodeIdEncoder
-                DROP AGGREGATE GraphViewUDFEdgeIdEncoder
-                DROP FUNCTION SingletonTable
-                DROP FUNCTION DownSizeFunction
-                DROP FUNCTION ConvertNumberIntoBinaryForPath
-                DROP FUNCTION UpSizeFunction
-                DROP ASSEMBLY GraphViewUDFAssembly";
-                command.CommandText = dropAssembly;
-                command.ExecuteNonQuery();
+                const string dropAssembly = @"drop {0} {1}";
+                foreach (var it in _currentMetaUdf)
+                {
+                    command.CommandText = string.Format(dropAssembly, it.Item1, it.Item2);
+                    command.ExecuteNonQuery();
+                }
                 transaction.Commit();
             }
             catch (SqlException e)
@@ -539,6 +608,17 @@ namespace GraphView
 
                 if (currentVersion == "1.11")
                 {
+                    UpgradeFromV111ToV200(transaction);
+                }
+
+                if (currentVersion == "2.00")
+                {
+                    UpgradeFromV200ToV210(transaction);
+                }
+
+                if (currentVersion == "2.10")
+                {
+                    
                 }
 
                 if (currentVersion != version)
@@ -583,12 +663,13 @@ namespace GraphView
             {
                 DropNodeTableFunctionV100(table.Item1, table.Item2, transaction);
             }
-            UpgradeGraphViewFunctionV100(transaction);
+            //UpgradeGraphViewFunctionV100(transaction);
+            UpgradeNodeTableFunctionV100(transaction);
 
             //Upgrade global view
             foreach (var schema in tables.ToLookup(x => x.Item1.ToLower()))
             {
-                updateGlobalNodeView(schema.Key, transaction);
+                UpdateGlobalNodeView(schema.Key, transaction);
             }
 
             //Upgrade table statistics
@@ -605,7 +686,8 @@ namespace GraphView
         private void UpgradeFromV110ToV111(SqlTransaction transaction)
         {
             var tables = GetNodeTables(transaction);
-            DropAssemblyAndMetaUDFV110(transaction);
+            //DropAssemblyAndMetaUDFV110(transaction);
+            DropAssemblyAndMetaUdf(Version110MetaUdf, transaction);
             const string assemblyName = GraphViewUdfAssemblyName;
 
             GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
@@ -616,8 +698,49 @@ namespace GraphView
             //Upgrade global view
             foreach (var schema in tables.ToLookup(x => x.Item1.ToLower()))
             {
-                updateGlobalNodeView(schema.Key, transaction);
+                UpdateGlobalNodeView(schema.Key, transaction);
             }
+        }
+
+        // Add reversed edge support
+        private void UpgradeFromV111ToV200(SqlTransaction transaction)
+        {
+            // Upgrade meta tables
+            UpgradeMetaTableV111(transaction);
+
+            var tables = GetNodeTables(transaction);
+
+            // Drop table functions, assemblies and global udf
+            foreach (var table in tables)
+            {
+                DropNodeTableFunctionAndAssembly(table.Item1, table.Item2, Version111TableUdf, transaction);
+            }
+            DropAssemblyAndMetaUdf(Version111MetaUdf, transaction);
+
+            // Upgrade global udf and assembly
+            const string assemblyName = GraphViewUdfAssemblyName;
+            GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
+            register.Register(Conn, transaction);
+
+            // Upgrade table functions and assemblies
+            UpgradeNodeTableFunction(null, transaction);
+
+            // Update version number
+            UpdateVersionNumber("2.00", transaction);
+        }
+
+        // Add Upsize function version 2 with @dumb
+        private void UpgradeFromV200ToV210(SqlTransaction transaction)
+        {
+            DropAssemblyAndMetaUdf(Version200MetaUdf, transaction);
+
+            // Upgrade global udf and assembly
+            const string assemblyName = GraphViewUdfAssemblyName;
+            GraphViewDefinedFunctionRegister register = new MetaFunctionRegister(assemblyName);
+            register.Register(Conn, transaction);
+
+            // Update version number
+            UpdateVersionNumber("2.10", transaction);
         }
 
         /// <summary>
@@ -765,16 +888,17 @@ namespace GraphView
                     command.ExecuteNonQuery();
                 }
 
-                var edgeColumnNameToColumnId = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase); 
+                var edgeColumnNameToColumnId = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                var hasReversedEdge = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
                 using (var command = new SqlCommand(null, Conn))
                 {
                     command.Transaction = tx;
                     // insert graph column
                     command.CommandText = string.Format(@"
                     INSERT INTO [{0}]
-                    ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference])
+                    ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [HasReversedEdge], [EdgeUdfPrefix])
                     OUTPUT [Inserted].[ColumnId]
-                    VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref)", MetadataTables[1]);
+                    VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref, @hasRevEdge, @udfPrefix)", MetadataTables[1]);
 
                     command.Parameters.AddWithValue("@tableSchema", tableSchema);
                     command.Parameters.AddWithValue("@tableName", tableName);
@@ -783,20 +907,26 @@ namespace GraphView
                     command.Parameters.Add("@columnName", SqlDbType.NVarChar, 128);
                     command.Parameters.Add("@columnRole", SqlDbType.Int);
                     command.Parameters.Add("@ref", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@hasRevEdge", SqlDbType.Bit);
+                    command.Parameters.Add("@udfPrefix", SqlDbType.NVarChar, 512);
 
                     foreach (var column in columns)
                     {
                         command.Parameters["@columnName"].Value = column.ColumnName.Value;
                         command.Parameters["@columnRole"].Value = (int) column.ColumnRole;
+                        command.Parameters["@hasRevEdge"].Value = column.ColumnRole == WNodeTableColumnRole.Edge ? 1 : 0;
+
                         var edgeColumn = column as WGraphTableEdgeColumn;
                         if (edgeColumn != null)
                         {
                             command.Parameters["@ref"].Value =
                                 (edgeColumn.TableReference as WNamedTableReference).ExposedName.Value;
+                            command.Parameters["@udfPrefix"].Value = 
+                                tableSchema + "_" + tableName + "_" + column.ColumnName.Value;
                         }
                         else
                         {
-                            command.Parameters["@ref"].Value = SqlChars.Null;
+                            command.Parameters["@ref"].Value = command.Parameters["@udfPrefix"].Value = SqlChars.Null;
                         }
 
                         using (var reader = command.ExecuteReader())
@@ -805,9 +935,10 @@ namespace GraphView
                             {
                                 return false;
                             }
-                            if ((int) column.ColumnRole == 1)
+                            if (column.ColumnRole == WNodeTableColumnRole.Edge)
                             {
-                                edgeColumnNameToColumnId[column.ColumnName.Value] = Convert.ToInt32(reader["ColumnId"].ToString());
+                                edgeColumnNameToColumnId[column.ColumnName.Value] = Convert.ToInt64(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture);
+                                hasReversedEdge[column.ColumnName.Value] = true;
                             }
                         }
                     }
@@ -887,8 +1018,8 @@ namespace GraphView
                     columns.OfType<WGraphTableEdgeColumn>()
                         .Select(
                             col =>
-                                new Tuple<string, long, List<Tuple<string, string>>>(col.ColumnName.Value,
-                                    edgeColumnNameToColumnId[col.ColumnName.Value],
+                                new Tuple<string,int, List<Tuple<string, string>>>(col.ColumnName.Value,
+                                    (int)edgeColumnNameToColumnId[col.ColumnName.Value],
                                     col.Attributes.Select(
                                         x =>
                                             new Tuple<string, string>(x.Item1.Value,
@@ -911,13 +1042,364 @@ namespace GraphView
                             SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
                             SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
                             FROM [{0}].[{1}] WITH (NOLOCK)
-                            CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol]) AS Edge
+                            CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
                             WHERE 1=0) as EdgeSample",
                             tableSchema, tableName, column.ColumnName.Value);
                         command.ExecuteNonQuery();
                     }
                 }
-                updateGlobalNodeView(tableSchema, tx);
+                //updateGlobalNodeView(tableSchema, tx);
+
+                // check whether adding reversed edges into the current node table column collection are required
+                var reversedEdgeCommandText = String.Empty;
+                var reversedEdgeSamplingCommandText = String.Empty;
+                var reversedMetaCommandTextList = new List<string>();
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    command.Transaction = tx;
+                    command.CommandText = String.Format(@"
+                        SELECT [ColumnId], [TableSchema], [TableName], [ColumnName], [ColumnRole], [Reference], [HasReversedEdge], [EdgeUdfPrefix]
+                        FROM [{0}]
+                        WHERE [ColumnRole] = 1 AND [Reference] = '{1}'", 
+                        MetadataTables[1], tableName);
+
+                    var originalColumnIdList = new List<long>();
+                    using (var reader = command.ExecuteReader())
+                    {
+                        var index = 0;
+                        while (reader.Read())
+                        {
+                            if (!bool.Parse(reader["HasReversedEdge"].ToString())) continue;
+                            var sourceTableSchema = reader["TableSchema"].ToString();
+                            var sourceTableName = reader["TableName"].ToString();
+                            var sourceEdgeName = reader["ColumnName"].ToString();
+                            var reversedEdgeName = sourceTableName + "_" + sourceEdgeName + "Reversed";
+                            var parameters = new string[]
+                            {
+                                "@tableSchema" + index,
+                                "@tableName" + index,
+                                "@tableid" + index,
+                                "@columnName" + index,
+                                "@columnRole" + index,
+                                "@ref" + index,
+                                "@refTableSchema" + index,
+                                "@isRevEdge" + index,
+                                "@udfPrefix" + index
+                            };
+                            
+                            // add reversed edge varbinary columns
+                            reversedEdgeCommandText += String.Format(@"
+                                ALTER TABLE [{0}].[{1}]
+                                ADD [{2}] VARBINARY(MAX) NOT NULL DEFAULT 0x,
+                                    [{3}] VARBINARY(MAX) NOT NULL DEFAULT 0x,
+                                    [{4}] INT NOT NULL DEFAULT 0;
+                                ",
+                                tableSchema, tableName, 
+                                reversedEdgeName,
+                                reversedEdgeName + "DeleteCol",
+                                reversedEdgeName + "OutDegree");
+
+                            // create reversed edge sampling table
+                            reversedEdgeSamplingCommandText += String.Format(@"
+                                SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
+                                SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
+                                FROM [{0}].[{1}] WITH (NOLOCK)
+                                CROSS APPLY {3}_{4}_{5}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
+                                WHERE 1=0) as EdgeSample
+                                ",
+                                tableSchema, tableName, reversedEdgeName,
+                                sourceTableSchema, sourceTableName, sourceEdgeName);
+
+                            // update meta info about reversed edges
+                            reversedMetaCommandTextList.Add(string.Format(@"
+                                INSERT INTO [{0}]
+                                ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [RefTableSchema], [IsReversedEdge], [EdgeUdfPrefix])
+                                OUTPUT [Inserted].[ColumnId]
+                                VALUES ({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})
+                                ",
+                                MetadataTables[1],
+                                parameters[0], parameters[1], parameters[2], 
+                                parameters[3], parameters[4], parameters[5], 
+                                parameters[6], parameters[7], parameters[8]));
+
+                            command.Parameters.AddWithValue(parameters[0], tableSchema);
+                            command.Parameters.AddWithValue(parameters[1], tableName);
+                            command.Parameters.AddWithValue(parameters[2], tableId);
+
+                            command.Parameters.AddWithValue(parameters[3], reversedEdgeName);
+                            command.Parameters.AddWithValue(parameters[4], Convert.ToInt32(reader["ColumnRole"].ToString(), CultureInfo.CurrentCulture));
+                            command.Parameters.AddWithValue(parameters[5], sourceTableName);
+                            command.Parameters.AddWithValue(parameters[6], sourceTableSchema);
+                            command.Parameters.AddWithValue(parameters[7], 1);
+                            command.Parameters.AddWithValue(parameters[8], reader["EdgeUdfPrefix"].ToString());
+
+                            originalColumnIdList.Add(Convert.ToInt64(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture));
+                            ++index;
+                        }
+                    }
+
+                    if (String.IsNullOrEmpty(reversedEdgeCommandText) == false)
+                    {
+                        command.CommandText = reversedEdgeCommandText;
+                        command.ExecuteNonQuery();
+                        command.CommandText = reversedEdgeSamplingCommandText;
+                        command.ExecuteNonQuery();
+
+                        command.CommandText = String.Format(@"
+                            SELECT MAX([AttributeEdgeId]) AS maxAttrEdgeId
+                            FROM [{0}]
+                            WHERE [TableSchema] = '{1}' AND [TableName] = '{2}'",
+                            MetadataTables[2], tableSchema, tableName);
+
+                        var createOrder = 1;
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                var startOrder = reader["maxAttrEdgeId"].ToString();
+                                createOrder = String.IsNullOrEmpty(startOrder) ? 1 : Convert.ToInt32(startOrder, CultureInfo.CurrentCulture) + 1;
+                            }
+                        }
+
+                        // NodeTableColumnCollection update
+                        for (var i = 0; i < reversedMetaCommandTextList.Count; ++i)
+                        {
+                            command.CommandText = reversedMetaCommandTextList[i];
+
+                            if (command.Parameters.Contains("@tableSchema"))
+                            {
+                                command.Parameters.RemoveAt("@tableSchema");
+                                command.Parameters.RemoveAt("@tableName");
+                                command.Parameters.RemoveAt("@columnName");
+                                command.Parameters.RemoveAt("@columnid");
+                                command.Parameters.RemoveAt("@AverageDegree");
+                                if (command.Parameters.Contains("@attrName"))
+                                {
+                                    command.Parameters.RemoveAt("@attrName");
+                                    command.Parameters.RemoveAt("@attrType");
+                                    command.Parameters.RemoveAt("@attrId");
+                                }
+                            }
+
+                            long reversedColumnId = 0;
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (!reader.Read())
+                                {
+                                    return false;
+                                }
+                                if (Convert.ToInt32(command.Parameters["@columnRole"+i].Value, CultureInfo.CurrentCulture) == 1)
+                                {
+                                    reversedColumnId = Convert.ToInt64(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture);
+                                }
+                            }
+
+                            // EdgeAverageDegreeCollection update
+                            command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                            command.Parameters.AddWithValue("@tableName", tableName);
+                            command.Parameters.AddWithValue("@columnName", command.Parameters["@columnName" + i].Value.ToString());
+                            command.Parameters.Add("@columnid", SqlDbType.Int);
+                            command.Parameters["@columnid"].Value = reversedColumnId;
+                            command.Parameters.Add("@AverageDegree", SqlDbType.Int);
+                            command.Parameters["@AverageDegree"].Value = 5;
+
+                            command.CommandText = string.Format(@"
+                                INSERT INTO [{0}]
+                                ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                                VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
+                            command.ExecuteNonQuery();
+                            
+                            // get all original attributes
+                            var attributes = new List<Tuple<string, string>>();
+                            command.CommandText = String.Format(@"
+                                SELECT [AttributeName], [AttributeType]
+                                FROM [{0}]
+                                WHERE [ColumnId] = {1}",
+                                MetadataTables[2], originalColumnIdList[i]);
+
+                            using (var reader = command.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    attributes.Add(new Tuple<string, string>(
+                                        reader["AttributeName"].ToString(), reader["AttributeType"].ToString()));
+                                }
+                            }
+
+                            if (attributes.Count == 0) continue;
+
+                            // EdgeAttributeCollection update 
+                            command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
+                            command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
+                            command.Parameters.Add("@attrId", SqlDbType.Int);
+
+                            foreach (var attr in attributes)
+                            {
+                                command.Parameters["@attrName"].Value = attr.Item1;
+                                command.Parameters["@attrType"].Value = attr.Item2;
+                                command.Parameters["@attrId"].Value = (createOrder++).ToString();
+
+                                command.CommandText = String.Format(@"
+                                    INSERT INTO [{0}]
+                                    ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
+                                    VALUES (@tableSchema, @tableName, @columnName, @columnid, @attrName, @attrType, @attrId)", MetadataTables[2]);
+                                command.ExecuteNonQuery();
+                            }
+                            
+                        }
+                    }
+                }
+
+                // check whether adding reverse edges to pointed node tables are required
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    command.Transaction = tx;
+                    foreach (var column in columns.Where(x=>hasReversedEdge.ContainsKey(x.ColumnName.Value)))
+                    {
+                        command.Parameters.Clear();
+                        reversedEdgeCommandText = reversedEdgeSamplingCommandText = String.Empty;
+
+                        var edgeColumn = column as WGraphTableEdgeColumn;
+                        if (edgeColumn == null) continue;
+
+                        var refTableName =
+                            (edgeColumn.TableReference as WNamedTableReference).ExposedName.Value;
+                        string refTableSchema = String.Empty, reversedEdgeName = String.Empty;
+                        Int64 refTableId = 0;
+
+                        // skip the edge which connects to the node table itself
+                        if (refTableName.Equals(tableName)) continue;
+
+                        command.CommandText = String.Format(@"
+                            SELECT [TableId], [TableSchema], [TableName]
+                            FROM [{0}]
+                            WHERE [TableRole] = 0 AND [TableName] = '{1}'",
+                            MetadataTables[0], refTableName);
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            // if the target node table exists
+                            if (reader.Read())
+                            {
+                                refTableSchema = reader["TableSchema"].ToString();
+                                reversedEdgeName = tableName + "_" + column.ColumnName.Value + "Reversed";
+
+                                // add reversed edge varbinary column
+                                reversedEdgeCommandText += String.Format(@"
+                                    ALTER TABLE [{0}].[{1}]
+                                    ADD [{2}] VARBINARY(MAX) NOT NULL DEFAULT 0x,
+                                        [{3}] VARBINARY(MAX) NOT NULL DEFAULT 0x,
+                                        [{4}] INT NOT NULL DEFAULT 0
+                                    ", 
+                                    refTableSchema, refTableName,
+                                    reversedEdgeName,
+                                    reversedEdgeName + "DeleteCol",
+                                    reversedEdgeName + "OutDegree");
+
+                                // create reversed edge sampling table
+                                reversedEdgeSamplingCommandText += String.Format(@"
+                                    SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
+                                    SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
+                                    FROM [{0}].[{1}] WITH (NOLOCK)
+                                    CROSS APPLY {3}_{4}_{5}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
+                                    WHERE 1=0) as EdgeSample
+                                    ",
+                                    refTableSchema, refTableName, reversedEdgeName,
+                                    tableSchema, tableName, column.ColumnName.Value);
+
+                                refTableId = Convert.ToInt64(reader["TableId"], CultureInfo.CurrentCulture);
+                            }
+                        }
+
+                        // update meta info about reversed edge
+                        if (String.IsNullOrEmpty(reversedEdgeCommandText) == false)
+                        {
+                            command.CommandText = reversedEdgeCommandText;
+                            command.ExecuteNonQuery();
+                            command.CommandText = reversedEdgeSamplingCommandText;
+                            command.ExecuteNonQuery();
+
+                            // NodeTableColumnCollection update
+                            command.CommandText = string.Format(@"
+                                INSERT INTO [{0}]
+                                ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [RefTableSchema], [IsReversedEdge], [EdgeUdfPrefix])
+                                OUTPUT [Inserted].[ColumnId]
+                                VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref, @refTableSchema, @isRevEdge, @udfPrefix)", MetadataTables[1]);
+
+                            command.Parameters.AddWithValue("@tableSchema", refTableSchema);
+                            command.Parameters.AddWithValue("@tableName", refTableName);
+                            command.Parameters.AddWithValue("@tableid", refTableId);
+
+                            command.Parameters.AddWithValue("@columnName", reversedEdgeName);
+                            command.Parameters.AddWithValue("@columnRole", (int)column.ColumnRole);
+                            command.Parameters.AddWithValue("@ref", tableName);
+                            command.Parameters.AddWithValue("@refTableSchema", tableSchema);
+                            command.Parameters.AddWithValue("@isRevEdge", 1);
+                            command.Parameters.AddWithValue("@udfPrefix", tableSchema + "_" + tableName + "_" + column.ColumnName.Value);
+
+                            long reversedColumnId = 0;
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (!reader.Read())
+                                {
+                                    return false;
+                                }
+                                if (column.ColumnRole == WNodeTableColumnRole.Edge)
+                                {
+                                    reversedColumnId = Convert.ToInt64(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture);
+                                }
+                            }
+
+                            // EdgeAverageDegreeCollection update
+                            command.Parameters.Add("@columnid", SqlDbType.Int);
+                            command.Parameters["@columnid"].Value = reversedColumnId;
+                            command.Parameters.Add("@AverageDegree", SqlDbType.Int);
+                            command.Parameters["@AverageDegree"].Value = 5;
+
+                            command.CommandText = string.Format(@"
+                                INSERT INTO [{0}]
+                                ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                                VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
+                            command.ExecuteNonQuery();
+
+                            command.CommandText = String.Format(@"
+                                SELECT MAX([AttributeEdgeId]) AS maxAttrEdgeId
+                                FROM [{0}]
+                                WHERE [TableSchema] = '{1}' AND [TableName] = '{2}'",
+                                MetadataTables[2], refTableSchema, refTableName);
+
+                            var createOrder = 1;
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    var startOrder = reader["maxAttrEdgeId"].ToString();
+                                    createOrder = String.IsNullOrEmpty(startOrder) ? 1 : Convert.ToInt32(startOrder, CultureInfo.CurrentCulture) + 1;
+                                }
+                            }
+
+                            // EdgeAttributeCollection update
+                            command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
+                            command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
+                            command.Parameters.Add("@attrId", SqlDbType.Int);
+
+                            foreach (var attr in edgeColumn.Attributes)
+                            {
+                                command.Parameters["@attrName"].Value = attr.Item1.Value;
+                                command.Parameters["@attrType"].Value = attr.Item2.ToString();
+                                command.Parameters["@attrId"].Value = (createOrder++).ToString();
+
+                                command.CommandText = String.Format(@"
+                                    INSERT INTO [{0}]
+                                    ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
+                                    VALUES (@tableSchema, @tableName, @columnName, @columnid, @attrName, @attrType, @attrId)", MetadataTables[2]);
+                                command.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+
+                UpdateGlobalNodeView(tableSchema, tx);
 
                 if (externalTransaction == null)
                 {
@@ -932,6 +1414,76 @@ namespace GraphView
                     tx.Rollback();
                 }
                 throw new SqlExecutionException("An error occurred when creating the node table.\n" + e.Message, e);
+            }
+        }
+
+        /// <summary>
+        /// Drops node table user-defined functions and assembly
+        /// </summary>
+        /// <param name="tableSchema"> Schema of table to be dropped.</param>
+        /// <param name="tableName">Name of table to be dropped.</param>
+        /// <param name="tableUdfList">List of UDF to be dropped.</param>
+        /// <param name="externalTransaction">An existing SqlTransaction instance under which the drop node table will occur.</param>
+        /// <returns>Returns true if functions and assembly are successfully dropped.</returns>
+        public bool DropNodeTableFunctionAndAssembly(string tableSchema, string tableName, List<Tuple<string, string>> tableUdfList, 
+            SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tran = externalTransaction ?? Conn.BeginTransaction();
+            //if (externalTransaction == null)
+            //    tran = Conn.BeginTransaction();
+            try
+            {
+                // delete metadata
+                using (var command = new SqlCommand(null, Conn, tran))
+                {
+                    var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tran);
+                    if (edgeColumns.Count > 0)
+                    {
+                        var assemblyName = tableSchema + '_' + tableName;
+                        foreach (var edgeColumn in edgeColumns)
+                        {
+                            // isEdgeView
+                            if (edgeColumn.Item3) 
+                                DropEdgeView(tableSchema, tableName, 
+                                    edgeColumn.Item1 /*edgeView name*/, edgeColumn.Item6 /*isRevEdgeView*/, tran);
+                            else
+                            {
+                                // skip reversed edges since they have no UDF
+                                if (!edgeColumn.Item6)
+                                {
+                                    foreach (var it in tableUdfList)
+                                    {
+                                        command.CommandText = string.Format(
+                                            @"DROP {2} [{0}_{1}_{3}];",
+                                            assemblyName,
+                                            edgeColumn.Item1, it.Item1, it.Item2);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                        }
+                        // skip tables which have only reversed edge columns
+                        if (edgeColumns.Count(x => !x.Item6) > 0)
+                        {
+                            command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                    
+                    if (externalTransaction == null)
+                    {
+                        tran.Commit();
+                    }
+                    return true;
+                }
+            }
+            catch (SqlException e)
+            {
+                if (externalTransaction == null)
+                {
+                    tran.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when dropping the node table function.", e);
             }
         }
 
@@ -969,7 +1521,7 @@ namespace GraphView
                 // delete metadata
                 using (var command = new SqlCommand(null, Conn, tran))
                 {
-                    var schameSet = new HashSet<string>();
+                    var schemaSet = new HashSet<string>();
 
                     foreach (var obj in statement.Objects)
                     {
@@ -977,9 +1529,9 @@ namespace GraphView
                         var tableSchema = obj.SchemaIdentifier != null
                             ? obj.SchemaIdentifier.Value
                             : "dbo";
-                        if (!schameSet.Contains(tableSchema.ToLower()))
+                        if (!schemaSet.Contains(tableSchema.ToLower()))
                         {
-                            schameSet.Add(tableSchema.ToLower());
+                            schemaSet.Add(tableSchema.ToLower());
                         }
                         command.Parameters.AddWithValue("@tableName", tableName);
                         command.Parameters.AddWithValue("@tableSchema", tableSchema);
@@ -990,34 +1542,37 @@ namespace GraphView
                             var assemblyName = tableSchema + '_' + tableName;
                             foreach (var edgeColumn in edgeColumns)
                             {
+                                // isEdgeView
                                 if (edgeColumn.Item3)
-                                    DropEdgeView(tableSchema, tableName, edgeColumn.Item1, tran);
+                                    DropEdgeView(tableSchema, tableName,
+                                        edgeColumn.Item1 /*edgeView name*/, edgeColumn.Item6 /*isRevEdgeView*/, tran);
                                 else
                                 {
                                     command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
                                         DROP TABLE [{0}_{1}_{2}_Sampling]",
                                         tableSchema, tableName, edgeColumn.Item1);
                                     command.ExecuteNonQuery();
-                                    command.CommandText = string.Format(
-                                        @"DROP FUNCTION [{0}_{1}_Decoder];
-                                          DROP FUNCTION [{0}_{1}_Recycle];
-                                          DROP AGGREGATE [{0}_{1}_Encoder];",
-                                        assemblyName,
-                                        edgeColumn.Item1);
-                                    command.ExecuteNonQuery();
-                                    command.CommandText = string.Format(
-                                        @"DROP FUNCTION [{0}_{1}_ExclusiveEdgeGenerator];
-                                          DROP FUNCTION [{0}_{1}_bfsPath];
-                                          DROP FUNCTION [{0}_{1}_bfsPathWithMessage];
-                                          DROP FUNCTION [{0}_{1}_PathMessageEncoder];
-                                          DROP FUNCTION [{0}_{1}_PathMessageDecoder];",
-                                        assemblyName,
-										edgeColumn.Item1);
-                                    command.ExecuteNonQuery();
+
+                                    // skip reversed edges since they have no UDF
+                                    if (!edgeColumn.Item6)
+                                    {
+                                        foreach (var it in _currentTableUdf)
+                                        {
+                                            command.CommandText = string.Format(
+                                                @"DROP {2} [{0}_{1}_{3}];",
+                                                assemblyName,
+                                                edgeColumn.Item1, it.Item1, it.Item2);
+                                            command.ExecuteNonQuery();
+                                        }
+                                    }
                                 }
                             }
-                            command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
-                            command.ExecuteNonQuery();
+                            // skip tables which have only reversed edge columns
+                            if (edgeColumns.Count(x => !x.Item6) > 0)
+                            {
+                                command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
+                                command.ExecuteNonQuery();
+                            }
                         }
                         foreach (var table in MetadataTables)
                         {
@@ -1034,9 +1589,9 @@ namespace GraphView
                     // drop node table
                     command.CommandText = sqlStr;
                     command.ExecuteNonQuery();
-                    foreach (var it in schameSet)
+                    foreach (var it in schemaSet)
                     {
-                        updateGlobalNodeView(it, tran);
+                        UpdateGlobalNodeView(it, tran);
                     }
                     if (externalTransaction == null)
                     {
@@ -1209,18 +1764,22 @@ namespace GraphView
         /// </summary>
         /// <param name="tableSchema">The schema of the target table</param>
         /// <param name="tableName">The table name</param>
-        /// <returns>A list of string-boolean-boolean triples, with the first field being the edge column name, 
+        /// <returns>A list of string-boolean-boolean-string-boolean-boolean hextuple, with the first field being the edge column name, 
         /// the second field indicating whether or not the edge points to the nodes in the same node table, 
-        /// and the third field indicating whether or not this edge is an edge view</returns>
-        internal IList<Tuple<string, bool, bool>> GetGraphEdgeColumns(string tableSchema, string tableName,
+        /// the third field indicating whether or not this edge is an edge view,
+        /// the fourth filed being the edge's udf prefix,
+        /// the fifth field indicating whether or not this edge has an corresponding reversed edge
+        /// and the sixth field indicating whether or not this edge is a reversed edge.</returns>
+        internal IList<Tuple<string, bool, bool, string, bool, bool>> GetGraphEdgeColumns(string tableSchema, string tableName,
             SqlTransaction tx = null)
         {
-            var edgeColumns = new List<Tuple<string, Boolean, Boolean>>();
+            var edgeColumns = new List<Tuple<string, bool, bool, string, bool, bool>>();
+
             using (var command = Conn.CreateCommand())
             {
                 command.Transaction = tx;
                 command.CommandText = string.Format(
-                    @"SELECT ColumnName, TableName, Reference, ColumnRole
+                    @"SELECT ColumnName, TableName, Reference, RefTableSchema, ColumnRole, HasReversedEdge, IsReversedEdge, EdgeUdfPrefix
                   FROM [{0}]
                   WHERE TableSchema = @tableSchema AND TableName = @tableName
                   AND (ColumnRole = @columnRole or ColumnRole=@columnRole2)", MetadataTables[1]);
@@ -1232,19 +1791,895 @@ namespace GraphView
                 {
                     while (reader.Read())
                     {
-                        edgeColumns.Add(Tuple.Create(reader["ColumnName"].ToString(),
+                        //string refTableName = null, originalEdgeName = null;
+                        //var isRevEdge = bool.Parse(reader["IsReversedEdge"].ToString());
+                        //var columnName = reader["ColumnName"].ToString();
+
+                        //if (isRevEdge)
+                        //{
+                        //    var index = columnName.IndexOf('_');
+                        //    refTableName = columnName.Substring(0, index);
+                        //    originalEdgeName = columnName.Substring(index + 1,
+                        //        columnName.Length - "Reversed".Length - index - 1);
+                        //}
+                        edgeColumns.Add(Tuple.Create(reader["columnName"].ToString(),
                             reader["Reference"].ToString().ToLower() == reader["TableName"].ToString().ToLower(),
-                            (WNodeTableColumnRole) reader["ColumnRole"] == WNodeTableColumnRole.EdgeView));
+                            (WNodeTableColumnRole) reader["ColumnRole"] == WNodeTableColumnRole.EdgeView,
+                            reader["EdgeUdfPrefix"].ToString(),
+                            bool.Parse(reader["HasReversedEdge"].ToString()),
+                            bool.Parse(reader["IsReversedEdge"].ToString())));
                     }
                 }
                 return edgeColumns;
             }
         }
 
-        public void DropAssemblyAndMetaUDFV110(SqlTransaction externalTransaction = null)
+//        public void DropAssemblyAndMetaUDFV110(SqlTransaction externalTransaction = null)
+//        {
+//            SqlTransaction tx;
+//            tx = externalTransaction ?? Conn.BeginTransaction();
+//            try
+//            {
+//                using (var command = Conn.CreateCommand())
+//                {
+//                    command.Transaction = tx;
+//                    //Drop assembly and UDF
+//                    const string dropAssembly = @"
+//                    DROP {0} {1}";
+//                    command.CommandText = string.Join("\n", Version110MetaUdf.Select(x => string.Format(dropAssembly, x.Item1, x.Item2)));
+//                    command.ExecuteNonQuery();
+//                }
+
+//            }
+//            catch (Exception e)
+//            {
+//                if (externalTransaction == null)
+//                    tx.Rollback();
+//                throw new Exception(e.Message);
+//            }
+//        }
+
+
+        /// <summary>
+        /// Add properties or edges to a node table in the graph database.
+        /// </summary>
+        /// <param name="sqlStr">A ALTER TABLE ADD statement with annotations.</param>
+        /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node table will occur.</param>
+        /// <returns>True, if the statement is successfully executed.</returns>
+        public bool AddNodeTableColumn(string sqlStr, SqlTransaction externalTransaction = null)
         {
+            // get syntax tree of ALTER TABLE ADD command
+            var parser = new GraphViewParser();
+            List<WNodeTableColumn> columns;
+            IList<ParseError> errors;
+            var script = parser.ParseAlterTableAddNodeTableColumnStatement(sqlStr, out columns, out errors) as WSqlScript;
+            if (errors.Count > 0)
+                throw new SyntaxErrorException(errors);
+
+            if (script == null || script.Batches.Count == 0)
+                throw new SyntaxErrorException("Invalid ALTER TABLE ADD PROPERTY/EDGE statement.");
+
+            var statement = script.Batches[0].Statements[0] as WAlterTableAddTableElementStatement;
+
+            var tableSchema = statement.SchemaObjectName.SchemaIdentifier != null
+                ? statement.SchemaObjectName.SchemaIdentifier.Value
+                : "dbo";
+            var tableName = statement.SchemaObjectName.BaseIdentifier.Value;
+
             SqlTransaction tx;
             tx = externalTransaction ?? Conn.BeginTransaction();
+
+            try
+            {
+                Int64 tableId;
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    // Get altered table Id
+                    command.Transaction = tx;
+                    command.CommandText = String.Format(@"
+                        SELECT [TableId], [TableSchema], [TableName]
+                        FROM [{0}]
+                        WHERE [TableRole] = {1} AND [TableSchema] = '{2}' AND [TableName] = '{3}'",
+                        MetadataTables[0], (int)WNodeTableRole.NodeTable, tableSchema, tableName);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                            throw new GraphViewException("Table " + tableSchema + "." + tableName + " doesn't exist.");
+
+                        tableId = Convert.ToInt64(reader["TableId"], CultureInfo.CurrentCulture);
+                    }
+
+                    // Avoid naming conflicts
+                    foreach (var column in columns)
+                    {
+                        command.CommandText = String.Format(@"
+                            SELECT [ColumnId]
+                            FROM [{0}]
+                            WHERE [TableId] = {1} AND [ColumnName] = '{2}'",
+                            MetadataTables[1], tableId, column.ColumnName.Value);
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                                throw new GraphViewException(
+                                    string.Format("Table {0} already has a column named \"{1}\".",
+                                        tableSchema + "." + tableName, column.ColumnName.Value));
+                        }
+                    }
+
+                    // Alter table add column
+                    command.CommandText = statement.ToString();
+                    command.ExecuteNonQuery();
+                }
+
+                var edgeColumnNameToColumnId = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                var hasReversedEdge = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+                // Drop assmebly if needed
+                if (columns.OfType<WGraphTableEdgeColumn>().Any())
+                {
+                    using (var command = new SqlCommand(null, Conn))
+                    {
+                        command.Transaction = tx;
+                        var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
+                        if (edgeColumns.Count > 0)
+                        {
+                            var assemblyName = tableSchema + '_' + tableName;
+                            foreach (var edgeColumn in edgeColumns)
+                            {
+                                // !isEdgeView && !isReversedEdge
+                                // skip edgeView since they needn't to be reconstructed
+                                // skip reversed edges since they have no UDF
+                                if (!edgeColumn.Item3 && !edgeColumn.Item6)
+                                {
+                                    foreach (var it in _currentTableUdf)
+                                    {
+                                        command.CommandText = string.Format(
+                                            @"DROP {2} [{0}_{1}_{3}];",
+                                            assemblyName,
+                                            edgeColumn.Item1, it.Item1, it.Item2);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                            // skip tables which have only reversed edge columns
+                            if (edgeColumns.Count(x => !x.Item6) > 0)
+                            {
+                                command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
+                                command.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+
+                // _NodeTableColumnCollection update
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    command.Transaction = tx;
+                    command.CommandText = string.Format(@"
+                    INSERT INTO [{0}]
+                    ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [HasReversedEdge], [EdgeUdfPrefix])
+                    OUTPUT [Inserted].[ColumnId]
+                    VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref, @hasRevEdge, @udfPrefix)", MetadataTables[1]);
+
+                    command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                    command.Parameters.AddWithValue("@tableName", tableName);
+                    command.Parameters.AddWithValue("@tableid", tableId);
+
+                    command.Parameters.Add("@columnName", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@columnRole", SqlDbType.Int);
+                    command.Parameters.Add("@ref", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@hasRevEdge", SqlDbType.Bit);
+                    command.Parameters.Add("@udfPrefix", SqlDbType.NVarChar, 512);
+
+                    foreach (var column in columns)
+                    {
+                        command.Parameters["@columnName"].Value = column.ColumnName.Value;
+                        command.Parameters["@columnRole"].Value = (int) column.ColumnRole;
+                        command.Parameters["@hasRevEdge"].Value = column.ColumnRole == WNodeTableColumnRole.Edge ? 1 : 0;
+
+                        var edgeColumn = column as WGraphTableEdgeColumn;
+                        if (edgeColumn != null)
+                        {
+                            command.Parameters["@ref"].Value =
+                                (edgeColumn.TableReference as WNamedTableReference).ExposedName.Value;
+                            command.Parameters["@udfPrefix"].Value =
+                                tableSchema + "_" + tableName + "_" + column.ColumnName.Value;
+                        }
+                        else
+                            command.Parameters["@ref"].Value = command.Parameters["@udfPrefix"].Value = SqlChars.Null;
+                       
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                return false;
+                            }
+                            if (column.ColumnRole == WNodeTableColumnRole.Edge)
+                            {
+                                edgeColumnNameToColumnId[column.ColumnName.Value] = Convert.ToInt64(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture);
+                                hasReversedEdge[column.ColumnName.Value] = true;
+                            }
+                        }
+                    }
+
+                    // _EdgeAverageDegree update
+                    command.CommandText = string.Format(@"
+                    INSERT INTO [{0}]
+                    ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                    VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
+                    command.Parameters.Add("@AverageDegree", SqlDbType.Int);
+                    command.Parameters["@AverageDegree"].Value = 5;
+                    command.Parameters.Add("@columnid", SqlDbType.Int);
+
+                    foreach (var column in columns.OfType<WGraphTableEdgeColumn>())
+                    {
+                        command.Parameters["@columnid"].Value = edgeColumnNameToColumnId[column.ColumnName.Value];
+                        command.Parameters["@columnName"].Value = column.ColumnName.Value;
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                // _EdgeAttributeCollection update
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    command.Transaction = tx;
+                    // Set Max(attributeEdgeId) + 1 as createOrder
+                    command.CommandText = String.Format(@"
+                        SELECT MAX([AttributeEdgeId]) AS maxAttrEdgeId
+                        FROM [{0}]
+                        WHERE [TableSchema] = '{1}' AND [TableName] = '{2}'",
+                        MetadataTables[2], tableSchema, tableName);
+
+                    var createOrder = 1;
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var startOrder = reader["maxAttrEdgeId"].ToString();
+                            createOrder = String.IsNullOrEmpty(startOrder) ? 1 : Convert.ToInt32(startOrder, CultureInfo.CurrentCulture) + 1;
+                        }
+                    }
+
+                    command.CommandText = string.Format(@"
+                    INSERT INTO [{0}]
+                    ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
+                    VALUES (@tableSchema, @tableName, @columnName, @columnid, @attrName, @attrType, @attrId)", MetadataTables[2]);
+                    command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                    command.Parameters.AddWithValue("@tableName", tableName);
+
+                    command.Parameters.Add("@columnName", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
+                    command.Parameters.Add("@attrId", SqlDbType.Int);
+                    command.Parameters.Add("@columnid", SqlDbType.Int);
+
+                    foreach (var column in columns.OfType<WGraphTableEdgeColumn>())
+                    {
+                        command.Parameters["@columnName"].Value = column.ColumnName.Value;
+                        foreach (var attr in column.Attributes)
+                        {
+                            command.Parameters["@attrName"].Value = attr.Item1.Value;
+                            command.Parameters["@attrType"].Value = attr.Item2.ToString();
+                            command.Parameters["@attrId"].Value = (createOrder++).ToString();
+                            command.Parameters["@columnid"].Value = edgeColumnNameToColumnId[column.ColumnName.Value];
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                }
+
+                //var edgeDict =
+                //    columns.OfType<WGraphTableEdgeColumn>()
+                //        .Select(
+                //            col =>
+                //                new Tuple<string, int, List<Tuple<string, string>>>(col.ColumnName.Value,
+                //                    (int) edgeColumnNameToColumnId[col.ColumnName.Value],
+                //                    col.Attributes.Select(
+                //                        x =>
+                //                            new Tuple<string, string>(x.Item1.Value,
+                //                                x.Item2.ToString().ToLower(CultureInfo.CurrentCulture)))
+                //                        .ToList())).ToList();
+                
+                // Edge UDF Register
+                if (columns.OfType<WGraphTableEdgeColumn>().Any())
+                {
+                    UpgradeNodeTableFunction(tableName, tx);
+
+                    //var assemblyName = tableSchema + '_' + tableName;
+                    //GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableName, edgeDict, userId);
+                    //register.Register(Conn, tx);
+                }
+
+                // Edge sampling table created
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    command.Transaction = tx;
+                    foreach (var column in columns.OfType<WGraphTableEdgeColumn>())
+                    {
+                        command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
+                            SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
+                            SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
+                            FROM [{0}].[{1}] WITH (NOLOCK)
+                            CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
+                            WHERE 1=0) as EdgeSample",
+                            tableSchema, tableName, column.ColumnName.Value);
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                // <revEdgeName, edgeUdfPrefix, <srcTableSchema, srcTableName, srcTableId>, <attrName, attrType>>
+                var revEdgeMetaDataList =
+                    new List<Tuple<string, string, Tuple<string, string, long>, List<Tuple<string, string>>>>();
+                // <refTableSchema, refTableName>
+                var refTableTuple = new Tuple<string, string>(tableSchema, tableName);
+                foreach (var column in columns.OfType<WGraphTableEdgeColumn>())
+                {
+                    Tuple<string, string, long> srcTableTuple;
+                    var edgeName = column.ColumnName.Value;
+                    var edgeUdfPrefix = tableSchema + "_" + tableName + "_" + edgeName;
+                    var revEdgeName = tableName + "_" + edgeName + "Reversed";
+                    var srcTableName = (column.TableReference as WNamedTableReference).ExposedName.Value;
+                    var attrList =
+                        column.Attributes.Select(
+                            attr => new Tuple<string, string>(attr.Item1.Value, attr.Item2.ToString())).ToList();
+
+                    if (srcTableName.Equals(tableName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        srcTableTuple = new Tuple<string, string, long>(tableSchema, tableName, tableId);
+                        revEdgeMetaDataList.Add(new Tuple<string, string, Tuple<string, string, long>, List<Tuple<string, string>>>(
+                            revEdgeName, edgeUdfPrefix, srcTableTuple, attrList));
+                    }
+                    else
+                    {
+                        using (var command = new SqlCommand(null, Conn))
+                        {
+                            command.Transaction = tx;
+                            command.CommandText = String.Format(@"
+                                SELECT [TableId], [TableSchema], [TableName]
+                                FROM [{0}]
+                                WHERE [TableRole] = {1} AND [TableName] = '{2}'",
+                                MetadataTables[0], (int)WNodeTableRole.NodeTable, srcTableName);
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (!reader.Read()) continue;
+                                srcTableTuple = new Tuple<string, string, long>(
+                                    reader["TableSchema"].ToString(),
+                                    srcTableName,
+                                    Convert.ToInt64(reader["TableId"].ToString(), CultureInfo.CurrentCulture));
+                                revEdgeMetaDataList.Add(new Tuple<string, string, Tuple<string, string, long>, List<Tuple<string, string>>>(
+                                    revEdgeName, edgeUdfPrefix, srcTableTuple, attrList));
+                            }
+                        }
+                    }
+                }
+
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    command.Transaction = tx;
+                    foreach (var revEdgeMetaData in revEdgeMetaDataList)
+                    {
+                        var edgeName = revEdgeMetaData.Item1;
+                        var edgeUdfPrefix = revEdgeMetaData.Item2;
+                        var srcTableSchema = revEdgeMetaData.Item3.Item1;
+                        var srcTableName = revEdgeMetaData.Item3.Item2;
+                        var srcTableId = revEdgeMetaData.Item3.Item3;
+                        var attrList = revEdgeMetaData.Item4;
+
+                        command.Parameters.Clear();
+
+                        // Alter table add reversed edge column
+                        command.CommandText = String.Format(@"
+                            ALTER TABLE [{0}].[{1}]
+                            ADD [{2}] VARBINARY(MAX) NOT NULL DEFAULT 0x,
+                                [{3}] VARBINARY(MAX) NOT NULL DEFAULT 0x,
+                                [{4}] INT NOT NULL DEFAULT 0
+                            ", 
+                            srcTableSchema, srcTableName,
+                            edgeName,
+                            edgeName + "DeleteCol",
+                            edgeName + "OutDegree");
+                        command.ExecuteNonQuery();
+
+                        // _NodeTableColumnCollection update
+                        command.CommandText = string.Format(@"
+                        INSERT INTO [{0}]
+                        ([TableSchema], [TableName], [TableId], [ColumnName], [ColumnRole], [Reference], [IsReversedEdge], [EdgeUdfPrefix])
+                        OUTPUT [Inserted].[ColumnId]
+                        VALUES (@tableSchema, @tableName, @tableid, @columnName, @columnRole, @ref, @isRevEdge, @udfPrefix)", MetadataTables[1]);
+
+                        command.Parameters.AddWithValue("@tableSchema", srcTableSchema);
+                        command.Parameters.AddWithValue("@tableName", srcTableName);
+                        command.Parameters.AddWithValue("@tableid", srcTableId);
+
+                        command.Parameters.AddWithValue("@columnName", edgeName);
+                        command.Parameters.AddWithValue("@columnRole", (int)WNodeTableColumnRole.Edge);
+                        command.Parameters.AddWithValue("@ref", tableName);
+                        command.Parameters.AddWithValue("@refTableSchema", tableSchema);
+                        command.Parameters.AddWithValue("@isRevEdge", 1);
+                        command.Parameters.AddWithValue("@udfPrefix", edgeUdfPrefix);
+
+                        long columnId = 0;
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                                return false;
+                            else
+                                columnId = Convert.ToInt64(reader["ColumnId"].ToString(), CultureInfo.CurrentCulture);
+                        }
+
+                        // _EdgeAverageDegree update
+                        command.Parameters.Add("@AverageDegree", SqlDbType.Int);
+                        command.Parameters["@AverageDegree"].Value = 5;
+                        command.Parameters.Add("@columnid", SqlDbType.Int);
+                        command.Parameters["@columnid"].Value = columnId;
+
+                        command.CommandText = string.Format(@"
+                            INSERT INTO [{0}]
+                            ([TableSchema], [TableName], [ColumnName], [ColumnId], [AverageDegree])
+                            VALUES (@tableSchema, @tableName, @columnName, @columnid, @AverageDegree)", MetadataTables[3]);
+                        command.ExecuteNonQuery();
+
+                        // Create reversed edge sampling table
+                        command.CommandText = String.Format(@"
+                            SELECT * INTO [{0}_{1}_{2}_Sampling] FROM (
+                            SELECT ([GlobalNodeID]+0) as [Src], [Edge].*
+                            FROM [{0}].[{1}] WITH (NOLOCK)
+                            CROSS APPLY {3}_Decoder([{2}],[{2}DeleteCol],0) AS Edge
+                            WHERE 1=0) as EdgeSample
+                            ",
+                            srcTableSchema, srcTableName, edgeName, edgeUdfPrefix);
+                        command.ExecuteNonQuery();
+
+                        // Set Max(attributeEdgeId) + 1 as createOrder
+                        command.CommandText = String.Format(@"
+                            SELECT MAX([AttributeEdgeId]) AS maxAttrEdgeId
+                            FROM [{0}]
+                            WHERE [TableSchema] = '{1}' AND [TableName] = '{2}'",
+                            MetadataTables[2], srcTableSchema, srcTableName);
+
+                        var createOrder = 1;
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                var startOrder = reader["maxAttrEdgeId"].ToString();
+                                createOrder = String.IsNullOrEmpty(startOrder) ? 1 : Convert.ToInt32(startOrder, CultureInfo.CurrentCulture) + 1;
+                            }
+                        }
+
+                        // _EdgeAttributeCollection update
+                        command.CommandText = string.Format(@"
+                        INSERT INTO [{0}]
+                        ([TableSchema], [TableName], [ColumnName], [ColumnId], [AttributeName], [AttributeType], [AttributeEdgeId])
+                        VALUES (@tableSchema, @tableName, @columnName, @columnid, @attrName, @attrType, @attrId)", MetadataTables[2]);
+
+                        command.Parameters.Add("@attrName", SqlDbType.NVarChar, 128);
+                        command.Parameters.Add("@attrType", SqlDbType.NVarChar, 128);
+                        command.Parameters.Add("@attrId", SqlDbType.Int);
+
+                        foreach (var attr in attrList)
+                        {
+                            command.Parameters["@attrName"].Value = attr.Item1;
+                            command.Parameters["@attrType"].Value = attr.Item2;
+                            command.Parameters["@attrId"].Value = (createOrder++).ToString();
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                }
+
+                UpdateGlobalNodeView(tableSchema, tx);
+
+                if (externalTransaction == null)
+                {
+                    tx.Commit();
+                }
+                return true;
+            }
+            catch (SqlException e)
+            {
+                if (externalTransaction == null)
+                {
+                    tx.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when altering the node table.\n" + e.Message, e);
+            }
+        }
+
+        /// <summary>
+        /// Drop properties or edges of a node table in the graph database.
+        /// </summary>
+        /// <param name="sqlStr">A ALTER TABLE ADD statement with annotations.</param>
+        /// <param name="externalTransaction">An existing SqlTransaction instance under which the create node table will occur.</param>
+        /// <returns>True, if the statement is successfully executed.</returns>
+        public bool DropNodeTableColumn(string sqlStr, SqlTransaction externalTransaction = null)
+        {
+            var parser = new GraphViewParser();
+            IList<ParseError> errors;
+
+            var script = parser.ParseAlterTableDropNodeTableColumnStatement(sqlStr, out errors) as WSqlScript;
+
+            if (errors.Count > 0)
+                throw new SyntaxErrorException(errors);
+
+            if (script == null || script.Batches.Count == 0)
+                throw new SyntaxErrorException("Invalid ALTER TABLE DROP PROPERTY/EDGE statement.");
+
+            var statement = script.Batches[0].Statements[0] as WAlterTableDropTableElementStatement;
+
+            SqlTransaction tx;
+            tx = externalTransaction ?? Conn.BeginTransaction();
+
+            try
+            {
+                // <columnName, <columnId, role, hasRevEdge, isRevEdge, <refTableSchema, refTableName>>>
+                var columnDict =
+                    new Dictionary<string, Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>>(
+                        StringComparer.OrdinalIgnoreCase);
+                // <tableName, columnDict>
+                var tableColDict =
+                    new Dictionary
+                        <string,
+                            Dictionary<string, Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>>>(
+                        StringComparer.OrdinalIgnoreCase);
+                // <tableName, <tableId, tableSchema, userId>>
+                var tableInfoDict =
+                    new Dictionary<string, Tuple<long, string, string>>(StringComparer.OrdinalIgnoreCase);
+
+                string tableSchema = null, tableName = null;
+
+                using (var command = new SqlCommand(null, Conn))
+                {
+                    long tableId = -1;
+                    string userId = null;
+                    command.Transaction = tx;
+                    command.CommandText = string.Format(@"
+                    select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ntc.ColumnRole, ntc.HasReversedEdge, ntc.IsReversedEdge, ntc.RefTableSchema, ntc.Reference
+                    from {0} as nt
+                    join {1} as ntc
+                    on ntc.TableId = nt.TableId
+                    where ntc.ColumnRole = @role0 or ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2
+                    order by ntc.TableId", MetadataTables[0], MetadataTables[1]);
+                    command.Parameters.AddWithValue("@role0", WNodeTableColumnRole.Property);
+                    command.Parameters.AddWithValue("@role1", WNodeTableColumnRole.Edge);
+                    command.Parameters.AddWithValue("@role2", WNodeTableColumnRole.NodeId);
+
+                    // Metadata retrieval
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var curTableId = (long)reader["TableId"];
+                            if (tableId == -1)
+                            {
+                                tableId = curTableId;
+                                tableSchema = reader["TableSchema"].ToString();
+                                tableName = reader["TableName"].ToString();
+                            }
+                            else if (curTableId != tableId)
+                            {
+                                tableColDict[tableName] = columnDict;
+                                tableInfoDict[tableName] = new Tuple<long, string, string>(tableId, tableSchema, userId);
+                                tableSchema = reader["TableSchema"].ToString();
+                                tableName = reader["TableName"].ToString();
+                                userId = null;
+                                columnDict =
+                                    new Dictionary
+                                        <string, Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>>();
+                                tableId = curTableId;
+                            }
+
+                            var role = (WNodeTableColumnRole)reader["ColumnRole"];
+                            if (role == WNodeTableColumnRole.NodeId)
+                                userId = reader["ColumnName"].ToString();
+                            else if (role == WNodeTableColumnRole.Property || role == WNodeTableColumnRole.Edge)
+                            {
+                                var columnName = reader["ColumnName"].ToString();
+                                var colId = (long)reader["ColumnId"];
+                                var hasRevEdge = bool.Parse(reader["HasReversedEdge"].ToString());
+                                var isRevEdge = bool.Parse(reader["IsReversedEdge"].ToString());
+                                var refTableSchema = role == WNodeTableColumnRole.Property ? "" : "dbo";
+                                var refTableName = reader.IsDBNull(9) ? "" : reader["Reference"].ToString();
+                                var colInfo =
+                                    new Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>(colId, role,
+                                        hasRevEdge, isRevEdge, new Tuple<string, string>(refTableSchema, refTableName));
+                                columnDict[columnName] = colInfo;
+                            }
+                        }
+                        tableColDict[tableName] = columnDict;
+                        tableInfoDict[tableName] = new Tuple<long, string, string>(tableId, tableSchema, userId);
+                    }
+
+                    tableSchema = statement.SchemaObjectName.SchemaIdentifier != null
+                        ? statement.SchemaObjectName.SchemaIdentifier.Value
+                        : "dbo";
+                    tableName = statement.SchemaObjectName.BaseIdentifier.Value;
+
+                    if (!tableInfoDict.ContainsKey(tableName))
+                        throw new GraphViewException("Table " + tableSchema + "." + tableName + " doesn't exist.");
+
+                    // Get GlobalNodeView Table Id
+                    long globalNodeViewTableId;
+                    command.CommandText = string.Format(
+                      @"SELECT TableId
+                        FROM _NodeTableCollection as nt
+                        WHERE nt.TableRole = {0} and nt.TableName = 'GlobalNodeView'", (int)WNodeTableRole.NodeView);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        globalNodeViewTableId = reader.Read() ? (long)reader["TableId"] : -1;
+                    }
+
+                    // <NodeViewColumnId, <NodeViewName, ColumnName>>
+                    var viewInfoDict = new Dictionary<long, Tuple<string, string>>();
+                    // <ColumnId, NodeViewColumnId>
+                    var viewColDict = new Dictionary<long, HashSet<long>>();
+
+                    command.CommandText = string.Format(
+                        @"SELECT nt.TableName, ntc.ColumnName, nvc.NodeViewColumnId, nvc.ColumnId
+                        FROM 
+                            _NodeTableCollection as nt
+                            JOIN
+                            _NodeTableColumnCollection as ntc
+                            ON nt.TableId = ntc.TableId
+                            JOIN _NodeViewColumnCollection as nvc
+                            ON ntc.ColumnId = nvc.NodeViewColumnId
+                        WHERE nt.TableId != {0}", globalNodeViewTableId);
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var nodeViewName = reader["TableName"].ToString();
+                            var columnName = reader["ColumnName"].ToString();
+                            var nodeViewColumnId = (long)reader["NodeViewColumnId"];
+                            var columnId = (long)reader["ColumnId"];
+
+                            if (!viewColDict.ContainsKey(columnId))
+                                viewColDict[columnId] = new HashSet<long>();
+                            viewColDict[columnId].Add(nodeViewColumnId);
+
+                            if (!viewInfoDict.ContainsKey(nodeViewColumnId))
+                                viewInfoDict.Add(nodeViewColumnId, new Tuple<string, string>(nodeViewName, columnName));
+                        }
+                    }
+
+                    const string dropColumnScript = @"
+    
+                        SET @tablename = '{0}'
+                        SET @colname = '{1}'                    
+
+                        SELECT @constraint_name = name 
+                        FROM sys.default_constraints 
+                        WHERE parent_object_id = object_id(@tablename)
+                        AND parent_column_id = (
+                            select column_id 
+                            from sys.columns 
+                            where object_id = object_id(@tablename)
+                            and name = @colname
+                            )
+
+                        SET @sql = N'ALTER TABLE ' + @tablename + ' DROP CONSTRAINT ' + @constraint_name
+                        EXEC sp_executesql @sql
+                        SET @sql = N'alter table ' + @tablename + ' DROP COLUMN ' + @colname
+                        EXEC sp_executesql @sql
+                    ";
+                    var dropColumnStr = "";
+
+                    // <tableName, columnDict>
+                    var alteredTableColumn = 
+                        new Dictionary
+                            <string,
+                                Dictionary<string, Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>>>(
+                            StringComparer.OrdinalIgnoreCase);
+                    alteredTableColumn.Add(tableName,
+                        new Dictionary<string, Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>>());
+                    columnDict = tableColDict[tableName];
+
+                    foreach (var element in statement.AlterTableDropTableElements)
+                    {
+                        var columnName = element.Name.Value;
+                        if (!columnDict.ContainsKey(columnName))
+                            throw new GraphViewException(
+                                string.Format("Table {0} doesn't have a column named \"{1}\".",
+                                    tableSchema + "." + tableName, columnName));
+
+                        var columnInfo = columnDict[columnName];
+                        var colId = columnInfo.Item1;
+                        HashSet<long> refViewIds;
+                        if (viewColDict.TryGetValue(colId, out refViewIds))
+                        {
+                            var msg = "";
+                            var first = true;
+
+                            foreach (var refViewId in refViewIds)
+                            {
+                                if (first)
+                                    first = false;
+                                else
+                                    msg += ", ";
+
+                                var viewInfo = viewInfoDict[refViewId];
+                                msg += viewInfo.Item1 + "." + viewInfo.Item2;
+                            }
+
+                            throw new GraphViewException(
+                                string.Format("\"{0}\" is referenced by Nodeview/Edgeview {1}.", columnName, msg));
+                        }
+
+                        dropColumnStr += string.Format(dropColumnScript, tableName, columnName);
+
+                        var alteredColumn = alteredTableColumn[tableName];
+                        alteredColumn.Add(columnName, columnInfo);
+                        // role == edge
+                        if (columnInfo.Item2 == WNodeTableColumnRole.Edge)
+                        {
+                            // Drop DeleteCol and OutDegree
+                            dropColumnStr += string.Format(dropColumnScript, tableName, columnName + "DeleteCol");
+                            dropColumnStr += string.Format(dropColumnScript, tableName, columnName + "OutDegree");
+
+                            // hasReversedEdge
+                            if (columnInfo.Item3)
+                            {
+                                var refTableSchema = columnInfo.Item5.Item1;
+                                var refTableName = columnInfo.Item5.Item2;
+                                var revEdgeName = tableName + "_" + columnName + "Reversed";
+
+                                // refTable still not created
+                                if (!tableColDict.ContainsKey(refTableName))
+                                    continue;
+
+                                // Drop revEdge, DeleteCol and OutDegree
+                                dropColumnStr += string.Format(dropColumnScript, refTableName, revEdgeName);
+                                dropColumnStr += string.Format(dropColumnScript, refTableName, revEdgeName + "DeleteCol");
+                                dropColumnStr += string.Format(dropColumnScript, refTableName, revEdgeName + "OutDegree");
+
+                                if (!alteredTableColumn.ContainsKey(refTableName))
+                                    alteredTableColumn[refTableName] =
+                                        new Dictionary
+                                            <string, Tuple<long, WNodeTableColumnRole, bool, bool, Tuple<string, string>>>();
+
+                                var revEdgeInfo = tableColDict[refTableName][revEdgeName];
+                                alteredTableColumn[refTableName].Add(revEdgeName, revEdgeInfo);
+                            }
+                        }
+                    }
+
+                    // Alter Table Drop Column
+                    const string dropColumnDeclare = @"
+                            DECLARE @tablename nvarchar(128), @colname nvarchar(128)
+                            DECLARE @constraint_name sysname, @sql nvarchar(max)";
+                    command.CommandText = dropColumnDeclare + dropColumnStr;
+                    command.ExecuteNonQuery();
+
+                    // Drop Assembly if needed
+                    if (alteredTableColumn[tableName].Any(col => col.Value.Item2 == WNodeTableColumnRole.Edge))
+                    {
+                        var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
+                        if (edgeColumns.Count > 0)
+                        {
+                            var assemblyName = tableSchema + '_' + tableName;
+                            foreach (var edgeColumn in edgeColumns)
+                            {
+                                // !isEdgeView && !isReversedEdge
+                                // skip edgeView since they needn't to be reconstructed
+                                // skip reversed edges since they have no UDF
+                                if (!edgeColumn.Item3 && !edgeColumn.Item6)
+                                {
+                                    foreach (var it in _currentTableUdf)
+                                    {
+                                        command.CommandText = string.Format(
+                                            @"DROP {2} [{0}_{1}_{3}];",
+                                            assemblyName,
+                                            edgeColumn.Item1, it.Item1, it.Item2);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                            // skip tables which have only reversed edge columns
+                            if (edgeColumns.Count(x => !x.Item6) > 0)
+                            {
+                                command.CommandText = @"DROP ASSEMBLY [" + assemblyName + "_Assembly]";
+                                command.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
+                    var deletePropertyColumnIds = "";
+                    var deleteEdgeColumnIds = "";
+                    var dropSamplingTableNames = "";
+                    var pFirst = true;
+                    var eFirst = true;
+                    var sFirst = true;
+                    foreach (var tableDict in alteredTableColumn)
+                    {
+                        foreach (var column in tableDict.Value)
+                        {
+                            var columnInfo = column.Value;
+                            if (columnInfo.Item2 == WNodeTableColumnRole.Property)
+                            {
+                                if (pFirst)
+                                    pFirst = false;
+                                else
+                                    deletePropertyColumnIds += ", ";
+                                deletePropertyColumnIds += columnInfo.Item1;
+                            }
+                            else if (columnInfo.Item2 == WNodeTableColumnRole.Edge)
+                            {
+                                if (eFirst)
+                                    eFirst = false;
+                                else
+                                    deleteEdgeColumnIds += ", ";
+                                deleteEdgeColumnIds += columnInfo.Item1;
+
+                                var samplingTableName = tableDict.Key;
+                                var samplingTableSchema = tableInfoDict[samplingTableName].Item2;
+                                var dropTableName = samplingTableSchema + "_" + samplingTableName + "_" +
+                                                    column.Key + "_Sampling";
+                                if (sFirst)
+                                    sFirst = false;
+                                else
+                                    dropSamplingTableNames += ", ";
+                                dropSamplingTableNames += "[" + dropTableName + "]";
+                            }
+                        }
+                    }
+
+                    var deleteColumnIds = deletePropertyColumnIds + 
+                                          (string.IsNullOrEmpty(deletePropertyColumnIds)
+                                          ? deleteEdgeColumnIds
+                                          : ", " + deleteEdgeColumnIds);
+                    const string metaTableDeleteStr = @"
+                        DELETE FROM [{0}]
+                        WHERE [ColumnId] in ({1})
+                        ";
+
+                    // _NodeTableColumnCollection update
+                    command.CommandText = string.Format(metaTableDeleteStr, MetadataTables[1], deleteColumnIds);
+                    command.ExecuteNonQuery();
+
+                    if (!string.IsNullOrEmpty(deleteEdgeColumnIds))
+                    {
+                        // _EdgeAverageDegree update
+                        command.CommandText = string.Format(metaTableDeleteStr, MetadataTables[3], deleteColumnIds);
+                        command.ExecuteNonQuery();
+
+                        // _EdgeAttributeCollection update
+                        command.CommandText = string.Format(metaTableDeleteStr, MetadataTables[2], deleteEdgeColumnIds);
+                        command.ExecuteNonQuery();
+
+                        // Drop sampling tables
+                        command.CommandText = string.Format(@"DROP TABLE {0}", dropSamplingTableNames);
+                        command.ExecuteNonQuery();
+
+                        // Edge UDF Register
+                        UpgradeNodeTableFunction(tableName, tx);
+                    }
+                }
+
+                UpdateGlobalNodeView(tableSchema, tx);
+
+                if (externalTransaction == null)
+                {
+                    tx.Commit();
+                }
+                return true;
+            }
+            catch (SqlException e)
+            {
+                if (externalTransaction == null)
+                {
+                    tx.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when altering the node table.\n" + e.Message, e);
+            }
+        }
+
+        /// <summary>
+        /// Drop the global UDFs and assembly 
+        /// </summary>
+        public void DropAssemblyAndMetaUdf(List<Tuple<string, string>> metaUdfList, SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx = externalTransaction ?? Conn.BeginTransaction();
             try
             {
                 using (var command = Conn.CreateCommand())
@@ -1253,7 +2688,7 @@ namespace GraphView
                     //Drop assembly and UDF
                     const string dropAssembly = @"
                     DROP {0} {1}";
-                    command.CommandText = string.Join("\n", Version110MetaUdf.Select(x => string.Format(dropAssembly, x.Item1, x.Item2)));
+                    command.CommandText = string.Join("\n", metaUdfList.Select(x => string.Format(dropAssembly, x.Item1, x.Item2)));
                     command.ExecuteNonQuery();
                 }
 
@@ -1265,6 +2700,7 @@ namespace GraphView
                 throw new Exception(e.Message);
             }
         }
+
         /// <summary>
         /// Gets all node tables in the graph database.
         /// </summary>
@@ -1317,9 +2753,7 @@ namespace GraphView
                 var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
                 foreach (var edgeColumn in edgeColumns)
                 {
-                    if (!edgeColumn.Item3)
-                        UpdateEdgeSampling(tableSchema, tableName, edgeColumn.Item1, tx);
-                    UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn.Item1, tx);
+                    UpdateEdgeStatistics(tableSchema, tableName, edgeColumn, false, tx);
                 }
                 if (externalTransaction == null)
                     tx.Commit();
@@ -1331,6 +2765,108 @@ namespace GraphView
                 throw new Exception(e.Message);
             }
 
+        }
+
+        /// <summary>
+        /// Updates a specific edge's statistics
+        /// </summary>
+        /// <param name="tableSchema">The schema of the table to be updated.</param>
+        /// <param name="tableName">The name of the table to be updated.</param>
+        /// <param name="edgeColName">The name of the edge to be updated</param>
+        public void UpdateTableStatistics(string tableSchema, string tableName, string edgeColName, SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx;
+            tx = externalTransaction ?? Conn.BeginTransaction();
+            try
+            {
+                var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName, tx);
+                var edgeColumn =
+                    edgeColumns.Where(x => x.Item1.Equals(edgeColName, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (!edgeColumn.Any())
+                    throw new Exception(tableName + " doesn't have an edge named " + edgeColName + ".");
+
+                UpdateEdgeStatistics(tableSchema, tableName, edgeColumn[0], true, tx);
+
+                if (externalTransaction == null)
+                    tx.Commit();
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                    tx.Rollback();
+                throw new Exception(e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Updates a specific edge statistics
+        /// </summary>
+        /// <param name="tableSchema">The schema of the table to be updated.</param>
+        /// <param name="tableName">The name of the table to be updated.</param>
+        /// <param name="edgeColumn">The edge column info.</param>
+        /// <param name="sameTableRevEdgeUpdate">Whether update the reversed edge if it's in the same table.</param>
+        private void UpdateEdgeStatistics(string tableSchema, string tableName,
+            Tuple<string, bool, bool, string, bool, bool> edgeColumn, bool sameTableRevEdgeUpdate, SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx;
+            tx = externalTransaction ?? Conn.BeginTransaction();
+            try
+            {
+                var edgeColName = edgeColumn.Item1;
+                // !isEdgeView
+                if (!edgeColumn.Item3)
+                    // <edgeColName, edgeUdfPrefix>
+                    UpdateEdgeSampling(tableSchema, tableName, Tuple.Create(edgeColumn.Item1, edgeColumn.Item4), tx);
+                UpdateEdgeAverageDegree(tableSchema, tableName, edgeColumn.Item1, tx);
+
+                // hasReversedEdge
+                if (edgeColumn.Item5)
+                {
+                    if (!edgeColumn.Item2 || edgeColumn.Item2 && sameTableRevEdgeUpdate)
+                    {
+                        var refTableName = "";
+                        using (var command = Conn.CreateCommand())
+                        {
+                            command.Transaction = tx;
+                            command.CommandText = string.Format(
+                                @"SELECT Reference
+                            FROM [{0}]
+                            WHERE TableSchema = @tableSchema AND TableName = @tableName
+                            AND ColumnName = @columnName", MetadataTables[1]);
+                            command.Parameters.AddWithValue("@tableSchema", tableSchema);
+                            command.Parameters.AddWithValue("@tableName", tableName);
+                            command.Parameters.AddWithValue("@columnName", edgeColName);
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                    refTableName = reader["Reference"].ToString();
+                            }
+                            var revEdgeName = tableName + "_" + edgeColName + "Reversed";
+                            var revEdgeColumns = GetGraphEdgeColumns(tableSchema, refTableName, tx);
+                            var revEdgeColumn =
+                                revEdgeColumns.Where(x => x.Item1.Equals(revEdgeName, StringComparison.OrdinalIgnoreCase)).ToList();
+                            if (revEdgeColumn.Any())
+                            {
+                                var revEdgeTuple = revEdgeColumn[0];
+                                // !isEdgeView
+                                if (!revEdgeTuple.Item3)
+                                    // <edgeColName, edgeUdfPrefix>
+                                    UpdateEdgeSampling(tableSchema, refTableName, Tuple.Create(revEdgeTuple.Item1, revEdgeTuple.Item4), tx);
+                                UpdateEdgeAverageDegree(tableSchema, refTableName, revEdgeTuple.Item1, tx);
+                            }
+                        }
+                    }
+                }
+
+                if (externalTransaction == null)
+                    tx.Commit();
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                    tx.Rollback();
+                throw new Exception(e.Message);
+            }
         }
 
         /// <summary>
@@ -1392,16 +2928,21 @@ namespace GraphView
         /// </summary>
         /// <param name="tableSchema">The schema of the table</param>
         /// <param name="tableName">The table name</param>
-        /// <param name="edgeColumn">The edge name in the table</param>
+        /// <param name="edgeColumn">The edge name and udf prefix in the table</param>
         /// <param name="tx"></param>
-        public void UpdateEdgeSampling(string tableSchema, string tableName, string edgeColumn, 
+        public void UpdateEdgeSampling(string tableSchema, string tableName, Tuple<string, string> edgeColumn, 
             SqlTransaction tx = null)
         {
-
             try
             {
                 using (var command = Conn.CreateCommand())
                 {
+                    //var isRevEdge = edgeInfo.Item1;
+                    //var decoderSchemaName = isRevEdge ? edgeInfo.Item2 : tableSchema;
+                    //var decoderTableName = isRevEdge ? edgeInfo.Item3 : tableName;
+                    //var decoderEdgeName = isRevEdge ? edgeInfo.Item4 : edgeColumn;
+                    //var decoderStr = decoderSchemaName + "_" + decoderTableName + "_" + decoderEdgeName + "_Decoder";
+
                     command.Transaction = tx;
                     command.CommandText = String.Format(CultureInfo.CurrentCulture, @"
                 /*TRUNCATE TABLE [{0}_{1}_{2}_Sampling];
@@ -1413,17 +2954,25 @@ namespace GraphView
                             (BINARY_CHECKSUM
                                 (GlobalNodeId, NEWID())) as int))
                                 % 100) < {3};*/
+                /*TRUNCATE TABLE [{0}_{1}_{2}_Sampling];
+                INSERT INTO [{0}_{1}_{2}_Sampling]
+            		SELECT [GlobalNodeID] [src], Edge.*
+            		FROM [{0}].[{1}]
+            		TABLESAMPLE ({3} rows) WITH (NOLOCK)
+            		CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol]) As Edge*/
+
                 TRUNCATE TABLE [{0}_{1}_{2}_Sampling];
                 INSERT INTO [{0}_{1}_{2}_Sampling]
             		SELECT [GlobalNodeID] [src], Edge.*
             		FROM [{0}].[{1}]
             		TABLESAMPLE ({3} rows) WITH (NOLOCK)
-            		CROSS APPLY {0}_{1}_{2}_Decoder([{2}],[{2}DeleteCol]) As Edge
+            		CROSS APPLY {4}_Decoder([{2}],[{2}DeleteCol],0) As Edge
                 ",
                         tableSchema,
                         tableName,
-                        edgeColumn,
-                        GraphDbEdgeColumnSamplingRate);
+                        edgeColumn.Item1,
+                        GraphDbEdgeColumnSamplingRate,
+                        edgeColumn.Item2);
                     command.ExecuteNonQuery();
                 }
             }
@@ -1443,13 +2992,15 @@ namespace GraphView
         /// <param name="tableSchema">The schema of table to be updated.</param>
         /// <param name="tableName">The table name.</param>
         /// <param name="edgeColumns">The edge columns to be merged</param>
-        public void MergeDeleteColumn(string tableSchema, string tableName, string[] edgeColumns,
+        public void MergeDeleteColumn(string tableSchema, string tableName, 
+            IList<Tuple<string, string>> edgeColumns,
             SqlTransaction tx = null)
         {
             //var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName);
             int len = 0;
             if (edgeColumns != null)
-                len = edgeColumns.Length;
+                len = edgeColumns.Count;
+            //    len = edgeColumns.Length;
             if (len == 0)
                 throw new GraphViewException(
                     "Merged edge columns should be specified");
@@ -1458,21 +3009,37 @@ namespace GraphView
             int i = 0;
             if (len > 0)
             {
+                //bool isReversed = edgeColumns[0].Item5.Item1;
+                //var recycleSchemaName = isReversed ? edgeColumns[0].Item5.Item2 : tableSchema;
+                //var recycleTableName = isReversed ? edgeColumns[0].Item5.Item3 : tableName;
+                //var recycleEdgeName = isReversed ? edgeColumns[0].Item5.Item4 : edgeColumns[0].Item1;
+                //var recycleName = recycleSchemaName + "_" + recycleTableName + "_" + recycleEdgeName;
                 setSb.AppendFormat(
-                    "{2} = ISNULL(dbo.{0}_{1}_{2}_Recycle({2},{2}DeleteCol),0x), {2}DeleteCol = 0x ",
-                    tableSchema,
-                    tableName, edgeColumns[0]);
-                whereSb.AppendFormat("LEN({0}DeleteCol) != 0 ", edgeColumns[0]);
+                    //"{2} = ISNULL(dbo.{0}_{1}_{2}_Recycle({2},{2}DeleteCol),0x), {2}DeleteCol = 0x ",
+                    // tableSchema,
+                    // tableName, edgeColumns[0].Item1);
+                    "{1} = ISNULL(dbo.{0}_Recycle({1},{1}DeleteCol),0x), {1}DeleteCol = 0x ",
+                    edgeColumns[0].Item2, edgeColumns[0].Item1);
+
+                whereSb.AppendFormat("LEN({0}DeleteCol) != 0 ", edgeColumns[0].Item1);
                 i = 1;
             }
             for (; i < len; i++)
             {
                 var edgeColumn = edgeColumns[i];
+                //bool isReversed = edgeColumn.Item5.Item1;
+                //var schemaName = isReversed ? edgeColumn.Item5.Item2 : tableSchema;
+                //var tabName = isReversed ? edgeColumn.Item5.Item3 : tableName;
+                //var edgeName = isReversed ? edgeColumn.Item5.Item4 : edgeColumn.Item1;
+                //var recycleName = schemaName + "_" + tabName + "_" + edgeName;
                 setSb.AppendFormat(
-                    ",{2} = ISNULL(dbo.{0}_{1}_{2}_Recycle({2},{2}DeleteCol),0x), {2}DeleteCol = 0x",
-                    tableSchema,
-                    tableName, edgeColumn);
-                whereSb.AppendFormat("OR LEN({0}DeleteCol) != 0 ", edgeColumn);
+                    //",{2} = ISNULL(dbo.{0}_{1}_{2}_Recycle({2},{2}DeleteCol),0x), {2}DeleteCol = 0x",
+                    //tableSchema,
+                    //tableName, edgeColumn.Item1);
+                    ",{1} = ISNULL(dbo.{0}_Recycle({1},{1}DeleteCol),0x), {1}DeleteCol = 0x",
+                    edgeColumn.Item2, edgeColumn.Item1);
+
+                whereSb.AppendFormat("OR LEN({0}DeleteCol) != 0 ", edgeColumn.Item1);
             }
 
             try
@@ -1507,8 +3074,11 @@ namespace GraphView
         /// <param name="tableName">The table name</param>
         public void MergeAllDeleteColumn(string tableSchema, string tableName)
         {
-            var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName).Select(x => x.Item1).ToArray();
-            if (edgeColumns.Length == 0)
+            //var edgeColumns = GetGraphEdgeColumns(tableSchema, tableName).Select(x => x.Item1).ToArray();
+            var edgeColumns =
+                GetGraphEdgeColumns(tableSchema, tableName).Select(x => Tuple.Create(x.Item1, x.Item4)).ToList();
+            //if (edgeColumns.Length == 0)
+            if (edgeColumns.Count == 0)
                 throw new GraphViewException(string.Format("Node table '{0}' does not exists", tableName));
             SqlTransaction tx = Conn.BeginTransaction();
             try
@@ -1630,151 +3200,151 @@ namespace GraphView
             }
         }
 
-        public void UpgradeGraphViewFunctionV100(SqlTransaction externalTransaction = null)
-        {
-            SqlTransaction tx;
-            if (externalTransaction == null)
-            {
-                tx = Conn.BeginTransaction();
-            }
-            else
-            {
-                tx = externalTransaction;
-            }
-            try
-            {
-                using (var command = Conn.CreateCommand())
-                {
-                    command.Transaction = tx;
-                    command.CommandText = string.Format(@"
-                    select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ec.AttributeName, ec.AttributeType,ntc.ColumnRole
-                    from
-                    {0} as nt
-                    join
-                    {1} as ntc
-                    on ntc.TableId = nt.TableId
-                    left join
-                    {2} as ec
-                    on ec.ColumnId = ntc.ColumnId
-                    where ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2
-                    order by ntc.TableId", MetadataTables[0], MetadataTables[1], MetadataTables[2]);
-                        command.Parameters.AddWithValue("@role1", WNodeTableColumnRole.Edge);
-                        command.Parameters.AddWithValue("@role2", WNodeTableColumnRole.NodeId);
+//        public void UpgradeGraphViewFunctionV100(SqlTransaction externalTransaction = null)
+//        {
+//            SqlTransaction tx;
+//            if (externalTransaction == null)
+//            {
+//                tx = Conn.BeginTransaction();
+//            }
+//            else
+//            {
+//                tx = externalTransaction;
+//            }
+//            try
+//            {
+//                using (var command = Conn.CreateCommand())
+//                {
+//                    command.Transaction = tx;
+//                    command.CommandText = string.Format(@"
+//                    select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ec.AttributeName, ec.AttributeType,ntc.ColumnRole
+//                    from
+//                    {0} as nt
+//                    join
+//                    {1} as ntc
+//                    on ntc.TableId = nt.TableId
+//                    left join
+//                    {2} as ec
+//                    on ec.ColumnId = ntc.ColumnId
+//                    where ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2
+//                    order by ntc.TableId", MetadataTables[0], MetadataTables[1], MetadataTables[2]);
+//                        command.Parameters.AddWithValue("@role1", WNodeTableColumnRole.Edge);
+//                        command.Parameters.AddWithValue("@role2", WNodeTableColumnRole.NodeId);
 
 
-                    string tableSchema = null;
-                    string tableName = null;
-                    string columnName = null;
-                    Dictionary<long, Tuple<string, List<Tuple<string, string>>>> edgeDict =
-                        new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
-                    long tableId = -1;
-                    Dictionary<long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>
-                        tableColDict =
-                            new Dictionary
-                                <long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>();
-                    Dictionary<long, Tuple<string, string, string>> tableInfoDict =
-                        new Dictionary<long, Tuple<string, string, string>>();
-                    using (var reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            long curTableId = (long) reader["TableId"];
-                            if (tableId == -1)
-                            {
-                                tableId = curTableId;
-                                tableSchema = reader["TableSchema"].ToString();
-                                tableName = reader["TableName"].ToString();
-                            }
-                            else if (curTableId != tableId)
-                            {
+//                    string tableSchema = null;
+//                    string tableName = null;
+//                    string columnName = null;
+//                    Dictionary<long, Tuple<string, List<Tuple<string, string>>>> edgeDict =
+//                        new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+//                    long tableId = -1;
+//                    Dictionary<long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>
+//                        tableColDict =
+//                            new Dictionary
+//                                <long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>();
+//                    Dictionary<long, Tuple<string, string, string>> tableInfoDict =
+//                        new Dictionary<long, Tuple<string, string, string>>();
+//                    using (var reader = command.ExecuteReader())
+//                    {
+//                        while (reader.Read())
+//                        {
+//                            long curTableId = (long) reader["TableId"];
+//                            if (tableId == -1)
+//                            {
+//                                tableId = curTableId;
+//                                tableSchema = reader["TableSchema"].ToString();
+//                                tableName = reader["TableName"].ToString();
+//                            }
+//                            else if (curTableId != tableId)
+//                            {
 
-                                tableColDict[tableId] = edgeDict;
-                                tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
-                                    columnName);
-                                tableSchema = reader["TableSchema"].ToString();
-                                tableName = reader["TableName"].ToString();
-                                columnName = null;
-                                edgeDict = new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
-                                tableId = curTableId;
-                            }
-                            var role = (WNodeTableColumnRole) reader["ColumnRole"];
-                            if (role == WNodeTableColumnRole.NodeId)
-                            {
-                                columnName = reader["ColumnName"].ToString();
-                                //continue;
-                            }
-                            else if (role == WNodeTableColumnRole.Edge)
-                            {
-                                long colId = (long) reader["ColumnId"];
-                                if (!reader.IsDBNull(5) && !reader.IsDBNull(6))
-                                {
-                                    Tuple<string, List<Tuple<string, string>>> tuple;
-                                    if (edgeDict.TryGetValue(colId, out tuple))
-                                    {
-                                        tuple.Item2.Add(new Tuple<string, string>(reader["AttributeName"].ToString(),
-                                            reader["AttributeType"].ToString().ToLower()));
-                                    }
-                                    else
-                                    {
-                                        edgeDict[colId] =
-                                            new Tuple<string, List<Tuple<string, string>>>(
-                                                reader["ColumnName"].ToString(),
-                                                new List<Tuple<string, string>>
-                                                {
-                                                    new Tuple<string, string>(reader["AttributeName"].ToString(),
-                                                        reader["AttributeType"].ToString().ToLower())
-                                                });
-                                    }
-                                }
-                                else
-                                {
-                                    edgeDict[colId] =
-                                        new Tuple<string, List<Tuple<string, string>>>(reader["ColumnName"].ToString(),
-                                            new List<Tuple<string, string>>());
-                                }
-                            }
-                        }
-                        tableColDict[tableId] = edgeDict;
-                        tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
-                            columnName);
-                    }
-                    //List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = new List<Tuple<string, long, List<Tuple<string, string>>>>();
+//                                tableColDict[tableId] = edgeDict;
+//                                tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+//                                    columnName);
+//                                tableSchema = reader["TableSchema"].ToString();
+//                                tableName = reader["TableName"].ToString();
+//                                columnName = null;
+//                                edgeDict = new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+//                                tableId = curTableId;
+//                            }
+//                            var role = (WNodeTableColumnRole) reader["ColumnRole"];
+//                            if (role == WNodeTableColumnRole.NodeId)
+//                            {
+//                                columnName = reader["ColumnName"].ToString();
+//                                //continue;
+//                            }
+//                            else if (role == WNodeTableColumnRole.Edge)
+//                            {
+//                                long colId = (long) reader["ColumnId"];
+//                                if (!reader.IsDBNull(5) && !reader.IsDBNull(6))
+//                                {
+//                                    Tuple<string, List<Tuple<string, string>>> tuple;
+//                                    if (edgeDict.TryGetValue(colId, out tuple))
+//                                    {
+//                                        tuple.Item2.Add(new Tuple<string, string>(reader["AttributeName"].ToString(),
+//                                            reader["AttributeType"].ToString().ToLower()));
+//                                    }
+//                                    else
+//                                    {
+//                                        edgeDict[colId] =
+//                                            new Tuple<string, List<Tuple<string, string>>>(
+//                                                reader["ColumnName"].ToString(),
+//                                                new List<Tuple<string, string>>
+//                                                {
+//                                                    new Tuple<string, string>(reader["AttributeName"].ToString(),
+//                                                        reader["AttributeType"].ToString().ToLower())
+//                                                });
+//                                    }
+//                                }
+//                                else
+//                                {
+//                                    edgeDict[colId] =
+//                                        new Tuple<string, List<Tuple<string, string>>>(reader["ColumnName"].ToString(),
+//                                            new List<Tuple<string, string>>());
+//                                }
+//                            }
+//                        }
+//                        tableColDict[tableId] = edgeDict;
+//                        tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+//                            columnName);
+//                    }
+//                    //List<Tuple<string, long, List<Tuple<string, string>>>> edgeList = new List<Tuple<string, long, List<Tuple<string, string>>>>();
 
-                    foreach (var item in tableColDict)
-                    {
-                        var edgeList =
-                            item.Value.Select(
-                                e =>
-                                    new Tuple<string, long, List<Tuple<string, string>>>(e.Value.Item1, e.Key,
-                                        e.Value.Item2)).ToList();
-                        if (edgeList.Any())
-                        {
-                            var tableInfo = tableInfoDict[item.Key];
-                            var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
-                            GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
-                                tableInfo.Item3);
-                            register.Register(Conn, tx);
-                        }
+//                    foreach (var item in tableColDict)
+//                    {
+//                        var edgeList =
+//                            item.Value.Select(
+//                                e =>
+//                                    new Tuple<string, int, List<Tuple<string, string>>>(e.Value.Item1, (int)e.Key,
+//                                        e.Value.Item2)).ToList();
+//                        if (edgeList.Any())
+//                        {
+//                            var tableInfo = tableInfoDict[item.Key];
+//                            var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
+//                            GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
+//                                tableInfo.Item3);
+//                            register.Register(Conn, tx);
+//                        }
 
-                    }
-                }
+//                    }
+//                }
 
-                if (externalTransaction == null)
-                {
-                    tx.Commit();
-                }
-            }
+//                if (externalTransaction == null)
+//                {
+//                    tx.Commit();
+//                }
+//            }
 
-            catch (SqlException e)
-            {
-                if (externalTransaction == null)
-                {
-                    tx.Rollback();
-                }
-                throw new SqlExecutionException("An error occurred when upgrading the node table function.", e);
-            }
+//            catch (SqlException e)
+//            {
+//                if (externalTransaction == null)
+//                {
+//                    tx.Rollback();
+//                }
+//                throw new SqlExecutionException("An error occurred when upgrading the node table function.", e);
+//            }
                
-        }
+//        }
 
         public void UpgradeMetaTableV100(SqlTransaction externalTransaction = null)
         {
@@ -1872,6 +3442,71 @@ namespace GraphView
             }
         }
 
+        public void UpgradeMetaTableV111(SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tran = externalTransaction ?? Conn.BeginTransaction();
+
+            const string upgradeScript = @"
+            --_NodeTableColumnCollection
+            alter table _NodeTableColumnCollection
+            add RefTableSchema nvarchar(128) null
+            go
+            alter table _NodeTableColumnCollection
+            add HasReversedEdge bit default 0
+            go
+            alter table _NodeTableColumnCollection
+            add IsReversedEdge bit default 0
+            go
+            alter table _NodeTableColumnCollection
+            add EdgeUdfPrefix nvarchar(512) null
+            go
+            ";
+
+            try
+            {
+                using (var command = Conn.CreateCommand())
+                {
+                    var upgradeQuery = upgradeScript.Split(new string[] { "go" }, StringSplitOptions.None);
+
+                    command.Connection = Conn;
+                    command.Transaction = tran;
+
+                    foreach (var query in upgradeQuery)
+                    {
+                        if (query == "") continue;
+                        command.CommandText = query;
+                        command.ExecuteNonQuery();
+                    }
+
+                    command.CommandText = string.Format(@"
+                        UPDATE [{0}]
+                        SET [EdgeUdfPrefix] = [TableSchema] + '_' + [TableName] + '_' + [ColumnName]
+                        WHERE [ColumnRole] = 1
+                    ", MetadataTables[1]);
+                    command.ExecuteNonQuery();
+
+                    command.CommandText = string.Format(@"
+                        UPDATE [{0}]
+                        SET [HasReversedEdge] = 0, [IsReversedEdge] = 0
+                    ", MetadataTables[1]);
+                    command.ExecuteNonQuery();
+                }
+                if (externalTransaction == null)
+                {
+                    tran.Commit();
+                }
+
+            }
+            catch (Exception e)
+            {
+                if (externalTransaction == null)
+                {
+                    tran.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when upgrading the meta tables.", e);
+            }
+        }
+
         public void UpdateVersionNumber(string versionNumber, SqlTransaction externalTransaction = null)
         {
             SqlTransaction tran;
@@ -1906,6 +3541,295 @@ namespace GraphView
                 throw new SqlExecutionException("An error occurred when updateing the version table.", e);
             }
             
+        }
+
+        public void UpgradeNodeTableFunctionV100(SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx = externalTransaction ?? Conn.BeginTransaction();
+
+            try
+            {
+                using (var command = Conn.CreateCommand())
+                {
+                    command.Transaction = tx;
+                    command.CommandText = string.Format(@"
+                    select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ec.AttributeName, ec.AttributeType,ntc.ColumnRole
+                    from
+                    {0} as nt
+                    join
+                    {1} as ntc
+                    on ntc.TableId = nt.TableId
+                    left join
+                    {2} as ec
+                    on ec.ColumnId = ntc.ColumnId
+                    where ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2
+                    order by ntc.TableId", MetadataTables[0], MetadataTables[1], MetadataTables[2]);
+                    command.Parameters.AddWithValue("@role1", WNodeTableColumnRole.Edge);
+                    command.Parameters.AddWithValue("@role2", WNodeTableColumnRole.NodeId);
+
+
+                    string tableSchema = null;
+                    string tableName = null;
+                    string columnName = null;
+
+                    // [colId, [columnName, [attributeName, attributeType]]]
+                    var edgeDict =
+                        new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+                    long tableId = -1;
+
+                    // [tableId, edgeDict]
+                    var tableColDict =
+                        new Dictionary
+                            <long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>();
+
+                    // [tableId, [schema, tableName, userId]]
+                    var tableInfoDict =
+                        new Dictionary<long, Tuple<string, string, string>>();
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var curTableId = (long)reader["TableId"];
+                            if (tableId == -1)
+                            {
+                                tableId = curTableId;
+                                tableSchema = reader["TableSchema"].ToString();
+                                tableName = reader["TableName"].ToString();
+                            }
+                            else if (curTableId != tableId)
+                            {
+
+                                tableColDict[tableId] = edgeDict;
+                                tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+                                    columnName);
+                                tableSchema = reader["TableSchema"].ToString();
+                                tableName = reader["TableName"].ToString();
+                                columnName = null;
+                                edgeDict = new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+                                tableId = curTableId;
+                            }
+                            var role = (WNodeTableColumnRole)reader["ColumnRole"];
+                            if (role == WNodeTableColumnRole.NodeId)
+                            {
+                                columnName = reader["ColumnName"].ToString();
+                                //continue;
+                            }
+                            else if (role == WNodeTableColumnRole.Edge)
+                            {
+                                long colId = (long)reader["ColumnId"];
+                                if (!reader.IsDBNull(5) && !reader.IsDBNull(6))
+                                {
+                                    Tuple<string, List<Tuple<string, string>>> tuple;
+                                    if (edgeDict.TryGetValue(colId, out tuple))
+                                    {
+                                        tuple.Item2.Add(new Tuple<string, string>(reader["AttributeName"].ToString(),
+                                            reader["AttributeType"].ToString().ToLower()));
+                                    }
+                                    else
+                                    {
+                                        edgeDict[colId] =
+                                            new Tuple<string, List<Tuple<string, string>>>(
+                                                reader["ColumnName"].ToString(),
+                                                new List<Tuple<string, string>>
+                                                {
+                                                    new Tuple<string, string>(reader["AttributeName"].ToString(),
+                                                        reader["AttributeType"].ToString().ToLower())
+                                                });
+                                    }
+                                }
+                                else
+                                {
+                                    edgeDict[colId] =
+                                        new Tuple<string, List<Tuple<string, string>>>(reader["ColumnName"].ToString(),
+                                            new List<Tuple<string, string>>());
+                                }
+                            }
+                        }
+                        tableColDict[tableId] = edgeDict;
+                        tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+                            columnName);
+                    }
+
+                    foreach (var item in tableColDict)
+                    {
+                        var edgeList =
+                            item.Value.Select(
+                                e =>
+                                    new Tuple<string, int, List<Tuple<string, string>>>(e.Value.Item1, (int)e.Key,
+                                        e.Value.Item2)).ToList();
+                        if (edgeList.Any())
+                        {
+                            var tableInfo = tableInfoDict[item.Key];
+                            var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
+                            GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
+                                tableInfo.Item3);
+                            register.Register(Conn, tx);
+                        }
+
+                    }
+                }
+
+                if (externalTransaction == null)
+                {
+                    tx.Commit();
+                }
+            }
+
+            catch (SqlException e)
+            {
+                if (externalTransaction == null)
+                {
+                    tx.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when upgrading the node table function.", e);
+            }
+
+        }
+
+        public void UpgradeNodeTableFunction(string tableName = null, SqlTransaction externalTransaction = null)
+        {
+            SqlTransaction tx = externalTransaction ?? Conn.BeginTransaction();
+
+            try
+            {
+                using (var command = Conn.CreateCommand())
+                {
+                    var tableFilterStr = tableName != null ? string.Format(" nt.TableName = '{0}' and ", tableName) : ""; 
+
+                    command.Transaction = tx;
+                    command.CommandText = string.Format(@"
+                    select nt.TableId, nt.TableSchema, nt.TableName, ntc.ColumnName, ntc.ColumnId, ec.AttributeName, ec.AttributeType,ntc.ColumnRole
+                    from
+                    {0} as nt
+                    join
+                    {1} as ntc
+                    on ntc.TableId = nt.TableId
+                    left join
+                    {2} as ec
+                    on ec.ColumnId = ntc.ColumnId
+                    where{3}(ntc.ColumnRole = @role1 or ntc.ColumnRole = @role2) and ntc.IsReversedEdge = 0
+                    order by ntc.TableId", MetadataTables[0], MetadataTables[1], MetadataTables[2], tableFilterStr);
+                    command.Parameters.AddWithValue("@role1", WNodeTableColumnRole.Edge);
+                    command.Parameters.AddWithValue("@role2", WNodeTableColumnRole.NodeId);
+
+
+                    string tableSchema = null;
+                    string columnName = null;
+
+                    // [colId, [columnName, [attributeName, attributeType]]]
+                    var edgeDict =
+                        new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+                    long tableId = -1;
+
+                    // [tableId, edgeDict]
+                    var tableColDict =
+                        new Dictionary
+                            <long, Dictionary<long, Tuple<string, List<Tuple<string, string>>>>>();
+
+                    // [tableId, [schema, tableName, columnName]]
+                    var tableInfoDict =
+                        new Dictionary<long, Tuple<string, string, string>>();
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var curTableId = (long)reader["TableId"];
+                            if (tableId == -1)
+                            {
+                                tableId = curTableId;
+                                tableSchema = reader["TableSchema"].ToString();
+                                tableName = reader["TableName"].ToString();
+                            }
+                            else if (curTableId != tableId)
+                            {
+
+                                tableColDict[tableId] = edgeDict;
+                                tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+                                    columnName);
+                                tableSchema = reader["TableSchema"].ToString();
+                                tableName = reader["TableName"].ToString();
+                                columnName = null;
+                                edgeDict = new Dictionary<long, Tuple<string, List<Tuple<string, string>>>>();
+                                tableId = curTableId;
+                            }
+                            var role = (WNodeTableColumnRole)reader["ColumnRole"];
+                            if (role == WNodeTableColumnRole.NodeId)
+                            {
+                                columnName = reader["ColumnName"].ToString();
+                                //continue;
+                            }
+                            else if (role == WNodeTableColumnRole.Edge)
+                            {
+                                long colId = (long)reader["ColumnId"];
+                                if (!reader.IsDBNull(5) && !reader.IsDBNull(6))
+                                {
+                                    Tuple<string, List<Tuple<string, string>>> tuple;
+                                    if (edgeDict.TryGetValue(colId, out tuple))
+                                    {
+                                        tuple.Item2.Add(new Tuple<string, string>(reader["AttributeName"].ToString(),
+                                            reader["AttributeType"].ToString().ToLower()));
+                                    }
+                                    else
+                                    {
+                                        edgeDict[colId] =
+                                            new Tuple<string, List<Tuple<string, string>>>(
+                                                reader["ColumnName"].ToString(),
+                                                new List<Tuple<string, string>>
+                                                {
+                                                    new Tuple<string, string>(reader["AttributeName"].ToString(),
+                                                        reader["AttributeType"].ToString().ToLower())
+                                                });
+                                    }
+                                }
+                                else
+                                {
+                                    edgeDict[colId] =
+                                        new Tuple<string, List<Tuple<string, string>>>(reader["ColumnName"].ToString(),
+                                            new List<Tuple<string, string>>());
+                                }
+                            }
+                        }
+                        tableColDict[tableId] = edgeDict;
+                        tableInfoDict[tableId] = new Tuple<string, string, string>(tableSchema, tableName,
+                            columnName);
+                    }
+
+                    foreach (var item in tableColDict)
+                    {
+                        var edgeList =
+                            item.Value.Select(
+                                e =>
+                                    new Tuple<string, int, List<Tuple<string, string>>>(e.Value.Item1, (int)e.Key,
+                                        e.Value.Item2)).ToList();
+                        if (edgeList.Any())
+                        {
+                            var tableInfo = tableInfoDict[item.Key];
+                            var assemblyName = tableInfo.Item1 + '_' + tableInfo.Item2;
+                            GraphViewDefinedFunctionRegister register = new NodeTableRegister(assemblyName, tableInfo.Item2, edgeList,
+                                tableInfo.Item3);
+                            register.Register(Conn, tx);
+                        }
+
+                    }
+                }
+
+                if (externalTransaction == null)
+                {
+                    tx.Commit();
+                }
+            }
+
+            catch (SqlException e)
+            {
+                if (externalTransaction == null)
+                {
+                    tx.Rollback();
+                }
+                throw new SqlExecutionException("An error occurred when upgrading the node table function.", e);
+            }
+
         }
     }
 }

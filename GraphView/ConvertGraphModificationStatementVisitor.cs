@@ -264,7 +264,7 @@ namespace GraphView
             {
                 throw new GraphViewException("Cannot assign modification annotations back.");
             }
-        } 
+        }
 
         /// <summary>
         /// convert statements in annotation to according graph data modification statements
