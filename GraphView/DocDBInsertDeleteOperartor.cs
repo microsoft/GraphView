@@ -130,6 +130,94 @@ namespace GraphView
         }
     }
 
+    internal class InsertEdgeFromTwoSourceOperator : GraphViewOperator
+    {
+        public GraphViewOperator SrcSelectInput;
+        public GraphViewOperator DestSelectInput;
+
+        public string edge;
+        public string source, sink;
+        public GraphViewConnection dbConnection;
+        private bool UploadFinish;
+        internal Dictionary<string, string> map;
+        private int thread_num;
+
+
+        public InsertEdgeFromTwoSourceOperator(GraphViewConnection dbConnection, GraphViewOperator pSrcSelectInput, GraphViewOperator pDestSelectInput, string edge, string source, string sink)
+        {
+            this.dbConnection = dbConnection;
+            this.SrcSelectInput = pSrcSelectInput;
+            this.DestSelectInput = pDestSelectInput;
+            this.edge = edge;
+            this.source = source;
+            this.sink = sink;
+            Open();
+        }
+
+        public override Record Next()
+        {
+            if (!Status()) return null;
+            map = new Dictionary<string, string>();
+
+            List<Record> SrcNode = new List<Record>();
+            List<Record> DestNode = new List<Record>();
+
+            while(SrcSelectInput.Status()) SrcNode.Add(SrcSelectInput.Next());
+            while(DestSelectInput.Status()) DestNode.Add(DestSelectInput.Next());
+
+            foreach (var x in SrcNode)
+            {
+                foreach (var y in DestNode)
+                {
+                    //get source and sink's id from SelectQueryBlock's TraversalProcessor 
+                    if (x == null || y == null) break;
+                    string sourceid = x.RetriveData(SrcSelectInput.header, source);
+                    string sinkid = y.RetriveData(DestSelectInput.header, sink);
+                    string source_tital = source.Substring(0, source.Length - 3) + ".doc";
+                    string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
+
+                    string source_json_str = x.RetriveData(SrcSelectInput.header, source_tital);
+                    string sink_json_str = y.RetriveData(DestSelectInput.header, sink_tital);
+
+                    InsertEdgeInMap(sourceid, sinkid, source_json_str, sink_json_str);
+                }
+            }
+
+            Upload();
+
+            Close();
+            return null;
+        }
+
+        internal void InsertEdgeInMap(string sourceid, string sinkid, string source_doc, string sink_doc)
+        {
+            if (!map.ContainsKey(sourceid))
+                map[sourceid] = source_doc;
+
+            if (!map.ContainsKey(sinkid))
+                map[sinkid] = sink_doc;
+
+            GraphViewDocDBCommand.INSERT_EDGE(map, edge, sourceid, sinkid);
+        }
+
+        internal void Upload()
+        {
+            UploadFinish = false;
+            ReplaceDocument();
+
+            //Wait until finish replacing.
+            while (!UploadFinish)
+                System.Threading.Thread.Sleep(10);
+        }
+
+        public async Task ReplaceDocument()
+        {
+            foreach (var cnt in map)
+                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
+            UploadFinish = true;
+        }
+    }
+
     internal class DeleteEdgeOperator : GraphViewOperator
     {
         public GraphViewOperator SelectInput;

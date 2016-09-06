@@ -229,11 +229,11 @@ namespace GraphView
             }
             else if (SematicAnalyser.SematicContext.BranchContexts.Count != 0 && SematicAnalyser.SematicContext.BranchNote == null)
             {
-                var choose = new WCoalesce() { InputExpr = new List<WSelectQueryBlock>(), CoalesceNumber = SematicAnalyser.SematicContext.NodeCount };
+                var choose = new WCoalesce() { InputExpr = new List<WSqlFragment>(), CoalesceNumber = SematicAnalyser.SematicContext.NodeCount };
                 foreach (var x in SematicAnalyser.SematicContext.BranchContexts)
                 {
                     var branch = SematicAnalyser.Transform(x);
-                    choose.InputExpr.Add(branch as WSelectQueryBlock);
+                    choose.InputExpr.Add(branch);
                 }
                 SqlTree = choose;
             }
@@ -774,11 +774,15 @@ namespace GraphView
                 {
                     ExplictAliasToInternalAlias.Add(x.Key, x.Value);
                 }
+
                 if (rhs.BranchContexts != null)
+                {
+                    BranchContexts = new List<Context>();
                     foreach (var x in rhs.BranchContexts)
                     {
                         BranchContexts.Add(x);
                     }
+                }
                 BranchNote = rhs.BranchNote;
                 NodeCount = rhs.NodeCount;
                 EdgeCount = rhs.EdgeCount;
@@ -837,7 +841,7 @@ namespace GraphView
                 ChooseMark = false,
                 Properties = new Dictionary<string, string>(),
                 limit = -1,
-                BranchContexts = new List<Context>()
+                BranchContexts = new List<Context>(),
             };
             ParserTree = pParserTree;
         }

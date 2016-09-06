@@ -454,13 +454,7 @@ namespace GraphView
             {
                 for (int i = FromWhichSource + 1; i < Sources.Count; i++) Sources[i].Close();
                 string Temp = "";
-                for (int i = 0; i < CoalesceNumber * 2; i++) Temp += result.RetriveData(i);
-                if (!ResultSet.Contains(Temp))
-                {
-                    ResultSet.Add(Temp);
-                    return result;
-                }
-                else return this.Next();
+                return result;
             }
         }
     }

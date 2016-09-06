@@ -86,8 +86,8 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GremlinPipeline g1 = new GremlinPipeline(ref connection);
-            var r1 = g1.V().As("character").has("weapon", GremlinPipeline.within("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
+            GraphTraversal g1 = new GraphTraversal(ref connection);
+            var r1 = g1.V().As("character").has("weapon", GraphTraversal.within("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
 
             foreach (var x in r1)
             {
@@ -104,8 +104,8 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GremlinPipeline g1 = new GremlinPipeline(ref connection);
-            var r1 = g1.V().As("character").has("weapon", GremlinPipeline.without("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
+            GraphTraversal g1 = new GraphTraversal(ref connection);
+            var r1 = g1.V().As("character").has("weapon", GraphTraversal.without("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
 
             foreach (var x in r1)
             {
@@ -122,7 +122,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GremlinPipeline g1 = new GremlinPipeline(ref connection);
+            GraphTraversal g1 = new GraphTraversal(ref connection);
             var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
 
             foreach (var x in r1)
@@ -141,8 +141,8 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GremlinPipeline g1 = new GremlinPipeline(ref connection);
-            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GremlinPipeline.without("shield", "claws")).values("character").order();
+            GraphTraversal g1 = new GraphTraversal(ref connection);
+            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GraphTraversal.without("shield", "claws")).values("character").order();
 
             foreach (var x in r1)
             {
@@ -215,7 +215,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             ResetCollection("MarvelTest");
-            GremlinPipeline g = new GremlinPipeline(ref connection);
+            GraphTraversal g = new GraphTraversal(ref connection);
             var r1 = g.V().addV("character", "VENUS II", "weapon", "shield");
             var r2 = g.V().addV("comicbook", "AVF 4");
             var r3 = g.V().As("v").has("character", "VENUS II").As("a").select("v").has("comicbook", "AVF 4").As("b").select("a", "b").addOutE("a", "appeared", "b");

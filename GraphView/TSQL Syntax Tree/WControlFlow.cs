@@ -31,7 +31,7 @@ namespace GraphView.TSQL_Syntax_Tree
 
     internal class WCoalesce : WSqlStatement
     {
-        internal List<WSelectQueryBlock> InputExpr { get; set; }
+        internal List<WSqlFragment> InputExpr { get; set; }
         internal int CoalesceNumber { get; set; }
         public override string ToString()
         {
