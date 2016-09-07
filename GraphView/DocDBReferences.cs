@@ -86,18 +86,18 @@ namespace GraphView
     /// </summary>
     public abstract class GraphViewOperator : IGraphViewProcessor
     {
-        private bool statue;
+        private bool status;
         public bool Status()
         {
-            return statue;
+            return status;
         }
         public void Open()
         {
-            statue = true;
+            status = true;
         }
         public void Close()
         {
-            statue = false;
+            status = false;
         }
         public abstract Record Next();
 
