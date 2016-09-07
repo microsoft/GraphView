@@ -171,13 +171,15 @@ namespace GraphView
                 {
                     //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                     if (x == null || y == null) break;
-                    string sourceid = x.RetriveData(SrcSelectInput.header, source);
-                    string sinkid = y.RetriveData(DestSelectInput.header, sink);
+                    List<string> headerx = (SrcSelectInput as OutputOperator).SelectedElement;
+                    List<string> headery = (DestSelectInput as OutputOperator).SelectedElement;
+                    string sourceid = x.RetriveData(headerx, source);
+                    string sinkid = y.RetriveData(headery, sink);
                     string source_tital = source.Substring(0, source.Length - 3) + ".doc";
                     string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
 
-                    string source_json_str = x.RetriveData(SrcSelectInput.header, source_tital);
-                    string sink_json_str = y.RetriveData(DestSelectInput.header, sink_tital);
+                    string source_json_str = x.RetriveData(headerx, source_tital);
+                    string sink_json_str = y.RetriveData(headery, sink_tital);
 
                     InsertEdgeInMap(sourceid, sinkid, source_json_str, sink_json_str);
                 }
