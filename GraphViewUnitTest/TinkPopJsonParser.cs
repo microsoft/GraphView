@@ -37,10 +37,25 @@ namespace GraphViewUnitTest
                 System.Threading.Thread.Sleep(10);
         }
         [TestMethod]
+        public void SpecialDataProcessingTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+              "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+              "GroupMatch", "MarvelTest");
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            ResetCollection("MarvelTest");
+            // Insert node from collections=
+            String value = "Jim O'Meara (Gaelic footballer)".Replace("'", "\\'");
+            String tempSQL = "g.addV('id','30153','properties.id','30152','properties.value','" + value + "','label','Person')";
+            //String tempSQL = "g.addV('id','30153','properties.id','30152','properties.value','Jim O\\'Meara (Gaelic footballer)','label','Person')";
+            parser.Parse(tempSQL.ToString()).Generate(connection).Next();
+            Console.WriteLine(tempSQL);
+        }
+        [TestMethod]
         public void parseJson()
         {
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-insert.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-dataset.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -81,12 +96,12 @@ namespace GraphViewUnitTest
                                 var value = child1Properties["value"];
                                 if (value != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()]["value"] = value.ToString();
+                                    nodePropertiesHashMap[id.ToString()]["value"] = value.ToString().Replace("'", "\\'");
                                 }
                                 var label = nodeLabelJ.ToString();
                                 if (label != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()]["label"] = label.ToString();
+                                    nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'");
                                 }
                             }
                         }
