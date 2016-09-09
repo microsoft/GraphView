@@ -40,7 +40,7 @@ namespace GraphViewUnitTest
         public void parseJson()
         {
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-dataset.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-insert.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -68,14 +68,15 @@ namespace GraphViewUnitTest
                         foreach (var child1Properties in tempPChild)
                         {
                             // As no API to get the properties name, make it not general
-                            var id = child1Properties["id"].Last;
+                            var id = nodeIdJ.Last.ToString();
                             if (id != null)
                             {
                                 if (id != null)
                                 {
+                                    var propertyId = child1Properties["id"];
                                     var node = new Dictionary<String, String>();
                                     nodePropertiesHashMap[id.ToString()] = node;
-                                    nodePropertiesHashMap[id.ToString()]["id"] = id.ToString();
+                                    nodePropertiesHashMap[id.ToString()]["id"] = propertyId.Last.ToString();
                                 }
                                 var value = child1Properties["value"];
                                 if (value != null)
@@ -134,12 +135,15 @@ namespace GraphViewUnitTest
                 StringBuilder tempSQL = new StringBuilder("g.addV(");
                 tempSQL.Append("\'id\',");
                 tempSQL.Append("\'" + node.Key + "\',");
-                tempSQL.Append("\'" + "value" + "\',");
+                tempSQL.Append("\'" + "properties.id" + "\',");
+                tempSQL.Append("\'" + node.Value["id"] + "\',");
+                tempSQL.Append("\'" + "properties.value" + "\',");
                 tempSQL.Append("\'" + node.Value["value"] + "\',");
                 tempSQL.Append("\'" + "label" + "\',");
                 tempSQL.Append("\'" + node.Value["label"] + "\'");
                 tempSQL.Append(")");
                 parser.Parse(tempSQL.ToString()).Generate(connection).Next();
+                Console.WriteLine(tempSQL);
             }
             // Insert out edge from collections
             foreach (var edge in outEdgePropertiesHashMap)
@@ -147,8 +151,8 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                if(nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
-                {
+                //if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
+                //{
                     //// Insert Src Node
                     //StringBuilder tempSQLSrc = new StringBuilder("g.addV(");
                     //tempSQLSrc.Append("\'id\',");
@@ -175,7 +179,8 @@ namespace GraphViewUnitTest
                     edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
                     String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
                     parser.Parse(tempInsertSQL).Generate(connection).Next();
-                }
+                    Console.WriteLine(tempInsertSQL);
+                //}
             }
             // Insert in edge from collections
             foreach (var edge in inEdgePropertiesHashMap)
@@ -183,8 +188,8 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
-                {
+                //if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
+                //{
                     //// Insert Src Node
                     //StringBuilder tempSQLSrc = new StringBuilder("g.addV(");
                     //tempSQLSrc.Append("\'id\',");
@@ -211,7 +216,8 @@ namespace GraphViewUnitTest
                     edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
                     String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
                     parser.Parse(tempInsertSQL).Generate(connection).Next();
-                }
+                    Console.WriteLine(tempInsertSQL);
+                //}
             }
         }
 
