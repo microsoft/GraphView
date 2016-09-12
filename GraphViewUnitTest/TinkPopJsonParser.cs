@@ -37,7 +37,7 @@ namespace GraphViewUnitTest
                 System.Threading.Thread.Sleep(10);
         }
         [TestMethod]
-        public void SpecialDataProcessingTest()
+        public void SpecialDataProcessingTest1()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -96,12 +96,12 @@ namespace GraphViewUnitTest
                                 var value = child1Properties["value"];
                                 if (value != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()]["value"] = value.ToString().Replace("'", "\\'");
+                                    nodePropertiesHashMap[id.ToString()]["value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
                                 }
                                 var label = nodeLabelJ.ToString();
                                 if (label != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'");
+                                    nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
                                 }
                             }
                         }
