@@ -2,13 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
-using Newtonsoft.Json;
-using System.Text;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Threading;
@@ -46,10 +41,9 @@ namespace GraphViewUnitTest
               "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             ResetCollection("MarvelTest");
-            // Insert node from collections=
+            // Insert node from collections
             String value = "Jim O'Meara (Gaelic footballer)".Replace("'", "\\'");
             String tempSQL = "g.addV('id','30153','properties.id','30152','properties.value','" + value + "','label','Person')";
-            //String tempSQL = "g.addV('id','30153','properties.id','30152','properties.value','Jim O\\'Meara (Gaelic footballer)','label','Person')";
             parser.Parse(tempSQL.ToString()).Generate(connection).Next();
             Console.WriteLine(tempSQL);
         }
@@ -126,6 +120,7 @@ namespace GraphViewUnitTest
                 }
                 // parse inE
                 var inString = nodeInEJ.ToString();
+
                 if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
                 {
                     var tempE = nodeInEJ.First.Root;
@@ -149,24 +144,18 @@ namespace GraphViewUnitTest
             // Insert node from collections
             int taskNum = nodePropertiesHashMap.Count;
             CountdownEvent cde = new CountdownEvent(taskNum);
-            //ManualResetEvent[] doneEvents = new ManualResetEvent[taskNum];
+
             foreach (var node in nodePropertiesHashMap)
             {
                 InsertNodeObjectDocDB insertObj = new InsertNodeObjectDocDB();
                 WaitCallback callBack = new WaitCallback(InsertDoc);
-                //insertObj.docs = docs;
-                //insertObj.cde = cde;
-                //insertObj.index = i;
-                //insertObj.jdb = jdb;
-                //docsNum += docs.Count;
-                //insertObj.tempSQL = tempSQL.ToString();
                 insertObj.parser = parser;
                 insertObj.connection = connection;
                 insertObj.cde = cde;
                 insertObj.node = node;
                 ThreadPool.QueueUserWorkItem(callBack, insertObj);
-                
             }
+
             cde.Wait();
             cde.Dispose();
 
@@ -176,36 +165,12 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                //if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
-                //{
-                    //// Insert Src Node
-                    //StringBuilder tempSQLSrc = new StringBuilder("g.addV(");
-                    //tempSQLSrc.Append("\'id\',");
-                    //tempSQLSrc.Append("\'" + srcId + "\',");
-                    //tempSQLSrc.Append("\'" + "value" + "\',");
-                    //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                    //tempSQLSrc.Append("\'" + "label" + "\',");
-                    //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                    //tempSQLSrc.Append(")");
-                    //parser.Parse(tempSQLSrc.ToString()).Generate(connection).Next();
-                    //// Insert Des Node
-                    //StringBuilder tempSQLDes = new StringBuilder("g.addV(");
-                    //tempSQLDes.Append("\'id\',");
-                    //tempSQLDes.Append("\'" + desId + "\',");
-                    //tempSQLDes.Append("\'" + "value" + "\',");
-                    //tempSQLDes.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                    //tempSQLSrc.Append("\'" + "label" + "\',");
-                    //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                    //tempSQLDes.Append(")");
-                    //parser.Parse(tempSQLDes.ToString()).Generate(connection).Next();
-                    // Inset Edge
-                    StringBuilder edgePropertyList = new StringBuilder(",");
-                    edgePropertyList.Append("'id',");
-                    edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                    String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
-                    parser.Parse(tempInsertSQL).Generate(connection).Next();
-                    Console.WriteLine(tempInsertSQL);
-                //}
+                StringBuilder edgePropertyList = new StringBuilder(",");
+                edgePropertyList.Append("'id',");
+                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
+                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
+                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                Console.WriteLine(tempInsertSQL);
             }
             // Insert in edge from collections
             foreach (var edge in inEdgePropertiesHashMap)
@@ -213,36 +178,13 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                //if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
-                //{
-                    //// Insert Src Node
-                    //StringBuilder tempSQLSrc = new StringBuilder("g.addV(");
-                    //tempSQLSrc.Append("\'id\',");
-                    //tempSQLSrc.Append("\'" + srcId + "\',");
-                    //tempSQLSrc.Append("\'" + "value" + "\',");
-                    //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                    //tempSQLSrc.Append("\'" + "label" + "\',");
-                    //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                    //tempSQLSrc.Append(")");
-                    //parser.Parse(tempSQLSrc.ToString()).Generate(connection).Next();
-                    //// Insert Des Node
-                    //StringBuilder tempSQLDes = new StringBuilder("g.addV(");
-                    //tempSQLDes.Append("\'id\',");
-                    //tempSQLDes.Append("\'" + desId + "\',");
-                    //tempSQLDes.Append("\'" + "value" + "\',");
-                    //tempSQLDes.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                    //tempSQLSrc.Append("\'" + "label" + "\',");
-                    //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                    //tempSQLDes.Append(")");
-                    //parser.Parse(tempSQLDes.ToString()).Generate(connection).Next();
-                    // Inset Edge
-                    StringBuilder edgePropertyList = new StringBuilder(",");
-                    edgePropertyList.Append("'id',");
-                    edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                    String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
-                    parser.Parse(tempInsertSQL).Generate(connection).Next();
-                    Console.WriteLine(tempInsertSQL);
-                //}
+                // Inset Edge
+                StringBuilder edgePropertyList = new StringBuilder(",");
+                edgePropertyList.Append("'id',");
+                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
+                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
+                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                Console.WriteLine(tempInsertSQL);
             }
         }
 
@@ -339,6 +281,7 @@ namespace GraphViewUnitTest
                 }
                 // parse outE
                 var nString = nodeOutEJ.ToString();
+
                 if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("extends"))
                 {
                     var tempE = nodeOutEJ.First.Root;
@@ -354,6 +297,7 @@ namespace GraphViewUnitTest
                 }
                 // parse inE
                 var inString = nodeInEJ.ToString();
+
                 if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
                 {
                     var tempE = nodeInEJ.First.Root;
@@ -390,35 +334,12 @@ namespace GraphViewUnitTest
                 Console.WriteLine(tempSQL);
                 parser.Parse(tempSQL.ToString()).Generate(connection).Next();
             }
-
             // Insert out edge from collections
             foreach (var edge in outEdgePropertiesHashMap)
             {
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                //if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
-                //{
-                //// Insert Src Node
-                //StringBuilder tempSQLSrc = new StringBuilder("g.addV(");
-                //tempSQLSrc.Append("\'id\',");
-                //tempSQLSrc.Append("\'" + srcId + "\',");
-                //tempSQLSrc.Append("\'" + "value" + "\',");
-                //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                //tempSQLSrc.Append("\'" + "label" + "\',");
-                //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                //tempSQLSrc.Append(")");
-                //parser.Parse(tempSQLSrc.ToString()).Generate(connection).Next();
-                //// Insert Des Node
-                //StringBuilder tempSQLDes = new StringBuilder("g.addV(");
-                //tempSQLDes.Append("\'id\',");
-                //tempSQLDes.Append("\'" + desId + "\',");
-                //tempSQLDes.Append("\'" + "value" + "\',");
-                //tempSQLDes.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                //tempSQLSrc.Append("\'" + "label" + "\',");
-                //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                //tempSQLDes.Append(")");
-                //parser.Parse(tempSQLDes.ToString()).Generate(connection).Next();
                 // Inset Edge
                 StringBuilder edgePropertyList = new StringBuilder(",");
                 edgePropertyList.Append("'id',");
@@ -426,7 +347,6 @@ namespace GraphViewUnitTest
                 String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
                 parser.Parse(tempInsertSQL).Generate(connection).Next();
                 Console.WriteLine(tempInsertSQL);
-                //}
             }
             // Insert in edge from collections
             foreach (var edge in inEdgePropertiesHashMap)
@@ -434,28 +354,6 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                //if (nodePropertiesHashMap.ContainsKey(srcId) && nodePropertiesHashMap.ContainsKey(desId))
-                //{
-                //// Insert Src Node
-                //StringBuilder tempSQLSrc = new StringBuilder("g.addV(");
-                //tempSQLSrc.Append("\'id\',");
-                //tempSQLSrc.Append("\'" + srcId + "\',");
-                //tempSQLSrc.Append("\'" + "value" + "\',");
-                //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                //tempSQLSrc.Append("\'" + "label" + "\',");
-                //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                //tempSQLSrc.Append(")");
-                //parser.Parse(tempSQLSrc.ToString()).Generate(connection).Next();
-                //// Insert Des Node
-                //StringBuilder tempSQLDes = new StringBuilder("g.addV(");
-                //tempSQLDes.Append("\'id\',");
-                //tempSQLDes.Append("\'" + desId + "\',");
-                //tempSQLDes.Append("\'" + "value" + "\',");
-                //tempSQLDes.Append("\'" + nodePropertiesHashMap[srcId]["value"] + "\'");
-                //tempSQLSrc.Append("\'" + "label" + "\',");
-                //tempSQLSrc.Append("\'" + nodePropertiesHashMap[srcId]["label"] + "\'");
-                //tempSQLDes.Append(")");
-                //parser.Parse(tempSQLDes.ToString()).Generate(connection).Next();
                 // Inset Edge
                 StringBuilder edgePropertyList = new StringBuilder(",");
                 edgePropertyList.Append("'id',");
@@ -463,7 +361,6 @@ namespace GraphViewUnitTest
                 String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
                 parser.Parse(tempInsertSQL).Generate(connection).Next();
                 Console.WriteLine(tempInsertSQL);
-                //}
             }
         }
         [TestMethod]
@@ -525,6 +422,7 @@ namespace GraphViewUnitTest
                 }
                 // parse outE
                 var nString = nodeOutEJ.ToString();
+
                 if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("extends"))
                 {
                     var tempE = nodeOutEJ.First.Root;
@@ -540,6 +438,7 @@ namespace GraphViewUnitTest
                 }
                 // parse inE
                 var inString = nodeInEJ.ToString();
+
                 if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
                 {
                     var tempE = nodeInEJ.First.Root;
@@ -654,62 +553,26 @@ namespace GraphViewUnitTest
     public class DocDBInsertWorker
     {
         BoundedBuffer<string> inputStream;
-        //public int bulkInsertSize = 1000;
-        //public MongoClient client = null;
-        //public IMongoDatabase mongoDB = null;
-        //public IMongoCollection<BsonDocument> collec = null;
         public int threadId;
         GraphViewGremlinParser parser = new GraphViewGremlinParser();
         GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "MarvelTest");
+            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            "GroupMatch", "MarvelTest");
 
         public DocDBInsertWorker(
             BoundedBuffer<string> inputStream)
         {
-            //client = new MongoClient(connectionString);
-            //mongoDB = client.GetDatabase("MongoTestMethod1");
-            //collec = mongoDB.GetCollection<BsonDocument>(collection);
             this.inputStream = inputStream;
         }
 
         public void BulkInsert()
         {
             string doc = inputStream.Retrieve();
-            //List<string> docList = new List<string>();
             List<string> docList = new List<string>();
             int docNum = 1;
 
             while (doc != null)
             {
-                //while (docList.Count < bulkInsertSize)
-                //{
-                //    //docList.Add(BsonDocument.Parse(doc));
-                //    docList.Add(doc);
-                //    doc = inputStream.Retrieve();
-                //    if (doc == null)
-                //    {
-                //        break;
-                //    }
-                //}
-
-                //while (docList.Count != 0)
-                //{
-                //    try
-                //    {
-                //        //collec.InsertMany(docList);
-                //        //Interlocked.Add(ref MongoInsertMultiThreadWorkerVersionTest.insertCount, docList.Count);
-                //        //Console.WriteLine("Mongo Thread Insert " + docList.Count + " document");
-                //        Console.WriteLine("Mongo Thread {0} insert {1} docs.", threadId, docList.Count);
-                //    }
-                //    catch (Exception e)
-                //    {
-                //        throw e;
-                //    }
-
-                //    //docList.Clear();
-                //}
-
                 doc = inputStream.Retrieve();
                 parser.Parse(doc.ToString()).Generate(connection).Next();
                 Console.WriteLine("Thread" + threadId + " docCount" + docNum);
