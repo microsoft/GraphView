@@ -473,24 +473,75 @@ namespace GraphViewUnitTest
                     }
                 }
                 // parse outE
-                var nString = nodeOutEJ.ToString();
+                //var nString = nodeOutEJ.ToString();
 
-                if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("shown_as"))
+                //if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("shown_as"))
+                //{
+                //    var tempE = nodeOutEJ.First.Root;
+                //    foreach (var outEdge in nodeOutEJ.First.First.Last.Children())
+                //    {
+                //        var id = outEdge["id"].First.Next;
+                //        var inV = outEdge["inV"].First.Next;
+                //        var edgeString = inV + "_" + nodeIdJ.Last();
+                //        var dic = new Dictionary<string, string>();
+                //        outEdgePropertiesHashMap[edgeString] = dic;
+                //        outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                //        outEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
+                //    }
+                //}
+
+                var iterOut = nodeOutEJ.First;
+                while (iterOut.Next != null)
                 {
-                    var tempE = nodeOutEJ.First.Root;
-                    foreach (var outEdge in nodeOutEJ.First.First.Last.Children())
+                    nodeOutEJ = iterOut;
+                    if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("extends"))
                     {
-                        var id = outEdge["id"].First.Next;
-                        var inV = outEdge["inV"].First.Next;
-                        var edgeString = inV + "_" + nodeIdJ.Last();
-                        var dic = new Dictionary<string, string>();
-                        outEdgePropertiesHashMap[edgeString] = dic;
-                        outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
-                        outEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
+                        var tempE = nodeOutEJ.First.Root;
+                        foreach (var outEdge in nodeOutEJ.First.Last.Children())
+                        {
+                            var id = outEdge["id"].First.Next;
+                            var inV = outEdge["inV"].First.Next;
+                            var edgeString = inV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            outEdgePropertiesHashMap[edgeString] = dic;
+                            outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            outEdgePropertiesHashMap[edgeString].Add("edge_type", "extends");
+                        }
+                    }
+
+                    if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("shown_as"))
+                    {
+                        var tempE = nodeOutEJ.First.Root;
+                        foreach (var outEdge in nodeOutEJ.First.Last.Children())
+                        {
+                            var id = outEdge["id"].First.Next;
+                            var inV = outEdge["inV"].First.Next;
+                            var edgeString = inV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            outEdgePropertiesHashMap[edgeString] = dic;
+                            outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            outEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
+                        }
+                    }
+
+                    if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("type_of"))
+                    {
+                        var tempE = nodeOutEJ.First.Root;
+                        foreach (var outEdge in nodeOutEJ.First.Last.Children())
+                        {
+                            var id = outEdge["id"].First.Next;
+                            var inV = outEdge["inV"].First.Next;
+                            var edgeString = inV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            outEdgePropertiesHashMap[edgeString] = dic;
+                            outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            outEdgePropertiesHashMap[edgeString].Add("edge_type", "type_of");
+                        }
                     }
                 }
+                
                 // parse inE
-                var inString = nodeInEJ.ToString();
+                //var inString = nodeInEJ.ToString();
                 var iter = nodeInEJ.First;
                 while (iter.Next != null)
                 {
@@ -523,6 +574,21 @@ namespace GraphViewUnitTest
                             inEdgePropertiesHashMap[edgeString] = dic;
                             inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
                             inEdgePropertiesHashMap[edgeString].Add("edge_type", "type_of");
+                        }
+                    }
+
+                    if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
+                    {
+                        var tempE = nodeInEJ.First.Root;
+                        foreach (var inEdge in nodeInEJ.First.Last.Children())
+                        {
+                            var id = inEdge["id"].First.Next;
+                            var outV = inEdge["outV"].First.Next;
+                            var edgeString = outV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            inEdgePropertiesHashMap[edgeString] = dic;
+                            inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            inEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
                         }
                     }
 
