@@ -538,6 +538,8 @@ namespace GraphViewUnitTest
                             outEdgePropertiesHashMap[edgeString].Add("edge_type", "type_of");
                         }
                     }
+
+                    iterOut = iterOut.Next;
                 }
                 
                 // parse inE
@@ -636,6 +638,7 @@ namespace GraphViewUnitTest
                 tempSQL.Remove(tempSQL.Length - 1, 1);
                 tempSQL.Append(")");
                 inputBuffer.Add(tempSQL.ToString());
+                Console.WriteLine(tempSQL);
             }
             // wait for node insert finish
 
@@ -670,6 +673,7 @@ namespace GraphViewUnitTest
                 Console.WriteLine(tempInsertSQL);
             }
 
+            Console.WriteLine("finish the parse");
             inputBuffer.Close();
 
             for (int j = 0; j < threadNum; j++)
