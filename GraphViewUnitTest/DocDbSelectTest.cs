@@ -82,7 +82,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void DocDBEdgeSelectTest()
         {
-            InsertBigGraphWithoutDeleteCollection();
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
@@ -91,8 +91,8 @@ namespace GraphViewUnitTest
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                SELECT n1.name, e.reason, n2.name FROM node AS n1, node AS n2
-                MATCH n1-[Edge AS e]->n2";
+                SELECT n1.name, e.reason, n2.name FROM node AS n1, node AS n2, node AS n3
+                MATCH n1-[Edge AS e]->n2, n3-[Edge AS f]->n2";
 
             var reader = gcmd.ExecuteReader();
             while (reader.Read())

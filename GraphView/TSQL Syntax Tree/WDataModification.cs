@@ -336,144 +336,158 @@ namespace GraphView
 
 
 
-    //public partial class WInsertEdgeFromTwoSourceSpecification : WInsertSpecification
-    //{
-    //    public WSelectInsertSource SrcInsertSource { get; set; }
-    //    public WSelectInsertSource DestInsertSource { get; set; }
+    public partial class WInsertEdgeFromTwoSourceSpecification : WInsertSpecification
+    {
+        public WSelectInsertSource SrcInsertSource { get; set; }
+        public WSelectQueryBlock DestInsertSource { get; set; }
 
-    //    public WColumnReferenceExpression EdgeColumn { get; set; }
+        public WColumnReferenceExpression EdgeColumn { get; set; }
 
-    //    public WInsertEdgeFromTwoSourceSpecification(WInsertSpecification SrcSpec, WInsertSpecification DestSpec)
-    //    {
-    //        SrcInsertSource = SrcSpec.InsertSource as WSelectInsertSource;
-    //        DestInsertSource = DestSpec.InsertSource as WSelectInsertSource;
+        public GraphTraversal.direction dir { get; set; }
 
-    //        if (SrcInsertSource == null || DestInsertSource == null)
-    //        {
-    //            throw new SyntaxErrorException("The insert source of the INSERT EDGE statement must be a SELECT statement.");
-    //        }
+        public WInsertEdgeFromTwoSourceSpecification(WSqlStatement SrcSpec, WSqlStatement DestSpec, GraphTraversal.direction pDir)
+        {
+            dir = pDir;
+            SrcInsertSource = (SrcSpec as WInsertEdgeSpecification).SelectInsertSource as WSelectInsertSource;
+            DestInsertSource = DestSpec as WSelectQueryBlock;
 
-    //        Target = SrcSpec.Target;
-    //        Columns = new List<WColumnReferenceExpression>();
-    //        foreach (var col in insertSpec.Columns)
-    //            Columns.Add(col);
-    //    }
+            if (SrcInsertSource == null || DestInsertSource == null)
+            {
+                throw new SyntaxErrorException("The insert source of the INSERT EDGE statement must be a SELECT statement.");
+            }
 
-    //    public override void Accept(WSqlFragmentVisitor visitor)
-    //    {
-    //        if (visitor != null)
-    //            visitor.Visit(this);
-    //    }
+            Target = (SrcSpec as WInsertEdgeSpecification).Target;
+            Columns = new List<WColumnReferenceExpression>();
+            foreach (var col in (SrcSpec as WInsertEdgeSpecification).Columns)
+                Columns.Add(col);
+        }
 
-    //    public override void AcceptChildren(WSqlFragmentVisitor visitor)
-    //    {
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
 
-    //    }
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
 
-    //    internal override string ToString(string indent)
-    //    {
-    //        var sb = new StringBuilder();
-    //        sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
-    //        return sb.ToString();
-    //    }
+        }
 
-    //    /// <summary>
-    //    /// Construct an edge's string with all informations.
-    //    /// </summary>
-    //    /// <returns></returns>
-    //    public string ConstructEdge()
-    //    {
-    //        var SelectQueryBlock = SrcInsertSource.Select as WSelectQueryBlock;
+        internal override string ToString(string indent)
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            return sb.ToString();
+        }
 
-    //        string Edge = "{}";
-    //        Edge = GraphViewJsonCommand.insert_property(Edge, "", "_ID").ToString();
-    //        Edge = GraphViewJsonCommand.insert_property(Edge, "", "_reverse_ID").ToString();
-    //        Edge = GraphViewJsonCommand.insert_property(Edge, "", "_sink").ToString();
+        /// <summary>
+        /// Construct an edge's string with all informations.
+        /// </summary>
+        /// <returns></returns>
+        public string ConstructEdge()
+        {
+            var SelectQueryBlock = SrcInsertSource.Select as WSelectQueryBlock;
 
-    //        var Columns = this.Columns;
-    //        var Values = new List<WValueExpression>();
-    //        var source = "";
-    //        var sink = "";
+            string Edge = "{}";
+            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_reverse_ID").ToString();
+            Edge = GraphViewJsonCommand.insert_property(Edge, "", "_sink").ToString();
 
-    //        foreach (var SelectElement in SelectQueryBlock.SelectElements)
-    //        {
-    //            var SelectScalar = SelectElement as WSelectScalarExpression;
-    //            if (SelectScalar != null)
-    //            {
-    //                if (SelectScalar.SelectExpr is WValueExpression)
-    //                {
+            var Columns = this.Columns;
+            var Values = new List<WValueExpression>();
+            var source = "";
+            var sink = "";
 
-    //                    var ValueExpression = SelectScalar.SelectExpr as WValueExpression;
-    //                    Values.Add(ValueExpression);
-    //                }
-    //                else if (SelectScalar.SelectExpr is WColumnReferenceExpression)
-    //                {
-    //                    var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
-    //                    if (source == "") source = ColumnReferenceExpression.ToString();
-    //                    else
-    //                    {
-    //                        if (sink == "")
-    //                            sink = ColumnReferenceExpression.ToString();
-    //                    }
-    //                }
-    //            }
-    //        }
-    //        if (Values.Count() != Columns.Count())
-    //            throw new SyntaxErrorException("Columns and Values not match");
+            foreach (var SelectElement in SelectQueryBlock.SelectElements)
+            {
+                var SelectScalar = SelectElement as WSelectScalarExpression;
+                if (SelectScalar != null)
+                {
+                    if (SelectScalar.SelectExpr is WValueExpression)
+                    {
 
-    //        //Add properties to Edge
-    //        for (var index = 0; index < Columns.Count(); index++)
-    //        {
-    //            Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(),
-    //                    Columns[index].ToString()).ToString();
-    //        }
-    //        return Edge;
-    //    }
+                        var ValueExpression = SelectScalar.SelectExpr as WValueExpression;
+                        Values.Add(ValueExpression);
+                    }
+                    else if (SelectScalar.SelectExpr is WColumnReferenceExpression)
+                    {
+                        var ColumnReferenceExpression = SelectScalar.SelectExpr as WColumnReferenceExpression;
+                        if (source == "") source = ColumnReferenceExpression.ToString();
+                        else
+                        {
+                            if (sink == "")
+                                sink = ColumnReferenceExpression.ToString();
+                        }
+                    }
+                }
+            }
+            if (Values.Count() != Columns.Count())
+                throw new SyntaxErrorException("Columns and Values not match");
 
-    //    public override GraphViewOperator Generate(GraphViewConnection dbConnection)
-    //    {
-    //        var SrcSelect = SrcInsertSource.Select as WSelectQueryBlock;
-    //        var DestSelect = DestInsertSource.Select as WSelectQueryBlock;
-    //        string Edge = ConstructEdge();
+            //Add properties to Edge
+            for (var index = 0; index < Columns.Count(); index++)
+            {
+                Edge = GraphViewJsonCommand.insert_property(Edge, Values[index].ToString(),
+                        Columns[index].ToString()).ToString();
+            }
+            return Edge;
+        }
 
-    //        //Add "id" after each identifier
-    //        var iden = new Identifier();
-    //        iden.Value = "id";
-    //        var dic_iden = new Identifier();
-    //        dic_iden.Value = "doc";
+        public override GraphViewOperator Generate(GraphViewConnection pConnection)
+        {
+            WSelectQueryBlock SrcSelect;
+            WSelectQueryBlock DestSelect;
+            if (dir == GraphTraversal.direction.In)
+            {
+                SrcSelect = DestInsertSource;
+                DestSelect = SrcInsertSource.Select as WSelectQueryBlock;
+            }
+            else
+            {
+                SrcSelect = SrcInsertSource.Select as WSelectQueryBlock;
+                DestSelect = DestInsertSource;
+            }
+                
+            string Edge = ConstructEdge();
 
-    //        var n1 = SrcSelect.SelectElements[0] as WSelectScalarExpression;
-    //        var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
-    //        identifiers1.Add(iden);
+            //Add "id" after each identifier
+            var iden = new Identifier();
+            iden.Value = "id";
+            var dic_iden = new Identifier();
+            dic_iden.Value = "doc";
 
-    //        var n2 = DestSelect.SelectElements[0] as WSelectScalarExpression;
-    //        var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
-    //        identifiers2.Add(iden);
+            var n1 = SrcSelect.SelectElements[0] as WSelectScalarExpression;
+            var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
+            identifiers1.Add(iden);
 
-    //        var n3 = new WSelectScalarExpression(); SrcSelect.SelectElements.Add(n3);
-    //        var n3_SelectExpr = new WColumnReferenceExpression();
-    //        n3.SelectExpr = n3_SelectExpr;
-    //        n3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
-    //        n3_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-    //        n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            var n2 = DestSelect.SelectElements[0] as WSelectScalarExpression;
+            var identifiers2 = (n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
+            identifiers2.Add(iden);
 
-    //        var n4 = new WSelectScalarExpression(); DestSelect.SelectElements.Add(n4);
-    //        var n4_SelectExpr = new WColumnReferenceExpression();
-    //        n4.SelectExpr = n4_SelectExpr;
-    //        n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
-    //        n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-    //        n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            var n3 = new WSelectScalarExpression(); SrcSelect.SelectElements.Add(n3);
+            var n3_SelectExpr = new WColumnReferenceExpression();
+            n3.SelectExpr = n3_SelectExpr;
+            n3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
+            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
 
-    //        GraphViewOperator SrcInput = SrcSelect.Generate(dbConnection);
-    //        GraphViewOperator DestInput = DestSelect.Generate(dbConnection);
-    //        if (SrcInput == null || DestInput == null)
-    //            throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
+            var n4 = new WSelectScalarExpression(); DestSelect.SelectElements.Add(n4);
+            var n4_SelectExpr = new WColumnReferenceExpression();
+            n4.SelectExpr = n4_SelectExpr;
+            n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
+            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
+            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
 
-    //        InsertEdgeOperator InsertOp = new (dbConnection, input, Edge, n1.ToString(), n2.ToString());
+            GraphViewOperator SrcInput = SrcSelect.Generate(pConnection);
+            GraphViewOperator DestInput = DestSelect.Generate(pConnection);
+            if (SrcInput == null || DestInput == null)
+                throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
 
-    //        return InsertOp;
-    //    }
-    //}
+            InsertEdgeFromTwoSourceOperator InsertOp = new InsertEdgeFromTwoSourceOperator(pConnection, SrcInput,DestInput, Edge, n1.ToString(), n2.ToString());
+
+            return InsertOp;
+        }
+    }
 
 
 

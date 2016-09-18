@@ -204,7 +204,9 @@ namespace GraphView
         internal WHavingClause HavingClause { get; set; }
         internal WMatchClause MatchClause { get; set; }
         internal WLimitClause LimitClause { get; set; }
+        internal WWithPathClause WithPathClause { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
+        internal bool OutputPath { get; set; }
         public WSelectQueryBlock()
         {
             FromClause = new WFromClause();
@@ -345,6 +347,7 @@ namespace GraphView
 
         public override GraphViewOperator Generate(GraphViewConnection pConnection)
         {
+            if (WithPathClause != null) WithPathClause.Generate(pConnection);
             // Construct Match graph for later use
             MatchGraph graph = ConstructGraph();
             // Construct a header for the processor it will generate to interpret its result
@@ -631,12 +634,16 @@ namespace GraphView
             {
                 // Use Topological Sort to give a sorted node list.
                 // Note that if there's a cycle in the match graph, a random node will be chose as the start.
-                Stack<MatchNode> SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
+                Stack<Tuple<string, string, string>> SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
                 // Marking down which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
                 while (SortedNodeList.Count != 0)
                 {
-                    MatchNode CurrentProcessingNode = SortedNodeList.Pop();
+                    MatchNode CurrentProcessingNode = null;
+                    string TargetNode = SortedNodeList.Pop().Item3;
+                    foreach (var x in subgraph.Nodes)
+                        if (x.Key == TargetNode)
+                            CurrentProcessingNode = x.Value;
                     BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
                     ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                 }
@@ -670,6 +677,7 @@ namespace GraphView
                     header.Add(expr.MultiPartIdentifier.ToString());
                 }
             }
+            header.Add("PATH");
             return header;
         }
         private GraphViewOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
@@ -688,28 +696,53 @@ namespace GraphView
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 // Use Topological Sorting to define the order of nodes it will travel.
-                Stack<MatchNode> SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                Stack<Tuple<string, string, string>> SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
                 StartOfResult += subgraph.Nodes.Count * 2;
                 bool FirstNodeFlag = true;
+                int LastDest = -1;
                 while (SortedNodes.Count != 0)
                 {
-                    MatchNode CurrentProcessingNode = SortedNodes.Pop();
+                    MatchNode TempNode = null;
+                    Tuple<string, string, string> CurrentProcessingNode = SortedNodes.Pop();
                     // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
                     // Otherwise it will be dealed by a TraversalOperator.
                     if (FirstNodeFlag)
                     {
-                        int node = header.IndexOf(CurrentProcessingNode.NodeAlias);
-                        ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.AttachedQuerySegment, node, header, StartOfResult, 50));
+                        int node = header.IndexOf(CurrentProcessingNode.Item3);
+                        foreach (var x in subgraph.Nodes)
+                            if (x.Key == CurrentProcessingNode.Item3)
+                                ChildrenProcessor.Add(new FetchNodeOperator(pConnection, x.Value.AttachedQuerySegment, node, header, StartOfResult, 50));
                         FirstNodeFlag = false;
                     }
                     else
                     {
                         Dictionary<int, string> ReverseCheckList = new Dictionary<int, string>();
-                        int src = header.IndexOf(CurrentProcessingNode.ReverseNeighbors[0].SinkNode.NodeAlias);
-                        int dest = header.IndexOf(CurrentProcessingNode.NodeAlias);
-                        foreach (var neighbor in CurrentProcessingNode.ReverseNeighbors)
-                            ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias), neighbor.EdgeAlias + "_REV");
-                        ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(), CurrentProcessingNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50, 50));
+                        int src = header.IndexOf(CurrentProcessingNode.Item1);
+                        int dest = header.IndexOf(CurrentProcessingNode.Item3);
+                        foreach (var x in subgraph.Nodes)
+                            if (x.Key == CurrentProcessingNode.Item3)
+                                TempNode = x.Value;
+                        if (WithPathClause != null)
+                        {
+                            Tuple<string, GraphViewOperator, int> InternalOperator = null;
+                            if (
+                                (InternalOperator =
+                                    WithPathClause.PathOperators.Find(p => p.Item1 == CurrentProcessingNode.Item2)) !=
+                                null)
+                                foreach (var neighbor in TempNode.ReverseNeighbors)
+                                    ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                                        neighbor.EdgeAlias + "_REV");
+                            ChildrenProcessor.Add(new TraversalOperator(pConnection,ChildrenProcessor.Last(),TempNode.AttachedQuerySegment,src,dest,header, ReverseCheckList, StartOfResult, 50,50,InternalOperator.Item2));
+                        }
+                        else
+                        {
+                            foreach (var neighbor in TempNode.ReverseNeighbors)
+                                ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                                    neighbor.EdgeAlias + "_REV");
+                            ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
+                                TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
+                                50));
+                        }
                     }
                     for (int i = 0; i < functions.Count; i++)
                     {
@@ -717,9 +750,9 @@ namespace GraphView
                         {
                             string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
                             string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
-                            if (CurrentProcessingNode.AttachedQuerySegment.Contains(lhs))
+                            if (TempNode.AttachedQuerySegment.Contains(lhs))
                                 FunctionVaildalityCheck[i]++;
-                            if (CurrentProcessingNode.AttachedQuerySegment.Contains(rhs))
+                            if (TempNode.AttachedQuerySegment.Contains(rhs))
                                 FunctionVaildalityCheck[i]++;
                             if (FunctionVaildalityCheck[i] == 2)
                             {
@@ -738,13 +771,13 @@ namespace GraphView
                 RootProcessor.Add(ChildrenProcessor.Last());
             }
             GraphViewOperator root = null;
-            if (RootProcessor.Count == 1) root =  RootProcessor[0];
+            if (RootProcessor.Count == 1) root = RootProcessor[0];
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             else root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
             {
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Ascending)
-                root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Incr);
+                    root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Incr);
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Descending)
                     root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Decr);
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.NotSpecified)
@@ -756,7 +789,10 @@ namespace GraphView
                 if ((x as WSelectScalarExpression).SelectExpr is WColumnReferenceExpression)
                     SelectedElement.Add(x.ToString());
             }
-            root = new OutputOperator(root,pConnection,SelectedElement,root.header);
+            if (!OutputPath)
+                root = new OutputOperator(root, pConnection, SelectedElement, root.header);
+            else
+                root = new OutputOperator(root,pConnection,true,header);
             return root;
         }
 
@@ -824,8 +860,8 @@ namespace GraphView
             string ResultIndexString = ",";
             foreach (string ResultIndex in ResultIndexToAppend)
             {
-                if (ResultIndex.Length > 3 && ResultIndex.Substring(ResultIndex.Length - 3,3) == "doc")
-                ResultIndexString += ResultIndex.Substring(0, ResultIndex.Length - 4) + " AS " + ResultIndex.Replace(".", "_") + ",";
+                if (ResultIndex.Length > 3 && ResultIndex.Substring(ResultIndex.Length - 3, 3) == "doc")
+                    ResultIndexString += ResultIndex.Substring(0, ResultIndex.Length - 4) + " AS " + ResultIndex.Replace(".", "_") + ",";
                 else ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
             }
             if (ResultIndexString == ",") ResultIndexString = "";
@@ -891,17 +927,17 @@ namespace GraphView
         // Note that if is there's a cycle, a random node in the cycle will be pick as the start.
         private class TopoSorting
         {
-            static internal Stack<MatchNode> TopoSort(Dictionary<string, MatchNode> graph)
+            static internal Stack<Tuple<string, string, string>> TopoSort(Dictionary<string, MatchNode> graph)
             {
                 Dictionary<MatchNode, int> state = new Dictionary<MatchNode, int>();
-                Stack<MatchNode> list = new Stack<MatchNode>();
+                Stack<Tuple<string, string, string>> list = new Stack<Tuple<string, string, string>>();
                 foreach (var node in graph)
                     state.Add(node.Value, 0);
                 foreach (var node in graph)
-                    visit(graph, node.Value, list, state);
+                    visit(graph, node.Value, list, state, node.Value.NodeAlias, "");
                 return list;
             }
-            static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<MatchNode> list, Dictionary<MatchNode, int> state)
+            static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<Tuple<string, string, string>> list, Dictionary<MatchNode, int> state, string ParentAlias, string EdgeAlias)
             {
                 if (state[node] == 1)
                     return;
@@ -909,12 +945,13 @@ namespace GraphView
                     return;
                 state[node] = 2;
                 foreach (var neighbour in node.Neighbors)
-                    visit(graph, neighbour.SinkNode, list, state);
+                    visit(graph, neighbour.SinkNode, list, state, node.NodeAlias, neighbour.EdgeAlias);
                 state[node] = 1;
-                list.Push(node);
+                list.Push(new Tuple<string, string, string>(ParentAlias, EdgeAlias, node.NodeAlias));
             }
         }
     }
+
     public partial class WSelectQueryBlockWithMatchClause : WSelectQueryBlock
     {
 
@@ -973,5 +1010,36 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
     }
+
+    public partial class WWithPathClause : WSqlStatement
+    {
+        // Definition of a path: 
+        // item1 is the binding name
+        // item2 is the path description
+        // item3 is the length limitation of it (-1 for no limitation)
+        internal List<Tuple<string, WSelectQueryBlock, int>> Paths;
+        internal List<Tuple<string, GraphViewOperator, int>> PathOperators;
+
+        public WWithPathClause(List<Tuple<string, WSelectQueryBlock, int>> pPaths)
+        {
+            Paths = pPaths;
+            PathOperators = new List<Tuple<string, GraphViewOperator, int>>();
+        }
+
+        public WWithPathClause(Tuple<string, WSelectQueryBlock, int> path)
+        {
+            PathOperators = new List<Tuple<string, GraphViewOperator, int>>();
+            if (Paths == null) Paths = new List<Tuple<string, WSelectQueryBlock, int>>();
+            Paths.Add(path);
+        }
+        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        {
+            foreach (var path in Paths)
+                PathOperators.Add(new Tuple<string, GraphViewOperator, int>(path.Item1, path.Item2.Generate(dbConnection), path.Item3));
+            if (PathOperators.Count != 0) return PathOperators.First().Item2;
+            else return null;
+        }
+    }
+
 }
 

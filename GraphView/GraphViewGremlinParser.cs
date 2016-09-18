@@ -51,9 +51,11 @@ namespace GraphView
             Space,
             Keyword,
             Identifier,
+            not
         };
-        internal enum Keywords
+        public enum Keywords
         {
+            addE,            // Supported
             addOutE,         // Supported
             addInE,          // Supported
             addV,            // Supported
@@ -118,10 +120,15 @@ namespace GraphView
             within,          // Supported
             without,         // Supported 
             decr,            // Supported
-            incr             // Supported
+            incr,            // Supported
+            to,              // Supported
+            from,            // Supported  
+            not,             // Supported
+            path,            // Supported
         }
         internal static Dictionary<String, Keywords> KeyWordDic = new Dictionary<string, Keywords>(StringComparer.OrdinalIgnoreCase)
         {
+           {"addE",Keywords.addE },
            {"addOutE", Keywords.addOutE},
            {"addInE", Keywords.addInE},
            {"addV", Keywords.addV},
@@ -186,7 +193,11 @@ namespace GraphView
             {"within",Keywords.within },
             {"without",Keywords.without },
             {"incr",Keywords.incr },
-            {"decr", Keywords.decr }
+            {"decr", Keywords.decr },
+            {"to",Keywords.to },
+            {"from", Keywords.@from },
+            {"not",Keywords.not },
+            {"path",Keywords.path }
         };
         internal class Token
         {
@@ -734,6 +745,7 @@ namespace GraphView
             internal string BranchNote;
             internal int NodeCount;
             internal int EdgeCount;
+            internal int PathCount;
             internal bool AddEMark;
             internal bool AddVMark;
             internal bool RemoveMark;
@@ -741,9 +753,12 @@ namespace GraphView
             internal bool RepeatMark;
             internal bool HoldMark;
             internal bool OrderMark;
+            internal bool DoubleAddEMark;
+            internal bool OutputPathMark;
             internal WOrderByClause ByWhat;
             internal WGroupByClause Group;
             internal int limit;
+
 
             internal Context(Context rhs)
             {
@@ -786,6 +801,7 @@ namespace GraphView
                 BranchNote = rhs.BranchNote;
                 NodeCount = rhs.NodeCount;
                 EdgeCount = rhs.EdgeCount;
+                PathCount = rhs.PathCount;
                 AddEMark = rhs.AddEMark;
                 AddVMark = rhs.AddVMark;
                 RemoveMark = rhs.RemoveMark;
@@ -793,6 +809,8 @@ namespace GraphView
                 HoldMark = rhs.HoldMark;
                 OrderMark = rhs.OrderMark;
                 ByWhat = rhs.ByWhat;
+                DoubleAddEMark = rhs.DoubleAddEMark;
+                OutputPathMark = rhs.OutputPathMark;
             }
 
             internal Context()
@@ -804,6 +822,7 @@ namespace GraphView
                 ExplictAliasToInternalAlias = new Dictionary<string, string>();
                 NodeCount = 0;
                 EdgeCount = 0;
+                PathCount = 0;
                 AddEMark = false;
                 AddVMark = false;
                 RemoveMark = false;
@@ -815,6 +834,8 @@ namespace GraphView
                 HoldMark = true;
                 OrderMark = false;
                 ByWhat = new WOrderByClause();
+                DoubleAddEMark = false;
+                OutputPathMark = false;
             }
         }
 
@@ -835,6 +856,7 @@ namespace GraphView
                 ExplictAliasToInternalAlias = new Dictionary<string, string>(),
                 NodeCount = 0,
                 EdgeCount = 0,
+                PathCount =  0,
                 AddEMark = false,
                 AddVMark = false,
                 RemoveMark = false,
@@ -842,6 +864,7 @@ namespace GraphView
                 Properties = new Dictionary<string, string>(),
                 limit = -1,
                 BranchContexts = new List<Context>(),
+                DoubleAddEMark = false
             };
             ParserTree = pParserTree;
         }
@@ -932,7 +955,7 @@ namespace GraphView
 
             // Consturct the new Where Clause
 
-            var NewWhereClause = new WWhereClause() {SearchCondition = SematicContext.AliasPredicates};
+            var NewWhereClause = new WWhereClause() {SearchCondition = context.AliasPredicates};
 
             SelectBlock = new WSelectQueryBlock()
             {
@@ -940,7 +963,8 @@ namespace GraphView
                 SelectElements = NewSelectElementClause,
                 WhereClause = NewWhereClause,
                 MatchClause = NewMatchClause,
-                OrderByClause = SematicContext.ByWhat
+                OrderByClause = context.ByWhat,
+                OutputPath = context.OutputPathMark
             };
 
             SqlTree = SelectBlock;

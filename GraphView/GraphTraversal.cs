@@ -3,6 +3,7 @@ using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView.TSQL_Syntax_Tree;
@@ -10,9 +11,9 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    class GraphTraversal : IEnumerable<Record>
+    public class GraphTraversal : IEnumerable<Record>
     {
-        internal enum direction
+        public enum direction
         {
             In,
             Out,
@@ -73,10 +74,13 @@ namespace GraphView
         internal GraphViewConnection connection;
         internal List<int> TokenIndex;
         internal string AppendExecutableString;
-        internal GraphTraversal AddEdgeOtherSource;
+        internal string AddEdgeOtherSource;
+        internal string RepeatSubstring;
         internal bool HoldMark;
         internal List<string> elements;
         internal direction dir;
+        internal List<string> UnionString;
+        internal bool LazyMark;
 
         internal static GraphTraversal held;
 
@@ -88,39 +92,49 @@ namespace GraphView
             return RecordList;
         }
 
-        public void Invoke()
-        {
-            if (it == null)
-            {
-                if (CurrentOperator == null)
-                {
-                    if (AddEdgeOtherSource != null)
-                    {
-
-                    }
-                    GraphViewGremlinParser parser = new GraphViewGremlinParser();
-                    CurrentOperator = parser.Parse(CutTail(AppendExecutableString)).Generate(connection);
-                    it = new GraphTraversalIterator(CurrentOperator);
-                    foreach (var x in parser.elements) it.elements.Add(CurrentOperator.header.IndexOf(x));
-                }
-            }
-            while (CurrentOperator.Status()) CurrentOperator.Next();
-        }
-
         public IEnumerator<Record> GetEnumerator()
         {
             if (it == null)
             {
                 if (CurrentOperator == null)
                 {
+                    if (UnionString != null)
+                    {
+                        List<GraphViewOperator> OpList = new List<GraphViewOperator>();
+                        foreach (var x in UnionString)
+                        {
+                            GraphViewGremlinParser Parser = new GraphViewGremlinParser();
+                            OpList.Add(Parser.Parse(CutTail(RepeatSubstring)).Generate(connection));
+                            it = new GraphTraversalIterator(new UnionOperator(connection, OpList));
+                            return it;
+                        }
+                    }
                     if (AddEdgeOtherSource != null)
                     {
-                        
+                        GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
+                        ExtendParser1.Parse(CutTail(AppendExecutableString));
+                        GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
+                        ExtendParser2.Parse(AddEdgeOtherSource);
+                        var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, dir);
+                        it = new GraphTraversalIterator(X.Generate(connection));
+                        return it;
+                    }
+                    if (RepeatSubstring != null)
+                    {
+                        GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
+                        ExtendParser1.Parse(CutTail(RepeatSubstring));
+                        var X = new WWithPathClause(new Tuple<string, WSelectQueryBlock, int>("P_0",ExtendParser1.SqlTree as WSelectQueryBlock, -1));
+                        GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
+                        ExtendParser2.Parse(CutTail(AppendExecutableString));
+                        var Y = ExtendParser2.SqlTree as WSelectQueryBlock;
+                        Y.WithPathClause = X;
+                        CurrentOperator = Y.Generate(connection);
+                        it = new GraphTraversalIterator(CurrentOperator);
+                        return it;
                     }
                     GraphViewGremlinParser parser = new GraphViewGremlinParser();
                     CurrentOperator = parser.Parse(CutTail(AppendExecutableString)).Generate(connection);
                     it = new GraphTraversalIterator(CurrentOperator);
-                    foreach (var x in parser.elements) it.elements.Add(CurrentOperator.header.IndexOf(x));
                 }
             }
             return it;
@@ -140,6 +154,8 @@ namespace GraphView
             connection = rhs.connection;
             AddEdgeOtherSource = rhs.AddEdgeOtherSource;
             dir = rhs.dir;
+            RepeatSubstring = rhs.RepeatSubstring;
+            LazyMark = rhs.LazyMark;
         }
 
         public GraphTraversal(ref GraphViewConnection pConnection)
@@ -150,6 +166,7 @@ namespace GraphView
             TokenIndex = new List<int>();
             connection = pConnection;
             dir = direction.Undefine;
+            LazyMark = false;
         }
 
         public GraphTraversal(GraphTraversal rhs, string NewAES)
@@ -160,7 +177,10 @@ namespace GraphView
             TokenIndex = rhs.TokenIndex;
             connection = rhs.connection;
             AddEdgeOtherSource = rhs.AddEdgeOtherSource;
+            RepeatSubstring = rhs.RepeatSubstring;
             dir = rhs.dir;
+            UnionString = rhs.UnionString;
+            LazyMark = rhs.LazyMark;
         }
         private int index;
         private string SrcNode;
@@ -258,6 +278,7 @@ namespace GraphView
             GraphTraversal HeldPipe = new GraphTraversal(ref NullConnection);
             HeldPipe.HoldMark = false;
             HeldPipe.AppendExecutableString += "__.";
+            HeldPipe.LazyMark = true;
             return HeldPipe;
         }
         public GraphTraversal V()
@@ -345,7 +366,7 @@ namespace GraphView
         public GraphTraversal Out(params string[] Parameters)
         {
             string AES = AppendExecutableString;
-            if (Parameters == null)
+            if (Parameters.Length == 0)
                 AES += "out().";
             else
                 AES += "out(\'"+string.Join("\', \'",Parameters)+"\').";
@@ -358,7 +379,7 @@ namespace GraphView
         public GraphTraversal In(params string[] Parameters)
         {
             string AES = AppendExecutableString;
-            if (Parameters == null)
+            if (Parameters.Length == 0)
                 AES += "in().";
             else
                 AES += "in(\'" + string.Join("\', \'", Parameters) + "\').";
@@ -371,7 +392,7 @@ namespace GraphView
         public GraphTraversal outE(params string[] Parameters)
         {
             string AES = AppendExecutableString;
-            if (Parameters != null)
+            if (Parameters.Length == 0)
             {
                 List<string> StringList = new List<string>();
                 AES += "outE(";
@@ -383,14 +404,14 @@ AES += "\'" + x + "\'";
                 AES += "outE().";
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this);
+            return new GraphTraversal(this, AES);
 
         }
 
         public GraphTraversal inE(params string[] Parameters)
         {
             string AES = AppendExecutableString;
-            if (Parameters != null)
+            if (Parameters.Length == 0)
             {
                 List<string> StringList = new List<string>();
                 AES += "inE(";
@@ -402,7 +423,7 @@ AES += "\'" + x + "\'";
                 AES += "inE().";
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this);
+            return new GraphTraversal(this, AES);
         }
 
         public GraphTraversal inV()
@@ -417,7 +438,7 @@ AES += "\'" + x + "\'";
         {
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "outE().");
+            return new GraphTraversal(this, AppendExecutableString + "outV().");
 
         }
         public GraphTraversal As(string alias)
@@ -443,8 +464,13 @@ AES += "\'" + x + "\'";
         public GraphTraversal addV(params string[] Parameters)
         {
 
-            //GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            //parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
+            if (!LazyMark)
+            {
+                GraphViewGremlinParser parser = new GraphViewGremlinParser();
+                parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\')."))
+                    .Generate(connection)
+                    .Next();
+            }
 
             if (HoldMark == true) held = this;
 
@@ -455,8 +481,13 @@ AES += "\'" + x + "\'";
         public GraphTraversal addV(List<string> Parameters)
         {
 
-            //GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            //parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
+            if (!LazyMark)
+            {
+                GraphViewGremlinParser parser = new GraphViewGremlinParser();
+                parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\')."))
+                    .Generate(connection)
+                    .Next();
+            }
 
             if (HoldMark == true) held = this;
 
@@ -466,9 +497,13 @@ AES += "\'" + x + "\'";
 
         public GraphTraversal addOutE(params string[] Parameters)
         {
-            //GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            //parser.Parse(CutTail(AppendExecutableString + "addOutE(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
-
+            if (!LazyMark)
+            {
+                GraphViewGremlinParser parser = new GraphViewGremlinParser();
+                parser.Parse(CutTail(AppendExecutableString + "addOutE(\'" + string.Join("\',\'", Parameters) + "\')."))
+                    .Generate(connection)
+                    .Next();
+            }
             if (HoldMark == true) held = this;
 
 
@@ -478,9 +513,13 @@ AES += "\'" + x + "\'";
 
         public GraphTraversal addInE(params string[] Parameters)
         {
-            //GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            //parser.Parse(CutTail(AppendExecutableString + "addInE(\'" + string.Join("\',\'", Parameters) + "\').")).Generate(connection).Next();
-
+            if (!LazyMark)
+            {
+                GraphViewGremlinParser parser = new GraphViewGremlinParser();
+                parser.Parse(CutTail(AppendExecutableString + "addInE(\'" + string.Join("\',\'", Parameters) + "\')."))
+                    .Generate(connection)
+                    .Next();
+            }
             if (HoldMark == true) held = this;
 
             return new GraphTraversal(this, AppendExecutableString + "addInE(\'" + string.Join("\',\'", Parameters) + "\').");
@@ -505,6 +544,13 @@ AES += "\'" + x + "\'";
             if (ComparisonFunc.Item2 == GraphViewGremlinParser.Keywords.neq)
                 AES += "where(neq(\'" + ComparisonFunc.Item1 + "\')).";
 
+            return new GraphTraversal(this,AES);
+        }
+
+        public GraphTraversal where(GraphTraversal pipe)
+        {
+            string AES = AppendExecutableString;
+            AES = AES + "where(" + CutTail(pipe.AppendExecutableString) + "))";
             return new GraphTraversal(this,AES);
         }
 
@@ -568,10 +614,16 @@ AES += "\'" + x + "\'";
 
         public GraphTraversal repeat(GraphTraversal pipe)
         {
-
-            return new GraphTraversal(this, AppendExecutableString + "repeat(" + CutTail(pipe.AppendExecutableString) + ").");
+            GraphTraversal Tra = new GraphTraversal(this,AppendExecutableString + "repeat().");
+            Tra.RepeatSubstring = "V()." + pipe.AppendExecutableString;
+            return Tra;
         }
 
+        public GraphTraversal until(GraphTraversal pipe)
+        {
+            GraphTraversal Tra = new GraphTraversal(this);
+            return new GraphTraversal(this,AppendExecutableString + pipe.AppendExecutableString);
+        }
         public GraphTraversal times(int i)
         {
             return new GraphTraversal(this, AppendExecutableString + "times(" + i + ").");
@@ -606,10 +658,20 @@ AES += "\'" + x + "\'";
             GraphTraversal NewTraversal = new GraphTraversal(this);
             if (OtherSource != null)
             {
-                NewTraversal.AddEdgeOtherSource = OtherSource;
+                NewTraversal.AddEdgeOtherSource = CutTail(OtherSource.AppendExecutableString);
                 NewTraversal.dir = direction.In;
             }
-            return NewTraversal;
+            if (NewTraversal.AddEdgeOtherSource != null)
+            {
+                GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
+                ExtendParser1.Parse(CutTail(NewTraversal.AppendExecutableString));
+                GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
+                ExtendParser2.Parse(NewTraversal.AddEdgeOtherSource);
+                var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, dir);
+                CurrentOperator = X.Generate(connection);
+                while (CurrentOperator.Status()) CurrentOperator.Next();
+            }
+            return new GraphTraversal(NewTraversal);
         }
 
         public GraphTraversal to(GraphTraversal OtherSource)
@@ -617,10 +679,20 @@ AES += "\'" + x + "\'";
             GraphTraversal NewTraversal = new GraphTraversal(this);
             if (OtherSource != null)
             {
-                NewTraversal.AddEdgeOtherSource = OtherSource;
+                NewTraversal.AddEdgeOtherSource = CutTail(OtherSource.AppendExecutableString);
                 NewTraversal.dir = direction.Out;
             }
-            return NewTraversal;
+            if (NewTraversal.AddEdgeOtherSource != null)
+            {
+                GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
+                ExtendParser1.Parse(CutTail(NewTraversal.AppendExecutableString));
+                GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
+                ExtendParser2.Parse(NewTraversal.AddEdgeOtherSource);
+                var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, dir);
+                CurrentOperator = X.Generate(connection);
+                while (CurrentOperator.Status()) CurrentOperator.Next();
+            }
+            return new GraphTraversal(NewTraversal);
         }
 
         public GraphTraversal order()
@@ -658,6 +730,19 @@ AES += "\'" + x + "\'";
             if (some.Length < 1) return null;
             return some.Substring(0, some.Length - 1);
         }
-    }
 
+        internal GraphTraversal union(params GraphTraversal[] pipes)
+        {
+            GraphTraversal tra = new GraphTraversal(this);
+            tra.UnionString = new List<string>();
+            foreach(var pipe in pipes) tra.UnionString.Add(AppendExecutableString+pipe.AppendExecutableString);
+            return tra;
+        }
+
+        internal GraphTraversal path()
+        {
+            return new GraphTraversal(this, AppendExecutableString + "path().");
+        }
+    }
+    
 }

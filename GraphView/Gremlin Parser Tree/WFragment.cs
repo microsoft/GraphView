@@ -122,18 +122,7 @@ namespace GraphView
                 Fragment.Transform(ref pContext);
             }
 
-            if (Fragment != null && Function != null && Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.repeat)
-            {
-                int times = 0;
-                if (Fragment.Function.KeywordIndex == (int)GraphViewGremlinParser.Keywords.times)
-                    times = (int)Fragment.Function.Parameters.Parameter.First().Number;
-                for (int i = 0; i < times; i++)
-                {
-                    Function.Parameters.Parameter.First().Fragment.Transform(ref pContext);
-                }
-                if (Fragment.Fragment != null) Fragment.Fragment.Transform(ref pContext);
-            }
-            else if (Function != null && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.choose && pContext.ChooseMark == false && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.coalesce)
+            if (Function != null && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.choose && pContext.ChooseMark == false && Function.KeywordIndex != (int)GraphViewGremlinParser.Keywords.coalesce)
             {
                 if (Function != null) Function.Transform(ref pContext);
                 if (Fragment != null) Fragment.Transform(ref pContext);

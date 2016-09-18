@@ -25,7 +25,7 @@ namespace GraphView.TSQL_Syntax_Tree
             {
                 Source.Add(x.Generate(dbConnection));
             }
-            return new UnionOperator(dbConnection,Source,Source[0].header);
+            return new UnionOperator(dbConnection,Source);
         }
     }
 
