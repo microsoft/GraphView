@@ -191,16 +191,6 @@ namespace GraphViewUnitTest
         static void InsertDoc(Object state)
         {
             var stateObj = (InsertNodeObjectDocDB)state;
-            //string connectionString = @"Data Source=(local);
-            //Initial Catalog=JsonTesting;
-            //Integrated Security=true;";
-            //JsonServerConnection jdb = new JsonServerConnection(connectionString);
-            //jdb.Open(true);
-            ////var jdb = stateObj.jdb;
-            //jdb.InsertJson(stateObj.docs, "collection1");
-            //Console.WriteLine("Thread " + stateObj.index + " Insert Document new");
-            //stateObj.cde.Signal();
-
             var node = stateObj.node;
             StringBuilder tempSQL = new StringBuilder("g.addV(");
             tempSQL.Append("\'id\',");
@@ -213,9 +203,6 @@ namespace GraphViewUnitTest
             tempSQL.Append("\'" + node.Value["label"] + "\'");
             tempSQL.Append(")");
             Console.WriteLine(tempSQL);
-            //var tempSQL = stateObj.tempSQL;
-            //var connection = stateObj.connection;
-            //var parser = stateObj.parser;
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
       "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
       "GroupMatch", "MarvelTest");
@@ -227,7 +214,7 @@ namespace GraphViewUnitTest
         public void parseJsonSingleThread()
         {
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-exception2.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-addition1.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -252,29 +239,47 @@ namespace GraphViewUnitTest
                     if (property.HasValues && property.First.HasValues && property.First.First.Next != null)
                     {
                         var tempPChild = property.First.First.Next.Children();
+                        string prefixName = null;
+                        if (property.ToString().Contains("name"))
+                        {
+                            prefixName = "name";
+                        }
+
+                        if (property.ToString().Contains("manufacturer"))
+                        {
+                            prefixName = "manufacturer";
+                        }
+
+                        if (property.ToString().Contains("modelNumber"))
+                        {
+                            prefixName = "modelNumber";
+                        }
+
+                        var id = nodeIdJ.Last.ToString();
+                        var node = new Dictionary<String, String>();
+                        nodePropertiesHashMap[id.ToString()] = node;
+                        var label = nodeLabelJ.ToString();
+                        if (label != null)
+                        {
+                            nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
+                        }
+
                         foreach (var child1Properties in tempPChild)
                         {
                             // As no API to get the properties name, make it not general
-                            var id = nodeIdJ.Last.ToString();
                             if (id != null)
                             {
                                 if (id != null)
                                 {
                                     var propertyId = child1Properties["id"];
-                                    var node = new Dictionary<String, String>();
-                                    nodePropertiesHashMap[id.ToString()] = node;
-                                    nodePropertiesHashMap[id.ToString()]["id"] = propertyId.Last.ToString();
+                                    nodePropertiesHashMap[id.ToString()]["properties."+prefixName+".id"] = propertyId.Last.ToString();
                                 }
                                 var value = child1Properties["value"];
                                 if (value != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()]["value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
+                                    nodePropertiesHashMap[id.ToString()]["properties." + prefixName + ".value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
                                 }
-                                var label = nodeLabelJ.ToString();
-                                if (label != null)
-                                {
-                                    nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
-                                }
+          
                             }
                         }
                     }
@@ -282,7 +287,7 @@ namespace GraphViewUnitTest
                 // parse outE
                 var nString = nodeOutEJ.ToString();
 
-                if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("extends"))
+                if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("shown_as"))
                 {
                     var tempE = nodeOutEJ.First.Root;
                     foreach (var outEdge in nodeOutEJ.First.First.Last.Children())
@@ -293,47 +298,74 @@ namespace GraphViewUnitTest
                         var dic = new Dictionary<string, string>();
                         outEdgePropertiesHashMap[edgeString] = dic;
                         outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                        outEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
                     }
                 }
                 // parse inE
                 var inString = nodeInEJ.ToString();
-
-                if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
+                var iter = nodeInEJ.First;
+                while (iter.Next != null)
                 {
-                    var tempE = nodeInEJ.First.Root;
-                    foreach (var inEdge in nodeInEJ.First.First.Last.Children())
+
+                    nodeInEJ = iter;
+                    if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("extends"))
                     {
-                        var id = inEdge["id"].First.Next;
-                        var outV = inEdge["outV"].First.Next;
-                        var edgeString = outV + "_" + nodeIdJ.Last();
-                        var dic = new Dictionary<string, string>();
-                        inEdgePropertiesHashMap[edgeString] = dic;
-                        inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                        var tempE = nodeInEJ.First.Root;
+                        foreach (var inEdge in nodeInEJ.First.Last.Children())
+                        {
+                            var id = inEdge["id"].First.Next;
+                            var outV = inEdge["outV"].First.Next;
+                            var edgeString = outV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            inEdgePropertiesHashMap[edgeString] = dic;
+                            inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            inEdgePropertiesHashMap[edgeString].Add("edge_type", "extends");
+                        }
                     }
+
+                    if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("type_of"))
+                    {
+                        var tempE = nodeInEJ.First.Root;
+                        foreach (var inEdge in nodeInEJ.First.Last.Children())
+                        {
+                            var id = inEdge["id"].First.Next;
+                            var outV = inEdge["outV"].First.Next;
+                            var edgeString = outV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            inEdgePropertiesHashMap[edgeString] = dic;
+                            inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            inEdgePropertiesHashMap[edgeString].Add("edge_type", "type_of");
+                        }
+                    }
+
+                    iter = iter.Next;
                 }
             }
 
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest");
+                "GroupMatch", "IOTTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("MarvelTest");
+            ResetCollection("IOTTest");
             // Insert node from collections
             foreach (var node in nodePropertiesHashMap)
             {
                 StringBuilder tempSQL = new StringBuilder("g.addV(");
                 tempSQL.Append("\'id\',");
                 tempSQL.Append("\'" + node.Key + "\',");
-                tempSQL.Append("\'" + "properties.id" + "\',");
-                tempSQL.Append("\'" + node.Value["id"] + "\',");
-                tempSQL.Append("\'" + "properties.value" + "\',");
-                tempSQL.Append("\'" + node.Value["value"] + "\',");
-                tempSQL.Append("\'" + "label" + "\',");
-                tempSQL.Append("\'" + node.Value["label"] + "\'");
+
+                foreach (var keyV in node.Value)
+                {
+                    tempSQL.Append("\'" + keyV.Key + "\',");
+                    tempSQL.Append("\'" + keyV.Value + "\',");
+                }
+
+                tempSQL.Remove(tempSQL.Length - 1, 1);
                 tempSQL.Append(")");
-                Console.WriteLine(tempSQL);
                 parser.Parse(tempSQL.ToString()).Generate(connection).Next();
             }
+            // wait for node insert finish
+
             // Insert out edge from collections
             foreach (var edge in outEdgePropertiesHashMap)
             {
@@ -344,7 +376,8 @@ namespace GraphViewUnitTest
                 StringBuilder edgePropertyList = new StringBuilder(",");
                 edgePropertyList.Append("'id',");
                 edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
+                var edgeType = edge.Value["edge_type"];
+                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
                 parser.Parse(tempInsertSQL).Generate(connection).Next();
                 Console.WriteLine(tempInsertSQL);
             }
@@ -358,7 +391,8 @@ namespace GraphViewUnitTest
                 StringBuilder edgePropertyList = new StringBuilder(",");
                 edgePropertyList.Append("'id',");
                 edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
+                var edgeType = edge.Value["edge_type"];
+                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
                 parser.Parse(tempInsertSQL).Generate(connection).Next();
                 Console.WriteLine(tempInsertSQL);
             }
@@ -393,83 +427,190 @@ namespace GraphViewUnitTest
                     if (property.HasValues && property.First.HasValues && property.First.First.Next != null)
                     {
                         var tempPChild = property.First.First.Next.Children();
+                        string prefixName = null;
+                        if (property.ToString().Contains("name"))
+                        {
+                            prefixName = "name";
+                        }
+
+                        if (property.ToString().Contains("manufacturer"))
+                        {
+                            prefixName = "manufacturer";
+                        }
+
+                        if (property.ToString().Contains("modelNumber"))
+                        {
+                            prefixName = "modelNumber";
+                        }
+
+                        var id = nodeIdJ.Last.ToString();
+                        var node = new Dictionary<String, String>();
+                        nodePropertiesHashMap[id.ToString()] = node;
+                        var label = nodeLabelJ.ToString();
+                        if (label != null)
+                        {
+                            nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
+                        }
+
                         foreach (var child1Properties in tempPChild)
                         {
                             // As no API to get the properties name, make it not general
-                            var id = nodeIdJ.Last.ToString();
                             if (id != null)
                             {
                                 if (id != null)
                                 {
                                     var propertyId = child1Properties["id"];
-                                    var node = new Dictionary<String, String>();
-                                    nodePropertiesHashMap[id.ToString()] = node;
-                                    nodePropertiesHashMap[id.ToString()]["id"] = propertyId.Last.ToString();
+                                    nodePropertiesHashMap[id.ToString()]["properties." + prefixName + ".id"] = propertyId.Last.ToString();
                                 }
                                 var value = child1Properties["value"];
                                 if (value != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()]["value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
+                                    nodePropertiesHashMap[id.ToString()]["properties." + prefixName + ".value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
                                 }
-                                var label = nodeLabelJ.ToString();
-                                if (label != null)
-                                {
-                                    nodePropertiesHashMap[id.ToString()]["label"] = label.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
-                                }
+
                             }
                         }
                     }
                 }
                 // parse outE
-                var nString = nodeOutEJ.ToString();
+                //var nString = nodeOutEJ.ToString();
 
-                if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("extends"))
+                //if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("shown_as"))
+                //{
+                //    var tempE = nodeOutEJ.First.Root;
+                //    foreach (var outEdge in nodeOutEJ.First.First.Last.Children())
+                //    {
+                //        var id = outEdge["id"].First.Next;
+                //        var inV = outEdge["inV"].First.Next;
+                //        var edgeString = inV + "_" + nodeIdJ.Last();
+                //        var dic = new Dictionary<string, string>();
+                //        outEdgePropertiesHashMap[edgeString] = dic;
+                //        outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                //        outEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
+                //    }
+                //}
+
+                var iterOut = nodeOutEJ.First;
+                while (iterOut.Next != null)
                 {
-                    var tempE = nodeOutEJ.First.Root;
-                    foreach (var outEdge in nodeOutEJ.First.First.Last.Children())
+                    nodeOutEJ = iterOut;
+                    if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("extends"))
                     {
-                        var id = outEdge["id"].First.Next;
-                        var inV = outEdge["inV"].First.Next;
-                        var edgeString = inV + "_" + nodeIdJ.Last();
-                        var dic = new Dictionary<string, string>();
-                        outEdgePropertiesHashMap[edgeString] = dic;
-                        outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                        var tempE = nodeOutEJ.First.Root;
+                        foreach (var outEdge in nodeOutEJ.First.Last.Children())
+                        {
+                            var id = outEdge["id"].First.Next;
+                            var inV = outEdge["inV"].First.Next;
+                            var edgeString = inV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            outEdgePropertiesHashMap[edgeString] = dic;
+                            outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            outEdgePropertiesHashMap[edgeString].Add("edge_type", "extends");
+                        }
                     }
+
+                    if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("shown_as"))
+                    {
+                        var tempE = nodeOutEJ.First.Root;
+                        foreach (var outEdge in nodeOutEJ.First.Last.Children())
+                        {
+                            var id = outEdge["id"].First.Next;
+                            var inV = outEdge["inV"].First.Next;
+                            var edgeString = inV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            outEdgePropertiesHashMap[edgeString] = dic;
+                            outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            outEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
+                        }
+                    }
+
+                    if (nodeOutEJ.HasValues && nodeOutEJ.ToString().Contains("type_of"))
+                    {
+                        var tempE = nodeOutEJ.First.Root;
+                        foreach (var outEdge in nodeOutEJ.First.Last.Children())
+                        {
+                            var id = outEdge["id"].First.Next;
+                            var inV = outEdge["inV"].First.Next;
+                            var edgeString = inV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            outEdgePropertiesHashMap[edgeString] = dic;
+                            outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            outEdgePropertiesHashMap[edgeString].Add("edge_type", "type_of");
+                        }
+                    }
+
+                    iterOut = iterOut.Next;
                 }
+                
                 // parse inE
-                var inString = nodeInEJ.ToString();
-
-                if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
+                //var inString = nodeInEJ.ToString();
+                var iter = nodeInEJ.First;
+                while (iter.Next != null)
                 {
-                    var tempE = nodeInEJ.First.Root;
-                    foreach (var inEdge in nodeInEJ.First.First.Last.Children())
+
+                    nodeInEJ = iter;
+                    if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("extends"))
                     {
-                        var id = inEdge["id"].First.Next;
-                        var outV = inEdge["outV"].First.Next;
-                        var edgeString = outV + "_" + nodeIdJ.Last();
-                        var dic = new Dictionary<string, string>();
-                        inEdgePropertiesHashMap[edgeString] = dic;
-                        inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                        var tempE = nodeInEJ.First.Root;
+                        foreach (var inEdge in nodeInEJ.First.Last.Children())
+                        {
+                            var id = inEdge["id"].First.Next;
+                            var outV = inEdge["outV"].First.Next;
+                            var edgeString = outV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            inEdgePropertiesHashMap[edgeString] = dic;
+                            inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            inEdgePropertiesHashMap[edgeString].Add("edge_type", "extends");
+                        }
                     }
+
+                    if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("type_of"))
+                    {
+                        var tempE = nodeInEJ.First.Root;
+                        foreach (var inEdge in nodeInEJ.First.Last.Children())
+                        {
+                            var id = inEdge["id"].First.Next;
+                            var outV = inEdge["outV"].First.Next;
+                            var edgeString = outV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            inEdgePropertiesHashMap[edgeString] = dic;
+                            inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            inEdgePropertiesHashMap[edgeString].Add("edge_type", "type_of");
+                        }
+                    }
+
+                    if (nodeInEJ.HasValues && nodeInEJ.ToString().Contains("shown_as"))
+                    {
+                        var tempE = nodeInEJ.First.Root;
+                        foreach (var inEdge in nodeInEJ.First.Last.Children())
+                        {
+                            var id = inEdge["id"].First.Next;
+                            var outV = inEdge["outV"].First.Next;
+                            var edgeString = outV + "_" + nodeIdJ.Last();
+                            var dic = new Dictionary<string, string>();
+                            inEdgePropertiesHashMap[edgeString] = dic;
+                            inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
+                            inEdgePropertiesHashMap[edgeString].Add("edge_type", "shown_as");
+                        }
+                    }
+
+                    iter = iter.Next;
                 }
             }
 
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest");
+                "GroupMatch", "IOTTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("MarvelTest");
+            ResetCollection("IOTTest");
             // Insert node from collections
             BoundedBuffer<string> inputBuffer = new BoundedBuffer<string>(10000);
-
-            long startTime = DateTime.Now.Millisecond;
             int threadNum = 100;
-            string _inputDataPath = @"D:\dataset\AzureIOT\graphson-exception2.json";
             List<Thread> insertThreadList = new List<Thread>();
 
             for (int j = 0; j < threadNum; j++)
             {
-                DocDBInsertWorker worker1 = new DocDBInsertWorker(inputBuffer);
+                DocDBInsertWorker worker1 = new DocDBInsertWorker(connection, inputBuffer);
                 worker1.threadId = j;
                 Thread t1 = new Thread(worker1.BulkInsert);
                 insertThreadList.Add(t1);
@@ -481,22 +622,25 @@ namespace GraphViewUnitTest
                 Console.WriteLine("Start the thread" + j);
             }
 
-            // add node to input buffer
+            // Insert node from collections
             foreach (var node in nodePropertiesHashMap)
             {
                 StringBuilder tempSQL = new StringBuilder("g.addV(");
                 tempSQL.Append("\'id\',");
                 tempSQL.Append("\'" + node.Key + "\',");
-                tempSQL.Append("\'" + "properties.id" + "\',");
-                tempSQL.Append("\'" + node.Value["id"] + "\',");
-                tempSQL.Append("\'" + "properties.value" + "\',");
-                tempSQL.Append("\'" + node.Value["value"] + "\',");
-                tempSQL.Append("\'" + "label" + "\',");
-                tempSQL.Append("\'" + node.Value["label"] + "\'");
+
+                foreach (var keyV in node.Value)
+                {
+                    tempSQL.Append("\'" + keyV.Key + "\',");
+                    tempSQL.Append("\'" + keyV.Value + "\',");
+                }
+
+                tempSQL.Remove(tempSQL.Length - 1, 1);
                 tempSQL.Append(")");
-                Console.WriteLine(tempSQL);
                 inputBuffer.Add(tempSQL.ToString());
+                Console.WriteLine(tempSQL);
             }
+            // wait for node insert finish
 
             // Insert out edge from collections
             foreach (var edge in outEdgePropertiesHashMap)
@@ -504,40 +648,45 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
+                // Inset Edge
                 StringBuilder edgePropertyList = new StringBuilder(",");
                 edgePropertyList.Append("'id',");
                 edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
+                var edgeType = edge.Value["edge_type"];
+                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
                 inputBuffer.Add(tempInsertSQL);
                 Console.WriteLine(tempInsertSQL);
             }
-            
             // Insert in edge from collections
             foreach (var edge in inEdgePropertiesHashMap)
             {
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
+                // Inset Edge
                 StringBuilder edgePropertyList = new StringBuilder(",");
                 edgePropertyList.Append("'id',");
                 edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
+                var edgeType = edge.Value["edge_type"];
+                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
                 inputBuffer.Add(tempInsertSQL);
                 Console.WriteLine(tempInsertSQL);
             }
 
+            Console.WriteLine("finish the parse");
             inputBuffer.Close();
-            Console.WriteLine("Finish init the dataset");
 
             for (int j = 0; j < threadNum; j++)
             {
                 insertThreadList[j].Join();
             }
-            
+
             for (int j = 0; j < threadNum; j++)
             {
                 insertThreadList[j].Abort();
             }
+
+            Console.WriteLine("Finish init the dataset");
         }
 
     }
@@ -555,14 +704,13 @@ namespace GraphViewUnitTest
         BoundedBuffer<string> inputStream;
         public int threadId;
         GraphViewGremlinParser parser = new GraphViewGremlinParser();
-        GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-            "GroupMatch", "MarvelTest");
+        GraphViewConnection connection = null;
 
-        public DocDBInsertWorker(
-            BoundedBuffer<string> inputStream)
+        public DocDBInsertWorker(GraphViewConnection _connection,
+            BoundedBuffer<string> _inputStream)
         {
-            this.inputStream = inputStream;
+            this.connection = _connection;
+            this.inputStream = _inputStream;
         }
 
         public void BulkInsert()
@@ -573,10 +721,10 @@ namespace GraphViewUnitTest
 
             while (doc != null)
             {
-                doc = inputStream.Retrieve();
                 parser.Parse(doc.ToString()).Generate(connection).Next();
                 Console.WriteLine("Thread" + threadId + " docCount" + docNum);
                 docNum += 1;
+                doc = inputStream.Retrieve();
             }
 
             Console.WriteLine("Thread Insert Finish");
