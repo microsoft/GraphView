@@ -402,7 +402,7 @@ namespace GraphViewUnitTest
         {
             // parse data
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-exception2.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-dataset.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
