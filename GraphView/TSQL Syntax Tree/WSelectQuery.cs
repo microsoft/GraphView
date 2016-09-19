@@ -682,7 +682,7 @@ namespace GraphView
         }
         private GraphViewOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
-            Record RecordZero = new Record(header.Count);
+            RawRecord RecordZero = new RawRecord(header.Count);
 
             List<GraphViewOperator> ChildrenProcessor = new List<GraphViewOperator>();
             List<GraphViewOperator> RootProcessor = new List<GraphViewOperator>();
