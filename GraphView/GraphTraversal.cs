@@ -653,6 +653,13 @@ AES += "\'" + x + "\'";
             return new GraphTraversal(this, AppendExecutableString + "addE(\'" + string.Join("\',\'", Parameters) + "\').");
         }
 
+        public GraphTraversal addE(List<string> Parameters)
+        {
+            if (HoldMark == true) held = this;
+
+            return new GraphTraversal(this, AppendExecutableString + "addE(\'" + string.Join("\',\'", Parameters) + "\').");
+        }
+
         public GraphTraversal from(GraphTraversal OtherSource)
         {
             GraphTraversal NewTraversal = new GraphTraversal(this);
