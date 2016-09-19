@@ -274,7 +274,7 @@ namespace GraphView
     /// FetchNodeOperator.Next() returns one result of what its specifier specified.
     /// It often used as the input of a traversal operator
     /// </summary>
-    public class FetchNodeOperator : GraphViewOperator
+    internal class FetchNodeOperator : GraphViewOperator
     {
         private Record RecordZero;
         private Queue<Record> OutputBuffer;
@@ -397,7 +397,7 @@ namespace GraphView
     /// will be
     /// |   A   |    C   |   B   |
     /// </summary>
-    public class CartesianProductOperator : GraphViewOperator
+    internal class CartesianProductOperator : GraphViewOperator
     {
         private List<GraphViewOperator> OperatorOnSubGraphs;
 
@@ -465,7 +465,7 @@ namespace GraphView
         }
     }
 
-    public class UnionOperator : GraphViewOperator
+    internal class UnionOperator : GraphViewOperator
     {
         internal List<GraphViewOperator> Sources;
         internal GraphViewConnection connection;
@@ -498,7 +498,7 @@ namespace GraphView
         }
     }
 
-    public class CoalesceOperator : GraphViewOperator
+    internal class CoalesceOperator : GraphViewOperator
     {
         internal List<GraphViewOperator> Sources;
         internal GraphViewConnection connection;
@@ -534,7 +534,7 @@ namespace GraphView
         }
     }
 
-    public class OrderbyOperator : GraphViewOperator
+    internal class OrderbyOperator : GraphViewOperator
     {
         internal GraphViewOperator ChildOperator;
         internal GraphViewConnection connection;
@@ -584,7 +584,7 @@ namespace GraphView
         }
     }
 
-    public class OutputOperator : GraphViewOperator
+    internal class OutputOperator : GraphViewOperator
     {
         internal GraphViewOperator ChildOperator;
         internal GraphViewConnection connection;
@@ -614,7 +614,8 @@ namespace GraphView
         {
             if (OutputPath)
             {
-                Record OutputRecord = new Record();
+                SelectedElement = new List<string>() {"PATH"};
+                Record OutputRecord = new Record(1);
                 Record InputRecord = null;
                 if (ChildOperator.Status())
                 {
@@ -625,7 +626,7 @@ namespace GraphView
                     }
                     if (InputRecord != null)
                     {
-                        OutputRecord.field = CutTheTail(InputRecord.RetriveData(header, "PATH")).Split(',').ToList();
+                        OutputRecord.field[0] = CutTheTail(InputRecord.field.Last());
                         return OutputRecord;
                     }
                     else return null;
@@ -666,7 +667,7 @@ namespace GraphView
         }
     }
 
-    public class EdgeRefOperator : GraphViewOperator
+    internal class EdgeRefOperator : GraphViewOperator
     {
         internal Record EdgeRef;
 

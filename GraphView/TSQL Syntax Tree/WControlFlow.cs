@@ -18,7 +18,7 @@ namespace GraphView.TSQL_Syntax_Tree
             return string.Join("", ChooseString);
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             List<GraphViewOperator> Source = new List<GraphViewOperator>();
             foreach (var x in InputExpr)
@@ -41,7 +41,7 @@ namespace GraphView.TSQL_Syntax_Tree
             return string.Join("", ChooseString);
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             List<GraphViewOperator> Source = new List<GraphViewOperator>();
             foreach (var x in InputExpr)

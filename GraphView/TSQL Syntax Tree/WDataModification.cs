@@ -183,7 +183,7 @@ namespace GraphView
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             string Json_str = ConstructNode();
 
@@ -290,7 +290,7 @@ namespace GraphView
             return Edge;
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
             
@@ -433,7 +433,7 @@ namespace GraphView
             return Edge;
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection pConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection pConnection)
         {
             WSelectQueryBlock SrcSelect;
             WSelectQueryBlock DestSelect;
@@ -608,7 +608,7 @@ namespace GraphView
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             var search = WhereClause.SearchCondition;
             //build up the query
@@ -771,7 +771,7 @@ namespace GraphView
             #endregion
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             ChangeSelectQuery();
 

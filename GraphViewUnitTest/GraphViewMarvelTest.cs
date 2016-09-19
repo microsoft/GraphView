@@ -92,10 +92,6 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
-                if(y != null)
-                {
-                    Console.WriteLine(y.RetriveRow().ToString());
-                }
             }
         }
         [TestMethod]
@@ -110,10 +106,6 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
-                if(y != null)
-                {
-                    Console.WriteLine(y.RetriveRow()); 
-                }
             }
         }
         [TestMethod]
@@ -128,10 +120,6 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
-                if(y != null)
-                {
-                    Console.WriteLine(y.RetriveRow());
-                }
             }
         }
 
@@ -147,10 +135,6 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
-                if(y != null)
-                {
-                    Console.WriteLine(y.RetriveRow());
-                }
             }
         }
 
@@ -190,31 +174,29 @@ namespace GraphViewUnitTest
             while (!connection.DocDB_finish)
                 System.Threading.Thread.Sleep(10);
         }
-        //[TestMethod]
-        //public void AddSimpleEdgeMarvelAllRecords()
-        //{
-        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-        //        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-        //        "GroupMatch", "MarvelTest");
-        //    ResetCollection("MarvelTest");
-        //    GraphViewGremlinParser parser = new GraphViewGremlinParser();
-        //    parser.Parse("g.addV('character','VENUS II','weapon','shield')").Generate(connection).Next();
-        //    parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
-        //    parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
-        //    parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
-        //    parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
-        //    parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
-        //    parser.Parse("g.addV('character','WOODGOD','weapon','lasso')").Generate(connection).Next();
-        //    parser.Parse("g.addV('comicbook','H2 252')").Generate(connection).Next();
-        //    parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
-        //}
+        [TestMethod]
+        public void AddSimpleEdgeMarvelAllRecords()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTestEdge1");
+            ResetCollection("MarvelTestEdge1");
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            parser.Parse("g.addV('character','VENUS II','weapon','shield')").Generate(connection).Next();
+            parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            parser.Parse("g.addV('character','WOODGOD','weapon','lasso')").Generate(connection).Next();
+            parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+        }
         [TestMethod]
         public void AddSimpleEdgeMarvelNativeAPIAllRecords()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest1");
-            ResetCollection("MarvelTest1");
+                "GroupMatch", "MarvelTestEdge1");
+            ResetCollection("MarvelTestEdge1");
             GraphTraversal g = new GraphTraversal(ref connection);
             g.V().addV("character", "VENUS II", "weapon", "shield");
             g.V().addV("comicbook", "AVF 4");

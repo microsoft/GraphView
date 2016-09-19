@@ -345,7 +345,7 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
 
-        public override GraphViewOperator Generate(GraphViewConnection pConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection pConnection)
         {
             if (WithPathClause != null) WithPathClause.Generate(pConnection);
             // Construct Match graph for later use
@@ -1032,7 +1032,7 @@ namespace GraphView
             if (Paths == null) Paths = new List<Tuple<string, WSelectQueryBlock, int>>();
             Paths.Add(path);
         }
-        public override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
         {
             foreach (var path in Paths)
                 PathOperators.Add(new Tuple<string, GraphViewOperator, int>(path.Item1, path.Item2.Generate(dbConnection), path.Item3));
