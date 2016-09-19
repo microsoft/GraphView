@@ -80,6 +80,9 @@ namespace GraphViewUnitTest
                 rc = op.Next();
             }
         }
+        /// <summary>
+        /// Print the characters and the comic-books they appeared in where the characters had a weapon that was a shield or claws.
+        /// </summary>
         [TestMethod]
         public void SelectMarvelQueryNativeAPI1()
         {
@@ -92,6 +95,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow().ToString());
+                }
             }
         }
         [TestMethod]
@@ -106,6 +113,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow()); 
+                }
             }
         }
         [TestMethod]
@@ -120,6 +131,10 @@ namespace GraphViewUnitTest
             foreach (var x in r1)
             {
                 var y = x;
+                if(y != null)
+                {
+                    Console.WriteLine(y.RetriveRow());
+                }
             }
         }
 
@@ -154,6 +169,10 @@ namespace GraphViewUnitTest
     [TestClass]
     public class GraphViewMarvelInsertDeleteTest
     {
+        /// <summary>
+        /// Clear the collections
+        /// </summary>
+        /// <param name="collection">Collection name</param>
         [TestMethod]
         public void ResetCollection(string collection)
         {
@@ -174,22 +193,24 @@ namespace GraphViewUnitTest
             while (!connection.DocDB_finish)
                 System.Threading.Thread.Sleep(10);
         }
-        [TestMethod]
-        public void AddSimpleEdgeMarvelAllRecords()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTestEdge1");
-            ResetCollection("MarvelTestEdge1");
-            GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            parser.Parse("g.addV('character','VENUS II','weapon','shield')").Generate(connection).Next();
-            parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
-            parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
-            parser.Parse("g.addV('character','WOODGOD','weapon','lasso')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
-        }
+        //[TestMethod]
+        //public void AddSimpleEdgeMarvelAllRecords()
+        //{
+        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+        //        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+        //        "GroupMatch", "MarvelTest");
+        //    ResetCollection("MarvelTest");
+        //    GraphViewGremlinParser parser = new GraphViewGremlinParser();
+        //    parser.Parse("g.addV('character','VENUS II','weapon','shield')").Generate(connection).Next();
+        //    parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
+        //    parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+        //    parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
+        //    parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
+        //    parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+        //    parser.Parse("g.addV('character','WOODGOD','weapon','lasso')").Generate(connection).Next();
+        //    parser.Parse("g.addV('comicbook','H2 252')").Generate(connection).Next();
+        //    parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+        //}
         [TestMethod]
         public void AddSimpleEdgeMarvelNativeAPIAllRecords()
         {
@@ -206,91 +227,5 @@ namespace GraphViewUnitTest
             g.V().addV("character", "WOODGOD", "weapon", "lasso");
             g.V().As("v").has("character", "WOODGOD").addE("type", "appeared").to(g.V().has("comicbook", "AVF 4"));
         }
-        //[TestMethod]
-        //public void AddSimpleEdgeMarvelRecord1()
-        //{
-        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-        //        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-        //        "GroupMatch", "MarvelTest");
-        //    ResetCollection("MarvelTest");
-        //    GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
-        //    var ParserTree1 = parser1.Parse("g.addV('character','VENUS II','weapon','shiled')");
-        //    var op1 = ParserTree1.Generate(connection);
-        //    op1.Next();
-        //    GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-        //    var ParserTree2 = parser2.Parse("g.addV('comicbook','AVF 4')");
-        //    var op2 = ParserTree2.Generate(connection);
-        //    op2.Next();
-        //    GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-        //    var ParserTree3 = parser3.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')");
-        //    var op3 = ParserTree3.Generate(connection);
-        //    op3.Next();
-        //    GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
-        //    var ParserTree4 = parser4.Parse("g.V.has('character','VENUS II').out('appeared').name");
-        //    var op4 = ParserTree4.Generate(connection);
-        //    Record rc = null;
-
-        //    while (op4.Status())
-        //    {
-        //        rc = op4.Next();
-        //    }
-        //}
-        //[TestMethod]
-        //public void AddSimpleEdgeMarvelRecord2()
-        //{
-        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-        //        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-        //        "GroupMatch", "MarvelTest");
-        //    ResetCollection("MarvelTest");
-        //    GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
-        //    var ParserTree1 = parser1.Parse("g.addV('character','VENUS II','weapon','claws')");
-        //    var op1 = ParserTree1.Generate(connection);
-        //    op1.Next();
-        //    GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-        //    var ParserTree2 = parser2.Parse("g.addV('comicbook','AVF 4')");
-        //    var op2 = ParserTree2.Generate(connection);
-        //    op2.Next();
-        //    GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-        //    var ParserTree3 = parser3.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')");
-        //    var op3 = ParserTree3.Generate(connection);
-        //    op3.Next();
-        //    GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
-        //    var ParserTree4 = parser4.Parse("g.V.has('character','VENUS II').out('appeared').name");
-        //    var op4 = ParserTree4.Generate(connection);
-        //    Record rc = null;
-        //    while (op4.Status())
-        //    {
-        //        rc = op4.Next();
-        //    }
-        //}
-
-        //public void AddSimpleEdgeMarvelRecord3()
-        //{
-        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-        //        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-        //        "GroupMatch", "MarvelTest");
-        //    ResetCollection("MarvelTest");
-        //    GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
-        //    var ParserTree1 = parser1.Parse("g.addV('character','WOODGOD','weapon','lasso')");
-        //    var op1 = ParserTree1.Generate(connection);
-        //    op1.Next();
-        //    GraphViewGremlinParser parser2 = new GraphViewGremlinParser();
-        //    var ParserTree2 = parser2.Parse("g.addV('comicbook','H2 252')");
-        //    var op2 = ParserTree2.Generate(connection);
-        //    op2.Next();
-        //    GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-        //    var ParserTree3 = parser3.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')");
-        //    var op3 = ParserTree3.Generate(connection);
-        //    op3.Next();
-        //    GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
-        //    var ParserTree4 = parser4.Parse("g.V.has('character','WOODGOD').out('appeared').name");
-        //    var op4 = ParserTree4.Generate(connection);
-        //    Record rc = null;
-
-        //    while (op4.Status())
-        //    {
-        //        rc = op4.Next();
-        //    }
-        //}
     }
 }
