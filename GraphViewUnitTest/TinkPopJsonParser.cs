@@ -402,7 +402,7 @@ namespace GraphViewUnitTest
         {
             // parse data
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-exception2.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-dataset.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -511,6 +511,8 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            GraphTraversal g = new GraphTraversal(ref connection);
+
             ResetCollection("IOTTest");
             // Insert node from collections
             BoundedBuffer<string> inputBuffer = new BoundedBuffer<string>(10000);
