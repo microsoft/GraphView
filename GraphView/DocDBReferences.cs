@@ -77,15 +77,21 @@ namespace GraphView
         internal List<string> header { get; set; }
         public string this[int index]
         {
-            get { return field[index]; }
+            get
+            {
+                if (index >= field.Count)
+                    throw new IndexOutOfRangeException("Out of range," + "the Record has only " + field.Count + " fields");
+                else return field[index];
+            }
         }
 
         public string this[string FieldName]
         {
             get
             {
-                if (header == null || header.IndexOf(FieldName) == -1) return null;
-                return field[header.IndexOf(FieldName)];
+                if (header == null || header.IndexOf(FieldName) == -1) 
+                    throw new IndexOutOfRangeException("Out of range," + "the Record has no field \"" + FieldName + "\".");
+                else return field[header.IndexOf(FieldName)];
             }
         }
     }

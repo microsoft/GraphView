@@ -105,51 +105,58 @@ namespace GraphView
                     else script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
 
                 // Send query to server and decode the result.
-                IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
-                foreach (var item in Node)
+                try
                 {
-                    // Decode some information that describe the found node.
-                    Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
-                    string ID = ItemInfo.Item1;
-
-                    // Generate the result list that need to be union with the original one
-                    RawRecord ResultRecord = new RawRecord(header.Count());
-                    foreach (
-                        string ResultFieldName in
-                            header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+                    IQueryable<dynamic> Node = (IQueryable<dynamic>) SendQuery(script, connection);
+                    foreach (var item in Node)
                     {
-                        string result = "";
-                        if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
-                            result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
-                        ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
-                    }
+                        // Decode some information that describe the found node.
+                        Tuple<string, string, string> ItemInfo = DecodeJObject((JObject) item);
+                        string ID = ItemInfo.Item1;
 
-                    // Join the old record with the new one if checked vailed.
-                    foreach (var record in InputBuffer)
-                    {
-                        // reverse check
-                        bool VailedFlag = true;
-                        if (ReverseCheckList != null)
-                            foreach (var ReverseNode in ReverseCheckList)
-                            {
-                                string Edge = (((JObject)item)[ReverseNode.Value])["_sink"].ToString();
-                                if (
-                                    !(Edge == record.RetriveData(ReverseNode.Key) &&
-                                      record.RetriveData(ReverseNode.Key + 1).Contains(ID)) &&
-                                      InternalOperator == null)
-                                    VailedFlag = false;
-                                if (!(record.RetriveData(ReverseNode.Key + 1).Contains(ID)) &&
-                                    InternalOperator != null)
-                                    VailedFlag = false;
-                            }
-                        if (VailedFlag)
+                        // Generate the result list that need to be union with the original one
+                        RawRecord ResultRecord = new RawRecord(header.Count());
+                        foreach (
+                            string ResultFieldName in
+                                header.GetRange(StartOfResultField, header.Count - StartOfResultField))
                         {
-                            RawRecord NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
-                            if (RecordFilter(NewRecord))
-                                OutputBuffer.Enqueue(NewRecord);
+                            string result = "";
+                            if (((JObject) item)[ResultFieldName.Replace(".", "_")] != null)
+                                result = ((JObject) item)[ResultFieldName.Replace(".", "_")].ToString();
+                            ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                        }
+
+                        // Join the old record with the new one if checked vailed.
+                        foreach (var record in InputBuffer)
+                        {
+                            // reverse check
+                            bool VailedFlag = true;
+                            if (ReverseCheckList != null)
+                                foreach (var ReverseNode in ReverseCheckList)
+                                {
+                                    string Edge = (((JObject) item)[ReverseNode.Value])["_sink"].ToString();
+                                    if (
+                                        !(Edge == record.RetriveData(ReverseNode.Key) &&
+                                          record.RetriveData(ReverseNode.Key + 1).Contains(ID)) &&
+                                        InternalOperator == null)
+                                        VailedFlag = false;
+                                    if (!(record.RetriveData(ReverseNode.Key + 1).Contains(ID)) &&
+                                        InternalOperator != null)
+                                        VailedFlag = false;
+                                }
+                            if (VailedFlag)
+                            {
+                                RawRecord NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
+                                if (RecordFilter(NewRecord))
+                                    OutputBuffer.Enqueue(NewRecord);
+                            }
                         }
                     }
                 }
+                catch (AggregateException e)
+                {
+                    throw new  NullReferenceException("Cannot connect to the giving database/collection, please make sure the connection is corret");
+                } 
             }
             InputBuffer.Clear();
             if (OutputBuffer.Count <= 1) this.Close();
@@ -311,28 +318,37 @@ namespace GraphView
             }
             string script = docDbScript;
             // Send query to the server
-            IQueryable<dynamic> Node = (IQueryable<dynamic>)SendQuery(script, connection);
-            HashSet<Tuple<string, string, string>> UniqueRecord = new HashSet<Tuple<string, string, string>>();
-            // Decode the result retrived from server and generate new record.
-            foreach (var item in Node)
+            try
             {
-                Tuple<string, string, string> ItemInfo = DecodeJObject((JObject)item);
-
-                if (!UniqueRecord.Contains(ItemInfo))
+                IQueryable<dynamic> Node = (IQueryable<dynamic>) SendQuery(script, connection);
+                HashSet<Tuple<string, string, string>> UniqueRecord = new HashSet<Tuple<string, string, string>>();
+                // Decode the result retrived from server and generate new record.
+                foreach (var item in Node)
                 {
-                    UniqueRecord.Add(ItemInfo);
-                    RawRecord ResultRecord = new RawRecord(header.Count());
+                    Tuple<string, string, string> ItemInfo = DecodeJObject((JObject) item);
 
-                    foreach (string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+                    if (!UniqueRecord.Contains(ItemInfo))
                     {
-                        string result = "";
-                        if (((JObject)item)[ResultFieldName.Replace(".", "_")] != null)
-                            result = ((JObject)item)[ResultFieldName.Replace(".", "_")].ToString();
-                        ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                        UniqueRecord.Add(ItemInfo);
+                        RawRecord ResultRecord = new RawRecord(header.Count());
+
+                        foreach (
+                            string ResultFieldName in
+                                header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+                        {
+                            string result = "";
+                            if (((JObject) item)[ResultFieldName.Replace(".", "_")] != null)
+                                result = ((JObject) item)[ResultFieldName.Replace(".", "_")].ToString();
+                            ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                        }
+                        RawRecord NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
+                        OutputBuffer.Enqueue(NewRecord);
                     }
-                    RawRecord NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
-                    OutputBuffer.Enqueue(NewRecord);
                 }
+            }
+            catch (AggregateException e)
+            {
+                throw new NullReferenceException("Cannot connect to the giving database/collection, please make sure the connection is corret");
             }
             // Close output buffer
             if (OutputBuffer.Count <= 1) this.Close();

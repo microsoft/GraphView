@@ -92,12 +92,9 @@ namespace GraphViewUnitTest
             GraphTraversal g1 = new GraphTraversal(ref connection);
             var r1 = g1.V().As("character").has("weapon", GraphTraversal.within("shield", "claws")).Out("appeared").As("comicbook").select("character").path();
 
-            foreach (var x in r1)
+            foreach (var record in r1)
             {
-                var y = x;
-                if(y != null)
-                {
-                }
+                var path = record[0];
             }
         }
         [TestMethod]
@@ -109,12 +106,10 @@ namespace GraphViewUnitTest
             GraphTraversal g1 = new GraphTraversal(ref connection);
             var r1 = g1.V().As("character").has("weapon", GraphTraversal.without("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
 
-            foreach (var x in r1)
+            foreach (var record in r1)
             {
-                var y = x;
-                if(y != null)
-                {
-                }
+                var character = record["character"];
+                var comicbook = record[1];
             }
         }
         [TestMethod]
@@ -126,12 +121,9 @@ namespace GraphViewUnitTest
             GraphTraversal g1 = new GraphTraversal(ref connection);
             var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
 
-            foreach (var x in r1)
+            foreach (var record in r1)
             {
-                var y = x;
-                if(y != null)
-                {
-                }
+                var N_1_character = record["N_1.character"];
             }
         }
 
@@ -144,9 +136,9 @@ namespace GraphViewUnitTest
             GraphTraversal g1 = new GraphTraversal(ref connection);
             var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GraphTraversal.without("shield", "claws")).values("character").order();
 
-            foreach (var x in r1)
+            foreach (var record in r1)
             {
-                var y = x;
+                var N_1_character = record[0];
             }
         }
 
