@@ -60,13 +60,8 @@ namespace GraphView
                 throw new SyntaxErrorException(errors);
 
             // Translation and Check CheckInvisibleColumn
-            using (SqlTransaction tx = GraphViewConnection.BeginTransaction())
-            {
-                var visitor = new TranslateMatchClauseVisitor(tx);
-                visitor.Invoke(script);
 
                 return script.ToString();
-            }
         }
 
         public CommandType CommandType
@@ -105,16 +100,8 @@ namespace GraphView
         {
             CommandText = commandText;
             GraphViewConnection = connection;
-            Command = GraphViewConnection.Conn.CreateCommand();
         }
 
-        public GraphViewCommand(string commandText, GraphViewConnection connection, SqlTransaction transaction)
-        {
-            CommandText = commandText;
-            GraphViewConnection = connection;
-            Command = GraphViewConnection.Conn.CreateCommand();
-            Tx = transaction;
-        }
 
         public void CreateParameter()
         {

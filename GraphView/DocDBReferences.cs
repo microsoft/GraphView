@@ -22,16 +22,16 @@ namespace GraphView
     /// Given a field name, returns the field's value.
     /// Given a field offset, returns the field's value.
     /// </summary>
-    public class Record
+    internal class Record
     {
-        public Record()
+        internal Record()
         { 
         }
-        public Record(Record rhs)
+        internal Record(Record rhs)
         {
             field = new List<string>(rhs.field);
         }
-        public Record(int num)
+        internal Record(int num)
         {
             field = new List<string>();
             for (int i = 0; i < num; i++)
@@ -39,22 +39,22 @@ namespace GraphView
                 field.Add("");
             }
         }
-        public string RetriveData(List<string> header,string FieldName)
+        internal string RetriveData(List<string> header,string FieldName)
         {
             if (header.IndexOf(FieldName) == -1) return "";
             else if (field.Count <= header.IndexOf(FieldName)) return "";
             else return field[header.IndexOf(FieldName)];
         }
-        public string RetriveData(int index)
+        internal string RetriveData(int index)
         {
             return field[index];
         }
-        public int RetriveIndex(string value)
+        internal int RetriveIndex(string value)
         {
             if (field.IndexOf(value) == -1) return -1;
             else return field.IndexOf(value);
         }
-        public String RetriveRow()
+        internal String RetriveRow()
         {
             String row = "";
             if (field == null) return row;
@@ -84,7 +84,7 @@ namespace GraphView
     /// which implements some of the basic interface.
     /// and provides some useful sturcture like buffer on both input and output sides
     /// </summary>
-    public abstract class GraphViewOperator : IGraphViewProcessor
+    internal abstract class GraphViewOperator : IGraphViewProcessor
     {
         private bool status;
         public bool Status()

@@ -11,7 +11,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    public class GraphTraversal : IEnumerable<Record>
+    public class GraphTraversal : IEnumerable<Dictionary<string, string>>
     {
         public enum direction
         {
@@ -20,7 +20,7 @@ namespace GraphView
             Undefine
         }
 
-        public class GraphTraversalIterator :IEnumerator<Record>
+        public class GraphTraversalIterator :IEnumerator<Dictionary<string,string>>
         {
             private GraphViewOperator CurrentOperator;
             internal GraphTraversalIterator(GraphViewOperator pCurrentOperator)
@@ -29,7 +29,7 @@ namespace GraphView
                 elements = new List<int>();
             }
             private Func<GraphViewGremlinSematicAnalyser.Context> Modifier;
-            internal Record CurrentRecord;
+            internal Dictionary<string, string> CurrentRecord;
             internal List<int> elements;
             public bool MoveNext()
             {
@@ -37,7 +37,11 @@ namespace GraphView
 
                 if (CurrentOperator.Status())
                 {
-                    CurrentRecord = CurrentOperator.Next();
+                    Record Temp = CurrentOperator.Next();
+                    CurrentRecord = new Dictionary<string, string>();
+                    if (Temp != null)
+                    for (int i = 0; i < (CurrentOperator as OutputOperator).SelectedElement.Count; i++)
+                        CurrentRecord.Add((CurrentOperator as OutputOperator).SelectedElement[i], Temp.field[i]);
                     return true;
                 }
                 else return false;
@@ -55,7 +59,7 @@ namespace GraphView
                 }
             }
 
-            public Record Current
+            public Dictionary<string, string> Current
             {
                 get
                 {
@@ -84,15 +88,15 @@ namespace GraphView
 
         internal static GraphTraversal held;
 
-        public List<Record> ToList()
+        public List<Dictionary<string, string>> ToList()
         {
-            List<Record> RecordList = new List<Record>(); 
+            List<Dictionary<string,string>> RecordList = new List<Dictionary<string, string>>(); 
             foreach (var x in this)
                 RecordList.Add(x);
             return RecordList;
         }
 
-        public IEnumerator<Record> GetEnumerator()
+        public IEnumerator<Dictionary<string, string>> GetEnumerator()
         {
             if (it == null)
             {

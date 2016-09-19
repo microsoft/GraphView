@@ -27,8 +27,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
-using System.Data.SqlTypes;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -37,7 +35,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using IsolationLevel = System.Data.IsolationLevel;
 
 // For debugging
@@ -155,45 +152,7 @@ namespace GraphView
         public string DocDB_Url;
         public DocumentClient DocDBclient;
 
-        /// <summary>
-        ///     Initializes a new instance of the GraphViewConnection class.
-        /// </summary>
-        public GraphViewConnection()
-        {
-            Overwrite = false;
-            _disposed = false;
-            Conn = new SqlConnection();
-            TranslationConnection = new SqlConnection();
-        }
 
-        /// <summary>
-        ///     connectionString
-        ///     Initializes a new connection to a graph database.
-        ///     The database could be a SQL Server instance or Azure SQL Database, as specified by the connection string.
-        /// </summary>
-        /// <param name="connectionString">The connection string of the SQL database.</param>
-        public GraphViewConnection(string connectionString)
-        {
-            _disposed = false;
-            Conn = new SqlConnection(connectionString);
-            TranslationConnection = new SqlConnection(connectionString);
-            GraphDbAverageDegreeSamplingRate = 200;
-            GraphDbEdgeColumnSamplingRate = 200;
-        }
-
-        /// <summary>
-        ///     Initializes a new connection to a graph database.
-        ///     The database could be a SQL Server instance or Azure SQL Database,
-        ///     as specified by the connection string and the SQL credential.
-        /// </summary>
-        /// <param name="connectionString">The connection string of the SQL database</param>
-        /// <param name="sqlCredential">A SqlCredential object</param>
-        public GraphViewConnection(string connectionString, SqlCredential sqlCredential)
-        {
-            _disposed = false;
-            Conn = new SqlConnection(connectionString, sqlCredential);
-            TranslationConnection = new SqlConnection(connectionString, sqlCredential);
-        }
 
         /// <summary>
         ///     Initializes a new connection to DocDB.
@@ -213,6 +172,9 @@ namespace GraphView
             DocDB_CollectionId = docdb_CollectionID;
             DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
         }
+        public GraphViewConnection()
+        {
+        }
 
         /// <summary>
         ///     Sampling rate for checking average degree. Set to 100 by default.
@@ -226,16 +188,6 @@ namespace GraphView
 
         /// <summary>
         ///     Connection to a SQL database
-        /// </summary>
-        public SqlConnection Conn { get; }
-
-        /// <summary>
-        ///     Connection to guarantee consistency in Graph View
-        /// </summary>
-        internal SqlConnection TranslationConnection { get; }
-        
-        /// <summary>
-        ///     When set to true, database will check validity if DbInit is set to false.
         /// </summary>
         public bool Overwrite { get; set; }
         
@@ -319,15 +271,6 @@ namespace GraphView
             while (!DocDB_finish)
                 System.Threading.Thread.Sleep(10);
         }
-        
-        /// <summary>
-        ///     Starts a database transaction.
-        /// </summary>
-        /// <returns></returns>
-        public SqlTransaction BeginTransaction()
-        {
-            return Conn.BeginTransaction();
-        }
 
         
         /// <summary>
@@ -343,8 +286,7 @@ namespace GraphView
             {
                 if (disposing)
                 {
-                    Conn.Dispose();
-                    TranslationConnection.Dispose();
+
                 }
             }
             _disposed = true;

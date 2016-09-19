@@ -627,7 +627,7 @@ namespace GraphViewUnitTest
         {
             // parse data
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-dataset.json");
+            var lines = File.ReadLines(@"D://graphson-subset.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -844,9 +844,9 @@ namespace GraphViewUnitTest
 
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "IOTTest");
+                "GroupMatch", "IOTTest1");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("IOTTest");
+            ResetCollection("IOTTest1");
             // Insert node from collections
             BoundedBuffer<string> inputBuffer = new BoundedBuffer<string>(10000);
             int threadNum = 100;

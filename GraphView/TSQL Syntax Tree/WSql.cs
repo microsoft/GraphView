@@ -96,7 +96,7 @@ namespace GraphView
 
         }
 
-        public virtual GraphViewOperator Generate(GraphViewConnection dbConnection) 
+        internal virtual GraphViewOperator Generate(GraphViewConnection dbConnection) 
         {
             return null;
         }
