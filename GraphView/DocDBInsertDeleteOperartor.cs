@@ -73,7 +73,7 @@ namespace GraphView
         }*/
         #endregion
 
-        public override Record Next()
+        public override RawRecord Next()
         {
             if (!Status()) return null;
             map = new Dictionary<string, string>();
@@ -81,7 +81,7 @@ namespace GraphView
             while (SelectInput.Status())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
-                Record rec = SelectInput.Next();
+                RawRecord rec = SelectInput.Next();
                 if (rec == null) break;
                 List<string> header = (SelectInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
@@ -154,13 +154,13 @@ namespace GraphView
             Open();
         }
 
-        public override Record Next()
+        public override RawRecord Next()
         {
             if (!Status()) return null;
             map = new Dictionary<string, string>();
 
-            List<Record> SrcNode = new List<Record>();
-            List<Record> DestNode = new List<Record>();
+            List<RawRecord> SrcNode = new List<RawRecord>();
+            List<RawRecord> DestNode = new List<RawRecord>();
 
             while(SrcSelectInput.Status()) SrcNode.Add(SrcSelectInput.Next());
             while(DestSelectInput.Status()) DestNode.Add(DestSelectInput.Next());
@@ -241,7 +241,7 @@ namespace GraphView
             Open();
         }
 
-        public override Record Next()
+        public override RawRecord Next()
         {
             if (!Status()) return null;
             map = new Dictionary<string, string>();
@@ -249,7 +249,7 @@ namespace GraphView
             while (SelectInput.Status())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
-                Record rec = SelectInput.Next();
+                RawRecord rec = SelectInput.Next();
                 if (rec == null) break;
                 List<string> header = (SelectInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
@@ -322,7 +322,7 @@ namespace GraphView
             this.Json_str = Json_str;
             Open();
         }
-        public override Record Next()
+        public override RawRecord Next()
         {
             if (!Status()) return null;
 
@@ -409,7 +409,7 @@ namespace GraphView
         /// If not, delete them.
         /// </summary>
         /// <returns></returns>
-        public override Record Next()
+        public override RawRecord Next()
         {
             if (!Status())
                 return null;

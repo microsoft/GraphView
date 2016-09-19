@@ -11,7 +11,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    public class GraphTraversal : IEnumerable<Dictionary<string, string>>
+    public class GraphTraversal : IEnumerable<Record>
     {
         public enum direction
         {
@@ -20,28 +20,30 @@ namespace GraphView
             Undefine
         }
 
-        public class GraphTraversalIterator :IEnumerator<Dictionary<string,string>>
+        public class GraphTraversalIterator :IEnumerator<Record>
         {
             private GraphViewOperator CurrentOperator;
             internal GraphTraversalIterator(GraphViewOperator pCurrentOperator)
             {
                 CurrentOperator = pCurrentOperator;
-                elements = new List<int>();
+                elements = new List<string>();
+            }
+            internal GraphTraversalIterator(GraphViewOperator pCurrentOperator, List<string> pElements )
+            {
+                CurrentOperator = pCurrentOperator;
+                elements = pElements;
             }
             private Func<GraphViewGremlinSematicAnalyser.Context> Modifier;
-            internal Dictionary<string, string> CurrentRecord;
-            internal List<int> elements;
+            internal Record CurrentRecord;
+            internal List<string> elements;
             public bool MoveNext()
             {
                 if (CurrentOperator == null) Reset();
 
                 if (CurrentOperator.Status())
                 {
-                    Record Temp = CurrentOperator.Next();
-                    CurrentRecord = new Dictionary<string, string>();
-                    if (Temp != null)
-                    for (int i = 0; i < (CurrentOperator as OutputOperator).SelectedElement.Count; i++)
-                        CurrentRecord.Add((CurrentOperator as OutputOperator).SelectedElement[i], Temp.field[i]);
+                    RawRecord Temp = CurrentOperator.Next();
+                    CurrentRecord = new Record(Temp, elements);
                     return true;
                 }
                 else return false;
@@ -59,7 +61,7 @@ namespace GraphView
                 }
             }
 
-            public Dictionary<string, string> Current
+            public Record Current
             {
                 get
                 {
@@ -88,15 +90,15 @@ namespace GraphView
 
         internal static GraphTraversal held;
 
-        public List<Dictionary<string, string>> ToList()
+        public List<Record> ToList()
         {
-            List<Dictionary<string,string>> RecordList = new List<Dictionary<string, string>>(); 
+            List<Record> RecordList = new List<Record>(); 
             foreach (var x in this)
                 RecordList.Add(x);
             return RecordList;
         }
 
-        public IEnumerator<Dictionary<string, string>> GetEnumerator()
+        public IEnumerator<Record> GetEnumerator()
         {
             if (it == null)
             {
@@ -134,11 +136,26 @@ namespace GraphView
                         Y.WithPathClause = X;
                         CurrentOperator = Y.Generate(connection);
                         it = new GraphTraversalIterator(CurrentOperator);
+                        elements = new List<string>();
+                        foreach (var x in (CurrentOperator as OutputOperator).SelectedElement)
+                        {
+                            if (ExtendParser2.AliasBinding.ContainsValue(x))
+                                elements.Add(ExtendParser2.AliasBinding.FirstOrDefault(p => p.Value == x).Key);
+                            else elements.Add(x);
+                        }
+                        it = new GraphTraversalIterator(CurrentOperator, elements);
                         return it;
                     }
                     GraphViewGremlinParser parser = new GraphViewGremlinParser();
                     CurrentOperator = parser.Parse(CutTail(AppendExecutableString)).Generate(connection);
-                    it = new GraphTraversalIterator(CurrentOperator);
+                    elements = new List<string>();
+                    foreach (var x in (CurrentOperator as OutputOperator).SelectedElement)
+                    {
+                        if (parser.AliasBinding.ContainsValue(x))
+                            elements.Add(parser.AliasBinding.FirstOrDefault(p=>p.Value == x).Key);
+                        else elements.Add(x);
+                    }
+                    it = new GraphTraversalIterator(CurrentOperator,elements);
                 }
             }
             return it;

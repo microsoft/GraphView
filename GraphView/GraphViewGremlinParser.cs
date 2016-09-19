@@ -217,7 +217,7 @@ namespace GraphView
         }
 
 
-        public WSqlStatement Parse(string Script)
+        internal WSqlStatement Parse(string Script)
         {
             string ErrorKey = "";
             var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(Script, ref ErrorKey);
@@ -257,6 +257,7 @@ namespace GraphView
             {
                 elements.Add(x.ToString());
             }
+            AliasBinding = SematicAnalyser.SematicContext.ExplictAliasToInternalAlias;
             return SqlTree;
         }
         internal static class LexicalAnalyzer
@@ -474,6 +475,7 @@ namespace GraphView
         internal int FarestError;
         internal WSqlStatement SqlTree;
         internal List<string> elements;
+        internal Dictionary<string, string> AliasBinding;
 
         internal GraphViewGremlinParser(List<Token> pTokens, List<string> pIdentifiers)
         {

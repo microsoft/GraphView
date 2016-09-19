@@ -22,16 +22,16 @@ namespace GraphView
     /// Given a field name, returns the field's value.
     /// Given a field offset, returns the field's value.
     /// </summary>
-    internal class Record
+    public class RawRecord
     {
-        internal Record()
+        internal RawRecord()
         { 
         }
-        internal Record(Record rhs)
+        internal RawRecord(RawRecord rhs)
         {
             field = new List<string>(rhs.field);
         }
-        internal Record(int num)
+        internal RawRecord(int num)
         {
             field = new List<string>();
             for (int i = 0; i < num; i++)
@@ -66,6 +66,29 @@ namespace GraphView
         }
         internal List<string> field;
     }
+
+    public class Record : RawRecord
+    {
+        internal Record(RawRecord rhs, List<string> pHeader)
+        {
+            field = rhs.field;
+            header = pHeader;
+        }
+        internal List<string> header { get; set; }
+        public string this[int index]
+        {
+            get { return field[index]; }
+        }
+
+        public string this[string FieldName]
+        {
+            get
+            {
+                if (header == null || header.IndexOf(FieldName) == -1) return null;
+                return field[header.IndexOf(FieldName)];
+            }
+        }
+    }
     
     /// <summary>
     /// DocDBOperator is the basic interface of all operator processor function.
@@ -77,7 +100,7 @@ namespace GraphView
         bool Status();
         void Open();
         void Close();
-        Record Next();
+        RawRecord Next();
     }
     /// <summary>
     /// The most basic class for all operator processor function,
@@ -99,7 +122,7 @@ namespace GraphView
         {
             status = false;
         }
-        public abstract Record Next();
+        public abstract RawRecord Next();
 
         public List<string> header;
     }

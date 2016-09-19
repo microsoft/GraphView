@@ -9,7 +9,7 @@ namespace GraphView
 {
     abstract internal class BooleanFunction
     {
-        internal abstract bool eval(Record r);
+        internal abstract bool eval(RawRecord r);
     }
 
     abstract internal class ComparisonBooleanFunction : BooleanFunction
@@ -36,7 +36,7 @@ namespace GraphView
             RhsFieldIndex = rhs;
             type = pType;
         }
-        override internal bool eval(Record r)
+        override internal bool eval(RawRecord r)
         {
             switch (type)
             {
@@ -77,7 +77,7 @@ namespace GraphView
             rhs = prhs;
             type = ptype;
         }
-        override internal bool eval(Record r)
+        override internal bool eval(RawRecord r)
         {
             if (type == BinaryType.and) return lhs.eval(r) && rhs.eval(r);
             if (type == BinaryType.or) return lhs.eval(r) || rhs.eval(r);

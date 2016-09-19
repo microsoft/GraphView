@@ -28,7 +28,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var op = parser.Parse("g.V().as('character').has('weapon', 'shield').out('appeared').as('comicbook').select('character', 'comicbook')").Generate(connection);
-            Record rc = null;
+            RawRecord rc = null;
 
             while (op.Status())
             {
@@ -43,7 +43,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var op = parser.Parse("g.V().as('character').has('weapon', 'lasso').out('appeared').as('comicbook').select('character', 'comicbook')").Generate(connection);
-            Record rc = null;
+            RawRecord rc = null;
 
             while (op.Status())
             {
@@ -58,7 +58,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var op = parser.Parse("g.V().has('comicbook', 'AVF 4').in('appeared').values('character')").Generate(connection);
-            Record rc = null;
+            RawRecord rc = null;
 
             while (op.Status())
             {
@@ -73,7 +73,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var op = parser.Parse("g.V().has('comicbook', 'AVF 4').in('appeared').has('weapon', 'shield').values('character')").Generate(connection);
-            Record rc = null;
+            RawRecord rc = null;
 
             while (op.Status())
             {
@@ -97,7 +97,6 @@ namespace GraphViewUnitTest
                 var y = x;
                 if(y != null)
                 {
-                    Console.WriteLine(y.RetriveRow().ToString());
                 }
             }
         }
@@ -115,7 +114,6 @@ namespace GraphViewUnitTest
                 var y = x;
                 if(y != null)
                 {
-                    Console.WriteLine(y.RetriveRow()); 
                 }
             }
         }
@@ -133,7 +131,6 @@ namespace GraphViewUnitTest
                 var y = x;
                 if(y != null)
                 {
-                    Console.WriteLine(y.RetriveRow());
                 }
             }
         }

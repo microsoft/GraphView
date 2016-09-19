@@ -307,7 +307,7 @@ namespace GraphViewUnitTest
             g.V().has("name", "C").addE("type", "father").to(g.V().has("name", "D"));
             NodeInfo a = new NodeInfo() { properties = new Dictionary<string, string>() { { "name", "A" } } };
             NodeInfo c = new NodeInfo() { properties = new Dictionary<string, string>() { { "gender", "man" } } };
-            var root = _path(connection, a, c);
+            var root = _root(connection, a);
             foreach (var x in root)
             {
                 var y = x;
