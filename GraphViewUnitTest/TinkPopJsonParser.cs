@@ -915,37 +915,22 @@ namespace GraphViewUnitTest
 
         public void BulkInsert()
         {
-            //string doc = inputStream.Retrieve();
-            //List<string> docList = new List<string>();
-            //int docNum = 1;
-
-            //while (doc != null)
-            //{
-            //    parser.Parse(doc.ToString()).Generate(connection).Next();
-            //    Console.WriteLine("Thread" + threadId + " docCount" + docNum);
-            //    docNum += 1;
-            //    doc = inputStream.Retrieve();
-            //}
             // Insert node from collections
-
+            GraphTraversal g = new GraphTraversal(ref connection);
             var node = inputNodeBuffer.Retrieve();
 
             while (node.Key != null)
             {
-                StringBuilder tempSQL = new StringBuilder("g.addV(");
-                tempSQL.Append("\'id\',");
-                tempSQL.Append("\'" + node.Key + "\',");
-
-                foreach (var keyV in node.Value)
+                // new API
+                List<string> PropList = new List<string>();
+                PropList.Add("id");
+                PropList.Add(node.Key);
+                foreach (var x in node.Value)
                 {
-                    tempSQL.Append("\'" + keyV.Key + "\',");
-                    tempSQL.Append("\'" + keyV.Value + "\',");
+                    PropList.Add(x.Key);
+                    PropList.Add(x.Value);
                 }
-
-                tempSQL.Remove(tempSQL.Length - 1, 1);
-                tempSQL.Append(")");
-                //inputBuffer.Add(tempSQL.ToString());
-                Console.WriteLine(tempSQL);
+                var D = g.V().addV(PropList);
                 node = inputNodeBuffer.Retrieve();
             }
             // wait for node insert finish
@@ -959,13 +944,17 @@ namespace GraphViewUnitTest
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
                 // Inset Edge
-                StringBuilder edgePropertyList = new StringBuilder(",");
-                edgePropertyList.Append("'id',");
-                edgePropertyList.Append("'" + outEdge.Value["id"].ToString() + "'");
-                var edgeType = outEdge.Value["edge_type"];
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-                //inputBuffer.Add(tempInsertSQL);
-                Console.WriteLine(tempInsertSQL);
+
+                List<string> PropList = new List<string>();
+                PropList.Add("id");
+                PropList.Add(outEdge.Key);
+                foreach (var x in outEdge.Value)
+                {
+                    PropList.Add(x.Key);
+                    PropList.Add(x.Value);
+                }
+                g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
+
                 outEdge = inputOutEdgeBuffer.Retrieve();
             }
             // Insert in edge from collections
@@ -976,13 +965,17 @@ namespace GraphViewUnitTest
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
                 // Inset Edge
-                StringBuilder edgePropertyList = new StringBuilder(",");
-                edgePropertyList.Append("'id',");
-                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                var edgeType = edge.Value["edge_type"];
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-                //inputBuffer.Add(tempInsertSQL);
-                Console.WriteLine(tempInsertSQL);
+
+                List<string> PropList = new List<string>();
+                PropList.Add("id");
+                PropList.Add(edge.Key);
+                foreach (var x in edge.Value)
+                {
+                    PropList.Add(x.Key);
+                    PropList.Add(x.Value);
+                }
+                g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
+
                 edge = inputInEdgeBuffer.Retrieve();
             }
             Console.WriteLine("Thread Insert Finish");
