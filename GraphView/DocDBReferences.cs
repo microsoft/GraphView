@@ -71,8 +71,11 @@ namespace GraphView
     {
         internal Record(RawRecord rhs, List<string> pHeader)
         {
-            field = rhs.field;
-            header = pHeader;
+            if (rhs != null)
+            {
+                field = rhs.field;
+                header = pHeader;
+            }
         }
         internal List<string> header { get; set; }
         public string this[int index]

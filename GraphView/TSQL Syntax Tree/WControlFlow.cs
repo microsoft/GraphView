@@ -48,7 +48,8 @@ namespace GraphView.TSQL_Syntax_Tree
             {
                 Source.Add(x.Generate(dbConnection));
             }
-            return new CoalesceOperator(dbConnection, Source, CoalesceNumber, Source[0].header);
+            var op = new CoalesceOperator(dbConnection, Source, CoalesceNumber);
+            return new OutputOperator(op,dbConnection,op.header,null);
         }
     }
 }
