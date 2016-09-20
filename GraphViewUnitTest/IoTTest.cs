@@ -33,9 +33,8 @@ namespace GraphViewUnitTest
     }
 
     [TestClass]
-    public class AIot
+    public class IoTTest
     {
-        [TestMethod]
         public void ResetCollection(string collection)
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -56,7 +55,6 @@ namespace GraphViewUnitTest
                 System.Threading.Thread.Sleep(10);
         }
 
-        [TestMethod]
         internal GraphTraversal _find(GraphViewConnection connection, Info info, GraphTraversal source = null)
         {
             GraphTraversal t;
@@ -75,7 +73,6 @@ namespace GraphViewUnitTest
             return t;
         }
 
-        [TestMethod]
         internal GraphTraversal _node(GraphViewConnection connection, NodeInfo info)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
@@ -110,7 +107,6 @@ namespace GraphViewUnitTest
             return null;
         }
 
-        [TestMethod]
         internal GraphTraversal _edge(GraphViewConnection connection, NodeInfo Src, NodeInfo Dest)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
@@ -133,21 +129,19 @@ namespace GraphViewUnitTest
             return g;
         }
 
-        [TestMethod]
-        internal GraphTraversal _root(GraphViewConnection connection, NodeInfo info)
+        internal GraphTraversal _root(GraphViewConnection connection, NodeInfo src ,NodeInfo target = null)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
             GraphTraversal t = null;
-            return t = _find(connection, info).repeat(GraphTraversal._underscore().Out());
+            if (target == null) return _find(connection, src).repeat(GraphTraversal._underscore().Out());
+            else return  _find(connection, src).repeat(_find(connection, target, GraphTraversal._underscore().Out()));
         }
 
-        [TestMethod]
         internal GraphTraversal _delete(GraphViewConnection connection, Info info)
         {
             return _find(connection,info).drop();
         }
 
-        [TestMethod]
         internal GraphTraversal getDeviceInformation(GraphViewConnection connection, string DeviceID)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
@@ -156,7 +150,7 @@ namespace GraphViewUnitTest
                     .has("label", "DeviceTwin")
                     .has("id", DeviceID)
                     .As("device")
-                    .Out("inE.type_of")
+                    .In("outE.type_of")
                     .As("DeviceModel")
                     .Out("outE.extends")
                     .@select("device", "DeviceModel");
@@ -168,69 +162,66 @@ namespace GraphViewUnitTest
         {
             var modelInfo = new NodeInfo()
             {
-                type = "DeviceModel",
                 properties = new Dictionary<string, string>()
                 {
-                    {"manufacturer", manufacturer},
-                    {"modelNumber", modelNumber}
+                    {"label","DeviceModel" },
+                    {"properties.manufacturer.value", manufacturer}
                 }
             };
-
-
             return
                 _find(connection, modelInfo)
                     .As("deviceModel")
-                    .In("extends")
+                    .Out("outE.extends")
                     .As("telemetryDataModel")
                     .@select("deviceModel", "telemetryDataModel");
         }
 
         [TestMethod]
-        internal GraphTraversal _path(GraphViewConnection connection, NodeInfo src, NodeInfo target)
+        internal GraphTraversal _path(GraphViewConnection connection, GraphTraversal src)
         {
+            return src.path();
+        }
+
+
+
+        [TestMethod]
+        public void IoTDeleteNodeTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "IoTDeleteInsert");
+            ResetCollection("IoTDeleteInsert");
             GraphTraversal g = new GraphTraversal(ref connection);
-            return _find(connection, src).repeat(_find(connection, target, GraphTraversal._underscore().Out())).path();
+            var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
+            NodeInfo node = new NodeInfo()
+            {
+                properties = new Dictionary<string, string>()
+                {
+                    {"name","A"}
+                }
+            };
+            //_delete(connection, node);
         }
 
         [TestMethod]
-        public void insertNodeTest()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IoT");
-            NodeInfo node = new NodeInfo();
-            _node(connection, node);
-        }
-
-        [TestMethod]
-        public void deleteNodeTest()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IoT");
-            NodeInfo node = new NodeInfo();
-            _delete(connection, node);
-        }
-
-        [TestMethod]
-        public void getDeviceInformationTest()
+        public void IoTGetDeviceInformationTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IOTTest");
-            string DeviceID = "70412";
+            string DeviceID = "70646";
             var device = getDeviceInformation(connection, DeviceID);
             foreach (var x in device)
                 Console.WriteLine(x);
         }
 
         [TestMethod]
-        public void getDeviceModelInformationTest()
+        public void IoTGetDeviceModelInformationTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IoT");
-            string Manufacturer = null;
+"GroupMatch", "IoTTest");
+            string Manufacturer = "DeviceModel-90794721-59a2-11e6-8cd0-3717b83c0677";
             string ModelNumber = null;
             var device = getDeviceModelInformation(connection,Manufacturer,ModelNumber);
             foreach (var x in device)
@@ -238,32 +229,55 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void findRoot()
+        public void IoTFindRootTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IoT");
-            NodeInfo start = new NodeInfo();
-            var root = _root(connection, start);
+    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+    "GroupMatch", "IoTRoot");
+            ResetCollection("IoTRoot");
+            GraphTraversal g = new GraphTraversal(ref connection);
+            var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
+            var B = g.V().addV("name", "B", "Model", "M2", "System", "S1");
+            var C = g.V().addV("name", "C", "Model", "M3", "System", "S1");
+            var D = g.V().addV("name", "D", "Model", "M4", "System", "S2");
+            g.V().has("name", "A").addE("type", "develop").to(g.V().has("name", "B"));
+            g.V().has("name", "B").addE("type", "develop").to(g.V().has("name", "C"));
+            g.V().has("name", "C").addE("type", "develop").to(g.V().has("name", "D"));
+            NodeInfo a = new NodeInfo() { properties = new Dictionary<string, string>() { { "name", "A" } } };
+            NodeInfo c = new NodeInfo() { properties = new Dictionary<string, string>() { { "System", "S1" } } };
+            var root = _root(connection, a, c).values("name");
             foreach (var x in root)
-                Console.WriteLine(x);
+            {
+                var y = x[0];
+            }
         }
 
         [TestMethod]
-        public void findRootWithPath()
+        public void IoTFindRootWithPathTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IoT");
-            NodeInfo start = new NodeInfo();
-            var root = _root(connection, start);
-            var path = root.path();
-            foreach (var x in path)
-                Console.WriteLine(x);
+"GroupMatch", "IoTDeleteInsert");
+            ResetCollection("IoTDeleteInsert");
+            GraphTraversal g = new GraphTraversal(ref connection);
+            var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
+            var B = g.V().addV("name", "B", "Model", "M2", "System", "S1");
+            var C = g.V().addV("name", "C", "Model", "M3", "System", "S1");
+            var D = g.V().addV("name", "D", "Model", "M4", "System", "S2");
+            g.V().has("name", "A").addE("type", "develop").to(g.V().has("name", "B"));
+            g.V().has("name", "B").addE("type", "develop").to(g.V().has("name", "C"));
+            g.V().has("name", "C").addE("type", "develop").to(g.V().has("name", "D"));
+            NodeInfo a = new NodeInfo() { properties = new Dictionary<string, string>() { { "name", "A" } } };
+            NodeInfo c = new NodeInfo() { properties = new Dictionary<string, string>() { { "System", "S1" } } };
+            var root = _root(connection, a, c).path();
+            foreach (var x in root)
+            {
+                var y = x[0];
+            }
         }
         [TestMethod]
 
-        public void Test1()
+        public void IoTAddNodeTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -283,35 +297,7 @@ namespace GraphViewUnitTest
                 properties = new Dictionary<string, string>() { { "name", "C" } }
             };
             _node(connection, C);
-            var root = _root(connection, C);
-            foreach (var x in root)
-            {
-                var y = x;
-            }
         }
-        [TestMethod]
 
-        public void Test2()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-    "GroupMatch", "IoT3");
-            ResetCollection("IoT3");
-            GraphTraversal g = new GraphTraversal(ref connection);
-            var A = g.V().addV("name", "A", "gender", "man");
-            var B = g.V().addV("name", "B", "gender", "man");
-            var C = g.V().addV("name", "C", "gender", "woman");
-            var D = g.V().addV("name", "D", "gender", "man");
-            g.V().has("name", "A").addE("type", "father").to(g.V().has("name", "B"));
-            g.V().has("name", "B").addE("type", "father").to(g.V().has("name", "C"));
-            g.V().has("name", "C").addE("type", "father").to(g.V().has("name", "D"));
-            NodeInfo a = new NodeInfo() { properties = new Dictionary<string, string>() { { "name", "A" } } };
-            NodeInfo c = new NodeInfo() { properties = new Dictionary<string, string>() { { "gender", "man" } } };
-            var root = _root(connection, a);
-            foreach (var x in root)
-            {
-                var y = x;
-            }
-        }
     }
     }

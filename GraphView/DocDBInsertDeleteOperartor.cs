@@ -385,7 +385,7 @@ namespace GraphView
         /// </summary>
         internal void DeleteNodes()
         {
-            Selectstr = "SELECT * " + "FROM Node ";
+            Selectstr = "SELECT * " + "FROM N_0 ";
             if (search != null)
                 Selectstr += @"WHERE " + search.ToString();
             var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(

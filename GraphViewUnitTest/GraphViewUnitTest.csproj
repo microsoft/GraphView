@@ -83,7 +83,7 @@
     <Compile Include="DocDbSelectTest.cs" />
     <Compile Include="DocDbPerformanceTest.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
-    <Compile Include="AIot.cs" />
+    <Compile Include="IoTTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GraphView\GraphView.csproj">

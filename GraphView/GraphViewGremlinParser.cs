@@ -1055,7 +1055,7 @@ namespace GraphView
                         TableObjectString = "Node",
                         Alias = new Identifier() { Value = context.PrimaryInternalAlias.First().ToString() }
                     };
-                    var DeleteNodeSp = new WDeleteSpecification()
+                    var DeleteNodeSp = new WDeleteNodeSpecification()
                     {
                         WhereClause = NewWhereClause,
                         FromClause = NewFromClause,

@@ -612,7 +612,8 @@ AES += "\'" + x + "\'";
         public GraphTraversal drop()
         {
             if (HoldMark == true) held = this;
-
+            GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            parser.Parse(AppendExecutableString + "drop()").Generate(connection).Next();
             return new GraphTraversal(this, AppendExecutableString + "drop().");
         }
 

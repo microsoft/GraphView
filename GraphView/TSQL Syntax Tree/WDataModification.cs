@@ -556,6 +556,11 @@ namespace GraphView
             WhereClause = deleteSpec.WhereClause;
         }
 
+        public WDeleteNodeSpecification()
+        {
+            
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
@@ -612,15 +617,15 @@ namespace GraphView
         {
             var search = WhereClause.SearchCondition;
             //build up the query
-            string Selectstr = "SELECT * " + "FROM Node ";
+            string Selectstr = "SELECT * " + "FROM N_0 ";
             if (search == null)
             {
-                Selectstr += @"WHERE ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0 ";
+                Selectstr += @"WHERE ARRAY_LENGTH(N_0._edge)>0 or ARRAY_LENGTH(N_0._reverse_edge)>0 ";
             }
             else
             {
                 Selectstr += @"WHERE " + search.ToString() +
-                             @" and (ARRAY_LENGTH(Node._edge)>0 or ARRAY_LENGTH(Node._reverse_edge)>0)  ";
+                             @" and (ARRAY_LENGTH(N_0._edge)>0 or ARRAY_LENGTH(N_0._reverse_edge)>0)  ";
             }
             
             DeleteNodeOperator Deleteop = new DeleteNodeOperator(dbConnection, search, Selectstr);
