@@ -48,7 +48,9 @@ namespace GraphView
         List<string> InternalHeader;
         private int InternalLoopStartNode;
 
-        internal TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, Dictionary<int, string> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, GraphViewOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
+        private bool reverse; 
+
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, Dictionary<int, string> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             ChildOperator = pChildProcessor;
@@ -65,6 +67,7 @@ namespace GraphView
             StartOfResultField = pStartOfResultField;
             BooleanCheck = pBooleanCheck;
             InternalOperator = pInternalOperator;
+            reverse = pReverse;
             if (InternalOperator != null) InternalOperator = (InternalOperator as OutputOperator).ChildOperator;
         }
         override public RawRecord Next()
@@ -137,10 +140,10 @@ namespace GraphView
                                     string Edge = (((JObject) item)[ReverseNode.Value])["_sink"].ToString();
                                     if (
                                         !(Edge == record.RetriveData(ReverseNode.Key) &&
-                                          record.RetriveData(ReverseNode.Key + 1).Contains(ID)) &&
+                                          record.RetriveData(ReverseNode.Key + (reverse?2:1)).Contains(ID)) &&
                                         InternalOperator == null)
                                         VailedFlag = false;
-                                    if (!(record.RetriveData(ReverseNode.Key + 1).Contains(ID)) &&
+                                    if (!(record.RetriveData(ReverseNode.Key + (reverse ? 2 : 1)).Contains(ID)) &&
                                         InternalOperator != null)
                                         VailedFlag = false;
                                 }
@@ -155,7 +158,7 @@ namespace GraphView
                 }
                 catch (AggregateException e)
                 {
-                    throw new  NullReferenceException("Cannot connect to the giving database/collection, please make sure the connection is corret");
+                    throw e.InnerException;
                 } 
             }
             InputBuffer.Clear();
@@ -261,6 +264,7 @@ namespace GraphView
             RawRecord NewRecord = new RawRecord(record);
             if (NewRecord.RetriveData(dest) == "") NewRecord.field[dest] = ItemInfo.Item1;
             if (NewRecord.RetriveData(dest + 1) == "") NewRecord.field[dest + 1] = ItemInfo.Item2;
+            if (NewRecord.RetriveData(dest + 2) == "") NewRecord.field[dest + 2] = ItemInfo.Item3;
             NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + ",";
             for (int i = 0; i < NewRecord.field.Count; i++)
             {
@@ -348,7 +352,7 @@ namespace GraphView
             }
             catch (AggregateException e)
             {
-                throw new NullReferenceException("Cannot connect to the giving database/collection, please make sure the connection is corret");
+                throw e.InnerException;
             }
             // Close output buffer
             if (OutputBuffer.Count <= 1) this.Close();
@@ -388,6 +392,7 @@ namespace GraphView
             RawRecord NewRecord = new RawRecord(record);
             if (NewRecord.RetriveData(node) == "") NewRecord.field[node] = ItemInfo.Item1;
             if (NewRecord.RetriveData(node + 1) == "") NewRecord.field[node + 1] = ItemInfo.Item2;
+            if (NewRecord.RetriveData(node + 2) == "") NewRecord.field[node + 2] = ItemInfo.Item3;
             NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + ",";
             for (int i = 0; i < NewRecord.field.Count; i++)
             {
@@ -521,14 +526,16 @@ namespace GraphView
         internal int FromWhichSource;
         internal RawRecord result;
         internal int CoalesceNumber;
-        public CoalesceOperator(GraphViewConnection pConnection, List<GraphViewOperator> pSources, int pCoalesceNumber, List<string> pheader)
+        public CoalesceOperator(GraphViewConnection pConnection, List<GraphViewOperator> pSources, int pCoalesceNumber)
         {
             this.Open();
             connection = pConnection;
-            header = pheader;
             Sources = pSources;
             FromWhichSource = 0;
             CoalesceNumber = pCoalesceNumber;
+            header = new List<string>();
+            foreach(var x in Sources)
+                if (x is OutputOperator) header = header.Concat((x as OutputOperator).SelectedElement).ToList();
         }
 
         override public RawRecord Next()
@@ -545,6 +552,7 @@ namespace GraphView
             {
                 for (int i = FromWhichSource + 1; i < Sources.Count; i++) Sources[i].Close();
                 string Temp = "";
+                header = Sources[FromWhichSource].header;
                 return result;
             }
         }
@@ -663,7 +671,7 @@ namespace GraphView
                     if (InputRecord != null)
                     {
                         foreach (var x in SelectedElement)
-                            OutputRecord.field[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(header, x);
+                            OutputRecord.field[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(ChildOperator.header, x);
                         return OutputRecord;
                     }
                     else return null;

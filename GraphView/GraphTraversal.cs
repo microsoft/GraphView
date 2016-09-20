@@ -149,11 +149,14 @@ namespace GraphView
                     GraphViewGremlinParser parser = new GraphViewGremlinParser();
                     CurrentOperator = parser.Parse(CutTail(AppendExecutableString)).Generate(connection);
                     elements = new List<string>();
-                    foreach (var x in (CurrentOperator as OutputOperator).SelectedElement)
+                    if (CurrentOperator is OutputOperator)
                     {
-                        if (parser.AliasBinding.ContainsValue(x))
-                            elements.Add(parser.AliasBinding.FirstOrDefault(p=>p.Value == x).Key);
-                        else elements.Add(x);
+                        foreach (var x in (CurrentOperator as OutputOperator).SelectedElement)
+                        {
+                            if (parser.AliasBinding.ContainsValue(x))
+                                elements.Add(parser.AliasBinding.FirstOrDefault(p => p.Value == x).Key);
+                            else elements.Add(x);
+                        }
                     }
                     it = new GraphTraversalIterator(CurrentOperator,elements);
                 }

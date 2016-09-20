@@ -634,18 +634,21 @@ namespace GraphView
             {
                 // Use Topological Sort to give a sorted node list.
                 // Note that if there's a cycle in the match graph, a random node will be chose as the start.
-                Stack<Tuple<string, string, string>> SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
+                var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
                 // Marking down which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
+                BuildQuerySegementOnNode(ProcessedNodeList,SortedNodeList.Peek().Item1,header,StartOfResult);
+                ProcessedNodeList.Add(SortedNodeList.Peek().Item1.NodeAlias);
                 while (SortedNodeList.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = null;
-                    string TargetNode = SortedNodeList.Pop().Item3;
-                    foreach (var x in subgraph.Nodes)
-                        if (x.Key == TargetNode)
-                            CurrentProcessingNode = x.Value;
-                    BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
-                    ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
+                    var TargetNode = SortedNodeList.Pop();
+                    if (TargetNode.Item2 != null)
+                    {
+                        CurrentProcessingNode = TargetNode.Item2.SinkNode;
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
+                        ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
+                    }
                 }
             }
             return BooleanList;
@@ -663,6 +666,7 @@ namespace GraphView
                 {
                     header.Add(node.Key);
                     header.Add(node.Key + "_ADJ");
+                    header.Add(node.Key + "_REVADJ");
                 }
             }
             // Construct the second part of the head which is defined as 
@@ -696,43 +700,41 @@ namespace GraphView
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 // Use Topological Sorting to define the order of nodes it will travel.
-                Stack<Tuple<string, string, string>> SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
-                StartOfResult += subgraph.Nodes.Count * 2;
+                var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                StartOfResult += subgraph.Nodes.Count * 3;
                 bool FirstNodeFlag = true;
                 int LastDest = -1;
                 while (SortedNodes.Count != 0)
                 {
                     MatchNode TempNode = null;
-                    Tuple<string, string, string> CurrentProcessingNode = SortedNodes.Pop();
+                    var CurrentProcessingNode = SortedNodes.Pop();
                     // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
                     // Otherwise it will be dealed by a TraversalOperator.
                     if (FirstNodeFlag)
                     {
-                        int node = header.IndexOf(CurrentProcessingNode.Item3);
-                        foreach (var x in subgraph.Nodes)
-                            if (x.Key == CurrentProcessingNode.Item3)
-                                ChildrenProcessor.Add(new FetchNodeOperator(pConnection, x.Value.AttachedQuerySegment, node, header, StartOfResult, 50));
+                        int node = header.IndexOf(CurrentProcessingNode.Item1.NodeAlias);
+                        ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50));
                         FirstNodeFlag = false;
                     }
-                    else
+                    if (CurrentProcessingNode.Item2 != null)
                     {
                         Dictionary<int, string> ReverseCheckList = new Dictionary<int, string>();
-                        int src = header.IndexOf(CurrentProcessingNode.Item1);
-                        int dest = header.IndexOf(CurrentProcessingNode.Item3);
-                        foreach (var x in subgraph.Nodes)
-                            if (x.Key == CurrentProcessingNode.Item3)
-                                TempNode = x.Value;
+                        int src = header.IndexOf(CurrentProcessingNode.Item2.SourceNode.NodeAlias);
+                        int dest = header.IndexOf(CurrentProcessingNode.Item2.SinkNode.NodeAlias);
+                        TempNode = CurrentProcessingNode.Item2.SinkNode;
                         if (WithPathClause != null)
                         {
                             Tuple<string, GraphViewOperator, int> InternalOperator = null;
                             if (
                                 (InternalOperator =
-                                    WithPathClause.PathOperators.Find(p => p.Item1 == CurrentProcessingNode.Item2)) !=
+                                    WithPathClause.PathOperators.Find(p => p.Item1 == CurrentProcessingNode.Item2.EdgeAlias)) !=
                                 null)
                                 foreach (var neighbor in TempNode.ReverseNeighbors)
                                     ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias),
                                         neighbor.EdgeAlias + "_REV");
-                            ChildrenProcessor.Add(new TraversalOperator(pConnection,ChildrenProcessor.Last(),TempNode.AttachedQuerySegment,src,dest,header, ReverseCheckList, StartOfResult, 50,50,InternalOperator.Item2));
+                            ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
+                                TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
+                                50, false, InternalOperator.Item2));
                         }
                         else
                         {
@@ -741,7 +743,7 @@ namespace GraphView
                                     neighbor.EdgeAlias + "_REV");
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
                                 TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
-                                50));
+                                50, CurrentProcessingNode.Item2.IsReversed));
                         }
                     }
                     for (int i = 0; i < functions.Count; i++)
@@ -927,17 +929,18 @@ namespace GraphView
         // Note that if is there's a cycle, a random node in the cycle will be pick as the start.
         private class TopoSorting
         {
-            static internal Stack<Tuple<string, string, string>> TopoSort(Dictionary<string, MatchNode> graph)
+            static internal Stack<Tuple<MatchNode,MatchEdge>> TopoSort(Dictionary<string, MatchNode> graph)
             {
                 Dictionary<MatchNode, int> state = new Dictionary<MatchNode, int>();
-                Stack<Tuple<string, string, string>> list = new Stack<Tuple<string, string, string>>();
+                Stack<Tuple<MatchNode, MatchEdge>> list = new Stack<Tuple<MatchNode, MatchEdge>>();
                 foreach (var node in graph)
                     state.Add(node.Value, 0);
                 foreach (var node in graph)
-                    visit(graph, node.Value, list, state, node.Value.NodeAlias, "");
+                    visit(graph, node.Value, list, state, node.Value.NodeAlias, null);
+                if (graph.Count == 1) list.Push(new Tuple<MatchNode, MatchEdge>(graph.First().Value,null));
                 return list;
             }
-            static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<Tuple<string, string, string>> list, Dictionary<MatchNode, int> state, string ParentAlias, string EdgeAlias)
+            static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<Tuple<MatchNode, MatchEdge>> list, Dictionary<MatchNode, int> state, string ParentAlias, MatchEdge Edge)
             {
                 if (state[node] == 1)
                     return;
@@ -945,9 +948,11 @@ namespace GraphView
                     return;
                 state[node] = 2;
                 foreach (var neighbour in node.Neighbors)
-                    visit(graph, neighbour.SinkNode, list, state, node.NodeAlias, neighbour.EdgeAlias);
-                state[node] = 1;
-                list.Push(new Tuple<string, string, string>(ParentAlias, EdgeAlias, node.NodeAlias));
+                    visit(graph, neighbour.SinkNode, list, state, node.NodeAlias, neighbour);
+                if (Edge == null) state[node] = 3;
+                else state[node] = 1;
+                if (state[node] != 3) 
+                list.Push(new Tuple<MatchNode, MatchEdge>(Edge.SourceNode,Edge));
             }
         }
     }

@@ -40,7 +40,7 @@ namespace GraphView
         public string EdgeAlias { get; set; }
         public MatchNode SinkNode { get; set; }
 
-
+        public bool IsReversed { get; set; }
         /// <summary>
         /// Schema Object of the node table/node view which the edge is bound to.
         /// It is an instance in the syntax tree.
