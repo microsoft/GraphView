@@ -510,14 +510,12 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest");
-            GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            GraphTraversal g = new GraphTraversal(ref connection);
-
+            
             ResetCollection("IOTTest");
             // Insert node from collections
-            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(10000);
-            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(10000);
-            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(10000);
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(nodePropertiesHashMap.Count + 1);
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(inEdgePropertiesHashMap.Count + 1);
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(outEdgePropertiesHashMap.Count + 1);
             var nodeIter = nodePropertiesHashMap.GetEnumerator();
             while (nodeIter.MoveNext())
             {
@@ -552,58 +550,7 @@ namespace GraphViewUnitTest
                 insertThreadList[j].Start();
                 Console.WriteLine("Start the thread" + j);
             }
-
-            //// Insert node from collections
-            //foreach (var node in nodePropertiesHashMap)
-            //{
-            //    StringBuilder tempSQL = new StringBuilder("g.addV(");
-            //    tempSQL.Append("\'id\',");
-            //    tempSQL.Append("\'" + node.Key + "\',");
-
-            //    foreach (var keyV in node.Value)
-            //    {
-            //        tempSQL.Append("\'" + keyV.Key + "\',");
-            //        tempSQL.Append("\'" + keyV.Value + "\',");
-            //    }
-
-            //    tempSQL.Remove(tempSQL.Length - 1, 1);
-            //    tempSQL.Append(")");
-            //    inputBuffer.Add(tempSQL.ToString());
-            //    Console.WriteLine(tempSQL);
-            //}
-            //// wait for node insert finish
-
-            //// Insert out edge from collections
-            //foreach (var edge in outEdgePropertiesHashMap)
-            //{
-            //    String[] nodeIds = edge.Key.Split('_');
-            //    String srcId = nodeIds[0];
-            //    String desId = nodeIds[1];
-            //    // Inset Edge
-            //    StringBuilder edgePropertyList = new StringBuilder(",");
-            //    edgePropertyList.Append("'id',");
-            //    edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-            //    var edgeType = edge.Value["edge_type"];
-            //    String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-            //    inputBuffer.Add(tempInsertSQL);
-            //    Console.WriteLine(tempInsertSQL);
-            //}
-            //// Insert in edge from collections
-            //foreach (var edge in inEdgePropertiesHashMap)
-            //{
-            //    String[] nodeIds = edge.Key.Split('_');
-            //    String srcId = nodeIds[0];
-            //    String desId = nodeIds[1];
-            //    // Inset Edge
-            //    StringBuilder edgePropertyList = new StringBuilder(",");
-            //    edgePropertyList.Append("'id',");
-            //    edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-            //    var edgeType = edge.Value["edge_type"];
-            //    String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-            //    inputBuffer.Add(tempInsertSQL);
-            //    Console.WriteLine(tempInsertSQL);
-            //}
-
+            
             Console.WriteLine("finish the parse");
             inputNodeBuffer.Close();
             inputInEdgeBuffer.Close();
@@ -896,7 +843,7 @@ namespace GraphViewUnitTest
     public class DocDBInsertWorkerByNewAPI
     {
         public int threadId;
-        GraphViewGremlinParser parser = new GraphViewGremlinParser();
+        //GraphViewGremlinParser parser = new GraphViewGremlinParser();
         GraphViewConnection connection = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
