@@ -401,7 +401,7 @@ namespace GraphViewUnitTest
         {
             // parse data
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-subset.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-dataset.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -477,7 +477,8 @@ namespace GraphViewUnitTest
                             var dic = new Dictionary<string, string>();
                             outEdgePropertiesHashMap[edgeString] = dic;
                             outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
-                            outEdgePropertiesHashMap[edgeString].Add("edge_type", nodeOutEJ.Path);
+                            var edgeTypeArray = nodeOutEJ.Path.Split(',');
+                            outEdgePropertiesHashMap[edgeString].Add("type", edgeTypeArray[edgeTypeArray.Length - 1]);
                         }
                    
 
@@ -500,7 +501,8 @@ namespace GraphViewUnitTest
                             var dic = new Dictionary<string, string>();
                             inEdgePropertiesHashMap[edgeString] = dic;
                             inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
-                            inEdgePropertiesHashMap[edgeString].Add("edge_type", nodeInEJ.Path);
+                            var edgeTypeArray = nodeInEJ.Path.Split(',');
+                            inEdgePropertiesHashMap[edgeString].Add("type", edgeTypeArray[edgeTypeArray.Length - 1]);
                         }
 
                     iter = iter.Next;
