@@ -156,7 +156,7 @@ namespace GraphViewUnitTest
                     .@select("device", "DeviceModel");
         }
 
-        [TestMethod]
+
         internal GraphTraversal getDeviceModelInformation(GraphViewConnection connection, string manufacturer,
             string modelNumber)
         {
@@ -165,7 +165,7 @@ namespace GraphViewUnitTest
                 properties = new Dictionary<string, string>()
                 {
                     {"label","DeviceModel" },
-                    {"properties.manufacturer.value", manufacturer}
+                    {"properties_manufacturer_value", manufacturer}
                 }
             };
             return
@@ -176,14 +176,15 @@ namespace GraphViewUnitTest
                     .@select("deviceModel", "telemetryDataModel");
         }
 
-        [TestMethod]
         internal GraphTraversal _path(GraphViewConnection connection, GraphTraversal src)
         {
             return src.path();
         }
 
 
-
+        /// <summary>
+        /// Insert a Node whose name is "A", with model name "M1" and system "S1", then find and delete it. 
+        /// </summary>
         [TestMethod]
         public void IoTDeleteNodeTest()
         {
@@ -200,9 +201,12 @@ namespace GraphViewUnitTest
                     {"name","A"}
                 }
             };
-            //_delete(connection, node);
+            _delete(connection, node);
         }
 
+        /// <summary>
+        /// Print a device with given ID, its model and extension.
+        /// </summary>
         [TestMethod]
         public void IoTGetDeviceInformationTest()
         {
@@ -215,6 +219,9 @@ namespace GraphViewUnitTest
                 Console.WriteLine(x);
         }
 
+        /// <summary>
+        /// Print the NodeId of the device model with given manufacturer, and its extend telemetry data model. 
+        /// </summary>
         [TestMethod]
         public void IoTGetDeviceModelInformationTest()
         {
@@ -228,6 +235,10 @@ namespace GraphViewUnitTest
                 Console.WriteLine(x);
         }
 
+        /// <summary>
+        /// Insert four nodes with different name/model/system, and connected as A->B->C->D
+        /// Start from A, finding the last node within system S1. 
+        /// </summary>
         [TestMethod]
         public void IoTFindRootTest()
         {
@@ -251,7 +262,10 @@ namespace GraphViewUnitTest
                 var y = x[0];
             }
         }
-
+        /// <summary>
+        /// Insert four nodes with different name/model/system, and connected as A->B->C->D
+        /// Start from A, finding the last node within system S1, and giving the path from A to this node. 
+        /// </summary>
         [TestMethod]
         public void IoTFindRootWithPathTest()
         {
@@ -277,6 +291,9 @@ namespace GraphViewUnitTest
         }
         [TestMethod]
 
+        /// <summary>
+        /// Add node C to the collection with all its edges and the nodes that it connected with.
+        /// </summary>
         public void IoTAddNodeTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
