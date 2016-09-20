@@ -449,12 +449,12 @@ namespace GraphViewUnitTest
                                 if (id != null)
                                 {
                                     var propertyId = child1Properties["id"];
-                                    nodePropertiesHashMap[id.ToString()][property.Path.ToString() + ".id"] = propertyId.Last.ToString();
+                                    nodePropertiesHashMap[id.ToString()][property.Path.ToString().Replace('.', '_') + "_id"] = propertyId.Last.ToString();
                                 }
                                 var value = child1Properties["value"];
                                 if (value != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()][property.Path.ToString() + ".value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
+                                    nodePropertiesHashMap[id.ToString()][property.Path.ToString().Replace('.', '_') + "_value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
                                 }
 
                             }
@@ -477,7 +477,7 @@ namespace GraphViewUnitTest
                             var dic = new Dictionary<string, string>();
                             outEdgePropertiesHashMap[edgeString] = dic;
                             outEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
-                            var edgeTypeArray = nodeOutEJ.Path.Split(',');
+                            var edgeTypeArray = nodeOutEJ.Path.Split('.');
                             outEdgePropertiesHashMap[edgeString].Add("type", edgeTypeArray[edgeTypeArray.Length - 1]);
                         }
                    
@@ -501,7 +501,7 @@ namespace GraphViewUnitTest
                             var dic = new Dictionary<string, string>();
                             inEdgePropertiesHashMap[edgeString] = dic;
                             inEdgePropertiesHashMap[edgeString].Add("id", id.ToString());
-                            var edgeTypeArray = nodeInEJ.Path.Split(',');
+                            var edgeTypeArray = nodeInEJ.Path.Split('.');
                             inEdgePropertiesHashMap[edgeString].Add("type", edgeTypeArray[edgeTypeArray.Length - 1]);
                         }
 
@@ -511,8 +511,8 @@ namespace GraphViewUnitTest
 
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "IOTTest");
-            ResetCollection("IOTTest");
+                "GroupMatch", "MarvelTest");
+            ResetCollection("MarvelTest");
             // Insert node from collections
             BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(nodePropertiesHashMap.Count + 1);
             BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = new BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>>(inEdgePropertiesHashMap.Count + 1);
