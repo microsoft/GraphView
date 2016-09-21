@@ -8,34 +8,36 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GraphViewUnitTest
 {
-    internal class Info
-    {
-        internal string id;
-        internal string type;
-        internal Dictionary<string, string> properties;
-    }
 
-    internal class NodeInfo:Info
-    {
-        internal List<EdgeInfo> edges;
-    }
-
-    internal enum direction
-    {
-        In,
-        Out
-    }
-    internal class EdgeInfo : Info
-    {
-        internal string name;
-        internal direction dir;
-        internal NodeInfo target;
-    }
 
     [TestClass]
     public class IoTTest
     {
-        public void ResetCollection(string collection)
+        public class Info
+        {
+            internal string id;
+            internal string type;
+            internal Dictionary<string, string> properties;
+        }
+
+        public class NodeInfo : Info
+        {
+            internal List<EdgeInfo> edges;
+        }
+
+        public enum direction
+        {
+            In,
+            Out
+        }
+        public class EdgeInfo : Info
+        {
+            internal string name;
+            internal direction dir;
+            internal NodeInfo target;
+        }
+
+        public static void ResetCollection(string collection)
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -55,7 +57,7 @@ namespace GraphViewUnitTest
                 System.Threading.Thread.Sleep(10);
         }
 
-        internal GraphTraversal _find(GraphViewConnection connection, Info info, GraphTraversal source = null)
+        public static GraphTraversal _find(GraphViewConnection connection, Info info, GraphTraversal source = null)
         {
             GraphTraversal t;
             if (source != null) t = source;
@@ -73,20 +75,20 @@ namespace GraphViewUnitTest
             return t;
         }
 
-        internal GraphTraversal _node(GraphViewConnection connection, NodeInfo info)
+        public static GraphTraversal _node(GraphViewConnection connection, NodeInfo info)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
 
             List<string> PropList = new List<string>();
             PropList.Add("type");
             PropList.Add(info.type);
-            foreach(var x in info.properties)
+            foreach (var x in info.properties)
             {
                 PropList.Add(x.Key);
                 PropList.Add(x.Value);
             }
             var source = g.coalesce(_find(connection, info), GraphTraversal._underscore().addV(PropList));
-            foreach(var x in source) { }
+            foreach (var x in source) { }
             foreach (var edge in info.edges)
             {
                 PropList = new List<string>();
@@ -98,7 +100,7 @@ namespace GraphViewUnitTest
                     PropList.Add(x.Value);
                 }
                 var sink = g.coalesce(_find(connection, edge.target), GraphTraversal._underscore().addV(PropList));
-            foreach(var x in sink) { }
+                foreach (var x in sink) { }
                 GraphTraversal EdgeInsert = null;
                 PropList.Clear();
                 if (edge.type != null)
@@ -107,11 +109,11 @@ namespace GraphViewUnitTest
                     PropList.Add(edge.type);
                 }
                 if (edge.properties != null)
-                foreach (var x in edge.properties)
-                {
-                    PropList.Add(x.Key);
-                    PropList.Add(x.Value);
-                }
+                    foreach (var x in edge.properties)
+                    {
+                        PropList.Add(x.Key);
+                        PropList.Add(x.Value);
+                    }
                 if (edge.dir == direction.In)
                     EdgeInsert = _find(connection, info).addE(PropList).@from(_find(connection, edge.target));
                 else EdgeInsert = _find(connection, info).addE(PropList).to(_find(connection, edge.target));
@@ -119,11 +121,11 @@ namespace GraphViewUnitTest
             return null;
         }
 
-        internal GraphTraversal _edge(GraphViewConnection connection, NodeInfo Src, NodeInfo Dest)
+        public static GraphTraversal _edge(GraphViewConnection connection, NodeInfo Src, NodeInfo Dest)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
-            _node(connection,Src);
-            _node(connection,Dest);
+            _node(connection, Src);
+            _node(connection, Dest);
             g = g.V().As("V");
             if (Src.id != null)
                 g = g.has("id", Src.id);
@@ -141,18 +143,18 @@ namespace GraphViewUnitTest
             return g;
         }
 
-        internal GraphTraversal _root(GraphViewConnection connection, NodeInfo src ,NodeInfo target = null)
+        public static GraphTraversal _root(GraphViewConnection connection, NodeInfo src, NodeInfo target = null)
         {
             if (target == null) return _find(connection, src).repeat(GraphTraversal._underscore().Out());
-            else return  _find(connection, src).repeat(_find(connection, target, GraphTraversal._underscore().Out()));
+            else return _find(connection, src).repeat(_find(connection, target, GraphTraversal._underscore().Out()));
         }
 
-        internal GraphTraversal _delete(GraphViewConnection connection, Info info)
+        public static GraphTraversal _delete(GraphViewConnection connection, Info info)
         {
-            return _find(connection,info).drop();
+            return _find(connection, info).drop();
         }
 
-        internal GraphTraversal getDeviceInformation(GraphViewConnection connection, string DeviceID)
+        public static GraphTraversal getDeviceInformation(GraphViewConnection connection, string DeviceID)
         {
             GraphTraversal g = new GraphTraversal(ref connection);
             return
@@ -161,13 +163,13 @@ namespace GraphViewUnitTest
                     .has("id", DeviceID)
                     .As("DeviceModel")
                     .Out("type_of")
-                    .has("label","DeviceTwin")
+                    .has("label", "DeviceTwin")
                     .As("device")
                     .@select("device", "DeviceModel");
         }
 
 
-        internal GraphTraversal getDeviceModelInformation(GraphViewConnection connection, string manufacturer,
+        public static GraphTraversal getDeviceModelInformation(GraphViewConnection connection, string manufacturer,
             string modelNumber)
         {
             var modelInfo = new NodeInfo()
@@ -186,11 +188,10 @@ namespace GraphViewUnitTest
                     .@select("deviceModel", "telemetryDataModel");
         }
 
-        internal GraphTraversal _path(GraphViewConnection connection, GraphTraversal src)
+        public static GraphTraversal _path(GraphViewConnection connection, GraphTraversal src)
         {
             return src.path();
         }
-
 
         /// <summary>
         /// Insert a Node whose name is "A", with model name "M1" and system "S1", then find and delete it. 
@@ -204,14 +205,15 @@ namespace GraphViewUnitTest
             ResetCollection("IoTDeleteInsert");
             GraphTraversal g = new GraphTraversal(ref connection);
             var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
-            NodeInfo node = new NodeInfo()
-            {
-                properties = new Dictionary<string, string>()
-                {
-                    {"name","A"}
-                }
-            };
-            _delete(connection, node);
+            g.V().has("name", "A").drop();
+            //NodeInfo node = new NodeInfo()
+            //{
+            //    properties = new Dictionary<string, string>()
+            //    {
+            //        {"name","A"}
+            //    }
+            //};
+            //_delete(connection, node);
         }
 
         /// <summary>
@@ -223,7 +225,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IOTTest");
-            string DeviceID = "26801";
+            string DeviceID = "25015";
             var device = getDeviceInformation(connection, DeviceID);
             foreach (var x in device)
                 Console.WriteLine(x);
@@ -253,10 +255,20 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IOTTest");
+"GroupMatch", "IoTRoot");
+            ResetCollection("IoTRoot");
             GraphTraversal g = new GraphTraversal(ref connection);
-            var N26419 = new NodeInfo { properties = new Dictionary<string, string>() { { "id", "26419" } } };
-            var root = _root(connection, N26419);
+            var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
+            var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
+            var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            var E102_104 = g.V().has("id", "102").addE("type", "shown_as").to(g.V().has("id", "104"));
+            var E26419_102 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "102"));
+            var A12807 = g.V().addV("id", "12807", "label", "TelemetryDataModel", "name", "DataModel-90721bf2-59a2-11e6-8cd0-3717b83c0677");
+            var A12809 = g.V().addV("id", "12809", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
+            var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
+
+            var root = g.V().has("id","26419").repeat(GraphTraversal._underscore().Out());
             foreach (var x in root)
             {
                 var y = x[0];
@@ -270,10 +282,20 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IOTTest");
+"GroupMatch", "IoTRoot");
+            ResetCollection("IoTRoot");
             GraphTraversal g = new GraphTraversal(ref connection);
-            var N26419 = new NodeInfo {properties = new Dictionary<string, string>() {{"id", "26419"}}};
-            var root = _root(connection,N26419).path();
+            var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
+            var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
+            var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            var E102_104 = g.V().has("id", "102").addE("type", "shown_as").to(g.V().has("id", "104"));
+            var E26419_102 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "102"));
+            var A12807 = g.V().addV("id", "12807", "label", "TelemetryDataModel", "name", "DataModel-90721bf2-59a2-11e6-8cd0-3717b83c0677");
+            var A12809 = g.V().addV("id", "12809", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
+            var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
+
+            var root = g.V().has("id", "26419").repeat(GraphTraversal._underscore().Out()).path();
             foreach (var x in root)
             {
                 var y = x[0];

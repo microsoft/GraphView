@@ -96,9 +96,17 @@ namespace GraphView
             if (InputBuffer.Count != 0)
             {
                 string InRangeScript = "";
+                HashSet<string> RefSet = new HashSet<string>();
                 foreach (RawRecord record in InputBuffer)
                 {
-                    if (record.RetriveData(src + 1) != "") InRangeScript += record.RetriveData(src + 1) + ",";
+                    var adj = record.RetriveData(src + 1).Split(',');
+                    foreach (var x in adj)
+                    {
+                        if (!RefSet.Contains(x))
+                            InRangeScript += x + ",";
+                        RefSet.Add(x);
+                    }
+                    //if (record.RetriveData(src + 1) != "") InRangeScript += record.RetriveData(src + 1) + ",";
                 }
                 InRangeScript = CutTheTail(InRangeScript);
                 string script = docDbScript;
