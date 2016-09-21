@@ -99,7 +99,7 @@ namespace GraphView
                 HashSet<string> RefSet = new HashSet<string>();
                 foreach (RawRecord record in InputBuffer)
                 {
-                    var adj = record.RetriveData(src + 1).Split(',');
+                    var adj = record.RetriveData(src + (reverse?2:1)).Split(',');
                     foreach (var x in adj)
                     {
                         if (!RefSet.Contains(x))
@@ -148,10 +148,10 @@ namespace GraphView
                                     string Edge = (((JObject) item)[ReverseNode.Item2])["_sink"].ToString();
                                     if (
                                         !(Edge == record.RetriveData(ReverseNode.Item1) &&
-                                          record.RetriveData(ReverseNode.Item1 + ((reverse ^ ReverseNode.Item3) ?1:2)).Contains(ID)) &&
+                                          record.RetriveData(ReverseNode.Item1 + (ReverseNode.Item3 ?1:2)).Contains(ID)) &&
                                         InternalOperator == null)
                                         VailedFlag = false;
-                                    if (!(record.RetriveData(ReverseNode.Item1 + ((reverse ^ ReverseNode.Item3) ? 1 : 2)).Contains(ID)) &&
+                                    if (!(record.RetriveData(ReverseNode.Item1 + (ReverseNode.Item3? 1 : 2)).Contains(ID)) &&
                                         InternalOperator != null)
                                         VailedFlag = false;
                                 }

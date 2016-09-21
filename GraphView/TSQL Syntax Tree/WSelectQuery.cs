@@ -659,12 +659,13 @@ namespace GraphView
             }
             return BooleanList;
         }
-        public Stack<Tuple<MatchNode, MatchEdge>> GetTraversalOrder(MatchGraph graph)
+        private Stack<Tuple<MatchNode, MatchEdge>> GetTraversalOrder(MatchGraph graph)
         {
             var nodes = graph.ConnectedSubGraphs[0].Nodes;
             var edges = graph.ConnectedSubGraphs[0].Edges;
 
             var chain = new Stack<Tuple<MatchNode, MatchEdge>>();
+            nodes["n4"].ReverseNeighbors[0].IsReversed = true;
             chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n4"], nodes["n4"].ReverseNeighbors[0]));
             chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n2"], edges["f"]));
             chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n1"], edges["e"]));
@@ -716,7 +717,7 @@ namespace GraphView
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 // Use Topological Sorting to define the order of nodes it will travel.
-                var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes); 
                 StartOfResult += subgraph.Nodes.Count * 3;
                 bool FirstNodeFlag = true;
                 int LastDest = -1;
