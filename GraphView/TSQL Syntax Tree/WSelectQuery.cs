@@ -976,10 +976,19 @@ namespace GraphView
             }
             static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<Tuple<MatchNode, MatchEdge>> list, Dictionary<MatchNode, int> state, string ParentAlias, MatchEdge Edge)
             {
+                state[node] = 2;
                 foreach (var neighbour in node.Neighbors)
                 {
                     if (state[neighbour.SinkNode] == 0)
                     visit(graph, neighbour.SinkNode, list, state, node.NodeAlias, neighbour);
+                    if (state[neighbour.SinkNode] == 2)
+                        foreach (var neighbour2 in neighbour.SinkNode.ReverseNeighbors)
+                        {
+                            foreach (var x in neighbour.SinkNode.Neighbors)
+                                if (x.SinkNode == node)
+                                    list.Push(new Tuple<MatchNode, MatchEdge>(x.SourceNode, x));
+                        }
+
                 }
                 state[node] = 1;
                 foreach (var neighbour in node.ReverseNeighbors)
