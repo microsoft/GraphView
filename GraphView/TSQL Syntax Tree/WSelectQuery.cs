@@ -969,23 +969,25 @@ namespace GraphView
                 foreach (var node in graph)
                     state.Add(node.Value, 0);
                 foreach (var node in graph)
+                    if (state[node.Value] == 0)
                     visit(graph, node.Value, list, state, node.Value.NodeAlias, null);
                 if (graph.Count == 1) list.Push(new Tuple<MatchNode, MatchEdge>(graph.First().Value,null));
                 return list;
             }
             static private void visit(Dictionary<string, MatchNode> graph, MatchNode node, Stack<Tuple<MatchNode, MatchEdge>> list, Dictionary<MatchNode, int> state, string ParentAlias, MatchEdge Edge)
             {
-                if (state[node] == 1)
-                    return;
-                if (state[node] == 2)
-                    return;
-                state[node] = 2;
                 foreach (var neighbour in node.Neighbors)
+                {
+                    if (state[neighbour.SinkNode] == 0)
                     visit(graph, neighbour.SinkNode, list, state, node.NodeAlias, neighbour);
-                if (Edge == null) state[node] = 3;
-                else state[node] = 1;
-                if (state[node] != 3) 
-                list.Push(new Tuple<MatchNode, MatchEdge>(Edge.SourceNode,Edge));
+                }
+                state[node] = 1;
+                foreach (var neighbour in node.ReverseNeighbors)
+                {
+                    foreach(var x in neighbour.SinkNode.Neighbors)
+                        if (x.SinkNode == node)
+                            list.Push(new Tuple<MatchNode, MatchEdge>(x.SourceNode, x));
+                }
             }
         }
     }
