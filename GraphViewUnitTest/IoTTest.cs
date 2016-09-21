@@ -206,14 +206,6 @@ namespace GraphViewUnitTest
             GraphTraversal g = new GraphTraversal(ref connection);
             var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
             g.V().has("name", "A").drop();
-            //NodeInfo node = new NodeInfo()
-            //{
-            //    properties = new Dictionary<string, string>()
-            //    {
-            //        {"name","A"}
-            //    }
-            //};
-            //_delete(connection, node);
         }
 
         /// <summary>
@@ -324,7 +316,48 @@ namespace GraphViewUnitTest
                     },
                 properties = new Dictionary<string, string>() { {"label","TelemetryDataModel"},{ "id", "232" }, { "name", "DataModel-906e991a-59a2-11e6-8cd0-3717b83c0677" } }
             };
-            _node(connection, N232);
+
+            GraphTraversal g = new GraphTraversal(ref connection);
+
+            List<string> PropList = new List<string>();
+            PropList.Add("type");
+            PropList.Add(N232.type);
+            foreach (var x in N232.properties)
+            {
+                PropList.Add(x.Key);
+                PropList.Add(x.Value);
+            }
+            var source = g.coalesce(_find(connection, N232), GraphTraversal._underscore().addV(PropList));
+            foreach (var x in source) { }
+            foreach (var edge in N232.edges)
+            {
+                PropList = new List<string>();
+                PropList.Add("type");
+                PropList.Add(edge.target.type);
+                foreach (var x in edge.target.properties)
+                {
+                    PropList.Add(x.Key);
+                    PropList.Add(x.Value);
+                }
+                var sink = g.coalesce(_find(connection, edge.target), GraphTraversal._underscore().addV(PropList));
+                foreach (var x in sink) { }
+                GraphTraversal EdgeInsert = null;
+                PropList.Clear();
+                if (edge.type != null)
+                {
+                    PropList.Add("type");
+                    PropList.Add(edge.type);
+                }
+                if (edge.properties != null)
+                    foreach (var x in edge.properties)
+                    {
+                        PropList.Add(x.Key);
+                        PropList.Add(x.Value);
+                    }
+                if (edge.dir == direction.In)
+                    EdgeInsert = _find(connection, N232).addE(PropList).@from(_find(connection, edge.target));
+                else EdgeInsert = _find(connection, N232).addE(PropList).to(_find(connection, edge.target));
+            }
         }
 
     }
