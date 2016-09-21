@@ -699,7 +699,7 @@ AES += "\'" + x + "\'";
                 ExtendParser1.Parse(CutTail(NewTraversal.AppendExecutableString));
                 GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
                 ExtendParser2.Parse(NewTraversal.AddEdgeOtherSource);
-                var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, dir);
+                var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, NewTraversal.dir);
                 CurrentOperator = X.Generate(connection);
                 while (CurrentOperator.Status()) CurrentOperator.Next();
             }
@@ -720,7 +720,7 @@ AES += "\'" + x + "\'";
                 ExtendParser1.Parse(CutTail(NewTraversal.AppendExecutableString));
                 GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
                 ExtendParser2.Parse(NewTraversal.AddEdgeOtherSource);
-                var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, dir);
+                var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, NewTraversal.dir);
                 CurrentOperator = X.Generate(connection);
                 while (CurrentOperator.Status()) CurrentOperator.Next();
             }

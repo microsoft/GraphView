@@ -637,12 +637,18 @@ namespace GraphView
                 var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
                 // Marking down which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
-                BuildQuerySegementOnNode(ProcessedNodeList,SortedNodeList.Peek().Item1,header,StartOfResult);
-                ProcessedNodeList.Add(SortedNodeList.Peek().Item1.NodeAlias);
+                //BuildQuerySegementOnNode(ProcessedNodeList,SortedNodeList.Peek().Item1,header,StartOfResult);
+                //ProcessedNodeList.Add(SortedNodeList.Peek().Item1.NodeAlias);
                 while (SortedNodeList.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = null;
                     var TargetNode = SortedNodeList.Pop();
+                    if (!ProcessedNodeList.Contains(TargetNode.Item1.NodeAlias))
+                    {
+                        CurrentProcessingNode = TargetNode.Item1;
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
+                        ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
+                    }
                     if (TargetNode.Item2 != null)
                     {
                         CurrentProcessingNode = TargetNode.Item2.SinkNode;
@@ -653,7 +659,17 @@ namespace GraphView
             }
             return BooleanList;
         }
+        public Stack<Tuple<MatchNode, MatchEdge>> GetTraversalOrder(MatchGraph graph)
+        {
+            var nodes = graph.ConnectedSubGraphs[0].Nodes;
+            var edges = graph.ConnectedSubGraphs[0].Edges;
 
+            var chain = new Stack<Tuple<MatchNode, MatchEdge>>();
+            chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n4"], nodes["n4"].ReverseNeighbors[0]));
+            chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n2"], edges["f"]));
+            chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n1"], edges["e"]));
+            return chain;
+        }
         private List<string> ConstructHeader(MatchGraph graph)
         {
             List<string> header = new List<string>();
@@ -704,24 +720,30 @@ namespace GraphView
                 StartOfResult += subgraph.Nodes.Count * 3;
                 bool FirstNodeFlag = true;
                 int LastDest = -1;
+                HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
                 while (SortedNodes.Count != 0)
                 {
                     MatchNode TempNode = null;
                     var CurrentProcessingNode = SortedNodes.Pop();
                     // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
                     // Otherwise it will be dealed by a TraversalOperator.
-                    if (FirstNodeFlag)
+                    if (!ProcessedNode.Contains(CurrentProcessingNode.Item1))
                     {
                         int node = header.IndexOf(CurrentProcessingNode.Item1.NodeAlias);
+                        if (ChildrenProcessor.Count == 0)
                         ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50));
-                        FirstNodeFlag = false;
+                        else
+                        ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50,ChildrenProcessor.Last()));
+                        ProcessedNode.Add(CurrentProcessingNode.Item1);
                     }
                     if (CurrentProcessingNode.Item2 != null)
                     {
-                        Dictionary<int, string> ReverseCheckList = new Dictionary<int, string>();
+                        ProcessedNode.Add(CurrentProcessingNode.Item2.SinkNode);
+                        List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string,bool>>();
                         int src = header.IndexOf(CurrentProcessingNode.Item2.SourceNode.NodeAlias);
                         int dest = header.IndexOf(CurrentProcessingNode.Item2.SinkNode.NodeAlias);
                         TempNode = CurrentProcessingNode.Item2.SinkNode;
+                        ReverseCheckList = new List<Tuple<int, string, bool>>();
                         if (WithPathClause != null)
                         {
                             Tuple<string, GraphViewOperator, int> InternalOperator = null;
@@ -730,8 +752,13 @@ namespace GraphView
                                     WithPathClause.PathOperators.Find(p => p.Item1 == CurrentProcessingNode.Item2.EdgeAlias)) !=
                                 null)
                                 foreach (var neighbor in TempNode.ReverseNeighbors)
-                                    ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                                        neighbor.EdgeAlias + "_REV");
+                                    if (ProcessedNode.Contains(neighbor.SourceNode))
+                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                                        neighbor.EdgeAlias + "_REV",true));
+                            foreach (var neighbor in TempNode.Neighbors)
+                                if (ProcessedNode.Contains(neighbor.SinkNode))
+                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                                        neighbor.EdgeAlias + "_REV",false));
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
                                 TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
                                 50, false, InternalOperator.Item2));
@@ -739,8 +766,13 @@ namespace GraphView
                         else
                         {
                             foreach (var neighbor in TempNode.ReverseNeighbors)
-                                ReverseCheckList.Add(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                                    neighbor.EdgeAlias + "_REV");
+                                if (ProcessedNode.Contains(neighbor.SinkNode))
+                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                                        neighbor.EdgeAlias + "_REV", true));
+                            foreach (var neighbor in TempNode.Neighbors)
+                                if (ProcessedNode.Contains(neighbor.SinkNode))
+                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                                        neighbor.EdgeAlias + "_REV", false));
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
                                 TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
                                 50, CurrentProcessingNode.Item2.IsReversed));
@@ -873,7 +905,7 @@ namespace GraphView
             string ReverseCheckString = ",";
             foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
-                if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
+                //if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
                     ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
             }
             if (ReverseCheckString == ",") ReverseCheckString = "";

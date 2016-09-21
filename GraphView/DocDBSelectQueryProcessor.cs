@@ -41,7 +41,7 @@ namespace GraphView
         private string docDbScript;
 
         // Defining which fields should the reverse check have on.
-        private Dictionary<int, string> ReverseCheckList;
+        private List<Tuple<int,string,bool>> ReverseCheckList;
         internal BooleanFunction BooleanCheck;
 
         internal GraphViewOperator InternalOperator;
@@ -50,7 +50,7 @@ namespace GraphView
 
         private bool reverse; 
 
-        internal TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, Dictionary<int, string> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<Tuple<int, string, bool>> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             ChildOperator = pChildProcessor;
@@ -106,6 +106,7 @@ namespace GraphView
                     if (!script.Contains("WHERE"))
                         script += "WHERE " + header[dest] + ".id IN (" + InRangeScript + ")";
                     else script += " AND " + header[dest] + ".id IN (" + InRangeScript + ")";
+                HashSet<string> UniqueRecord = new HashSet<string>();
 
                 // Send query to server and decode the result.
                 try
@@ -128,7 +129,6 @@ namespace GraphView
                                 result = ((JObject) item)[ResultFieldName.Replace(".", "_")].ToString();
                             ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
                         }
-
                         // Join the old record with the new one if checked vailed.
                         foreach (var record in InputBuffer)
                         {
@@ -137,21 +137,25 @@ namespace GraphView
                             if (ReverseCheckList != null)
                                 foreach (var ReverseNode in ReverseCheckList)
                                 {
-                                    string Edge = (((JObject) item)[ReverseNode.Value])["_sink"].ToString();
+                                    string Edge = (((JObject) item)[ReverseNode.Item2])["_sink"].ToString();
                                     if (
-                                        !(Edge == record.RetriveData(ReverseNode.Key) &&
-                                          record.RetriveData(ReverseNode.Key + (reverse?2:1)).Contains(ID)) &&
+                                        !(Edge == record.RetriveData(ReverseNode.Item1) &&
+                                          record.RetriveData(ReverseNode.Item1 + ((reverse ^ ReverseNode.Item3) ?1:2)).Contains(ID)) &&
                                         InternalOperator == null)
                                         VailedFlag = false;
-                                    if (!(record.RetriveData(ReverseNode.Key + (reverse ? 2 : 1)).Contains(ID)) &&
+                                    if (!(record.RetriveData(ReverseNode.Item1 + ((reverse ^ ReverseNode.Item3) ? 1 : 2)).Contains(ID)) &&
                                         InternalOperator != null)
                                         VailedFlag = false;
                                 }
                             if (VailedFlag)
                             {
-                                RawRecord NewRecord = AddIfNotExist(ItemInfo, record, ResultRecord.field, header);
+                                RawRecord NewRecord = InternalOperator == null? AddIfNotExist(ItemInfo, record, ResultRecord.field, header,true): AddIfNotExist(ItemInfo, record, ResultRecord.field, header, false);
                                 if (RecordFilter(NewRecord))
-                                    OutputBuffer.Enqueue(NewRecord);
+                                    if (!UniqueRecord.Contains(NewRecord.RetriveData(dest) + NewRecord.RetriveData(src)))
+                                    {
+                                        OutputBuffer.Enqueue(NewRecord);
+                                        UniqueRecord.Add(NewRecord.RetriveData(dest) + NewRecord.RetriveData(src));
+                                    }
                             }
                         }
                     }
@@ -195,27 +199,30 @@ namespace GraphView
         {
             Queue<RawRecord> StageRecords = new Queue<RawRecord>(); ;
             bool LoopEnd = true;
-            source.SetRef(input);
-            GraphViewOperator RootOperator = InternalOperator;
-            while (RootOperator is TraversalOperator)
+            if (input.field[StartNode + 1] != "")
             {
-                RootOperator.Open();
-                RootOperator = (RootOperator as TraversalOperator).ChildOperator;
-            }
-            RootOperator.Open();
-            while (InternalOperator.Status() || StageRecords.Count > 0)
-            {
-                while (InternalOperator.Status()) StageRecords.Enqueue(InternalOperator.Next());
-                RawRecord OldOutput = StageRecords.Dequeue();
-                if (OldOutput != null)
+                source.SetRef(input);
+                GraphViewOperator RootOperator = InternalOperator;
+                while (RootOperator is TraversalOperator)
                 {
-                    RawRecord NewInput = new RawRecord(InternalHeader.Count);
-                    NewInput.field[StartNode] = OldOutput.field[(InternalOperator as TraversalOperator).dest];
-                    NewInput.field[StartNode + 1] = OldOutput.field[(InternalOperator as TraversalOperator).dest + 1];
-                    NewInput.field[NewInput.field.Count - 1] = OldOutput.field[OldOutput.field.Count - 1];
-
-                    RecursivePathTraversal(OriginalInput, NewInput, ref source, StartNode, ref ResultQueue);
-                    LoopEnd = false;
+                    RootOperator.Open();
+                    RootOperator = (RootOperator as TraversalOperator).ChildOperator;
+                }
+                RootOperator.Open();
+                while (InternalOperator.Status() || StageRecords.Count > 0)
+                {
+                    while (InternalOperator.Status()) StageRecords.Enqueue(InternalOperator.Next());
+                    RawRecord OldOutput = StageRecords.Dequeue();
+                    if (OldOutput != null)
+                    {
+                        RawRecord NewInput = new RawRecord(InternalHeader.Count);
+                        NewInput.field[StartNode] = OldOutput.field[(InternalOperator as TraversalOperator).dest];
+                        NewInput.field[StartNode + 1] =
+                            OldOutput.field[(InternalOperator as TraversalOperator).dest + 1];
+                        NewInput.field[NewInput.field.Count - 1] = OldOutput.field[OldOutput.field.Count - 1];
+                        RecursivePathTraversal(OriginalInput, NewInput, ref source, StartNode, ref ResultQueue);
+                        LoopEnd = false;
+                    }
                 }
             }
             if (LoopEnd == true)
@@ -259,13 +266,16 @@ namespace GraphView
             return new Tuple<string, string, string>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID));
         }
         // Combine two records
-        private RawRecord AddIfNotExist(Tuple<string, string, string> ItemInfo, RawRecord record, List<string> Result, List<string> header)
+        private RawRecord AddIfNotExist(Tuple<string, string, string> ItemInfo, RawRecord record, List<string> Result, List<string> header, bool addpath)
         {
             RawRecord NewRecord = new RawRecord(record);
-            if (NewRecord.RetriveData(dest) == "") NewRecord.field[dest] = ItemInfo.Item1;
-            if (NewRecord.RetriveData(dest + 1) == "") NewRecord.field[dest + 1] = ItemInfo.Item2;
-            if (NewRecord.RetriveData(dest + 2) == "") NewRecord.field[dest + 2] = ItemInfo.Item3;
-            NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + ",";
+            //if (NewRecord.RetriveData(dest) == "")
+                NewRecord.field[dest] = ItemInfo.Item1;
+            //if (NewRecord.RetriveData(dest + 1) == "")
+                NewRecord.field[dest + 1] = ItemInfo.Item2;
+            //if (NewRecord.RetriveData(dest + 2) == "")
+                NewRecord.field[dest + 2] = ItemInfo.Item3;
+            if (addpath) NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + ",";
             for (int i = 0; i < NewRecord.field.Count; i++)
             {
                 if (NewRecord.RetriveData(i) == "" && Result[i] != "")
@@ -295,11 +305,12 @@ namespace GraphView
 
         private GraphViewConnection connection;
 
+        private GraphViewOperator ChildOperator;
         internal int node;
 
         private string docDbScript;
 
-        public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize)
+        public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize, GraphViewOperator pChildOperator = null)
         {
             this.Open();
             connection = pConnection;
@@ -309,6 +320,7 @@ namespace GraphView
             header = pheader;
             StartOfResultField = pStartOfResultField;
             RecordZero = new RawRecord(pheader.Count);
+            ChildOperator = pChildOperator;
         }
         override public RawRecord Next()
         {
@@ -317,23 +329,22 @@ namespace GraphView
                 OutputBuffer = new Queue<RawRecord>();
             if (OutputBuffer.Count != 0)
             {
-                if (OutputBuffer.Count == 1) this.Close();
+                if (OutputBuffer.Count == 1)
+                    if (ChildOperator == null || !ChildOperator.Status()) this.Close();
                 return OutputBuffer.Dequeue();
             }
             string script = docDbScript;
+            if (ChildOperator != null && ChildOperator.Status())
+                RecordZero = ChildOperator.Next();
             // Send query to the server
             try
             {
                 IQueryable<dynamic> Node = (IQueryable<dynamic>) SendQuery(script, connection);
-                HashSet<Tuple<string, string, string>> UniqueRecord = new HashSet<Tuple<string, string, string>>();
-                // Decode the result retrived from server and generate new record.
+                // Decode the result retrived from server and generate new record
+                HashSet<string> UniqueRecord = new HashSet<string>();
                 foreach (var item in Node)
                 {
                     Tuple<string, string, string> ItemInfo = DecodeJObject((JObject) item);
-
-                    if (!UniqueRecord.Contains(ItemInfo))
-                    {
-                        UniqueRecord.Add(ItemInfo);
                         RawRecord ResultRecord = new RawRecord(header.Count());
 
                         foreach (
@@ -347,7 +358,7 @@ namespace GraphView
                         }
                         RawRecord NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
                         OutputBuffer.Enqueue(NewRecord);
-                    }
+
                 }
             }
             catch (AggregateException e)
@@ -355,7 +366,7 @@ namespace GraphView
                 throw e.InnerException;
             }
             // Close output buffer
-            if (OutputBuffer.Count <= 1) this.Close();
+            if (OutputBuffer.Count <= 1 && (ChildOperator ==null || !ChildOperator.Status())) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
