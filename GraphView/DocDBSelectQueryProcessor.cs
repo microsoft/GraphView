@@ -283,7 +283,7 @@ namespace GraphView
                 NewRecord.field[dest + 1] = ItemInfo.Item2;
             //if (NewRecord.RetriveData(dest + 2) == "")
                 NewRecord.field[dest + 2] = ItemInfo.Item3;
-            if (addpath) NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + ",";
+            if (addpath) NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + "-->";
             for (int i = 0; i < NewRecord.field.Count; i++)
             {
                 if (NewRecord.RetriveData(i) == "" && Result[i] != "")
@@ -317,6 +317,7 @@ namespace GraphView
         internal int node;
 
         private string docDbScript;
+        internal BooleanFunction BooleanCheck;
 
         public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize, GraphViewOperator pChildOperator = null)
         {
@@ -365,8 +366,8 @@ namespace GraphView
                             ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
                         }
                         RawRecord NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
+                        if (RecordFilter(NewRecord))
                         OutputBuffer.Enqueue(NewRecord);
-
                 }
             }
             catch (AggregateException e)
@@ -385,6 +386,12 @@ namespace GraphView
             IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
                 UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), script, QueryOptions);
             return Result;
+        }
+
+        private bool RecordFilter(RawRecord r)
+        {
+            if (BooleanCheck == null) return true;
+            else return BooleanCheck.eval(r);
         }
 
         private Tuple<string, string, string> DecodeJObject(JObject Item, bool ShowEdge = false)
@@ -412,7 +419,7 @@ namespace GraphView
             if (NewRecord.RetriveData(node) == "") NewRecord.field[node] = ItemInfo.Item1;
             if (NewRecord.RetriveData(node + 1) == "") NewRecord.field[node + 1] = ItemInfo.Item2;
             if (NewRecord.RetriveData(node + 2) == "") NewRecord.field[node + 2] = ItemInfo.Item3;
-            NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + ",";
+            NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + "-->";
             for (int i = 0; i < NewRecord.field.Count; i++)
             {
                 if (NewRecord.RetriveData(i) == "" && Result[i] != "")
@@ -670,7 +677,7 @@ namespace GraphView
                     }
                     if (InputRecord != null)
                     {
-                        OutputRecord.field[0] = CutTheTail(InputRecord.field.Last());
+                        OutputRecord.field[0] = CutTheTail(InputRecord.field.Last(),3);
                         return OutputRecord;
                     }
                     else return null;
@@ -704,10 +711,10 @@ namespace GraphView
             return null;
         }
 
-        string CutTheTail(string InRangeScript)
+        string CutTheTail(string InRangeScript,int len = 1)
         {
             if (InRangeScript.Length == 0) return "";
-            return InRangeScript.Substring(0, InRangeScript.Length - 1);
+            return InRangeScript.Substring(0, InRangeScript.Length - len);
         }
     }
 

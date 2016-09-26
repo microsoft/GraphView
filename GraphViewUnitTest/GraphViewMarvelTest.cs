@@ -96,6 +96,7 @@ namespace GraphViewUnitTest
             {
                 var path = record[0];
             }
+            ;
         }
         [TestMethod]
         public void SelectMarvelQueryNativeAPI2()
@@ -104,12 +105,12 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest1");
             GraphTraversal g1 = new GraphTraversal(ref connection);
-            var r1 = g1.V().As("character").has("weapon", GraphTraversal.without("shield", "claws")).Out("appeared").As("comicbook").select("character", "comicbook");
+            var r1 = g1.V().As("CharacterNode").values("character").As("character").@select("CharacterNode").has("weapon", GraphTraversal.without("shield", "claws")).Out("appeared").values("comicbook").As("comicbook").select("character", "comicbook");
 
             foreach (var record in r1)
             {
                 var character = record["character"];
-                var comicbook = record[1];
+                var comicbook = record["comicbook"];
             }
         }
         [TestMethod]

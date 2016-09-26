@@ -597,31 +597,34 @@ namespace GraphView
                 {
                     string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
                     string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
-                    header.Add(FirstExpr);
-                    header.Add(SecondExpr);
+
+                    if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
+                    if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
+                    int lhs = header.IndexOf(FirstExpr);
+                    int rhs = header.IndexOf(SecondExpr);
                     FieldComparisonFunction NewCBF = null;
                     if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.Equals)
-                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                        NewCBF = new FieldComparisonFunction(lhs, rhs,
                             ComparisonBooleanFunction.ComparisonType.eq);
                     if ((predicate as WBooleanComparisonExpression).ComparisonType ==
                         BooleanComparisonType.NotEqualToExclamation)
-                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                        NewCBF = new FieldComparisonFunction(lhs, rhs,
                             ComparisonBooleanFunction.ComparisonType.neq);
                     if ((predicate as WBooleanComparisonExpression).ComparisonType ==
     BooleanComparisonType.LessThan)
-                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                        NewCBF = new FieldComparisonFunction(lhs, rhs,
                             ComparisonBooleanFunction.ComparisonType.lt);
                     if ((predicate as WBooleanComparisonExpression).ComparisonType ==
     BooleanComparisonType.GreaterThan)
-                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                        NewCBF = new FieldComparisonFunction(lhs, rhs,
                             ComparisonBooleanFunction.ComparisonType.gt);
                     if ((predicate as WBooleanComparisonExpression).ComparisonType ==
     BooleanComparisonType.GreaterThanOrEqualTo)
-                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                        NewCBF = new FieldComparisonFunction(lhs, rhs,
                             ComparisonBooleanFunction.ComparisonType.gte);
                     if ((predicate as WBooleanComparisonExpression).ComparisonType ==
     BooleanComparisonType.LessThanOrEqualTo)
-                        NewCBF = new FieldComparisonFunction(header.Count - 1, header.Count - 2,
+                        NewCBF = new FieldComparisonFunction(lhs, rhs,
                             ComparisonBooleanFunction.ComparisonType.lte);
                     BooleanList.Add(NewCBF);
                 }
@@ -731,11 +734,14 @@ namespace GraphView
                     if (!ProcessedNode.Contains(CurrentProcessingNode.Item1))
                     {
                         int node = header.IndexOf(CurrentProcessingNode.Item1.NodeAlias);
+                        TempNode = CurrentProcessingNode.Item1;
                         if (ChildrenProcessor.Count == 0)
                         ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50));
                         else
                         ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50,ChildrenProcessor.Last()));
                         ProcessedNode.Add(CurrentProcessingNode.Item1);
+                        if (functions != null && functions.Count != 0)
+                            CheckFunctionValidate(ref header, ref functions, ref TempNode, ref FunctionVaildalityCheck, ref ChildrenProcessor);
                     }
                     if (CurrentProcessingNode.Item2 != null)
                     {
@@ -778,29 +784,10 @@ namespace GraphView
                                 TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
                                 50, CurrentProcessingNode.Item2.IsReversed));
                         }
+                        if (functions != null && functions.Count != 0)
+                        CheckFunctionValidate(ref header, ref functions, ref TempNode, ref FunctionVaildalityCheck, ref ChildrenProcessor);
                     }
-                    for (int i = 0; i < functions.Count; i++)
-                    {
-                        if (functions[i] is FieldComparisonFunction)
-                        {
-                            string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
-                            string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
-                            if (TempNode.AttachedQuerySegment.Contains(lhs))
-                                FunctionVaildalityCheck[i]++;
-                            if (TempNode.AttachedQuerySegment.Contains(rhs))
-                                FunctionVaildalityCheck[i]++;
-                            if (FunctionVaildalityCheck[i] == 2)
-                            {
-                                if ((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck == null)
-                                    (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck = functions[i];
-                                else
-                                    (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck =
-                                        new BinaryFunction((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck, functions[i], BinaryBooleanFunction.BinaryType.and);
-                                FunctionVaildalityCheck[i] = 0;
 
-                            }
-                        }
-                    }
                 }
                 // The last processor of a sub graph will be added to root processor list for later use.
                 RootProcessor.Add(ChildrenProcessor.Last());
@@ -919,6 +906,43 @@ namespace GraphView
             node.AttachedQuerySegment = QuerySegment;
         }
 
+        private void CheckFunctionValidate(ref List<string> header, ref List<BooleanFunction> functions, ref MatchNode TempNode, ref List<int> FunctionVaildalityCheck, ref List<GraphViewOperator> ChildrenProcessor)
+        {
+            for (int i = 0; i < functions.Count; i++)
+            {
+                if (functions[i] is FieldComparisonFunction)
+                {
+                    string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
+                    string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
+                    if (TempNode.AttachedQuerySegment.Contains(lhs))
+                        FunctionVaildalityCheck[i]++;
+                    if (TempNode.AttachedQuerySegment.Contains(rhs))
+                        FunctionVaildalityCheck[i]++;
+                    if (FunctionVaildalityCheck[i] == 2)
+                    {
+                        if (ChildrenProcessor.Last() is TraversalOperator)
+                        {
+                            if ((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck == null)
+                                (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck = functions[i];
+                            else
+                                (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck =
+                                    new BinaryFunction((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck,
+                                        functions[i], BinaryBooleanFunction.BinaryType.and);
+                        }
+                        if (ChildrenProcessor.Last() is FetchNodeOperator)
+                        {
+                            if ((ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck == null)
+                                (ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck = functions[i];
+                            else
+                                (ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck =
+                                    new BinaryFunction((ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck,
+                                        functions[i], BinaryBooleanFunction.BinaryType.and);
+                        }
+                        FunctionVaildalityCheck[i] = 0;
+                    }
+                }
+            }
+        }
         // Cut the last character of a string.
         private string CutTheTail(string InRangeScript)
         {
