@@ -173,6 +173,7 @@ namespace GraphView
 
         public override void Visit(WInPredicate node)
         {
+            Attach(node);
         }
 
         public override void Visit(WSubqueryComparisonPredicate node)

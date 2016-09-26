@@ -771,7 +771,7 @@ namespace GraphView
         {
             get
             {
-                return CurrentRecord.RetriveData(DataSource.header, FieldName);
+                return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, FieldName);
             }
         }
         public object this[int index]

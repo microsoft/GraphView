@@ -110,13 +110,13 @@ namespace GraphViewUnitTest
                 SELECT character.id, comicbook.id
                 FROM node character, node comicbook
                 MATCH character-[Edge AS e1]->comicbook
-                WHERE (character.weapon = 'shield' or character.weapon ='claws') and e1.type = 'appeared'
+                WHERE character.weapon IN ('shield','claws') and e1.type = 'appeared'
             ";
 
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
-                var x = reader;
+                var x = reader[0] + "-->" + reader[1];
             }
         }
         [TestMethod]
@@ -147,13 +147,14 @@ namespace GraphViewUnitTest
                 SELECT CharacterNode.character, ComicbookNode.comicbook
                 FROM node CharacterNode, node ComicbookNode
                 MATCH CharacterNode-[Edge AS e1]->ComicbookNode
-                WHERE CharacterNode.weapon != 'shield' and CharacterNode.weapon != 'claws' and e1.type = 'appeared'
+                WHERE CharacterNode.weapon NOT IN ('shield', 'claws') and e1.type = 'appeared'
             ";
 
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
-                var x = reader;
+                var character = reader["CharacterNode.character"];
+                var comicbook = reader["ComicbookNode.comicbook"];
             }
         }
         [TestMethod]
@@ -180,7 +181,7 @@ namespace GraphViewUnitTest
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                SELECT CharacterNode.character, ComicbookNode.comicbook
+                SELECT CharacterNode.character
                 FROM node CharacterNode, node ComicbookNode
                 MATCH CharacterNode-[Edge AS e1]->ComicbookNode
                 WHERE e1.type = 'appeared' and ComicbookNode.comicbook = 'AVF 4'
@@ -190,7 +191,7 @@ namespace GraphViewUnitTest
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
-                var x = reader;
+                var character = reader["CharacterNode.character"];
             }
         }
         [TestMethod]
@@ -217,7 +218,7 @@ namespace GraphViewUnitTest
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                SELECT CharacterNode.character, ComicbookNode.comicbook
+                SELECT CharacterNode.character
                 FROM node CharacterNode, node ComicbookNode
                 MATCH CharacterNode-[Edge AS e1]->ComicbookNode
                 WHERE CharacterNode.weapon != 'shield' and CharacterNode.weapon != 'claws' and e1.type = 'appeared' and ComicbookNode.comicbook = 'AVF 4'
@@ -227,7 +228,7 @@ namespace GraphViewUnitTest
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
-                var x = reader;
+                var character = reader[0];
             }
         }
 
