@@ -771,7 +771,7 @@ AES += "\'" + x + "\'";
             return tra;
         }
 
-        internal GraphTraversal path()
+        public GraphTraversal path()
         {
             return new GraphTraversal(this, AppendExecutableString + "path().");
         }
