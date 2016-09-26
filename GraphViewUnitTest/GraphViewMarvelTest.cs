@@ -96,7 +96,28 @@ namespace GraphViewUnitTest
             {
                 var path = record[0];
             }
-            ;
+        }
+        [TestMethod]
+        public void SelectMarvelQuerySQL1()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest1");
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT character.id, comicbook.id
+                FROM node character, node comicbook
+                MATCH character-[Edge AS e1]->comicbook
+                WHERE (character.weapon = 'shield' or character.weapon ='claws') and e1.type = 'appeared'
+            ";
+
+            var reader = gcmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var x = reader;
+            }
         }
         [TestMethod]
         public void SelectMarvelQueryNativeAPI2()
@@ -114,6 +135,28 @@ namespace GraphViewUnitTest
             }
         }
         [TestMethod]
+        public void SelectMarvelQuerySQL2()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest1");
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
+
+            gcmd.CommandText = @"
+                SELECT CharacterNode.character, ComicbookNode.comicbook
+                FROM node CharacterNode, node ComicbookNode
+                MATCH CharacterNode-[Edge AS e1]->ComicbookNode
+                WHERE CharacterNode.weapon != 'shield' and CharacterNode.weapon != 'claws' and e1.type = 'appeared'
+            ";
+
+            var reader = gcmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var x = reader;
+            }
+        }
+        [TestMethod]
         public void SelectMarvelQueryNativeAPI3()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -127,7 +170,29 @@ namespace GraphViewUnitTest
                 var N_1_character = record["N_1.character"];
             }
         }
+        [TestMethod]
+        public void SelectMarvelQuerySQL3()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest1");
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
 
+            gcmd.CommandText = @"
+                SELECT CharacterNode.character, ComicbookNode.comicbook
+                FROM node CharacterNode, node ComicbookNode
+                MATCH CharacterNode-[Edge AS e1]->ComicbookNode
+                WHERE e1.type = 'appeared' and ComicbookNode.comicbook = 'AVF 4'
+                ORDER BY CharacterNode.character
+            ";
+
+            var reader = gcmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var x = reader;
+            }
+        }
         [TestMethod]
         public void SelectMarvelQueryNativeAPI4()
         {
@@ -142,8 +207,30 @@ namespace GraphViewUnitTest
                 var N_1_character = record[0];
             }
         }
+        [TestMethod]
+        public void SelectMarvelQuerySQL4()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest1");
+            GraphViewCommand gcmd = new GraphViewCommand();
+            gcmd.GraphViewConnection = connection;
 
-        
+            gcmd.CommandText = @"
+                SELECT CharacterNode.character, ComicbookNode.comicbook
+                FROM node CharacterNode, node ComicbookNode
+                MATCH CharacterNode-[Edge AS e1]->ComicbookNode
+                WHERE CharacterNode.weapon != 'shield' and CharacterNode.weapon != 'claws' and e1.type = 'appeared' and ComicbookNode.comicbook = 'AVF 4'
+                ORDER BY CharacterNode.character
+            ";
+
+            var reader = gcmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var x = reader;
+            }
+        }
+
         public void parseInEdge()
         {
 

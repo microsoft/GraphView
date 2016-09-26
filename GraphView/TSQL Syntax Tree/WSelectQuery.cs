@@ -791,11 +791,27 @@ namespace GraphView
                 }
                 // The last processor of a sub graph will be added to root processor list for later use.
                 RootProcessor.Add(ChildrenProcessor.Last());
+                
+                for(int i = 0; i < FunctionVaildalityCheck.Count; i++)
+                    if (FunctionVaildalityCheck[i] == 1) FunctionVaildalityCheck[i] = 0;
             }
             GraphViewOperator root = null;
             if (RootProcessor.Count == 1) root = RootProcessor[0];
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
-            else root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
+            else
+            {
+                root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
+                for (int i = 0; i < FunctionVaildalityCheck.Count; i++)
+                {
+                    if (FunctionVaildalityCheck[i] < 2)
+                    {
+                        if ((root as CartesianProductOperator).BooleanCheck == null)
+                            (root as CartesianProductOperator).BooleanCheck = functions[i];
+                        else (root as CartesianProductOperator).BooleanCheck = new BinaryFunction((root as CartesianProductOperator).BooleanCheck,
+                                        functions[i], BinaryBooleanFunction.BinaryType.and);
+                    }
+                }
+            }
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
             {
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Ascending)
@@ -938,7 +954,7 @@ namespace GraphView
                                     new BinaryFunction((ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck,
                                         functions[i], BinaryBooleanFunction.BinaryType.and);
                         }
-                        FunctionVaildalityCheck[i] = 0;
+                        //FunctionVaildalityCheck[i] = 0;
                     }
                 }
             }

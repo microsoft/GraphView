@@ -142,13 +142,14 @@ namespace GraphView
                         {
                             // reverse check
                             bool VailedFlag = true;
+                            if (record.field[dest] != "" && record.field[dest] != ID) continue;
                             if (ReverseCheckList != null)
                                 foreach (var ReverseNode in ReverseCheckList)
                                 {
                                     string Edge = (((JObject) item)[ReverseNode.Item2])["_sink"].ToString();
                                     if (
                                         !(Edge == record.RetriveData(ReverseNode.Item1) &&
-                                          record.RetriveData(ReverseNode.Item1 + (ReverseNode.Item3 ?1:2)).Contains(ID)) &&
+                                          record.RetriveData(ReverseNode.Item1 + (ReverseNode.Item3 ?1 : 2)).Contains(ID)) &&
                                         InternalOperator == null)
                                         VailedFlag = false;
                                     if (!(record.RetriveData(ReverseNode.Item1 + (ReverseNode.Item3? 1 : 2)).Contains(ID)) &&
@@ -416,9 +417,12 @@ namespace GraphView
         private RawRecord AddIfNotExist(Tuple<string, string, string> ItemInfo, RawRecord record, List<string> Result, List<string> header)
         {
             RawRecord NewRecord = new RawRecord(record);
-            if (NewRecord.RetriveData(node) == "") NewRecord.field[node] = ItemInfo.Item1;
-            if (NewRecord.RetriveData(node + 1) == "") NewRecord.field[node + 1] = ItemInfo.Item2;
-            if (NewRecord.RetriveData(node + 2) == "") NewRecord.field[node + 2] = ItemInfo.Item3;
+            //if (NewRecord.RetriveData(node) == "")
+                NewRecord.field[node] = ItemInfo.Item1;
+            //if (NewRecord.RetriveData(node + 1) == "")
+                NewRecord.field[node + 1] = ItemInfo.Item2;
+            //if (NewRecord.RetriveData(node + 2) == "")
+                NewRecord.field[node + 2] = ItemInfo.Item3;
             NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + "-->";
             for (int i = 0; i < NewRecord.field.Count; i++)
             {
@@ -451,6 +455,7 @@ namespace GraphView
         private Queue<RawRecord> OutputBuffer;
         private int OutputBufferSize;
 
+        internal BooleanFunction BooleanCheck;
         private GraphViewConnection connection;
         public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
         {
@@ -482,13 +487,18 @@ namespace GraphView
                     ResultsFromChildrenOperator.Last().Add(result);
                     result = ChildOperator.Next();
                 }
-                if (result != null) ResultsFromChildrenOperator.Last().Add(result);
+                if (result != null && RecordFilter(result)) ResultsFromChildrenOperator.Last().Add(result);
             }
             if (OperatorOnSubGraphs.Count != 0) CartesianProductOnRecord(ResultsFromChildrenOperator, 0, new RawRecord(header.Count));
             OperatorOnSubGraphs.Clear();
             if (OutputBuffer.Count < 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
+        }
+        private bool RecordFilter(RawRecord r)
+        {
+            if (BooleanCheck == null) return true;
+            else return BooleanCheck.eval(r);
         }
 
         // Find the cartesian product of giving sets of records.
