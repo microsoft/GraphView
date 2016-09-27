@@ -95,6 +95,7 @@ namespace GraphViewUnitTest
             foreach (var record in r1)
             {
                 var path = record[0];
+                Console.WriteLine(path);
             }
         }
         [TestMethod]
