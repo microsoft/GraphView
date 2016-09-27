@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.CodeDom.Compiler;
-using System.Collections.Generic;
 using Microsoft.CSharp;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+
 // Add DocumentDB references
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -16,64 +16,69 @@ using System.Collections;
 namespace GraphView
 {
     /// <summary>
-    /// Record is a raw data sturcture flowing from one data operator to another. 
-    /// The interpretation of the record is specified in a data operator or a table. 
-    /// 
-    /// Given a field name, returns the field's value.
-    /// Given a field offset, returns the field's value.
+    /// RawRecord is a data sturcture representing data records flowing from one execution operator to another. 
+    /// A data record is a multi-field blob. Each field is currently represented as a string.
+    /// The interpretation of a record, i.e., the names of the fields/columns of the record, 
+    /// is specified in the data operator producing them.  
     /// </summary>
-    public class RawRecord
+    internal class RawRecord
     {
         internal RawRecord()
         { 
         }
         internal RawRecord(RawRecord rhs)
         {
-            field = new List<string>(rhs.field);
+            fieldValues = new List<string>(rhs.fieldValues);
         }
         internal RawRecord(int num)
         {
-            field = new List<string>();
+            fieldValues = new List<string>();
             for (int i = 0; i < num; i++)
             {
-                field.Add("");
+                fieldValues.Add("");
             }
         }
         internal string RetriveData(List<string> header,string FieldName)
         {
             if (header.IndexOf(FieldName) == -1) return "";
-            else if (field.Count <= header.IndexOf(FieldName)) return "";
-            else return field[header.IndexOf(FieldName)];
+            else if (fieldValues.Count <= header.IndexOf(FieldName)) return "";
+            else return fieldValues[header.IndexOf(FieldName)];
         }
         internal string RetriveData(int index)
         {
-            return field[index];
+            return fieldValues[index];
         }
         internal int RetriveIndex(string value)
         {
-            if (field.IndexOf(value) == -1) return -1;
-            else return field.IndexOf(value);
+            if (fieldValues.IndexOf(value) == -1) return -1;
+            else return fieldValues.IndexOf(value);
         }
         internal String RetriveRow()
         {
             String row = "";
-            if (field == null) return row;
-            for(int i = 0; i < field.Count; i++)
+            if (fieldValues == null) return row;
+            for(int i = 0; i < fieldValues.Count; i++)
             {
-                row += field[i].ToString() + ",";
+                row += fieldValues[i].ToString() + ",";
             }
             return row;
         }
-        internal List<string> field;
+        internal List<string> fieldValues;
     }
 
-    public class Record : RawRecord
+    /// <summary>
+    /// Record differs from RawRecord in that the field names of the blob is annotated. 
+    /// It is hence comprehensible to external data readers.  
+    /// </summary>
+    public class Record
     {
+        RawRecord rawRecord;
+
         internal Record(RawRecord rhs, List<string> pHeader)
         {
             if (rhs != null)
             {
-                field = rhs.field;
+                rawRecord = rhs;
                 header = pHeader;
             }
         }
@@ -82,9 +87,9 @@ namespace GraphView
         {
             get
             {
-                if (index >= field.Count)
-                    throw new IndexOutOfRangeException("Out of range," + "the Record has only " + field.Count + " fields");
-                else return field[index];
+                if (index >= rawRecord.fieldValues.Count)
+                    throw new IndexOutOfRangeException("Out of range," + "the Record has only " + rawRecord.fieldValues.Count + " fields");
+                else return rawRecord.fieldValues[index];
             }
         }
 
@@ -94,42 +99,43 @@ namespace GraphView
             {
                 if (header == null || header.IndexOf(FieldName) == -1) 
                     throw new IndexOutOfRangeException("Out of range," + "the Record has no field \"" + FieldName + "\".");
-                else return field[header.IndexOf(FieldName)];
+                else return rawRecord.fieldValues[header.IndexOf(FieldName)];
             }
         }
     }
     
     /// <summary>
-    /// DocDBOperator is the basic interface of all operator processor function.
-    /// It provides three basic interface about the statue of a operator processor function.
-    /// And one interface to execute the operator. 
+    /// The interface of query execution operators.
+    /// An operator is in one of the states: open or closed. 
+    /// By implementing Next(), a query execution operator implements its own computation logic 
+    /// and returns result iteratively. 
     /// </summary>
-    internal interface IGraphViewProcessor
+    internal interface IGraphViewExecution
     {
-        bool Status();
+        bool State();
         void Open();
         void Close();
         RawRecord Next();
     }
     /// <summary>
-    /// The most basic class for all operator processor function,
-    /// which implements some of the basic interface.
-    /// and provides some useful sturcture like buffer on both input and output sides
+    /// The base class for all query execution operators. 
+    /// The class implements the execution interface and specifies the field names of 
+    /// the raw records produced by this operator. 
     /// </summary>
-    internal abstract class GraphViewOperator : IGraphViewProcessor
+    internal abstract class GraphViewExecutionOperator : IGraphViewExecution
     {
-        private bool status;
-        public bool Status()
+        private bool state;
+        public bool State()
         {
-            return status;
+            return state;
         }
         public void Open()
         {
-            status = true;
+            state = true;
         }
         public void Close()
         {
-            status = false;
+            state = false;
         }
         public abstract RawRecord Next();
 

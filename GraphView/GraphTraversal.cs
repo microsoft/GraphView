@@ -22,13 +22,13 @@ namespace GraphView
 
         public class GraphTraversalIterator :IEnumerator<Record>
         {
-            private GraphViewOperator CurrentOperator;
-            internal GraphTraversalIterator(GraphViewOperator pCurrentOperator)
+            private GraphViewExecutionOperator CurrentOperator;
+            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator)
             {
                 CurrentOperator = pCurrentOperator;
                 elements = new List<string>();
             }
-            internal GraphTraversalIterator(GraphViewOperator pCurrentOperator, List<string> pElements )
+            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator, List<string> pElements )
             {
                 CurrentOperator = pCurrentOperator;
                 elements = pElements;
@@ -40,7 +40,7 @@ namespace GraphView
             {
                 if (CurrentOperator == null) Reset();
 
-                if (CurrentOperator.Status())
+                if (CurrentOperator.State())
                 {
                     RawRecord Temp = CurrentOperator.Next();
                     CurrentRecord = new Record(Temp, elements);
@@ -75,7 +75,7 @@ namespace GraphView
             }
         }
 
-        internal GraphViewOperator CurrentOperator;
+        internal GraphViewExecutionOperator CurrentOperator;
         internal GraphTraversalIterator it;
         internal GraphViewConnection connection;
         internal List<int> TokenIndex;
@@ -106,7 +106,7 @@ namespace GraphView
                 {
                     if (UnionString != null)
                     {
-                        List<GraphViewOperator> OpList = new List<GraphViewOperator>();
+                        List<GraphViewExecutionOperator> OpList = new List<GraphViewExecutionOperator>();
                         foreach (var x in UnionString)
                         {
                             GraphViewGremlinParser Parser = new GraphViewGremlinParser();
@@ -701,7 +701,7 @@ AES += "\'" + x + "\'";
                 ExtendParser2.Parse(NewTraversal.AddEdgeOtherSource);
                 var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, NewTraversal.dir);
                 CurrentOperator = X.Generate(connection);
-                while (CurrentOperator.Status()) CurrentOperator.Next();
+                while (CurrentOperator.State()) CurrentOperator.Next();
             }
             return new GraphTraversal(NewTraversal);
         }
@@ -722,7 +722,7 @@ AES += "\'" + x + "\'";
                 ExtendParser2.Parse(NewTraversal.AddEdgeOtherSource);
                 var X = new WInsertEdgeFromTwoSourceSpecification(ExtendParser1.SqlTree, ExtendParser2.SqlTree, NewTraversal.dir);
                 CurrentOperator = X.Generate(connection);
-                while (CurrentOperator.Status()) CurrentOperator.Next();
+                while (CurrentOperator.State()) CurrentOperator.Next();
             }
             return new GraphTraversal(NewTraversal);
         }

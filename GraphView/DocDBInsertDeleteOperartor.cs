@@ -11,9 +11,9 @@ using Newtonsoft.Json.Linq;
 namespace GraphView
 {
 
-    internal class InsertEdgeOperator : GraphViewOperator
+    internal class InsertEdgeOperator : GraphViewExecutionOperator
     {
-        public GraphViewOperator SelectInput;
+        public GraphViewExecutionOperator SelectInput;
         public string edge;
         public string source, sink;
         public GraphViewConnection dbConnection;
@@ -22,7 +22,7 @@ namespace GraphView
         private int thread_num;
 
 
-        public InsertEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput, string edge, string source, string sink)
+        public InsertEdgeOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator SelectInput, string edge, string source, string sink)
         {
             this.dbConnection = dbConnection;
             this.SelectInput = SelectInput;
@@ -75,10 +75,10 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (!Status()) return null;
+            if (!State()) return null;
             map = new Dictionary<string, string>();
 
-            while (SelectInput.Status())
+            while (SelectInput.State())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 RawRecord rec = SelectInput.Next();
@@ -130,10 +130,10 @@ namespace GraphView
         }
     }
 
-    internal class InsertEdgeFromTwoSourceOperator : GraphViewOperator
+    internal class InsertEdgeFromTwoSourceOperator : GraphViewExecutionOperator
     {
-        public GraphViewOperator SrcSelectInput;
-        public GraphViewOperator DestSelectInput;
+        public GraphViewExecutionOperator SrcSelectInput;
+        public GraphViewExecutionOperator DestSelectInput;
 
         public string edge;
         public string source, sink;
@@ -143,7 +143,7 @@ namespace GraphView
         private int thread_num;
 
 
-        public InsertEdgeFromTwoSourceOperator(GraphViewConnection dbConnection, GraphViewOperator pSrcSelectInput, GraphViewOperator pDestSelectInput, string edge, string source, string sink)
+        public InsertEdgeFromTwoSourceOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator pSrcSelectInput, GraphViewExecutionOperator pDestSelectInput, string edge, string source, string sink)
         {
             this.dbConnection = dbConnection;
             this.SrcSelectInput = pSrcSelectInput;
@@ -156,14 +156,14 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (!Status()) return null;
+            if (!State()) return null;
             map = new Dictionary<string, string>();
 
             List<RawRecord> SrcNode = new List<RawRecord>();
             List<RawRecord> DestNode = new List<RawRecord>();
 
-            while(SrcSelectInput.Status()) SrcNode.Add(SrcSelectInput.Next());
-            while(DestSelectInput.Status()) DestNode.Add(DestSelectInput.Next());
+            while(SrcSelectInput.State()) SrcNode.Add(SrcSelectInput.Next());
+            while(DestSelectInput.State()) DestNode.Add(DestSelectInput.Next());
 
             foreach (var x in SrcNode)
             {
@@ -220,9 +220,9 @@ namespace GraphView
         }
     }
 
-    internal class DeleteEdgeOperator : GraphViewOperator
+    internal class DeleteEdgeOperator : GraphViewExecutionOperator
     {
-        public GraphViewOperator SelectInput;
+        public GraphViewExecutionOperator SelectInput;
         public string source, sink;
         public GraphViewConnection dbConnection;
         private bool UploadFinish;
@@ -230,7 +230,7 @@ namespace GraphView
         public string EdgeReverseID_str;
         internal Dictionary<string, string> map;
 
-        public DeleteEdgeOperator(GraphViewConnection dbConnection, GraphViewOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
+        public DeleteEdgeOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
         {
             this.dbConnection = dbConnection;
             this.SelectInput = SelectInput;
@@ -243,10 +243,10 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (!Status()) return null;
+            if (!State()) return null;
             map = new Dictionary<string, string>();
 
-            while (SelectInput.Status())
+            while (SelectInput.State())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
                 RawRecord rec = SelectInput.Next();
@@ -310,7 +310,7 @@ namespace GraphView
         }
     }
 
-    internal class InsertNodeOperator : GraphViewOperator
+    internal class InsertNodeOperator : GraphViewExecutionOperator
     {
         public string Json_str;
         public GraphViewConnection dbConnection;
@@ -324,7 +324,7 @@ namespace GraphView
         }
         public override RawRecord Next()
         {
-            if (!Status()) return null;
+            if (!State()) return null;
 
             var obj = JObject.Parse(Json_str);
 
@@ -350,7 +350,7 @@ namespace GraphView
             UploadFinish = true;
         }
     }
-    internal class DeleteNodeOperator : GraphViewOperator
+    internal class DeleteNodeOperator : GraphViewExecutionOperator
     {
         public WBooleanExpression search;
         public string Selectstr;
@@ -411,7 +411,7 @@ namespace GraphView
         /// <returns></returns>
         public override RawRecord Next()
         {
-            if (!Status())
+            if (!State())
                 return null;
             
             if (CheckNodes())

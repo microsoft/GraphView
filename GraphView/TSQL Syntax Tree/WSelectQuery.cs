@@ -345,7 +345,7 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
 
-        internal override GraphViewOperator Generate(GraphViewConnection pConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection pConnection)
         {
             if (WithPathClause != null) WithPathClause.Generate(pConnection);
             // Construct Match graph for later use
@@ -704,12 +704,12 @@ namespace GraphView
             header.Add("PATH");
             return header;
         }
-        private GraphViewOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
+        private GraphViewExecutionOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
             RawRecord RecordZero = new RawRecord(header.Count);
 
-            List<GraphViewOperator> ChildrenProcessor = new List<GraphViewOperator>();
-            List<GraphViewOperator> RootProcessor = new List<GraphViewOperator>();
+            List<GraphViewExecutionOperator> ChildrenProcessor = new List<GraphViewExecutionOperator>();
+            List<GraphViewExecutionOperator> RootProcessor = new List<GraphViewExecutionOperator>();
             List<int> FunctionVaildalityCheck = new List<int>();
             foreach (var i in functions)
             {
@@ -753,7 +753,7 @@ namespace GraphView
                         ReverseCheckList = new List<Tuple<int, string, bool>>();
                         if (WithPathClause != null)
                         {
-                            Tuple<string, GraphViewOperator, int> InternalOperator = null;
+                            Tuple<string, GraphViewExecutionOperator, int> InternalOperator = null;
                             if (
                                 (InternalOperator =
                                     WithPathClause.PathOperators.Find(p => p.Item1 == CurrentProcessingNode.Item2.EdgeAlias)) !=
@@ -795,7 +795,7 @@ namespace GraphView
                 for(int i = 0; i < FunctionVaildalityCheck.Count; i++)
                     if (FunctionVaildalityCheck[i] == 1) FunctionVaildalityCheck[i] = 0;
             }
-            GraphViewOperator root = null;
+            GraphViewExecutionOperator root = null;
             if (RootProcessor.Count == 1) root = RootProcessor[0];
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             else
@@ -922,7 +922,7 @@ namespace GraphView
             node.AttachedQuerySegment = QuerySegment;
         }
 
-        private void CheckFunctionValidate(ref List<string> header, ref List<BooleanFunction> functions, ref MatchNode TempNode, ref List<int> FunctionVaildalityCheck, ref List<GraphViewOperator> ChildrenProcessor)
+        private void CheckFunctionValidate(ref List<string> header, ref List<BooleanFunction> functions, ref MatchNode TempNode, ref List<int> FunctionVaildalityCheck, ref List<GraphViewExecutionOperator> ChildrenProcessor)
         {
             for (int i = 0; i < functions.Count; i++)
             {
@@ -1107,24 +1107,24 @@ namespace GraphView
         // item2 is the path description
         // item3 is the length limitation of it (-1 for no limitation)
         internal List<Tuple<string, WSelectQueryBlock, int>> Paths;
-        internal List<Tuple<string, GraphViewOperator, int>> PathOperators;
+        internal List<Tuple<string, GraphViewExecutionOperator, int>> PathOperators;
 
         public WWithPathClause(List<Tuple<string, WSelectQueryBlock, int>> pPaths)
         {
             Paths = pPaths;
-            PathOperators = new List<Tuple<string, GraphViewOperator, int>>();
+            PathOperators = new List<Tuple<string, GraphViewExecutionOperator, int>>();
         }
 
         public WWithPathClause(Tuple<string, WSelectQueryBlock, int> path)
         {
-            PathOperators = new List<Tuple<string, GraphViewOperator, int>>();
+            PathOperators = new List<Tuple<string, GraphViewExecutionOperator, int>>();
             if (Paths == null) Paths = new List<Tuple<string, WSelectQueryBlock, int>>();
             Paths.Add(path);
         }
-        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             foreach (var path in Paths)
-                PathOperators.Add(new Tuple<string, GraphViewOperator, int>(path.Item1, path.Item2.Generate(dbConnection), path.Item3));
+                PathOperators.Add(new Tuple<string, GraphViewExecutionOperator, int>(path.Item1, path.Item2.Generate(dbConnection), path.Item3));
             if (PathOperators.Count != 0) return PathOperators.First().Item2;
             else return null;
         }

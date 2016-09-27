@@ -61,7 +61,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().has('name','pluto').as('pluto').place_x.as('x').select('pluto').out().place_x.where(neq('x'))");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -77,7 +77,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.E().has('place_x', lt(38))._ID");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -93,7 +93,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().has('name', 'saturn').in('father').in('father').name");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -109,7 +109,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().has('name', 'saturn').in('father').in('father').out('father','mother').values('name')");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -125,7 +125,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().has('name', 'saturn').in('father').in('father').outE('battled').has('time', gt(1)).inV().values('name')");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -141,7 +141,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().has('name', 'pluto').g.V(pluto).out('brother').as('god').out('lives').as('place').select().name");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -157,7 +157,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().match(__.as('a').out('father').as('b')).select('a','b').name");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -173,7 +173,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V.has('name','saturn').repeat(__.in('father')).times(2).name");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -189,7 +189,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.E().has('reason', 'loves waves').as('source').values('reason').as('reason').select('source').outV().values('name').as('god').select('source').inV().values('name').as('thing').select('god', 'reason', 'thing')");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -205,7 +205,7 @@ namespace GraphViewUnitTest
             var ParserTree1 = parser1.Parse("g.V().has('name','saturn')coalesce(values('type'), values('age'))");
             var op1 = ParserTree1.Generate(connection);
             RawRecord rc1 = null;
-            while (op1.Status())
+            while (op1.State())
             {
                 rc1 = op1.Next();
             }
@@ -213,7 +213,7 @@ namespace GraphViewUnitTest
             var ParserTree2 = parser2.Parse("g.V().has('name','saturn').coalesce( values('age'), values('type'))");
             var op2 = ParserTree2.Generate(connection);
             RawRecord rc2 = null;
-            while (op2.Status())
+            while (op2.State())
             {
                 rc2 = op2.Next();
             }
@@ -230,7 +230,7 @@ namespace GraphViewUnitTest
             var ParserTree = parser.Parse("g.V().has('name','person'). choose(values('age')). option(27, __.in()). option(32, __.out()).values('name')");
             var op = ParserTree.Generate(connection);
             RawRecord rc = null;
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -277,7 +277,7 @@ namespace GraphViewUnitTest
             parser.Parse("g.addV('comicbook','H2 252')").Generate(connection).Next();
             parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
             var res = parser.Parse("g.V().has('character', 'HAWK').out('appeared').comicbook").Generate(connection);
-            while (res.Status())
+            while (res.State())
             {
                 var x = res.Next();
             }
@@ -324,7 +324,7 @@ namespace GraphViewUnitTest
             var ParserTree2 = parser2.Parse("g.V.has('label','person').name");
             var op2 = ParserTree2.Generate(connection);
             RawRecord rc = null;
-            while (op2.Status())
+            while (op2.State())
             {
                 rc = op2.Next();
             }
@@ -354,7 +354,7 @@ namespace GraphViewUnitTest
             var ParserTree4 = parser4.Parse("g.V.has('name','Adams').out('isfriend').name");
             var op4 = ParserTree4.Generate(connection);
             RawRecord rc = null;
-            while (op4.Status())
+            while (op4.State())
             {
                 rc = op4.Next();
             }

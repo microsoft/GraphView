@@ -183,7 +183,7 @@ namespace GraphView
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             string Json_str = ConstructNode();
 
@@ -290,7 +290,7 @@ namespace GraphView
             return Edge;
         }
 
-        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
             
@@ -324,7 +324,7 @@ namespace GraphView
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
 
-            GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
+            GraphViewExecutionOperator input = SelectQueryBlock.Generate(dbConnection);
             if (input == null)
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
             
@@ -433,7 +433,7 @@ namespace GraphView
             return Edge;
         }
 
-        internal override GraphViewOperator Generate(GraphViewConnection pConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection pConnection)
         {
             WSelectQueryBlock SrcSelect;
             WSelectQueryBlock DestSelect;
@@ -478,8 +478,8 @@ namespace GraphView
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
 
-            GraphViewOperator SrcInput = SrcSelect.Generate(pConnection);
-            GraphViewOperator DestInput = DestSelect.Generate(pConnection);
+            GraphViewExecutionOperator SrcInput = SrcSelect.Generate(pConnection);
+            GraphViewExecutionOperator DestInput = DestSelect.Generate(pConnection);
             if (SrcInput == null || DestInput == null)
                 throw new GraphViewException("The insert source of the INSERT EDGE statement is invalid.");
 
@@ -613,7 +613,7 @@ namespace GraphView
         /// </summary>
         /// <param name="docDbConnection">The Connection</param>
         /// <returns></returns>
-        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             var search = WhereClause.SearchCondition;
             //build up the query
@@ -776,7 +776,7 @@ namespace GraphView
             #endregion
         }
 
-        internal override GraphViewOperator Generate(GraphViewConnection dbConnection)
+        internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             ChangeSelectQuery();
 
@@ -790,7 +790,7 @@ namespace GraphView
 
             var n4 = SelectQueryBlock.SelectElements[3] as WSelectScalarExpression;
 
-            GraphViewOperator input = SelectQueryBlock.Generate(dbConnection);
+            GraphViewExecutionOperator input = SelectQueryBlock.Generate(dbConnection);
             if (input == null)
             {
                 throw new GraphViewException("The delete source of the DELETE EDGE statement is invalid.");

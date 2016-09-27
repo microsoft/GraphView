@@ -30,7 +30,7 @@ namespace GraphViewUnitTest
             var op = parser.Parse("g.V().as('character').has('weapon', 'shield').out('appeared').as('comicbook').select('character', 'comicbook')").Generate(connection);
             RawRecord rc = null;
 
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -45,7 +45,7 @@ namespace GraphViewUnitTest
             var op = parser.Parse("g.V().as('character').has('weapon', 'lasso').out('appeared').as('comicbook').select('character', 'comicbook')").Generate(connection);
             RawRecord rc = null;
 
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -60,7 +60,7 @@ namespace GraphViewUnitTest
             var op = parser.Parse("g.V().has('comicbook', 'AVF 4').in('appeared').values('character')").Generate(connection);
             RawRecord rc = null;
 
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }
@@ -75,7 +75,7 @@ namespace GraphViewUnitTest
             var op = parser.Parse("g.V().has('comicbook', 'AVF 4').in('appeared').has('weapon', 'shield').values('character')").Generate(connection);
             RawRecord rc = null;
 
-            while (op.Status())
+            while (op.State())
             {
                 rc = op.Next();
             }

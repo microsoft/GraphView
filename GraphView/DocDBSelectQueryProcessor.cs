@@ -17,7 +17,7 @@ namespace GraphView
     /// TraversalOperator.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
-    internal class TraversalOperator : GraphViewOperator
+    internal class TraversalOperator : GraphViewExecutionOperator
     {
         // Buffer on both input and output sides.
         private Queue<RawRecord> InputBuffer;
@@ -25,7 +25,7 @@ namespace GraphView
         private int InputBufferSize;
         private int OutputBufferSize;
         // The operator that gives the current operator input.
-        internal GraphViewOperator ChildOperator;
+        internal GraphViewExecutionOperator ChildOperator;
 
         // Addition info to interpret the output record of traversal operator
         private int StartOfResultField;
@@ -44,13 +44,13 @@ namespace GraphView
         private List<Tuple<int,string,bool>> ReverseCheckList;
         internal BooleanFunction BooleanCheck;
 
-        internal GraphViewOperator InternalOperator;
+        internal GraphViewExecutionOperator InternalOperator;
         List<string> InternalHeader;
         private int InternalLoopStartNode;
 
         private bool reverse; 
 
-        internal TraversalOperator(GraphViewConnection pConnection, GraphViewOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<Tuple<int, string, bool>> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, string pScript, int pSrc, int pDest, List<string> pheader, List<Tuple<int, string, bool>> pReverseCheckList, int pStartOfResultField, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             ChildOperator = pChildProcessor;
@@ -73,16 +73,16 @@ namespace GraphView
         override public RawRecord Next()
         {
             // If the output buffer is not empty, return a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildOperator != null && !ChildOperator.Status())))
+            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildOperator != null && !ChildOperator.State())))
             {
                 if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
 
             // Take input from the output buffer of its child operator.
-            while (InputBuffer.Count() < InputBufferSize && ChildOperator.Status())
+            while (InputBuffer.Count() < InputBufferSize && ChildOperator.State())
             {
-                if (ChildOperator != null && ChildOperator.Status())
+                if (ChildOperator != null && ChildOperator.State())
                 {
                     RawRecord Result = (RawRecord)ChildOperator.Next();
                     if (Result == null) ChildOperator.Close();
@@ -135,14 +135,14 @@ namespace GraphView
                             string result = "";
                             if (((JObject) item)[ResultFieldName.Replace(".", "_")] != null)
                                 result = ((JObject) item)[ResultFieldName.Replace(".", "_")].ToString();
-                            ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                            ResultRecord.fieldValues[header.IndexOf(ResultFieldName)] = result;
                         }
                         // Join the old record with the new one if checked vailed.
                         foreach (var record in InputBuffer)
                         {
                             // reverse check
                             bool VailedFlag = true;
-                            if (record.field[dest] != "" && record.field[dest] != ID) continue;
+                            if (record.fieldValues[dest] != "" && record.fieldValues[dest] != ID) continue;
                             if (ReverseCheckList != null)
                                 foreach (var ReverseNode in ReverseCheckList)
                                 {
@@ -158,7 +158,7 @@ namespace GraphView
                                 }
                             if (VailedFlag)
                             {
-                                RawRecord NewRecord = InternalOperator == null? AddIfNotExist(ItemInfo, record, ResultRecord.field, header,true): AddIfNotExist(ItemInfo, record, ResultRecord.field, header, false);
+                                RawRecord NewRecord = InternalOperator == null? AddIfNotExist(ItemInfo, record, ResultRecord.fieldValues, header,true): AddIfNotExist(ItemInfo, record, ResultRecord.fieldValues, header, false);
                                 if (RecordFilter(NewRecord))
                                     if (!UniqueRecord.Contains(NewRecord.RetriveData(dest) + NewRecord.RetriveData(src)))
                                     {
@@ -192,15 +192,15 @@ namespace GraphView
             RawRecord ConstantRecord = new RawRecord(InternalOperator.header.Count);
             if (ChildOperator is FetchNodeOperator)
             {
-                ConstantRecord.field[InternalLoopStartNode] = input.field[(ChildOperator as FetchNodeOperator).node];
-                ConstantRecord.field[InternalLoopStartNode + 1] = input.field[(ChildOperator as FetchNodeOperator).node + 1];
-                ConstantRecord.field[ConstantRecord.field.Count - 1] = input.field[input.field.Count - 1];
+                ConstantRecord.fieldValues[InternalLoopStartNode] = input.fieldValues[(ChildOperator as FetchNodeOperator).node];
+                ConstantRecord.fieldValues[InternalLoopStartNode + 1] = input.fieldValues[(ChildOperator as FetchNodeOperator).node + 1];
+                ConstantRecord.fieldValues[ConstantRecord.fieldValues.Count - 1] = input.fieldValues[input.fieldValues.Count - 1];
             }
             if (ChildOperator is TraversalOperator)
             {
-                ConstantRecord.field[InternalLoopStartNode] = input.field[(ChildOperator as TraversalOperator).dest];
-                ConstantRecord.field[InternalLoopStartNode + 1] = input.field[(ChildOperator as TraversalOperator).dest + 1];
-                ConstantRecord.field[ConstantRecord.field.Count - 1] = input.field[input.field.Count - 1];
+                ConstantRecord.fieldValues[InternalLoopStartNode] = input.fieldValues[(ChildOperator as TraversalOperator).dest];
+                ConstantRecord.fieldValues[InternalLoopStartNode + 1] = input.fieldValues[(ChildOperator as TraversalOperator).dest + 1];
+                ConstantRecord.fieldValues[ConstantRecord.fieldValues.Count - 1] = input.fieldValues[input.fieldValues.Count - 1];
             }
             RecursivePathTraversal(input, ConstantRecord, ref EdgeRef, InternalLoopStartNode, ref ResultQueue);
         }
@@ -208,27 +208,27 @@ namespace GraphView
         {
             Queue<RawRecord> StageRecords = new Queue<RawRecord>(); ;
             bool LoopEnd = true;
-            if (input.field[StartNode + 1] != "")
+            if (input.fieldValues[StartNode + 1] != "")
             {
                 source.SetRef(input);
-                GraphViewOperator RootOperator = InternalOperator;
+                GraphViewExecutionOperator RootOperator = InternalOperator;
                 while (RootOperator is TraversalOperator)
                 {
                     RootOperator.Open();
                     RootOperator = (RootOperator as TraversalOperator).ChildOperator;
                 }
                 RootOperator.Open();
-                while (InternalOperator.Status() || StageRecords.Count > 0)
+                while (InternalOperator.State() || StageRecords.Count > 0)
                 {
-                    while (InternalOperator.Status()) StageRecords.Enqueue(InternalOperator.Next());
+                    while (InternalOperator.State()) StageRecords.Enqueue(InternalOperator.Next());
                     RawRecord OldOutput = StageRecords.Dequeue();
                     if (OldOutput != null)
                     {
                         RawRecord NewInput = new RawRecord(InternalHeader.Count);
-                        NewInput.field[StartNode] = OldOutput.field[(InternalOperator as TraversalOperator).dest];
-                        NewInput.field[StartNode + 1] =
-                            OldOutput.field[(InternalOperator as TraversalOperator).dest + 1];
-                        NewInput.field[NewInput.field.Count - 1] = OldOutput.field[OldOutput.field.Count - 1];
+                        NewInput.fieldValues[StartNode] = OldOutput.fieldValues[(InternalOperator as TraversalOperator).dest];
+                        NewInput.fieldValues[StartNode + 1] =
+                            OldOutput.fieldValues[(InternalOperator as TraversalOperator).dest + 1];
+                        NewInput.fieldValues[NewInput.fieldValues.Count - 1] = OldOutput.fieldValues[OldOutput.fieldValues.Count - 1];
                         RecursivePathTraversal(OriginalInput, NewInput, ref source, StartNode, ref ResultQueue);
                         LoopEnd = false;
                     }
@@ -237,8 +237,8 @@ namespace GraphView
             if (LoopEnd == true)
             {
                 RawRecord DestRecord = new RawRecord(OriginalInput);
-                DestRecord.field[src + 1] = "\"" + input.field[StartNode] + "\"";
-                DestRecord.field[DestRecord.field.Count - 1] = input.field[input.field.Count - 1];
+                DestRecord.fieldValues[src + 1] = "\"" + input.fieldValues[StartNode] + "\"";
+                DestRecord.fieldValues[DestRecord.fieldValues.Count - 1] = input.fieldValues[input.fieldValues.Count - 1];
                 ResultQueue.Enqueue(DestRecord);
             }
         }
@@ -279,16 +279,16 @@ namespace GraphView
         {
             RawRecord NewRecord = new RawRecord(record);
             //if (NewRecord.RetriveData(dest) == "")
-                NewRecord.field[dest] = ItemInfo.Item1;
+                NewRecord.fieldValues[dest] = ItemInfo.Item1;
             //if (NewRecord.RetriveData(dest + 1) == "")
-                NewRecord.field[dest + 1] = ItemInfo.Item2;
+                NewRecord.fieldValues[dest + 1] = ItemInfo.Item2;
             //if (NewRecord.RetriveData(dest + 2) == "")
-                NewRecord.field[dest + 2] = ItemInfo.Item3;
-            if (addpath) NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + "-->";
-            for (int i = 0; i < NewRecord.field.Count; i++)
+                NewRecord.fieldValues[dest + 2] = ItemInfo.Item3;
+            if (addpath) NewRecord.fieldValues[NewRecord.fieldValues.Count - 1] += ItemInfo.Item1 + "-->";
+            for (int i = 0; i < NewRecord.fieldValues.Count; i++)
             {
                 if (NewRecord.RetriveData(i) == "" && Result[i] != "")
-                    NewRecord.field[i] = Result[i];
+                    NewRecord.fieldValues[i] = Result[i];
             }
             return NewRecord;
         }
@@ -304,7 +304,7 @@ namespace GraphView
     /// FetchNodeOperator.Next() returns one result of what its specifier specified.
     /// It often used as the input of a traversal operator
     /// </summary>
-    internal class FetchNodeOperator : GraphViewOperator
+    internal class FetchNodeOperator : GraphViewExecutionOperator
     {
         private RawRecord RecordZero;
         private Queue<RawRecord> OutputBuffer;
@@ -314,13 +314,13 @@ namespace GraphView
 
         private GraphViewConnection connection;
 
-        private GraphViewOperator ChildOperator;
+        private GraphViewExecutionOperator ChildOperator;
         internal int node;
 
         private string docDbScript;
         internal BooleanFunction BooleanCheck;
 
-        public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize, GraphViewOperator pChildOperator = null)
+        public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pStartOfResultField, int pOutputBufferSize, GraphViewExecutionOperator pChildOperator = null)
         {
             this.Open();
             connection = pConnection;
@@ -340,11 +340,11 @@ namespace GraphView
             if (OutputBuffer.Count != 0)
             {
                 if (OutputBuffer.Count == 1)
-                    if (ChildOperator == null || !ChildOperator.Status()) this.Close();
+                    if (ChildOperator == null || !ChildOperator.State()) this.Close();
                 return OutputBuffer.Dequeue();
             }
             string script = docDbScript;
-            if (ChildOperator != null && ChildOperator.Status())
+            if (ChildOperator != null && ChildOperator.State())
                 RecordZero = ChildOperator.Next();
             // Send query to the server
             try
@@ -364,9 +364,9 @@ namespace GraphView
                             string result = "";
                             if (((JObject) item)[ResultFieldName.Replace(".", "_")] != null)
                                 result = ((JObject) item)[ResultFieldName.Replace(".", "_")].ToString();
-                            ResultRecord.field[header.IndexOf(ResultFieldName)] = result;
+                            ResultRecord.fieldValues[header.IndexOf(ResultFieldName)] = result;
                         }
-                        RawRecord NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.field, header);
+                        RawRecord NewRecord = AddIfNotExist(ItemInfo, RecordZero, ResultRecord.fieldValues, header);
                         if (RecordFilter(NewRecord))
                         OutputBuffer.Enqueue(NewRecord);
                 }
@@ -376,7 +376,7 @@ namespace GraphView
                 throw e.InnerException;
             }
             // Close output buffer
-            if (OutputBuffer.Count <= 1 && (ChildOperator ==null || !ChildOperator.Status())) this.Close();
+            if (OutputBuffer.Count <= 1 && (ChildOperator ==null || !ChildOperator.State())) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
@@ -418,16 +418,16 @@ namespace GraphView
         {
             RawRecord NewRecord = new RawRecord(record);
             //if (NewRecord.RetriveData(node) == "")
-                NewRecord.field[node] = ItemInfo.Item1;
+                NewRecord.fieldValues[node] = ItemInfo.Item1;
             //if (NewRecord.RetriveData(node + 1) == "")
-                NewRecord.field[node + 1] = ItemInfo.Item2;
+                NewRecord.fieldValues[node + 1] = ItemInfo.Item2;
             //if (NewRecord.RetriveData(node + 2) == "")
-                NewRecord.field[node + 2] = ItemInfo.Item3;
-            NewRecord.field[NewRecord.field.Count - 1] += ItemInfo.Item1 + "-->";
-            for (int i = 0; i < NewRecord.field.Count; i++)
+                NewRecord.fieldValues[node + 2] = ItemInfo.Item3;
+            NewRecord.fieldValues[NewRecord.fieldValues.Count - 1] += ItemInfo.Item1 + "-->";
+            for (int i = 0; i < NewRecord.fieldValues.Count; i++)
             {
                 if (NewRecord.RetriveData(i) == "" && Result[i] != "")
-                    NewRecord.field[i] = Result[i];
+                    NewRecord.fieldValues[i] = Result[i];
             }
             return NewRecord;
         }
@@ -448,16 +448,16 @@ namespace GraphView
     /// will be
     /// |   A   |    C   |   B   |
     /// </summary>
-    internal class CartesianProductOperator : GraphViewOperator
+    internal class CartesianProductOperator : GraphViewExecutionOperator
     {
-        private List<GraphViewOperator> OperatorOnSubGraphs;
+        private List<GraphViewExecutionOperator> OperatorOnSubGraphs;
 
         private Queue<RawRecord> OutputBuffer;
         private int OutputBufferSize;
 
         internal BooleanFunction BooleanCheck;
         private GraphViewConnection connection;
-        public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
+        public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewExecutionOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
         {
             this.Open();
             connection = pConnection;
@@ -482,7 +482,7 @@ namespace GraphView
             {
                 ResultsFromChildrenOperator.Add(new List<RawRecord>());
                 RawRecord result = ChildOperator.Next();
-                while (result != null && ChildOperator.Status())
+                while (result != null && ChildOperator.State())
                 {
                     ResultsFromChildrenOperator.Last().Add(result);
                     result = ChildOperator.Next();
@@ -514,21 +514,21 @@ namespace GraphView
                 RawRecord NewResult = new RawRecord(result);
                 for (int i = 0; i < header.Count; i++)
                 {
-                    if (NewResult.field[i] == "" && record.field[i] != "")
-                        NewResult.field[i] = record.field[i];
+                    if (NewResult.fieldValues[i] == "" && record.fieldValues[i] != "")
+                        NewResult.fieldValues[i] = record.fieldValues[i];
                 }
                 CartesianProductOnRecord(RecordSet, IndexOfOperator + 1, NewResult);
             }
         }
     }
 
-    internal class UnionOperator : GraphViewOperator
+    internal class UnionOperator : GraphViewExecutionOperator
     {
-        internal List<GraphViewOperator> Sources;
+        internal List<GraphViewExecutionOperator> Sources;
         internal GraphViewConnection connection;
         internal int FromWhichSource;
         internal RawRecord result;
-        public UnionOperator(GraphViewConnection pConnection, List<GraphViewOperator> pSources)
+        public UnionOperator(GraphViewConnection pConnection, List<GraphViewExecutionOperator> pSources)
         {
             this.Open();
             connection = pConnection;
@@ -538,7 +538,7 @@ namespace GraphView
 
         override public RawRecord Next()
         {
-            if (!Sources[FromWhichSource].Status() || (result = Sources[FromWhichSource].Next()) == null)
+            if (!Sources[FromWhichSource].State() || (result = Sources[FromWhichSource].Next()) == null)
             {
                 if (FromWhichSource == Sources.Count)
                 {
@@ -555,14 +555,14 @@ namespace GraphView
         }
     }
 
-    internal class CoalesceOperator : GraphViewOperator
+    internal class CoalesceOperator : GraphViewExecutionOperator
     {
-        internal List<GraphViewOperator> Sources;
+        internal List<GraphViewExecutionOperator> Sources;
         internal GraphViewConnection connection;
         internal int FromWhichSource;
         internal RawRecord result;
         internal int CoalesceNumber;
-        public CoalesceOperator(GraphViewConnection pConnection, List<GraphViewOperator> pSources, int pCoalesceNumber)
+        public CoalesceOperator(GraphViewConnection pConnection, List<GraphViewExecutionOperator> pSources, int pCoalesceNumber)
         {
             this.Open();
             connection = pConnection;
@@ -577,7 +577,7 @@ namespace GraphView
         override public RawRecord Next()
         {
             HashSet<string> ResultSet = new HashSet<string>();
-            while (FromWhichSource < Sources.Count && (!Sources[FromWhichSource].Status() || (result = Sources[FromWhichSource].Next()) == null))
+            while (FromWhichSource < Sources.Count && (!Sources[FromWhichSource].State() || (result = Sources[FromWhichSource].Next()) == null))
                 FromWhichSource++;
             if (FromWhichSource == Sources.Count)
             {
@@ -594,9 +594,9 @@ namespace GraphView
         }
     }
 
-    internal class OrderbyOperator : GraphViewOperator
+    internal class OrderbyOperator : GraphViewExecutionOperator
     {
-        internal GraphViewOperator ChildOperator;
+        internal GraphViewExecutionOperator ChildOperator;
         internal GraphViewConnection connection;
         internal List<RawRecord> results;
         internal Queue<RawRecord> ResultQueue;
@@ -609,7 +609,7 @@ namespace GraphView
             Incr,
             NotSpecified
         }
-        public OrderbyOperator(GraphViewConnection pConnection, GraphViewOperator pChildOperator, string pBywhat, List<string> pheader, Order pOrder = Order.NotSpecified)
+        public OrderbyOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildOperator, string pBywhat, List<string> pheader, Order pOrder = Order.NotSpecified)
         {
             this.Open();
             connection = pConnection;
@@ -624,7 +624,7 @@ namespace GraphView
             if (results == null)
             {
                 results = new List<RawRecord>();
-                while (ChildOperator.Status())
+                while (ChildOperator.State())
                 {
                     RawRecord Temp = ChildOperator.Next();
                     if (Temp != null)
@@ -644,14 +644,14 @@ namespace GraphView
         }
     }
 
-    internal class OutputOperator : GraphViewOperator
+    internal class OutputOperator : GraphViewExecutionOperator
     {
-        internal GraphViewOperator ChildOperator;
+        internal GraphViewExecutionOperator ChildOperator;
         internal GraphViewConnection connection;
         internal List<string> SelectedElement;
         internal bool OutputPath;
 
-        public OutputOperator(GraphViewOperator pChildOperator, GraphViewConnection pConnection, List<string> pSelectedElement, List<string> pHeader)
+        public OutputOperator(GraphViewExecutionOperator pChildOperator, GraphViewConnection pConnection, List<string> pSelectedElement, List<string> pHeader)
         {
             this.Open();
             ChildOperator = pChildOperator;
@@ -660,7 +660,7 @@ namespace GraphView
             header = pHeader;
         }
 
-        public OutputOperator(GraphViewOperator pChildOperator, GraphViewConnection pConnection,
+        public OutputOperator(GraphViewExecutionOperator pChildOperator, GraphViewConnection pConnection,
             bool pOutputPath, List<string> pHeader)
         {
             this.Open();
@@ -678,16 +678,16 @@ namespace GraphView
                 SelectedElement = new List<string>() {"PATH"};
                 RawRecord OutputRecord = new RawRecord(1);
                 RawRecord InputRecord = null;
-                if (ChildOperator.Status())
+                if (ChildOperator.State())
                 {
-                    while ((InputRecord = ChildOperator.Next()) == null && ChildOperator.Status()) ;
-                    if (!ChildOperator.Status())
+                    while ((InputRecord = ChildOperator.Next()) == null && ChildOperator.State()) ;
+                    if (!ChildOperator.State())
                     {
                         this.Close();
                     }
                     if (InputRecord != null)
                     {
-                        OutputRecord.field[0] = CutTheTail(InputRecord.field.Last(),3);
+                        OutputRecord.fieldValues[0] = CutTheTail(InputRecord.fieldValues.Last(),3);
                         return OutputRecord;
                     }
                     else return null;
@@ -697,17 +697,17 @@ namespace GraphView
             {
                 RawRecord OutputRecord = new RawRecord(SelectedElement.Count);
                 RawRecord InputRecord = null;
-                if (ChildOperator.Status())
+                if (ChildOperator.State())
                 {
-                    while ((InputRecord = ChildOperator.Next()) == null && ChildOperator.Status()) ;
-                    if (!ChildOperator.Status())
+                    while ((InputRecord = ChildOperator.Next()) == null && ChildOperator.State()) ;
+                    if (!ChildOperator.State())
                     {
                         this.Close();
                     }
                     if (InputRecord != null)
                     {
                         foreach (var x in SelectedElement)
-                            OutputRecord.field[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(ChildOperator.header, x);
+                            OutputRecord.fieldValues[SelectedElement.IndexOf(x)] = InputRecord.RetriveData(ChildOperator.header, x);
                         return OutputRecord;
                     }
                     else return null;
@@ -728,7 +728,7 @@ namespace GraphView
         }
     }
 
-    internal class EdgeRefOperator : GraphViewOperator
+    internal class EdgeRefOperator : GraphViewExecutionOperator
     {
         internal RawRecord EdgeRef;
 
@@ -754,9 +754,9 @@ namespace GraphView
 
     public class GraphViewDataReader : IDataReader
     {
-        private GraphViewOperator DataSource;
+        private GraphViewExecutionOperator DataSource;
         RawRecord CurrentRecord;
-        internal GraphViewDataReader(GraphViewOperator pDataSource)
+        internal GraphViewDataReader(GraphViewExecutionOperator pDataSource)
         {
             DataSource = pDataSource;
             FieldCount = DataSource.header.Count;
