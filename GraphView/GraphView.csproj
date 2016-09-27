@@ -68,7 +68,7 @@
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
-    <Compile Include="DocDBReferences.cs" />
+    <Compile Include="GraphViewExecutionEngine.cs" />
     <Compile Include="GraphLoaderFactory.cs" />
     <Compile Include="GraphViewDocDBCommand.cs" />
     <Compile Include="GraphViewGremlinParser.cs" />
