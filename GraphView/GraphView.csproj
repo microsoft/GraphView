@@ -86,7 +86,6 @@
     <Compile Include="DocDBSelectQueryProcessor.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
-    <Compile Include="CreateViewVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
     <Compile Include="DocDBInsertDeleteOperartor.cs" />
