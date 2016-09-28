@@ -366,7 +366,9 @@ namespace GraphView
         }
         private GraphViewExecutionOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
-
+            // output and input buffer size is set here.
+            const int OUTPUT_BUFFER_SIZE = 50;
+            const int INPUT_BUFFER_SIZE = 50;
             List<GraphViewExecutionOperator> ChildrenProcessor = new List<GraphViewExecutionOperator>();
             List<GraphViewExecutionOperator> RootProcessor = new List<GraphViewExecutionOperator>();
             // Init function validality cheking list. 
@@ -422,15 +424,15 @@ namespace GraphView
                                 null)
                                 ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                            TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
-                            50, false, InternalOperator.Item2));
+                            TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, INPUT_BUFFER_SIZE,
+                            OUTPUT_BUFFER_SIZE, false, InternalOperator.Item2));
                         }
                         else
                         {
                             ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                                TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
-                                50, CurrentProcessingNode.Item2.IsReversed));
+                                TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, INPUT_BUFFER_SIZE,
+                                OUTPUT_BUFFER_SIZE, CurrentProcessingNode.Item2.IsReversed));
                         }
                         // Check if any boolean function should be attached to this operator.
                         if (functions != null && functions.Count != 0)
