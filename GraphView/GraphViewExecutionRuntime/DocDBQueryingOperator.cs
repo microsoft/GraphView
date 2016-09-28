@@ -31,6 +31,9 @@ namespace GraphView
         // Both Traversal and FetchNode operator need to specify a dest node index, where to put the traversal result.
         internal int dest;
 
+        // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"      |
+        // For giving node index x, Record[x + 1] is its adjacent list, Record[x + 2] is its reverse adjacent list.
+        // The last element of it is the path (Record[count - 1]).
         internal const int ADJ_OFFSET = 1;
         internal const int REV_ADJ_OFFSET = 2;
         internal const int PATH_OFFSET = -1;
