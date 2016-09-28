@@ -455,13 +455,11 @@ namespace GraphView
         private List<GraphViewExecutionOperator> OperatorOnSubGraphs;
 
         private Queue<RawRecord> OutputBuffer;
-        private int OutputBufferSize;
 
         internal BooleanFunction BooleanCheck;
-        public CartesianProductOperator(List<GraphViewExecutionOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
+        public CartesianProductOperator(List<GraphViewExecutionOperator> pProcessorOnSubGraph, List<string> pheader)
         {
             this.Open();
-            OutputBufferSize = pOutputBufferSize;
             header = pheader;
             OperatorOnSubGraphs = pProcessorOnSubGraph;
         }

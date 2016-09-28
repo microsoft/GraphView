@@ -449,7 +449,7 @@ namespace GraphView
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             else
             {
-                root = new CartesianProductOperator(RootProcessor, header, 100);
+                root = new CartesianProductOperator(RootProcessor, header);
                 // If some boolean function cannot be attached in any single subgraph, it should either be attached to cartesian product operator.
                 // or it cannot be attached anywhere.
                 for (int i = 0; i < FunctionVaildalityCheck.Count; i++)
