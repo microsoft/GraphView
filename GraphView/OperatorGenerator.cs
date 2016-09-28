@@ -14,11 +14,12 @@ namespace GraphView
             if (WithPathClause != null) WithPathClause.Generate(pConnection);
             // Construct Match graph for later use
             MatchGraph graph = ConstructGraph();
-            // Construct a header for the processor it will generate to interpret its result
+            // Construct a header for the operators.
             List<string> header = ConstructHeader(graph);
-            // Attach pre-generated docDB script to the node on Match graph
+            // Attach pre-generated docDB script to the node on Match graph, 
+            // and turn predicates that cannot be attached to one node into boolean function.
             List<BooleanFunction> Functions = AttachScriptSegment(graph, header);
-            // Generate proper processor for the current syntax element
+            // Construct operators accroding to the match graph, header and boolean function list.
             return ConstructOperator(graph, header, pConnection, Functions);
         }
 
@@ -249,14 +250,19 @@ namespace GraphView
 
         private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header)
         {
+
+            // Call attach predicate visitor to attach predicates on nodes.
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
             WSqlTableContext Context = new WSqlTableContext();
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
             List<BooleanFunction> BooleanList = new List<BooleanFunction>();
+
+            // If some predictaes are failed to be assign to one node, turn them into boolean functions
             foreach (var predicate in AttachPredicateVistor.FailedToAssign)
             {
+                // Analyse what kind of predicates they are, and generate corresponding boolean functions.
                 if (predicate is WBooleanComparisonExpression)
                 {
                     string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
@@ -304,8 +310,7 @@ namespace GraphView
                 var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
                 // Marking down which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
-                //BuildQuerySegementOnNode(ProcessedNodeList,SortedNodeList.Peek().Item1,header,StartOfResult);
-                //ProcessedNodeList.Add(SortedNodeList.Peek().Item1.NodeAlias);
+                // Build query segment or both source node and dest node, 
                 while (SortedNodeList.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = null;
@@ -326,24 +331,12 @@ namespace GraphView
             }
             return BooleanList;
         }
-        private Stack<Tuple<MatchNode, MatchEdge>> GetTraversalOrder(MatchGraph graph)
-        {
-            var nodes = graph.ConnectedSubGraphs[0].Nodes;
-            var edges = graph.ConnectedSubGraphs[0].Edges;
-
-            var chain = new Stack<Tuple<MatchNode, MatchEdge>>();
-            nodes["n4"].ReverseNeighbors[0].IsReversed = true;
-            chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n4"], nodes["n4"].ReverseNeighbors[0]));
-            chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n2"], edges["f"]));
-            chain.Push(new Tuple<MatchNode, MatchEdge>(nodes["n1"], edges["e"]));
-            return chain;
-        }
         private List<string> ConstructHeader(MatchGraph graph)
         {
             List<string> header = new List<string>();
             // Construct the first part of the head which is defined as 
-            // |Node's Alias|Node's Adjacent list|Node's Alias|Node's Adjacent list|...
-            // |   "NODE1"  |   "NODE1_ADJ"      |  "NODE2"   |   "NODE2_ADJ"      |...
+            // |Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|...
+            // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"           |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"           |...
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 foreach (var node in subgraph.Nodes)
@@ -354,8 +347,8 @@ namespace GraphView
                 }
             }
             // Construct the second part of the head which is defined as 
-            // |Select element|Select element|Select element|...
-            // |  "ELEMENT1"  ||  "ELEMENT2" ||  "ELEMENT3" |...
+            // ...|Select element|Select element|Select element|...
+            // ...|  "ELEMENT1"  |  "ELEMENT2"  |  "ELEMENT3"  |...
             foreach (var element in SelectElements)
             {
                 if (element is WSelectScalarExpression)
@@ -365,36 +358,38 @@ namespace GraphView
                     header.Add(expr.MultiPartIdentifier.ToString());
                 }
             }
+            // Construct a slot for path 
+            // ...|   PATH  |...
+            // ...|xxx-->yyy|...
             header.Add("PATH");
             return header;
         }
         private GraphViewExecutionOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
-            RawRecord RecordZero = new RawRecord(header.Count);
 
             List<GraphViewExecutionOperator> ChildrenProcessor = new List<GraphViewExecutionOperator>();
             List<GraphViewExecutionOperator> RootProcessor = new List<GraphViewExecutionOperator>();
+            // Init function validality cheking list. 
+            // Whenever all the operands of a boolean check function appeared, attach the function to the operator.
             List<int> FunctionVaildalityCheck = new List<int>();
             foreach (var i in functions)
             {
                 FunctionVaildalityCheck.Add(0);
             }
             int StartOfResult = 0;
-            // Generate processor subgraph by subgraph 
+            // Generate operator for each subgraph.
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 // Use Topological Sorting to define the order of nodes it will travel.
                 var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
                 StartOfResult += subgraph.Nodes.Count * 3;
-                bool FirstNodeFlag = true;
-                int LastDest = -1;
                 HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
                 while (SortedNodes.Count != 0)
                 {
                     MatchNode TempNode = null;
                     var CurrentProcessingNode = SortedNodes.Pop();
-                    // If it is the first node of a sub graph, the node will be dealed by a FetchNodeOperator.
-                    // Otherwise it will be dealed by a TraversalOperator.
+                    // If a node is a source node and never appeared before, it will be consturcted to a fetchnode operator
+                    // Otherwise it will be consturcted to a TraversalOperator.
                     if (!ProcessedNode.Contains(CurrentProcessingNode.Item1))
                     {
                         int node = header.IndexOf(CurrentProcessingNode.Item1.NodeAlias);
@@ -409,45 +404,35 @@ namespace GraphView
                     }
                     if (CurrentProcessingNode.Item2 != null)
                     {
-                        ProcessedNode.Add(CurrentProcessingNode.Item2.SinkNode);
-                        List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
+                        TempNode = CurrentProcessingNode.Item2.SinkNode;
+                        ProcessedNode.Add(TempNode);
+
                         int src = header.IndexOf(CurrentProcessingNode.Item2.SourceNode.NodeAlias);
                         int dest = header.IndexOf(CurrentProcessingNode.Item2.SinkNode.NodeAlias);
-                        TempNode = CurrentProcessingNode.Item2.SinkNode;
-                        ReverseCheckList = new List<Tuple<int, string, bool>>();
+
+                        List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
                         if (WithPathClause != null)
                         {
+                            // if WithPathClause != null, internal operator should be consturcted for the traversal operator that deals with path.
                             Tuple<string, GraphViewExecutionOperator, int> InternalOperator = null;
                             if (
                                 (InternalOperator =
-                                    WithPathClause.PathOperators.Find(p => p.Item1 == CurrentProcessingNode.Item2.EdgeAlias)) !=
+                                    WithPathClause.PathOperators.Find(
+                                        p => p.Item1 == CurrentProcessingNode.Item2.EdgeAlias)) !=
                                 null)
-                                foreach (var neighbor in TempNode.ReverseNeighbors)
-                                    if (ProcessedNode.Contains(neighbor.SourceNode))
-                                        ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                                            neighbor.EdgeAlias + "_REV", true));
-                            foreach (var neighbor in TempNode.Neighbors)
-                                if (ProcessedNode.Contains(neighbor.SinkNode))
-                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                                        neighbor.EdgeAlias + "_REV", false));
+                                ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                                TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
-                                50, false, InternalOperator.Item2));
+                            TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
+                            50, false, InternalOperator.Item2));
                         }
                         else
                         {
-                            foreach (var neighbor in TempNode.ReverseNeighbors)
-                                if (ProcessedNode.Contains(neighbor.SinkNode))
-                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                                        neighbor.EdgeAlias + "_REV", true));
-                            foreach (var neighbor in TempNode.Neighbors)
-                                if (ProcessedNode.Contains(neighbor.SinkNode))
-                                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                                        neighbor.EdgeAlias + "_REV", false));
+                            ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
                                 TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, 50,
                                 50, CurrentProcessingNode.Item2.IsReversed));
                         }
+                        // Check if any boolean function should be attached to this operator.
                         if (functions != null && functions.Count != 0)
                             CheckFunctionValidate(ref header, ref functions, ref TempNode, ref FunctionVaildalityCheck, ref ChildrenProcessor);
                     }
@@ -506,12 +491,15 @@ namespace GraphView
             //string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
             string PredicatesOnNodes = "";
+
             foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
+                // Join with all the edges it need to use later.
                 if (node.ReverseNeighbors.Contains(edge))
                     FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
                 else
                     FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                // Add all the predicates on edges to the where clause.
                 if (edge != node.ReverseNeighbors.Concat(node.Neighbors).Last())
                     foreach (var predicate in edge.Predicates)
                     {
@@ -528,6 +516,7 @@ namespace GraphView
 
             FromClauseString = " FROM " + FromClauseString;
 
+            // Add all the predicates on nodes to the where clause.
             foreach (var predicate in node.Predicates)
             {
                 if (predicate != node.Predicates.Last())
@@ -544,7 +533,6 @@ namespace GraphView
             }
 
             // Select elements that related to current node will be attached here.
-
             List<string> ResultIndexToAppend = new List<string>();
             foreach (string ResultIndex in header.GetRange(pStartOfResultField, header.Count - pStartOfResultField))
             {
@@ -586,6 +574,8 @@ namespace GraphView
             node.AttachedQuerySegment = QuerySegment;
         }
 
+        // Check if any operand of the boolean functions appeared in the operator, increase the corresponding mark if so.
+        // Whenever all the operands of a boolean check function appeared, attach the function to the operator.
         private void CheckFunctionValidate(ref List<string> header, ref List<BooleanFunction> functions, ref MatchNode TempNode, ref List<int> FunctionVaildalityCheck, ref List<GraphViewExecutionOperator> ChildrenProcessor)
         {
             for (int i = 0; i < functions.Count; i++)
@@ -600,28 +590,32 @@ namespace GraphView
                         FunctionVaildalityCheck[i]++;
                     if (FunctionVaildalityCheck[i] == 2)
                     {
-                        if (ChildrenProcessor.Last() is TraversalOperator)
+                        if (ChildrenProcessor.Last()!= null && ChildrenProcessor.Last() is GraphViewTraversalBaseOperator)
                         {
-                            if ((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck == null)
-                                (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck = functions[i];
+                            if ((ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck == null)
+                                (ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck = functions[i];
                             else
-                                (ChildrenProcessor.Last() as TraversalOperator).BooleanCheck =
-                                    new BinaryFunction((ChildrenProcessor.Last() as TraversalOperator).BooleanCheck,
+                                (ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck =
+                                    new BinaryFunction((ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck,
                                         functions[i], BinaryBooleanFunction.BinaryType.and);
                         }
-                        if (ChildrenProcessor.Last() is FetchNodeOperator)
-                        {
-                            if ((ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck == null)
-                                (ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck = functions[i];
-                            else
-                                (ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck =
-                                    new BinaryFunction((ChildrenProcessor.Last() as FetchNodeOperator).BooleanCheck,
-                                        functions[i], BinaryBooleanFunction.BinaryType.and);
-                        }
-                        //FunctionVaildalityCheck[i] = 0;
                     }
                 }
             }
+        }
+
+        private List<Tuple<int, string, bool>> ConsturctReverseCheckList(MatchNode TempNode, ref HashSet<MatchNode> ProcessedNode, List<string> header)
+        {
+            List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
+            foreach (var neighbor in TempNode.ReverseNeighbors)
+                if (ProcessedNode.Contains(neighbor.SourceNode))
+                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                        neighbor.EdgeAlias + "_REV", true));
+            foreach (var neighbor in TempNode.Neighbors)
+                if (ProcessedNode.Contains(neighbor.SinkNode))
+                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                        neighbor.EdgeAlias + "_REV", false));
+            return ReverseCheckList;
         }
         // Cut the last character of a string.
         private string CutTheTail(string InRangeScript)
