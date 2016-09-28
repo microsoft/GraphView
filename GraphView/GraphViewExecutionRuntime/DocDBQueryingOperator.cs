@@ -66,7 +66,7 @@ namespace GraphView
             if (BooleanCheck == null) return true;
             else return BooleanCheck.eval(r);
         }
-        // Decode JObject into (id, adjacent list, reverse adjacent list, selected element
+        // Decode JObject into (id, adjacent list, reverse adjacent list, selected elements) quadruple
         internal static Tuple<string, string, string, List<string>> DecodeJObject(JObject Item, List<string> header, int StartOfResultField)
         {
             JToken NodeInfo = ((JObject)Item)["NodeInfo"];
@@ -84,14 +84,15 @@ namespace GraphView
                 EdgeID += "\"" + x["_sink"] + "\"" + ",";
             }
             // Generate the result list that need to be joined with the original one
-            // ... |     SELECTED ELEMENT 1 ("A_NAME")  |   SELECTED ELEMENT 2 ("A"_AGE") |   SELECTED ELEMENT  3 ("B_AGE")  |
-            //                  a.name                             a.age                    Not find when dealing with node A
+            // ... |     SELECTED ELEMENT 1 ("A_NAME")  |   SELECTED ELEMENT 2 ("A"_AGE") |    SELECTED ELEMENT  3 ("B_AGE")   |
+            //                  a.name                             a.age                    Not found when dealing with node A
             RawRecord ResultRecord = new RawRecord(header.Count);
             foreach (
         string ResultFieldName in
             header.GetRange(StartOfResultField, header.Count - StartOfResultField))
             {
                 string result = "";
+                // Alias with "." is illegal in documentDB, so all the "." in alias will be replaced by "_".
                 if (Item[ResultFieldName.Replace(".", "_")] != null)
                     result = (Item)[ResultFieldName.Replace(".", "_")].ToString();
                 ResultRecord.fieldValues[header.IndexOf(ResultFieldName)] = result;
@@ -457,11 +458,9 @@ namespace GraphView
         private int OutputBufferSize;
 
         internal BooleanFunction BooleanCheck;
-        private GraphViewConnection connection;
-        public CartesianProductOperator(GraphViewConnection pConnection, List<GraphViewExecutionOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
+        public CartesianProductOperator(List<GraphViewExecutionOperator> pProcessorOnSubGraph, List<string> pheader, int pOutputBufferSize)
         {
             this.Open();
-            connection = pConnection;
             OutputBufferSize = pOutputBufferSize;
             header = pheader;
             OperatorOnSubGraphs = pProcessorOnSubGraph;
@@ -532,13 +531,11 @@ namespace GraphView
     internal class UnionOperator : GraphViewExecutionOperator
     {
         internal List<GraphViewExecutionOperator> Sources;
-        internal GraphViewConnection connection;
         internal int FromWhichSource;
         internal RawRecord result;
-        public UnionOperator(GraphViewConnection pConnection, List<GraphViewExecutionOperator> pSources)
+        public UnionOperator(List<GraphViewExecutionOperator> pSources)
         {
             this.Open();
-            connection = pConnection;
             Sources = pSources;
             FromWhichSource = 0;
         }
@@ -569,14 +566,12 @@ namespace GraphView
     internal class CoalesceOperator : GraphViewExecutionOperator
     {
         internal List<GraphViewExecutionOperator> Sources;
-        internal GraphViewConnection connection;
         internal int FromWhichSource;
         internal RawRecord result;
         internal int CoalesceNumber;
-        public CoalesceOperator(GraphViewConnection pConnection, List<GraphViewExecutionOperator> pSources, int pCoalesceNumber)
+        public CoalesceOperator(List<GraphViewExecutionOperator> pSources, int pCoalesceNumber)
         {
             this.Open();
-            connection = pConnection;
             Sources = pSources;
             FromWhichSource = 0;
             CoalesceNumber = pCoalesceNumber;
@@ -610,7 +605,6 @@ namespace GraphView
     internal class OrderbyOperator : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator ChildOperator;
-        internal GraphViewConnection connection;
         internal List<RawRecord> results;
         internal Queue<RawRecord> ResultQueue;
         // By what key to order.
@@ -623,10 +617,9 @@ namespace GraphView
             Incr,
             NotSpecified
         }
-        public OrderbyOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildOperator, string pBywhat, List<string> pheader, Order pOrder = Order.NotSpecified)
+        public OrderbyOperator(GraphViewExecutionOperator pChildOperator, string pBywhat, List<string> pheader, Order pOrder = Order.NotSpecified)
         {
             this.Open();
-            connection = pConnection;
             header = pheader;
             ChildOperator = pChildOperator;
             bywhat = pBywhat;
@@ -663,27 +656,24 @@ namespace GraphView
     internal class OutputOperator : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator ChildOperator;
-        internal GraphViewConnection connection;
         // what element is selected and needed to be output.
         internal List<string> SelectedElement;
         // whether to output path of the traversal
         internal bool OutputPath;
 
-        public OutputOperator(GraphViewExecutionOperator pChildOperator, GraphViewConnection pConnection, List<string> pSelectedElement, List<string> pHeader)
+        public OutputOperator(GraphViewExecutionOperator pChildOperator, List<string> pSelectedElement, List<string> pHeader)
         {
             this.Open();
             ChildOperator = pChildOperator;
-            connection = pConnection;
             SelectedElement = pSelectedElement;
             header = pHeader;
         }
 
-        public OutputOperator(GraphViewExecutionOperator pChildOperator, GraphViewConnection pConnection,
+        public OutputOperator(GraphViewExecutionOperator pChildOperator, 
             bool pOutputPath, List<string> pHeader)
         {
             this.Open();
             ChildOperator = pChildOperator;
-            connection = pConnection;
             OutputPath = pOutputPath;
             header = pHeader;
             SelectedElement = new List<string>() { "PATH" };
@@ -789,7 +779,9 @@ namespace GraphView
         {
             get
             {
-                return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, FieldName);
+                if (DataSource != null)
+                    return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, FieldName);
+                else throw new IndexOutOfRangeException("No data source");
             }
         }
         public object this[int index]

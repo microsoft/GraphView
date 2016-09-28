@@ -449,7 +449,7 @@ namespace GraphView
             // A cartesian product will be made among all the result from the root processor in order to produce a complete result
             else
             {
-                root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
+                root = new CartesianProductOperator(RootProcessor, header, 100);
                 // If some boolean function cannot be attached in any single subgraph, it should either be attached to cartesian product operator.
                 // or it cannot be attached anywhere.
                 for (int i = 0; i < FunctionVaildalityCheck.Count; i++)
@@ -466,11 +466,11 @@ namespace GraphView
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
             {
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Ascending)
-                    root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Incr);
+                    root = new OrderbyOperator(root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Incr);
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Descending)
-                    root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Decr);
+                    root = new OrderbyOperator(root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Decr);
                 if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.NotSpecified)
-                    root = new OrderbyOperator(pConnection, root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.NotSpecified);
+                    root = new OrderbyOperator(root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.NotSpecified);
             }
             List<string> SelectedElement = new List<string>();
             foreach (var x in SelectElements)
@@ -479,9 +479,9 @@ namespace GraphView
                     SelectedElement.Add(x.ToString());
             }
             if (!OutputPath)
-                root = new OutputOperator(root, pConnection, SelectedElement, root.header);
+                root = new OutputOperator(root,SelectedElement, root.header);
             else
-                root = new OutputOperator(root, pConnection, true, header);
+                root = new OutputOperator(root, true, header);
             return root;
         }
 
@@ -721,7 +721,7 @@ namespace GraphView
             {
                 Source.Add(x.Generate(dbConnection));
             }
-            return new UnionOperator(dbConnection, Source);
+            return new UnionOperator(Source);
         }
     }
 
@@ -734,8 +734,8 @@ namespace GraphView
             {
                 Source.Add(x.Generate(dbConnection));
             }
-            var op = new CoalesceOperator(dbConnection, Source, CoalesceNumber);
-            return new OutputOperator(op, dbConnection, op.header, null);
+            var op = new CoalesceOperator(Source, CoalesceNumber);
+            return new OutputOperator(op, op.header, null);
         }
     }
 
