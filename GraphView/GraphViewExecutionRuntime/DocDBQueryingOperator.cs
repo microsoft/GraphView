@@ -61,7 +61,7 @@ namespace GraphView
             return NewRecord;
         }
         // Check whether the giving record r satisfy the giving boolean check function. 
-        internal bool RecordFilter(BooleanFunction BooleanCheck, RawRecord r)
+        internal static bool RecordFilter(BooleanFunction BooleanCheck, RawRecord r)
         {
             if (BooleanCheck == null) return true;
             else return BooleanCheck.eval(r);

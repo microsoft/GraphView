@@ -259,7 +259,7 @@ namespace GraphView
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
             List<BooleanFunction> BooleanList = new List<BooleanFunction>();
 
-            // If some predictaes are failed to be assign to one node, turn them into boolean functions
+            // If some predictaes are failed to be assigned to one node, turn them into boolean functions
             foreach (var predicate in AttachPredicateVistor.FailedToAssign)
             {
                 // Analyse what kind of predicates they are, and generate corresponding boolean functions.
@@ -302,7 +302,7 @@ namespace GraphView
             // Calculate how much nodes the whole match graph has.
             int StartOfResult = 0;
             foreach (var subgraph in graph.ConnectedSubGraphs)
-                StartOfResult += subgraph.Nodes.Count() * 2;
+                StartOfResult += subgraph.Nodes.Count() * 3;
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 // Use Topological Sort to give a sorted node list.
@@ -310,7 +310,7 @@ namespace GraphView
                 var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
                 // Marking down which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
-                // Build query segment or both source node and dest node, 
+                // Build query segment on both source node and dest node, 
                 while (SortedNodeList.Count != 0)
                 {
                     MatchNode CurrentProcessingNode = null;
@@ -450,6 +450,8 @@ namespace GraphView
             else
             {
                 root = new CartesianProductOperator(pConnection, RootProcessor, header, 100);
+                // If some boolean function cannot be attached in any single subgraph, it should either be attached to cartesian product operator.
+                // or it cannot be attached anywhere.
                 for (int i = 0; i < FunctionVaildalityCheck.Count; i++)
                 {
                     if (FunctionVaildalityCheck[i] < 2)

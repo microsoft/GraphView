@@ -260,7 +260,7 @@ namespace GraphViewUnitTest
             var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
             var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
 
-            var root = g.V().has("id","26419").repeat(GraphTraversal._underscore().Out());
+            var root = g.V().has("id","26419").repeat(GraphTraversal._underscore().Out()).path();
             foreach (var x in root)
             {
                 var y = x[0];
