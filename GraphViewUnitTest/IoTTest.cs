@@ -248,17 +248,17 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IoTRoot");
-            ResetCollection("IoTRoot");
+            //ResetCollection("IoTRoot");
             GraphTraversal g = new GraphTraversal(ref connection);
-            var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
-            var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
-            var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
-            var E102_104 = g.V().has("id", "102").addE("type", "shown_as").to(g.V().has("id", "104"));
-            var E26419_102 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "102"));
-            var A12807 = g.V().addV("id", "12807", "label", "TelemetryDataModel", "name", "DataModel-90721bf2-59a2-11e6-8cd0-3717b83c0677");
-            var A12809 = g.V().addV("id", "12809", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
-            var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
-            var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
+            //var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
+            //var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
+            //var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            //var E102_104 = g.V().has("id", "102").addE("type", "shown_as").to(g.V().has("id", "104"));
+            //var E26419_102 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "102"));
+            //var A12807 = g.V().addV("id", "12807", "label", "TelemetryDataModel", "name", "DataModel-90721bf2-59a2-11e6-8cd0-3717b83c0677");
+            //var A12809 = g.V().addV("id", "12809", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            //var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
+            //var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
 
             var root = g.V().has("id","26419").repeat(GraphTraversal._underscore().Out()).path();
             foreach (var x in root)
@@ -275,17 +275,17 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IoTRoot");
-            ResetCollection("IoTRoot");
+            //ResetCollection("IoTRoot");
             GraphTraversal g = new GraphTraversal(ref connection);
-            var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
-            var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
-            var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
-            var E102_104 = g.V().has("id", "102").addE("type", "shown_as").to(g.V().has("id", "104"));
-            var E26419_102 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "102"));
-            var A12807 = g.V().addV("id", "12807", "label", "TelemetryDataModel", "name", "DataModel-90721bf2-59a2-11e6-8cd0-3717b83c0677");
-            var A12809 = g.V().addV("id", "12809", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
-            var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
-            var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
+            //var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
+            //var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
+            //var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            //var E102_104 = g.V().has("id", "102").addE("type", "shown_as").to(g.V().has("id", "104"));
+            //var E26419_102 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "102"));
+            //var A12807 = g.V().addV("id", "12807", "label", "TelemetryDataModel", "name", "DataModel-90721bf2-59a2-11e6-8cd0-3717b83c0677");
+            //var A12809 = g.V().addV("id", "12809", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
+            //var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
+            //var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
 
             var root = g.V().has("id", "26419").repeat(GraphTraversal._underscore().Out()).path();
             foreach (var x in root)

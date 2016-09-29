@@ -269,7 +269,7 @@ namespace GraphView
                     string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
 
                     if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
-                    if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
+                    if (header.IndexOf(SecondExpr) == -1) header.Add(SecondExpr);
                     int lhs = header.IndexOf(FirstExpr);
                     int rhs = header.IndexOf(SecondExpr);
                     FieldComparisonFunction NewCBF = null;
@@ -371,6 +371,7 @@ namespace GraphView
             const int INPUT_BUFFER_SIZE = 50;
             List<GraphViewExecutionOperator> ChildrenProcessor = new List<GraphViewExecutionOperator>();
             List<GraphViewExecutionOperator> RootProcessor = new List<GraphViewExecutionOperator>();
+            List<string> HeaderForOneOperator = new List<string>();
             // Init function validality cheking list. 
             // Whenever all the operands of a boolean check function appeared, attach the function to the operator.
             List<int> FunctionVaildalityCheck = new List<int>();
@@ -396,21 +397,41 @@ namespace GraphView
                     {
                         int node = header.IndexOf(CurrentProcessingNode.Item1.NodeAlias);
                         TempNode = CurrentProcessingNode.Item1;
+                        HeaderForOneOperator = new List<string>();
+                        for (int i = 0; i <= ProcessedNode.Count; i++)
+                        {
+                            HeaderForOneOperator.Add(header[i * 3]);
+                            HeaderForOneOperator.Add(header[i * 3 + 1]);
+                            HeaderForOneOperator.Add(header[i * 3 + 2]);
+                        }
+                        for (int i = StartOfResult; i < header.Count; i++)
+                            HeaderForOneOperator.Add(header[i]);
                         if (ChildrenProcessor.Count == 0)
-                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50));
+                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, ProcessedNode.Count, 50));
                         else
-                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, header, StartOfResult, 50, ChildrenProcessor.Last()));
-                        ProcessedNode.Add(CurrentProcessingNode.Item1);
+                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, ProcessedNode.Count, 50, ChildrenProcessor.Last()));
                         if (functions != null && functions.Count != 0)
                             CheckFunctionValidate(ref header, ref functions, ref TempNode, ref FunctionVaildalityCheck, ref ChildrenProcessor);
+                        ProcessedNode.Add(CurrentProcessingNode.Item1);
+
                     }
                     if (CurrentProcessingNode.Item2 != null)
                     {
                         TempNode = CurrentProcessingNode.Item2.SinkNode;
-                        ProcessedNode.Add(TempNode);
+
 
                         int src = header.IndexOf(CurrentProcessingNode.Item2.SourceNode.NodeAlias);
                         int dest = header.IndexOf(CurrentProcessingNode.Item2.SinkNode.NodeAlias);
+
+                        HeaderForOneOperator = new List<string>();
+                        for (int i = 0; i <= ProcessedNode.Count; i++)
+                        {
+                            HeaderForOneOperator.Add(header[i * 3]);
+                            HeaderForOneOperator.Add(header[i * 3 + 1]);
+                            HeaderForOneOperator.Add(header[i * 3 + 2]);
+                        }
+                        for (int i = StartOfResult; i < header.Count; i++)
+                            HeaderForOneOperator.Add(header[i]);
 
                         List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
                         if (WithPathClause != null)
@@ -424,16 +445,17 @@ namespace GraphView
                                 null)
                                 ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                            TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, INPUT_BUFFER_SIZE,
+                            TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
                             OUTPUT_BUFFER_SIZE, false, InternalOperator.Item2));
                         }
                         else
                         {
                             ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                                TempNode.AttachedQuerySegment, src, dest, header, ReverseCheckList, StartOfResult, INPUT_BUFFER_SIZE,
+                                TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
                                 OUTPUT_BUFFER_SIZE, CurrentProcessingNode.Item2.IsReversed));
                         }
+                        ProcessedNode.Add(TempNode);
                         // Check if any boolean function should be attached to this operator.
                         if (functions != null && functions.Count != 0)
                             CheckFunctionValidate(ref header, ref functions, ref TempNode, ref FunctionVaildalityCheck, ref ChildrenProcessor);
@@ -612,7 +634,7 @@ namespace GraphView
         {
             List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
             foreach (var neighbor in TempNode.ReverseNeighbors)
-                if (ProcessedNode.Contains(neighbor.SourceNode))
+                if (ProcessedNode.Contains(neighbor.SinkNode))
                     ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
                         neighbor.EdgeAlias + "_REV", true));
             foreach (var neighbor in TempNode.Neighbors)
@@ -708,7 +730,11 @@ namespace GraphView
         internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             foreach (var path in Paths)
-                PathOperators.Add(new Tuple<string, GraphViewExecutionOperator, int>(path.Item1, path.Item2.Generate(dbConnection), path.Item3));
+            {
+                path.Item2.SelectElements = new List<WSelectElement>();
+                PathOperators.Add(new Tuple<string, GraphViewExecutionOperator, int>(path.Item1,
+                    path.Item2.Generate(dbConnection), path.Item3));
+            }
             if (PathOperators.Count != 0) return PathOperators.First().Item2;
             else return null;
         }

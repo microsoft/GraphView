@@ -144,8 +144,12 @@ namespace GraphView
         {
             state = false;
         }
+
         public abstract RawRecord Next();
 
         public List<string> header;
+
+        // Number of vertices processed so far
+        internal int NumberOfProcessedVertices;
     }
 }
