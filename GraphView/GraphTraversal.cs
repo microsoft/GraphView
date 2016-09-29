@@ -13,13 +13,15 @@ namespace GraphView
 {
     public class GraphTraversal : IEnumerable<Record>
     {
+        // The direction of the edge that is going to be added.
         public enum direction
         {
             In,
             Out,
             Undefine
         }
-
+        // Each time the iterator move forward, 
+        //it will call the Next() function of the current operator for one result record
         public class GraphTraversalIterator :IEnumerator<Record>
         {
             private GraphViewExecutionOperator CurrentOperator;
@@ -33,7 +35,6 @@ namespace GraphView
                 CurrentOperator = pCurrentOperator;
                 elements = pElements;
             }
-            private Func<GraphViewGremlinSematicAnalyser.Context> Modifier;
             internal Record CurrentRecord;
             internal List<string> elements;
             public bool MoveNext()
@@ -78,16 +79,26 @@ namespace GraphView
         internal GraphViewExecutionOperator CurrentOperator;
         internal GraphTraversalIterator it;
         internal GraphViewConnection connection;
+        // A list of token position, used in error report.
         internal List<int> TokenIndex;
+        // String that describes the whole graph traversal
+        // it normally looks like "g.V.has()...."
         internal string AppendExecutableString;
+        // If needed to add edge with two sources, this script describes another source.
         internal string AddEdgeOtherSource;
-        internal string RepeatSubstring;
-        internal bool HoldMark;
-        internal List<string> elements;
+        // the direction of the edge.
         internal direction dir;
+        // If there's a repeat function, it will describe the sub repeat script inside the Repeat("...")
+        internal string RepeatSubstring;
+        // A mark that tells the traversal should it holds the result from last traversal.
+        internal bool HoldMark;
+        // what elements are selected in the graph traversal  
+        internal List<string> elements;
+        // If union is used, the script will become a list of strings.
         internal List<string> UnionString;
+        // A mark that tells whether the script need to be executed now or later(only for AddV(), AddE() and Drop())
         internal bool LazyMark;
-
+        // A static graph traversal, used to pass information between normal graph traversal and those begin with "__underscore"
         internal static GraphTraversal held;
 
         public List<Record> ToList()
@@ -104,6 +115,7 @@ namespace GraphView
             {
                 if (CurrentOperator == null)
                 {
+                    // Dealing with union function
                     if (UnionString != null)
                     {
                         List<GraphViewExecutionOperator> OpList = new List<GraphViewExecutionOperator>();
@@ -115,6 +127,8 @@ namespace GraphView
                             return it;
                         }
                     }
+                    // Dealing with addE..to../addE..from..
+                    // parse two script seprately, and assemble them into one WInsertEdgeFromTwoSourceSpecification
                     if (AddEdgeOtherSource != null)
                     {
                         GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
@@ -125,6 +139,8 @@ namespace GraphView
                         it = new GraphTraversalIterator(X.Generate(connection));
                         return it;
                     }
+                    // Dealing with repeat..until..
+                    // parse the main script and sub script seprately, and add proper describe for path in the main script.
                     if (RepeatSubstring != null)
                     {
                         GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
