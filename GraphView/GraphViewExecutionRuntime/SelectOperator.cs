@@ -338,9 +338,9 @@ namespace GraphView
             int StartNodeIndex = 0;
 
             TraversalOperator root = InternalOperator as TraversalOperator;
-            while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is EdgeRefOperator))
+            while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
                 root = root.ChildOperator as TraversalOperator;
-            EdgeRefOperator source = new EdgeRefOperator(InputRecord);
+            ConstantSourceOperator source = new ConstantSourceOperator(InputRecord);
             root.ChildOperator = source;
 
             TempQueue.Enqueue(new Tuple<RawRecord, string>(InputRecord, ""));
@@ -362,7 +362,7 @@ namespace GraphView
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3 + 1]);
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3 + 2]);
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[start.Item1.fieldValues.Count - 1]);
-                    source.EdgeRef = SourceRecord;
+                    source.ConstantSource = SourceRecord;
                     (InternalOperator as TraversalOperator).ResetState();
                     StartNodeIndex = InternalOperator.NumberOfProcessedVertices;
                     while (InternalOperator.State())
@@ -749,26 +749,26 @@ namespace GraphView
         }
     }
 
-    internal class EdgeRefOperator : GraphViewExecutionOperator
+    internal class ConstantSourceOperator : GraphViewExecutionOperator
     {
-        internal RawRecord EdgeRef;
+        internal RawRecord ConstantSource;
 
-        public EdgeRefOperator(RawRecord pConstant)
+        public ConstantSourceOperator(RawRecord pConstant)
         {
-            EdgeRef = pConstant;
+            ConstantSource = pConstant;
             this.Open();
         }
 
         public void SetRef(RawRecord pConstant)
         {
-            EdgeRef = pConstant;
+            ConstantSource = pConstant;
             this.Open();
         }
 
         override public RawRecord Next()
         {
             this.Close();
-            return EdgeRef;
+            return ConstantSource;
         }
 
     }
