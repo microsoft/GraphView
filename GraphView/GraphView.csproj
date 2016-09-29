@@ -83,13 +83,13 @@
     <Compile Include="GraphTraversal.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="ObjectExtensions.cs" />
-    <Compile Include="GraphViewExecutionRuntime\DocDBQueryingOperator.cs" />
+    <Compile Include="GraphViewExecutionRuntime\SelectOperator.cs" />
     <Compile Include="OperatorGenerator.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
-    <Compile Include="GraphViewExecutionRuntime\DocDBModificationOperartor.cs" />
+    <Compile Include="GraphViewExecutionRuntime\ModificationOperartor.cs" />
     <Compile Include="TranslateMatchClauseVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
