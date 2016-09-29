@@ -377,15 +377,10 @@ namespace GraphView
             return SaveQueue;
         }
 
-        private void ResetState()
+        public override void ResetState()
         {
-            GraphViewExecutionOperator RootOperator = this;
-            while (RootOperator is TraversalOperator)
-                    {
-                RootOperator.Open();
-              RootOperator = (RootOperator as TraversalOperator).ChildOperator;
-              }
-              RootOperator.Open();
+            this.Open();
+            ChildOperator.ResetState();
         }
     }
 
@@ -453,6 +448,10 @@ namespace GraphView
             if (OutputBuffer.Count <= 1 && (ChildOperator ==null || !ChildOperator.State())) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
+        }
+        public override void ResetState()
+        {
+            this.Open();
         }
     }
     /// <summary>

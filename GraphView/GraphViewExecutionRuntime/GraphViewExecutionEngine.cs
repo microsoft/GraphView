@@ -144,7 +144,10 @@ namespace GraphView
         {
             state = false;
         }
-
+        public  void ResetState()
+        {
+            this.Open();
+        }
         public abstract RawRecord Next();
 
         public List<string> header;
