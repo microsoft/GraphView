@@ -13,37 +13,51 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphView
 {
     /// <summary>
-    /// GraphViewTraversalBaseOperator is the base for traversal operator and fetchnode operator.
-    /// providing common auxiliary functions and common properties. 
+    /// Base class of the traversal operator and the fetch-node operator.
+    /// providing common properties and utility functions. 
     /// </summary>
-    internal abstract class GraphViewTraversalBaseOperator : GraphViewExecutionOperator
+    internal abstract class TraversalBaseOperator : GraphViewExecutionOperator
     {
-        // Attached boolean function, for cross document join, any record need to pass the check before being passed to next operator.
-        // A boolean check function is normally like "take field X, compare with field Y in a record."
-        internal BooleanFunction BooleanCheck;
-        // GraphView connection.
+        // Predicates of cross-document joins, excluding joins between edge references and vertex ID's. 
+        internal BooleanFunction crossDocumentJoinPredicates;
+
         internal GraphViewConnection connection;
-        // Addition info to interpret the output record of traversal operator
-        // Indicate where the internal information ends and where the field that contains selected information start.
-        //                                                                                                                     ↓ start of result field     
-        // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"      |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"      |     SELECTED ELEMENT 1   |
-        internal int StartOfResultField;
+
+        // Number vertices processed so far
+        internal int startIndexOfProjectedProperties;
+
         // Both Traversal and FetchNode operator need to specify a dest node index, where to put the traversal result.
         internal int dest;
 
-        // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"      |
-        // For giving node index x, Record[x + 1] is its adjacent list, Record[x + 2] is its reverse adjacent list.
+        // For the ith node processed, Record[3*i + 1] is its adjacent list, Record[3*i + 2] is its reverse adjacent list.
         // The last element of it is the path (Record[count - 1]).
         internal const int ADJ_OFFSET = 1;
         internal const int REV_ADJ_OFFSET = 2;
+
         internal const int PATH_OFFSET = -1;
 
+        /// <summary>
+        /// Removes the last k symbols from the end of a string
+        /// </summary>
+        /// <param name="script">The string to be trimmed</param>
+        /// <param name="len">Number of symbols to be removed</param>
+        /// <returns>The trimmed string</returns>
         internal static string CutTheTail(string script, int len = 1)
         {
             if (script.Length == 0) return "";
             return script.Substring(0, script.Length - len);
         }
-        internal static RawRecord JoinTwoRecord(int node, Tuple<string, string, string, List<string>> ItemInfo, RawRecord record, List<string> header, bool addpath)
+
+        /// <summary>
+        /// Constructs a new record produced by this operator
+        /// </summary>
+        /// <param name="node"></param>
+        /// <param name="ItemInfo">Info of the node newly processed by this operator</param>
+        /// <param name="record">The input record of the operator</param>
+        /// <param name="header"></param>
+        /// <param name="addpath">Whether to produce a path string for all the nodes processed so far</param>
+        /// <returns>The record to be returned</returns>
+        internal static RawRecord ConstructRawRecord(int node, Tuple<string, string, string, List<string>> ItemInfo, RawRecord record, List<string> header, bool addpath)
         {
             RawRecord NewRecord = new RawRecord(record);
             // put the nodes into new record.
@@ -112,7 +126,7 @@ namespace GraphView
     /// TraversalOperator.Next() returns one result of what its specifier specified.
     /// By connecting TraversalProcessor together it returns the final result.
     /// </summary>
-    internal class TraversalOperator : GraphViewTraversalBaseOperator
+    internal class TraversalOperator : TraversalBaseOperator
     {
         // Buffer on both input and output sides.
         private Queue<RawRecord> InputBuffer;
@@ -155,8 +169,8 @@ namespace GraphView
             dest = pDest;
             CheckList = pCheckList;
             header = pheader;
-            StartOfResultField = pStartOfResultField;
-            BooleanCheck = pBooleanCheck;
+            startIndexOfProjectedProperties = pStartOfResultField;
+            crossDocumentJoinPredicates = pBooleanCheck;
             InternalOperator = pInternalOperator;
             IsReverse = pReverse;
             if (InternalOperator != null) InternalOperator = (InternalOperator as OutputOperator).ChildOperator;
@@ -215,7 +229,7 @@ namespace GraphView
                     foreach (var item in Node)
                     {
                         // Decode some information that describe the found node.
-                        Tuple<string, string, string,List<string>> ItemInfo = DecodeJObject((JObject) item,header, StartOfResultField);
+                        Tuple<string, string, string,List<string>> ItemInfo = DecodeJObject((JObject) item,header, startIndexOfProjectedProperties);
                         string ID = ItemInfo.Item1;
                         // Join the old record with the new one if checked valid.
                         foreach (var record in InputBuffer)
@@ -265,9 +279,9 @@ namespace GraphView
                             if (ValidFlag)
                             {
                                 // If aligned and reverse checked vailied, join the old record with the new one.
-                                RawRecord NewRecord = InternalOperator == null? JoinTwoRecord(dest, ItemInfo, record, header,true): JoinTwoRecord(dest, ItemInfo, record, header, false);
+                                RawRecord NewRecord = InternalOperator == null? ConstructRawRecord(dest, ItemInfo, record, header,true): ConstructRawRecord(dest, ItemInfo, record, header, false);
                                 // Deduplication.
-                                if (RecordFilter(BooleanCheck,NewRecord))
+                                if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
                                     if (!UniqueRecord.Contains(NewRecord.RetriveData(dest) + NewRecord.RetriveData(src)))
                                     {
                                         OutputBuffer.Enqueue(NewRecord);
@@ -344,11 +358,11 @@ namespace GraphView
         private RawRecord ConvertExternalRecordToInternalRecord(RawRecord ExternalRecord)
         {
             RawRecord InternalRecord = new RawRecord(InternalOperator.header.Count);
-            if (ChildOperator is GraphViewTraversalBaseOperator)
+            if (ChildOperator is TraversalBaseOperator)
             {
-                InternalRecord.fieldValues[InternalLoopStartNode] = ExternalRecord.fieldValues[(ChildOperator as GraphViewTraversalBaseOperator).dest];
-                InternalRecord.fieldValues[InternalLoopStartNode + ADJ_OFFSET] = ExternalRecord.fieldValues[(ChildOperator as GraphViewTraversalBaseOperator).dest + ADJ_OFFSET];
-                InternalRecord.fieldValues[InternalLoopStartNode + REV_ADJ_OFFSET] = ExternalRecord.fieldValues[(ChildOperator as GraphViewTraversalBaseOperator).dest + REV_ADJ_OFFSET];
+                InternalRecord.fieldValues[InternalLoopStartNode] = ExternalRecord.fieldValues[(ChildOperator as TraversalBaseOperator).dest];
+                InternalRecord.fieldValues[InternalLoopStartNode + ADJ_OFFSET] = ExternalRecord.fieldValues[(ChildOperator as TraversalBaseOperator).dest + ADJ_OFFSET];
+                InternalRecord.fieldValues[InternalLoopStartNode + REV_ADJ_OFFSET] = ExternalRecord.fieldValues[(ChildOperator as TraversalBaseOperator).dest + REV_ADJ_OFFSET];
                 InternalRecord.fieldValues[InternalRecord.fieldValues.Count + PATH_OFFSET] = ExternalRecord.fieldValues[ExternalRecord.fieldValues.Count + PATH_OFFSET];
             }
             return InternalRecord;
@@ -378,7 +392,7 @@ namespace GraphView
     /// FetchNodeOperator.Next() returns one result of what its specifier specified.
     /// It often used as the input of a traversal operator
     /// </summary>
-    internal class FetchNodeOperator : GraphViewTraversalBaseOperator
+    internal class FetchNodeOperator : TraversalBaseOperator
     {
         private Queue<RawRecord> OutputBuffer;
 
@@ -399,7 +413,7 @@ namespace GraphView
             docDbScript = pScript;
             dest = pnode;
             header = pheader;
-            StartOfResultField = pStartOfResultField;
+            startIndexOfProjectedProperties = pStartOfResultField;
             ChildOperator = pChildOperator;
         }
         override public RawRecord Next()
@@ -424,9 +438,9 @@ namespace GraphView
                 // Decode the result retrived from server and generate new record
                 foreach (var item in Node)
                 {
-                    Tuple<string, string, string, List<string>> ItemInfo = DecodeJObject((JObject) item,header, StartOfResultField);
-                    RawRecord NewRecord = JoinTwoRecord(dest,ItemInfo, OldRecord, header,true);
-                        if (RecordFilter(BooleanCheck,NewRecord))
+                    Tuple<string, string, string, List<string>> ItemInfo = DecodeJObject((JObject) item,header, startIndexOfProjectedProperties);
+                    RawRecord NewRecord = ConstructRawRecord(dest,ItemInfo, OldRecord, header,true);
+                        if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
                         OutputBuffer.Enqueue(NewRecord);
                 }
             }
@@ -526,12 +540,12 @@ namespace GraphView
     /// <summary>
     /// UnionOperator is used for "union" keyword in Gremlin, that requires to union the output of several pipeline 
     /// </summary>
-    internal class UnionOperator : GraphViewExecutionOperator
+    internal class ConcatenateOperator : GraphViewExecutionOperator
     {
         internal List<GraphViewExecutionOperator> Sources;
         internal int FromWhichSource;
         internal RawRecord result;
-        public UnionOperator(List<GraphViewExecutionOperator> pSources)
+        public ConcatenateOperator(List<GraphViewExecutionOperator> pSources)
         {
             this.Open();
             Sources = pSources;

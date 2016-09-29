@@ -20,6 +20,13 @@ namespace GraphView
     /// A data record is a multi-field blob. Each field is currently represented as a string.
     /// The interpretation of a record, i.e., the names of the fields/columns of the record, 
     /// is specified in the data operator producing them.  
+    /// 
+    /// The fields of a record produced by an execution operator are in two parts: 
+    /// the first part contains k triples, each representing a node processed so far. 
+    /// A triple describes: 1) the node ID, 2) the node's adjacency list, and 3) the node's reverse adjacency list.
+    /// The second part is a list of node/edge properties of the processed nodes, projected by the SELECT clause. 
+    /// 
+    /// | node1 | node1_adjacency_list | node1_rev_adjacency_list |...| nodeK | nodeK_adjacency_list | nodeK_rev_adjacency_list | property1 | property2 |......
     /// </summary>
     internal class RawRecord
     {

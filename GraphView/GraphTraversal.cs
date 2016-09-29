@@ -123,7 +123,7 @@ namespace GraphView
                         {
                             GraphViewGremlinParser Parser = new GraphViewGremlinParser();
                             OpList.Add(Parser.Parse(CutTail(RepeatSubstring)).Generate(connection));
-                            it = new GraphTraversalIterator(new UnionOperator(OpList));
+                            it = new GraphTraversalIterator(new ConcatenateOperator(OpList));
                             return it;
                         }
                     }

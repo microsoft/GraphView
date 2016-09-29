@@ -594,13 +594,13 @@ namespace GraphView
                         FunctionVaildalityCheck[i]++;
                     if (FunctionVaildalityCheck[i] == 2)
                     {
-                        if (ChildrenProcessor.Last()!= null && ChildrenProcessor.Last() is GraphViewTraversalBaseOperator)
+                        if (ChildrenProcessor.Last()!= null && ChildrenProcessor.Last() is TraversalBaseOperator)
                         {
-                            if ((ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck == null)
-                                (ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck = functions[i];
+                            if ((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates == null)
+                                (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates = functions[i];
                             else
-                                (ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck =
-                                    new BinaryFunction((ChildrenProcessor.Last() as GraphViewTraversalBaseOperator).BooleanCheck,
+                                (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates =
+                                    new BinaryFunction((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates,
                                         functions[i], BinaryBooleanFunction.BinaryType.and);
                         }
                     }
@@ -723,7 +723,7 @@ namespace GraphView
             {
                 Source.Add(x.Generate(dbConnection));
             }
-            return new UnionOperator(Source);
+            return new ConcatenateOperator(Source);
         }
     }
 
