@@ -220,14 +220,14 @@ namespace GraphView
                 {
                     foreach (RawRecord record in InputBuffer)
                     {
-                        var InputRecord = new RawRecord(0);
-                        // Extract tuple of start node from records
-                        InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3]);
-                        InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 1]);
-                        InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
-                        InputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
+                        var inputRecord = new RawRecord(0);
+                        // Extracts the triple of the starting node from the input record 
+                        inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3]);
+                        inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 1]);
+                        inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
+                        inputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
                         // put it into path function
-                        var PathResult = PathFunction(InputRecord);
+                        var PathResult = PathFunction(inputRecord);
                         // sink and corresponding path.
                         List<Tuple<string,string>> adj = new List<Tuple<string, string>>();
                         string path = null;
@@ -343,57 +343,79 @@ namespace GraphView
             return null;
         }
 
-        private Queue<Tuple<RawRecord, string>> PathFunction(RawRecord InputRecord)
+        /// <summary>
+        /// Given a vertex (triple) record, the function computes all paths starting from it. 
+        /// The step of a path is defined by a SELECT subquery, describing a single edge
+        /// or multiple edges. 
+        /// </summary>
+        /// <param name="sourceRecord">The input vertex record</param>
+        /// <returns>A list of path-sink pairs</returns>
+        private Queue<Tuple<RawRecord, string>> PathFunction(RawRecord sourceRecord)
         {
-            Queue<Tuple<RawRecord, string>> SaveQueue = new Queue<Tuple<RawRecord, string>>();
-            Queue<Tuple<RawRecord, string>> WorkQueue = new Queue<Tuple<RawRecord, string>>();
-            Queue<Tuple<RawRecord, string>> TempQueue = new Queue<Tuple<RawRecord, string>>();
+            // A list of paths discovered
+            Queue<Tuple<RawRecord, string>> allPaths = new Queue<Tuple<RawRecord, string>>();
+            // A list of paths discovered in last iteration
+            Queue<Tuple<RawRecord, string>> mostRecentlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
+            // A list of paths newly discovered in current iteration
+            Queue<Tuple<RawRecord, string>> newlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
 
-            int StartNodeIndex = 0;
+            int startNodeIndex = 0;
 
             // Replace the root operator with constant source operator.
             TraversalOperator root = InternalOperator as TraversalOperator;
             while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
                 root = root.ChildOperator as TraversalOperator;
-            ConstantSourceOperator source = new ConstantSourceOperator(InputRecord);
+            ConstantSourceOperator source = new ConstantSourceOperator(sourceRecord);
             root.ChildOperator = source;
 
-            TempQueue.Enqueue(new Tuple<RawRecord, string>(InputRecord, ""));
+            newlyDiscoveredPaths.Enqueue(new Tuple<RawRecord, string>(sourceRecord, ""));
 
-            // Do BFS to find all the possible path.
-            while (TempQueue.Count != 0)
+            while (mostRecentlyDiscoveredPaths.Count > 0)
             {
-                SaveQueue.Clear();
-                foreach (var x in TempQueue)
+                Tuple<RawRecord, string> start = mostRecentlyDiscoveredPaths.Dequeue();
+                int lastVertexIndex = start.Item1.fieldValues.Count - 3;
+
+                var srecord = new RawRecord(0);
+
+                // Put the start node in the Kth queue back to the constant source 
+                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex]);
+                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex + 1]);
+                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex + 2]);
+                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex + 3]);
+                source.ConstantSource = srecord;
+                // reset state of internal operator
+                (InternalOperator as TraversalOperator).ResetState();
+                startNodeIndex = InternalOperator.NumberOfProcessedVertices;
+                // Put all the results back into (K+1)th queue.
+                while (InternalOperator.State())
                 {
-                    WorkQueue.Enqueue(x);
-                    SaveQueue.Enqueue(x);
-                }
-                TempQueue.Clear();
-                while (WorkQueue.Count != 0)
-                {
-                    var start = WorkQueue.Dequeue();
-                    var SourceRecord = new RawRecord(0);
-                    // Put the start node in the Kth queue back to the constant source 
-                    SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3]);
-                    SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3 + 1]);
-                    SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3 + 2]);
-                    SourceRecord.fieldValues.Add(start.Item1.fieldValues[start.Item1.fieldValues.Count - 1]);
-                    source.ConstantSource = SourceRecord;
-                    // reset state of internal operator
-                    (InternalOperator as TraversalOperator).ResetState();
-                    StartNodeIndex = InternalOperator.NumberOfProcessedVertices;
-                    // Put all the results back into (K+1)th queue.
-                    while (InternalOperator.State())
+                    var EndRecord = InternalOperator.Next();
+                    var sink = EndRecord.fieldValues[startNodeIndex * 3 + 1];
+                    if (sink != "")
                     {
-                        var EndRecord = InternalOperator.Next();
-                        var sink = EndRecord.fieldValues[StartNodeIndex * 3 + 1];
-                        if (sink != "")
-                        TempQueue.Enqueue(new Tuple<RawRecord, string>(EndRecord, sink));
+                        Tuple<RawRecord, string> newPath = new Tuple<RawRecord,string>(EndRecord, sink);
+                        mostRecentlyDiscoveredPaths.Enqueue(newPath);
+                        allPaths.Enqueue(newPath);
                     }
                 }
             }
-            return SaveQueue;
+
+            // BFS to find all paths.
+            while (newlyDiscoveredPaths.Count != 0)
+            {
+                foreach (var x in newlyDiscoveredPaths)
+                {
+                    mostRecentlyDiscoveredPaths.Enqueue(x);
+                    allPaths.Enqueue(x);
+                }
+                newlyDiscoveredPaths.Clear();
+                while (mostRecentlyDiscoveredPaths.Count != 0)
+                {
+                    var start = mostRecentlyDiscoveredPaths.Dequeue();
+                    
+                }
+            }
+            return allPaths;
         }
 
         public override void ResetState()
