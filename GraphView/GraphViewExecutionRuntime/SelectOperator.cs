@@ -356,8 +356,8 @@ namespace GraphView
             Queue<Tuple<RawRecord, string>> allPaths = new Queue<Tuple<RawRecord, string>>();
             // A list of paths discovered in last iteration
             Queue<Tuple<RawRecord, string>> mostRecentlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
-            // A list of paths newly discovered in current iteration
-            Queue<Tuple<RawRecord, string>> newlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
+            //// A list of paths newly discovered in current iteration
+            //Queue<Tuple<RawRecord, string>> newlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
 
             int startNodeIndex = 0;
 
@@ -368,12 +368,12 @@ namespace GraphView
             ConstantSourceOperator source = new ConstantSourceOperator(sourceRecord);
             root.ChildOperator = source;
 
-            newlyDiscoveredPaths.Enqueue(new Tuple<RawRecord, string>(sourceRecord, ""));
+            mostRecentlyDiscoveredPaths.Enqueue(new Tuple<RawRecord, string>(sourceRecord, ""));
 
             while (mostRecentlyDiscoveredPaths.Count > 0)
             {
                 Tuple<RawRecord, string> start = mostRecentlyDiscoveredPaths.Dequeue();
-                int lastVertexIndex = start.Item1.fieldValues.Count - 3;
+                int lastVertexIndex = start.Item1.fieldValues.Count - 4;
 
                 var srecord = new RawRecord(0);
 
@@ -397,22 +397,6 @@ namespace GraphView
                         mostRecentlyDiscoveredPaths.Enqueue(newPath);
                         allPaths.Enqueue(newPath);
                     }
-                }
-            }
-
-            // BFS to find all paths.
-            while (newlyDiscoveredPaths.Count != 0)
-            {
-                foreach (var x in newlyDiscoveredPaths)
-                {
-                    mostRecentlyDiscoveredPaths.Enqueue(x);
-                    allPaths.Enqueue(x);
-                }
-                newlyDiscoveredPaths.Clear();
-                while (mostRecentlyDiscoveredPaths.Count != 0)
-                {
-                    var start = mostRecentlyDiscoveredPaths.Dequeue();
-                    
                 }
             }
             return allPaths;
