@@ -136,7 +136,7 @@ namespace GraphView
         // The operator that gives the current operator input.
         internal GraphViewExecutionOperator ChildOperator;
 
-        // Defining from which field in the record does the traversal goes to which field. (Source node defined here, destination node define at base)
+        // The starting index of the vertex in the input record from which the traversal starts
         internal int src;
 
         // Segement of DocDb script for querying.
@@ -146,10 +146,8 @@ namespace GraphView
         // Defining which fields should the reverse check have on.
         private List<Tuple<int,string,bool>> CheckList;
         
-        // Internal Operator for loop.
-        internal GraphViewExecutionOperator InternalOperator;
-        // The start of internal operator for path
-        private int InternalLoopStartNode;
+        // The operator of a SELECT query defining a single step of a path expression
+        internal GraphViewExecutionOperator pathStepOperator;
 
         // A mark to tell whether the traversal go through normal edge or reverse edge. 
         private bool IsReverse; 
@@ -169,9 +167,9 @@ namespace GraphView
             header = pheader;
             NumberOfProcessedVertices = pNumberOfProcessedVertices;
             crossDocumentJoinPredicates = pBooleanCheck;
-            InternalOperator = pInternalOperator;
+            pathStepOperator = pInternalOperator;
             IsReverse = pReverse;
-            if (InternalOperator != null) InternalOperator = (InternalOperator as OutputOperator).ChildOperator;
+            if (pathStepOperator != null) pathStepOperator = (pathStepOperator as OutputOperator).ChildOperator;
         }
         override public RawRecord Next()
         {
@@ -196,14 +194,18 @@ namespace GraphView
             }
 
             string script = docDbScript;
+
+            // The collection maps each input record to a list of paths starting from it. 
+            // Each paths is in a <sink, path_string> pair. 
+            Dictionary<RawRecord, List<Tuple<string, string>>> pathCollection = new Dictionary<RawRecord, List<Tuple<string, string>>>();
+
             // Consturct the "IN" clause
-            Dictionary<RawRecord, List<Tuple<string, string>>> PathRecordList = new Dictionary<RawRecord, List<Tuple<string, string>>>();
             if (InputBuffer.Count != 0)
             {
                 string InRangeScript = "";
                 // To deduplicate edge reference from record in the input buffer, and put them into in clause. 
                 HashSet<string> EdgeRefSet = new HashSet<string>();
-                if (InternalOperator == null)
+                if (pathStepOperator == null)
                 {
                     foreach (RawRecord record in InputBuffer)
                     {
@@ -229,16 +231,15 @@ namespace GraphView
                         // put it into path function
                         var PathResult = PathFunction(inputRecord);
                         // sink and corresponding path.
-                        List<Tuple<string,string>> adj = new List<Tuple<string, string>>();
-                        string path = null;
+                        List<Tuple<string,string>> pathList = new List<Tuple<string, string>>();
                         foreach (var x in PathResult)
                         {
-                            adj.Add(new Tuple<string, string>(x.Item2, x.Item1.fieldValues[x.Item1.fieldValues.Count - 1]));
-                            if (!EdgeRefSet.Contains(x.Item2))
-                                InRangeScript += x.Item2 + ",";
-                            EdgeRefSet.Add(x.Item2);
+                            pathList.Add(new Tuple<string, string>(x.SinkId, x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1]));
+                            if (!EdgeRefSet.Contains(x.SinkId))
+                                InRangeScript += x.SinkId + ",";
+                            EdgeRefSet.Add(x.SinkId);
                         }
-                        PathRecordList.Add(record,adj);
+                        pathCollection.Add(record, pathList);
                     }
                 }
                 InRangeScript = CutTheTail(InRangeScript);
@@ -250,24 +251,39 @@ namespace GraphView
                 try
                 {
                     HashSet<string> UniqueRecord = new HashSet<string>();
-                    IQueryable<dynamic> Node = (IQueryable<dynamic>) SendQuery(script, connection);
-                    foreach (var item in Node)
+                    IQueryable<dynamic> sinkNodeCollection = (IQueryable<dynamic>) SendQuery(script, connection);
+                    foreach (var sinkJsonObject in sinkNodeCollection)
                     {
                         // Decode some information that describe the found node.
-                        Tuple<string, string, string,List<string>> ItemInfo = DecodeJObject((JObject) item,header, NumberOfProcessedVertices * 3);
-                        string ID = ItemInfo.Item1;
-                        // If it is a path traversal, check every outcoming edges, if they can be link with the found node, consturct a new record.
+                        Tuple<string, string, string, List<string>> sinkVertex = DecodeJObject((JObject) sinkJsonObject,header, NumberOfProcessedVertices * 3);
+                        string vertexId = sinkVertex.Item1;
+
+                        // If it is a path traversal, matches the returned sink vertex against every source vertex and their outgoing paths. 
+                        // A new record is constructed and returned when the sink vertex happens to be the last vertex of a path. 
                         // No reverse check can be performed here.
-                        if (InternalOperator != null)
+                        if (pathStepOperator != null)
                         {
-                            foreach(var path in PathRecordList)
+                            foreach (RawRecord sourceRec in pathCollection.Keys)
+                            {
+                                foreach (Tuple<string, string> pathTuple in pathCollection[sourceRec])
+                                {
+                                    string pathSink = pathTuple.Item1;
+                                    if (pathSink == "\"" + vertexId + "\"")
+                                    {
+                                        RawRecord newRecord = new RawRecord(sourceRec);
+                                        NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = pathTuple.UI;
+                                    }
+                                }
+                            }
+
+                            foreach(var path in pathCollection)
                             {
                                 foreach(var sink in path.Value)
-                                    if (sink.Item1 == "\"" + ID +"\"")
+                                    if (sink.Item1 == "\"" + vertexId +"\"")
                                     {
                                         RawRecord NewRecord = new RawRecord(path.Key);
                                         NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = sink.Item2;
-                                        NewRecord = ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, NewRecord, header, true);
+                                        NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, NewRecord, header, true);
                                         if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
                                             if (!UniqueRecord.Contains(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src)))
                                             {
@@ -288,7 +304,7 @@ namespace GraphView
                             if (CheckList != null)
                                 foreach (var neighbor in CheckList)
                                 {
-                                    string edge = (((JObject) item)[neighbor.Item2])["_sink"].ToString();
+                                    string edge = (((JObject) sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
 
                                     // Two operations are performed here.
                                     // 
@@ -313,13 +329,16 @@ namespace GraphView
                                     //
                                     // So the differeces between the two operation is that they are checking different adjacent list.
                                     // And they are controlled by using different offsets. For alignment, it uses ADJ_OFFSET, for reverse checking, it uses REV_ADJ_OFFSET.
-                                    if (InternalOperator == null && !(edge == record.RetriveData(neighbor.Item1)) && !(record.RetriveData(neighbor.Item1 + (neighbor.Item3 ? ADJ_OFFSET : REV_ADJ_OFFSET)).Contains(ID)))
+                                    if (!(edge == record.RetriveData(neighbor.Item1)))
+                                    {
                                         ValidFlag = false;
+                                        break;
+                                    }
                                 }
                             if (ValidFlag)
                             {
                                 // If aligned and reverse checked vailied, join the old record with the new one.
-                                RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, record,
+                                RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
                                     header, true);
                                 // Deduplication.
                                 if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
@@ -343,6 +362,12 @@ namespace GraphView
             return null;
         }
 
+        private class PathRecord
+        {
+            public RawRecord PathRec { get; set; }
+            public string SinkId { get; set; }
+        }
+
         /// <summary>
         /// Given a vertex (triple) record, the function computes all paths starting from it. 
         /// The step of a path is defined by a SELECT subquery, describing a single edge
@@ -350,50 +375,54 @@ namespace GraphView
         /// </summary>
         /// <param name="sourceRecord">The input vertex record</param>
         /// <returns>A list of path-sink pairs</returns>
-        private Queue<Tuple<RawRecord, string>> PathFunction(RawRecord sourceRecord)
+        private Queue<PathRecord> PathFunction(RawRecord sourceRecord)
         {
             // A list of paths discovered
-            Queue<Tuple<RawRecord, string>> allPaths = new Queue<Tuple<RawRecord, string>>();
+            Queue<PathRecord> allPaths = new Queue<PathRecord>();
             // A list of paths discovered in last iteration
-            Queue<Tuple<RawRecord, string>> mostRecentlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
+            Queue<PathRecord> mostRecentlyDiscoveredPaths = new Queue<PathRecord>();
             //// A list of paths newly discovered in current iteration
             //Queue<Tuple<RawRecord, string>> newlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
 
-            int startNodeIndex = 0;
-
             // Replace the root operator with constant source operator.
-            TraversalOperator root = InternalOperator as TraversalOperator;
+            TraversalOperator root = pathStepOperator as TraversalOperator;
             while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
                 root = root.ChildOperator as TraversalOperator;
             ConstantSourceOperator source = new ConstantSourceOperator(sourceRecord);
             root.ChildOperator = source;
 
-            mostRecentlyDiscoveredPaths.Enqueue(new Tuple<RawRecord, string>(sourceRecord, ""));
-
+            mostRecentlyDiscoveredPaths.Enqueue(new PathRecord() {
+                PathRec = sourceRecord,
+                SinkId = ""
+            }); 
+            
             while (mostRecentlyDiscoveredPaths.Count > 0)
             {
-                Tuple<RawRecord, string> start = mostRecentlyDiscoveredPaths.Dequeue();
-                int lastVertexIndex = start.Item1.fieldValues.Count - 4;
+                PathRecord start = mostRecentlyDiscoveredPaths.Dequeue();
+                int lastVertexIndex = start.PathRec.fieldValues.Count - 4;
 
                 var srecord = new RawRecord(0);
 
                 // Put the start node in the Kth queue back to the constant source 
-                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex]);
-                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex + 1]);
-                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex + 2]);
-                srecord.fieldValues.Add(start.Item1.fieldValues[lastVertexIndex + 3]);
+                srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex]);
+                srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex + 1]);
+                srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex + 2]);
+                srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex + 3]);
                 source.ConstantSource = srecord;
                 // reset state of internal operator
-                (InternalOperator as TraversalOperator).ResetState();
-                startNodeIndex = InternalOperator.NumberOfProcessedVertices;
+                pathStepOperator.ResetState();
                 // Put all the results back into (K+1)th queue.
-                while (InternalOperator.State())
+                while (pathStepOperator.State())
                 {
-                    var EndRecord = InternalOperator.Next();
-                    var sink = EndRecord.fieldValues[startNodeIndex * 3 + 1];
+                    var EndRecord = pathStepOperator.Next();
+                    var sink = EndRecord.fieldValues[lastVertexIndex + 1];
                     if (sink != "")
                     {
-                        Tuple<RawRecord, string> newPath = new Tuple<RawRecord,string>(EndRecord, sink);
+                        PathRecord newPath = new PathRecord()
+                        {
+                            PathRec = EndRecord,
+                            SinkId = sink
+                        };
                         mostRecentlyDiscoveredPaths.Enqueue(newPath);
                         allPaths.Enqueue(newPath);
                     }
