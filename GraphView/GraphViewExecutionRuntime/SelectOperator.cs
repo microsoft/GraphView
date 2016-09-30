@@ -52,7 +52,7 @@ namespace GraphView
         /// <param name="header"></param>
         /// <param name="addpath">Whether to produce a path string for all the nodes processed so far</param>
         /// <returns>The record to be returned</returns>
-        internal static RawRecord ConstructRawRecord(int NumberOfProcessedNode, Tuple<string, string, string, List<string>> ItemInfo, RawRecord OldRecord, List<string> header, bool addpath)
+        internal static RawRecord ConstructRawRecord(int NumberOfProcessedNode, Tuple<string, string, string, List<string>> ItemInfo, RawRecord OldRecord, List<string> header, string appendedPath = "")
         {
             // copy the old internal information into new record
             RawRecord NewRecord = new RawRecord(header.Count);
@@ -65,7 +65,8 @@ namespace GraphView
             for (int i = NumberOfProcessedNode * 3; i < header.Count - 3; i++)
                 NewRecord.fieldValues[i + 3] = OldRecord.fieldValues[i];
             // extend the path if needed.
-            if (addpath) NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] += ItemInfo.Item1 + "-->";
+            if (appendedPath != "") NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = appendedPath;
+            NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] += ItemInfo.Item1 + "-->";
             // put the result elements that are consturcted before into new record.
             for (int i = NumberOfProcessedNode * 3 + 3; i < NewRecord.fieldValues.Count; i++)
             {
@@ -144,7 +145,7 @@ namespace GraphView
         private string docDbScript;
 
         // Defining which fields should the reverse check have on.
-        private List<Tuple<int,string,bool>> CheckList;
+        private List<Tuple<int,string>> CheckList;
         
         // The operator of a SELECT query defining a single step of a path expression
         internal GraphViewExecutionOperator pathStepOperator;
@@ -152,7 +153,7 @@ namespace GraphView
         // A mark to tell whether the traversal go through normal edge or reverse edge. 
         private bool IsReverse; 
 
-        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, string pScript, int pSrc, List<string> pheader, List<Tuple<int, string, bool>> pCheckList, int pNumberOfProcessedVertices, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, string pScript, int pSrc, List<string> pheader, List<Tuple<int, string>> pCheckList, int pNumberOfProcessedVertices, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             ChildOperator = pChildProcessor;
@@ -220,6 +221,13 @@ namespace GraphView
                 }
                 else
                 {
+                    // Replace the root operator with constant source operator.
+                    TraversalOperator root = pathStepOperator as TraversalOperator;
+                    while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
+                        root = root.ChildOperator as TraversalOperator;
+                    ConstantSourceOperator source = new ConstantSourceOperator(null);
+                    root.ChildOperator = source;
+
                     foreach (RawRecord record in InputBuffer)
                     {
                         var inputRecord = new RawRecord(0);
@@ -229,7 +237,7 @@ namespace GraphView
                         inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
                         inputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
                         // put it into path function
-                        var PathResult = PathFunction(inputRecord);
+                        var PathResult = PathFunction(inputRecord, ref source);
                         // sink and corresponding path.
                         List<Tuple<string,string>> pathList = new List<Tuple<string, string>>();
                         foreach (var x in PathResult)
@@ -270,27 +278,13 @@ namespace GraphView
                                     string pathSink = pathTuple.Item1;
                                     if (pathSink == "\"" + vertexId + "\"")
                                     {
-                                        RawRecord newRecord = new RawRecord(sourceRec);
-                                        NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = pathTuple.UI;
+                                        RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex,
+                                            sourceRec, header,
+                                            pathTuple.Item2);
+                                        if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
+                                            OutputBuffer.Enqueue(NewRecord);
                                     }
                                 }
-                            }
-
-                            foreach(var path in pathCollection)
-                            {
-                                foreach(var sink in path.Value)
-                                    if (sink.Item1 == "\"" + vertexId +"\"")
-                                    {
-                                        RawRecord NewRecord = new RawRecord(path.Key);
-                                        NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = sink.Item2;
-                                        NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, NewRecord, header, true);
-                                        if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
-                                            if (!UniqueRecord.Contains(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src)))
-                                            {
-                                                OutputBuffer.Enqueue(NewRecord);
-                                                UniqueRecord.Add(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src));
-                                            }
-                                    }
                             }
                         }
                         else
@@ -299,37 +293,12 @@ namespace GraphView
                         {
                             // reverse check
                             bool ValidFlag = true;
-                            // If the dest field already has value, the new ID should be the same with the old one so they can be joined together.
-                            // If (record.fieldValues[dest] != "" && record.fieldValues[dest] != ID) continue;
                             if (CheckList != null)
                                 foreach (var neighbor in CheckList)
                                 {
+                                    // Alignment and reverse checking.
                                     string edge = (((JObject) sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
-
-                                    // Two operations are performed here.
-                                    // 
-                                    // Alignment:
-                                    // As several records's outcoming edges are put into the same query for result,
-                                    // each result needs to be align with the record they belongs to.
-                                    //|   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"      |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"      |
-                                    // If now we traversal from Node 1 to Node 2.
-                                    // Then the Node 2 that we get from the querying result should satisfy that 
-                                    // 1) Node 2's id in node 1's adjacent list.
-                                    // 2) Node 1's id in node 2's reverse adjacent list.
-                                    // so they can be align with each other and join together.
-                                    //
-                                    // Reverse Checking:
-                                    // For those nodes that has been already traversed to, but have link to the dest node.
-                                    // Reverse checking have to be performed here.
-                                    // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"      |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"      |
-                                    // If now we have to perform reverse checking for the edge from node 1 to node 2 on node 2
-                                    // Then the Node 2 that we get from the querying result should satisfy that 
-                                    // 1) Node 2's id in node 1's reverse adjacent list.
-                                    // 2) Node 1's id in node 2's adjacent list.
-                                    //
-                                    // So the differeces between the two operation is that they are checking different adjacent list.
-                                    // And they are controlled by using different offsets. For alignment, it uses ADJ_OFFSET, for reverse checking, it uses REV_ADJ_OFFSET.
-                                    if (!(edge == record.RetriveData(neighbor.Item1)))
+                                    if (edge != record.RetriveData(neighbor.Item1))
                                     {
                                         ValidFlag = false;
                                         break;
@@ -339,14 +308,10 @@ namespace GraphView
                             {
                                 // If aligned and reverse checked vailied, join the old record with the new one.
                                 RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
-                                    header, true);
-                                // Deduplication.
+                                    header);
+                                // If the cross document join successed, put the record into output buffer. 
                                 if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
-                                    if (!UniqueRecord.Contains(NewRecord.RetriveData(NumberOfProcessedVertices  * 3) + NewRecord.RetriveData(src)))
-                                    {
                                         OutputBuffer.Enqueue(NewRecord);
-                                        UniqueRecord.Add(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src));
-                                    }
                             }
                         }
                     }
@@ -375,7 +340,7 @@ namespace GraphView
         /// </summary>
         /// <param name="sourceRecord">The input vertex record</param>
         /// <returns>A list of path-sink pairs</returns>
-        private Queue<PathRecord> PathFunction(RawRecord sourceRecord)
+        private Queue<PathRecord> PathFunction(RawRecord sourceRecord, ref ConstantSourceOperator source)
         {
             // A list of paths discovered
             Queue<PathRecord> allPaths = new Queue<PathRecord>();
@@ -384,18 +349,13 @@ namespace GraphView
             //// A list of paths newly discovered in current iteration
             //Queue<Tuple<RawRecord, string>> newlyDiscoveredPaths = new Queue<Tuple<RawRecord, string>>();
 
-            // Replace the root operator with constant source operator.
-            TraversalOperator root = pathStepOperator as TraversalOperator;
-            while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
-                root = root.ChildOperator as TraversalOperator;
-            ConstantSourceOperator source = new ConstantSourceOperator(sourceRecord);
-            root.ChildOperator = source;
-
             mostRecentlyDiscoveredPaths.Enqueue(new PathRecord() {
                 PathRec = sourceRecord,
                 SinkId = ""
             }); 
             
+            pathStepOperator.ResetState();
+
             while (mostRecentlyDiscoveredPaths.Count > 0)
             {
                 PathRecord start = mostRecentlyDiscoveredPaths.Dequeue();
@@ -415,6 +375,7 @@ namespace GraphView
                 while (pathStepOperator.State())
                 {
                     var EndRecord = pathStepOperator.Next();
+                    lastVertexIndex = EndRecord.fieldValues.Count - 4;
                     var sink = EndRecord.fieldValues[lastVertexIndex + 1];
                     if (sink != "")
                     {
@@ -447,14 +408,6 @@ namespace GraphView
     {
         private Queue<RawRecord> OutputBuffer;
 
-
-        // For case N1 -> N2 -> N3
-        //                 ↑
-        //                N4
-        // If using topological sorting, after finishing N1 -> N2 -> N3, a FetchNode operator will be needed for N4,
-        // so it takes the records from previous operator, find N4 and join them together.
-        private GraphViewExecutionOperator ChildOperator;
-
         private string docDbScript;
 
         public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pNumberOfProcessedVertices, int pOutputBufferSize, GraphViewExecutionOperator pChildOperator = null)
@@ -464,7 +417,6 @@ namespace GraphView
             docDbScript = pScript;
             header = pheader;
             NumberOfProcessedVertices = pNumberOfProcessedVertices;
-            ChildOperator = pChildOperator;
         }
         override public RawRecord Next()
         {
@@ -474,14 +426,12 @@ namespace GraphView
             if (OutputBuffer.Count != 0)
             {
                 if (OutputBuffer.Count == 1)
-                    if (ChildOperator == null || !ChildOperator.State()) this.Close();
+                    this.Close();
                 return OutputBuffer.Dequeue();
             }
             string script = docDbScript;
             RawRecord OldRecord = new RawRecord(header.Count);
 
-            if (ChildOperator != null && ChildOperator.State())
-                OldRecord = ChildOperator.Next();
             try
             {   // Send query to the server
                 IQueryable<dynamic> Node = (IQueryable<dynamic>) SendQuery(script, connection);
@@ -489,7 +439,7 @@ namespace GraphView
                 foreach (var item in Node)
                 {
                     Tuple<string, string, string, List<string>> ItemInfo = DecodeJObject((JObject) item,header, NumberOfProcessedVertices);
-                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices,ItemInfo, OldRecord, header,true);
+                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices,ItemInfo, OldRecord, header);
                         if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
                         OutputBuffer.Enqueue(NewRecord);
                 }
@@ -499,7 +449,7 @@ namespace GraphView
                 throw e.InnerException;
             }
             // Close output buffer
-            if (OutputBuffer.Count <= 1 && (ChildOperator ==null || !ChildOperator.State())) this.Close();
+            if (OutputBuffer.Count <= 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }

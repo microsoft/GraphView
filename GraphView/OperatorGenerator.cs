@@ -433,7 +433,7 @@ namespace GraphView
                         for (int i = StartOfResult; i < header.Count; i++)
                             HeaderForOneOperator.Add(header[i]);
 
-                        List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
+                        List<Tuple<int, string>> ReverseCheckList = new List<Tuple<int, string>>();
                         if (WithPathClause != null)
                         {
                             // if WithPathClause != null, internal operator should be consturcted for the traversal operator that deals with path.
@@ -521,23 +521,26 @@ namespace GraphView
             foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
                 // Join with all the edges it need to use later.
-                if (node.ReverseNeighbors.Contains(edge))
-                    FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
-                else
-                    FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-                // Add all the predicates on edges to the where clause.
-                if (edge != node.ReverseNeighbors.Concat(node.Neighbors).Last())
-                    foreach (var predicate in edge.Predicates)
-                    {
-                        PredicatesOnReverseEdge += predicate + " AND ";
-                    }
-                else
-                    foreach (var predicate in edge.Predicates)
-                    {
-                        if (predicate != edge.Predicates.Last())
+                if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias))
+                {
+                    if (node.ReverseNeighbors.Contains(edge))
+                        FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
+                    else
+                        FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                    // Add all the predicates on edges to the where clause.
+                    if (edge != node.ReverseNeighbors.Concat(node.Neighbors).Last())
+                        foreach (var predicate in edge.Predicates)
+                        {
                             PredicatesOnReverseEdge += predicate + " AND ";
-                        else PredicatesOnReverseEdge += predicate;
-                    }
+                        }
+                    else
+                        foreach (var predicate in edge.Predicates)
+                        {
+                            if (predicate != edge.Predicates.Last())
+                                PredicatesOnReverseEdge += predicate + " AND ";
+                            else PredicatesOnReverseEdge += predicate;
+                        }
+                }
             }
 
             FromClauseString = " FROM " + FromClauseString;
@@ -587,7 +590,7 @@ namespace GraphView
             string ReverseCheckString = ",";
             foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
             {
-                //if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
+                if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
                 ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
             }
             if (ReverseCheckString == ",") ReverseCheckString = "";
@@ -630,17 +633,17 @@ namespace GraphView
             }
         }
 
-        private List<Tuple<int, string, bool>> ConsturctReverseCheckList(MatchNode TempNode, ref HashSet<MatchNode> ProcessedNode, List<string> header)
+        private List<Tuple<int, string>> ConsturctReverseCheckList(MatchNode TempNode, ref HashSet<MatchNode> ProcessedNode, List<string> header)
         {
-            List<Tuple<int, string, bool>> ReverseCheckList = new List<Tuple<int, string, bool>>();
+            List<Tuple<int, string>> ReverseCheckList = new List<Tuple<int, string>>();
             foreach (var neighbor in TempNode.ReverseNeighbors)
                 if (ProcessedNode.Contains(neighbor.SinkNode))
-                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                        neighbor.EdgeAlias + "_REV", true));
+                    ReverseCheckList.Add(new Tuple<int, string>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                        neighbor.EdgeAlias + "_REV"));
             foreach (var neighbor in TempNode.Neighbors)
                 if (ProcessedNode.Contains(neighbor.SinkNode))
-                    ReverseCheckList.Add(new Tuple<int, string, bool>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                        neighbor.EdgeAlias + "_REV", false));
+                    ReverseCheckList.Add(new Tuple<int, string>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+                        neighbor.EdgeAlias + "_REV"));
             return ReverseCheckList;
         }
         // Cut the last character of a string.
