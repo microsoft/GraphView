@@ -221,11 +221,14 @@ namespace GraphView
                     foreach (RawRecord record in InputBuffer)
                     {
                         var InputRecord = new RawRecord(0);
+                        // Extract tuple of start node from records
                         InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3]);
                         InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 1]);
                         InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
                         InputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
+                        // put it into path function
                         var PathResult = PathFunction(InputRecord);
+                        // sink and corresponding path.
                         List<Tuple<string,string>> adj = new List<Tuple<string, string>>();
                         string path = null;
                         foreach (var x in PathResult)
@@ -348,6 +351,7 @@ namespace GraphView
 
             int StartNodeIndex = 0;
 
+            // Replace the root operator with constant source operator.
             TraversalOperator root = InternalOperator as TraversalOperator;
             while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
                 root = root.ChildOperator as TraversalOperator;
@@ -356,6 +360,7 @@ namespace GraphView
 
             TempQueue.Enqueue(new Tuple<RawRecord, string>(InputRecord, ""));
 
+            // Do BFS to find all the possible path.
             while (TempQueue.Count != 0)
             {
                 SaveQueue.Clear();
@@ -369,13 +374,16 @@ namespace GraphView
                 {
                     var start = WorkQueue.Dequeue();
                     var SourceRecord = new RawRecord(0);
+                    // Put the start node in the Kth queue back to the constant source 
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3]);
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3 + 1]);
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[StartNodeIndex * 3 + 2]);
                     SourceRecord.fieldValues.Add(start.Item1.fieldValues[start.Item1.fieldValues.Count - 1]);
                     source.ConstantSource = SourceRecord;
+                    // reset state of internal operator
                     (InternalOperator as TraversalOperator).ResetState();
                     StartNodeIndex = InternalOperator.NumberOfProcessedVertices;
+                    // Put all the results back into (K+1)th queue.
                     while (InternalOperator.State())
                     {
                         var EndRecord = InternalOperator.Next();
