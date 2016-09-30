@@ -144,7 +144,7 @@ namespace GraphView
         {
             state = false;
         }
-        public  void ResetState()
+        public virtual void ResetState()
         {
             this.Open();
         }

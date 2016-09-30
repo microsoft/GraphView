@@ -197,6 +197,7 @@ namespace GraphView
 
             string script = docDbScript;
             // Consturct the "IN" clause
+            Dictionary<RawRecord, Tuple<List<string>, string>> PathRecordList = new Dictionary<RawRecord, Tuple<List<string>, string>>();
             if (InputBuffer.Count != 0)
             {
                 string InRangeScript = "";
@@ -217,7 +218,6 @@ namespace GraphView
                 }
                 else
                 {
-                    List<RawRecord> PathRecordList = new List<RawRecord>();
                     foreach (RawRecord record in InputBuffer)
                     {
                         var InputRecord = new RawRecord(0);
@@ -226,21 +226,18 @@ namespace GraphView
                         InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
                         InputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
                         var PathResult = PathFunction(InputRecord);
+                        List<string> adj = new List<string>();
+                        string path = null;
                         foreach (var x in PathResult)
                         {
-                            RawRecord PathRecord = new RawRecord(record);
-                            PathRecord.fieldValues[(NumberOfProcessedVertices - 1)*3 + 1] = x.Item2;
-                            PathRecord.fieldValues[PathRecord.fieldValues.Count - 1] = x.Item1.fieldValues[x.Item1.fieldValues.Count - 1];
-                            PathRecordList.Add(PathRecord);
+                            adj.Add(x.Item2);
+                            path = x.Item1.fieldValues[x.Item1.fieldValues.Count - 1];
+
                             if (!EdgeRefSet.Contains(x.Item2))
                                 InRangeScript += x.Item2 + ",";
                             EdgeRefSet.Add(x.Item2);
                         }
-                    }
-                    InputBuffer.Clear();
-                    foreach (var x in PathRecordList )
-                    {
-                        InputBuffer.Enqueue(x);
+                        PathRecordList.Add(record,new Tuple<List<string>, string>(adj, path));
                     }
                 }
                 InRangeScript = CutTheTail(InRangeScript);
@@ -258,8 +255,30 @@ namespace GraphView
                         // Decode some information that describe the found node.
                         Tuple<string, string, string,List<string>> ItemInfo = DecodeJObject((JObject) item,header, NumberOfProcessedVertices * 3);
                         string ID = ItemInfo.Item1;
-                        // Join the old record with the new one if checked valid.
-                        foreach (var record in InputBuffer)
+                        // If it is a path traversal, check every outcoming edges, if they can be link with the found node, consturct a new record.
+                        // No reverse check can be performed here.
+                        if (InternalOperator != null)
+                        {
+                            foreach(var path in PathRecordList)
+                            {
+                                foreach(var sink in path.Value.Item1)
+                                    if (sink == ID)
+                                    {
+                                        RawRecord NewRecord = new RawRecord(path.Key);
+                                        NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = path.Value.Item2;
+                                        ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, NewRecord, header, true);
+                                        if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
+                                            if (!UniqueRecord.Contains(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src)))
+                                            {
+                                                OutputBuffer.Enqueue(NewRecord);
+                                                UniqueRecord.Add(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src));
+                                            }
+                                    }
+                            }
+                        }
+                        else
+                        // For normal edge, join the old record with the new one if checked valid.
+                            foreach (var record in InputBuffer)
                         {
                             // reverse check
                             bool ValidFlag = true;
@@ -293,14 +312,8 @@ namespace GraphView
                                     //
                                     // So the differeces between the two operation is that they are checking different adjacent list.
                                     // And they are controlled by using different offsets. For alignment, it uses ADJ_OFFSET, for reverse checking, it uses REV_ADJ_OFFSET.
-                                    if (InternalOperator == null && !(edge == record.RetriveData(neighbor.Item1)))
+                                    if (InternalOperator == null && !(edge == record.RetriveData(neighbor.Item1)) && !(record.RetriveData(neighbor.Item1 + (neighbor.Item3 ? ADJ_OFFSET : REV_ADJ_OFFSET)).Contains(ID)))
                                         ValidFlag = false;
-                                    // For path traversal operator, no reverse checking can be performed now.
-                                    if (InternalOperator != null &&
-                                    !(record.RetriveData(neighbor.Item1 + (neighbor.Item3 ? ADJ_OFFSET : REV_ADJ_OFFSET)).Contains(ID)))
-                                        ValidFlag = false;
-
-
                                 }
                             if (ValidFlag)
                             {
