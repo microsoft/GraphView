@@ -197,7 +197,7 @@ namespace GraphView
 
             string script = docDbScript;
             // Consturct the "IN" clause
-            Dictionary<RawRecord, Tuple<List<string>, string>> PathRecordList = new Dictionary<RawRecord, Tuple<List<string>, string>>();
+            Dictionary<RawRecord, List<Tuple<string, string>>> PathRecordList = new Dictionary<RawRecord, List<Tuple<string, string>>>();
             if (InputBuffer.Count != 0)
             {
                 string InRangeScript = "";
@@ -226,18 +226,16 @@ namespace GraphView
                         InputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
                         InputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
                         var PathResult = PathFunction(InputRecord);
-                        List<string> adj = new List<string>();
+                        List<Tuple<string,string>> adj = new List<Tuple<string, string>>();
                         string path = null;
                         foreach (var x in PathResult)
                         {
-                            adj.Add(x.Item2);
-                            path = x.Item1.fieldValues[x.Item1.fieldValues.Count - 1];
-
+                            adj.Add(new Tuple<string, string>(x.Item2, x.Item1.fieldValues[x.Item1.fieldValues.Count - 1]));
                             if (!EdgeRefSet.Contains(x.Item2))
                                 InRangeScript += x.Item2 + ",";
                             EdgeRefSet.Add(x.Item2);
                         }
-                        PathRecordList.Add(record,new Tuple<List<string>, string>(adj, path));
+                        PathRecordList.Add(record,adj);
                     }
                 }
                 InRangeScript = CutTheTail(InRangeScript);
@@ -261,12 +259,12 @@ namespace GraphView
                         {
                             foreach(var path in PathRecordList)
                             {
-                                foreach(var sink in path.Value.Item1)
-                                    if (sink == ID)
+                                foreach(var sink in path.Value)
+                                    if (sink.Item1 == "\"" + ID +"\"")
                                     {
                                         RawRecord NewRecord = new RawRecord(path.Key);
-                                        NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = path.Value.Item2;
-                                        ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, NewRecord, header, true);
+                                        NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = sink.Item2;
+                                        NewRecord = ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, NewRecord, header, true);
                                         if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
                                             if (!UniqueRecord.Contains(NewRecord.RetriveData(NumberOfProcessedVertices * 3) + NewRecord.RetriveData(src)))
                                             {
