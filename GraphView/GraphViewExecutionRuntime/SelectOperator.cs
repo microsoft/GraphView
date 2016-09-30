@@ -135,7 +135,7 @@ namespace GraphView
         private int InputBufferSize;
         private int OutputBufferSize;
         // The operator that gives the current operator input.
-        internal GraphViewExecutionOperator ChildOperator;
+        internal GraphViewExecutionOperator inputOperator;
 
         // The starting index of the vertex in the input record from which the traversal starts
         internal int src;
@@ -144,7 +144,8 @@ namespace GraphView
         // Containing complete SELECT/FROM/MATCH clause and partial WHERE clause (IN clause should be construct below)
         private string docDbScript;
 
-        // Defining which fields should the reverse check have on.
+        // A list of forward/backward edges from the traversal's sink pointing to the vertices produced by the input operator
+        // A vertex produced by the input operator is identified by the index in the input record
         private List<Tuple<int,string>> CheckList;
         
         // The operator of a SELECT query defining a single step of a path expression
@@ -156,7 +157,7 @@ namespace GraphView
         internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, string pScript, int pSrc, List<string> pheader, List<Tuple<int, string>> pCheckList, int pNumberOfProcessedVertices, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
-            ChildOperator = pChildProcessor;
+            inputOperator = pChildProcessor;
             connection = pConnection;
             docDbScript = pScript;
             InputBufferSize = pInputBufferSize;
@@ -174,23 +175,27 @@ namespace GraphView
         }
         override public RawRecord Next()
         {
-            // If the output buffer is not empty, return a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (ChildOperator != null && !ChildOperator.State())))
+            // If the output buffer is not empty, returns a result.
+            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (inputOperator != null && !inputOperator.State())))
             {
                 if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
 
-            // Take input from the output buffer of its child operator.
-            while (InputBuffer.Count() < InputBufferSize && ChildOperator.State())
+            // Fills the input buffer by pulling from the input operator
+            while (InputBuffer.Count() < InputBufferSize && inputOperator.State())
             {
-                if (ChildOperator != null && ChildOperator.State())
+                if (inputOperator != null && inputOperator.State())
                 {
-                    RawRecord Result = (RawRecord)ChildOperator.Next();
-                    // If this traversal operator deal with a normal edge, input buffer enqeue the record from its child operator
-                    // Otherwise it pass the record to path function to generate new records, and put it into input buffer.
-                    if (Result == null) ChildOperator.Close();
-                    else InputBuffer.Enqueue(Result);
+                    RawRecord Result = inputOperator.Next();
+                    if (Result == null)
+                    {
+                        inputOperator.Close();
+                    }
+                    else
+                    {
+                        InputBuffer.Enqueue(Result);
+                    }
                 }
             }
 
@@ -203,7 +208,8 @@ namespace GraphView
             // Consturct the "IN" clause
             if (InputBuffer.Count != 0)
             {
-                string InRangeScript = "";
+                string sinkIdValueList = "";
+
                 // To deduplicate edge reference from record in the input buffer, and put them into in clause. 
                 HashSet<string> EdgeRefSet = new HashSet<string>();
                 if (pathStepOperator == null)
@@ -214,7 +220,7 @@ namespace GraphView
                         foreach (var edge in adj)
                         {
                             if (!EdgeRefSet.Contains(edge))
-                                InRangeScript += edge + ",";
+                                sinkIdValueList += edge + ",";
                             EdgeRefSet.Add(edge);
                         }
                     }
@@ -223,10 +229,10 @@ namespace GraphView
                 {
                     // Replace the root operator with constant source operator.
                     TraversalOperator root = pathStepOperator as TraversalOperator;
-                    while (!(root.ChildOperator is FetchNodeOperator || root.ChildOperator is ConstantSourceOperator))
-                        root = root.ChildOperator as TraversalOperator;
+                    while (!(root.inputOperator is FetchNodeOperator || root.inputOperator is ConstantSourceOperator))
+                        root = root.inputOperator as TraversalOperator;
                     ConstantSourceOperator source = new ConstantSourceOperator(null);
-                    root.ChildOperator = source;
+                    root.inputOperator = source;
 
                     foreach (RawRecord record in InputBuffer)
                     {
@@ -244,17 +250,17 @@ namespace GraphView
                         {
                             pathList.Add(new Tuple<string, string>(x.SinkId, x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1]));
                             if (!EdgeRefSet.Contains(x.SinkId))
-                                InRangeScript += x.SinkId + ",";
+                                sinkIdValueList += x.SinkId + ",";
                             EdgeRefSet.Add(x.SinkId);
                         }
                         pathCollection.Add(record, pathList);
                     }
                 }
-                InRangeScript = CutTheTail(InRangeScript);
-                if (InRangeScript != "")
+                sinkIdValueList = CutTheTail(sinkIdValueList);
+                if (sinkIdValueList != "")
                     if (!script.Contains("WHERE"))
-                        script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + InRangeScript + ")";
-                    else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + InRangeScript + ")";
+                        script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
+                    else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                 // Send query to server and decode the result.
                 try
                 {
@@ -395,7 +401,7 @@ namespace GraphView
         public override void ResetState()
         {
             this.Open();
-            ChildOperator.ResetState();
+            inputOperator.ResetState();
         }
     }
 
