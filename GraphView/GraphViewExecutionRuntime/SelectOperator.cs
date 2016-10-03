@@ -278,7 +278,7 @@ namespace GraphView
                             }
                         }
                         sinkIdValueList = CutTheTail(sinkIdValueList);
-                        script += " AND " + header[reverseEdge.Item1] + ".id IN (" + sinkIdValueList + ")";
+                        script += " AND " + reverseEdge.Item2 + ".sink IN (" + sinkIdValueList + ")";
                     }
                 }
                 // Send query to server and decode the result.
