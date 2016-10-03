@@ -282,7 +282,7 @@ namespace GraphView
                                 foreach (Tuple<string, string> pathTuple in pathCollection[sourceRec])
                                 {
                                     string pathSink = pathTuple.Item1;
-                                    if (pathSink == "\"" + vertexId + "\"")
+                                    if (pathSink.Contains(vertexId))
                                     {
                                         RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex,
                                             sourceRec, header,
@@ -357,9 +357,15 @@ namespace GraphView
 
             mostRecentlyDiscoveredPaths.Enqueue(new PathRecord() {
                 PathRec = sourceRecord,
-                SinkId = ""
-            }); 
-            
+                SinkId = sourceRecord.fieldValues[1]
+            });
+
+            allPaths.Enqueue(new PathRecord()
+            {
+                PathRec = sourceRecord,
+                SinkId = sourceRecord.fieldValues[1]
+            });
+
             pathStepOperator.ResetState();
 
             while (mostRecentlyDiscoveredPaths.Count > 0)
