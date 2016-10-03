@@ -333,17 +333,33 @@ namespace GraphView
         }
         private List<string> ConstructHeader(MatchGraph graph)
         {
+
             List<string> header = new List<string>();
             // Construct the first part of the head which is defined as 
             // |Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|...
             // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"           |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"           |...
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
-                foreach (var node in subgraph.Nodes)
-                {
-                    header.Add(node.Key);
-                    header.Add(node.Key + "_ADJ");
-                    header.Add(node.Key + "_REVADJ");
+                HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
+                var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+              while(SortedNodes.Count != 0) {
+                    var processingNodePair = SortedNodes.Pop();
+                    if (!ProcessedNode.Contains(processingNodePair.Item2.SourceNode))
+                    {
+                        MatchNode node = processingNodePair.Item2.SourceNode;
+                        header.Add(node.NodeAlias);
+                        header.Add(node.NodeAlias + "_ADJ");
+                        header.Add(node.NodeAlias + "_REVADJ");
+                        ProcessedNode.Add(node);
+                    }
+                    if (!ProcessedNode.Contains(processingNodePair.Item2.SinkNode))
+                    {
+                        MatchNode node = processingNodePair.Item2.SinkNode;
+                        header.Add(node.NodeAlias);
+                        header.Add(node.NodeAlias + "_ADJ");
+                        header.Add(node.NodeAlias + "_REVADJ");
+                        ProcessedNode.Add(node);
+                    }
                 }
             }
             // Construct the second part of the head which is defined as 

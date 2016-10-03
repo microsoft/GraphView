@@ -219,7 +219,7 @@ namespace GraphView
                         var adj = record.RetriveData(src + (IsReverse ? REV_ADJ_OFFSET : ADJ_OFFSET)).Split(',');
                         foreach (var edge in adj)
                         {
-                            if (!EdgeRefSet.Contains(edge))
+                            if (edge != "" && !EdgeRefSet.Contains(edge))
                                 sinkIdValueList += edge + ",";
                             EdgeRefSet.Add(edge);
                         }
@@ -249,7 +249,7 @@ namespace GraphView
                         foreach (var x in PathResult)
                         {
                             pathList.Add(new Tuple<string, string>(x.SinkId, x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1]));
-                            if (!EdgeRefSet.Contains(x.SinkId))
+                            if (x.SinkId != "" && !EdgeRefSet.Contains(x.SinkId))
                                 sinkIdValueList += x.SinkId + ",";
                             EdgeRefSet.Add(x.SinkId);
                         }
@@ -261,7 +261,26 @@ namespace GraphView
                     if (!script.Contains("WHERE"))
                         script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
-
+                foreach(var reverseEdge in CheckList)
+                {
+                    if (reverseEdge.Item1 != src)
+                    {
+                        EdgeRefSet.Clear();
+                        sinkIdValueList = "";
+                        foreach (RawRecord record in InputBuffer)
+                        {
+                            var adj = record.RetriveData(reverseEdge.Item1).Split(',');
+                            foreach (var edge in adj)
+                            {
+                                if (edge != "" && !EdgeRefSet.Contains(edge))
+                                    sinkIdValueList += edge + ",";
+                                EdgeRefSet.Add(edge);
+                            }
+                        }
+                        sinkIdValueList = CutTheTail(sinkIdValueList);
+                        script += " AND " + header[reverseEdge.Item1] + ".id IN (" + sinkIdValueList + ")";
+                    }
+                }
                 // Send query to server and decode the result.
                 try
                 {
