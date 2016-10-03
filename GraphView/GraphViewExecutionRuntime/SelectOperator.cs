@@ -261,6 +261,7 @@ namespace GraphView
                     if (!script.Contains("WHERE"))
                         script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
+
                 // Send query to server and decode the result.
                 try
                 {
@@ -496,7 +497,7 @@ namespace GraphView
 
         override public RawRecord Next()
         {
-            if (OutputBuffer == null)
+           if (OutputBuffer == null)
                 OutputBuffer = new Queue<RawRecord>();
             if (OutputBuffer.Count != 0)
             {
@@ -543,10 +544,10 @@ namespace GraphView
             foreach (var record in RecordSet[IndexOfOperator])
             {
                 RawRecord NewResult = new RawRecord(result);
-                for (int i = 0; i < header.Count; i++)
+                for (int i = 0; i < OperatorOnSubGraphs[IndexOfOperator].header.Count; i++)
                 {
-                    if (NewResult.fieldValues[i] == "" && record.fieldValues[i] != "")
-                        NewResult.fieldValues[i] = record.fieldValues[i];
+                    if (NewResult.RetriveData(header, OperatorOnSubGraphs[IndexOfOperator].header[i]) == "" && record.fieldValues[i] != "")
+                        NewResult.fieldValues[header.IndexOf(OperatorOnSubGraphs[IndexOfOperator].header[i])] = record.fieldValues[i];
                 }
                 CartesianProductOnRecord(RecordSet, IndexOfOperator + 1, NewResult);
             }
