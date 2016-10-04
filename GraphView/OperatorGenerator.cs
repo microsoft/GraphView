@@ -342,19 +342,21 @@ namespace GraphView
             {
                 HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
                 var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
-              while(SortedNodes.Count != 0) {
+                while(SortedNodes.Count != 0) {
                     var processingNodePair = SortedNodes.Pop();
-                    if (!ProcessedNode.Contains(processingNodePair.Item2.SourceNode))
+                    var srcNode = processingNodePair.Item1;
+                    var sinkNode = processingNodePair.Item2?.SinkNode;
+                    if (!ProcessedNode.Contains(srcNode))
                     {
-                        MatchNode node = processingNodePair.Item2.SourceNode;
+                        MatchNode node = srcNode;
                         header.Add(node.NodeAlias);
                         header.Add(node.NodeAlias + "_ADJ");
                         header.Add(node.NodeAlias + "_REVADJ");
                         ProcessedNode.Add(node);
                     }
-                    if (!ProcessedNode.Contains(processingNodePair.Item2.SinkNode))
+                    if (sinkNode != null)
                     {
-                        MatchNode node = processingNodePair.Item2.SinkNode;
+                        MatchNode node = sinkNode;
                         header.Add(node.NodeAlias);
                         header.Add(node.NodeAlias + "_ADJ");
                         header.Add(node.NodeAlias + "_REVADJ");
