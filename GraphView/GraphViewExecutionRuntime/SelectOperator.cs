@@ -263,23 +263,20 @@ namespace GraphView
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                 foreach(var reverseEdge in CheckList)
                 {
-                    if (reverseEdge.Item1 != src)
+                    EdgeRefSet.Clear();
+                    sinkIdValueList = "";
+                    foreach (RawRecord record in InputBuffer)
                     {
-                        EdgeRefSet.Clear();
-                        sinkIdValueList = "";
-                        foreach (RawRecord record in InputBuffer)
+                        var adj = record.RetriveData(reverseEdge.Item1).Split(',');
+                        foreach (var edge in adj)
                         {
-                            var adj = record.RetriveData(reverseEdge.Item1).Split(',');
-                            foreach (var edge in adj)
-                            {
-                                if (edge != "" && !EdgeRefSet.Contains(edge))
-                                    sinkIdValueList += edge + ",";
-                                EdgeRefSet.Add(edge);
-                            }
+                            if (edge != "" && !EdgeRefSet.Contains(edge))
+                                sinkIdValueList += edge + ",";
+                            EdgeRefSet.Add(edge);
                         }
-                        sinkIdValueList = CutTheTail(sinkIdValueList);
-                        script += " AND " + reverseEdge.Item2 + ".sink IN (" + sinkIdValueList + ")";
                     }
+                    sinkIdValueList = CutTheTail(sinkIdValueList);
+                    script += " AND " + reverseEdge.Item2 + ".sink IN (" + sinkIdValueList + ")";
                 }
                 // Send query to server and decode the result.
                 try
