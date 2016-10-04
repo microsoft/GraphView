@@ -261,7 +261,7 @@ namespace GraphView
                     if (!script.Contains("WHERE"))
                         script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
-                foreach(var reverseEdge in CheckList)
+                foreach (var reverseEdge in CheckList)
                 {
                     EdgeRefSet.Clear();
                     sinkIdValueList = "";
@@ -271,12 +271,13 @@ namespace GraphView
                         foreach (var edge in adj)
                         {
                             if (edge != "" && !EdgeRefSet.Contains(edge))
-                                sinkIdValueList += edge + ",";
+                                sinkIdValueList += "\"" + edge + "\"" + ",";
                             EdgeRefSet.Add(edge);
                         }
                     }
                     sinkIdValueList = CutTheTail(sinkIdValueList);
-                    script += " AND " + reverseEdge.Item2 + ".sink IN (" + sinkIdValueList + ")";
+                    // Remove the "_REV" tail
+                    script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
                 }
                 // Send query to server and decode the result.
                 try
