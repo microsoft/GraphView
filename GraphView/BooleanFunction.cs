@@ -7,12 +7,13 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    abstract internal class BooleanFunction
+    internal abstract class BooleanFunction
     {
+        internal List<string> header { get; set; }
         internal abstract bool eval(RawRecord r);
     }
 
-    abstract internal class ComparisonBooleanFunction : BooleanFunction
+    internal abstract class ComparisonBooleanFunction : BooleanFunction
     {
         internal enum ComparisonType
         {
@@ -27,38 +28,50 @@ namespace GraphView
 
     internal class FieldComparisonFunction : ComparisonBooleanFunction
     {
-        internal int LhsFieldIndex;
-        internal int RhsFieldIndex;
+        //internal int LhsFieldIndex;
+        //internal int RhsFieldIndex;
+        internal string LhsFieldName;
+        internal string RhsFieldName;
         internal ComparisonType type;
-        internal FieldComparisonFunction(int lhs, int rhs, ComparisonType pType)
+
+        //internal FieldComparisonFunction(int lhs, int rhs, ComparisonType pType)
+        //{
+        //    LhsFieldIndex = lhs;
+        //    RhsFieldIndex = rhs;
+        //    type = pType;
+        //}
+
+        internal FieldComparisonFunction(string lhs, string rhs, ComparisonType pType)
         {
-            LhsFieldIndex = lhs;
-            RhsFieldIndex = rhs;
+            LhsFieldName = lhs;
+            RhsFieldName = rhs;
             type = pType;
         }
-        override internal bool eval(RawRecord r)
+        internal override bool eval(RawRecord r)
         {
+            var lhsIndex = header.IndexOf(LhsFieldName);
+            var rhsIndex = header.IndexOf(RhsFieldName);
             switch (type)
             {
                 case ComparisonType.eq:
-                    return r.RetriveData(LhsFieldIndex) == r.RetriveData(RhsFieldIndex);
+                    return r.RetriveData(lhsIndex) == r.RetriveData(rhsIndex);
                 case ComparisonType.neq:
-                    return r.RetriveData(LhsFieldIndex) != r.RetriveData(RhsFieldIndex);
+                    return r.RetriveData(lhsIndex) != r.RetriveData(rhsIndex);
                 case ComparisonType.lt:
-                    return double.Parse(r.RetriveData(LhsFieldIndex)) < double.Parse(r.RetriveData(RhsFieldIndex));
+                    return double.Parse(r.RetriveData(lhsIndex)) < double.Parse(r.RetriveData(rhsIndex));
                 case ComparisonType.gt:
-                    return double.Parse(r.RetriveData(LhsFieldIndex)) > double.Parse(r.RetriveData(RhsFieldIndex));
+                    return double.Parse(r.RetriveData(lhsIndex)) > double.Parse(r.RetriveData(rhsIndex));
                 case ComparisonType.gte:
-                    return double.Parse(r.RetriveData(LhsFieldIndex)) >= double.Parse(r.RetriveData(RhsFieldIndex));
+                    return double.Parse(r.RetriveData(lhsIndex)) >= double.Parse(r.RetriveData(rhsIndex));
                 case ComparisonType.lte:
-                    return double.Parse(r.RetriveData(LhsFieldIndex)) <= double.Parse(r.RetriveData(RhsFieldIndex));
+                    return double.Parse(r.RetriveData(lhsIndex)) <= double.Parse(r.RetriveData(rhsIndex));
                 default:
                     return false;
             }
             
         }
     }
-    abstract internal class BinaryBooleanFunction : BooleanFunction
+    internal abstract class BinaryBooleanFunction : BooleanFunction
     {
         internal enum BinaryType
         {
@@ -77,7 +90,7 @@ namespace GraphView
             rhs = prhs;
             type = ptype;
         }
-        override internal bool eval(RawRecord r)
+        internal override bool eval(RawRecord r)
         {
             if (type == BinaryType.and) return lhs.eval(r) && rhs.eval(r);
             if (type == BinaryType.or) return lhs.eval(r) || rhs.eval(r);

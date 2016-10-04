@@ -268,10 +268,16 @@ namespace GraphView
                     string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
                     string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
 
-                    if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
-                    if (header.IndexOf(SecondExpr) == -1) header.Add(SecondExpr);
-                    int lhs = header.IndexOf(FirstExpr);
-                    int rhs = header.IndexOf(SecondExpr);
+                    var insertIdx = header.Count > 0 ? header.Count-1 : 0;
+
+                    //if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
+                    //if (header.IndexOf(SecondExpr) == -1) header.Add(SecondExpr);
+                    //int lhs = header.IndexOf(FirstExpr);
+                    //int rhs = header.IndexOf(SecondExpr);
+                    if (header.IndexOf(FirstExpr) == -1) header.Insert(insertIdx++, FirstExpr);
+                    if (header.IndexOf(SecondExpr) == -1) header.Insert(insertIdx, SecondExpr);
+                    var lhs = FirstExpr;
+                    var rhs = SecondExpr;
                     FieldComparisonFunction NewCBF = null;
                     if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.Equals)
                         NewCBF = new FieldComparisonFunction(lhs, rhs,
@@ -331,6 +337,19 @@ namespace GraphView
             }
             return BooleanList;
         }
+
+        //private Stack<Tuple<MatchNode, MatchEdge>> testTopo(MatchGraph graph)
+        //{
+        //    var nodes = graph.ConnectedSubGraphs[0].Nodes;
+        //    nodes["B"].ReverseNeighbors[1].IsReversed = true;
+        //    var res = new Stack<Tuple<MatchNode, MatchEdge>>();
+        //    res.Push(new Tuple<MatchNode, MatchEdge>(nodes["B"], nodes["B"].Neighbors[0]));
+        //    res.Push(new Tuple<MatchNode, MatchEdge>(nodes["B"], nodes["B"].ReverseNeighbors[1]));
+        //    res.Push(new Tuple<MatchNode, MatchEdge>(nodes["A"], nodes["A"].Neighbors[0]));
+
+        //    return res;
+        //}
+
         private List<string> ConstructHeader(MatchGraph graph)
         {
 
@@ -629,14 +648,17 @@ namespace GraphView
             {
                 if (functions[i] is FieldComparisonFunction)
                 {
-                    string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
-                    string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
+                    //string lhs = header[(functions[i] as FieldComparisonFunction).LhsFieldIndex];
+                    //string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
+                    string lhs = (functions[i] as FieldComparisonFunction).LhsFieldName;
+                    string rhs = (functions[i] as FieldComparisonFunction).RhsFieldName;
                     if (TempNode.AttachedQuerySegment.Contains(lhs))
                         FunctionVaildalityCheck[i]++;
                     if (TempNode.AttachedQuerySegment.Contains(rhs))
                         FunctionVaildalityCheck[i]++;
                     if (FunctionVaildalityCheck[i] == 2)
                     {
+                        functions[i].header = ChildrenProcessor.Last().header;
                         if (ChildrenProcessor.Last()!= null && ChildrenProcessor.Last() is TraversalBaseOperator)
                         {
                             if ((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates == null)
@@ -646,6 +668,7 @@ namespace GraphView
                                     new BinaryFunction((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates,
                                         functions[i], BinaryBooleanFunction.BinaryType.and);
                         }
+                        FunctionVaildalityCheck[i] = 0;
                     }
                 }
             }
