@@ -253,6 +253,7 @@ namespace GraphView
                                 sinkIdValueList += x.SinkId + ",";
                             EdgeRefSet.Add(x.SinkId);
                         }
+
                         pathCollection.Add(record, pathList);
                     }
                 }

@@ -136,28 +136,27 @@ namespace GraphView
                         if (Parameters.Parameter[1].Fragment != null)
                         {
                             string PropertyValue = "";
-                            if (!double.IsNaN(Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].Number))
-                            PropertyValue =
-                                Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].Number.ToString();
-                            else PropertyValue =
-                            Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].QuotedString;
-                            var MultiIdentifierValue = CutStringIntoMultiPartIdentifier(PropertyValue);
-
+                            WMultiPartIdentifier MultiIdentifierValue = null;
                             WScalarExpression ValueExpression = null;
-                            if (MultiIdentifierValue.Identifiers.Count > 1)
-                                ValueExpression = new WColumnReferenceExpression()
-                                {
-                                    MultiPartIdentifier = MultiIdentifierValue
-                                };
+                            if (!double.IsNaN(Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].Number))
+                            {
+                                PropertyValue =
+                                    Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].Number.ToString();
+                                MultiIdentifierValue = CutStringIntoMultiPartIdentifier(PropertyValue);
+                                ValueExpression = new WValueExpression(MultiIdentifierValue.Identifiers.First().Value, false);
+                            }
                             else
                             {
-                                double temp;
-                                if (double.TryParse(MultiIdentifierValue.Identifiers.First().Value, out temp))
-                                    ValueExpression = new WValueExpression(MultiIdentifierValue.Identifiers.First().Value, false);
-                                else
-                                    ValueExpression = new WValueExpression(MultiIdentifierValue.Identifiers.First().Value, true);
+                                PropertyValue =
+                             Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].QuotedString;
+                                MultiIdentifierValue = CutStringIntoMultiPartIdentifier(PropertyValue);
+                                if (MultiIdentifierValue.Identifiers.Count > 1)
+                                    ValueExpression = new WColumnReferenceExpression()
+                                    {
+                                        MultiPartIdentifier = MultiIdentifierValue
+                                    };
+                                else ValueExpression = new WValueExpression(MultiIdentifierValue.Identifiers.First().Value, true);
                             }
-
 
                             switch (Parameters.Parameter[1].Fragment.Function.KeywordIndex)
                             {
@@ -201,6 +200,18 @@ namespace GraphView
                                     GeneratedBooleanExpression = new WBooleanComparisonExpression()
                                     {
                                         ComparisonType = BooleanComparisonType.GreaterThanOrEqualTo,
+                                        FirstExpr =
+                                            new WColumnReferenceExpression()
+                                            {
+                                                MultiPartIdentifier = MultiIdentifierName
+                                            },
+                                        SecondExpr = ValueExpression
+                                    };
+                                    break;
+                                case (int)GraphViewGremlinParser.Keywords.eq:
+                                    GeneratedBooleanExpression = new WBooleanComparisonExpression()
+                                    {
+                                        ComparisonType = BooleanComparisonType.Equals,
                                         FirstExpr =
                                             new WColumnReferenceExpression()
                                             {
