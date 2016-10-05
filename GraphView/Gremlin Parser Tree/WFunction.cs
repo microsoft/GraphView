@@ -321,6 +321,11 @@ namespace GraphView
                             Edge = "E_" + pContext.EdgeCount.ToString();
                             AddNewAlias(Edge, ref pContext);
                             index = pContext.InternalAliasList.Count;
+                            WValueExpression predicatesValue = null;
+                            if (para.QuotedString != null)
+                                predicatesValue = new WValueExpression(para.QuotedString, true);
+                            else
+                                predicatesValue = new WValueExpression(para.Number.ToString(), false);
                             GeneratedBooleanExpression = new WBooleanComparisonExpression()
                             {
                                 ComparisonType = BooleanComparisonType.Equals,
@@ -329,7 +334,7 @@ namespace GraphView
                                     {
                                         MultiPartIdentifier =CutStringIntoMultiPartIdentifier(Edge + ".type")
                                     },
-                                SecondExpr = new WValueExpression(para.QuotedString,true)
+                                SecondExpr = predicatesValue
                             };
                             AddNewPredicates(ref pContext,GeneratedBooleanExpression);
                             foreach (var alias in pContext.PrimaryInternalAlias)
@@ -502,7 +507,10 @@ namespace GraphView
                 case (int)GraphViewGremlinParser.Keywords.addV:
                     foreach (var a in Parameters.Parameter.FindAll(p => Parameters.Parameter.IndexOf(p) % 2 == 0))
                     {
+                        if (Parameters.Parameter[Parameters.Parameter.IndexOf(a) + 1].QuotedString != null)
                         pContext.Properties.Add(a.QuotedString, Parameters.Parameter[Parameters.Parameter.IndexOf(a) + 1].QuotedString);
+                        else
+                        pContext.Properties.Add(a.QuotedString, Parameters.Parameter[Parameters.Parameter.IndexOf(a) + 1].Number);
                     }
                     pContext.AddVMark = true;
                     break;
@@ -718,9 +726,16 @@ namespace GraphView
                     pContext.DoubleAddEMark = true;
                     pContext.AddEMark = true;
                     SrcNode = pContext.PrimaryInternalAlias[0].ToString();
-                        for (int i = 0; i < Parameters.Parameter.Count; i += 2)
+                    for (int i = 0; i < Parameters.Parameter.Count; i += 2)
+                    {
+                        if (Parameters.Parameter[i + 1].QuotedString != null)
+                        pContext.Properties.Add(Parameters.Parameter[i].QuotedString,
+                            Parameters.Parameter[i + 1].QuotedString);
+                        else
                             pContext.Properties.Add(Parameters.Parameter[i].QuotedString,
-                                Parameters.Parameter[i + 1].QuotedString);
+    Parameters.Parameter[i + 1].Number);
+
+                    }
                     break;
                 case (int)GraphViewGremlinParser.Keywords.repeat:
                     Edge = "P_" + pContext.PathCount.ToString();

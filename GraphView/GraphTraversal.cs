@@ -442,13 +442,19 @@ namespace GraphView
             return new GraphTraversal(this, AES);
         }
 
-        public GraphTraversal Out(params string[] Parameters)
+        public GraphTraversal Out(params object[] Parameters)
         {
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             string AES = AppendExecutableString;
             if (Parameters.Length == 0)
                 AES += "out().";
             else
-                AES += "out(\'"+string.Join("\', \'",Parameters)+"\').";
+                AES += "out("+string.Join(",",paraList)+").";
             if (HoldMark == true) held = this;
 
             return new GraphTraversal(this, AES);
@@ -457,11 +463,17 @@ namespace GraphView
 
         public GraphTraversal In(params string[] Parameters)
         {
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             string AES = AppendExecutableString;
             if (Parameters.Length == 0)
                 AES += "in().";
             else
-                AES += "in(\'" + string.Join("\', \'", Parameters) + "\').";
+                AES += "in(" + string.Join(",", paraList) + ").";
             if (HoldMark == true) held = this;
 
             return new GraphTraversal(this, AES);
@@ -540,68 +552,91 @@ AES += "\'" + x + "\'";
 
         }
 
-        public GraphTraversal addV(params string[] Parameters)
+        public GraphTraversal addV(params object[] Parameters)
         {
-
+            List<string> paraList = new List<string>();
+            foreach(var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             if (!LazyMark)
             {
                 GraphViewGremlinParser parser = new GraphViewGremlinParser();
-                parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\')."))
+                parser.Parse(CutTail(AppendExecutableString + "addV(" + string.Join(",", paraList) + ")."))
                     .Generate(connection)
                     .Next();
             }
 
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\').");
+            return new GraphTraversal(this, AppendExecutableString + "addV(" + string.Join(",", paraList) + ").");
 
         }
 
-        public GraphTraversal addV(List<string> Parameters)
+        public GraphTraversal addV(List<object> Parameters)
         {
-
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             if (!LazyMark)
             {
                 GraphViewGremlinParser parser = new GraphViewGremlinParser();
-                parser.Parse(CutTail(AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\')."))
+                parser.Parse(CutTail(AppendExecutableString + "addV(" + string.Join(",", paraList) + ")."))
                     .Generate(connection)
                     .Next();
             }
 
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "addV(\'" + string.Join("\',\'", Parameters) + "\').");
+            return new GraphTraversal(this, AppendExecutableString + "addV(" + string.Join(",", paraList) + ").");
 
         }
 
-        public GraphTraversal addOutE(params string[] Parameters)
+        public GraphTraversal addOutE(params object[] Parameters)
         {
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             if (!LazyMark)
             {
                 GraphViewGremlinParser parser = new GraphViewGremlinParser();
-                parser.Parse(CutTail(AppendExecutableString + "addOutE(\'" + string.Join("\',\'", Parameters) + "\')."))
+                parser.Parse(CutTail(AppendExecutableString + "addOutE(" + string.Join(",", paraList) + ")."))
                     .Generate(connection)
                     .Next();
             }
+
             if (HoldMark == true) held = this;
 
-
-            return new GraphTraversal(this, AppendExecutableString + "addOutE(\'" + string.Join("\',\'", Parameters) + "\').");
+            return new GraphTraversal(this, AppendExecutableString + "addOutE(" + string.Join(",", paraList) + ").");
 
         }
 
-        public GraphTraversal addInE(params string[] Parameters)
+        public GraphTraversal addInE(params object[] Parameters)
         {
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             if (!LazyMark)
             {
                 GraphViewGremlinParser parser = new GraphViewGremlinParser();
-                parser.Parse(CutTail(AppendExecutableString + "addInE(\'" + string.Join("\',\'", Parameters) + "\')."))
+                parser.Parse(CutTail(AppendExecutableString + "addInE(" + string.Join(",", paraList)))
                     .Generate(connection)
                     .Next();
             }
+
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "addInE(\'" + string.Join("\',\'", Parameters) + "\').");
+            return new GraphTraversal(this, AppendExecutableString + "addInE(" + string.Join(",", paraList));
         }
 
         public GraphTraversal values(string name)
@@ -726,18 +761,30 @@ AES += "\'" + x + "\'";
             return new GraphTraversal(this, AppendExecutableString + "coalesce(" + String.Join(",", StringList) + ").");
         }
 
-        public GraphTraversal addE(params string[] Parameters)
+        public GraphTraversal addE(params object[] Parameters)
         {
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "addE(\'" + string.Join("\',\'", Parameters) + "\').");
+            return new GraphTraversal(this, AppendExecutableString + "addE(" + string.Join(",", paraList) +").");
         }
 
         public GraphTraversal addE(List<string> Parameters)
         {
+            List<string> paraList = new List<string>();
+            foreach (var x in Parameters)
+            {
+                if (x.GetType() == typeof(string)) paraList.Add("\'" + x.ToString() + "\'");
+                if (x.GetType() == typeof(double) || x.GetType() == typeof(int)) paraList.Add(x.ToString());
+            }
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "addE(\'" + string.Join("\',\'", Parameters) + "\').");
+            return new GraphTraversal(this, AppendExecutableString + "addE(" + string.Join(",", paraList));
         }
 
         public GraphTraversal from(GraphTraversal OtherSource)

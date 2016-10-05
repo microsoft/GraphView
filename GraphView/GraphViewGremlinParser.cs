@@ -741,7 +741,7 @@ namespace GraphView
             internal WBooleanExpression AliasPredicates { get; set; }
             internal List<Tuple<string, string, string>> Paths { get; set; }
             internal List<string> Identifiers { get; set; }
-            internal Dictionary<string, string> Properties { get; set; }
+            internal Dictionary<string, object> Properties { get; set; }
             internal Dictionary<string, string> ExplictAliasToInternalAlias { get; set; }
             internal List<Context> BranchContexts;
             internal string BranchNote;
@@ -781,7 +781,7 @@ namespace GraphView
                 {
                     Identifiers.Add(x);
                 }
-                Properties = new Dictionary<string, string>();
+                Properties = new Dictionary<string, object>();
                 foreach (var x in rhs.Properties)
                 {
                     Properties.Add(x.Key, x.Value);
@@ -829,7 +829,7 @@ namespace GraphView
                 AddVMark = false;
                 RemoveMark = false;
                 ChooseMark = false;
-                Properties = new Dictionary<string, string>();
+                Properties = new Dictionary<string, object>();
                 limit = -1;
                 BranchContexts = new List<Context>();
                 Identifiers = new List<string>();
@@ -863,7 +863,7 @@ namespace GraphView
                 AddVMark = false,
                 RemoveMark = false,
                 ChooseMark = false,
-                Properties = new Dictionary<string, string>(),
+                Properties = new Dictionary<string, object>(),
                 limit = -1,
                 BranchContexts = new List<Context>(),
                 DoubleAddEMark = false
@@ -978,7 +978,12 @@ namespace GraphView
                 var columnK = new List<WColumnReferenceExpression>();
                 foreach (var property in context.Properties)
                 {
-                    var value = new WValueExpression(property.Value, true);
+
+                    WValueExpression value = null;
+                    if (property.Value.GetType() == typeof(double) || property.Value.GetType() == typeof(int))
+                        value = new WValueExpression(property.Value.ToString(), false);
+                    if (property.Value.GetType() == typeof(string))
+                        value = new WValueExpression(property.Value.ToString(), true);
                     columnV.Add(value);
                     var key = new WColumnReferenceExpression()
                     {
@@ -1013,7 +1018,11 @@ namespace GraphView
 
                 foreach (var property in context.Properties)
                 {
-                    var value = new WValueExpression(property.Value, true);
+                    WValueExpression value = null;
+                    if (property.Value.GetType() == typeof(double) || property.Value.GetType() == typeof(int))
+                        value = new WValueExpression(property.Value.ToString(), false);
+                    if (property.Value.GetType() == typeof(string))
+                        value = new WValueExpression(property.Value.ToString(), true);
                     columnV.Add(value);
                     var key = new WColumnReferenceExpression()
                     {
@@ -1023,7 +1032,7 @@ namespace GraphView
                                 Identifiers = new List<Identifier>() { new Identifier() { Value = property.Key } }
                             }
                     };
-                    SelectBlock.SelectElements.Add(new WSelectScalarExpression() { SelectExpr = new WValueExpression(property.Value, true) });
+                    SelectBlock.SelectElements.Add(new WSelectScalarExpression() { SelectExpr = value});
                     columnK.Add(key);
                 }
                 var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
