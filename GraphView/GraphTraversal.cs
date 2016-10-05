@@ -43,9 +43,11 @@ namespace GraphView
 
                 if (CurrentOperator.State())
                 {
-                    RawRecord Temp = CurrentOperator.Next();
-                    CurrentRecord = new Record(Temp, elements);
-                    return true;
+                    RawRecord rawResultRecord = CurrentOperator.Next();
+                    CurrentRecord = new Record(rawResultRecord, elements);
+                    if (rawResultRecord != null)
+                        return true;
+                    else return false;
                 }
                 else return false;
             }
