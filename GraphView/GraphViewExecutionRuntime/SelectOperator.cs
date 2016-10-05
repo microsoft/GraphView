@@ -261,6 +261,8 @@ namespace GraphView
                     if (!script.Contains("WHERE"))
                         script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
+
+                if (pathStepOperator == null)
                 foreach (var reverseEdge in CheckList)
                 {
                     EdgeRefSet.Clear();
