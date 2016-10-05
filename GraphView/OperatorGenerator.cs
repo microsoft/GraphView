@@ -564,19 +564,18 @@ namespace GraphView
                         FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
                     else
                         FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+
                     // Add all the predicates on edges to the where clause.
-                    if (edge != node.ReverseNeighbors.Concat(node.Neighbors).Last())
-                        foreach (var predicate in edge.Predicates)
-                        {
-                            PredicatesOnReverseEdge += predicate + " AND ";
-                        }
-                    else
+                    if (PredicatesOnReverseEdge.Length == 0)
                         foreach (var predicate in edge.Predicates)
                         {
                             if (predicate != edge.Predicates.Last())
                                 PredicatesOnReverseEdge += predicate + " AND ";
                             else PredicatesOnReverseEdge += predicate;
                         }
+                    else
+                        foreach (var predicate in edge.Predicates)
+                            PredicatesOnReverseEdge += " AND " + predicate;
                 }
             }
 
