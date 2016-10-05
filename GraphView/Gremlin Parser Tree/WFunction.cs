@@ -135,8 +135,12 @@ namespace GraphView
                         var MultiIdentifierName = CutStringIntoMultiPartIdentifier(PropertyName);
                         if (Parameters.Parameter[1].Fragment != null)
                         {
-                            string PropertyValue =
+                            string PropertyValue = "";
+                            if (!double.IsNaN(Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].Number))
+                            PropertyValue =
                                 Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].Number.ToString();
+                            else PropertyValue =
+                            Parameters.Parameter[1].Fragment.Function.Parameters.Parameter[0].QuotedString;
                             var MultiIdentifierValue = CutStringIntoMultiPartIdentifier(PropertyValue);
 
                             WScalarExpression ValueExpression = null;

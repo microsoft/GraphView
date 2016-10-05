@@ -263,43 +263,51 @@ namespace GraphView
         }
         public static Tuple<string, GraphViewGremlinParser.Keywords> lt(string i)
         {
-            return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.lt);
+            return new Tuple<string, GraphViewGremlinParser.Keywords>("\'" + i + "\'", GraphViewGremlinParser.Keywords.lt);
         }
         public static Tuple<string, GraphViewGremlinParser.Keywords> gt(string i)
         {
-            return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.gt);
+            return new Tuple<string, GraphViewGremlinParser.Keywords>("\'" + i + "\'", GraphViewGremlinParser.Keywords.gt);
 
         }
         public static Tuple<string, GraphViewGremlinParser.Keywords> eq(string i)
         {
-            return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.eq);
+            return new Tuple<string, GraphViewGremlinParser.Keywords>("\'" + i + "\'", GraphViewGremlinParser.Keywords.eq);
 
         }
         public static Tuple<string, GraphViewGremlinParser.Keywords> lte(string i)
         {
-            return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.lte);
+            return new Tuple<string, GraphViewGremlinParser.Keywords>("\'" + i + "\'", GraphViewGremlinParser.Keywords.lte);
 
         }
 
         public static Tuple<string, GraphViewGremlinParser.Keywords> gte(string i)
         {
-            return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.gte);
+            return new Tuple<string, GraphViewGremlinParser.Keywords>("\'" + i + "\'", GraphViewGremlinParser.Keywords.gte);
 
         }
 
         public static Tuple<string, GraphViewGremlinParser.Keywords> neq(string i)
         {
-            return new Tuple<string, GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.neq);
+            return new Tuple<string, GraphViewGremlinParser.Keywords>("\'" + i + "\'", GraphViewGremlinParser.Keywords.neq);
         }
 
-        public static Tuple<string[], GraphViewGremlinParser.Keywords> within(params string[] i)
+        public static Tuple<string[], GraphViewGremlinParser.Keywords> within(params string[] para)
         {
-            return new Tuple<string[], GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.within);
+            for(int j = 0; j < para.Length; j++)
+            {
+                para[j] = "\'" + para[j] + "\'";
+            }
+            return new Tuple<string[], GraphViewGremlinParser.Keywords>(para, GraphViewGremlinParser.Keywords.within);
         }
 
-        public static Tuple<string[], GraphViewGremlinParser.Keywords> without(params string[] i)
+        public static Tuple<string[], GraphViewGremlinParser.Keywords> without(params string[] para)
         {
-            return new Tuple<string[], GraphViewGremlinParser.Keywords>(i, GraphViewGremlinParser.Keywords.without);
+            for (int j = 0; j < para.Length; j++)
+            {
+                para[j] = "\'" + para[j] + "\'";
+            }
+            return new Tuple<string[], GraphViewGremlinParser.Keywords>(para, GraphViewGremlinParser.Keywords.without);
         }
 
         public static string incr()
@@ -352,9 +360,9 @@ namespace GraphView
 
         }
 
-        public GraphTraversal has(string name, Tuple<int, GraphViewGremlinParser.Keywords> ComparisonFunc)
+        public GraphTraversal has(string name, Tuple<string, GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
-            Tuple<int, GraphViewGremlinParser.Keywords> des = ComparisonFunc;
+            Tuple<string, GraphViewGremlinParser.Keywords> des = ComparisonFunc;
             string AES = AppendExecutableString;
             AES += "has(\'" + name + "\', ";
                 switch (des.Item2)
@@ -383,6 +391,37 @@ namespace GraphView
 
             return new GraphTraversal(this, AES);
         }
+        public GraphTraversal has(string name, Tuple<int, GraphViewGremlinParser.Keywords> ComparisonFunc)
+        {
+            Tuple<int, GraphViewGremlinParser.Keywords> des = ComparisonFunc;
+            string AES = AppendExecutableString;
+            AES += "has(\'" + name + "\', ";
+            switch (des.Item2)
+            {
+                case GraphViewGremlinParser.Keywords.lt:
+                    AES += "lt(" + des.Item1.ToString() + ")";
+                    break;
+                case GraphViewGremlinParser.Keywords.gt:
+                    AES += "gt(" + des.Item1.ToString() + ")";
+                    break;
+                case GraphViewGremlinParser.Keywords.eq:
+                    AES += "eq(" + des.Item1.ToString() + ")";
+                    break;
+                case GraphViewGremlinParser.Keywords.lte:
+                    AES += "lte(" + des.Item1.ToString() + ")";
+                    break;
+                case GraphViewGremlinParser.Keywords.gte:
+                    AES += "gte(" + des.Item1.ToString() + ")";
+                    break;
+                case GraphViewGremlinParser.Keywords.neq:
+                    AES += "neq(" + des.Item1.ToString() + ")";
+                    break;
+            }
+            AES += ").";
+            if (HoldMark == true) held = this;
+
+            return new GraphTraversal(this, AES);
+        }
         public GraphTraversal has(string name, Tuple<string[], GraphViewGremlinParser.Keywords> ComparisonFunc)
         {
             Tuple<string[], GraphViewGremlinParser.Keywords> des = ComparisonFunc;
@@ -391,10 +430,10 @@ namespace GraphView
             switch (des.Item2)
             {
                 case GraphViewGremlinParser.Keywords.within:
-                    AES += "within(\'" + String.Join("\',\'", des.Item1) + "\')";
+                    AES += "within(\'" + String.Join(",", des.Item1) + ")";
                     break;
                 case GraphViewGremlinParser.Keywords.without:
-                    AES += "without(\'" + String.Join("\',\'", des.Item1) + "\')";
+                    AES += "without(\'" + String.Join(",", des.Item1) + ")";
                     break;
             }
             AES += ").";
