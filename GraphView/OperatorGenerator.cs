@@ -471,15 +471,13 @@ namespace GraphView
                             HeaderForOneOperator.Add(header[i]);
 
                         List<Tuple<int, string>> ReverseCheckList = new List<Tuple<int, string>>();
-                        if (WithPathClause != null)
-                        {
-                            // if WithPathClause != null, internal operator should be consturcted for the traversal operator that deals with path.
-                            Tuple<string, GraphViewExecutionOperator, int> InternalOperator = null;
-                            if (
-                                (InternalOperator =
+                        Tuple<string, GraphViewExecutionOperator, int> InternalOperator = null;
+                        if (WithPathClause != null && (InternalOperator =
                                     WithPathClause.PathOperators.Find(
                                         p => p.Item1 == CurrentProcessingNode.Item2.EdgeAlias)) !=
                                 null)
+                        {
+                            // if WithPathClause != null, internal operator should be constructed for the traversal operator that deals with path.
                                 ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
                             TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,

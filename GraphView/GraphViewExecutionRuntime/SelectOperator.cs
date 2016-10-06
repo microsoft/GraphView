@@ -279,8 +279,10 @@ namespace GraphView
                         }
                     }
                     sinkIdValueList = CutTheTail(sinkIdValueList);
-                    // Remove the "_REV" tail
-                    script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
+                        // Remove the "_REV" tail
+                        if (!script.Contains("WHERE"))
+                            script += "WHERE " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")"; 
+                        else script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
                 }
                 // Send query to server and decode the result.
                 try
@@ -408,17 +410,20 @@ namespace GraphView
                 while (pathStepOperator.State())
                 {
                     var EndRecord = pathStepOperator.Next();
-                    lastVertexIndex = EndRecord.fieldValues.Count - 4;
-                    var sink = EndRecord.fieldValues[lastVertexIndex + 1];
-                    if (sink != "")
+                    if (EndRecord != null)
                     {
-                        PathRecord newPath = new PathRecord()
+                        lastVertexIndex = EndRecord.fieldValues.Count - 4;
+                        var sink = EndRecord.fieldValues[lastVertexIndex + 1];
+                        if (sink != "")
                         {
-                            PathRec = EndRecord,
-                            SinkId = sink
-                        };
-                        mostRecentlyDiscoveredPaths.Enqueue(newPath);
-                        allPaths.Enqueue(newPath);
+                            PathRecord newPath = new PathRecord()
+                            {
+                                PathRec = EndRecord,
+                                SinkId = sink
+                            };
+                            mostRecentlyDiscoveredPaths.Enqueue(newPath);
+                            allPaths.Enqueue(newPath);
+                        }
                     }
                 }
             }
