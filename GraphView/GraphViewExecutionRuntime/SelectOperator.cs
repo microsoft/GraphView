@@ -249,9 +249,13 @@ namespace GraphView
                         foreach (var x in PathResult)
                         {
                             pathList.Add(new Tuple<string, string>(x.SinkId, x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1]));
-                            if (x.SinkId != "" && !EdgeRefSet.Contains(x.SinkId))
-                                sinkIdValueList += x.SinkId + ",";
-                            EdgeRefSet.Add(x.SinkId);
+                            var adj = x.SinkId.Split(',');
+                            foreach (var edge in adj)
+                            {
+                                if (edge != "" && !EdgeRefSet.Contains(edge))
+                                    sinkIdValueList += edge + ",";
+                                EdgeRefSet.Add(edge);
+                            }
                         }
 
                         pathCollection.Add(record, pathList);
