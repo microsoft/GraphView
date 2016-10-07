@@ -935,7 +935,9 @@ namespace GraphView
                                 {
                                     Identifiers = new List<Identifier>() { new Identifier() { Value = "Edge" } }
                                 },
-                            Alias = path.Item2
+                            Alias = path.Item2,
+                            MinLength = 1,
+                            MaxLength = path.Item2.StartsWith("P_") ? 2 : 1,
                         }));
                 var TailNode = new WSchemaObjectName()
                 {
