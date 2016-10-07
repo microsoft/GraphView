@@ -264,7 +264,7 @@ namespace GraphView
                 sinkIdValueList = CutTheTail(sinkIdValueList);
                 if (sinkIdValueList != "")
                     if (!script.Contains("WHERE"))
-                        script += "WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
+                        script += " WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
 
                 if (pathStepOperator == null)
@@ -285,7 +285,7 @@ namespace GraphView
                     sinkIdValueList = CutTheTail(sinkIdValueList);
                         // Remove the "_REV" tail
                         if (!script.Contains("WHERE"))
-                            script += "WHERE " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")"; 
+                            script += " WHERE " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")"; 
                         else script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
                 }
                 // Send query to server and decode the result.
