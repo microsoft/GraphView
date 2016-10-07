@@ -147,7 +147,7 @@ namespace GraphView
             }
             else
             {
-                Attach(node);
+                Attach(new WBooleanParenthesisExpression { Expression = node });
             }
         }
 
