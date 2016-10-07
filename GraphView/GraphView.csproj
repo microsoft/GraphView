@@ -68,6 +68,8 @@
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="DocDBGraphOptimizer.cs" />
+    <Compile Include="GraphOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphLoaderFactory.cs" />
     <Compile Include="GraphViewDocDBCommand.cs" />
@@ -82,6 +84,7 @@
     <Compile Include="Gremlin Parser Tree\WSyntaxTree.cs" />
     <Compile Include="GraphTraversal.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
+    <Compile Include="MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperator.cs" />
     <Compile Include="OperatorGenerator.cs" />

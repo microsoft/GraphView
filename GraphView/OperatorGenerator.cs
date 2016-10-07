@@ -14,6 +14,8 @@ namespace GraphView
             if (WithPathClause != null) WithPathClause.Generate(pConnection);
             // Construct Match graph for later use
             MatchGraph graph = ConstructGraph();
+            // Construct the traversal chain
+            ConstructTraversalChain(graph);
             // Construct a header for the operators.
             List<string> header = ConstructHeader(graph);
             // Attach pre-generated docDB script to the node on Match graph, 
@@ -27,6 +29,7 @@ namespace GraphView
         {
             Dictionary<string, List<string>> EdgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, MatchPath> pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, MatchEdge> ReversedEdgeDict = new Dictionary<string, MatchEdge>();
 
             UnionFind UnionFind = new UnionFind();
             Dictionary<string, MatchNode> Nodes = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
@@ -111,6 +114,7 @@ namespace GraphView
                                     BindNodeTableObjName =
                                         new WSchemaObjectName(
                                             ),
+                                    IsReversed = false,
                                 };
                             }
                             else
@@ -127,7 +131,8 @@ namespace GraphView
                                     MinLength = CurrentEdgeColumnRef.MinLength,
                                     MaxLength = CurrentEdgeColumnRef.MaxLength,
                                     ReferencePathInfo = false,
-                                    AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict
+                                    AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict,
+                                    IsReversed = false,
                                 };
                                 pathDictionary[EdgeAlias] = matchPath;
                                 EdgeFromSrcNode = matchPath;
@@ -136,20 +141,24 @@ namespace GraphView
                             if (EdgeToSrcNode != null)
                             {
                                 EdgeToSrcNode.SinkNode = SrcNode;
-                                //Add ReverseEdge
-                                MatchEdge reverseEdge;
-                                reverseEdge = new MatchEdge
+                                if (!(EdgeToSrcNode is MatchPath))
                                 {
-                                    SourceNode = EdgeToSrcNode.SinkNode,
-                                    SinkNode = EdgeToSrcNode.SourceNode,
-                                    EdgeColumn = EdgeToSrcNode.EdgeColumn,
-                                    EdgeAlias = EdgeToSrcNode.EdgeAlias,
-                                    Predicates = EdgeToSrcNode.Predicates,
-                                    BindNodeTableObjName =
-                                       new WSchemaObjectName(
-                                           ),
-                                };
-                                SrcNode.ReverseNeighbors.Add(reverseEdge);
+                                    //Add ReverseEdge
+                                    MatchEdge reverseEdge = new MatchEdge
+                                    {
+                                        SourceNode = EdgeToSrcNode.SinkNode,
+                                        SinkNode = EdgeToSrcNode.SourceNode,
+                                        EdgeColumn = EdgeToSrcNode.EdgeColumn,
+                                        EdgeAlias = EdgeToSrcNode.EdgeAlias,
+                                        Predicates = EdgeToSrcNode.Predicates,
+                                        BindNodeTableObjName =
+                                            new WSchemaObjectName(
+                                            ),
+                                        IsReversed = true,
+                                    };
+                                    SrcNode.ReverseNeighbors.Add(reverseEdge);
+                                    ReversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
+                                }
                             }
 
                             EdgeToSrcNode = EdgeFromSrcNode;
@@ -178,20 +187,25 @@ namespace GraphView
                         if (EdgeToSrcNode != null)
                         {
                             EdgeToSrcNode.SinkNode = DestNode;
-                            //Add ReverseEdge
-                            MatchEdge reverseEdge;
-                            reverseEdge = new MatchEdge
+                            if (!(EdgeToSrcNode is MatchPath))
                             {
-                                SourceNode = EdgeToSrcNode.SinkNode,
-                                SinkNode = EdgeToSrcNode.SourceNode,
-                                EdgeColumn = EdgeToSrcNode.EdgeColumn,
-                                EdgeAlias = EdgeToSrcNode.EdgeAlias,
-                                Predicates = EdgeToSrcNode.Predicates,
-                                BindNodeTableObjName =
-                                   new WSchemaObjectName(
-                                       ),
-                            };
-                            DestNode.ReverseNeighbors.Add(reverseEdge);
+                                //Add ReverseEdge
+                                MatchEdge reverseEdge = new MatchEdge
+                                {
+                                    SourceNode = EdgeToSrcNode.SinkNode,
+                                    SinkNode = EdgeToSrcNode.SourceNode,
+                                    EdgeColumn = EdgeToSrcNode.EdgeColumn,
+                                    EdgeAlias = EdgeToSrcNode.EdgeAlias,
+                                    Predicates = EdgeToSrcNode.Predicates,
+                                    BindNodeTableObjName =
+                                        new WSchemaObjectName(
+                                        ),
+                                    IsReversed = true,
+                                };
+                                DestNode.ReverseNeighbors.Add(reverseEdge);
+                                ReversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
+                            }
+                            
                         }
                     }
 
@@ -243,6 +257,7 @@ namespace GraphView
             MatchGraph Graph = new MatchGraph
             {
                 ConnectedSubGraphs = ConnectedSubGraphs,
+                ReversedEdgeDict = ReversedEdgeDict,
             };
 
             return Graph;
@@ -313,7 +328,8 @@ namespace GraphView
             {
                 // Use Topological Sort to give a sorted node list.
                 // Note that if there's a cycle in the match graph, a random node will be chose as the start.
-                var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
+                //var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
+                var SortedNodeList = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
                 // Marking down which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
                 // Build query segment on both source node and dest node, 
@@ -330,7 +346,7 @@ namespace GraphView
                     if (TargetNode.Item2 != null)
                     {
                         CurrentProcessingNode = TargetNode.Item2.SinkNode;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult, TargetNode.Item2 is MatchPath);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                 }
@@ -338,17 +354,12 @@ namespace GraphView
             return BooleanList;
         }
 
-        //private Stack<Tuple<MatchNode, MatchEdge>> testTopo(MatchGraph graph)
-        //{
-        //    var nodes = graph.ConnectedSubGraphs[0].Nodes;
-        //    nodes["B"].ReverseNeighbors[1].IsReversed = true;
-        //    var res = new Stack<Tuple<MatchNode, MatchEdge>>();
-        //    res.Push(new Tuple<MatchNode, MatchEdge>(nodes["B"], nodes["B"].Neighbors[0]));
-        //    res.Push(new Tuple<MatchNode, MatchEdge>(nodes["B"], nodes["B"].ReverseNeighbors[1]));
-        //    res.Push(new Tuple<MatchNode, MatchEdge>(nodes["A"], nodes["A"].Neighbors[0]));
-
-        //    return res;
-        //}
+        private void ConstructTraversalChain(MatchGraph graph)
+        {
+            var graphOptimizer = new DocDbGraphOptimizer(graph);
+            foreach (var subGraph in graph.ConnectedSubGraphs)
+                subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph);
+        }
 
         private List<string> ConstructHeader(MatchGraph graph)
         {
@@ -360,8 +371,10 @@ namespace GraphView
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
-                var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
-                while(SortedNodes.Count != 0) {
+                //var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                var SortedNodes = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
+
+                while (SortedNodes.Count != 0) {
                     var processingNodePair = SortedNodes.Pop();
                     var srcNode = processingNodePair.Item1;
                     var sinkNode = processingNodePair.Item2?.SinkNode;
@@ -421,7 +434,8 @@ namespace GraphView
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 // Use Topological Sorting to define the order of nodes it will travel.
-                var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                //var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
+                var SortedNodes = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
                 StartOfResult += subgraph.Nodes.Count * 3;
                 HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
                 while (SortedNodes.Count != 0)
@@ -478,10 +492,10 @@ namespace GraphView
                                 null)
                         {
                             // if WithPathClause != null, internal operator should be constructed for the traversal operator that deals with path.
-                                ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
+                            ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
                             TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
-                            OUTPUT_BUFFER_SIZE, false, InternalOperator.Item2));
+                                OUTPUT_BUFFER_SIZE, false, InternalOperator.Item2));
                         }
                         else
                         {
@@ -544,7 +558,7 @@ namespace GraphView
             return root;
         }
 
-        private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField)
+        private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField, bool isPathTailNode = false)
         {
             // Node predicates will be attached here.
             string FromClauseString = node.NodeAlias;
@@ -553,27 +567,30 @@ namespace GraphView
             string PredicatesOnReverseEdge = "";
             string PredicatesOnNodes = "";
 
-            foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
+            if (!isPathTailNode)
             {
-                // Join with all the edges it need to use later.
-                if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias))
+                foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
                 {
-                    if (node.ReverseNeighbors.Contains(edge))
-                        FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
-                    else
-                        FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
+                    // Join with all the edges it need to use later.
+                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias))
+                    {
+                        if (node.ReverseNeighbors.Contains(edge))
+                            FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
+                        else
+                            FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
 
-                    // Add all the predicates on edges to the where clause.
-                    if (PredicatesOnReverseEdge.Length == 0)
-                        foreach (var predicate in edge.Predicates)
-                        {
-                            if (predicate != edge.Predicates.Last())
-                                PredicatesOnReverseEdge += predicate + " AND ";
-                            else PredicatesOnReverseEdge += predicate;
-                        }
-                    else
-                        foreach (var predicate in edge.Predicates)
-                            PredicatesOnReverseEdge += " AND " + predicate;
+                        // Add all the predicates on edges to the where clause.
+                        if (PredicatesOnReverseEdge.Length == 0)
+                            foreach (var predicate in edge.Predicates)
+                            {
+                                if (predicate != edge.Predicates.Last())
+                                    PredicatesOnReverseEdge += predicate + " AND ";
+                                else PredicatesOnReverseEdge += predicate;
+                            }
+                        else
+                            foreach (var predicate in edge.Predicates)
+                                PredicatesOnReverseEdge += " AND " + predicate;
+                    }
                 }
             }
 
@@ -622,17 +639,20 @@ namespace GraphView
 
             // Reverse checking related script will be attached here.
             string ReverseCheckString = ",";
-            foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
+            if (!isPathTailNode)
             {
-                if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
-                ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
+                foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
+                {
+                    if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
+                        ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
+                }
             }
             if (ReverseCheckString == ",") ReverseCheckString = "";
             ReverseCheckString = CutTheTail(ReverseCheckString);
 
             // The DocDb script that related to the giving node will be assembled here.
             string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
-            string QuerySegment = QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
+            string QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             QuerySegment += FromClauseString + WhereClauseString;
             node.AttachedQuerySegment = QuerySegment;
         }
@@ -749,7 +769,7 @@ namespace GraphView
                     if (state[neighbour.SinkNode] == 2)
                         foreach (var neighbour2 in neighbour.SinkNode.ReverseNeighbors)
                         {
-                            foreach (var x in neighbour.SinkNode.Neighbors)
+                            foreach (var x in neighbour2.SinkNode.Neighbors)
                                 if (x.SinkNode == node)
                                     list.Push(new Tuple<MatchNode, MatchEdge>(x.SourceNode, x));
                         }
