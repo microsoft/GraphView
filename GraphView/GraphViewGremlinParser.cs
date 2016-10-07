@@ -221,6 +221,7 @@ namespace GraphView
         {
             string ErrorKey = "";
             var para = GraphViewGremlinParser.LexicalAnalyzer.Tokenize(Script, ref ErrorKey);
+            if (para == null) throw new SyntaxErrorException("There's an syntax error related to internal translation.");
             Identifiers = para.Item2;
             TokenList = para.Item1;
             NextToken = 0;

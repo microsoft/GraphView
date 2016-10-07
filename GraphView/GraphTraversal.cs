@@ -432,10 +432,10 @@ namespace GraphView
             switch (des.Item2)
             {
                 case GraphViewGremlinParser.Keywords.within:
-                    AES += "within(\'" + String.Join(",", des.Item1) + ")";
+                    AES += "within(" + String.Join(",", des.Item1) + ")";
                     break;
                 case GraphViewGremlinParser.Keywords.without:
-                    AES += "without(\'" + String.Join(",", des.Item1) + ")";
+                    AES += "without(" + String.Join(",", des.Item1) + ")";
                     break;
             }
             AES += ").";
