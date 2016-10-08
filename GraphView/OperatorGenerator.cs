@@ -544,12 +544,14 @@ namespace GraphView
             }
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
             {
-                if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Ascending)
-                    root = new OrderbyOperator(root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Incr);
-                if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.Descending)
-                    root = new OrderbyOperator(root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.Decr);
-                if (OrderByClause.OrderByElements[0].SortOrder == SortOrder.NotSpecified)
-                    root = new OrderbyOperator(root, OrderByClause.OrderByElements[0].ToString(), root.header, OrderbyOperator.Order.NotSpecified);
+                var expr = OrderByClause.OrderByElements[0].ScalarExpr.ToString();
+                var sortOrder = OrderByClause.OrderByElements[0].SortOrder;
+                if (sortOrder == SortOrder.Ascending)
+                    root = new OrderbyOperator(root, columnToAliasDict[expr], root.header, OrderbyOperator.Order.Incr);
+                if (sortOrder == SortOrder.Descending)
+                    root = new OrderbyOperator(root, columnToAliasDict[expr], root.header, OrderbyOperator.Order.Decr);
+                if (sortOrder == SortOrder.NotSpecified)
+                    root = new OrderbyOperator(root, columnToAliasDict[expr], root.header, OrderbyOperator.Order.NotSpecified);
             }
             List<string> SelectedElement = new List<string>();
             foreach (var x in SelectElements)
