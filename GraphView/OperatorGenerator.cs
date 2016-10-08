@@ -620,9 +620,9 @@ namespace GraphView
                 if (ResultIndex.IndexOf('.') != -1) CutPoint = ResultIndex.IndexOf('.');
                 if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias)
                     ResultIndexToAppend.Add(ResultIndex);
-                foreach (var edge in node.ReverseNeighbors)
+                foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
                 {
-                    if (ResultIndex.Substring(0, CutPoint) == edge.EdgeAlias)
+                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias) && ResultIndex.Substring(0, CutPoint) == edge.EdgeAlias)
                         ResultIndexToAppend.Add(ResultIndex);
                 }
             }
