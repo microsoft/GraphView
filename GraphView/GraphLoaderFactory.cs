@@ -254,7 +254,7 @@ namespace GraphView
         public void BulkInsert()
         {
             // Insert node from collections
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             var node = inputNodeBuffer.Retrieve();
 
             while (node.Key != null)
@@ -303,7 +303,7 @@ namespace GraphView
         public void BulkInsert()
         {
             // Insert node from collections
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             KeyValuePair<string, Dictionary<string, string>> outEdge = inputOutEdgeBuffer.Retrieve();
 
             while (outEdge.Key != null)

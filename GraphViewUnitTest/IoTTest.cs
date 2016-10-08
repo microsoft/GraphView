@@ -63,7 +63,7 @@ namespace GraphViewUnitTest
             if (source != null) t = source;
             else
             {
-                t = new GraphTraversal(ref connection);
+                t = new GraphTraversal(connection);
                 t = t.V();
             }
             if (info.id != null)
@@ -77,7 +77,7 @@ namespace GraphViewUnitTest
 
         public static GraphTraversal _node(GraphViewConnection connection, NodeInfo info)
         {
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
 
             List<string> PropList = new List<string>();
             PropList.Add("type");
@@ -123,7 +123,7 @@ namespace GraphViewUnitTest
 
         public static GraphTraversal _edge(GraphViewConnection connection, NodeInfo Src, NodeInfo Dest)
         {
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             _node(connection, Src);
             _node(connection, Dest);
             g = g.V().As("V");
@@ -156,7 +156,7 @@ namespace GraphViewUnitTest
 
         public static GraphTraversal getDeviceInformation(GraphViewConnection connection, string DeviceID)
         {
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             return
                 g.V()
                     .has("label", "DeviceModel")
@@ -203,7 +203,7 @@ namespace GraphViewUnitTest
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IoTDeleteInsert");
             ResetCollection("IoTDeleteInsert");
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
             g.V().has("name", "A").drop();
         }
@@ -249,7 +249,7 @@ namespace GraphViewUnitTest
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IoTRoot");
             //ResetCollection("IoTRoot");
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             //var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
             //var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
             //var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
@@ -276,7 +276,7 @@ namespace GraphViewUnitTest
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IoTRoot");
             //ResetCollection("IoTRoot");
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
             //var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
             //var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
             //var A104 = g.V().addV("id", "104", "label", "Measure", "name", "Measure-906e98e7-59a2-11e6-8cd0-3717b83c0677");
@@ -317,7 +317,7 @@ namespace GraphViewUnitTest
                 properties = new Dictionary<string, string>() { {"label","TelemetryDataModel"},{ "id", "232" }, { "name", "DataModel-906e991a-59a2-11e6-8cd0-3717b83c0677" } }
             };
 
-            GraphTraversal g = new GraphTraversal(ref connection);
+            GraphTraversal g = new GraphTraversal(connection);
 
             List<string> PropList = new List<string>();
             PropList.Add("type");

@@ -22,7 +22,7 @@ namespace GraphView
         }
         // Each time the iterator move forward, 
         //it will call the Next() function of the current operator for one result record
-        public class GraphTraversalIterator :IEnumerator<Record>
+        public class GraphTraversalIterator : IEnumerator<Record>
         {
             private GraphViewExecutionOperator CurrentOperator;
             internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator)
@@ -200,7 +200,7 @@ namespace GraphView
             LazyMark = rhs.LazyMark;
         }
 
-        public GraphTraversal(ref GraphViewConnection pConnection)
+        public GraphTraversal(GraphViewConnection pConnection)
         {
             CurrentOperator = null;
             AppendExecutableString = "";
@@ -325,7 +325,7 @@ namespace GraphView
         public static GraphTraversal _underscore()
         {
             GraphViewConnection NullConnection = new GraphViewConnection();
-            GraphTraversal HeldPipe = new GraphTraversal(ref NullConnection);
+            GraphTraversal HeldPipe = new GraphTraversal(NullConnection);
             HeldPipe.HoldMark = false;
             HeldPipe.AppendExecutableString += "__.";
             HeldPipe.LazyMark = true;

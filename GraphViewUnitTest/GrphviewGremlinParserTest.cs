@@ -243,10 +243,10 @@ namespace GraphViewUnitTest
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
             connection.SetupClient();
-            GraphTraversal g1 = new GraphTraversal(ref connection);
+            GraphTraversal g1 = new GraphTraversal(connection);
             var r1 =
                 g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
-            var g2 = new GraphTraversal(ref connection);
+            var g2 = new GraphTraversal(connection);
             var r2 = g2.V().has("name", "saturn").coalesce(GraphTraversal._underscore().values("type"), GraphTraversal._underscore().values("age"));
 
             foreach (var x in r1)
