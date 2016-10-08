@@ -46,7 +46,7 @@ namespace GraphView
         /// <summary>
         /// Constructs a new record produced by this operator
         /// </summary>
-        /// <param name="node"></param>
+        /// <param name="NumberOfProcessedNode"></param>
         /// <param name="ItemInfo">Info of the node newly processed by this operator</param>
         /// <param name="OldRecord">The input record of the operator</param>
         /// <param name="header"></param>
@@ -103,8 +103,7 @@ namespace GraphView
             //                  a.name                             a.age                    Not found when dealing with node A
             RawRecord ResultRecord = new RawRecord(header.Count);
             foreach (
-        string ResultFieldName in
-            header.GetRange(StartOfResultField, header.Count - StartOfResultField))
+                string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
             {
                 string result = "";
                 // Alias with "." is illegal in documentDB, so all the "." in alias will be replaced by "_".
@@ -112,7 +111,7 @@ namespace GraphView
                     result = (Item)[ResultFieldName.Replace(".", "_")].ToString();
                 ResultRecord.fieldValues[header.IndexOf(ResultFieldName)] = result;
             }
-            return new Tuple<string, string, string,List<string>>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID),ResultRecord.fieldValues);
+            return new Tuple<string, string, string,List<string>>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID), ResultRecord.fieldValues);
         }
         internal static IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
         {
@@ -173,7 +172,7 @@ namespace GraphView
             IsReverse = pReverse;
             if (pathStepOperator != null) pathStepOperator = (pathStepOperator as OutputOperator).ChildOperator;
         }
-        override public RawRecord Next()
+        public override RawRecord Next()
         {
             // If the output buffer is not empty, returns a result.
             if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (inputOperator != null && !inputOperator.State())))
@@ -296,7 +295,7 @@ namespace GraphView
                     foreach (var sinkJsonObject in sinkNodeCollection)
                     {
                         // Decode some information that describe the found node.
-                        Tuple<string, string, string, List<string>> sinkVertex = DecodeJObject((JObject) sinkJsonObject,header, NumberOfProcessedVertices * 3);
+                        Tuple<string, string, string, List<string>> sinkVertex = DecodeJObject((JObject) sinkJsonObject, header, NumberOfProcessedVertices * 3);
                         string vertexId = sinkVertex.Item1;
 
                         // If it is a path traversal, matches the returned sink vertex against every source vertex and their outgoing paths. 
@@ -321,32 +320,32 @@ namespace GraphView
                             }
                         }
                         else
-                        // For normal edge, join the old record with the new one if checked valid.
+                            // For normal edge, join the old record with the new one if checked valid.
                             foreach (var record in InputBuffer)
-                        {
-                            // reverse check
-                            bool ValidFlag = true;
-                            if (CheckList != null)
-                                foreach (var neighbor in CheckList)
-                                {
-                                    // Alignment and reverse checking.
-                                    string edge = (((JObject) sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
-                                    if (edge != record.RetriveData(neighbor.Item1))
-                                    {
-                                        ValidFlag = false;
-                                        break;
-                                    }
-                                }
-                            if (ValidFlag)
                             {
-                                // If aligned and reverse checked vailied, join the old record with the new one.
-                                RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
-                                    header);
-                                // If the cross document join successed, put the record into output buffer. 
-                                if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
+                                // reverse check
+                                bool ValidFlag = true;
+                                if (CheckList != null)
+                                    foreach (var neighbor in CheckList)
+                                    {
+                                        // Alignment and reverse checking.
+                                        string edge = (((JObject) sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
+                                        if (edge != record.RetriveData(neighbor.Item1))
+                                        {
+                                            ValidFlag = false;
+                                            break;
+                                        }
+                                    }
+                                if (ValidFlag)
+                                {
+                                    // If aligned and reverse checked vailied, join the old record with the new one.
+                                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
+                                        header);
+                                    // If the cross document join successed, put the record into output buffer. 
+                                    if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
                                         OutputBuffer.Enqueue(NewRecord);
+                                }
                             }
-                        }
                     }
                 }
                 catch (AggregateException e)

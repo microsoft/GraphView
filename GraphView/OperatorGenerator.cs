@@ -17,12 +17,13 @@ namespace GraphView
             // Construct the traversal chain
             ConstructTraversalChain(graph);
             // Construct a header for the operators.
-            List<string> header = ConstructHeader(graph);
+            Dictionary<string, string> columnToAliasDict;
+            List<string> header = ConstructHeader(graph, out columnToAliasDict);
             // Attach pre-generated docDB script to the node on Match graph, 
             // and turn predicates that cannot be attached to one node into boolean function.
-            List<BooleanFunction> Functions = AttachScriptSegment(graph, header);
+            List<BooleanFunction> Functions = AttachScriptSegment(graph, header, columnToAliasDict);
             // Construct operators accroding to the match graph, header and boolean function list.
-            return ConstructOperator(graph, header, pConnection, Functions);
+            return ConstructOperator(graph, header, columnToAliasDict, pConnection, Functions);
         }
 
         private MatchGraph ConstructGraph()
@@ -263,7 +264,7 @@ namespace GraphView
             return Graph;
         }
 
-        private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header)
+        private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header, Dictionary<string, string> columnToAliasDict)
         {
 
             // Call attach predicate visitor to attach predicates on nodes.
@@ -340,13 +341,13 @@ namespace GraphView
                     if (!ProcessedNodeList.Contains(TargetNode.Item1.NodeAlias))
                     {
                         CurrentProcessingNode = TargetNode.Item1;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, StartOfResult);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                     if (TargetNode.Item2 != null)
                     {
                         CurrentProcessingNode = TargetNode.Item2.SinkNode;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, StartOfResult, TargetNode.Item2 is MatchPath);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, StartOfResult, TargetNode.Item2 is MatchPath);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                 }
@@ -361,10 +362,11 @@ namespace GraphView
                 subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph);
         }
 
-        private List<string> ConstructHeader(MatchGraph graph)
+        private List<string> ConstructHeader(MatchGraph graph, out Dictionary<string, string> columnToAliasDict)
         {
 
             List<string> header = new List<string>();
+            columnToAliasDict = new Dictionary<string, string>();
             // Construct the first part of the head which is defined as 
             // |Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|...
             // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"           |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"           |...
@@ -403,9 +405,12 @@ namespace GraphView
             {
                 if (element is WSelectScalarExpression)
                 {
-                    if ((element as WSelectScalarExpression).SelectExpr is WValueExpression) continue;
-                    var expr = (element as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression;
-                    header.Add(expr.MultiPartIdentifier.ToString());
+                    var scalarExpr = element as WSelectScalarExpression;
+                    if (scalarExpr.SelectExpr is WValueExpression) continue;
+
+                    var expr = (scalarExpr.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.ToString();
+                    header.Add(expr);
+                    if (scalarExpr.ColumnName != null) columnToAliasDict.Add(expr, scalarExpr.ColumnName);
                 }
             }
             // Construct a slot for path 
@@ -414,7 +419,8 @@ namespace GraphView
             header.Add("PATH");
             return header;
         }
-        private GraphViewExecutionOperator ConstructOperator(MatchGraph graph, List<string> header, GraphViewConnection pConnection, List<BooleanFunction> functions)
+        private GraphViewExecutionOperator ConstructOperator(MatchGraph graph, List<string> header, 
+            Dictionary<string, string> columnToAliasDict, GraphViewConnection pConnection, List<BooleanFunction> functions)
         {
             // output and input buffer size is set here.
             const int OUTPUT_BUFFER_SIZE = 50;
@@ -494,7 +500,7 @@ namespace GraphView
                             // if WithPathClause != null, internal operator should be constructed for the traversal operator that deals with path.
                             ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                            TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
+                                TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
                                 OUTPUT_BUFFER_SIZE, false, InternalOperator.Item2));
                         }
                         else
@@ -548,17 +554,25 @@ namespace GraphView
             List<string> SelectedElement = new List<string>();
             foreach (var x in SelectElements)
             {
-                if ((x as WSelectScalarExpression).SelectExpr is WColumnReferenceExpression)
-                    SelectedElement.Add(x.ToString());
+                var expr = (x as WSelectScalarExpression).SelectExpr;
+                if (expr is WColumnReferenceExpression)
+                {
+                    var columnName = (expr as WColumnReferenceExpression).MultiPartIdentifier.ToString();
+                    string alias;
+                    columnToAliasDict.TryGetValue(columnName, out alias);
+                    if (alias == null) alias = columnName;
+                    SelectedElement.Add(alias);
+                }
             }
             if (!OutputPath)
-                root = new OutputOperator(root,SelectedElement, root.header);
+                root = new OutputOperator(root, SelectedElement, root.header);
             else
                 root = new OutputOperator(root, true, header);
             return root;
         }
 
-        private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, int pStartOfResultField, bool isPathTailNode = false)
+        private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, 
+            Dictionary<string, string> columnToAliasDict, int pStartOfResultField, bool isPathTailNode = false)
         {
             // Node predicates will be attached here.
             string FromClauseString = node.NodeAlias;
@@ -614,25 +628,36 @@ namespace GraphView
 
             // Select elements that related to current node will be attached here.
             List<string> ResultIndexToAppend = new List<string>();
-            foreach (string ResultIndex in header.GetRange(pStartOfResultField, header.Count - pStartOfResultField))
+            for (var i = pStartOfResultField; i < header.Count; i++)
             {
-                int CutPoint = ResultIndex.Length;
-                if (ResultIndex.IndexOf('.') != -1) CutPoint = ResultIndex.IndexOf('.');
-                if (ResultIndex.Substring(0, CutPoint) == node.NodeAlias)
-                    ResultIndexToAppend.Add(ResultIndex);
+                var str = header[i];
+                int CutPoint = str.Length;
+                if (str.IndexOf('.') != -1) CutPoint = str.IndexOf('.');
+                if (str.Substring(0, CutPoint) == node.NodeAlias)
+                {
+                    ResultIndexToAppend.Add(str);
+                    // If true, then replace the column name in header with the alias
+                    if (UpdateAliasInfo(str, columnToAliasDict))
+                        header[i] = columnToAliasDict[str];
+                }
                 foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
                 {
-                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias) && ResultIndex.Substring(0, CutPoint) == edge.EdgeAlias)
-                        ResultIndexToAppend.Add(ResultIndex);
+                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias) && str.Substring(0, CutPoint) == edge.EdgeAlias)
+                    {
+                        ResultIndexToAppend.Add(str);
+                        if (UpdateAliasInfo(str, columnToAliasDict))
+                            header[i] = columnToAliasDict[str];
+                    }
                 }
             }
 
             string ResultIndexString = ",";
             foreach (string ResultIndex in ResultIndexToAppend)
             {
+                // Alias with "." is illegal in documentDB, so all the "." in alias will be replaced by "_".
                 if (ResultIndex.Length > 3 && ResultIndex.Substring(ResultIndex.Length - 3, 3) == "doc")
                     ResultIndexString += ResultIndex.Substring(0, ResultIndex.Length - 4) + " AS " + ResultIndex.Replace(".", "_") + ",";
-                else ResultIndexString += ResultIndex + " AS " + ResultIndex.Replace(".", "_") + ",";
+                else ResultIndexString += ResultIndex + " AS " + columnToAliasDict[ResultIndex].Replace(".", "_") + ",";
             }
             if (ResultIndexString == ",") ResultIndexString = "";
             ResultIndexString = CutTheTail(ResultIndexString);
@@ -655,6 +680,19 @@ namespace GraphView
             string QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             QuerySegment += FromClauseString + WhereClauseString;
             node.AttachedQuerySegment = QuerySegment;
+        }
+
+        // Return true if the column name in the header needs to be reaplced by its alias
+        private bool UpdateAliasInfo(string columnName, Dictionary<string, string> columnToAliasDict)
+        {
+            string alias;
+            columnToAliasDict.TryGetValue(columnName, out alias);
+            // If an alias exists, replace the column name in header with the alias
+            if (alias != null)
+                return true;
+            // Else, use the column name itself as the alias
+            columnToAliasDict.Add(columnName, columnName);
+            return false;
         }
 
         // Check if any operand of the boolean functions appeared in the operator, increase the corresponding mark if so.
