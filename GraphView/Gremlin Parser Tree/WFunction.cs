@@ -642,21 +642,42 @@ namespace GraphView
                     pContext.OrderMark = true;
                     break;
                 case (int)GraphViewGremlinParser.Keywords.by:
+                    if (!pContext.OrderMark && pContext.ByWhat.OrderByElements == null) throw new SyntaxErrorException("Order() should be called before a by().");
+
                     SortOrder order = SortOrder.NotSpecified;
-                    if (Parameters.Parameter.Last().Fragment != null)
+                    if (Parameters != null)
                     {
-                        if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
-                            (int) GraphViewGremlinParser.Keywords.decr)
-                            order = SortOrder.Descending;
-                        if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
-                            (int) GraphViewGremlinParser.Keywords.incr)
-                            order = SortOrder.Ascending;
-                    }
-                    foreach (var x in Parameters.Parameter.GetRange(0,Parameters.Parameter.Count))
+                        if (Parameters.Parameter.Last().Fragment != null)
                         {
-                        if(x.QuotedString != null)
-                            pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder() {ScalarExpr = new WValueExpression(x.QuotedString,false),SortOrder = order});
+                            if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
+                                (int) GraphViewGremlinParser.Keywords.decr)
+                                order = SortOrder.Descending;
+                            if (Parameters.Parameter.Last().Fragment.Function.KeywordIndex ==
+                                (int) GraphViewGremlinParser.Keywords.incr)
+                                order = SortOrder.Ascending;
                         }
+
+                        // .order.by("key", incr/decr)
+                        foreach (var x in Parameters.Parameter.GetRange(0, Parameters.Parameter.Count))
+                        {
+                            if (x.QuotedString != null)
+                            {
+                                // this is the first by(), override the info created by the Order() step
+                                if (pContext.OrderMark)
+                                    pContext.ByWhat.OrderByElements.RemoveAt(pContext.ByWhat.OrderByElements.Count - 1);
+                                pContext.ByWhat.OrderByElements.Add(new WExpressionWithSortOrder()
+                                {
+                                    ScalarExpr = new WValueExpression(pContext.PrimaryInternalAlias[0].ToString() + "." + x.QuotedString, false),
+                                    SortOrder = order
+                                });
+                            }
+                            else
+                                pContext.ByWhat.OrderByElements.Last().SortOrder = order;
+                        }
+                    }
+                    // .order().by()
+                    else
+                        pContext.ByWhat.OrderByElements.Last().SortOrder = order;
                     pContext.OrderMark = false;
                     break;
                 case (int)GraphViewGremlinParser.Keywords.count:

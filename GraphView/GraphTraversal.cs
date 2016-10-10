@@ -842,7 +842,8 @@ AES += "\'" + x + "\'";
                 return new GraphTraversal(this, AppendExecutableString + "by(incr).");
             if (order == "" && bywhat == "decr")
                 return new GraphTraversal(this, AppendExecutableString + "by(decr).");
-            return new GraphTraversal(this, AppendExecutableString + "by(\'" + bywhat + "\', " + order + ").");
+            return new GraphTraversal(this, AppendExecutableString + "by(\'" + bywhat + "\'" 
+                + (order == "" ? "" : ", ") + order + ").");
         }
 
         public GraphTraversal max()
