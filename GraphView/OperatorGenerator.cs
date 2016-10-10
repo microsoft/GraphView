@@ -290,10 +290,18 @@ namespace GraphView
                     //if (header.IndexOf(SecondExpr) == -1) header.Add(SecondExpr);
                     //int lhs = header.IndexOf(FirstExpr);
                     //int rhs = header.IndexOf(SecondExpr);
-                    if (header.IndexOf(FirstExpr) == -1) header.Insert(insertIdx++, FirstExpr);
-                    if (header.IndexOf(SecondExpr) == -1) header.Insert(insertIdx, SecondExpr);
-                    var lhs = FirstExpr;
-                    var rhs = SecondExpr;
+                    if (header.IndexOf(FirstExpr) == -1)
+                    {
+                        header.Insert(insertIdx++, FirstExpr);
+                        columnToAliasDict.Add(FirstExpr, FirstExpr);
+                    }
+                    if (header.IndexOf(SecondExpr) == -1)
+                    {
+                        header.Insert(insertIdx, SecondExpr);
+                        columnToAliasDict.Add(SecondExpr, SecondExpr);
+                    }
+                    var lhs = columnToAliasDict[FirstExpr];
+                    var rhs = columnToAliasDict[SecondExpr];
                     FieldComparisonFunction NewCBF = null;
                     if ((predicate as WBooleanComparisonExpression).ComparisonType == BooleanComparisonType.Equals)
                         NewCBF = new FieldComparisonFunction(lhs, rhs,
@@ -366,6 +374,7 @@ namespace GraphView
         {
 
             List<string> header = new List<string>();
+            HashSet<string> aliasSet = new HashSet<string>();
             columnToAliasDict = new Dictionary<string, string>();
             // Construct the first part of the head which is defined as 
             // |Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|...
@@ -387,6 +396,7 @@ namespace GraphView
                         header.Add(node.NodeAlias + "_ADJ");
                         header.Add(node.NodeAlias + "_REVADJ");
                         ProcessedNode.Add(node);
+                        aliasSet.Add(node.NodeAlias);
                     }
                     if (sinkNode != null)
                     {
@@ -395,8 +405,12 @@ namespace GraphView
                         header.Add(node.NodeAlias + "_ADJ");
                         header.Add(node.NodeAlias + "_REVADJ");
                         ProcessedNode.Add(node);
+                        aliasSet.Add(node.NodeAlias);
                     }
                 }
+
+                foreach (var edge in subgraph.Edges)
+                    aliasSet.Add(edge.Key);
             }
             // Construct the second part of the head which is defined as 
             // ...|Select element|Select element|Select element|...
@@ -410,7 +424,31 @@ namespace GraphView
 
                     var expr = (scalarExpr.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.ToString();
                     header.Add(expr);
-                    if (scalarExpr.ColumnName != null) columnToAliasDict.Add(expr, scalarExpr.ColumnName);
+
+                    // add the mapping between the expr and its alias
+                    var alias = scalarExpr.ColumnName ?? expr; 
+                    columnToAliasDict.Add(expr, alias);
+                }
+            }
+            if (OrderByClause != null && OrderByClause.OrderByElements != null)
+            {
+                foreach (var element in OrderByClause.OrderByElements)
+                {
+                    var expr = element.ScalarExpr.ToString();
+                    // If false, the expr might need to be added to header or could not be resolved
+                    if (!columnToAliasDict.ContainsKey(expr) && !columnToAliasDict.ContainsValue(expr))
+                    {
+                        int cutPoint = expr.Length;
+                        if (expr.IndexOf('.') != -1) cutPoint = expr.IndexOf('.');
+                        var bindObject = expr.Substring(0, cutPoint);
+                        if (aliasSet.Contains(bindObject))
+                        {
+                            header.Add(expr);
+                            columnToAliasDict.Add(expr, expr);
+                        }
+                        else
+                            throw new GraphViewException(string.Format("The identifier \"{0}\" could not be bound", expr));
+                    }
                 }
             }
             // Construct a slot for path 
@@ -544,15 +582,28 @@ namespace GraphView
             }
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
             {
-                var expr = OrderByClause.OrderByElements[0].ScalarExpr.ToString();
-                var sortOrder = OrderByClause.OrderByElements[0].SortOrder;
-                if (sortOrder == SortOrder.Ascending)
-                    root = new OrderbyOperator(root, columnToAliasDict[expr], root.header, OrderbyOperator.Order.Incr);
-                if (sortOrder == SortOrder.Descending)
-                    root = new OrderbyOperator(root, columnToAliasDict[expr], root.header, OrderbyOperator.Order.Decr);
-                if (sortOrder == SortOrder.NotSpecified)
-                    root = new OrderbyOperator(root, columnToAliasDict[expr], root.header, OrderbyOperator.Order.NotSpecified);
+                var orderByElements = new List<Tuple<string, SortOrder>>();
+                foreach (var element in OrderByClause.OrderByElements)
+                {
+                    var sortOrder = element.SortOrder;
+                    var expr = element.ScalarExpr.ToString();
+                    string alias;
+                    // if expr is a column name with an alias, use its alias
+                    if (columnToAliasDict.TryGetValue(expr, out alias))
+                        orderByElements.Add(new Tuple<string, SortOrder>(alias, sortOrder));
+                    // if expr is already the alias, use the expr directly
+                    else if (columnToAliasDict.ContainsValue(expr))
+                        orderByElements.Add(new Tuple<string, SortOrder>(expr, sortOrder));
+                    else
+                        throw new GraphViewException(string.Format("Invalid column name '{0}'", expr));
+                }
+                //(from wExpressionWithSortOrder in OrderByClause.OrderByElements
+                //    let expr = columnToAliasDict[wExpressionWithSortOrder.ScalarExpr.ToString()]
+                //    let sortOrder = wExpressionWithSortOrder.SortOrder
+                //    select new Tuple<string, SortOrder>(expr, sortOrder)).ToList();
+                root = new OrderbyOperator(root, orderByElements, header);
             }
+
             List<string> SelectedElement = new List<string>();
             foreach (var x in SelectElements)
             {
@@ -638,17 +689,15 @@ namespace GraphView
                 if (str.Substring(0, CutPoint) == node.NodeAlias)
                 {
                     ResultIndexToAppend.Add(str);
-                    // If true, then replace the column name in header with the alias
-                    if (UpdateAliasInfo(str, columnToAliasDict))
-                        header[i] = columnToAliasDict[str];
+                    // Replace the column name in header with its alias
+                    header[i] = columnToAliasDict[str];
                 }
                 foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
                 {
                     if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias) && str.Substring(0, CutPoint) == edge.EdgeAlias)
                     {
                         ResultIndexToAppend.Add(str);
-                        if (UpdateAliasInfo(str, columnToAliasDict))
-                            header[i] = columnToAliasDict[str];
+                        header[i] = columnToAliasDict[str];
                     }
                 }
             }
@@ -682,19 +731,6 @@ namespace GraphView
             string QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
             QuerySegment += FromClauseString + WhereClauseString;
             node.AttachedQuerySegment = QuerySegment;
-        }
-
-        // Return true if the column name in the header needs to be reaplced by its alias
-        private bool UpdateAliasInfo(string columnName, Dictionary<string, string> columnToAliasDict)
-        {
-            string alias;
-            columnToAliasDict.TryGetValue(columnName, out alias);
-            // If an alias exists, replace the column name in header with the alias
-            if (alias != null)
-                return true;
-            // Else, use the column name itself as the alias
-            columnToAliasDict.Add(columnName, columnName);
-            return false;
         }
 
         // Check if any operand of the boolean functions appeared in the operator, increase the corresponding mark if so.

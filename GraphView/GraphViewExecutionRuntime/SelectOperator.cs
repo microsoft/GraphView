@@ -666,24 +666,18 @@ namespace GraphView
         internal Queue<RawRecord> ResultQueue;
         // By what key to order.
         internal string bywhat;
-        internal Order order;
+        // <key, order>
+        internal List<Tuple<string, SortOrder>> OrderByElements; 
 
-        public enum Order
-        {
-            Decr,
-            Incr,
-            NotSpecified
-        }
-        public OrderbyOperator(GraphViewExecutionOperator pChildOperator, string pBywhat, List<string> pheader, Order pOrder = Order.NotSpecified)
+        public OrderbyOperator(GraphViewExecutionOperator pChildOperator, List<Tuple<string, SortOrder>> pOrderByElements, List<string> pheader)
         {
             this.Open();
             header = pheader;
             ChildOperator = pChildOperator;
-            bywhat = pBywhat;
-            order = pOrder;
+            OrderByElements = pOrderByElements;
         }
 
-        override public RawRecord Next()
+        public override RawRecord Next()
         {
             if (results == null)
             {
@@ -694,10 +688,23 @@ namespace GraphView
                     if (Temp != null)
                         results.Add(Temp);
                 }
-                if (order == Order.Incr || order == Order.NotSpecified)
-                    results.Sort((x, y) => string.Compare(x.RetriveData(header, bywhat), y.RetriveData(header, bywhat), StringComparison.OrdinalIgnoreCase));
-                if (order == Order.Decr)
-                    results.Sort((x, y) => string.Compare(y.RetriveData(header, bywhat), x.RetriveData(header, bywhat), StringComparison.OrdinalIgnoreCase));
+                results.Sort((x, y) =>
+                {
+                    var ret = 0;
+                    foreach (var orderByElement in OrderByElements)
+                    {
+                        var expr = orderByElement.Item1;
+                        var sortOrder = orderByElement.Item2;
+                        if (sortOrder == SortOrder.Ascending || sortOrder == SortOrder.NotSpecified)
+                            ret = string.Compare(x.RetriveData(header, expr), y.RetriveData(header, expr),
+                                StringComparison.OrdinalIgnoreCase);
+                        else if (sortOrder == SortOrder.Descending)
+                            ret = string.Compare(y.RetriveData(header, expr), x.RetriveData(header, expr),
+                                StringComparison.OrdinalIgnoreCase);
+                        if (ret != 0) break;
+                    }
+                    return ret;
+                });
 
                 ResultQueue = new Queue<RawRecord>();
                 foreach (var x in results)
