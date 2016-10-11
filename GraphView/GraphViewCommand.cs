@@ -125,8 +125,6 @@ namespace GraphView
 
                 var DocumentDBConnection = GraphViewConnection;
 
-                DocumentDBConnection.SetupClient();
-
                 foreach (var Batch in script.Batches)
                     foreach (var statement in Batch.Statements)
                         if (statement is WSelectStatement)

@@ -30,11 +30,13 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json;
 using IsolationLevel = System.Data.IsolationLevel;
 
 // For debugging
@@ -78,21 +80,15 @@ namespace GraphView
             DocDB_PrimaryKey = docdb_AuthorizationKey;
             DocDB_DatabaseId = docdb_DatabaseID;
             DocDB_CollectionId = docdb_CollectionID;
-            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
+            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey, 
+                new ConnectionPolicy
+                {
+                    ConnectionMode = ConnectionMode.Direct,
+                    ConnectionProtocol = Protocol.Tcp,
+                });
         }
         public GraphViewConnection()
-        {
-        }
-
-        /// <summary>
-        ///     Sampling rate for checking average degree. Set to 100 by default.
-        /// </summary>
-        public double GraphDbAverageDegreeSamplingRate { get; set; }
-
-        /// <summary>
-        ///     Sampling rate for edge columns. Set to 100 by default.
-        /// </summary>
-        public double GraphDbEdgeColumnSamplingRate { get; set; }
+        { }
 
         /// <summary>
         ///     Connection to a SQL database
@@ -111,19 +107,18 @@ namespace GraphView
 
         public void SetupClient()
         {
-            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey);
-            // Check to verify a database with the id=GroupMatch does not exist
-            //DocDB_finish = false;
-            //BuildUp();
-            //while (!DocDB_finish)
-            //    System.Threading.Thread.Sleep(10);
+            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey,
+                new ConnectionPolicy
+                {
+                    ConnectionMode = ConnectionMode.Direct,
+                    ConnectionProtocol = Protocol.Tcp,
+                });
         }
 
         public async Task BuildUp()
         {
             DocDB_Database =
                 DocDBclient.CreateDatabaseQuery().Where(db => db.Id == DocDB_DatabaseId).AsEnumerable().FirstOrDefault();
-
 
             // If the database does not exist, create a new database
             if (DocDB_Database == null)
@@ -135,7 +130,7 @@ namespace GraphView
                     });
             }
 
-            // Check to verify a document collection with the id=GraphOne does not exist
+            // Check to verify whether a document collection with the id exists
             DocDB_Collection =
                 DocDBclient.CreateDocumentCollectionQuery("dbs/" + DocDB_Database.Id)
                     .Where(c => c.Id == DocDB_CollectionId)
@@ -167,7 +162,7 @@ namespace GraphView
         public async Task DeleteCollection()
         {
             await DocDBclient.DeleteDocumentCollectionAsync(DocDB_Collection.SelfLink);
-            Console.WriteLine("deleted collection");
+            Console.WriteLine("The collection has been deleted");
 
             DocDB_finish = true;
         }
@@ -178,6 +173,54 @@ namespace GraphView
             DeleteCollection();
             while (!DocDB_finish)
                 System.Threading.Thread.Sleep(10);
+        }
+
+        public void BulkInsertNodes(List<string> nodes)
+        {
+            if (!nodes.Any()) return;
+
+            string collectionLink = "dbs/" + DocDB_DatabaseId + "/colls/" + DocDB_CollectionId;
+
+            // Each batch size is determined by maxJsonSize.
+            // maxJsonSize should be so that:
+            // -- it fits into one request (MAX request size is ???).
+            // -- it doesn't cause the script to time out.
+            const int maxJsonSize = 50000;
+
+            // Prepare the BulkInsert stored procedure
+            string jsBody = File.ReadAllText(@"..\..\BulkInsert.js");
+            StoredProcedure sproc = new StoredProcedure
+            {
+                Id = "BulkInsert",
+                Body = jsBody,
+            };
+
+            var bulkInsertCommand = new BulkInsertCommand(DocDBclient);
+            //Create the BulkInsert stored procedure if it doesn't exist
+            Task<StoredProcedure> spTask = bulkInsertCommand.TryCreatedStoredProcedure(collectionLink, sproc);
+            spTask.Wait();
+            sproc = spTask.Result;
+            var sprocLink = sproc.SelfLink;
+
+            // If you are sure that the proc already exist on the server side, 
+            // you can comment out the TryCreatedStoredProcude code above and use the URI directly instead
+            //var sprocLink = "dbs/" + DocDB_DatabaseId + "/colls/" + DocDB_CollectionId + "/sprocs/" + sproc.Id;
+
+            int currentCount = 0;
+            while (currentCount < nodes.Count)
+            {
+                // Get the batch json string whose size won't exceed the maxJsonSize
+                string json_arr = BulkInsertCommand.GenerateNodesJsonString(nodes, currentCount, maxJsonSize);
+                var objs = new dynamic[] { JsonConvert.DeserializeObject<dynamic>(json_arr) };
+
+                // Execute the batch
+                Task<int> insertTask = bulkInsertCommand.BulkInsertAsync(sprocLink, objs);
+                insertTask.Wait();
+
+                // Prepare for next batch
+                currentCount += insertTask.Result;
+                Console.WriteLine(insertTask.Result + " nodes has already been inserted.");
+            }
         }
 
         

@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using GraphView;
@@ -28,6 +31,49 @@ namespace GraphViewUnitTest
             gcmd.ExecuteNonQuery();
 
             //connection.ResetCollection();
+        }
+
+        [TestMethod]
+        public void BulkInsertNodes()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "BulkInsertTest");
+
+            //ResetCollection(connection);
+
+            var nodes = new List<string>
+            {
+                "name\t'saturn'\tage\t10000\ttype\t\"titan\"",
+                "name\t'jupiter'\tage\t5000\ttype\t'god'",
+                "name\t'sky'\ttype\t'location'",
+                "name\t\"sea\"\ttype\t'location'",
+                "name\t'neptune'\tage\t4500\ttype\t'god'",
+                "name\t'hercules'\tage\t30\ttype\t'demigod'",
+                "name\t'alcmene'\tage\t45\ttype\t'human'",
+                "name\t'pluto'\tage\t4000\ttype\t'god'",
+                "name\t'nemean'\ttype\t'monster'",
+                "name\t'hydra'\ttype\t'monster'",
+                "name\t'cerberus'\ttype\t'monster'",
+                "name\t'tartarus'\ttype\t'location'"
+            };
+
+            connection.BulkInsertNodes(nodes);
+        }
+
+        [TestMethod]
+        public void BulkInsertNodesFromFile()
+        {
+            string inputFile = @"..\..\Nodes_data.txt";
+            var nodes = File.ReadLines(inputFile).ToList();
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                    "GroupMatch", "BulkInsertTest");
+
+            //ResetCollection(connection);
+
+            connection.BulkInsertNodes(nodes);
         }
 
         [TestMethod]
@@ -387,6 +433,21 @@ namespace GraphViewUnitTest
                     "GroupMatch", "GraphTest");
             connection.SetupClient();
 
+            connection.DocDB_finish = false;
+            connection.BuildUp();
+            while (!connection.DocDB_finish)
+                System.Threading.Thread.Sleep(10);
+
+            connection.ResetCollection();
+
+            connection.DocDB_finish = false;
+            connection.BuildUp();
+            while (!connection.DocDB_finish)
+                System.Threading.Thread.Sleep(10);
+        }
+
+        public void ResetCollection(GraphViewConnection connection)
+        {
             connection.DocDB_finish = false;
             connection.BuildUp();
             while (!connection.DocDB_finish)

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections;
 using System.IO;
 using System.Text;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 // Add DocumentDB references
 using Newtonsoft.Json;
@@ -529,6 +530,26 @@ namespace GraphView
             }
 
             return sb.ToString();
+        }
+
+        public static string ConstructNodeJsonString(string nodeInfo)
+        {   
+            string json_str = "{}";
+            char delimiter = '\t';
+            var properties_values = nodeInfo.Split(delimiter);
+
+            for (int i = 0; i < properties_values.Length-1; i += 2)
+            {
+                string property = properties_values[i];
+                string value = properties_values[i + 1];
+
+                json_str = GraphViewJsonCommand.insert_property(json_str, value, property).ToString();
+            }
+            //Insert "_edge" & "_reverse_edge" into the string.
+            json_str = GraphViewJsonCommand.insert_property(json_str, "[]", "_edge").ToString();
+            json_str = GraphViewJsonCommand.insert_property(json_str, "[]", "_reverse_edge").ToString();
+
+            return json_str;
         }
     }
 }
