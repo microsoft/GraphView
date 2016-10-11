@@ -73,6 +73,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="DocDBQueryPerfTest.cs" />
     <Compile Include="GraphViewMarvelTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DocDbInsertDeleteTest.cs" />
