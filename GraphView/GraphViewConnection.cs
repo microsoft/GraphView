@@ -184,7 +184,7 @@ namespace GraphView
             // Each batch size is determined by maxJsonSize.
             // maxJsonSize should be so that:
             // -- it fits into one request (MAX request size is ???).
-            // -- it doesn't cause the script to time out.
+            // -- it doesn't cause the script to time out, so the batch number can be minimzed.
             const int maxJsonSize = 50000;
 
             // Prepare the BulkInsert stored procedure
@@ -195,9 +195,9 @@ namespace GraphView
                 Body = jsBody,
             };
 
-            var bulkInsertCommand = new BulkInsertCommand(DocDBclient);
+            var bulkInsertCommand = new GraphViewCommand(this);
             //Create the BulkInsert stored procedure if it doesn't exist
-            Task<StoredProcedure> spTask = bulkInsertCommand.TryCreatedStoredProcedure(collectionLink, sproc);
+            Task<StoredProcedure> spTask = bulkInsertCommand.TryCreatedStoredProcedureAsync(collectionLink, sproc);
             spTask.Wait();
             sproc = spTask.Result;
             var sprocLink = sproc.SelfLink;
@@ -210,7 +210,7 @@ namespace GraphView
             while (currentCount < nodes.Count)
             {
                 // Get the batch json string whose size won't exceed the maxJsonSize
-                string json_arr = BulkInsertCommand.GenerateNodesJsonString(nodes, currentCount, maxJsonSize);
+                string json_arr = GraphViewCommand.GenerateNodesJsonString(nodes, currentCount, maxJsonSize);
                 var objs = new dynamic[] { JsonConvert.DeserializeObject<dynamic>(json_arr) };
 
                 // Execute the batch

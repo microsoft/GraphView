@@ -64,7 +64,6 @@
   <ItemGroup>
     <Compile Include="AttachWhereClauseVisitor.cs" />
     <Compile Include="BooleanFunction.cs" />
-    <Compile Include="BulkInsertCommand.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBGraphOptimizer.cs" />
     <Compile Include="GraphOptimizer.cs" />

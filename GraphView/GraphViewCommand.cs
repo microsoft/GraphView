@@ -34,6 +34,7 @@ using System.Globalization;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
@@ -91,6 +92,11 @@ namespace GraphView
         {
         }
 
+        public GraphViewCommand(GraphViewConnection connecion)
+        {
+            GraphViewConnection = connecion;
+        }
+
         public GraphViewCommand(string commandText)
         {
             CommandText = commandText;
@@ -112,6 +118,7 @@ namespace GraphView
         {
             Command.Cancel();
         }
+
         public GraphViewDataReader ExecuteReader()
         {
             try
@@ -205,6 +212,45 @@ namespace GraphView
                 throw new SqlExecutionException("An error occurred when executing the query", e);
             }
         }
+
+        public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)
+        {
+            StoredProcedure check =
+                GraphViewConnection.DocDBclient.CreateStoredProcedureQuery(collectionLink)
+                    .Where(s => s.Id == sproc.Id)
+                    .AsEnumerable()
+                    .FirstOrDefault();
+
+            if (check != null) return check;
+
+            Console.WriteLine("BulkInsert proc doesn't exist, try to create a new one.");
+            sproc = await GraphViewConnection.DocDBclient.CreateStoredProcedureAsync(collectionLink, sproc);
+            return sproc;
+        }
+
+        public async Task<int> BulkInsertAsync(string sprocLink, dynamic[] objs)
+        {
+            StoredProcedureResponse<int> scriptResult =
+                await
+                    GraphViewConnection.DocDBclient.ExecuteStoredProcedureAsync<int>(sprocLink, objs);
+            return scriptResult.Response;
+        }
+
+        public static string GenerateNodesJsonString(List<string> nodes, int currentIndex, int maxJsonSize)
+        {
+            var jsonDocArr = new StringBuilder();
+            jsonDocArr.Append("[");
+
+            jsonDocArr.Append(GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
+
+            while (jsonDocArr.Length < maxJsonSize && ++currentIndex < nodes.Count)
+                jsonDocArr.Append(", " + GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
+
+            jsonDocArr.Append("]");
+
+            return jsonDocArr.ToString();
+        }
+
         public void Dispose()
         {
             Command.Dispose();
