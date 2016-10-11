@@ -86,6 +86,8 @@ namespace GraphView
                     ConnectionMode = ConnectionMode.Direct,
                     ConnectionProtocol = Protocol.Tcp,
                 });
+
+            DocDBclient.OpenAsync();
         }
         public GraphViewConnection()
         { }
