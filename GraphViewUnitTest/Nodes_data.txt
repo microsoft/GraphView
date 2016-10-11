@@ -1,0 +1,12 @@
+name	'saturn'	age	10000	type	"titan"
+name	'jupiter'	age	5000	type	'god'
+name	'sky'	type	'location'
+name	"sea"	type	'location'
+name	'neptune'	age	4500	type	'god'
+name	'hercules'	age	30	type	'demigod'
+name	'alcmene'	age	45	type	'human'
+name	'pluto'	age	4000	type	'god'
+name	'nemean'	type	'monster'
+name	'hydra'	type	'monster'
+name	'cerberus'	type	'monster'
+name	'tartarus'	type	'location'
