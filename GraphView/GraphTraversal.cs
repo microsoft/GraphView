@@ -786,7 +786,7 @@ AES += "\'" + x + "\'";
             }
             if (HoldMark == true) held = this;
 
-            return new GraphTraversal(this, AppendExecutableString + "addE(" + string.Join(",", paraList));
+            return new GraphTraversal(this, AppendExecutableString + "addE(" + string.Join(",", paraList) + ").");
         }
 
         public GraphTraversal from(GraphTraversal OtherSource)
