@@ -229,7 +229,7 @@ namespace GraphView
                 Console.WriteLine("min insert node time is: {0}", result.Min());
                 Console.WriteLine("avg insert node time is: {0}", result.Average());
                 Console.WriteLine("sum insert node time is: {0}", result.Sum());
-                Console.WriteLine("item count" + edgeResult.Count);
+                Console.WriteLine("item count" + result.Count);
                 //Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
                 //Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
