@@ -7,6 +7,7 @@ using GraphView;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Threading;
+using System.Diagnostics;
 
 namespace GraphViewUnitTest
 {
@@ -213,7 +214,7 @@ namespace GraphViewUnitTest
         public void parseJsonSingleThread()
         {
             int i = 0;
-            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-insert.json");
+            var lines = File.ReadLines(@"D:\dataset\AzureIOT\graphson-addition1.json");
             int index = 0;
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
@@ -343,10 +344,16 @@ namespace GraphViewUnitTest
 
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "IOTTest");
+                "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("IOTTest");
+            ResetCollection("MarvelTest");
+            var result = new List<Double>();
+            var sumTime = 0.0;
+            var nodeInsertNumbers = 100;
+            var edgeInsertNumbers = 100;
+
             // Insert node from collections
+            var nodeCount = 0;
             foreach (var node in nodePropertiesHashMap)
             {
                 StringBuilder tempSQL = new StringBuilder("g.addV(");
@@ -361,9 +368,34 @@ namespace GraphViewUnitTest
 
                 tempSQL.Remove(tempSQL.Length - 1, 1);
                 tempSQL.Append(")");
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
                 parser.Parse(tempSQL.ToString()).Generate(connection).Next();
+                sw.Stop();
+                sumTime += sw.Elapsed.TotalMilliseconds;
+                result.Add(sw.Elapsed.TotalMilliseconds);
+                //Console.WriteLine("query{0} time is:{1}", i, sw.Elapsed.TotalMilliseconds);
+                Console.WriteLine("{0} time is:{1}", i, sw.Elapsed.TotalMilliseconds);
+                nodeCount++;
+                if(nodeCount > nodeInsertNumbers)
+                {
+                    break;
+                }
+            }
+
+            if (result.Count > 0)
+            {
+                Console.WriteLine("max insert node time is: {0}", result.Max());
+                Console.WriteLine("min insert node time is: {0}", result.Min());
+                Console.WriteLine("avg insert node time is: {0}", result.Average());
+                Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
+                Console.WriteLine("avg,max,min,stdDev");
+                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
             }
             // wait for node insert finish
+
+            var outEdgeNum = 0;
+            result = new List<Double>();
 
             // Insert out edge from collections
             foreach (var edge in outEdgePropertiesHashMap)
@@ -377,9 +409,32 @@ namespace GraphViewUnitTest
                 edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
                 var edgeType = edge.Value["edge_type"];
                 String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-                parser.Parse(tempInsertSQL).Generate(connection).Next();
                 Console.WriteLine(tempInsertSQL);
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                sw.Stop();
+                result.Add(sw.Elapsed.TotalMilliseconds);
+                outEdgeNum++ ;
+                if(outEdgeNum > edgeInsertNumbers)
+                {
+                    break;
+                }
             }
+
+            if (result.Count > 0)
+            {
+                Console.WriteLine("max insert outEdge time is: {0}", result.Max());
+                Console.WriteLine("min insert outEdge time is: {0}", result.Min());
+                Console.WriteLine("avg insert outEdge time is: {0}", result.Average());
+                Console.WriteLine("stdDev insert outEdge time is: {0}", DocDBUtils.stdDev(result));
+                Console.WriteLine("avg,max,min,stdDev");
+                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
+            }
+
+            var inEdgeNum = 0;
+            result = new List<Double>();
+
             // Insert in edge from collections
             foreach (var edge in inEdgePropertiesHashMap)
             {
@@ -392,19 +447,39 @@ namespace GraphViewUnitTest
                 edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
                 var edgeType = edge.Value["edge_type"];
                 String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                Stopwatch sw = new Stopwatch();
                 Console.WriteLine(tempInsertSQL);
+                sw.Start();
+                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                sw.Stop();
+                result.Add(sw.Elapsed.TotalMilliseconds);
+                inEdgeNum++;
+                if (inEdgeNum > edgeInsertNumbers)
+                {
+                    break;
+                }
+            }
+
+            if (result.Count > 0)
+            {
+                Console.WriteLine("max insert in edge time is: {0}", result.Max());
+                Console.WriteLine("min insert in edge time is: {0}", result.Min());
+                Console.WriteLine("avg insert in edge time is: {0}", result.Average());
+                Console.WriteLine("stdDev insert in edge time is: {0}", DocDBUtils.stdDev(result));
+                Console.WriteLine("avg,max,min,stdDev");
+                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
             }
         }
         [TestMethod]
         public void InsertJsonMultiThreadByBoundedBufferByCommand()
         {
-            string path = @"D:\dataset\AzureIOT\graphson-exception2.json";
+            string path = @"E:\dataset\AzureIOT\graphson-dataset.json";
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             string collectionName = "MarvelTest";
-            GraphLoaderFactory.loadAzureIOT(path, connection, collectionName, true);
+            int threadNumber = 1;
+            GraphLoaderFactory.loadAzureIOT(path, connection, collectionName, true, threadNumber);
         }
 
         [TestMethod]

@@ -42,6 +42,7 @@ namespace GraphViewUnitTest
                 sw.Stop();
                 sumTime += sw.Elapsed.TotalMilliseconds;
                 result.Add(sw.Elapsed.TotalMilliseconds);
+                //Console.WriteLine("query{0} time is:{1}", i, sw.Elapsed.TotalMilliseconds);
                 Console.WriteLine("query{0} time is:{1}", i, sw.Elapsed.TotalMilliseconds);
             }
 
