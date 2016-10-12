@@ -473,7 +473,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void InsertJsonMultiThreadByBoundedBufferByCommand()
         {
-            string path = @"D:\dataset\AzureIOT\graphson-exception2.json";
+            string path = @"E:\dataset\AzureIOT\graphson-subset.json";
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");

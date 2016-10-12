@@ -164,7 +164,7 @@ namespace GraphView
             {
                 DocDBInsertNodeWorkerByNewAPI worker1 = new DocDBInsertNodeWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
                 worker1.threadId = j;
-                //worker1.result = result;
+                worker1.result = result;
                 Thread t1 = new Thread(worker1.BulkInsert);
                 insertNodeThreadList.Add(t1);
             }
@@ -323,10 +323,10 @@ namespace GraphView
                 Stopwatch sw = new Stopwatch();
                 var tempSQL = @"
                 INSERT INTO Node (" + key + ") VALUES (" + value + ");";
+                Console.WriteLine(tempSQL);
                 sw.Start();
                 // Gremlin API
                 // var D = g.V().addV(PropList);
-                Console.WriteLine(tempSQL);
                 gcmd.CommandText = tempSQL;
                 gcmd.ExecuteNonQuery();
 
