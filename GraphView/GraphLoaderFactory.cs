@@ -228,6 +228,7 @@ namespace GraphView
                 Console.WriteLine("max insert node time is: {0}", result.Max());
                 Console.WriteLine("min insert node time is: {0}", result.Min());
                 Console.WriteLine("avg insert node time is: {0}", result.Average());
+                Console.WriteLine("sum insert node time is: {0}", result.Sum());
                 //Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
                 //Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
@@ -235,9 +236,10 @@ namespace GraphView
 
             if (edgeResult.Count > 0)
             {
-                Console.WriteLine("max insert node time is: {0}", edgeResult.Max());
-                Console.WriteLine("min insert node time is: {0}", edgeResult.Min());
-                Console.WriteLine("avg insert node time is: {0}", edgeResult.Average());
+                Console.WriteLine("max insert edge time is: {0}", edgeResult.Max());
+                Console.WriteLine("min insert edge time is: {0}", edgeResult.Min());
+                Console.WriteLine("avg insert edge time is: {0}", edgeResult.Average());
+                Console.WriteLine("sum insert node time is: {0}", result.Sum());
                 //Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
                 //Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
@@ -454,7 +456,7 @@ namespace GraphView
                 sw.Stop();
                 result.Add(sw.Elapsed.TotalMilliseconds);
 
-                Console.WriteLine("insert inE " + edge.Key);
+                Console.WriteLine("insert inE " + edge.Key + " time cost \n " + sw.Elapsed.TotalMilliseconds);
                 edge = inputInEdgeBuffer.Retrieve();
             }
             Console.WriteLine("Thread Insert Finish");
