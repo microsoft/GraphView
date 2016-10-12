@@ -73,6 +73,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="DocDBInsertPerfTest.cs" />
     <Compile Include="DocDBQueryPerfTest.cs" />
     <Compile Include="GraphViewMarvelTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -82,6 +83,7 @@
     <Compile Include="DocDbPerformanceTest.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
     <Compile Include="IoTTest.cs" />
+    <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GraphView\GraphView.csproj">
