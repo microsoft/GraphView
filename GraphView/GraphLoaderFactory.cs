@@ -308,6 +308,11 @@ namespace GraphView
                 var key = new StringBuilder();
                 var value = new StringBuilder();
 
+                key.Append("id");
+                key.Append(",");
+                value.Append("'" + node.Key + "'");
+                value.Append(",");
+
                 foreach (var x in node.Value)
                 {
                     PropList.Add(x.Key);
