@@ -229,6 +229,7 @@ namespace GraphView
                 Console.WriteLine("min insert node time is: {0}", result.Min());
                 Console.WriteLine("avg insert node time is: {0}", result.Average());
                 Console.WriteLine("sum insert node time is: {0}", result.Sum());
+                Console.WriteLine("item count" + edgeResult.Count);
                 //Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
                 //Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
@@ -239,7 +240,8 @@ namespace GraphView
                 Console.WriteLine("max insert edge time is: {0}", edgeResult.Max());
                 Console.WriteLine("min insert edge time is: {0}", edgeResult.Min());
                 Console.WriteLine("avg insert edge time is: {0}", edgeResult.Average());
-                Console.WriteLine("sum insert node time is: {0}", result.Sum());
+                Console.WriteLine("sum insert node time is: {0}", edgeResult.Sum());
+                Console.WriteLine("item count" + edgeResult.Count);
                 //Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
                 //Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
@@ -334,7 +336,7 @@ namespace GraphView
 
                 sw.Stop();
                 result.Add(sw.Elapsed.TotalMilliseconds);
-                Console.WriteLine("insert v " + node.Key);
+                Console.WriteLine("insert v " + node.Key + " time cost " + sw.Elapsed.TotalMilliseconds);
                 node = inputNodeBuffer.Retrieve();
             }
 
@@ -411,7 +413,7 @@ namespace GraphView
                 gcmd.ExecuteNonQuery();
                 sw.Stop();
                 result.Add(sw.Elapsed.TotalMilliseconds);
-                Console.WriteLine("insert outE " + outEdge.Key);
+                Console.WriteLine("insert outE " + outEdge.Key + " \n time cost " + sw.Elapsed.TotalMilliseconds);
                 outEdge = inputOutEdgeBuffer.Retrieve();
             }
             // Insert in edge from collections
