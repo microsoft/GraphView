@@ -267,15 +267,19 @@ namespace GraphViewUnitTest
             connection.SetupClient();
             ResetCollection("GremlinTutor");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
+            GraphTraversal g = new GraphTraversal(connection);
             parser.Parse("g.addV('character','VENUS II','weapon','shiled')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            //parser.Parse("g.V.as('v').has('character','VENUS II').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            g.V().has("character", "VENUS II").addE("type", "appeared").to(g.V().has("comicbook", "AVF 4"));
             parser.Parse("g.addV('character','HAWK','weapon','claws')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','AVF 4')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            //parser.Parse("g.V.as('v').has('character','HAWK').as('a').select('v').has('comicbook','AVF 4').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            g.V().has("character", "HAWK").addE("type", "appeared").to(g.V().has("comicbook", "AVF 4"));
             parser.Parse("g.addV('character','WOODGOD','weapon','lass')").Generate(connection).Next();
             parser.Parse("g.addV('comicbook','H2 252')").Generate(connection).Next();
-            parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            //parser.Parse("g.V.as('v').has('character','WOODGOD').as('a').select('v').has('comicbook','H2 252').as('b').select('a','b').addOutE('a','appeared','b')").Generate(connection).Next();
+            g.V().has("character", "WOODGOD").addE("type", "appeared").to(g.V().has("comicbook", "H2 252"));
             var res = parser.Parse("g.V().has('character', 'HAWK').out('appeared').comicbook").Generate(connection);
             while (res.State())
             {
@@ -336,7 +340,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinModification");
-            connection.SetupClient();
+
             //ResetCollection("GremlinModification");
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.addV('label','person','name','Adams')");
@@ -346,10 +350,12 @@ namespace GraphViewUnitTest
             var ParserTree2 = parser2.Parse("g.addV('label','person','name','Bob')");
             var op2 = ParserTree2.Generate(connection);
             op2.Next();
-            GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
-            var ParserTree3 = parser3.Parse("g.V.as('v').has('name','Adams').as('a').select('v').has('name','Bob').as('b').select('a','b').addOutE('a','isfriend','b','for','10y')");
-            var op3 = ParserTree3.Generate(connection);
-            op3.Next();
+            //GraphViewGremlinParser parser3 = new GraphViewGremlinParser();
+            //var ParserTree3 = parser3.Parse("g.V.as('v').has('name','Adams').as('a').select('v').has('name','Bob').as('b').select('a','b').addOutE('a','isfriend','b','for','10y')");
+            //var op3 = ParserTree3.Generate(connection);
+            //op3.Next();
+            GraphTraversal g = new GraphTraversal(connection);
+            g.V().has("name", "Adams").addE("type", "isfriend", "for", "10y").to(g.V().has("name", "Bob"));
             GraphViewGremlinParser parser4 = new GraphViewGremlinParser();
             var ParserTree4 = parser4.Parse("g.V.has('name','Adams').out('isfriend').name");
             var op4 = ParserTree4.Generate(connection);
