@@ -1235,19 +1235,22 @@ namespace GraphView
         internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             var search = WhereClause.SearchCondition;
-            //build up the query
-            string Selectstr = "SELECT * " + "FROM N_0 ";
+            var target = Target.ToString();
+
+            // Build up the query to select all the nodes can be deleted
+            string Selectstr = "SELECT * FROM " + target + " ";
+            string IsolatedCheck = string.Format("(ARRAY_LENGTH({0}._edge) = 0 AND ARRAY_LENGTH({0}._reverse_edge) = 0) ", target);
             if (search == null)
             {
-                Selectstr += @"WHERE ARRAY_LENGTH(N_0._edge)>0 or ARRAY_LENGTH(N_0._reverse_edge)>0 ";
+                Selectstr += @"WHERE " + IsolatedCheck;
             }
             else
             {
-                Selectstr += @"WHERE " + search.ToString() +
-                             @" and (ARRAY_LENGTH(N_0._edge)>0 or ARRAY_LENGTH(N_0._reverse_edge)>0)  ";
+                // The search condition needs to be surrounded by parentheses
+                Selectstr += @"WHERE (" + search.ToString() + ") AND " + IsolatedCheck;
             }
 
-            DeleteNodeOperator Deleteop = new DeleteNodeOperator(dbConnection, search, Selectstr);
+            DeleteNodeOperator Deleteop = new DeleteNodeOperator(dbConnection, Selectstr);
 
             return Deleteop;
         }

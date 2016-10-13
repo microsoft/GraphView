@@ -352,53 +352,32 @@ namespace GraphView
     }
     internal class DeleteNodeOperator : GraphViewExecutionOperator
     {
-        public WBooleanExpression search;
         public string Selectstr;
         public GraphViewConnection dbConnection;
         public bool UploadFinish;
 
-        public DeleteNodeOperator(GraphViewConnection dbConnection,WBooleanExpression search, string Selectstr)
+        public DeleteNodeOperator(GraphViewConnection dbConnection, string Selectstr)
         {
             this.dbConnection = dbConnection;
-            this.search = search;
             this.Selectstr = Selectstr;
             Open();
         }
 
         /// <summary>
-        /// Check if there are some edges still connect to these nodes.
-        /// </summary>
-        /// <returns></returns>
-        internal bool CheckNodes()
-        {
-            var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
-                                "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
-                                Selectstr);
-            foreach (var DeleteNode in sum_DeleteNode)
-                return false;
-            return true;
-        }
-
-        /// <summary>
-        /// Get those nodes.
-        /// And then delete it.
+        /// Get isolated nodes that satisifies the search condition and then delete them.
         /// </summary>
         internal void DeleteNodes()
         {
-            Selectstr = "SELECT * " + "FROM N_0 ";
-            if (search != null)
-                Selectstr += @"WHERE " + search.ToString();
-            var sum_DeleteNode = dbConnection.DocDBclient.CreateDocumentQuery(
-                "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId,
-                Selectstr);
+            var collectionLink = "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId;
 
-            foreach (var DeleteNode in sum_DeleteNode)
+            var toBeDeletedNodes = dbConnection.DocDBclient.CreateDocumentQuery(collectionLink, Selectstr);
+
+            foreach (var node in toBeDeletedNodes)
             {
                 UploadFinish = false;
-                var docLink = string.Format("dbs/{0}/colls/{1}/docs/{2}", dbConnection.DocDB_DatabaseId,
-                    dbConnection.DocDB_CollectionId, DeleteNode.id);
+                var docLink = collectionLink + "/docs/" + node.id;
                 DeleteDocument(docLink);
-                //wait until finish deleting
+                // Wait until finish deleting
                 while (!UploadFinish)
                     System.Threading.Thread.Sleep(10);
             }
@@ -414,15 +393,8 @@ namespace GraphView
             if (!State())
                 return null;
             
-            if (CheckNodes())
-            {
-                DeleteNodes();
-            }
-            else
-            {
-                Close();
-                throw new GraphViewException("There are some edges still connect to these nodes.");
-            }
+            DeleteNodes();
+            
             Close();
             return null;
         }
