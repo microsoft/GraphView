@@ -165,12 +165,16 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                StringBuilder edgePropertyList = new StringBuilder(",");
-                edgePropertyList.Append("'id',");
-                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','extends','b'" + edgePropertyList.ToString() + ")";
-                parser.Parse(tempInsertSQL).Generate(connection).Next();
-                Console.WriteLine(tempInsertSQL);
+                List<object> edgePropertyList = new List<object>();
+                var edgeType = edge.Value["edge_type"];
+                edgePropertyList.Add("type");
+                edgePropertyList.Add("extends");
+                edgePropertyList.Add("id");
+                edgePropertyList.Add(edge.Value["id"].ToString());
+                //String tempInsertGremlin = "g.V.has('id', '" + srcId + "').addE('type', 'extends'" + edgePropertyList.ToString() + ")" + ".to(g.V().has('id', '" + desId + "'))";
+                var g = new GraphTraversal(connection);
+                g.V().has("id", srcId).addE(edgePropertyList.ToArray()).to(g.V().has("id", desId));
+                //Console.WriteLine(tempInsertGremlin);
             }
             // Insert in edge from collections
             foreach (var edge in inEdgePropertiesHashMap)
@@ -179,12 +183,16 @@ namespace GraphViewUnitTest
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
                 // Inset Edge
-                StringBuilder edgePropertyList = new StringBuilder(",");
-                edgePropertyList.Append("'id',");
-                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','shown_as','b'" + edgePropertyList.ToString() + ")";
-                parser.Parse(tempInsertSQL).Generate(connection).Next();
-                Console.WriteLine(tempInsertSQL);
+                List<object> edgePropertyList = new List<object>();
+                var edgeType = edge.Value["edge_type"];
+                edgePropertyList.Add("type");
+                edgePropertyList.Add("shown_as");
+                edgePropertyList.Add("id");
+                edgePropertyList.Add(edge.Value["id"].ToString());
+                //String tempInsertGremlin = "g.V.has('id', '" + desId + "').addE('type', 'shown_as'" + edgePropertyList.ToString() + ")" + ".to(g.V().has('id', '" + srcId + "'))";
+                var g = new GraphTraversal(connection);
+                g.V().has("id", desId).addE(edgePropertyList.ToArray()).to(g.V().has("id", srcId));
+                //Console.WriteLine(tempInsertSQL);
             }
         }
 
@@ -403,16 +411,20 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                // Inset Edge
-                StringBuilder edgePropertyList = new StringBuilder(",");
-                edgePropertyList.Append("'id',");
-                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
+
+                // Insert Edge
+                List<object> edgePropertyList = new List<object>();
                 var edgeType = edge.Value["edge_type"];
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addOutE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
-                Console.WriteLine(tempInsertSQL);
+                edgePropertyList.Add("type");
+                edgePropertyList.Add("extends");
+                edgePropertyList.Add("id");
+                edgePropertyList.Add(edge.Value["id"].ToString());
+                //String tempInsertGremlin = "g.V.has('id', '" + srcId + "').addE('type', 'extends'" + edgePropertyList.ToString() + ")" + ".to(g.V().has('id', '" + desId + "'))";
+                var g = new GraphTraversal(connection);
+                //Console.WriteLine(tempInsertGremlin);
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                g.V().has("id", srcId).addE(edgePropertyList.ToArray()).to(g.V().has("id", desId));
                 sw.Stop();
                 result.Add(sw.Elapsed.TotalMilliseconds);
                 outEdgeNum++ ;
@@ -441,16 +453,19 @@ namespace GraphViewUnitTest
                 String[] nodeIds = edge.Key.Split('_');
                 String srcId = nodeIds[0];
                 String desId = nodeIds[1];
-                // Inset Edge
-                StringBuilder edgePropertyList = new StringBuilder(",");
-                edgePropertyList.Append("'id',");
-                edgePropertyList.Append("'" + edge.Value["id"].ToString() + "'");
+                // Insert Edge
+                List<object> edgePropertyList = new List<object>();
                 var edgeType = edge.Value["edge_type"];
-                String tempInsertSQL = "g.V.as('v').has('id','" + srcId + "').as('a').select('v').has('id','" + desId + "').as('b').select('a','b').addInE('a','" + edgeType + "','b'" + edgePropertyList.ToString() + ")";
+                edgePropertyList.Add("type");
+                edgePropertyList.Add("shown_as");
+                edgePropertyList.Add("id");
+                edgePropertyList.Add(edge.Value["id"].ToString());
+                //String tempInsertGremlin = "g.V.has('id', '" + desId + "').addE('type', 'shown_as'" + edgePropertyList.ToString() + ")" + ".to(g.V().has('id', '" + srcId + "'))";
+                var g = new GraphTraversal(connection);
+                //Console.WriteLine(tempInsertGremlin);
                 Stopwatch sw = new Stopwatch();
-                Console.WriteLine(tempInsertSQL);
                 sw.Start();
-                parser.Parse(tempInsertSQL).Generate(connection).Next();
+                g.V().has("id", desId).addE(edgePropertyList.ToArray()).to(g.V().has("id", srcId));
                 sw.Stop();
                 result.Add(sw.Elapsed.TotalMilliseconds);
                 inEdgeNum++;
