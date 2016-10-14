@@ -261,97 +261,103 @@ namespace GraphView
                     }
                 }
                 sinkIdValueList = CutTheTail(sinkIdValueList);
+                // Skip redundant SendQuery when there is no adj in the InputBuffer
                 if (sinkIdValueList != "")
+                {
                     if (!script.Contains("WHERE"))
                         script += " WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
                     else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
 
-                if (pathStepOperator == null)
-                foreach (var reverseEdge in CheckList)
-                {
-                    EdgeRefSet.Clear();
-                    sinkIdValueList = "";
-                    foreach (RawRecord record in InputBuffer)
+                    if (pathStepOperator == null)
                     {
-                        var adj = record.RetriveData(reverseEdge.Item1).Split(',');
-                        foreach (var edge in adj)
+                        foreach (var reverseEdge in CheckList)
                         {
-                            if (edge != "" && !EdgeRefSet.Contains(edge))
-                                sinkIdValueList += "\"" + edge + "\"" + ",";
-                            EdgeRefSet.Add(edge);
+                            EdgeRefSet.Clear();
+                            sinkIdValueList = "";
+                            foreach (RawRecord record in InputBuffer)
+                            {
+                                var adj = record.RetriveData(reverseEdge.Item1).Split(',');
+                                foreach (var edge in adj)
+                                {
+                                    if (edge != "" && !EdgeRefSet.Contains(edge))
+                                        sinkIdValueList += "\"" + edge + "\"" + ",";
+                                    EdgeRefSet.Add(edge);
+                                }
+                            }
+                            sinkIdValueList = CutTheTail(sinkIdValueList);
+                            // Remove the "_REV" tail
+                            if (!script.Contains("WHERE"))
+                                script += " WHERE " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
+                            else script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
                         }
                     }
-                    sinkIdValueList = CutTheTail(sinkIdValueList);
-                        // Remove the "_REV" tail
-                        if (!script.Contains("WHERE"))
-                            script += " WHERE " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")"; 
-                        else script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
-                }
-                // Send query to server and decode the result.
-                try
-                {
-                    HashSet<string> UniqueRecord = new HashSet<string>();
-                    IQueryable<dynamic> sinkNodeCollection = (IQueryable<dynamic>) SendQuery(script, connection);
-                    foreach (var sinkJsonObject in sinkNodeCollection)
-                    {
-                        // Decode some information that describe the found node.
-                        Tuple<string, string, string, List<string>> sinkVertex = DecodeJObject((JObject) sinkJsonObject, header, NumberOfProcessedVertices * 3);
-                        string vertexId = sinkVertex.Item1;
 
-                        // If it is a path traversal, matches the returned sink vertex against every source vertex and their outgoing paths. 
-                        // A new record is constructed and returned when the sink vertex happens to be the last vertex of a path. 
-                        // No reverse check can be performed here.
-                        if (pathStepOperator != null)
+                    // Send query to server and decode the result.
+                    try
+                    {
+                        HashSet<string> UniqueRecord = new HashSet<string>();
+                        IQueryable<dynamic> sinkNodeCollection = (IQueryable<dynamic>)SendQuery(script, connection);
+                        foreach (var sinkJsonObject in sinkNodeCollection)
                         {
-                            foreach (RawRecord sourceRec in pathCollection.Keys)
+                            // Decode some information that describe the found node.
+                            Tuple<string, string, string, List<string>> sinkVertex = DecodeJObject((JObject)sinkJsonObject, header, NumberOfProcessedVertices * 3);
+                            string vertexId = sinkVertex.Item1;
+
+                            // If it is a path traversal, matches the returned sink vertex against every source vertex and their outgoing paths. 
+                            // A new record is constructed and returned when the sink vertex happens to be the last vertex of a path. 
+                            // No reverse check can be performed here.
+                            if (pathStepOperator != null)
                             {
-                                foreach (Tuple<string, string> pathTuple in pathCollection[sourceRec])
+                                foreach (RawRecord sourceRec in pathCollection.Keys)
                                 {
-                                    string pathSink = pathTuple.Item1;
-                                    if (pathSink.Contains(vertexId))
+                                    foreach (Tuple<string, string> pathTuple in pathCollection[sourceRec])
                                     {
-                                        RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex,
-                                            sourceRec, header,
-                                            pathTuple.Item2);
+                                        string pathSink = pathTuple.Item1;
+                                        if (pathSink.Contains(vertexId))
+                                        {
+                                            RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex,
+                                                sourceRec, header,
+                                                pathTuple.Item2);
+                                            if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
+                                                OutputBuffer.Enqueue(NewRecord);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                                // For normal edge, join the old record with the new one if checked valid.
+                                foreach (var record in InputBuffer)
+                                {
+                                    // reverse check
+                                    bool ValidFlag = true;
+                                    if (CheckList != null)
+                                        foreach (var neighbor in CheckList)
+                                        {
+                                            // Alignment and reverse checking.
+                                            string edge = (((JObject)sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
+                                            if (edge != record.RetriveData(neighbor.Item1))
+                                            {
+                                                ValidFlag = false;
+                                                break;
+                                            }
+                                        }
+                                    if (ValidFlag)
+                                    {
+                                        // If aligned and reverse checked vailied, join the old record with the new one.
+                                        RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
+                                            header);
+                                        // If the cross document join successed, put the record into output buffer. 
                                         if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
                                             OutputBuffer.Enqueue(NewRecord);
                                     }
                                 }
-                            }
                         }
-                        else
-                            // For normal edge, join the old record with the new one if checked valid.
-                            foreach (var record in InputBuffer)
-                            {
-                                // reverse check
-                                bool ValidFlag = true;
-                                if (CheckList != null)
-                                    foreach (var neighbor in CheckList)
-                                    {
-                                        // Alignment and reverse checking.
-                                        string edge = (((JObject) sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
-                                        if (edge != record.RetriveData(neighbor.Item1))
-                                        {
-                                            ValidFlag = false;
-                                            break;
-                                        }
-                                    }
-                                if (ValidFlag)
-                                {
-                                    // If aligned and reverse checked vailied, join the old record with the new one.
-                                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
-                                        header);
-                                    // If the cross document join successed, put the record into output buffer. 
-                                    if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
-                                        OutputBuffer.Enqueue(NewRecord);
-                                }
-                            }
+                    }
+                    catch (AggregateException e)
+                    {
+                        throw e.InnerException;
                     }
                 }
-                catch (AggregateException e)
-                {
-                    throw e.InnerException;
-                } 
             }
             InputBuffer.Clear();
             if (OutputBuffer.Count <= 1) this.Close();
