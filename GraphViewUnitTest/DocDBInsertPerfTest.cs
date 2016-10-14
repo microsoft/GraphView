@@ -76,6 +76,126 @@ namespace GraphViewUnitTest
             Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), stdDev(result));
         }
 
+        [TestMethod]
+        public void insert2()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "MarvelTest1");
+            ResetCollection("MarvelTest1");
+
+            var allExpTimes = 10;
+            var result = new List<Double>();
+
+            for (int k = 0; k < allExpTimes; k++)
+            {
+                var expTimes = 4;
+                var sumTime = 0.0;
+
+                // Insert node
+                for (int i = 0; i < expTimes; i++)
+                {
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
+                    // Note: update as the random number
+                    GraphViewCommand gcmd = new GraphViewCommand();
+                    gcmd.GraphViewConnection = connection;
+                    connection.SetupClient();
+                    gcmd.CommandText = @"
+                    INSERT INTO Node (id,label,properties_name_id,properties_name_value) VALUES ('" + k + "1" + i + "','TelemetryDataModel','1','DataModel-906e71b0-59a2-11e6-8cd0-3717b83c0677');";
+                    gcmd.ExecuteNonQuery();
+                    sw.Stop();
+                }
+
+                var tempResult = new List<Double>();
+                // Insert edge
+                for (int i = 1; i < expTimes; i++)
+                {
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
+                    // Note: update as the random number
+                    GraphViewCommand gcmd = new GraphViewCommand();
+                    gcmd.GraphViewConnection = connection;
+
+                    connection.SetupClient();
+
+                    gcmd.CommandText = @"
+                INSERT INTO Edge (id,type)
+                SELECT A, B, '" + i + @"','has'
+                FROM   Node A, Node B
+                WHERE  A.id = '" + k + "1" + i + "' AND B.id = '" + k + "10'";
+                    gcmd.ExecuteNonQuery();
+
+                    sw.Stop();
+                    sumTime += sw.Elapsed.TotalMilliseconds;
+                    tempResult.Add(sw.Elapsed.TotalMilliseconds);
+                    Console.WriteLine("{0} time is:{1}", i, sw.Elapsed.TotalMilliseconds);
+                }
+                result.Add(tempResult.Sum());
+                tempResult.Clear();
+            }
+            Console.WriteLine("max insert time is: {0}", result.Max());
+            Console.WriteLine("min insert time is: {0}", result.Min());
+            Console.WriteLine("avg insert time is: {0}", result.Average());
+            Console.WriteLine("stdDev insert time is: {0}", stdDev(result));
+            Console.WriteLine("avg,max,min,stdDev");
+            Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), stdDev(result));
+        }
+
+        [TestMethod]
+        public void insert3()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+"GroupMatch", "MarvelTest1");
+            ResetCollection("MarvelTest1");
+            var result = new List<Double>();
+            var allExpTimes = 100;
+
+            for (int k = 0; k < allExpTimes; k++)
+            {
+                var expTimes = 4;
+                var sumTime = 0.0;
+
+                // Insert node
+                for (int i = 0; i < expTimes; i++)
+                {
+
+                    // Note: update as the random number
+                    GraphViewCommand gcmd1 = new GraphViewCommand();
+                    gcmd1.GraphViewConnection = connection;
+                    connection.SetupClient();
+                    gcmd1.CommandText = @"
+                    INSERT INTO Node (id,label,properties_name_id,properties_name_value) VALUES ('" + k + "1" + i + "','TelemetryDataModel','1','DataModel-906e71b0-59a2-11e6-8cd0-3717b83c0677');";
+                    gcmd1.ExecuteNonQuery();
+                }
+
+                int j = 1;
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                // Note: update as the random number
+                GraphViewCommand gcmd = new GraphViewCommand();
+                gcmd.GraphViewConnection = connection;
+                connection.SetupClient();
+                gcmd.CommandText = @"
+                INSERT INTO Edge (id,type)
+                SELECT A, B, '" + j + @"','has'
+                FROM   Node A, Node B
+                WHERE  A.id IN (" + k + "1, " + k + "2, " + k + "3, " + k + "4) AND B.id = '" + k + "10'";
+                gcmd.ExecuteNonQuery();
+                sw.Stop();
+                sumTime += sw.Elapsed.TotalMilliseconds;
+                result.Add(sw.Elapsed.TotalMilliseconds);
+                Console.WriteLine("{0} time is:{1}", j, sw.Elapsed.TotalMilliseconds);
+            }
+
+            Console.WriteLine("max insert time is: {0}", result.Max());
+            Console.WriteLine("min insert time is: {0}", result.Min());
+            Console.WriteLine("avg insert time is: {0}", result.Average());
+            Console.WriteLine("stdDev insert time is: {0}", stdDev(result));
+            Console.WriteLine("avg,max,min,stdDev");
+            Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), stdDev(result));
+        }
         public static GraphTraversal _find(GraphViewConnection connection, Info info, GraphTraversal source = null)
         {
             GraphTraversal t;
