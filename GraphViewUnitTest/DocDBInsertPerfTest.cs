@@ -101,8 +101,6 @@ namespace GraphViewUnitTest
                     Stopwatch sw = new Stopwatch();
                     var tempSQL = @"
                     INSERT INTO Node (id,label,properties_name_id,properties_name_value) VALUES ('" + k + "1" + i + "','TelemetryDataModel','1','DataModel-906e71b0-59a2-11e6-8cd0-3717b83c0677');";
-                    // Note: update as the random number
-
                     gcmd.CommandText = tempSQL;
                     sw.Start();
                     gcmd.ExecuteNonQuery();
@@ -119,7 +117,6 @@ namespace GraphViewUnitTest
                 FROM   Node A, Node B
                 WHERE  A.id = '" + k + "1" + i + "' AND B.id = '" + k + "10'";
                     Stopwatch sw = new Stopwatch();
-                    // Note: update as the random number
                     gcmd.CommandText = tempSQL;
                     sw.Start();
                     gcmd.ExecuteNonQuery();
