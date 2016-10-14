@@ -72,6 +72,7 @@ namespace GraphViewUnitTest
             Console.WriteLine("min insert time is: {0}", result.Min());
             Console.WriteLine("avg insert time is: {0}", result.Average());
             Console.WriteLine("stdDev insert time is: {0}", stdDev(result));
+            Console.WriteLine("item count" + result.Count);
             Console.WriteLine("avg,max,min,stdDev");
             Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), stdDev(result));
         }
@@ -138,6 +139,7 @@ namespace GraphViewUnitTest
             Console.WriteLine("min insert time is: {0}", result.Min());
             Console.WriteLine("avg insert time is: {0}", result.Average());
             Console.WriteLine("stdDev insert time is: {0}", stdDev(result));
+            Console.WriteLine("item count" + result.Count);
             Console.WriteLine("avg,max,min,stdDev");
             Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), stdDev(result));
         }
@@ -194,6 +196,7 @@ namespace GraphViewUnitTest
             Console.WriteLine("avg insert time is: {0}", result.Average());
             Console.WriteLine("stdDev insert time is: {0}", stdDev(result));
             Console.WriteLine("avg,max,min,stdDev");
+            Console.WriteLine("item count" + result.Count);
             Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), stdDev(result));
         }
         public static GraphTraversal _find(GraphViewConnection connection, Info info, GraphTraversal source = null)
