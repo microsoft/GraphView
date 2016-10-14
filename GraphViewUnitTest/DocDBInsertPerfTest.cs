@@ -37,7 +37,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void insert1()
+        public void insert0()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -78,7 +78,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void insert2()
+        public void insert1()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -92,7 +92,7 @@ namespace GraphViewUnitTest
 
             for (int k = 0; k < allExpTimes; k++)
             {
-                var expTimes = 4;
+                var expTimes = 5;
                 var sumTime = 0.0;
 
                 // Insert node
@@ -141,7 +141,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void insert3()
+        public void insert2()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -155,7 +155,7 @@ namespace GraphViewUnitTest
 
             for (int k = 0; k < allExpTimes; k++)
             {
-                var expTimes = 4;
+                var expTimes = 5;
                 var sumTime = 0.0;
 
                 // Insert node
