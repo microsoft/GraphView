@@ -170,13 +170,13 @@ namespace GraphView
                         {
                             var insertSpecification = (statement as WInsertSpecification);
 
-                            if (insertSpecification.Target.ToString() == "Node")
+                            if (insertSpecification.Target.ToString().Equals("node", StringComparison.OrdinalIgnoreCase))
                             {
                                 var insertNodeStatement = new WInsertNodeSpecification(insertSpecification);
                                 var Insertop = insertNodeStatement.Generate(DocumentDBConnection);
                                 Insertop.Next();
                             }
-                            else if (insertSpecification.Target.ToString() == "Edge")
+                            else if (insertSpecification.Target.ToString().Equals("edge", StringComparison.OrdinalIgnoreCase))
                             {
                                 var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
                                 var Insertop = insertEdgeStatement.Generate(DocumentDBConnection);
@@ -193,7 +193,7 @@ namespace GraphView
                                 var Deleteop = deleteEdgeStatement.Generate(DocumentDBConnection);
                                 Deleteop.Next();
                             }
-                            else if (deletespecification.Target.ToString() == "Node")
+                            else if (deletespecification.Target.ToString().Equals("node", StringComparison.OrdinalIgnoreCase))
                             {
                                 var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
                                 var Deleteop = deleteNodeStatement.Generate(DocumentDBConnection);
