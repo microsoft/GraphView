@@ -300,7 +300,7 @@ namespace GraphView
 
             for (int j = 0; j < threadNum; j++)
             {
-                DocDBInsertNodeWorkerByNewAPI worker1 = new DocDBInsertNodeWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
+                DocDBInsertNodeToFileWorkerByNewAPI worker1 = new DocDBInsertNodeToFileWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
                 worker1.threadId = j;
                 worker1.result = result;
                 Thread t1 = new Thread(worker1.BulkInsert);
@@ -333,7 +333,7 @@ namespace GraphView
 
             for (int j = 0; j < threadNum; j++)
             {
-                DocDBInsertEdgeWorkerByNewAPI worker1 = new DocDBInsertEdgeWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
+                DocDBInsertEdgeToFileWorkerByNewAPI worker1 = new DocDBInsertEdgeToFileWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
                 worker1.threadId = j;
                 worker1.result = edgeResult;
                 Thread t1 = new Thread(worker1.BulkInsert);
@@ -457,28 +457,31 @@ namespace GraphView
 
                     key.Append(x.Key);
                     key.Append(",");
-                    value.Append("'");
-                    value.Append(x.Value);
-                    value.Append("'");
-                    value.Append(",");
+                    key.Append(x.Value);
+                    key.Append(",");
+                    //value.Append("'");
+                    //value.Append(x.Value);
+                    //value.Append("'");
+                    //value.Append(",");
                 }
 
                 key.Remove(key.Length - 1, 1);
-                value.Remove(value.Length - 1, 1);
+                //value.Remove(value.Length - 1, 1);
 
-                Stopwatch sw = new Stopwatch();
-                var tempSQL = @"
-                INSERT INTO Node (" + key + ") VALUES (" + value + ");";
-                Console.WriteLine(tempSQL);
-                sw.Start();
-                // Gremlin API
-                // var D = g.V().addV(PropList);
-                gcmd.CommandText = tempSQL;
-                gcmd.ExecuteNonQuery();
+                Console.WriteLine(key);
+                //Stopwatch sw = new Stopwatch();
+                //var tempSQL = @"
+                //INSERT INTO Node (" + key + ") VALUES (" + value + ");";
+                //Console.WriteLine(tempSQL);
+                //sw.Start();
+                //// Gremlin API
+                //// var D = g.V().addV(PropList);
+                //gcmd.CommandText = tempSQL;
+                //gcmd.ExecuteNonQuery();
 
-                sw.Stop();
-                result.Add(sw.Elapsed.TotalMilliseconds);
-                Console.WriteLine("insert v " + node.Key + " time cost " + sw.Elapsed.TotalMilliseconds);
+                //sw.Stop();
+                //result.Add(sw.Elapsed.TotalMilliseconds);
+                //Console.WriteLine("insert v " + node.Key + " time cost " + sw.Elapsed.TotalMilliseconds);
                 node = inputNodeBuffer.Retrieve();
             }
 
@@ -537,26 +540,29 @@ namespace GraphView
 
                     key.Append(x.Key);
                     key.Append(",");
-                    value.Append("'" + x.Value + "'" + ",");
+                    //value.Append("'" + x.Value + "'" + ",");
+                    key.Append(x.Value);
+                    key.Append(",");
                 }
                 key.Remove(key.Length - 1, 1);
-                value.Remove(value.Length - 1, 1);
+                //value.Remove(value.Length - 1, 1);
 
-                var tempSQL = @"
-                INSERT INTO Edge (" + key + @")
-                SELECT A, B, " + value + @"
-                FROM   Node A, Node B
-                WHERE  A.id = '" + srcId + "' AND B.id = '" + desId + "'";
-                Console.WriteLine(tempSQL);
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-                // Gremlin API
-                //g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
-                gcmd.CommandText = tempSQL;
-                gcmd.ExecuteNonQuery();
-                sw.Stop();
-                result.Add(sw.Elapsed.TotalMilliseconds);
-                Console.WriteLine("insert outE " + outEdge.Key + " \n time cost " + sw.Elapsed.TotalMilliseconds);
+                Console.WriteLine(key);
+                //var tempSQL = @"
+                //INSERT INTO Edge (" + key + @")
+                //SELECT A, B, " + value + @"
+                //FROM   Node A, Node B
+                //WHERE  A.id = '" + srcId + "' AND B.id = '" + desId + "'";
+                //Console.WriteLine(tempSQL);
+                //Stopwatch sw = new Stopwatch();
+                //sw.Start();
+                //// Gremlin API
+                ////g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
+                //gcmd.CommandText = tempSQL;
+                //gcmd.ExecuteNonQuery();
+                //sw.Stop();
+                //result.Add(sw.Elapsed.TotalMilliseconds);
+                //Console.WriteLine("insert outE " + outEdge.Key + " \n time cost " + sw.Elapsed.TotalMilliseconds);
                 outEdge = inputOutEdgeBuffer.Retrieve();
             }
             // Insert in edge from collections

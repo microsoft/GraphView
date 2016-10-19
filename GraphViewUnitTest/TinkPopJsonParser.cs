@@ -486,6 +486,17 @@ namespace GraphViewUnitTest
             }
         }
         [TestMethod]
+        public void parseAndDumpDataTest()
+        {
+            string path = @"E:\dataset\AzureIOT\graphson-subset.json";
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            string collectionName = "MarvelTest";
+            int threadNumber = 1;
+            GraphLoaderFactory.parseAndDumpIOTData(path, connection, collectionName, true, threadNumber);
+        }
+        [TestMethod]
         public void InsertJsonMultiThreadByBoundedBufferByCommand()
         {
             string path = @"E:\dataset\AzureIOT\graphson-subset.json";
