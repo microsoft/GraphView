@@ -346,17 +346,14 @@ namespace GraphView
             Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_ID").ToString();
             Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_reverse_ID").ToString();
             Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sinkid + '\"', "_sink").ToString();
-            source_str = GraphViewJsonCommand.insert_edge(source_str, Edge, source_edge_num).ToString();
+            map[sourceid] = GraphViewJsonCommand.insert_edge(source_str, Edge, source_edge_num).ToString();
             //var new_source = JObject.Parse(source_str);
 
             Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_ID").ToString();
             Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_reverse_ID").ToString();
             Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sourceid + '\"', "_sink").ToString();
-            sink_str = GraphViewJsonCommand.insert_reverse_edge(sink_str, Edge, sink_reverse_edge_num).ToString();
+            map[sinkid] = GraphViewJsonCommand.insert_reverse_edge(map[sinkid], Edge, sink_reverse_edge_num).ToString();
             //var new_sink = JObject.Parse(sink_str);
-
-            map[sourceid] = source_str;
-            map[sinkid] = sink_str;
 
             //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sourceid), new_source);
             //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sinkid), new_sink);
