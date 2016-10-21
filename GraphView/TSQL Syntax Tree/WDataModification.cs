@@ -23,17 +23,10 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Linq;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {

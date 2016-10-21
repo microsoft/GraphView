@@ -1,15 +1,9 @@
-﻿using System;
-using System.Configuration;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections;
+﻿using System.Collections;
 using System.IO;
 using System.Text;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 // Add DocumentDB references
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {

@@ -24,8 +24,6 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Text;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 

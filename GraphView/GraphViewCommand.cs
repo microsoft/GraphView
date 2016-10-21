@@ -30,13 +30,8 @@ using System.Text;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
-using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents;
 

@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using GraphView;
-
-namespace GraphView { 
+﻿namespace GraphView
+{
     internal class WPath : WSyntaxTree
     {
         internal int IdentifierIndex { get; set; }

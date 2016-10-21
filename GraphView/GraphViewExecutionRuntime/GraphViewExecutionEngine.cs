@@ -1,17 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.CodeDom.Compiler;
-using Microsoft.CSharp;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 // Add DocumentDB references
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Microsoft.Azure.Documents.Client;
-using System.Collections;
 
 namespace GraphView
 {

@@ -1,17 +1,11 @@
 ﻿using System;
-using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Collections;
-using System.IO;
-using System.Text;
 
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using Microsoft.CSharp;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 // Add DocumentDB references
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
 
