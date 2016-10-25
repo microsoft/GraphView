@@ -1235,6 +1235,10 @@ namespace GraphView
             var search = WhereClause.SearchCondition;
             var target = Target.ToString();
 
+            // Make sure every column is bound with the target table
+            var modifyTableNameVisitor = new ModifyTableNameVisitor();
+            modifyTableNameVisitor.Invoke(search, target);
+
             // Build up the query to select all the nodes can be deleted
             string Selectstr = "SELECT * FROM " + target + " ";
             string IsolatedCheck = string.Format("(ARRAY_LENGTH({0}._edge) = 0 AND ARRAY_LENGTH({0}._reverse_edge) = 0) ", target);
