@@ -109,13 +109,6 @@ namespace GraphView
             }
             return new Tuple<string, string, string,List<string>>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID), ResultRecord.fieldValues);
         }
-        internal static IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
-        {
-            FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
-            IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
-                UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), script, QueryOptions);
-            return Result;
-        }
     }
     /// <summary>
     /// TraversalOperator is used to traval a graph pattern and return asked result.
@@ -713,7 +706,8 @@ namespace GraphView
                     ResultQueue.Enqueue(x);
             }
             if (ResultQueue.Count <= 1) this.Close();
-            return ResultQueue.Dequeue();
+            if (ResultQueue.Count != 0) return ResultQueue.Dequeue();
+            return null;
         }
     }
     /// <summary>
