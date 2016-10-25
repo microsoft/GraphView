@@ -66,7 +66,7 @@ namespace GraphView
                                 var value = child1Properties["value"];
                                 if (value != null)
                                 {
-                                    nodePropertiesHashMap[id.ToString()][property.Path.ToString().Replace('.', '_') + "_value"] = value.ToString().Replace("'", "\\'").Replace("\"", "\\\"");
+                                    nodePropertiesHashMap[id.ToString()][property.Path.ToString().Replace('.', '_') + "_value"] = value.ToString().Replace("'", " ").Replace("\"", "\\\"").Replace(')', ' ').Replace('(', ' ');
                                 }
 
                             }
@@ -253,13 +253,14 @@ namespace GraphView
             Console.WriteLine("Finish init the dataset");
         }
 
-        public static void parseAndDumpIOTData(string path, GraphViewConnection connection, string collectionName, Boolean resetCollection, int threadNum)
+        public static void parseAndDumpIOTData(string path, GraphViewConnection connection, string collectionName, Boolean resetCollection, int threadNum, string nodeFilePath, string edgeFilePath)
         {
             // parse data
             var nodePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var outEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
             var inEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
-
+            StreamWriter nodeFile = new StreamWriter(nodeFilePath);
+            StreamWriter edgeFile = new StreamWriter(edgeFilePath);
             parseData(path, connection, collectionName, resetCollection, threadNum, nodePropertiesHashMap, outEdgePropertiesHashMap, inEdgePropertiesHashMap);
             ResetCollection(collectionName, connection);
             var result = new List<Double>();
@@ -299,6 +300,7 @@ namespace GraphView
                 DocDBInsertNodeToFileWorkerByNewAPI worker1 = new DocDBInsertNodeToFileWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
                 worker1.threadId = j;
                 worker1.result = result;
+                worker1.nodeFile = nodeFile;
                 Thread t1 = new Thread(worker1.BulkInsert);
                 insertNodeThreadList.Add(t1);
             }
@@ -332,6 +334,7 @@ namespace GraphView
                 DocDBInsertEdgeToFileWorkerByNewAPI worker1 = new DocDBInsertEdgeToFileWorkerByNewAPI(connection, inputNodeBuffer, inputInEdgeBuffer, inputOutEdgeBuffer);
                 worker1.threadId = j;
                 worker1.result = edgeResult;
+                worker1.edgeFile = edgeFile;
                 Thread t1 = new Thread(worker1.BulkInsert);
                 insertEdgeThreadList.Add(t1);
             }
@@ -380,7 +383,7 @@ namespace GraphView
                 Console.WriteLine("avg,max,min,stdDev");
                 //Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
             }
-
+            
             Console.WriteLine("Finish init the dataset");
         }
         public static void ResetCollection(String collectionName, GraphViewConnection connection)
@@ -401,12 +404,12 @@ namespace GraphView
     public class DocDBInsertNodeToFileWorkerByNewAPI
     {
         public int threadId;
-        //GraphViewGremlinParser parser = new GraphViewGremlinParser();
         GraphViewConnection connection = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = null;
         public List<Double> result = null;
+        public StreamWriter nodeFile = null;
 
         public DocDBInsertNodeToFileWorkerByNewAPI(GraphViewConnection _connection,
             BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputNodeBuffer,
@@ -428,8 +431,8 @@ namespace GraphView
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
             connection.SetupClient();
-
             var node = inputNodeBuffer.Retrieve();
+
             while (node.Key != null)
             {
                 // new API
@@ -440,47 +443,36 @@ namespace GraphView
                 // SQL API
                 var key = new StringBuilder();
                 var value = new StringBuilder();
-
                 key.Append("id");
-                key.Append(",");
-                value.Append("'" + node.Key + "'");
-                value.Append(",");
+                key.Append("#");
+                key.Append(node.Key);
+                key.Append("#");
+                string tempValue = "";
 
                 foreach (var x in node.Value)
                 {
                     PropList.Add(x.Key);
                     PropList.Add(x.Value);
-
+                    if(x.Key == "properties_location_value")
+                    {
+                        tempValue = @"{class:com.thinkaurelius.titan.core.attribute.Geoshape coordinates : [[D [-73.4597583576709 39.820514835425385]]}";
+                    } else
+                    {
+                        tempValue = x.Value;
+                    }
+                    
                     key.Append(x.Key);
-                    key.Append(",");
-                    key.Append(x.Value);
-                    key.Append(",");
-                    //value.Append("'");
-                    //value.Append(x.Value);
-                    //value.Append("'");
-                    //value.Append(",");
+                    key.Append("#");
+                    key.Append(tempValue);
+                    key.Append("#");
                 }
 
                 key.Remove(key.Length - 1, 1);
-                //value.Remove(value.Length - 1, 1);
-
                 Console.WriteLine(key);
-                //Stopwatch sw = new Stopwatch();
-                //var tempSQL = @"
-                //INSERT INTO Node (" + key + ") VALUES (" + value + ");";
-                //Console.WriteLine(tempSQL);
-                //sw.Start();
-                //// Gremlin API
-                //// var D = g.V().addV(PropList);
-                //gcmd.CommandText = tempSQL;
-                //gcmd.ExecuteNonQuery();
-
-                //sw.Stop();
-                //result.Add(sw.Elapsed.TotalMilliseconds);
-                //Console.WriteLine("insert v " + node.Key + " time cost " + sw.Elapsed.TotalMilliseconds);
+                nodeFile.WriteLine(key);
                 node = inputNodeBuffer.Retrieve();
             }
-
+            Thread.Sleep(1000); // wait for the last record write to the file
             Console.WriteLine("Thread Insert Finish");
         }
 
@@ -498,6 +490,8 @@ namespace GraphView
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = null;
         public List<Double> result = null;
+        public StreamWriter edgeFile = null;
+
         public DocDBInsertEdgeToFileWorkerByNewAPI(GraphViewConnection _connection,
             BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputNodeBuffer,
             BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputInEdgeBuffer,
@@ -528,37 +522,27 @@ namespace GraphView
                 // SQL API
                 var key = new StringBuilder();
                 var value = new StringBuilder();
+                key.Append("srcId#");
+                key.Append(srcId);
+                key.Append("#");
+                key.Append("desId");
+                key.Append("#");
+                key.Append(desId);
+                key.Append("#");
 
                 foreach (var x in outEdge.Value)
                 {
                     PropList.Add(x.Key);
                     PropList.Add(x.Value);
-
                     key.Append(x.Key);
-                    key.Append(",");
-                    //value.Append("'" + x.Value + "'" + ",");
+                    key.Append("#");
                     key.Append(x.Value);
-                    key.Append(",");
+                    key.Append("#");
                 }
-                key.Remove(key.Length - 1, 1);
-                //value.Remove(value.Length - 1, 1);
 
+                key.Remove(key.Length - 1, 1);
                 Console.WriteLine(key);
-                //var tempSQL = @"
-                //INSERT INTO Edge (" + key + @")
-                //SELECT A, B, " + value + @"
-                //FROM   Node A, Node B
-                //WHERE  A.id = '" + srcId + "' AND B.id = '" + desId + "'";
-                //Console.WriteLine(tempSQL);
-                //Stopwatch sw = new Stopwatch();
-                //sw.Start();
-                //// Gremlin API
-                ////g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
-                //gcmd.CommandText = tempSQL;
-                //gcmd.ExecuteNonQuery();
-                //sw.Stop();
-                //result.Add(sw.Elapsed.TotalMilliseconds);
-                //Console.WriteLine("insert outE " + outEdge.Key + " \n time cost " + sw.Elapsed.TotalMilliseconds);
+                edgeFile.WriteLine(key);
                 outEdge = inputOutEdgeBuffer.Retrieve();
             }
             // Insert in edge from collections
@@ -572,40 +556,31 @@ namespace GraphView
                 // SQL API
                 var key = new StringBuilder();
                 var value = new StringBuilder();
-
                 List<string> PropList = new List<string>();
+                key.Append("srcId#");
+                key.Append(srcId);
+                key.Append("#");
+                key.Append("desId");
+                key.Append("#");
+                key.Append(desId);
+                key.Append("#");
+
                 foreach (var x in edge.Value)
                 {
                     PropList.Add(x.Key);
                     PropList.Add(x.Value);
-
                     key.Append(x.Key);
-                    key.Append(",");
-                    value.Append("'" + x.Value + "'" + ",");
+                    key.Append("#");
+                    key.Append(x.Value);
+                    key.Append("#");
                 }
+
                 key.Remove(key.Length - 1, 1);
-                value.Remove(value.Length - 1, 1);
-
-                var tempSQL = @"
-                INSERT INTO Edge (" + key + @")
-                SELECT A, B, " + value + @"
-                FROM   Node A, Node B
-                WHERE  A.id = '" + srcId + "' AND B.id = '" + desId + "'";
-                Console.WriteLine(tempSQL);
-                // Gremlin parser
-                //g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-                // Gremlin API
-                //g.V().has("id", srcId).addE(PropList).to(g.V().has("id", desId));
-                gcmd.CommandText = tempSQL;
-                gcmd.ExecuteNonQuery();
-                sw.Stop();
-                result.Add(sw.Elapsed.TotalMilliseconds);
-
-                Console.WriteLine("insert inE " + edge.Key + " time cost \n " + sw.Elapsed.TotalMilliseconds);
+                Console.WriteLine(key);
+                edgeFile.WriteLine(key);
                 edge = inputInEdgeBuffer.Retrieve();
             }
+            Thread.Sleep(1000); // wait for the last record write to the file
             Console.WriteLine("Thread Insert Finish");
         }
 
@@ -656,7 +631,6 @@ namespace GraphView
                 // SQL API
                 var key = new StringBuilder();
                 var value = new StringBuilder();
-
                 key.Append("id");
                 key.Append(",");
                 value.Append("'" + node.Key + "'");
@@ -666,7 +640,6 @@ namespace GraphView
                 {
                     PropList.Add(x.Key);
                     PropList.Add(x.Value);
-
                     key.Append(x.Key);
                     key.Append(",");
                     value.Append("'");
@@ -677,17 +650,14 @@ namespace GraphView
 
                 key.Remove(key.Length - 1, 1);
                 value.Remove(value.Length - 1, 1);
-
                 Stopwatch sw = new Stopwatch();
                 var tempSQL = @"
                 INSERT INTO Node (" + key + ") VALUES (" + value + ");";
                 Console.WriteLine(tempSQL);
                 sw.Start();
                 // Gremlin API
-                // var D = g.V().addV(PropList);
                 gcmd.CommandText = tempSQL;
                 gcmd.ExecuteNonQuery();
-
                 sw.Stop();
                 result.Add(sw.Elapsed.TotalMilliseconds);
                 Console.WriteLine("insert v " + node.Key + " time cost " + sw.Elapsed.TotalMilliseconds);
@@ -704,7 +674,6 @@ namespace GraphView
     public class DocDBInsertEdgeWorkerByNewAPI
     {
         public int threadId;
-        //GraphViewGremlinParser parser = new GraphViewGremlinParser();
         GraphViewConnection connection = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
         BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;

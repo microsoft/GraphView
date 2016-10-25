@@ -485,26 +485,30 @@ namespace GraphViewUnitTest
                 Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
             }
         }
+
         [TestMethod]
         public void parseAndDumpDataTest()
         {
-            string path = @"D:\dataset\AzureIOT\graphson-subset.json";
+            string path = @"D:\dataset\AzureIOT\graphson-dataset.json";
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             string collectionName = "MarvelTest";
+            string nodeFile = @"D:\dataset\AzureIOT\nodeFile.csv";
+            string edgeFile = @"D:\dataset\AzureIOT\edgeFile.csv";
             int threadNumber = 1;
-            GraphLoaderFactory.parseAndDumpIOTData(path, connection, collectionName, true, threadNumber);
+            GraphLoaderFactory.parseAndDumpIOTData(path, connection, collectionName, true, threadNumber, nodeFile, edgeFile);
         }
+
         [TestMethod]
         public void InsertJsonMultiThreadByBoundedBufferByCommand()
         {
-            string path = @"E:\dataset\AzureIOT\graphson-subset.json";
+            string path = @"D:\dataset\AzureIOT\graphson-dataset.json";
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             string collectionName = "MarvelTest";
-            int threadNumber = 1;
+            int threadNumber = 20;
             GraphLoaderFactory.loadAzureIOT(path, connection, collectionName, true, threadNumber);
         }
 
