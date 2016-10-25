@@ -11,7 +11,6 @@ namespace GraphView
         public string edge;
         public string source, sink;
         public GraphViewConnection dbConnection;
-        private bool UploadFinish;
         internal Dictionary<string, string> map;
         private int thread_num;
 
@@ -108,19 +107,14 @@ namespace GraphView
 
         internal void Upload()
         {
-            UploadFinish = false;
-            ReplaceDocument();
-
-            //Wait until finish replacing.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            ReplaceDocument().Wait();
         }
 
         public async Task ReplaceDocument()
         {
             foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
-            UploadFinish = true;
+                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value)
+                    .ConfigureAwait(continueOnCapturedContext: false);
         }
     }
 
@@ -132,7 +126,6 @@ namespace GraphView
         public string edge;
         public string source, sink;
         public GraphViewConnection dbConnection;
-        private bool UploadFinish;
         internal Dictionary<string, string> map;
         private int thread_num;
 
@@ -198,19 +191,14 @@ namespace GraphView
 
         internal void Upload()
         {
-            UploadFinish = false;
-            ReplaceDocument();
-
-            //Wait until finish replacing.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            ReplaceDocument().Wait();
         }
 
         public async Task ReplaceDocument()
         {
             foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
-            UploadFinish = true;
+                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value)
+                    .ConfigureAwait(continueOnCapturedContext: false);
         }
     }
 
@@ -219,7 +207,6 @@ namespace GraphView
         public GraphViewExecutionOperator SelectInput;
         public string source, sink;
         public GraphViewConnection dbConnection;
-        private bool UploadFinish;
         public string EdgeID_str;
         public string EdgeReverseID_str;
         internal Dictionary<string, string> map;
@@ -289,18 +276,14 @@ namespace GraphView
 
         internal void Upload()
         {
-            UploadFinish = false;
-            ReplaceDocument();
-            //wait until finish replacing.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            ReplaceDocument().Wait();
         }
 
         public async Task ReplaceDocument()
         {
             foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
-            UploadFinish = true;
+                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value)
+                    .ConfigureAwait(continueOnCapturedContext: false);
         }
     }
 
@@ -308,7 +291,6 @@ namespace GraphView
     {
         public string Json_str;
         public GraphViewConnection dbConnection;
-        public bool UploadFinish;
 
         public InsertNodeOperator(GraphViewConnection dbConnection, string Json_str)
         {
@@ -330,25 +312,20 @@ namespace GraphView
 
         void Upload(JObject obj)
         {
-            UploadFinish = false;
-            CreateDocument(obj);
-
-            //Wait until finish Creating documents.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            CreateDocument(obj).Wait();
         }
 
         public async Task CreateDocument(JObject obj)
         {
-            await dbConnection.DocDBclient.CreateDocumentAsync("dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId, obj);
-            UploadFinish = true;
+            await dbConnection.DocDBclient.CreateDocumentAsync("dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId, obj)
+                .ConfigureAwait(continueOnCapturedContext: false);
         }
     }
+
     internal class DeleteNodeOperator : GraphViewExecutionOperator
     {
         public string Selectstr;
         public GraphViewConnection dbConnection;
-        public bool UploadFinish;
 
         public DeleteNodeOperator(GraphViewConnection dbConnection, string Selectstr)
         {
@@ -368,12 +345,8 @@ namespace GraphView
 
             foreach (var node in toBeDeletedNodes)
             {
-                UploadFinish = false;
                 var docLink = collectionLink + "/docs/" + node.id;
-                DeleteDocument(docLink);
-                // Wait until finish deleting
-                while (!UploadFinish)
-                    System.Threading.Thread.Sleep(10);
+                DeleteDocument(docLink).Wait();
             }
         }
 
@@ -395,8 +368,7 @@ namespace GraphView
 
         public async Task DeleteDocument(string docLink)
         {
-            await dbConnection.DocDBclient.DeleteDocumentAsync(docLink);
-            UploadFinish = true;
+            await dbConnection.DocDBclient.DeleteDocumentAsync(docLink).ConfigureAwait(continueOnCapturedContext: false);
         }
     }
 
