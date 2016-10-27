@@ -128,7 +128,7 @@ namespace GraphView
         public IList<MatchEdge> ReverseNeighbors { get; set; }
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
-        public string AttachedQuerySegment { get; set; }
+        public DocDbScript AttachedQuerySegment { get; set; }
         public string DeleteEdge { get; set; }
 
         /// <summary>

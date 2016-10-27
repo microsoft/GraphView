@@ -16,10 +16,11 @@ namespace GraphView
             ConstructTraversalChain(graph);
             // Construct a header for the operators.
             Dictionary<string, string> columnToAliasDict;
-            List<string> header = ConstructHeader(graph, out columnToAliasDict);
+            Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict;
+            List<string> header = ConstructHeader(graph, out columnToAliasDict, out headerToColumnRefDict);
             // Attach pre-generated docDB script to the node on Match graph, 
             // and turn predicates that cannot be attached to one node into boolean function.
-            List<BooleanFunction> Functions = AttachScriptSegment(graph, header, columnToAliasDict);
+            List<BooleanFunction> Functions = AttachScriptSegment(graph, header, columnToAliasDict, headerToColumnRefDict);
             // Construct operators accroding to the match graph, header and boolean function list.
             return ConstructOperator(graph, header, columnToAliasDict, pConnection, Functions);
         }
@@ -262,9 +263,9 @@ namespace GraphView
             return Graph;
         }
 
-        private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header, Dictionary<string, string> columnToAliasDict)
+        private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header, Dictionary<string, string> columnToAliasDict, 
+            Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict)
         {
-
             // Call attach predicate visitor to attach predicates on nodes.
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
             WSqlTableContext Context = new WSqlTableContext();
@@ -279,24 +280,33 @@ namespace GraphView
                 // Analyse what kind of predicates they are, and generate corresponding boolean functions.
                 if (predicate is WBooleanComparisonExpression)
                 {
-                    string FirstExpr = (predicate as WBooleanComparisonExpression).FirstExpr.ToString();
-                    string SecondExpr = (predicate as WBooleanComparisonExpression).SecondExpr.ToString();
+                    var FirstColumnExpr = ((predicate as WBooleanComparisonExpression).FirstExpr) as WColumnReferenceExpression;
+                    var SecondColumnExpr = ((predicate as WBooleanComparisonExpression).SecondExpr) as WColumnReferenceExpression;
+                    if (FirstColumnExpr == null || SecondColumnExpr == null)
+                        throw new GraphViewException("Cross documents predicate: " + predicate.ToString() + " not supported yet.");
+                    string FirstExpr = FirstColumnExpr.ToString();
+                    string SecondExpr = SecondColumnExpr.ToString();
 
                     var insertIdx = header.Count > 0 ? header.Count-1 : 0;
-
-                    //if (header.IndexOf(FirstExpr) == -1) header.Add(FirstExpr);
-                    //if (header.IndexOf(SecondExpr) == -1) header.Add(SecondExpr);
-                    //int lhs = header.IndexOf(FirstExpr);
-                    //int rhs = header.IndexOf(SecondExpr);
                     if (header.IndexOf(FirstExpr) == -1)
                     {
                         header.Insert(insertIdx++, FirstExpr);
                         columnToAliasDict.Add(FirstExpr, FirstExpr);
+                        headerToColumnRefDict[FirstExpr] = new DColumnReferenceExpression
+                        {
+                            ColumnName = FirstExpr,
+                            MultiPartIdentifier = new DMultiPartIdentifier(FirstColumnExpr.MultiPartIdentifier)
+                        };
                     }
                     if (header.IndexOf(SecondExpr) == -1)
                     {
                         header.Insert(insertIdx, SecondExpr);
                         columnToAliasDict.Add(SecondExpr, SecondExpr);
+                        headerToColumnRefDict[SecondExpr] = new DColumnReferenceExpression
+                        {
+                            ColumnName = SecondExpr,
+                            MultiPartIdentifier = new DMultiPartIdentifier(SecondColumnExpr.MultiPartIdentifier)
+                        };
                     }
                     var lhs = columnToAliasDict[FirstExpr];
                     var rhs = columnToAliasDict[SecondExpr];
@@ -347,13 +357,13 @@ namespace GraphView
                     if (!ProcessedNodeList.Contains(TargetNode.Item1.NodeAlias))
                     {
                         CurrentProcessingNode = TargetNode.Item1;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, StartOfResult);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, headerToColumnRefDict, StartOfResult);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                     if (TargetNode.Item2 != null)
                     {
                         CurrentProcessingNode = TargetNode.Item2.SinkNode;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, StartOfResult, TargetNode.Item2 is MatchPath);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, headerToColumnRefDict, StartOfResult, TargetNode.Item2 is MatchPath);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                 }
@@ -368,12 +378,13 @@ namespace GraphView
                 subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph);
         }
 
-        private List<string> ConstructHeader(MatchGraph graph, out Dictionary<string, string> columnToAliasDict)
+        private List<string> ConstructHeader(MatchGraph graph, out Dictionary<string, string> columnToAliasDict, out Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict)
         {
 
             List<string> header = new List<string>();
             HashSet<string> aliasSet = new HashSet<string>();
             columnToAliasDict = new Dictionary<string, string>();
+            headerToColumnRefDict = new Dictionary<string, DColumnReferenceExpression>();
             // Construct the first part of the head which is defined as 
             // |Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|...
             // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"           |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"           |...
@@ -420,12 +431,27 @@ namespace GraphView
                     var scalarExpr = element as WSelectScalarExpression;
                     if (scalarExpr.SelectExpr is WValueExpression) continue;
 
-                    var expr = (scalarExpr.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.ToString();
+                    var column = scalarExpr.SelectExpr as WColumnReferenceExpression;
+                    var docFlag = column.MultiPartIdentifier.Identifiers.Count >= 2 &&
+                                  column.MultiPartIdentifier.Identifiers.Last().Value.Equals("doc");
+
+                    var expr = column.MultiPartIdentifier.ToString();
+                    var alias = scalarExpr.ColumnName ?? expr;
+                    if (docFlag)
+                    {
+                        column.MultiPartIdentifier.Identifiers.RemoveAt(column.MultiPartIdentifier.Identifiers.Count - 1);
+                        expr = column.MultiPartIdentifier.ToString();
+                    }
                     header.Add(expr);
 
-                    // add the mapping between the expr and its alias
-                    var alias = scalarExpr.ColumnName ?? expr; 
+                    // Add the mapping between the expr and its alias
                     columnToAliasDict.Add(expr, alias);
+                    // Add the mapping between the expr and its DColumnReferenceExpr for later normalization
+                    headerToColumnRefDict[expr] = new DColumnReferenceExpression
+                    {
+                        ColumnName = alias,
+                        MultiPartIdentifier = new DMultiPartIdentifier(column.MultiPartIdentifier)
+                    };
                 }
             }
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
@@ -433,7 +459,7 @@ namespace GraphView
                 foreach (var element in OrderByClause.OrderByElements)
                 {
                     var expr = element.ScalarExpr.ToString();
-                    // If false, the expr might need to be added to header or could not be resolved
+                    // If true, the expr might need to be added to the header or could not be resolved
                     if (!columnToAliasDict.ContainsKey(expr) && !columnToAliasDict.ContainsValue(expr))
                     {
                         int cutPoint = expr.Length;
@@ -443,6 +469,11 @@ namespace GraphView
                         {
                             header.Add(expr);
                             columnToAliasDict.Add(expr, expr);
+                            headerToColumnRefDict[expr] = new DColumnReferenceExpression
+                            {
+                                ColumnName = expr,
+                                MultiPartIdentifier = new DMultiPartIdentifier((element.ScalarExpr as WColumnReferenceExpression).MultiPartIdentifier)
+                            };
                         }
                         else
                             throw new GraphViewException(string.Format("The identifier \"{0}\" could not be bound", expr));
@@ -623,14 +654,17 @@ namespace GraphView
         }
 
         private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, 
-            Dictionary<string, string> columnToAliasDict, int pStartOfResultField, bool isPathTailNode = false)
+            Dictionary<string, string> columnToAliasDict, Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict,
+            int pStartOfResultField, bool isPathTailNode = false)
         {
+            DFromClause fromClause = new DFromClause();
+            WBooleanExpression searchCondition = null;
+            string FromClauseString = "";
             // Node predicates will be attached here.
-            string FromClauseString = node.NodeAlias;
             string WhereClauseString = "";
-            //string AttachedClause = "From " + node.NodeAlias;
             string PredicatesOnReverseEdge = "";
             string PredicatesOnNodes = "";
+            fromClause.TableReference = node.NodeAlias;
 
             if (!isPathTailNode)
             {
@@ -645,40 +679,19 @@ namespace GraphView
                             FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
 
                         // Add all the predicates on edges to the where clause.
-                        if (PredicatesOnReverseEdge.Length == 0)
-                            foreach (var predicate in edge.Predicates)
-                            {
-                                if (predicate != edge.Predicates.Last())
-                                    PredicatesOnReverseEdge += predicate + " AND ";
-                                else PredicatesOnReverseEdge += predicate;
-                            }
-                        else
-                            foreach (var predicate in edge.Predicates)
-                                PredicatesOnReverseEdge += " AND " + predicate;
+                        foreach (var predicate in edge.Predicates)
+                            searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
                     }
                 }
             }
-
-            FromClauseString = " FROM " + FromClauseString;
+            fromClause.FromClauseString = FromClauseString;
 
             // Add all the predicates on nodes to the where clause.
             foreach (var predicate in node.Predicates)
-            {
-                if (predicate != node.Predicates.Last())
-                    PredicatesOnNodes += predicate + " AND ";
-                else
-                    PredicatesOnNodes += predicate;
-            }
-            if (PredicatesOnNodes != "" || PredicatesOnReverseEdge != "")
-            {
-                WhereClauseString += " WHERE ";
-                if (PredicatesOnNodes != "" && PredicatesOnReverseEdge != "")
-                    WhereClauseString += PredicatesOnNodes + " AND " + PredicatesOnReverseEdge;
-                else WhereClauseString += PredicatesOnNodes + PredicatesOnReverseEdge;
-            }
+                searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
 
             // Select elements that related to current node will be attached here.
-            List<string> ResultIndexToAppend = new List<string>();
+            List<DColumnReferenceExpression> DSelectElements = new List<DColumnReferenceExpression>();
             for (var i = pStartOfResultField; i < header.Count; i++)
             {
                 var str = header[i];
@@ -686,49 +699,40 @@ namespace GraphView
                 if (str.IndexOf('.') != -1) CutPoint = str.IndexOf('.');
                 if (str.Substring(0, CutPoint) == node.NodeAlias)
                 {
-                    ResultIndexToAppend.Add(str);
                     // Replace the column name in header with its alias
                     header[i] = columnToAliasDict[str];
+                    DSelectElements.Add(headerToColumnRefDict[str]);
                 }
                 foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
                 {
                     if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias) && str.Substring(0, CutPoint) == edge.EdgeAlias)
                     {
-                        ResultIndexToAppend.Add(str);
                         header[i] = columnToAliasDict[str];
+                        DSelectElements.Add(headerToColumnRefDict[str]);
                     }
                 }
             }
 
-            string ResultIndexString = ",";
-            foreach (string ResultIndex in ResultIndexToAppend)
-            {
-                // Alias with "." is illegal in documentDB, so all the "." in alias will be replaced by "_".
-                if (ResultIndex.Length > 3 && ResultIndex.Substring(ResultIndex.Length - 3, 3) == "doc")
-                    ResultIndexString += ResultIndex.Substring(0, ResultIndex.Length - 4) + " AS " + ResultIndex.Replace(".", "_") + ",";
-                else ResultIndexString += ResultIndex + " AS " + columnToAliasDict[ResultIndex].Replace(".", "_") + ",";
-            }
-            if (ResultIndexString == ",") ResultIndexString = "";
-            ResultIndexString = CutTheTail(ResultIndexString);
-
             // Reverse checking related script will be attached here.
-            string ReverseCheckString = ",";
             if (!isPathTailNode)
             {
                 foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
                 {
                     if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
-                        ReverseCheckString += ReverseEdge.EdgeAlias + " AS " + ReverseEdge.EdgeAlias + "_REV,";
+                    {
+                        DSelectElements.Add(new DColumnReferenceExpression
+                        {
+                            ColumnName = ReverseEdge.EdgeAlias + "_REV",
+                            MultiPartIdentifier = new DMultiPartIdentifier(ReverseEdge.EdgeAlias)
+                        });
+                    } 
                 }
             }
-            if (ReverseCheckString == ",") ReverseCheckString = "";
-            ReverseCheckString = CutTheTail(ReverseCheckString);
 
-            // The DocDb script that related to the giving node will be assembled here.
-            string ScriptBase = "SELECT {\"id\":node.id, \"edge\":node._edge, \"reverse\":node._reverse_edge} AS NodeInfo";
-            string QuerySegment = ScriptBase.Replace("node", node.NodeAlias) + ResultIndexString + " " + ReverseCheckString;
-            QuerySegment += FromClauseString + WhereClauseString;
-            node.AttachedQuerySegment = QuerySegment;
+            // The DocDb script of the current node will be assembled here.
+            WWhereClause whereClause = new WWhereClause {SearchCondition = searchCondition};
+            DocDbScript script = new DocDbScript {SelectElements = DSelectElements, FromClause = fromClause, WhereClause = whereClause, OriginalSearchCondition = searchCondition};
+            node.AttachedQuerySegment = script;
         }
 
         // Check if any operand of the boolean functions appeared in the operator, increase the corresponding mark if so.
@@ -743,24 +747,40 @@ namespace GraphView
                     //string rhs = header[(functions[i] as FieldComparisonFunction).RhsFieldIndex];
                     string lhs = (functions[i] as FieldComparisonFunction).LhsFieldName;
                     string rhs = (functions[i] as FieldComparisonFunction).RhsFieldName;
-                    if (TempNode.AttachedQuerySegment.Contains(lhs))
-                        FunctionVaildalityCheck[i]++;
-                    if (TempNode.AttachedQuerySegment.Contains(rhs))
-                        FunctionVaildalityCheck[i]++;
-                    if (FunctionVaildalityCheck[i] == 2)
+                    bool isLhsContained = false, isRhsContained = false;
+                    var selectElements =
+                        TempNode.AttachedQuerySegment.SelectElements.Select(expr => expr.ToSqlStyleString()).ToList();
+
+                    foreach (var expr in selectElements)
                     {
-                        functions[i].header = ChildrenProcessor.Last().header;
-                        if (ChildrenProcessor.Last()!= null && ChildrenProcessor.Last() is TraversalBaseOperator)
-                        {
-                            if ((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates == null)
-                                (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates = functions[i];
-                            else
-                                (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates =
-                                    new BinaryFunction((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates,
-                                        functions[i], BinaryBooleanFunction.BinaryType.and);
-                        }
-                        FunctionVaildalityCheck[i] = 0;
+                        if (expr.Contains(lhs))
+                            isLhsContained = true;
+                        if (expr.Contains(rhs))
+                            isRhsContained = true;
                     }
+                    if (isLhsContained)
+                        FunctionVaildalityCheck[i]++;
+                    if (isRhsContained)
+                        FunctionVaildalityCheck[i]++;
+
+                    if (FunctionVaildalityCheck[i] == 2)
+                        {
+                            functions[i].header = ChildrenProcessor.Last().header;
+                            if (ChildrenProcessor.Last() != null && ChildrenProcessor.Last() is TraversalBaseOperator)
+                            {
+                                if ((ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates ==
+                                    null)
+                                    (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates =
+                                        functions[i];
+                                else
+                                    (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates =
+                                        new BinaryFunction(
+                                            (ChildrenProcessor.Last() as TraversalBaseOperator)
+                                                .crossDocumentJoinPredicates,
+                                            functions[i], BinaryBooleanFunction.BinaryType.and);
+                            }
+                            FunctionVaildalityCheck[i] = 0;
+                        }
                 }
             }
         }
