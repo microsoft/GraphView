@@ -1,12 +1,140 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    public class DMultiPartIdentifierParser
+    {
+        private WSqlParser _parser;
+        public DMultiPartIdentifierParser()
+        {
+            _parser = new WSqlParser();
+        }
+
+        public DMultiPartIdentifier ParseMultiPartIdentifier(string input)
+        {
+            var sr = new StringReader(input);
+            IList<ParseError> errors;
+            List<TSqlParserToken> tokens = new List<TSqlParserToken>(_parser.tsqlParser.GetTokenStream(sr, out errors));
+            if (errors.Count > 0)
+                return null;
+
+            var currentToken = 0;
+            var farestError = 0;
+            DMultiPartIdentifier result = new DMultiPartIdentifier();
+
+            if (!ParseMultiPartIdentifier(tokens, ref currentToken, ref result, ref farestError))
+                return null;
+
+            return result;
+        }
+
+        private static bool ParseMultiPartIdentifier(
+            IList<TSqlParserToken> tokens,
+            ref int nextToken,
+            ref DMultiPartIdentifier result,
+            ref int farestError)
+        {
+            var firstToken = nextToken;
+            var currentToken = nextToken;
+            var identifiers = new List<Identifier>();
+            Identifier identifier = null;
+            if (!ParseIdentifier(tokens, ref currentToken, ref identifier, ref farestError))
+                return false;
+            identifiers.Add(identifier);
+            while (ReadToken(tokens, ".", ref currentToken, ref farestError))
+            {
+                ParseIdentifier(tokens, ref currentToken, ref identifier, ref farestError);
+                identifiers.Add(identifier);
+            }
+            result = new DMultiPartIdentifier
+            {
+                Identifiers = identifiers,
+            };
+            nextToken = currentToken;
+            return true;
+        }
+
+        private static bool ParseIdentifier(
+            IList<TSqlParserToken> tokens,
+            ref int nextToken,
+            ref Identifier result,
+            ref int farestError)
+        {
+            var currentToken = nextToken;
+            var identifierName = "";
+            QuoteType quoteType;
+            if (!ReadToken(tokens, TSqlTokenType.Identifier, ref identifierName, ref currentToken, ref farestError) &&
+                !ReadToken(tokens, TSqlTokenType.QuotedIdentifier, ref identifierName, ref currentToken, ref farestError) &&
+                !ReadToken(tokens, TSqlTokenType.AsciiStringOrQuotedIdentifier, ref identifierName, ref currentToken, ref farestError))
+                return false;
+            var decodedIdentifierName = Identifier.DecodeIdentifier(identifierName, out quoteType);
+            result = new Identifier
+            {
+                Value = decodedIdentifierName,
+                QuoteType = quoteType,
+                FirstTokenIndex = nextToken,
+                LastTokenIndex = nextToken
+            };
+            nextToken = currentToken;
+
+            return true;
+        }
+
+        // read token by token's type
+        private static bool ReadToken(
+            IList<TSqlParserToken> tokens,
+            TSqlTokenType type,
+            ref string result,
+            ref int nextToken,
+            ref int farestError)
+        {
+            if (tokens.Count == nextToken)
+            {
+                farestError = nextToken;
+                return false;
+            }
+            if (tokens[nextToken].TokenType == type)
+            {
+                result = tokens[nextToken].Text;
+                nextToken++;
+                while (nextToken < tokens.Count && tokens[nextToken].TokenType > (TSqlTokenType)236)
+                    nextToken++;
+                return true;
+            }
+            farestError = Math.Max(farestError, nextToken);
+            return false;
+        }
+
+        // read token by token's text
+        private static bool ReadToken(
+            IList<TSqlParserToken> tokens,
+            string value,
+            ref int nextToken,
+            ref int farestError)
+        {
+            if (tokens.Count == nextToken)
+            {
+                farestError = nextToken;
+                return false;
+            }
+            if (string.Equals(tokens[nextToken].Text, value, StringComparison.OrdinalIgnoreCase))
+            {
+                nextToken++;
+                while (nextToken < tokens.Count && tokens[nextToken].TokenType > (TSqlTokenType)236)
+                    nextToken++;
+                return true;
+            }
+            farestError = Math.Max(farestError, nextToken);
+            return false;
+        }
+    }
+
     public class DMultiPartIdentifier
     {
         public IList<Identifier> Identifiers { get; set; }
@@ -64,6 +192,8 @@ namespace GraphView
 
             return sb.ToString();
         }
+
+
     }
 
     public class DColumnReferenceExpression

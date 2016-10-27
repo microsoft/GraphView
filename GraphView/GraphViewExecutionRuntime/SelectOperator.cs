@@ -822,11 +822,13 @@ namespace GraphView
     public class GraphViewDataReader : IDataReader
     {
         private GraphViewExecutionOperator DataSource;
+        private DMultiPartIdentifierParser Parser;
         RawRecord CurrentRecord;
         internal GraphViewDataReader(GraphViewExecutionOperator pDataSource)
         {
             DataSource = pDataSource;
             FieldCount = DataSource.header.Count;
+            Parser = new DMultiPartIdentifierParser();
         }
         public bool Read()
         {
@@ -838,8 +840,10 @@ namespace GraphView
         {
             get
             {
+                var identifier = Parser.ParseMultiPartIdentifier(FieldName);
+                var fieldName = identifier != null ? identifier.ToSqlStyleString() : FieldName;
                 if (DataSource != null)
-                    return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, FieldName);
+                    return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, fieldName);
                 else throw new IndexOutOfRangeException("No data source");
             }
         }

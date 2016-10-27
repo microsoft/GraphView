@@ -661,9 +661,6 @@ namespace GraphView
             WBooleanExpression searchCondition = null;
             string FromClauseString = "";
             // Node predicates will be attached here.
-            string WhereClauseString = "";
-            string PredicatesOnReverseEdge = "";
-            string PredicatesOnNodes = "";
             fromClause.TableReference = node.NodeAlias;
 
             if (!isPathTailNode)
