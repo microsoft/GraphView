@@ -92,13 +92,13 @@ namespace GraphView
                 List<string> header = (SelectInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
-                string source_tital = source.Substring(0,source.Length-3) + ".doc";
-                string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
+                string sourceDoc = source.Substring(0,source.Length-3) + ".doc";
+                string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
 
-                string source_json_str = rec.RetriveData(header, source_tital);
-                string sink_json_str = rec.RetriveData(header, sink_tital);
+                string sourceJsonStr = rec.RetriveData(header, sourceDoc);
+                string sinkJsonStr = rec.RetriveData(header, sinkDoc);
                 
-                InsertEdgeInMap(sourceid, sinkid,source_json_str, sink_json_str);
+                InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
             }
 
             Upload();
@@ -158,13 +158,13 @@ namespace GraphView
                     List<string> headery = (DestSelectInput as OutputOperator).SelectedElement;
                     string sourceid = x.RetriveData(headerx, source);
                     string sinkid = y.RetriveData(headery, sink);
-                    string source_tital = source.Substring(0, source.Length - 3) + ".doc";
-                    string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
+                    string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
+                    string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
 
-                    string source_json_str = x.RetriveData(headerx, source_tital);
-                    string sink_json_str = y.RetriveData(headery, sink_tital);
+                    string sourceJsonStr = x.RetriveData(headerx, sourceDoc);
+                    string sinkJsonStr = y.RetriveData(headery, sinkDoc);
 
-                    InsertEdgeInMap(sourceid, sinkid, source_json_str, sink_json_str);
+                    InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
                 }
             }
 
@@ -222,10 +222,10 @@ namespace GraphView
                 string EdgeID = rec.RetriveData(header, EdgeReverseID_str);
 
                 //get source.doc and sink.doc
-                string source_tital = source.Substring(0, source.Length - 3) + ".doc";
-                string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
-                string source_json_str = rec.RetriveData(header, source_tital);
-                string sink_json_str = rec.RetriveData(header, sink_tital);
+                string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
+                string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
+                string sourceJsonStr = rec.RetriveData(header, sourceDoc);
+                string sinkJsonStr = rec.RetriveData(header, sinkDoc);
 
                 int ID, reverse_ID;
                 int.TryParse(EdgeID, out ID);
@@ -233,7 +233,7 @@ namespace GraphView
 
 
 
-                DeleteEdgeInMap(sourceid, sinkid, ID, reverse_ID, source_json_str, sink_json_str);
+                DeleteEdgeInMap(sourceid, sinkid, ID, reverse_ID, sourceJsonStr, sinkJsonStr);
             }
 
             Upload();

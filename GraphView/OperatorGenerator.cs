@@ -432,18 +432,10 @@ namespace GraphView
                     if (scalarExpr.SelectExpr is WValueExpression) continue;
 
                     var column = scalarExpr.SelectExpr as WColumnReferenceExpression;
-                    var docFlag = column.MultiPartIdentifier.Identifiers.Count >= 2 &&
-                                  column.MultiPartIdentifier.Identifiers.Last().Value.Equals("doc");
 
                     var expr = column.MultiPartIdentifier.ToString();
                     var alias = scalarExpr.ColumnName ?? expr;
-                    if (docFlag)
-                    {
-                        column.MultiPartIdentifier.Identifiers.RemoveAt(column.MultiPartIdentifier.Identifiers.Count - 1);
-                        expr = column.MultiPartIdentifier.ToString();
-                    }
                     header.Add(expr);
-
                     // Add the mapping between the expr and its alias
                     columnToAliasDict.Add(expr, alias);
                     // Add the mapping between the expr and its DColumnReferenceExpr for later normalization
@@ -1002,8 +994,6 @@ namespace GraphView
             //Add "id" after each identifier
             var iden = new Identifier();
             iden.Value = "id";
-            var dic_iden = new Identifier();
-            dic_iden.Value = "doc";
 
             var n1 = SelectQueryBlock.SelectElements[0] as WSelectScalarExpression;
             var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
@@ -1018,14 +1008,14 @@ namespace GraphView
             n3.SelectExpr = n3_SelectExpr;
             n3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n3_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            n3.ColumnName = n3_SelectExpr.MultiPartIdentifier.ToString() + ".doc";
 
             var n4 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n4);
             var n4_SelectExpr = new WColumnReferenceExpression();
             n4.SelectExpr = n4_SelectExpr;
             n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            n4.ColumnName = n4_SelectExpr.MultiPartIdentifier.ToString() + ".doc";
 
             GraphViewExecutionOperator input = SelectQueryBlock.Generate(dbConnection);
             if (input == null)
@@ -1113,8 +1103,6 @@ namespace GraphView
             //Add "id" after each identifier
             var iden = new Identifier();
             iden.Value = "id";
-            var dic_iden = new Identifier();
-            dic_iden.Value = "doc";
 
             var n1 = SrcSelect.SelectElements[0] as WSelectScalarExpression;
             var identifiers1 = (n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers;
@@ -1129,14 +1117,14 @@ namespace GraphView
             n3.SelectExpr = n3_SelectExpr;
             n3_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n3_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-            n3_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            n3.ColumnName = n3_SelectExpr.MultiPartIdentifier.ToString() + ".doc";
 
             var n4 = new WSelectScalarExpression(); DestSelect.SelectElements.Add(n4);
             var n4_SelectExpr = new WColumnReferenceExpression();
             n4.SelectExpr = n4_SelectExpr;
             n4_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n4_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-            n4_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            n4.ColumnName = n4_SelectExpr.MultiPartIdentifier.ToString() + ".doc";
 
             GraphViewExecutionOperator SrcInput = SrcSelect.Generate(pConnection);
             GraphViewExecutionOperator DestInput = DestSelect.Generate(pConnection);
@@ -1196,21 +1184,20 @@ namespace GraphView
             #endregion
 
             #region Add ".doc" in Select
-            var dic_iden = new Identifier();
-            dic_iden.Value = "doc";
             var n5 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n5);
             var n5_SelectExpr = new WColumnReferenceExpression();
             n5.SelectExpr = n5_SelectExpr;
             n5_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n5_SelectExpr.MultiPartIdentifier.Identifiers.Add((n1.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-            n5_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            n5.ColumnName = n5_SelectExpr.MultiPartIdentifier.ToString() + ".doc";
 
             var n6 = new WSelectScalarExpression(); SelectQueryBlock.SelectElements.Add(n6);
             var n6_SelectExpr = new WColumnReferenceExpression();
             n6.SelectExpr = n6_SelectExpr;
             n6_SelectExpr.MultiPartIdentifier = new WMultiPartIdentifier();
             n6_SelectExpr.MultiPartIdentifier.Identifiers.Add((n2.SelectExpr as WColumnReferenceExpression).MultiPartIdentifier.Identifiers[0]);
-            n6_SelectExpr.MultiPartIdentifier.Identifiers.Add(dic_iden);
+            n6.ColumnName = n6_SelectExpr.MultiPartIdentifier.ToString() + ".doc";
+
             #endregion
         }
         internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
@@ -1252,9 +1239,12 @@ namespace GraphView
             var search = WhereClause.SearchCondition;
             var target = Target.ToString();
 
-            // Make sure every column is bound with the target table
-            var modifyTableNameVisitor = new ModifyTableNameVisitor();
-            modifyTableNameVisitor.Invoke(search, target);
+            if (search != null)
+            {
+                // Make sure every column is bound with the target table
+                var modifyTableNameVisitor = new ModifyTableNameVisitor();
+                modifyTableNameVisitor.Invoke(search, target);
+            }
 
             // Build up the query to select all the nodes can be deleted
             string Selectstr = "SELECT * FROM " + target + " ";
