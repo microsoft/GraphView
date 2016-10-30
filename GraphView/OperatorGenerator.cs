@@ -1246,17 +1246,27 @@ namespace GraphView
                 modifyTableNameVisitor.Invoke(search, target);
             }
 
+            DocDbScript script = new DocDbScript
+            {
+                ScriptBase = "SELECT *",
+                FromClause = new DFromClause {TableReference = target, FromClauseString = ""},
+                WhereClause = new WWhereClause()
+            };
+
             // Build up the query to select all the nodes can be deleted
-            string Selectstr = "SELECT * FROM " + target + " ";
+            string Selectstr;
             string IsolatedCheck = string.Format("(ARRAY_LENGTH({0}._edge) = 0 AND ARRAY_LENGTH({0}._reverse_edge) = 0) ", target);
+
             if (search == null)
             {
-                Selectstr += @"WHERE " + IsolatedCheck;
+                Selectstr = script.ToString() + @"WHERE " + IsolatedCheck;
             }
             else
             {
-                // The search condition needs to be surrounded by parentheses
-                Selectstr += @"WHERE (" + search.ToString() + ") AND " + IsolatedCheck;
+                script.WhereClause.SearchCondition =
+                    WBooleanBinaryExpression.Conjunction(script.WhereClause.SearchCondition,
+                        new WBooleanParenthesisExpression { Expression = search });
+                Selectstr = script.ToString() + @" AND " + IsolatedCheck;
             }
 
             DeleteNodeOperator Deleteop = new DeleteNodeOperator(dbConnection, Selectstr);

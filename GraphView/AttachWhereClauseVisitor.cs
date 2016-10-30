@@ -23,6 +23,8 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -205,14 +207,43 @@ namespace GraphView
         public override void Visit(WColumnReferenceExpression node)
         {
             var column = node.MultiPartIdentifier.Identifiers;
-            if (column.Count >= 2)
+            if (column.Count >= 2 && _tableName.Equals(column.First().Value, StringComparison.OrdinalIgnoreCase))
             {
-                column[column.Count - 2].Value = _tableName;
+                column.First().Value = _tableName;
             }
             else
             {
                 node.MultiPartIdentifier.Identifiers.Insert(0, new Identifier {Value = _tableName});
             }
+        }
+
+        public override void Visit(WScalarSubquery node)
+        {
+        }
+
+        public override void Visit(WFunctionCall node)
+        {
+        }
+
+        public override void Visit(WSearchedCaseExpression node)
+        {
+        }
+    }
+
+    /// <summary>
+    /// DMultiPartIdentifierVisitor traverses a boolean expression and
+    /// change all the WMultiPartIdentifiers to DMultiPartIdentifiers for normalization
+    /// </summary>
+    internal class DMultiPartIdentifierVisitor : WSqlFragmentVisitor
+    {
+        public void Invoke(WBooleanExpression node, string tableName)
+        {
+            node.Accept(this);
+        }
+
+        public override void Visit(WColumnReferenceExpression node)
+        {
+            node.MultiPartIdentifier = new DMultiPartIdentifier(node.MultiPartIdentifier);
         }
 
         public override void Visit(WScalarSubquery node)

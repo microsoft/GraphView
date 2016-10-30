@@ -135,10 +135,8 @@ namespace GraphView
         }
     }
 
-    public class DMultiPartIdentifier
-    {
-        public IList<Identifier> Identifiers { get; set; }
-
+    public class DMultiPartIdentifier : WMultiPartIdentifier
+    { 
         public DMultiPartIdentifier(params Identifier[] identifiers)
         {
             Identifiers = identifiers.ToList();
@@ -151,23 +149,21 @@ namespace GraphView
 
         public DMultiPartIdentifier(string identifier)
         {
-            Identifiers = new List<Identifier>();
-            Identifiers.Add(new Identifier {Value = identifier});
-        }
-
-        public Identifier this[int index]
-        {
-            get { return Identifiers[index]; }
-            set { Identifiers[index] = value; }
-        }
-
-        public int Count
-        {
-            get { return Identifiers.Count; }
+            Identifiers = new List<Identifier> {new Identifier {Value = identifier}};
         }
 
         // DocumentDB Identifier Normalization
         public override string ToString()
+        {
+            var sb = new StringBuilder(16);
+
+            for (var i = 0; i < Identifiers.Count; i++)
+                sb.Append(i > 0 ? string.Format("[\"{0}\"]", Identifiers[i].Value) : Identifiers[i].Value);
+
+            return sb.ToString();
+        }
+
+        internal override string ToString(string indent)
         {
             var sb = new StringBuilder(16);
 
@@ -192,8 +188,6 @@ namespace GraphView
 
             return sb.ToString();
         }
-
-
     }
 
     public class DColumnReferenceExpression
@@ -258,8 +252,12 @@ namespace GraphView
                 sb.Append(FromClause.ToString());
 
             if (WhereClause?.SearchCondition != null)
+            {
+                var visitor = new DMultiPartIdentifierVisitor();
+                visitor.Visit(WhereClause.SearchCondition);
                 sb.Append(" " + WhereClause.ToString());
-
+            }
+                
             return sb.ToString();
         }
     }
