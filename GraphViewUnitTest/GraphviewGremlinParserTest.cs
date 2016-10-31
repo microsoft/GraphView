@@ -40,7 +40,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
         "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
         "GroupMatch", "GraphTest");
-            connection.SetupClient();
             var insertNode = SematicAnalyser.SqlTree as WInsertEdgeSpecification;
             var op = insertNode.Generate(connection);
             op.Next();
@@ -56,7 +55,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().has('name','pluto').as('pluto').place_x.as('x').select('pluto').out().place_x.where(neq('x'))");
             var op = ParserTree.Generate(connection);
@@ -72,7 +70,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.E().has('place_x', lt(38))._ID");
             var op = ParserTree.Generate(connection);
@@ -88,7 +85,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().has('name', 'saturn').in('father').in('father').name");
             var op = ParserTree.Generate(connection);
@@ -104,7 +100,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().has('name', 'saturn').in('father').in('father').out('father','mother').values('name')");
             var op = ParserTree.Generate(connection);
@@ -120,7 +115,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().has('name', 'saturn').in('father').in('father').outE('battled').has('time', gt(1)).inV().values('name')");
             var op = ParserTree.Generate(connection);
@@ -136,7 +130,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().has('name', 'pluto').g.V(pluto).out('brother').as('god').out('lives').as('place').select().name");
             var op = ParserTree.Generate(connection);
@@ -152,7 +145,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().match(__.as('a').out('father').as('b')).select('a','b').name");
             var op = ParserTree.Generate(connection);
@@ -168,7 +160,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V.has('name','saturn').repeat(__.in('father')).times(2).name");
             var op = ParserTree.Generate(connection);
@@ -184,7 +175,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.E().has('reason', 'loves waves').as('source').values('reason').as('reason').select('source').outV().values('name').as('god').select('source').inV().values('name').as('thing').select('god', 'reason', 'thing')");
             var op = ParserTree.Generate(connection);
@@ -200,7 +190,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.V().has('name','saturn')coalesce(values('type'), values('age'))");
             var op1 = ParserTree1.Generate(connection);
@@ -225,7 +214,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             var ParserTree = parser.Parse("g.V().has('name','person'). choose(values('age')). option(27, __.in()). option(32, __.out()).values('name')");
             var op = ParserTree.Generate(connection);
@@ -242,7 +230,6 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinTest");
-            connection.SetupClient();
             GraphTraversal g1 = new GraphTraversal(connection);
             var r1 =
                 g1.V().has("comicbook", "AVF 4").In("appeared").values("character").order();
@@ -264,8 +251,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
     "GroupMatch", "GremlinTutor");
-            connection.SetupClient();
-            ResetCollection("GremlinTutor");
+            connection.ResetCollection();
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
             GraphTraversal g = new GraphTraversal(connection);
             parser.Parse("g.addV('character','VENUS II','weapon','shiled')").Generate(connection).Next();
@@ -287,27 +273,6 @@ namespace GraphViewUnitTest
             }
 
         }
-        [TestMethod]
-        public void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
-            connection.SetupClient();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
-
     }
 [TestClass]
     public class GraphViewGremlinInsertDeleteTest
@@ -318,8 +283,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinModification");
-            connection.SetupClient();
-            ResetCollection("GremlinModification");
+            connection.ResetCollection();
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.addV('label','person','name','stephen')");
             var op1 = ParserTree1.Generate(connection);
@@ -341,7 +305,7 @@ namespace GraphViewUnitTest
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "GremlinModification");
 
-            //ResetCollection("GremlinModification");
+            connection.ResetCollection();
             GraphViewGremlinParser parser1 = new GraphViewGremlinParser();
             var ParserTree1 = parser1.Parse("g.addV('label','person','name','Adams')");
             var op1 = ParserTree1.Generate(connection);
@@ -364,26 +328,6 @@ namespace GraphViewUnitTest
             {
                 rc = op4.Next();
             }
-        }
-        [TestMethod]
-        public void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
-            connection.SetupClient();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
         }
     }
 }

@@ -7,7 +7,7 @@ using GraphView;
 
 namespace GraphViewUnitTest
 {
-    public static class DocDBUtils
+    public static class DocDbUnitTestUtils
     {
         public static double stdDev(List<double> values)
         {
@@ -29,19 +29,8 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", collection);
-            connection.SetupClient();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
 
             connection.ResetCollection();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
         }
     }
 }

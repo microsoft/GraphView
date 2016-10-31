@@ -42,7 +42,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "MarvelTest");
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             var expTimes = 50;
             var sumTime = 0.0;
             var result = new List<Double>();
@@ -54,8 +54,6 @@ namespace GraphViewUnitTest
                 // Note: update as the random number
                 GraphViewCommand gcmd = new GraphViewCommand();
                 gcmd.GraphViewConnection = connection;
-
-                connection.SetupClient();
 
                 gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000" + i + ", 'titan');";
@@ -83,10 +81,9 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "MarvelTest");
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
             var allExpTimes = 100;
             var result = new List<Double>();
 
@@ -143,12 +140,11 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "MarvelTest");
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             var result = new List<Double>();
             var allExpTimes = 100;
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
 
             for (int k = 0; k < allExpTimes; k++)
             {
@@ -197,10 +193,9 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "MarvelTest");
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
             var expTimes = 50;
             var sumTime = 0.0;
             var result = new List<Double>();
@@ -260,26 +255,6 @@ namespace GraphViewUnitTest
                 ret = Math.Sqrt((sum) / (values.Count() - 1));
             }
             return ret;
-        }
-
-        public static void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
-            connection.SetupClient();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
         }
     }
 }

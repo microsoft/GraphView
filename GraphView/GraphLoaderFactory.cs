@@ -130,7 +130,7 @@ namespace GraphView
             var inEdgePropertiesHashMap = new Dictionary<string, Dictionary<string, string>>();
 
             parseData(path, connection, collectionName, resetCollection, threadNum, nodePropertiesHashMap, outEdgePropertiesHashMap, inEdgePropertiesHashMap);
-            ResetCollection(collectionName, connection);
+            connection.ResetCollection();
             var result = new List<Double>();
             var sumTime = 0.0;
             var nodeInsertNumbers = 100;
@@ -262,7 +262,7 @@ namespace GraphView
             StreamWriter nodeFile = new StreamWriter(nodeFilePath);
             StreamWriter edgeFile = new StreamWriter(edgeFilePath);
             parseData(path, connection, collectionName, resetCollection, threadNum, nodePropertiesHashMap, outEdgePropertiesHashMap, inEdgePropertiesHashMap);
-            ResetCollection(collectionName, connection);
+            connection.ResetCollection();
             var result = new List<Double>();
             var sumTime = 0.0;
             var nodeInsertNumbers = 100;
@@ -386,19 +386,6 @@ namespace GraphView
             
             Console.WriteLine("Finish init the dataset");
         }
-        public static void ResetCollection(String collectionName, GraphViewConnection connection)
-        {
-            connection.SetupClient();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-            connection.ResetCollection();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
     }
 
     public class DocDBInsertNodeToFileWorkerByNewAPI
@@ -430,7 +417,6 @@ namespace GraphView
             // SQL API
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
             var node = inputNodeBuffer.Retrieve();
 
             while (node.Key != null)
@@ -510,7 +496,6 @@ namespace GraphView
             KeyValuePair<string, Dictionary<string, string>> outEdge = inputOutEdgeBuffer.Retrieve();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
 
             while (outEdge.Key != null)
             {
@@ -618,7 +603,6 @@ namespace GraphView
             // SQL API
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
 
             var node = inputNodeBuffer.Retrieve();
             while (node.Key != null)
@@ -697,7 +681,6 @@ namespace GraphView
             KeyValuePair<string, Dictionary<string, string>> outEdge = inputOutEdgeBuffer.Retrieve();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-            connection.SetupClient();
 
             while (outEdge.Key != null)
             {

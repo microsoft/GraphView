@@ -24,8 +24,6 @@ namespace GraphViewUnitTest
                 GraphViewCommand gcmd = new GraphViewCommand();
                 gcmd.GraphViewConnection = connection;
 
-                connection.SetupClient();
-
                 #region InsertNode Text
 
                 gcmd.CommandText = @"
@@ -1066,48 +1064,6 @@ INSERT INTO Node (name, age, type) VALUES ('node1000', 10, 'human');
             //connection.ResetCollection();
         }
 
-
-        [TestMethod]
-        public void ResetCollection()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphTest");
-            connection.SetupClient();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
-        [TestMethod]
-        public void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
-            connection.SetupClient();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
-
         [TestMethod]
         public void InsertEdge()
         {
@@ -1118,7 +1074,6 @@ INSERT INTO Node (name, age, type) VALUES ('node1000', 10, 'human');
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
-            connection.SetupClient();
             #region InsertEdge Text
             gcmd.CommandText = @"
 
