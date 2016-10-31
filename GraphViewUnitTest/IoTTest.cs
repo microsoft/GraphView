@@ -37,26 +37,6 @@ namespace GraphViewUnitTest
             internal NodeInfo target;
         }
 
-        public static void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
-            connection.SetupClient();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
-
         public static GraphTraversal _find(GraphViewConnection connection, Info info, GraphTraversal source = null)
         {
             GraphTraversal t;
@@ -202,7 +182,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IoTDeleteInsert");
-            ResetCollection("IoTDeleteInsert");
+            connection.ResetCollection();
             GraphTraversal g = new GraphTraversal(connection);
             var A = g.V().addV("name", "A", "Model", "M1", "System", "S1");
             g.V().has("name", "A").drop();
@@ -234,7 +214,7 @@ namespace GraphViewUnitTest
 "GroupMatch", "IOTTest");
             string Manufacturer = "DeviceModel-90792012-59a2-11e6-8cd0-3717b83c0677";
             string ModelNumber = null;
-            var device = getDeviceModelInformation(connection,Manufacturer,ModelNumber);
+            var device = getDeviceModelInformation(connection, Manufacturer, ModelNumber);
             foreach (var x in device)
                 Console.WriteLine(x);
         }
@@ -247,8 +227,8 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-"GroupMatch", "IoTRoot");
-            //ResetCollection("IoTRoot");
+"GroupMatch", "NewTest1");
+            //connection.ResetCollection();
             GraphTraversal g = new GraphTraversal(connection);
             //var A26419 = g.V().addV("id", "26419", "label", "DeviceModel","manufacturer", "DeviceModel-907d3ece-59a2-11e6-8cd0-3717b83c0677");
             //var A102 = g.V().addV("id", "102", "label", "TelemetryDataModel","name", "DataModel-906e98e6-59a2-11e6-8cd0-3717b83c0677");
@@ -260,10 +240,11 @@ namespace GraphViewUnitTest
             //var E12807_12809 = g.V().has("id", "12807").addE("type", "shown_as").to(g.V().has("id", "12809"));
             //var E26419_12807 = g.V().has("id", "26419").addE("type", "extends").to(g.V().has("id", "12807"));
 
-            var root = g.V().has("id","26419").repeat(GraphTraversal._underscore().Out()).path();
+            var root = g.V().has("name", "A").repeat(GraphTraversal._underscore().Out()).path();
             foreach (var x in root)
             {
                 var y = x[0];
+                Console.WriteLine(y);
             }
         }
         /// <summary>
@@ -303,9 +284,9 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
     "GroupMatch", "IoTDeleteInsert");
-            ResetCollection("IoTDeleteInsert");
-            NodeInfo N234 = new NodeInfo() {properties = new Dictionary<string, string>() { {"label","Measure"},{"id","234"},{ "name", "Measure-906e991b-59a2-11e6-8cd0-3717b83c0677" } } };
-            NodeInfo N29477 = new NodeInfo() {properties = new Dictionary<string, string>() { { "label", "DeviceModel" }, {"id","29477"}, { "manufacturer", "DeviceModel-90810f5d-59a2-11e6-8cd0-3717b83c0677" } } };
+            connection.ResetCollection();
+            NodeInfo N234 = new NodeInfo() { properties = new Dictionary<string, string>() { { "label", "Measure" }, { "id", "234" }, { "name", "Measure-906e991b-59a2-11e6-8cd0-3717b83c0677" } } };
+            NodeInfo N29477 = new NodeInfo() { properties = new Dictionary<string, string>() { { "label", "DeviceModel" }, { "id", "29477" }, { "manufacturer", "DeviceModel-90810f5d-59a2-11e6-8cd0-3717b83c0677" } } };
             NodeInfo N232 = new NodeInfo()
             {
                 edges =
@@ -314,7 +295,7 @@ namespace GraphViewUnitTest
                             new EdgeInfo() {dir = direction.Out, type = "shown_as", target = N234},
                             new EdgeInfo() {dir = direction.In, type = "extends", target = N29477}
                     },
-                properties = new Dictionary<string, string>() { {"label","TelemetryDataModel"},{ "id", "232" }, { "name", "DataModel-906e991a-59a2-11e6-8cd0-3717b83c0677" } }
+                properties = new Dictionary<string, string>() { { "label", "TelemetryDataModel" }, { "id", "232" }, { "name", "DataModel-906e991a-59a2-11e6-8cd0-3717b83c0677" } }
             };
 
             GraphTraversal g = new GraphTraversal(connection);
@@ -361,4 +342,4 @@ namespace GraphViewUnitTest
         }
 
     }
-    }
+}
