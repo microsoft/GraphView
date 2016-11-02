@@ -23,6 +23,8 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -94,6 +96,8 @@ namespace GraphView
         {
         }
     }
+
+
 
     /// <summary>
     /// AttachWhereClauseVisitor traverses the WHERE clause and attachs predicates
@@ -184,7 +188,79 @@ namespace GraphView
         {
         }
     }
-#region comment codes
+
+    /// <summary>
+    /// ModifyTableNameVisitor traverses a boolean expression and
+    /// 1. change all the existing table name to _tableName
+    /// 2. attach _tableName to all the columns not bound with any table
+    /// </summary>
+    internal class ModifyTableNameVisitor : WSqlFragmentVisitor
+    {
+        private string _tableName;
+
+        public void Invoke(WBooleanExpression node, string tableName)
+        {
+            _tableName = tableName;
+            node.Accept(this);
+        }
+
+        public override void Visit(WColumnReferenceExpression node)
+        {
+            var column = node.MultiPartIdentifier.Identifiers;
+            if (column.Count >= 2 && _tableName.Equals(column.First().Value, StringComparison.OrdinalIgnoreCase))
+            {
+                column.First().Value = _tableName;
+            }
+            else
+            {
+                node.MultiPartIdentifier.Identifiers.Insert(0, new Identifier {Value = _tableName});
+            }
+        }
+
+        public override void Visit(WScalarSubquery node)
+        {
+        }
+
+        public override void Visit(WFunctionCall node)
+        {
+        }
+
+        public override void Visit(WSearchedCaseExpression node)
+        {
+        }
+    }
+
+    /// <summary>
+    /// DMultiPartIdentifierVisitor traverses a boolean expression and
+    /// change all the WMultiPartIdentifiers to DMultiPartIdentifiers for normalization
+    /// </summary>
+    internal class DMultiPartIdentifierVisitor : WSqlFragmentVisitor
+    {
+        public void Invoke(WBooleanExpression node, string tableName)
+        {
+            node.Accept(this);
+        }
+
+        public override void Visit(WColumnReferenceExpression node)
+        {
+            node.MultiPartIdentifier = new DMultiPartIdentifier(node.MultiPartIdentifier);
+        }
+
+        public override void Visit(WScalarSubquery node)
+        {
+        }
+
+        public override void Visit(WFunctionCall node)
+        {
+        }
+
+        public override void Visit(WSearchedCaseExpression node)
+        {
+        }
+    }
+
+
+    #region comment codes
     //internal class CheckBooleanEqualExpersion : WSqlFragmentVisitor
     //{
     //    private WSqlTableContext _context;
@@ -436,7 +512,7 @@ namespace GraphView
     //    {
     //    }
     //}
-#endregion
+    #endregion
 
-    
+
 }

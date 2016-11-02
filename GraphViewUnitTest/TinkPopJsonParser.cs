@@ -15,33 +15,13 @@ namespace GraphViewUnitTest
     public class TinkPopJsonParser
     {
         [TestMethod]
-        public void ResetCollection(String collectionName)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collectionName);
-            connection.SetupClient();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
-        [TestMethod]
         public void SpecialDataProcessingTest1()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
               "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
               "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             // Insert node from collections
             String value = "Jim O'Meara (Gaelic footballer)".Replace("'", "\\'");
             String tempSQL = "g.addV('id','30153','properties.id','30152','properties.value','" + value + "','label','Person')";
@@ -141,7 +121,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             // Insert node from collections
             int taskNum = nodePropertiesHashMap.Count;
             CountdownEvent cde = new CountdownEvent(taskNum);
@@ -354,7 +334,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("MarvelTest");
+            connection.ResetCollection();
             var result = new List<Double>();
             var sumTime = 0.0;
             var nodeInsertNumbers = 100;
@@ -396,9 +376,9 @@ namespace GraphViewUnitTest
                 Console.WriteLine("max insert node time is: {0}", result.Max());
                 Console.WriteLine("min insert node time is: {0}", result.Min());
                 Console.WriteLine("avg insert node time is: {0}", result.Average());
-                Console.WriteLine("stdDev insert node time is: {0}", DocDBUtils.stdDev(result));
+                Console.WriteLine("stdDev insert node time is: {0}", DocDbUnitTestUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
-                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
+                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDbUnitTestUtils.stdDev(result));
             }
             // wait for node insert finish
 
@@ -439,9 +419,9 @@ namespace GraphViewUnitTest
                 Console.WriteLine("max insert outEdge time is: {0}", result.Max());
                 Console.WriteLine("min insert outEdge time is: {0}", result.Min());
                 Console.WriteLine("avg insert outEdge time is: {0}", result.Average());
-                Console.WriteLine("stdDev insert outEdge time is: {0}", DocDBUtils.stdDev(result));
+                Console.WriteLine("stdDev insert outEdge time is: {0}", DocDbUnitTestUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
-                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
+                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDbUnitTestUtils.stdDev(result));
             }
 
             var inEdgeNum = 0;
@@ -480,31 +460,35 @@ namespace GraphViewUnitTest
                 Console.WriteLine("max insert in edge time is: {0}", result.Max());
                 Console.WriteLine("min insert in edge time is: {0}", result.Min());
                 Console.WriteLine("avg insert in edge time is: {0}", result.Average());
-                Console.WriteLine("stdDev insert in edge time is: {0}", DocDBUtils.stdDev(result));
+                Console.WriteLine("stdDev insert in edge time is: {0}", DocDbUnitTestUtils.stdDev(result));
                 Console.WriteLine("avg,max,min,stdDev");
-                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDBUtils.stdDev(result));
+                Console.WriteLine("{0}, {1}, {2}, {3}", result.Average(), result.Max(), result.Min(), DocDbUnitTestUtils.stdDev(result));
             }
         }
+
         [TestMethod]
         public void parseAndDumpDataTest()
         {
-            string path = @"D:\dataset\AzureIOT\graphson-subset.json";
+            string path = @"D:\dataset\AzureIOT\graphson-dataset.json";
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             string collectionName = "MarvelTest";
+            string nodeFile = @"D:\dataset\AzureIOT\nodeFile.csv";
+            string edgeFile = @"D:\dataset\AzureIOT\edgeFile.csv";
             int threadNumber = 1;
-            GraphLoaderFactory.parseAndDumpIOTData(path, connection, collectionName, true, threadNumber);
+            GraphLoaderFactory.parseAndDumpIOTData(path, connection, collectionName, true, threadNumber, nodeFile, edgeFile);
         }
+
         [TestMethod]
         public void InsertJsonMultiThreadByBoundedBufferByCommand()
         {
-            string path = @"E:\dataset\AzureIOT\graphson-subset.json";
+            string path = @"D:\dataset\AzureIOT\graphson-dataset.json";
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             string collectionName = "MarvelTest";
-            int threadNumber = 1;
+            int threadNumber = 20;
             GraphLoaderFactory.loadAzureIOT(path, connection, collectionName, true, threadNumber);
         }
 
@@ -715,7 +699,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "IOTTest1");
             GraphViewGremlinParser parser = new GraphViewGremlinParser();
-            ResetCollection("IOTTest1");
+            connection.ResetCollection(); ;
             // Insert node from collections
             BoundedBuffer<string> inputBuffer = new BoundedBuffer<string>(10000);
             int threadNum = 100;

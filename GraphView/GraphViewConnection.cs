@@ -26,7 +26,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -44,8 +43,6 @@ namespace GraphView
     /// </summary>
     public partial class GraphViewConnection : IDisposable
     {
-  
-
         private bool _disposed;
         public DocumentCollection DocDB_Collection;
         public string DocDB_CollectionId;
@@ -56,8 +53,6 @@ namespace GraphView
 
         public string DocDB_Url;
         public DocumentClient DocDBclient;
-
-
 
         /// <summary>
         ///     Initializes a new connection to DocDB.
@@ -84,6 +79,7 @@ namespace GraphView
 
             DocDBclient.OpenAsync();
         }
+
         public GraphViewConnection()
         { }
 
@@ -92,7 +88,6 @@ namespace GraphView
         /// </summary>
         public bool Overwrite { get; set; }
         
-
         /// <summary>
         ///     Releases all resources used by GraphViewConnection.
         /// </summary>
@@ -102,74 +97,49 @@ namespace GraphView
             GC.SuppressFinalize(this);
         }
 
-        public void SetupClient()
-        {
-            DocDBclient = new DocumentClient(new Uri(DocDB_Url), DocDB_PrimaryKey,
-                new ConnectionPolicy
-                {
-                    ConnectionMode = ConnectionMode.Direct,
-                    ConnectionProtocol = Protocol.Tcp,
-                });
-        }
-
-        public async Task BuildUp()
+        public void ResetCollection()
         {
             DocDB_Database =
                 DocDBclient.CreateDatabaseQuery().Where(db => db.Id == DocDB_DatabaseId).AsEnumerable().FirstOrDefault();
-
-            // If the database does not exist, create a new database
+            
+            // If the database does not exist, create one
             if (DocDB_Database == null)
-            {
-                DocDB_Database = await DocDBclient.CreateDatabaseAsync(
-                    new Database
-                    {
-                        Id = DocDB_DatabaseId
-                    });
-            }
+                CreateDatabaseAsync().Wait();
 
-            // Check to verify whether a document collection with the id exists
             DocDB_Collection =
                 DocDBclient.CreateDocumentCollectionQuery("dbs/" + DocDB_Database.Id)
                     .Where(c => c.Id == DocDB_CollectionId)
                     .AsEnumerable()
                     .FirstOrDefault();
 
-            // If the document collection does not exist, create a new collection
-            if (DocDB_Collection == null)
-            {
-                DocDB_Collection = await DocDBclient.CreateDocumentCollectionAsync("dbs/" + DocDB_Database.Id,
-                    new DocumentCollection{Id = DocDB_CollectionId},
-                    new RequestOptions { OfferType = "S3" });
-            }
+            // Delete the collection if it exists
+            if (DocDB_Collection != null)
+                DeleteCollectionAsync().Wait();
 
-            /*
-             using (DocumentClient client = new DocumentClient(new Uri("service endpoint"), "auth key"))
-{
-    //Create a new collection with an Offer set to S3
-    //Not passing in RequestOptions.OfferType will result in a collection with the default Offer set. 
-    DocumentCollection coll = await client.CreateDocumentCollectionAsync(databaseLink,
-        new DocumentCollection { Id = "My Collection" }, 
-        new RequestOptions { OfferType = "S3"} );
-}
-             */
+            CreateCollectionAsync().Wait();
 
-            DocDB_finish = true;
+            Console.Write("Collection " + DocDB_CollectionId + " has been reset.");
         }
 
-        public async Task DeleteCollection()
+        private async Task CreateDatabaseAsync()
         {
-            await DocDBclient.DeleteDocumentCollectionAsync(DocDB_Collection.SelfLink);
-            Console.WriteLine("The collection has been deleted");
-
-            DocDB_finish = true;
+            DocDB_Database = await DocDBclient.CreateDatabaseAsync(new Database { Id = DocDB_DatabaseId })
+                                    .ConfigureAwait(continueOnCapturedContext: false);
         }
 
-        public void ResetCollection()
+        private async Task CreateCollectionAsync()
         {
-            DocDB_finish = false;
-            DeleteCollection();
-            while (!DocDB_finish)
-                System.Threading.Thread.Sleep(10);
+            DocDB_Collection = await DocDBclient.CreateDocumentCollectionAsync("dbs/" + DocDB_Database.Id,
+                                        new DocumentCollection {Id = DocDB_CollectionId},
+                                        new RequestOptions {OfferType = "S3"})
+                                            .ConfigureAwait(continueOnCapturedContext: false);
+        }
+
+        public async Task DeleteCollectionAsync()
+        {
+            await
+                DocDBclient.DeleteDocumentCollectionAsync(DocDB_Collection.SelfLink)
+                    .ConfigureAwait(continueOnCapturedContext: false);
         }
 
         public void BulkInsertNodes(List<string> nodes)

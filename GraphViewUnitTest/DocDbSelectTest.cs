@@ -12,7 +12,7 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GremlinTest");
+                    "GroupMatch", "GraphTest");
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
@@ -28,9 +28,6 @@ namespace GraphViewUnitTest
             {
                 var rc = reader;
             }
-
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
@@ -52,17 +49,15 @@ namespace GraphViewUnitTest
             while (reader.Read())
             {
             }
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
         public void DocDBBranchSelectTest()
         {
-            InsertBigGraphWithoutDeleteCollection();
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GroupbyTest");
+                    "GroupMatch", "GraphTest");
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
@@ -98,14 +93,12 @@ namespace GraphViewUnitTest
             while (reader.Read())
             {
             }
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
         public void DocDBTriangleSelectTest()
         {
-            InsertBigGraphWithoutDeleteCollection();
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
@@ -125,14 +118,12 @@ namespace GraphViewUnitTest
             while (reader.Read())
             {
             }
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
         public void DocDBTwoTriangleSelectTest()
         {
-            InsertBigGraphWithoutDeleteCollection();
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
@@ -155,14 +146,12 @@ namespace GraphViewUnitTest
             while (reader.Read())
             {
             }
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
         public void DocDBSquareSelectTest()
         {
-            InsertBigGraphWithoutDeleteCollection();
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
@@ -184,18 +173,16 @@ namespace GraphViewUnitTest
             {
                 var rc = reader;
             }
-
-           connection.ResetCollection();
         }
 
         [TestMethod]
         public void DocDBNoResonTest()
         {
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphSeven");
+                    "GroupMatch", "GraphTest");
 
-            connection.SetupClient();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
@@ -212,17 +199,16 @@ namespace GraphViewUnitTest
             {
                 var rc = reader;
             }
-
-            connection.ResetCollection();
         }
+
         [TestMethod]
         public void DocDBSelectDocTest()
         {
+            //InsertBigGraphWithoutDeleteCollection();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GremlinTest");
+                    "GroupMatch", "GraphTest");
 
-            connection.SetupClient();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
 
@@ -247,12 +233,11 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GremlinTest");
+                    "GroupMatch", "GraphTest");
+            connection.ResetCollection();
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
@@ -355,7 +340,6 @@ namespace GraphViewUnitTest
 ";
 
             gcmd.ExecuteNonQuery();
-
         }
     }
 }

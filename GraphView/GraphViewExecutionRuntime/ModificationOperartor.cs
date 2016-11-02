@@ -4,17 +4,29 @@ using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
+    internal abstract class ModificationBaseOpertaor : GraphViewExecutionOperator
+    {
+        public GraphViewConnection dbConnection;
+        public string source, sink;
+        internal Dictionary<string, string> map;
 
-    internal class InsertEdgeOperator : GraphViewExecutionOperator
+        internal void Upload()
+        {
+            ReplaceDocument().Wait();
+        }
+
+        public async Task ReplaceDocument()
+        {
+            foreach (var cnt in map)
+                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value)
+                    .ConfigureAwait(continueOnCapturedContext: false);
+        }
+    }
+
+    internal class InsertEdgeOperator : ModificationBaseOpertaor
     {
         public GraphViewExecutionOperator SelectInput;
         public string edge;
-        public string source, sink;
-        public GraphViewConnection dbConnection;
-        private bool UploadFinish;
-        internal Dictionary<string, string> map;
-        private int thread_num;
-
 
         public InsertEdgeOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator SelectInput, string edge, string source, string sink)
         {
@@ -80,13 +92,13 @@ namespace GraphView
                 List<string> header = (SelectInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
-                string source_tital = source.Substring(0,source.Length-3) + ".doc";
-                string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
+                string sourceDoc = source.Substring(0,source.Length-3) + ".doc";
+                string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
 
-                string source_json_str = rec.RetriveData(header, source_tital);
-                string sink_json_str = rec.RetriveData(header, sink_tital);
+                string sourceJsonStr = rec.RetriveData(header, sourceDoc);
+                string sinkJsonStr = rec.RetriveData(header, sinkDoc);
                 
-                InsertEdgeInMap(sourceid, sinkid,source_json_str, sink_json_str);
+                InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
             }
 
             Upload();
@@ -105,37 +117,14 @@ namespace GraphView
             
             GraphViewDocDBCommand.INSERT_EDGE(map, edge, sourceid, sinkid);
         }
-
-        internal void Upload()
-        {
-            UploadFinish = false;
-            ReplaceDocument();
-
-            //Wait until finish replacing.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
-        }
-
-        public async Task ReplaceDocument()
-        {
-            foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
-            UploadFinish = true;
-        }
     }
 
-    internal class InsertEdgeFromTwoSourceOperator : GraphViewExecutionOperator
+    internal class InsertEdgeFromTwoSourceOperator : ModificationBaseOpertaor
     {
         public GraphViewExecutionOperator SrcSelectInput;
         public GraphViewExecutionOperator DestSelectInput;
 
         public string edge;
-        public string source, sink;
-        public GraphViewConnection dbConnection;
-        private bool UploadFinish;
-        internal Dictionary<string, string> map;
-        private int thread_num;
-
 
         public InsertEdgeFromTwoSourceOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator pSrcSelectInput, GraphViewExecutionOperator pDestSelectInput, string edge, string source, string sink)
         {
@@ -169,13 +158,13 @@ namespace GraphView
                     List<string> headery = (DestSelectInput as OutputOperator).SelectedElement;
                     string sourceid = x.RetriveData(headerx, source);
                     string sinkid = y.RetriveData(headery, sink);
-                    string source_tital = source.Substring(0, source.Length - 3) + ".doc";
-                    string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
+                    string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
+                    string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
 
-                    string source_json_str = x.RetriveData(headerx, source_tital);
-                    string sink_json_str = y.RetriveData(headery, sink_tital);
+                    string sourceJsonStr = x.RetriveData(headerx, sourceDoc);
+                    string sinkJsonStr = y.RetriveData(headery, sinkDoc);
 
-                    InsertEdgeInMap(sourceid, sinkid, source_json_str, sink_json_str);
+                    InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
                 }
             }
 
@@ -195,34 +184,14 @@ namespace GraphView
 
             GraphViewDocDBCommand.INSERT_EDGE(map, edge, sourceid, sinkid);
         }
-
-        internal void Upload()
-        {
-            UploadFinish = false;
-            ReplaceDocument();
-
-            //Wait until finish replacing.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
-        }
-
-        public async Task ReplaceDocument()
-        {
-            foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
-            UploadFinish = true;
-        }
     }
 
-    internal class DeleteEdgeOperator : GraphViewExecutionOperator
+    internal class DeleteEdgeOperator : ModificationBaseOpertaor
     {
         public GraphViewExecutionOperator SelectInput;
-        public string source, sink;
-        public GraphViewConnection dbConnection;
-        private bool UploadFinish;
+
         public string EdgeID_str;
         public string EdgeReverseID_str;
-        internal Dictionary<string, string> map;
 
         public DeleteEdgeOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
         {
@@ -253,10 +222,10 @@ namespace GraphView
                 string EdgeID = rec.RetriveData(header, EdgeReverseID_str);
 
                 //get source.doc and sink.doc
-                string source_tital = source.Substring(0, source.Length - 3) + ".doc";
-                string sink_tital = sink.Substring(0, source.Length - 3) + ".doc";
-                string source_json_str = rec.RetriveData(header, source_tital);
-                string sink_json_str = rec.RetriveData(header, sink_tital);
+                string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
+                string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
+                string sourceJsonStr = rec.RetriveData(header, sourceDoc);
+                string sinkJsonStr = rec.RetriveData(header, sinkDoc);
 
                 int ID, reverse_ID;
                 int.TryParse(EdgeID, out ID);
@@ -264,7 +233,7 @@ namespace GraphView
 
 
 
-                DeleteEdgeInMap(sourceid, sinkid, ID, reverse_ID, source_json_str, sink_json_str);
+                DeleteEdgeInMap(sourceid, sinkid, ID, reverse_ID, sourceJsonStr, sinkJsonStr);
             }
 
             Upload();
@@ -286,29 +255,11 @@ namespace GraphView
             map[sourceid] = GraphViewJsonCommand.Delete_edge(map[sourceid], ID);
             map[sinkid] = GraphViewJsonCommand.Delete_reverse_edge(map[sinkid], reverse_ID);
         }
-
-        internal void Upload()
-        {
-            UploadFinish = false;
-            ReplaceDocument();
-            //wait until finish replacing.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
-        }
-
-        public async Task ReplaceDocument()
-        {
-            foreach (var cnt in map)
-                await GraphViewDocDBCommand.ReplaceDocument(dbConnection, cnt.Key, cnt.Value);
-            UploadFinish = true;
-        }
     }
 
-    internal class InsertNodeOperator : GraphViewExecutionOperator
+    internal class InsertNodeOperator : ModificationBaseOpertaor
     {
         public string Json_str;
-        public GraphViewConnection dbConnection;
-        public bool UploadFinish;
 
         public InsertNodeOperator(GraphViewConnection dbConnection, string Json_str)
         {
@@ -328,27 +279,21 @@ namespace GraphView
             return null;
         }
 
-        void Upload(JObject obj)
+        internal void Upload(JObject obj)
         {
-            UploadFinish = false;
-            CreateDocument(obj);
-
-            //Wait until finish Creating documents.
-            while (!UploadFinish)
-                System.Threading.Thread.Sleep(10);
+            CreateDocument(obj).Wait();
         }
 
         public async Task CreateDocument(JObject obj)
         {
-            await dbConnection.DocDBclient.CreateDocumentAsync("dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId, obj);
-            UploadFinish = true;
+            await dbConnection.DocDBclient.CreateDocumentAsync("dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId, obj)
+                .ConfigureAwait(continueOnCapturedContext: false);
         }
     }
-    internal class DeleteNodeOperator : GraphViewExecutionOperator
+
+    internal class DeleteNodeOperator : ModificationBaseOpertaor
     {
         public string Selectstr;
-        public GraphViewConnection dbConnection;
-        public bool UploadFinish;
 
         public DeleteNodeOperator(GraphViewConnection dbConnection, string Selectstr)
         {
@@ -363,17 +308,12 @@ namespace GraphView
         internal void DeleteNodes()
         {
             var collectionLink = "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId;
-
-            var toBeDeletedNodes = dbConnection.DocDBclient.CreateDocumentQuery(collectionLink, Selectstr);
+            var toBeDeletedNodes = SendQuery(Selectstr, dbConnection);
 
             foreach (var node in toBeDeletedNodes)
             {
-                UploadFinish = false;
                 var docLink = collectionLink + "/docs/" + node.id;
-                DeleteDocument(docLink);
-                // Wait until finish deleting
-                while (!UploadFinish)
-                    System.Threading.Thread.Sleep(10);
+                DeleteDocument(docLink).Wait();
             }
         }
 
@@ -395,8 +335,7 @@ namespace GraphView
 
         public async Task DeleteDocument(string docLink)
         {
-            await dbConnection.DocDBclient.DeleteDocumentAsync(docLink);
-            UploadFinish = true;
+            await dbConnection.DocDBclient.DeleteDocumentAsync(docLink).ConfigureAwait(continueOnCapturedContext: false);
         }
     }
 

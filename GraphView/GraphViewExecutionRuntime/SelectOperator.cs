@@ -102,19 +102,13 @@ namespace GraphView
                 string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
             {
                 string result = "";
-                // Alias with "." is illegal in documentDB, so all the "." in alias will be replaced by "_".
-                if (Item[ResultFieldName.Replace(".", "_")] != null)
-                    result = (Item)[ResultFieldName.Replace(".", "_")].ToString();
+                // Alias with dot and whitespace is illegal in documentDB, so they will be replaced by "_"
+                string alias = ResultFieldName.Replace(".", "_").Replace(" ", "_");
+                if (Item[alias] != null)
+                    result = (Item)[alias].ToString();
                 ResultRecord.fieldValues[header.IndexOf(ResultFieldName)] = result;
             }
             return new Tuple<string, string, string,List<string>>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID), ResultRecord.fieldValues);
-        }
-        internal static IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
-        {
-            FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
-            IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
-                UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), script, QueryOptions);
-            return Result;
         }
     }
     /// <summary>
@@ -137,8 +131,7 @@ namespace GraphView
 
         // Segement of DocDb script for querying.
         // Containing complete SELECT/FROM/MATCH clause and partial WHERE clause (IN clause should be construct below)
-        private string docDbScript;
-
+        private DocDbScript docDbScript;
         // A list of forward/backward edges from the traversal's sink pointing to the vertices produced by the input operator
         // A vertex produced by the input operator is identified by the index in the input record
         private List<Tuple<int,string>> CheckList;
@@ -149,7 +142,7 @@ namespace GraphView
         // A mark to tell whether the traversal go through normal edge or reverse edge. 
         private bool IsReverse; 
 
-        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, string pScript, int pSrc, List<string> pheader, List<Tuple<int, string>> pCheckList, int pNumberOfProcessedVertices, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, DocDbScript pScript, int pSrc, List<string> pheader, List<Tuple<int, string>> pCheckList, int pNumberOfProcessedVertices, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             inputOperator = pChildProcessor;
@@ -194,8 +187,6 @@ namespace GraphView
                 }
             }
 
-            string script = docDbScript;
-
             // The collection maps each input record to a list of paths starting from it. 
             // Each paths is in a <sink, path_string> pair. 
             Dictionary<RawRecord, List<Tuple<string, string>>> pathCollection = new Dictionary<RawRecord, List<Tuple<string, string>>>();
@@ -203,8 +194,6 @@ namespace GraphView
             // Consturct the "IN" clause
             if (InputBuffer.Count != 0)
             {
-                string sinkIdValueList = "";
-
                 // To deduplicate edge reference from record in the input buffer, and put them into in clause. 
                 HashSet<string> EdgeRefSet = new HashSet<string>();
                 if (pathStepOperator == null)
@@ -213,11 +202,7 @@ namespace GraphView
                     {
                         var adj = record.RetriveData(src + (IsReverse ? REV_ADJ_OFFSET : ADJ_OFFSET)).Split(',');
                         foreach (var edge in adj)
-                        {
-                            if (edge != "" && !EdgeRefSet.Contains(edge))
-                                sinkIdValueList += edge + ",";
                             EdgeRefSet.Add(edge);
-                        }
                     }
                 }
                 else
@@ -246,52 +231,57 @@ namespace GraphView
                             pathList.Add(new Tuple<string, string>(x.SinkId, x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1]));
                             var adj = x.SinkId.Split(',');
                             foreach (var edge in adj)
-                            {
-                                if (edge != "" && !EdgeRefSet.Contains(edge))
-                                    sinkIdValueList += edge + ",";
-                                EdgeRefSet.Add(edge);
-                            }
+                                    EdgeRefSet.Add(edge);
                         }
 
                         pathCollection.Add(record, pathList);
                     }
                 }
-                sinkIdValueList = CutTheTail(sinkIdValueList);
+
                 // Skip redundant SendQuery when there is no adj in the InputBuffer
-                if (sinkIdValueList != "")
-                {
-                    if (!script.Contains("WHERE"))
-                        script += " WHERE " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
-                    else script += " AND " + header[NumberOfProcessedVertices * 3] + ".id IN (" + sinkIdValueList + ")";
+                EdgeRefSet.Remove("");
+                if (EdgeRefSet.Count > 0)
+                { 
+                    List<WScalarExpression> sinkIdList = EdgeRefSet.Select(edge => new WValueExpression {SingleQuoted = false, Value = edge}).Cast<WScalarExpression>().ToList();
+                    WInPredicate sinkCheck = new WInPredicate
+                    {
+                        Expression =
+                            WColumnReferenceExpression.CreateColumnExpression(header[NumberOfProcessedVertices*3], "id"),
+                        Values = sinkIdList
+                    };
+                    docDbScript.WhereClause.SearchCondition =
+                        WBooleanBinaryExpression.Conjunction(docDbScript.WhereClause.SearchCondition, sinkCheck);
 
                     if (pathStepOperator == null)
                     {
                         foreach (var reverseEdge in CheckList)
                         {
                             EdgeRefSet.Clear();
-                            sinkIdValueList = "";
                             foreach (RawRecord record in InputBuffer)
                             {
                                 var adj = record.RetriveData(reverseEdge.Item1).Split(',');
                                 foreach (var edge in adj)
-                                {
-                                    if (edge != "" && !EdgeRefSet.Contains(edge))
-                                        sinkIdValueList += "\"" + edge + "\"" + ",";
                                     EdgeRefSet.Add(edge);
-                                }
                             }
-                            sinkIdValueList = CutTheTail(sinkIdValueList);
                             // Remove the "_REV" tail
-                            if (!script.Contains("WHERE"))
-                                script += " WHERE " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
-                            else script += " AND " + CutTheTail(reverseEdge.Item2, 4) + "._sink IN (" + sinkIdValueList + ")";
+                            EdgeRefSet.Remove("");
+                            List<WScalarExpression> sourceIdList = EdgeRefSet.Select(edge => new WValueExpression { SingleQuoted = true, Value = edge }).Cast<WScalarExpression>().ToList();
+                            WInPredicate sourceCheck = new WInPredicate
+                            {
+                                Expression =
+                                    WColumnReferenceExpression.CreateColumnExpression(CutTheTail(reverseEdge.Item2, 4), "_sink"),
+                                Values = sourceIdList
+                            };
+                            docDbScript.WhereClause.SearchCondition =
+                                WBooleanBinaryExpression.Conjunction(docDbScript.WhereClause.SearchCondition, sourceCheck);
                         }
                     }
 
                     // Send query to server and decode the result.
                     try
                     {
-                        HashSet<string> UniqueRecord = new HashSet<string>();
+                        //HashSet<string> UniqueRecord = new HashSet<string>();
+                        var script = docDbScript.ToString();
                         IQueryable<dynamic> sinkNodeCollection = (IQueryable<dynamic>)SendQuery(script, connection);
                         foreach (var sinkJsonObject in sinkNodeCollection)
                         {
@@ -438,6 +428,8 @@ namespace GraphView
         public override void ResetState()
         {
             this.Open();
+            if (docDbScript?.WhereClause != null)
+                docDbScript.WhereClause.SearchCondition = docDbScript.OriginalSearchCondition;
             inputOperator.ResetState();
         }
     }
@@ -451,9 +443,8 @@ namespace GraphView
     {
         private Queue<RawRecord> OutputBuffer;
 
-        private string docDbScript;
-
-        public FetchNodeOperator(GraphViewConnection pConnection, string pScript, int pnode, List<string> pheader, int pNumberOfProcessedVertices, int pOutputBufferSize, GraphViewExecutionOperator pChildOperator = null)
+        private DocDbScript docDbScript;
+        public FetchNodeOperator(GraphViewConnection pConnection, DocDbScript pScript, int pnode, List<string> pheader, int pNumberOfProcessedVertices, int pOutputBufferSize, GraphViewExecutionOperator pChildOperator = null)
         {
             this.Open();
             connection = pConnection;
@@ -472,7 +463,8 @@ namespace GraphView
                     this.Close();
                 return OutputBuffer.Dequeue();
             }
-            string script = docDbScript;
+
+            string script = docDbScript.ToString();
             RawRecord OldRecord = new RawRecord(header.Count);
 
             try
@@ -713,7 +705,8 @@ namespace GraphView
                     ResultQueue.Enqueue(x);
             }
             if (ResultQueue.Count <= 1) this.Close();
-            return ResultQueue.Dequeue();
+            if (ResultQueue.Count != 0) return ResultQueue.Dequeue();
+            return null;
         }
     }
     /// <summary>
@@ -829,11 +822,13 @@ namespace GraphView
     public class GraphViewDataReader : IDataReader
     {
         private GraphViewExecutionOperator DataSource;
+        private DMultiPartIdentifierParser Parser;
         RawRecord CurrentRecord;
         internal GraphViewDataReader(GraphViewExecutionOperator pDataSource)
         {
             DataSource = pDataSource;
             FieldCount = DataSource.header.Count;
+            Parser = new DMultiPartIdentifierParser();
         }
         public bool Read()
         {
@@ -845,8 +840,10 @@ namespace GraphView
         {
             get
             {
+                var identifier = Parser.ParseMultiPartIdentifier(FieldName);
+                var fieldName = identifier != null ? identifier.ToSqlStyleString() : FieldName;
                 if (DataSource != null)
-                    return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, FieldName);
+                    return CurrentRecord.RetriveData((DataSource as OutputOperator).SelectedElement, fieldName);
                 else throw new IndexOutOfRangeException("No data source");
             }
         }

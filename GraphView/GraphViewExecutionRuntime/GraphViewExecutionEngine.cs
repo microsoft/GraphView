@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Azure.Documents.Client;
 
 // Add DocumentDB references
 
@@ -144,5 +146,14 @@ namespace GraphView
 
         // Number of vertices processed so far
         internal int NumberOfProcessedVertices;
+
+        internal static IQueryable<dynamic> SendQuery(string script, GraphViewConnection connection)
+        {
+            FeedOptions QueryOptions = new FeedOptions { MaxItemCount = -1 };
+            IQueryable<dynamic> Result = connection.DocDBclient.CreateDocumentQuery(
+                UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), 
+                script, QueryOptions);
+            return Result;
+        }
     }
 }

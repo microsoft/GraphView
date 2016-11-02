@@ -17,11 +17,9 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
-
+            connection.ResetCollection();
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
@@ -29,8 +27,6 @@ namespace GraphViewUnitTest
                 INSERT INTO Node (name, type) VALUES ('sky', 'location');
 ";
             gcmd.ExecuteNonQuery();
-
-            //connection.ResetCollection();
         }
 
         [TestMethod]
@@ -40,7 +36,7 @@ namespace GraphViewUnitTest
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "BulkInsertTest");
 
-            //ResetCollection(connection);
+            //connection.ResetCollection();
 
             var nodes = new List<string>
             {
@@ -71,57 +67,33 @@ namespace GraphViewUnitTest
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "BulkInsertTest");
 
-            //ResetCollection(connection);
+            //connection.ResetCollection();
 
             connection.BulkInsertNodes(nodes);
         }
 
         [TestMethod]
-        public void InsertNodeWithoutDeleteCollection(bool flag = true)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphTest");
-
-            GraphViewCommand gcmd = new GraphViewCommand();
-            gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
-
-            gcmd.CommandText = @"
-                INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
-                INSERT INTO Node (name, age, type) VALUES ('jupiter', 5000, 'god');
-                INSERT INTO Node (name, type) VALUES ('sky', 'location');
-            ";
-            gcmd.ExecuteNonQuery();
-        }
-
-        [TestMethod]
         public void DeleteNode()
         {
-            InsertNodeWithoutDeleteCollection();
-
+            InsertNode();
+            //InsertEdge();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
             
             gcmd.CommandText = @"
-                    DELETE FROM Node
-                    WHERE  Node.name = 'saturn'
+                DELETE FROM Node
+                WHERE Node.name = 'sky'
             ";
             gcmd.ExecuteNonQuery();
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
         public void InsertEdge()
         {
-            InsertNodeWithoutDeleteCollection();
+            InsertNode();
 
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
@@ -129,34 +101,6 @@ namespace GraphViewUnitTest
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
-
-            gcmd.CommandText = @"
-                INSERT INTO Edge (type, reason)
-                SELECT A, B, 'lives', 'loves fresh breezes'
-                FROM   Node A, Node B
-                WHERE  A.name = 'jupiter' AND B.name = 'sky'
-            ";
-
-            gcmd.ExecuteNonQuery();
-
-            connection.ResetCollection();
-        }
-
-        [TestMethod]
-        public void InsertEdgeWithDeleteCollection(bool flag = true)
-        {
-            InsertNodeWithoutDeleteCollection();
-
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphTest");
-
-            GraphViewCommand gcmd = new GraphViewCommand();
-            gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Edge (type, reason)
@@ -171,15 +115,13 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void DeleteEdge()
         {
-            InsertEdgeWithDeleteCollection();
+            InsertEdge();
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
 
             gcmd.CommandText = @"
                 DELETE EDGE [D]-[Edge as e]->[A]
@@ -188,8 +130,6 @@ namespace GraphViewUnitTest
 ";
 
             gcmd.ExecuteNonQuery();
-
-            connection.ResetCollection();
         }
 
         [TestMethod]
@@ -198,11 +138,10 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                     "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                     "GroupMatch", "GraphTest");
+            connection.ResetCollection();
 
             GraphViewCommand gcmd = new GraphViewCommand();
             gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
 
             gcmd.CommandText = @"
                 INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
@@ -305,160 +244,6 @@ namespace GraphViewUnitTest
 ";
 
             gcmd.ExecuteNonQuery();
-
-            //connection.ResetCollection();
-        }
-
-        [TestMethod]
-        public void InsertBigGraphWithoutDeleteCollection(bool flag = true)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphTest");
-
-            GraphViewCommand gcmd = new GraphViewCommand();
-            gcmd.GraphViewConnection = connection;
-
-            connection.SetupClient();
-
-            gcmd.CommandText = @"
-                INSERT INTO Node (name, age, type) VALUES ('saturn', 10000, 'titan');
-                INSERT INTO Node (name, type) VALUES ('sky', 'location');
-                INSERT INTO Node (name, type) VALUES ('sea', 'location');
-                INSERT INTO Node (name, age, type) VALUES ('jupiter', 5000, 'god');
-                INSERT INTO Node (name, age, type) VALUES ('neptune', 4500, 'god');
-                INSERT INTO Node (name, age, type) VALUES ('hercules', 30, 'demigod');
-                INSERT INTO Node (name, age, type) VALUES ('alcmene', 45, 'human');
-                INSERT INTO Node (name, age, type) VALUES ('pluto', 4000, 'god');
-                INSERT INTO Node (name, type) VALUES ('nemean', 'monster');
-                INSERT INTO Node (name, type) VALUES ('hydra', 'monster');
-                INSERT INTO Node (name, type) VALUES ('cerberus', 'monster');
-                INSERT INTO Node (name, type) VALUES ('tartarus', 'location');
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'father'
-                FROM Node A, Node B
-                WHERE A.name = 'jupiter' AND B.name = 'saturn'
-
-                INSERT INTO Edge (type,reason)
-                SELECT A,B,'lives','loves fresh breezes'
-                FROM Node A, Node B
-                WHERE A.name = 'jupiter' AND B.name = 'sky'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'brother'
-                FROM Node A, Node B
-                WHERE A.name = 'jupiter' AND B.name = 'neptune'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'brother'
-                FROM Node A, Node B
-                WHERE A.name = 'jupiter' AND B.name = 'pluto'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'brother'
-                FROM Node A, Node B
-                WHERE A.name = 'pluto' AND B.name = 'neptune'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'brother'
-                FROM Node A, Node B
-                WHERE A.name = 'pluto' AND B.name = 'jupiter'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'brother'
-                FROM Node A, Node B
-                WHERE A.name = 'neptune' AND B.name = 'jupiter'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'brother'
-                FROM Node A, Node B
-                WHERE A.name = 'neptune' AND B.name = 'pluto'
-
-                INSERT INTO Edge (type,reason)
-                SELECT A,B,'lives','loves waves'
-                FROM Node A, Node B
-                WHERE A.name = 'neptune' AND B.name = 'sea'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'father'
-                FROM Node A, Node B
-                WHERE A.name = 'hercules' AND B.name = 'jupiter'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'mother'
-                FROM Node A, Node B
-                WHERE A.name = 'hercules' AND B.name = 'alcmene'
-
-                INSERT INTO Edge (type,reason)
-                SELECT A,B,'lives','no fear of death'
-                FROM Node A, Node B
-                WHERE A.name = 'pluto' AND B.name = 'tartarus'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'lives'
-                FROM Node A, Node B
-                WHERE A.name = 'cerberus' AND B.name = 'tartarus'
-
-                INSERT INTO Edge (type)
-                SELECT A,B,'pet'
-                FROM Node A, Node B
-                WHERE A.name = 'pluto' AND B.name = 'cerberus'
-
-                INSERT INTO Edge (type,time,place_x,place_y)
-                SELECT A,B,'battled',1,38.1,23.7
-                FROM Node A, Node B
-                WHERE A.name = 'hercules' AND B.name = 'nemean'
-
-                INSERT INTO Edge (type,time,place_x,place_y)
-                SELECT A,B,'battled',2,37.7,23.9
-                FROM Node A, Node B
-                WHERE A.name = 'hercules' AND B.name = 'hydra'
-
-                INSERT INTO Edge (type,time,place_x,place_y)
-                SELECT A,B,'battled',12,39,22
-                FROM Node A, Node B
-                WHERE A.name = 'hercules' AND B.name = 'cerberus'
-";
-
-            gcmd.ExecuteNonQuery();
-
-        }
-
-        [TestMethod]
-        public void ResetCollection()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", "GraphTest");
-            connection.SetupClient();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
-
-        public void ResetCollection(GraphViewConnection connection)
-        {
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
         }
     }
 }

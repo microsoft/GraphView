@@ -66,6 +66,7 @@
     <Compile Include="BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBGraphOptimizer.cs" />
+    <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphLoaderFactory.cs" />

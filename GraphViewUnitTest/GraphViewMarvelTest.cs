@@ -1,20 +1,7 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using GraphView;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
-using Newtonsoft.Json;
-using System.Text;
-using Newtonsoft.Json.Linq;
-using System.IO;
+
 namespace GraphViewUnitTest
 {
     [TestClass]
@@ -118,6 +105,7 @@ namespace GraphViewUnitTest
             while (reader.Read())
             {
                 var x = reader[0] + "-->" + reader[1];
+                Console.WriteLine(x);
             }
         }
         [TestMethod]
@@ -133,6 +121,7 @@ namespace GraphViewUnitTest
             {
                 var character = record["character"];
                 var comicbook = record["comicbook"];
+                Console.Write(character + " " + comicbook);
             }
         }
         [TestMethod]
@@ -156,6 +145,7 @@ namespace GraphViewUnitTest
             {
                 var character = reader["CharacterNode.character"];
                 var comicbook = reader["ComicbookNode.comicbook"];
+                Console.WriteLine(character + " " + comicbook);
             }
         }
         [TestMethod]
@@ -170,6 +160,7 @@ namespace GraphViewUnitTest
             foreach (var record in r1)
             {
                 var N_1_character = record["N_1.character"];
+                Console.WriteLine(N_1_character);
             }
         }
         [TestMethod]
@@ -182,17 +173,18 @@ namespace GraphViewUnitTest
             gcmd.GraphViewConnection = connection;
 
             gcmd.CommandText = @"
-                SELECT CharacterNode.character
+                SELECT CharacterNode.character as CHAR
                 FROM node CharacterNode, node ComicbookNode
                 MATCH CharacterNode-[Edge AS e1]->ComicbookNode
                 WHERE e1.type = 'appeared' and ComicbookNode.comicbook = 'AVF 4'
-                ORDER BY CharacterNode.character
+                ORDER BY CHAR desc
             ";
 
             var reader = gcmd.ExecuteReader();
             while (reader.Read())
             {
-                var character = reader["CharacterNode.character"];
+                var character = reader["CHAR"];
+                Console.WriteLine(character);
             }
         }
         [TestMethod]
@@ -202,11 +194,12 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest1");
             GraphTraversal g1 = new GraphTraversal(connection);
-            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GraphTraversal.without("shield", "claws")).values("character").order();
+            var r1 = g1.V().has("comicbook", "AVF 4").In("appeared").has("weapon", GraphTraversal.within("shield", "claws")).values("character").order().@by(GraphTraversal.decr());
 
             foreach (var record in r1)
             {
                 var N_1_character = record[0];
+                Console.WriteLine(N_1_character);
             }
         }
         [TestMethod]
@@ -230,48 +223,14 @@ namespace GraphViewUnitTest
             while (reader.Read())
             {
                 var character = reader[0];
+                Console.WriteLine(character);
             }
         }
-
-        public void parseInEdge()
-        {
-
-        }
-
-        public void parseOutEdge()
-        {
-
-        }
-
     }
 
     [TestClass]
     public class GraphViewMarvelInsertDeleteTest
     {
-        /// <summary>
-        /// Clear the collections
-        /// </summary>
-        /// <param name="collection">Collection name</param>
-        [TestMethod]
-        public void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
-            connection.SetupClient();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-
-            connection.ResetCollection();
-            connection.DocDB_finish = false;
-            connection.BuildUp();
-
-            while (!connection.DocDB_finish)
-                System.Threading.Thread.Sleep(10);
-        }
         //[TestMethod]
         //public void AddSimpleEdgeMarvelAllRecords()
         //{
@@ -295,8 +254,8 @@ namespace GraphViewUnitTest
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTestEdge1");
-            ResetCollection("MarvelTestEdge1");
+                "GroupMatch", "MarvelTest1");
+            connection.ResetCollection();
             GraphTraversal g = new GraphTraversal(connection);
             g.V().addV("character", "VENUS II", "weapon", "shield");
             g.V().addV("comicbook", "AVF 4");
