@@ -80,6 +80,7 @@
     <Compile Include="Gremlin Parser Tree\WProgram.cs" />
     <Compile Include="Gremlin Parser Tree\WSyntaxTree.cs" />
     <Compile Include="GraphTraversal.cs" />
+    <Compile Include="GremlinTranslation.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
