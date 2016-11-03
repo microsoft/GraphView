@@ -67,6 +67,9 @@
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
+    <Compile Include="GramlinTranslationOperator\GremlinAndOp.cs" />
+    <Compile Include="GramlinTranslationOperator\GremlinEOp.cs" />
+    <Compile Include="GramlinTranslationOperator\GremlinOutOp.cs" />
     <Compile Include="GramlinTranslationOperator\GremlinVOp.cs" />
     <Compile Include="GraphOptimizer.cs" />
     <Compile Include="GraphTraversal2.cs" />

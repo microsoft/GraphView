@@ -6,15 +6,16 @@ using System.Threading.Tasks;
 
 namespace GraphView.GramlinTranslationOperator
 {
-    internal class GremlinVOp: GremlinTranslationOperator
+    internal class GremlinEOp: GremlinTranslationOperator
     {
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
-            inputContext.RemainingVariableList.Add(newVertexVar);
-            inputContext.AddNewDefaultProjection(newVertexVar);
+            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable();
+            inputContext.RemainingVariableList.Add(newEdgeVar);
+            inputContext.SetDefaultProjection(newEdgeVar);
             return inputContext;
         }
+
     }
 }
