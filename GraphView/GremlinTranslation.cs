@@ -7,6 +7,7 @@ namespace GraphView
     internal class GremlinVariable
     {
         public string VariableName { get; set; }
+
         public override int GetHashCode()
         {
             return VariableName.GetHashCode();
@@ -20,15 +21,30 @@ namespace GraphView
         BothEdge
     }
 
-    internal class GremlinVertexVariable : GremlinVariable { }
+    internal class GremlinVertexVariable : GremlinVariable {
+        public GremlinVertexVariable()
+        {
+            //automaticlly generate the name of node
+            VariableName = "N_" + GremlinVertexVariable.count.ToString();
+            count += 1;
+        }
+        static int count = 0;
+    }
     internal class GremlinEdgeVariable : GremlinVariable
     {
+        public GremlinEdgeVariable()
+        {
+            //automaticlly generate the name of edge
+            VariableName = "E_" + GremlinEdgeVariable.count.ToString();
+            count += 1;
+        }
+        static int count = 0;
         public GremlinEdgeType EdgeType { get; set; }
     }
 
     internal class GremlinRecursiveEdgeVariable : GremlinVariable
     {
-        public WSelectQueryBlock StepQuery { get; set; }
+        public WSelectQueryBlock GremlinTranslationOperatorQuery { get; set; }
         public int iterationCount;
         public WBooleanExpression untilCondition { get; set; }
     }
@@ -38,6 +54,16 @@ namespace GraphView
         public GremlinVariable RootVariable { get; set; }
         public bool fromOuter;
 
+
+        public GremlinToSqlContext()
+        {
+            RemainingVariableList = new List<GremlinVariable>();
+            VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
+            CrossVariableConditions = new List<WBooleanExpression>();
+            Projection = new List<Tuple<GremlinVariable, string>>();
+           // GroupByVariable = new Tuple<GremlinVariable, string>();
+           // OrderByVariable = new Tuple<GremlinVariable, string>();
+        }
         /// <summary>
         /// A list of Gremlin variables. The variables are expected to 
         /// follow the (vertex)-(edge|path)-(vertex)-... pattern
@@ -104,7 +130,81 @@ namespace GraphView
 
         public WSelectQueryExpression ToSqlQuery()
         {
-            return null;
+            //Consturct the new From Cluase;
+            var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
+            foreach (var variable in RemainingVariableList)
+            {
+                WNamedTableReference TR = null;
+                if (variable is GremlinVertexVariable)
+                {
+                    TR = new WNamedTableReference()
+                    {
+                        Alias = new Identifier() { Value = variable.VariableName },
+                        TableObjectString = "node",
+                        TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
+                    };
+                }
+                NewFromClause.TableReferences.Add(TR);
+            }
+
+            // Construct the new Match Cluase
+            var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
+
+            // Construct the new Select Component
+            var NewSelectElementClause = new List<WSelectElement>();
+            foreach (var item in Projection)
+            {
+                WColumnReferenceExpression projection = new WColumnReferenceExpression() { MultiPartIdentifier = GetProjectionIndentifiers(item)};
+                NewSelectElementClause.Add(new WSelectScalarExpression() { SelectExpr = projection });
+            }
+
+            var NewWhereClause = GetWhereClause();
+            var NewOrderByClause = new WOrderByClause();
+
+            var SelectStatement = new WSelectStatement();
+            var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
+            SelectBlock = new WSelectQueryBlock()
+            {
+                FromClause = NewFromClause,
+                SelectElements = NewSelectElementClause,
+                WhereClause = NewWhereClause,
+                MatchClause = NewMatchClause,
+                OrderByClause = NewOrderByClause,
+            };
+
+            return SelectBlock;
+        }
+
+        public WWhereClause GetWhereClause() {
+           WBooleanExpression allBooleanExpression = null;
+            foreach (var item in VariablePredicates)
+            {
+                if (allBooleanExpression == null)
+                {
+                    allBooleanExpression = item.Value;
+                    continue;
+                }
+                if (item.Value != null)
+                {
+                    allBooleanExpression = new WBooleanBinaryExpression()
+                    {
+                        BooleanExpressionType = BooleanBinaryExpressionType.And,
+                        FirstExpr = item.Value,
+                        SecondExpr = allBooleanExpression
+                    };
+                }
+
+            }
+
+            return new WWhereClause() { SearchCondition = allBooleanExpression } ;
+        }
+
+        public WMultiPartIdentifier GetProjectionIndentifiers(Tuple<GremlinVariable, string>item)
+        {
+            var Identifiers = new List<Identifier>();
+            Identifiers.Add(new Identifier() { Value = item.Item1.VariableName });
+            Identifiers.Add(new Identifier() { Value = item.Item2 });
+            return new WMultiPartIdentifier() { Identifiers = Identifiers };
         }
     }
 
@@ -114,6 +214,14 @@ namespace GraphView
         public virtual GremlinToSqlContext GetContext()
         {
             return null;
+        }
+        public GremlinToSqlContext GetInputContext()
+        {
+            if (InputOperator != null) {
+                return InputOperator.GetContext();
+            } else {
+                return new GremlinToSqlContext();
+            }
         }
     }
     
