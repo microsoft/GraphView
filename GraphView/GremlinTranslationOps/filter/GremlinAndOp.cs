@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GramlinTranslationOperator
+namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinAndOp : GremlinTranslationOperator
     {
@@ -48,19 +48,7 @@ namespace GraphView.GramlinTranslationOperator
 
             // Puts andExpression into inputContext
             GremlinVariable target = inputContext.LastVariable;
-            if (inputContext.VariablePredicates.ContainsKey(target))
-            {
-                inputContext.VariablePredicates[target] = new WBooleanBinaryExpression()
-                {
-                    BooleanExpressionType = BooleanBinaryExpressionType.And,
-                    FirstExpr = inputContext.VariablePredicates[target],
-                    SecondExpr = andExpression
-                };
-            }
-            else
-            {
-                inputContext.VariablePredicates[target] = andExpression;
-            }
+            inputContext.AddVariablePredicate(target, andExpression);
 
             return inputContext;
         }

@@ -1,20 +1,21 @@
-﻿using System;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GramlinTranslationOperator
+namespace GraphView.GremlinTranslationOps
 {
     internal class GremlinOutOp: GremlinTranslationOperator
     {
-        public List<string> _labels;
+        internal  List<string> EdgeLabels;
         public GremlinOutOp(params string[] labels)
         {
-            _labels = new List<string>;
+            EdgeLabels = new List<string>();
             foreach (var label in labels)
             {
-                _labels.Add(label);
+                EdgeLabels.Add(label);
             }
         }
 
@@ -22,14 +23,11 @@ namespace GraphView.GramlinTranslationOperator
         {
             GremlinToSqlContext inputContext = GetInputContext();
             GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable();
-            inputContext.RemainingVariableList.Add(newVertexVar);
+            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(GremlinEdgeType.OutEdge);
+            inputContext.AddGremlinVariable(newEdgeVar);
+            inputContext.AddGremlinVariable(newVertexVar);
             inputContext.SetDefaultProjection(newVertexVar);
-
-            // Add paths
-            inputContext.AddPaths(inputContext.LastVariable, newEdgeVar, newVertexVar);
-
-
+            inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
             return inputContext;
         }
     }

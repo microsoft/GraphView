@@ -1,54 +1,12 @@
-﻿using System;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Collections.Generic;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace GraphView
+namespace GraphView.GremlinTranslationOps
 {
-    internal class GremlinVariable
-    {
-        public string VariableName { get; set; }
-
-        public override int GetHashCode()
-        {
-            return VariableName.GetHashCode();
-        }
-    }
-
-    internal enum GremlinEdgeType
-    {
-        InEdge,
-        OutEdge,
-        BothEdge
-    }
-
-    internal class GremlinVertexVariable : GremlinVariable {
-        public GremlinVertexVariable()
-        {
-            //automaticlly generate the name of node
-            VariableName = "N_" + GremlinVertexVariable.count.ToString();
-            count += 1;
-        }
-        static long count = 0;
-    }
-    internal class GremlinEdgeVariable : GremlinVariable
-    {
-        public GremlinEdgeVariable()
-        {
-            //automaticlly generate the name of edge
-            VariableName = "E_" + GremlinEdgeVariable.count.ToString();
-            count += 1;
-        }
-        static long count = 0;
-        public GremlinEdgeType EdgeType { get; set; }
-    }
-
-    internal class GremlinRecursiveEdgeVariable : GremlinVariable
-    {
-        public WSelectQueryBlock GremlinTranslationOperatorQuery { get; set; }
-        public int iterationCount;
-        public WBooleanExpression untilCondition { get; set; }
-    }
-
     internal class GremlinToSqlContext
     {
         public GremlinVariable RootVariable { get; set; }
@@ -61,8 +19,8 @@ namespace GraphView
             VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
             CrossVariableConditions = new List<WBooleanExpression>();
             Projection = new List<Tuple<GremlinVariable, string>>();
-           // GroupByVariable = new Tuple<GremlinVariable, string>();
-           // OrderByVariable = new Tuple<GremlinVariable, string>();
+            // GroupByVariable = new Tuple<GremlinVariable, string>();
+            // OrderByVariable = new Tuple<GremlinVariable, string>();
         }
         /// <summary>
         /// A list of Gremlin variables. The variables are expected to 
@@ -212,8 +170,9 @@ namespace GraphView
             return NewSelectElementClause;
         }
 
-        public WWhereClause GetWhereClause() {
-           WBooleanExpression allBooleanExpression = null;
+        public WWhereClause GetWhereClause()
+        {
+            WBooleanExpression allBooleanExpression = null;
             foreach (var item in VariablePredicates)
             {
                 if (allBooleanExpression == null)
@@ -233,7 +192,7 @@ namespace GraphView
 
             }
 
-            return new WWhereClause() { SearchCondition = allBooleanExpression } ;
+            return new WWhereClause() { SearchCondition = allBooleanExpression };
         }
 
         public WOrderByClause GetOrderByClause()
@@ -242,7 +201,7 @@ namespace GraphView
             return NewOrderByClause;
         }
 
-        public WMultiPartIdentifier GetProjectionIndentifiers(Tuple<GremlinVariable, string>item)
+        public WMultiPartIdentifier GetProjectionIndentifiers(Tuple<GremlinVariable, string> item)
         {
             var Identifiers = new List<Identifier>();
             Identifiers.Add(new Identifier() { Value = item.Item1.VariableName });
@@ -254,7 +213,7 @@ namespace GraphView
         {
             if (source.GetType() == typeof(GremlinVertexVariable))
             {
-                this.Paths.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
+                Paths.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
                     (source, edge, target));
             }
             else
@@ -262,36 +221,43 @@ namespace GraphView
                 throw new Exception("Edges can't have a out step.");
             }
         }
-    }
 
-    internal abstract class GremlinTranslationOperator
-    {
-        public GremlinTranslationOperator InputOperator;
-        public virtual GremlinToSqlContext GetContext()
+        public void AddGremlinVariable(GremlinVariable gremlinVar)
         {
-            return null;
+            RemainingVariableList.Add(gremlinVar);
         }
-        public GremlinToSqlContext GetInputContext()
+
+        public void AddVariablePredicate(GremlinVariable target, WBooleanExpression andExpression)
         {
-            if (InputOperator != null) {
-                return InputOperator.GetContext();
-            } else {
-                return new GremlinToSqlContext();
+            if (VariablePredicates.ContainsKey(target))
+            {
+                VariablePredicates[target] = new WBooleanBinaryExpression()
+                {
+                    BooleanExpressionType = BooleanBinaryExpressionType.And,
+                    FirstExpr = VariablePredicates[target],
+                    SecondExpr = andExpression
+                };
+            }
+            else
+            {
+                VariablePredicates[target] = andExpression;
             }
         }
-    }
-    
-    internal class GremlinParentContextOp : GremlinTranslationOperator
-    {
-        public GremlinVariable InheritedVariable { get; set; }
 
-        public override GremlinToSqlContext GetContext()
+        public void AddLabelsPredicatesToEdge(List<string> edgeLabels, GremlinEdgeVariable edgeVar)
         {
-            GremlinToSqlContext newContext = new GremlinToSqlContext();
-            newContext.RootVariable = InheritedVariable;
-            newContext.fromOuter = true;
+            foreach (var edgeLabel in edgeLabels)
+            {
+                WValueExpression predicateValue = new WValueExpression(edgeLabel, true);
+                WBooleanComparisonExpression comExpression = new WBooleanComparisonExpression()
+                {
+                    ComparisonType = BooleanComparisonType.Equals,
+                    FirstExpr = GremlinUtil.GetColumnReferenceExpression(edgeVar.VariableName, "type"),
+                    SecondExpr = predicateValue
+                };
+                AddVariablePredicate(edgeVar, comExpression);
+            }
 
-            return newContext;
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using GraphView.GramlinTranslationOperator;
+﻿using GraphView.GremlinTranslationOps;
+using GraphView.GremlinTranslationOps.map;
+using GraphView.GremlinTranslationOps.filter;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,7 +12,7 @@ namespace GraphView
     public class GraphTraversal2
     {
         internal List<GremlinTranslationOperator> _GremlinTranslationOpList = new List<GremlinTranslationOperator>();
-        internal GremlinTranslationOperator _lastGremlinTranslationOp { set; get }
+        internal GremlinTranslationOperator _lastGremlinTranslationOp { set; get; }
 
         public GraphTraversal2() {
 
@@ -52,6 +54,7 @@ namespace GraphView
 
         public GraphTraversal2 addE(string edgeLabel)
         {
+            addGremlinOperator(new GremlinAddEOp(edgeLabel));
             return this;
         }
 
@@ -92,7 +95,7 @@ namespace GraphView
             {
                 AndOp.ConjunctiveOperators.Add(traversal._lastGremlinTranslationOp);
             }
-            this.addGremlinOperator(AndOp);
+            addGremlinOperator(AndOp);
             return this;
         }
         
@@ -131,7 +134,7 @@ namespace GraphView
 
         public GraphTraversal2 E()
         {
-            this.addGremlinOperator(new GremlinEOp());
+            addGremlinOperator(new GremlinEOp());
             return this;
         }
 
@@ -304,7 +307,7 @@ namespace GraphView
 
         public GraphTraversal2 Out(params string[] edgeLabels)
         {
-            this.addGremlinOperator(new GremlinOutOp(edgeLabels));
+            addGremlinOperator(new GremlinOutOp(edgeLabels));
             return this;
         }
 
@@ -429,7 +432,7 @@ namespace GraphView
 
         public GraphTraversal2 V()
         {
-            this.addGremlinOperator(new GremlinVOp());
+            addGremlinOperator(new GremlinVOp());
             return this;
         }
 
@@ -456,5 +459,14 @@ namespace GraphView
         //public GraphTraversal2 where(P<string> predicate)
         //public GraphTraversal2 where(string startKey, P<string> predicate)
         //public GraphTraversal2 where(Traversal<?, ?> whereTraversal)
+
+        public static GraphTraversal2 underscore()
+        {
+            GraphTraversal2 newGraphTraversal = new GraphTraversal2();
+            newGraphTraversal.addGremlinOperator(new GremlinParentContextOp());
+            return newGraphTraversal;
+        }
     }
 }
+
+
