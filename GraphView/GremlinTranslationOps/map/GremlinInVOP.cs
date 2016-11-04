@@ -19,8 +19,8 @@ namespace GraphView.GremlinTranslationOps.map
 
             // When the last of inputContext.RemainingVariableList is    
             // V <--[Edge a] -- 
-            // Then we add a new Vertex and the same edge for getting vertex of the inV
-            // V <--[Edge a] -- newVertex --[Edge a] -->
+            // Then we add a new inner Vertex and the same edge for getting vertex of the inV
+            // V <--[Edge a] -- innerVertex --[Edge a] -->
             if ((inputContext.LastVariable as GremlinEdgeVariable).EdgeType == GremlinEdgeType.InEdge) {
                 var CurrentEdge = inputContext.LastVariable;
                 inputContext.AddGremlinVariable(new GremlinVertexVariable());

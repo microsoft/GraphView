@@ -77,9 +77,14 @@ namespace GraphView.GremlinTranslationOps
         /// </summary>
         public Tuple<GremlinVariable, string> OrderByVariable { get; set; }
 
+        public void AddProjection(GremlinVariable GremlinVar, string value)
+        {
+            Projection.Add(new Tuple<GremlinVariable, string>(GremlinVar, value));
+        }
+
         public void AddNewDefaultProjection(GremlinVariable newGremlinVar)
         {
-            Projection.Add(new Tuple<GremlinVariable, string>(newGremlinVar, "id"));
+            AddProjection(newGremlinVar, "id");
         }
 
         public void SetDefaultProjection(GremlinVariable newGremlinVar)
@@ -88,7 +93,18 @@ namespace GraphView.GremlinTranslationOps
             {
                 Projection.Clear();
             }
-            Projection.Add(new Tuple<GremlinVariable, string>(newGremlinVar, "id"));
+            AddProjection(newGremlinVar, "id");
+        }
+
+        public void SetProjection(GremlinVariable GremlinVar, String value)
+        {
+            Projection.Clear();
+            AddProjection(GremlinVar, value);
+        }
+
+        public void ClearProjection()
+        {
+            Projection.Clear();
         }
 
         public WBooleanExpression ToSqlBoolean()

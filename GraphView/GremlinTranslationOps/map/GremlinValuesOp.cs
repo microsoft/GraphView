@@ -8,12 +8,24 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinValuesOp: GremlinTranslationOperator
     {
-        public GremlinValuesOp() { }
+        public List<string> PropertyKeys;
+
+        public GremlinValuesOp(params string[] propertyKeys) {
+            PropertyKeys = new List<string>();
+            foreach (var propertyKey in propertyKeys)
+            {
+                PropertyKeys.Add(propertyKey);
+            }
+        }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            
+
+            inputContext.ClearProjection();
+            foreach (var propertyKey in PropertyKeys) {
+                inputContext.AddProjection(inputContext.LastVariable, propertyKey);
+            }
 
             return inputContext;
         }
