@@ -67,10 +67,32 @@
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
-    <Compile Include="GramlinTranslationOperator\GremlinAndOp.cs" />
-    <Compile Include="GramlinTranslationOperator\GremlinEOp.cs" />
-    <Compile Include="GramlinTranslationOperator\GremlinOutOp.cs" />
-    <Compile Include="GramlinTranslationOperator\GremlinVOp.cs" />
+    <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinAndOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinDropOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinHasOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinLimitOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinOrOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinWhereOp.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinByOp.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinEOp.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinToSqlContext.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinUtil.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinVariable.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinAddEOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinInEOP.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinInOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinInVOP.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinMatchOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinMaxOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinMeanOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinMinOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinOrderOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinOutEOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinOutOp.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinVOp.cs" />
     <Compile Include="GraphOptimizer.cs" />
     <Compile Include="GraphTraversal2.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
@@ -86,7 +108,13 @@
     <Compile Include="Gremlin Parser Tree\WProgram.cs" />
     <Compile Include="Gremlin Parser Tree\WSyntaxTree.cs" />
     <Compile Include="GraphTraversal.cs" />
-    <Compile Include="GremlinTranslation.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinTranslationOperator.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinOutVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinSelectOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinValuesOp.cs" />
+    <Compile Include="GremlinTranslationOps\Predicate.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinAggregateOp.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinAsStep.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
@@ -149,6 +177,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Microsoft.Azure.DocumentDB.1.9.5\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\packages\Microsoft.Azure.DocumentDB.1.9.5\build\Microsoft.Azure.DocumentDB.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
