@@ -12,7 +12,8 @@ namespace GraphView.GremlinTranslationOps
         {
             GremlinToSqlContext inputContext = GetInputContext();
             GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
-            inputContext.RemainingVariableList.Add(newVertexVar);
+            inputContext.AddNewVariable(newVertexVar);
+            inputContext.SetCurrentVariable(newVertexVar);
             inputContext.AddNewDefaultProjection(newVertexVar);
             return inputContext;
         }

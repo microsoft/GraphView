@@ -62,38 +62,41 @@ namespace GraphView.GremlinTranslationOps.filter
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVariable currVar = inputContext.LastVariable;
 
-            if (OpType == HasOpType.hasKey)
+            foreach (var currVar in inputContext.CurrVariableList)
             {
-                //has(key)
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpression(currVar, "type", Key);
-                inputContext.AddVariablePredicate(currVar, booleanExpr);
-            }
-            else if (OpType == HasOpType.hasKeyValue)
-            {
-                //has(key, value)
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpression(currVar, Key, Value);
-                inputContext.AddVariablePredicate(currVar, booleanExpr);
-            }
-            else if (OpType == HasOpType.hasKeyPredicate)
-            {
-                //has(key, predicate)
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpression(currVar, Key, Predicate);
-                inputContext.AddVariablePredicate(currVar, booleanExpr);
-            }
-            else if (OpType == HasOpType.hasLabelKeyValue)
-            {
-                //has(label, key, value)
-                WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpression(currVar, "type", Label);
-                WBooleanExpression booleanExpr2 = GremlinUtil.GetBooleanComparisonExpression(currVar, Key, Value);
-                WBooleanExpression booleanExprBoth = GremlinUtil.GetBooleanBinaryExpression(booleanExpr1, booleanExpr2);
-                inputContext.AddVariablePredicate(currVar, booleanExprBoth);
-            }
-            else if (OpType == HasOpType.hasKeyTraversal)
-            {
-                //has(key, traversal)
-                
+
+                if (OpType == HasOpType.hasKey)
+                {
+                    //has(key)
+                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, "type", Key);
+                    inputContext.AddPredicate(booleanExpr);
+                }
+                else if (OpType == HasOpType.hasKeyValue)
+                {
+                    //has(key, value)
+                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Value);
+                    inputContext.AddPredicate(booleanExpr);
+                }
+                else if (OpType == HasOpType.hasKeyPredicate)
+                {
+                    //has(key, predicate)
+                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Predicate);
+                    inputContext.AddPredicate(booleanExpr);
+                }
+                else if (OpType == HasOpType.hasLabelKeyValue)
+                {
+                    //has(label, key, value)
+                    WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpr(currVar, "type", Label);
+                    WBooleanExpression booleanExpr2 = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Value);
+                    WBooleanExpression booleanExprBoth = GremlinUtil.GetAndBooleanBinaryExpr(booleanExpr1, booleanExpr2);
+                    inputContext.AddPredicate(booleanExprBoth);
+                }
+                else if (OpType == HasOpType.hasKeyTraversal)
+                {
+                    //has(key, traversal)
+
+                }
             }
             return inputContext;
         }

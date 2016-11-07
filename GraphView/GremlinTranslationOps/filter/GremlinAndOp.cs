@@ -30,7 +30,7 @@ namespace GraphView.GremlinTranslationOps.filter
                 if (rootOp.GetType() == typeof(GremlinParentContextOp))
                 {
                     GremlinParentContextOp rootAsContext = rootOp as GremlinParentContextOp;
-                    rootAsContext.InheritedVariable = inputContext.LastVariable;
+                    rootAsContext.InheritedVariable = inputContext.CurrVariableList;
                 }
 
                 GremlinToSqlContext booleanContext = predicateOp.GetContext();
@@ -47,8 +47,7 @@ namespace GraphView.GremlinTranslationOps.filter
             }
 
             // Puts andExpression into inputContext
-            GremlinVariable target = inputContext.LastVariable;
-            inputContext.AddVariablePredicate(target, andExpression);
+            inputContext.AddPredicate(andExpression);
 
             return inputContext;
         }

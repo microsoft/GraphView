@@ -9,15 +9,16 @@ namespace GraphView.GremlinTranslationOps
 {
     internal class GremlinToSqlContext
     {
-        public GremlinVariable RootVariable { get; set; }
+        public IList<GremlinVariable> RootVariable { get; set; }
         public bool fromOuter;
 
 
         public GremlinToSqlContext()
         {
             RemainingVariableList = new List<GremlinVariable>();
-            VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
-            CrossVariableConditions = new List<WBooleanExpression>();
+            //VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
+            //CrossVariableConditions = new List<WBooleanExpression>();
+            Predicates = null;
             Projection = new List<Tuple<GremlinVariable, string>>();
             // GroupByVariable = new Tuple<GremlinVariable, string>();
             // OrderByVariable = new Tuple<GremlinVariable, string>();
@@ -31,30 +32,35 @@ namespace GraphView.GremlinTranslationOps
         /// <summary>
         /// A collection of variables and their predicates
         /// </summary>
-        public Dictionary<GremlinVariable, WBooleanExpression> VariablePredicates { get; set; }
+        //public Dictionary<GremlinVariable, WBooleanExpression> VariablePredicates { get; set; }
 
         /// <summary>
         /// A list of boolean expressions, each of which is on multiple variables
         /// </summary>
-        public List<WBooleanExpression> CrossVariableConditions { get; set; }
+        //public List<WBooleanExpression> CrossVariableConditions { get; set; }
+
+        public WBooleanExpression Predicates;
 
         /// <summary>
         /// The variable on which the new traversal operates
         /// </summary>
-        public GremlinVariable LastVariable
-        {
-            get
-            {
-                if (RemainingVariableList == null || RemainingVariableList.Count == 0)
-                {
-                    return null;
-                }
-                else
-                {
-                    return RemainingVariableList[RemainingVariableList.Count - 1];
-                }
-            }
-        }
+        //public GremlinVariable LastVariable
+        //{
+        //    get
+        //    {
+        //        if (RemainingVariableList == null || RemainingVariableList.Count == 0)
+        //        {
+        //            return null;
+        //        }
+        //        else
+        //        {
+        //            return RemainingVariableList[RemainingVariableList.Count - 1];
+        //        }
+        //    }
+        //}
+        public IList<GremlinVariable> CurrVariableList;
+
+        public Dictionary<string, IList<GremlinVariable>> AliasToGremlinVariable;
 
         /// <summary>
         /// A list of Gremlin variables and their properties the query projects. 
@@ -77,9 +83,38 @@ namespace GraphView.GremlinTranslationOps
         /// </summary>
         public Tuple<GremlinVariable, string> OrderByVariable { get; set; }
 
-        public void AddProjection(GremlinVariable GremlinVar, string value)
+        public void AddNewVariable(GremlinVariable gremlinVar)
         {
-            Projection.Add(new Tuple<GremlinVariable, string>(GremlinVar, value));
+            RemainingVariableList.Add(gremlinVar);
+        }
+
+        public void SetCurrentVariable(GremlinVariable gremlinVar)
+        {
+            CurrVariableList.Clear();
+            CurrVariableList.Add(gremlinVar);
+        }
+
+        public void SetCurrentVariable(params GremlinVariable[] gremlinVars)
+        {
+            CurrVariableList.Clear();
+            foreach (var gremlinVar in gremlinVars) {
+                CurrVariableList.Add(gremlinVar);
+            }
+        }
+
+        public void ClearCurrentVariable()
+        {
+            CurrVariableList.Clear();
+        }
+
+        public void AddCurrentVariable(GremlinVariable gremlinVar)
+        {
+            CurrVariableList.Add(gremlinVar);
+        }
+
+        public void AddProjection(GremlinVariable gremlinVar, string value)
+        {
+            Projection.Add(new Tuple<GremlinVariable, string>(gremlinVar, value));
         }
 
         public void AddNewDefaultProjection(GremlinVariable newGremlinVar)
@@ -109,7 +144,8 @@ namespace GraphView.GremlinTranslationOps
 
         public WBooleanExpression ToSqlBoolean()
         {
-            return null;
+            WSelectQueryExpression subQueryExpr = ToSqlQuery();
+            return GremlinUtil.GetExistPredicate(subQueryExpr);
         }
 
         public WScalarExpression ToSqlScalar()
@@ -188,27 +224,27 @@ namespace GraphView.GremlinTranslationOps
 
         public WWhereClause GetWhereClause()
         {
-            WBooleanExpression allBooleanExpression = null;
-            foreach (var item in VariablePredicates)
-            {
-                if (allBooleanExpression == null)
-                {
-                    allBooleanExpression = item.Value;
-                    continue;
-                }
-                if (item.Value != null)
-                {
-                    allBooleanExpression = new WBooleanBinaryExpression()
-                    {
-                        BooleanExpressionType = BooleanBinaryExpressionType.And,
-                        FirstExpr = item.Value,
-                        SecondExpr = allBooleanExpression
-                    };
-                }
+            //WBooleanExpression allBooleanExpression = null;
+            //foreach (var item in VariablePredicates)
+            //{
+            //    if (allBooleanExpression == null)
+            //    {
+            //        allBooleanExpression = item.Value;
+            //        continue;
+            //    }
+            //    if (item.Value != null)
+            //    {
+            //        allBooleanExpression = new WBooleanBinaryExpression()
+            //        {
+            //            BooleanExpressionType = BooleanBinaryExpressionType.And,
+            //            FirstExpr = item.Value,
+            //            SecondExpr = allBooleanExpression
+            //        };
+            //    }
 
-            }
+            //}
 
-            return new WWhereClause() { SearchCondition = allBooleanExpression };
+            return new WWhereClause() { SearchCondition = Predicates };
         }
 
         public WOrderByClause GetOrderByClause()
@@ -238,26 +274,27 @@ namespace GraphView.GremlinTranslationOps
             }
         }
 
-        public void AddGremlinVariable(GremlinVariable gremlinVar)
+        public void AddPredicate(WBooleanExpression expr)
         {
-            RemainingVariableList.Add(gremlinVar);
-        }
-
-        public void AddVariablePredicate(GremlinVariable target, WBooleanExpression andExpression)
-        {
-            if (VariablePredicates.ContainsKey(target))
+            //if (VariablePredicates.ContainsKey(target))
+            //{
+            //    VariablePredicates[target] = new WBooleanBinaryExpression()
+            //    {
+            //        BooleanExpressionType = BooleanBinaryExpressionType.And,
+            //        FirstExpr = VariablePredicates[target],
+            //        SecondExpr = expr
+            //    };
+            //}
+            //else
+            //{
+            //    VariablePredicates[target] = andExpression;
+            //}
+            Predicates = Predicates == null ? expr : new WBooleanBinaryExpression()
             {
-                VariablePredicates[target] = new WBooleanBinaryExpression()
-                {
-                    BooleanExpressionType = BooleanBinaryExpressionType.And,
-                    FirstExpr = VariablePredicates[target],
-                    SecondExpr = andExpression
-                };
-            }
-            else
-            {
-                VariablePredicates[target] = andExpression;
-            }
+                BooleanExpressionType = BooleanBinaryExpressionType.And,
+                FirstExpr = Predicates,
+                SecondExpr = expr
+            };
         }
 
         public void AddLabelsPredicatesToEdge(List<string> edgeLabels, GremlinEdgeVariable edgeVar)
@@ -271,9 +308,10 @@ namespace GraphView.GremlinTranslationOps
                     FirstExpr = GremlinUtil.GetColumnReferenceExpression(edgeVar.VariableName, "type"),
                     SecondExpr = predicateValue
                 };
-                AddVariablePredicate(edgeVar, comExpression);
+                AddPredicate(comExpression);
             }
 
         }
+
     }
 }

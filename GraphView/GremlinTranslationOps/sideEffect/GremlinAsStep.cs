@@ -8,10 +8,8 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinAsStep: GremlinTranslationOperator
     {
-        public string StepLabel;
         public List<string> StepLabels;
-        public GremlinAsStep(string stepLabel, params string[] stepLabels) {
-            StepLabel = stepLabel;
+        public GremlinAsStep(params string[] stepLabels) {
 
             StepLabels = new List<string>();
             foreach (var label in stepLabels)
@@ -23,6 +21,12 @@ namespace GraphView.GremlinTranslationOps.sideEffect
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            foreach (var stepLabel in StepLabels)
+            {
+                inputContext.AliasToGremlinVariable.Add(stepLabel, inputContext.CurrVariableList.Copy());
+            }
+
             return inputContext;
         }
     }

@@ -18,8 +18,10 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
             GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable();
-            inputContext.AddGremlinVariable(newEdgeVar);
-            
+            inputContext.AddNewVariable(newEdgeVar);
+            inputContext.SetCurrentVariable(newEdgeVar);
+            inputContext.AddNewDefaultProjection(newEdgeVar);
+
             return inputContext;
         }
     }
