@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.sideEffect
 {
-    internal class GremlinAsStep: GremlinTranslationOperator
+    internal class GremlinAsOp: GremlinTranslationOperator
     {
         public List<string> StepLabels;
-        public GremlinAsStep(params string[] stepLabels) {
+        public GremlinAsOp(params string[] stepLabels) {
 
             StepLabels = new List<string>();
             foreach (var label in stepLabels)

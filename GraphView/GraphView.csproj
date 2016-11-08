@@ -82,9 +82,9 @@
     <Compile Include="GremlinTranslationOps\map\GremlinAddEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
-    <Compile Include="GremlinTranslationOps\map\GremlinInEOP.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinInEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInOp.cs" />
-    <Compile Include="GremlinTranslationOps\map\GremlinInVOP.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinInVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMatchOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMaxOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMeanOp.cs" />
@@ -114,7 +114,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinValuesOp.cs" />
     <Compile Include="GremlinTranslationOps\Predicate.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAggregateOp.cs" />
-    <Compile Include="GremlinTranslationOps\sideEffect\GremlinAsStep.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinAsOp.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />

@@ -11,6 +11,7 @@ namespace GraphView.GremlinTranslationOps.filter
     {
         public string Key;
         public object Value;
+        public object Values;
         public string Label;
         public Predicate Predicate;
         public GremlinTranslationOperator ParamOp;
@@ -22,9 +23,18 @@ namespace GraphView.GremlinTranslationOps.filter
             hasKeyValue,
             hasLabelKeyValue,
             hasKeyPredicate,
-            hasKeyTraversal
-        }
+            hasKeyTraversal,
 
+            hasId,
+            hasKeys,
+            hasLabel,
+            hasValue
+        }
+        public GremlinHasOp(string key)
+        {
+            Key = key;
+            OpType = HasOpType.hasKey;
+        }
         public GremlinHasOp(string key, object value)
         {
             Key = key;
@@ -47,16 +57,18 @@ namespace GraphView.GremlinTranslationOps.filter
             OpType = HasOpType.hasKeyPredicate;
         }
 
-        public GremlinHasOp(string key)
-        {
-            Key = key;
-            OpType = HasOpType.hasKey;
-        }
+
         public GremlinHasOp(string key, GremlinTranslationOperator paramOp)
         {
             Key = key;
             ParamOp = paramOp;
             OpType = HasOpType.hasKeyTraversal;
+        }
+
+        public GremlinHasOp(HasOpType type, params object[] values)
+        {
+            Values = values;
+            OpType = type;
         }
 
         public override GremlinToSqlContext GetContext()
@@ -95,6 +107,49 @@ namespace GraphView.GremlinTranslationOps.filter
                 else if (OpType == HasOpType.hasKeyTraversal)
                 {
                     //has(key, traversal)
+                    var rootOp = ParamOp;
+                    while (rootOp.InputOperator != null)
+                    {
+                        rootOp = rootOp.InputOperator;
+                    }
+
+                    if (rootOp.GetType() == typeof(GremlinParentContextOp))
+                    {
+                        GremlinParentContextOp rootAsContext = rootOp as GremlinParentContextOp;
+                        rootAsContext.InheritedVariable = inputContext.CurrVariableList;
+                    }
+
+                    GremlinToSqlContext booleanContext = ParamOp.GetContext();
+                    WBooleanExpression booleanSql = booleanContext.ToSqlBoolean();
+
+                    inputContext.AddPredicate(booleanSql);
+                }
+                else if (OpType == HasOpType.hasId)
+                {
+                    List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+                    foreach (var value in Values as string[])
+                    {
+                        booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "id", value));
+                    }
+                    WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
+                    inputContext.AddPredicate(concatSql);
+                }
+                else if (OpType == HasOpType.hasKeys)
+                {
+                    
+                }
+                else if (OpType == HasOpType.hasLabel)
+                {
+                    List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+                    foreach (var value in Values as string[])
+                    {
+                        booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "type", value));
+                    }
+                    WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
+                    inputContext.AddPredicate(concatSql);
+                }
+                else if (OpType == HasOpType.hasValue)
+                {
 
                 }
             }

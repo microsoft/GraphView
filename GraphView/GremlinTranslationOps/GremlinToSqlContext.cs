@@ -111,6 +111,17 @@ namespace GraphView.GremlinTranslationOps
         {
             CurrVariableList.Add(gremlinVar);
         }
+        
+        //Projection
+
+        public void SetAllProjection(string value)
+        {
+            Projection.Clear();
+            foreach (var currVar in CurrVariableList)
+            {
+                AddProjection(currVar, value);
+            }
+        }
 
         public void AddProjection(GremlinVariable gremlinVar, string value)
         {
@@ -124,23 +135,16 @@ namespace GraphView.GremlinTranslationOps
 
         public void SetDefaultProjection(GremlinVariable newGremlinVar)
         {
-            if (Projection.Count != 0)
-            {
-                Projection.Clear();
-            }
-            AddProjection(newGremlinVar, "id");
-        }
-
-        public void SetProjection(GremlinVariable GremlinVar, String value)
-        {
             Projection.Clear();
-            AddProjection(GremlinVar, value);
+            AddProjection(newGremlinVar, "id");
         }
 
         public void ClearProjection()
         {
             Projection.Clear();
         }
+
+        //------
 
         public WBooleanExpression ToSqlBoolean()
         {
@@ -153,36 +157,94 @@ namespace GraphView.GremlinTranslationOps
             return null;
         }
 
-        public WSelectQueryExpression ToSqlQuery()
+        public WSelectQueryBlock ToSqlQuery()
         {
             //Consturct the new From Cluase;
-            var NewFromClause = GetFromClause();
+            var newFromClause = GetFromClause();
 
             // Construct the new Match Cluase
-            var NewMatchClause = GetMatchClause();
+            var newMatchClause = GetMatchClause();
 
             // Construct the new Select Component
-            var NewSelectElementClause = GetSelectElement();
+            var newSelectElementClause = GetSelectElement();
 
             // Construct the Where Clause
-            var NewWhereClause = GetWhereClause();
+            var newWhereClause = GetWhereClause();
 
             // Construct the OrderBy Clause
-            var NewOrderByClause = GetOrderByClause();
+            var newOrderByClause = GetOrderByClause();
 
             // Construct the SelectBlock
-            var SelectStatement = new WSelectStatement();
-            var SelectBlock = SelectStatement.QueryExpr as WSelectQueryBlock;
-            SelectBlock = new WSelectQueryBlock()
+            return new WSelectQueryBlock()
             {
-                FromClause = NewFromClause,
-                SelectElements = NewSelectElementClause,
-                WhereClause = NewWhereClause,
-                MatchClause = NewMatchClause,
-                OrderByClause = NewOrderByClause,
+                FromClause = newFromClause,
+                SelectElements = newSelectElementClause,
+                WhereClause = newWhereClause,
+                MatchClause = newMatchClause,
+                OrderByClause = newOrderByClause,
+            };
+        }
+
+        public WSelectQueryExpression ToSqlFunctionCallQuery(string functionName)
+        {
+            //construct subquery and derive table as from clause
+            WSelectQueryExpression selectQueryExpr = ToSqlQuery();
+            WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable() { QueryExpr = selectQueryExpr };
+            var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() { queryDerivedTable } };
+
+            //construct select clause
+            WFunctionCall functionCall = new WFunctionCall() { FunctionName = GremlinUtil.GetIdentifier(functionName) };
+            WSelectScalarExpression selectScalarExpr = new WSelectScalarExpression() { SelectExpr = functionCall };
+            var newSelectElementClause = new List<WSelectElement>() { selectScalarExpr };
+
+            return new WSelectQueryBlock()
+            {
+                FromClause = newFromClause,
+                SelectElements = newSelectElementClause,
+            };
+        }
+
+        public WDeleteSpecification ToSqlDelete()
+        {
+            if (CurrVariableList.First() is GremlinVertexVariable)
+            {
+                return ToSqlDeleteNode();
+            }
+            else if (CurrVariableList.First() is GremlinEdgeVariable)
+            {
+                return ToSqlDeleteEdge();
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public WDeleteNodeSpecification ToSqlDeleteNode()
+        {
+            // delete node
+            // where node.id in (subquery)
+            SetAllProjection("id");
+            WSelectQueryExpression selectQueryExpr = ToSqlQuery();
+            WInPredicate inPredicate = new WInPredicate()
+            {
+                Subquery = new WScalarSubquery() { SubQueryExpr = selectQueryExpr },
+                Expression = GremlinUtil.GetColumnReferenceExpression("node", "id")
             };
 
-            return SelectBlock;
+            WWhereClause newWhereClause = new WWhereClause() { SearchCondition = inPredicate };
+            WNamedTableReference newTargetClause = GremlinUtil.GetNamedTableReference("node");
+
+            return new WDeleteNodeSpecification()
+            {
+                WhereClause = newWhereClause,
+                Target = newTargetClause
+            };
+        }
+
+        public WDeleteEdgeSpecification ToSqlDeleteEdge()
+        {
+            return new WDeleteEdgeSpecification(ToSqlQuery());
         }
 
         public WFromClause GetFromClause()

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using GraphView.GremlinTranslationOps.map;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,11 +11,16 @@ namespace GraphView.GremlinTranslationOps
     {
         public string Key;
         public GremlinTranslationOperator ParamOp;
+        public Order Order;
 
         public GremlinByOp() { }
         public GremlinByOp(string key)
         {
             Key = key;
+        }
+        public GremlinByOp(Order order)
+        {
+            Order = order;
         }
         public GremlinByOp(GremlinTranslationOperator paramOp)
         {

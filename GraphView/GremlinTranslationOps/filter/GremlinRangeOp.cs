@@ -4,24 +4,21 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.map
+namespace GraphView.GremlinTranslationOps.filter
 {
-    internal class GremlinOrderOp: GremlinTranslationOperator
+    internal class GremlinRangeOp: GremlinTranslationOperator
     {
-        public GremlinOrderOp() { }
-
+        public long Low;
+        public long High;
+        public GremlinRangeOp(long low, long high)
+        {
+            Low = low;
+            High = high;
+        }
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
             return inputContext;
         }
-    }
-
-    public enum Order
-    {
-        shuffle,
-        desr,
-        incr
     }
 }

@@ -20,6 +20,9 @@ namespace GraphView
                 return new GremlinToSqlContext();
             }
         }
+        public virtual WSqlFragment ToWSqlFragment() {
+            return GetContext().ToSqlQuery();
+        }
     }
     
     internal class GremlinParentContextOp : GremlinTranslationOperator

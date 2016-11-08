@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps
 {
-    internal class Predicate
+    public class Predicate
     {
         public bool IsAliasValue;
         public object Value;
@@ -81,18 +81,18 @@ namespace GraphView.GremlinTranslationOps
             return new Predicate(PredicateType.between, low, high);
         }
 
-        public static Predicate within(params object[] objects, bool isAliasValue = false)
+        public static Predicate within(bool isAliasValue = false, params object[] objects)
         {
             return new Predicate(PredicateType.within, objects, isAliasValue);
         }
 
-        public static Predicate without(params object[] objects, bool isAliasValue = false)
+        public static Predicate without(bool isAliasValue = false, params object[] objects)
         {
             return new Predicate(PredicateType.without, objects, isAliasValue);
         }
     }
 
-    internal enum PredicateType
+    public enum PredicateType
     {
         eq,
         neq,

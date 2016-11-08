@@ -66,4 +66,10 @@ namespace GraphView.GremlinTranslationOps
         public int iterationCount;
         public WBooleanExpression untilCondition { get; set; }
     }
+
+    public enum Scope
+    {
+        local,
+        global
+    }
 }

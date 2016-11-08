@@ -8,12 +8,21 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinMinOp: GremlinTranslationOperator
     {
+        public Scope Scope;
         public GremlinMinOp() { }
 
+        public GremlinMinOp(Scope scope)
+        {
+            Scope = scope;
+        }
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            return inputContext;
+            return new GremlinToSqlContext();
+        }
+        public override WSqlFragment ToWSqlFragment()
+        {
+            return GetInputContext().ToSqlFunctionCallQuery("min");        
         }
     }
 }

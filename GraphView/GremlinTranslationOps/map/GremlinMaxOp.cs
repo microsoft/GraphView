@@ -8,14 +8,23 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinMaxOp: GremlinTranslationOperator
     {
+        public Scope Scope;
         public GremlinMaxOp() { }
+        public GremlinMaxOp(Scope scope)
+        {
+            Scope = scope;
+        }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
+            return new GremlinToSqlContext();
+        }
 
-            return inputContext;
+        public override WSqlFragment ToWSqlFragment()
+        {
+            return GetInputContext().ToFunctionCallQuery("max");
         }
     }
 }

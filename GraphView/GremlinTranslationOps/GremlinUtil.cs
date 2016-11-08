@@ -22,6 +22,11 @@ namespace GraphView.GremlinTranslationOps
             return ConvertListToMultiPartIdentifier(parts);
         }
 
+        internal static Identifier GetIdentifier(string value)
+        {
+            return new Identifier() { Value = value };
+        }
+
         internal static WMultiPartIdentifier ConvertListToMultiPartIdentifier(string[] parts)
         {
             var MultiIdentifierList = new List<Identifier>();
@@ -77,11 +82,11 @@ namespace GraphView.GremlinTranslationOps
             WScalarExpression ValueExpression = GetValueExpression(value);
 
             return new WBooleanComparisonExpression()
-                    {
-                        ComparisonType = BooleanComparisonType.Equals,
-                        FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
-                        SecondExpr = ValueExpression
-                    };
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
+                SecondExpr = ValueExpression
+            };
         }
 
         internal static WBooleanExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
@@ -193,6 +198,21 @@ namespace GraphView.GremlinTranslationOps
                     concatExpr = booleanExpr;
             }
             return concatExpr;
+        }
+
+        internal static WSchemaObjectName GetSchemaObjectName(string value) {
+            return new WSchemaObjectName()
+            {
+                Identifiers = new List<Identifier>() { new Identifier() { Value = value } }
+            };
+        }
+
+        internal static WNamedTableReference GetNamedTableReference(string value)
+        {
+            return new WNamedTableReference()
+            {
+                TableObjectName = GetSchemaObjectName(value)
+            };
         }
     }
 }

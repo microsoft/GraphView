@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinInEOP: GremlinTranslationOperator
+    internal class GremlinInEOp: GremlinTranslationOperator
     {
         internal List<string> EdgeLabels;
 
-        public GremlinInEOP(params string[] labels)
+        public GremlinInEOp(params string[] labels)
         {
             EdgeLabels = new List<string>();
             foreach (var label in labels)

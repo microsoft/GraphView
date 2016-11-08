@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinInVOP: GremlinTranslationOperator
+    internal class GremlinInVOp: GremlinTranslationOperator
     {
-        public GremlinInVOP() { }
+        public GremlinInVOp() { }
 
         public override GremlinToSqlContext GetContext()
         {
