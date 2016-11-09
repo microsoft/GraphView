@@ -213,5 +213,29 @@ namespace GraphView.GremlinTranslationOps
                 TableObjectName = GetSchemaObjectName(value)
             };
         }
+
+        internal static WBooleanExpression GetHasKeyBooleanExpression(GremlinVariable currVar, string key)
+        {
+            WFunctionCall functionCall = new WFunctionCall()
+            {
+                FunctionName = GremlinUtil.GetIdentifier("IS_DEFINED"),
+                Parameters = new List<WScalarExpression>()
+                    {
+                        new WColumnReferenceExpression() { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(currVar.VariableName, key) }
+                    }
+            };
+            WBooleanExpression booleanExpr = new WBooleanComparisonExpression()
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = functionCall,
+                SecondExpr = new WColumnReferenceExpression() { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier("true") }
+            };
+            return booleanExpr;
+        }
+
+        internal static WFunctionCall GetFunctionCall(string functionName, params object[] parameters)
+        {
+            return new WFunctionCall() { FunctionName = GremlinUtil.GetIdentifier(functionName) };
+        }
     }
 }

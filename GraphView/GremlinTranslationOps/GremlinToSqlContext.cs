@@ -19,7 +19,7 @@ namespace GraphView.GremlinTranslationOps
             //VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
             //CrossVariableConditions = new List<WBooleanExpression>();
             Predicates = null;
-            Projection = new List<Tuple<GremlinVariable, string>>();
+            Projection = new List<Tuple<GremlinVariable, Projection>>();
             // GroupByVariable = new Tuple<GremlinVariable, string>();
             // OrderByVariable = new Tuple<GremlinVariable, string>();
         }
@@ -44,20 +44,6 @@ namespace GraphView.GremlinTranslationOps
         /// <summary>
         /// The variable on which the new traversal operates
         /// </summary>
-        //public GremlinVariable LastVariable
-        //{
-        //    get
-        //    {
-        //        if (RemainingVariableList == null || RemainingVariableList.Count == 0)
-        //        {
-        //            return null;
-        //        }
-        //        else
-        //        {
-        //            return RemainingVariableList[RemainingVariableList.Count - 1];
-        //        }
-        //    }
-        //}
         public GremlinVariable CurrVariable;
 
         public Dictionary<string, GremlinVariable> AliasToGremlinVariable;
@@ -70,7 +56,7 @@ namespace GraphView.GremlinTranslationOps
         /// 
         /// The projection is updated, as it is passed through every traversal. 
         /// </summary> 
-        public List<Tuple<GremlinVariable, string>> Projection { get; set; }
+        public List<Tuple<GremlinVariable, Projection>> Projection { get; set; }
 
         public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> Paths { get; set; }
         /// <summary>
@@ -92,25 +78,34 @@ namespace GraphView.GremlinTranslationOps
         {
             CurrVariable = gremlinVar;
         }
-        
-        //Projection
 
+        //Projection
         public void AddProjection(GremlinVariable gremlinVar, string value)
         {
-            Projection.Add(new Tuple<GremlinVariable, string>(gremlinVar, value));
+            Projection.Add(new Tuple<GremlinVariable, Projection>(gremlinVar, new ValueProjection(gremlinVar, value)));
         }
-
-        public void AddNewDefaultProjection(GremlinVariable newGremlinVar)
+        public void AddProjection(GremlinVariable gremlinVar, Projection projection)
         {
-            AddProjection(newGremlinVar, "id");
+            Projection.Add(new Tuple<GremlinVariable, Projection>(gremlinVar, projection));
         }
-
         public void SetDefaultProjection(GremlinVariable newGremlinVar)
         {
             Projection.Clear();
-            AddProjection(newGremlinVar, "id");
+            AddProjection(newGremlinVar, new ValueProjection(newGremlinVar, "id"));
         }
 
+        public void SetCurrProjection(object value)
+        {
+            Projection.Clear();
+            if (value.GetType() == typeof(WFunctionCall))
+            {
+                AddProjection(CurrVariable, new FunctionCallProjection(CurrVariable, value as WFunctionCall));
+            }
+            else
+            {
+                AddProjection(CurrVariable, new ValueProjection(CurrVariable, value as string));
+            }
+        }
         public void ClearProjection()
         {
             Projection.Clear();
@@ -156,24 +151,52 @@ namespace GraphView.GremlinTranslationOps
                 OrderByClause = newOrderByClause,
             };
         }
-
-        public WSelectQueryExpression ToSqlFunctionCallQuery(string functionName)
+        public WFromClause GetFromClause()
         {
-            //construct subquery and derive table as from clause
-            WSelectQueryExpression selectQueryExpr = ToSqlQuery();
-            WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable() { QueryExpr = selectQueryExpr };
-            var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() { queryDerivedTable } };
-
-            //construct select clause
-            WFunctionCall functionCall = new WFunctionCall() { FunctionName = GremlinUtil.GetIdentifier(functionName) };
-            WSelectScalarExpression selectScalarExpr = new WSelectScalarExpression() { SelectExpr = functionCall };
-            var newSelectElementClause = new List<WSelectElement>() { selectScalarExpr };
-
-            return new WSelectQueryBlock()
+            var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
+            foreach (var variable in RemainingVariableList)
             {
-                FromClause = newFromClause,
-                SelectElements = newSelectElementClause,
-            };
+                WNamedTableReference TR = null;
+                if (variable is GremlinVertexVariable)
+                {
+                    TR = new WNamedTableReference()
+                    {
+                        Alias = new Identifier() { Value = variable.VariableName },
+                        TableObjectString = "node",
+                        TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
+                    };
+                }
+                newFromClause.TableReferences.Add(TR);
+            }
+            return newFromClause;
+        }
+
+        public WMatchClause GetMatchClause()
+        {
+            var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
+            return newMatchClause;
+        }
+
+        public List<WSelectElement> GetSelectElement()
+        {
+            var newSelectElementClause = new List<WSelectElement>();
+            foreach (var dict in Projection)
+            {
+                WScalarExpression projection = dict.Item2.ToSelectScalarExpression();
+                newSelectElementClause.Add(new WSelectScalarExpression() { SelectExpr = projection });
+            }
+            return newSelectElementClause;
+        }
+
+        public WWhereClause GetWhereClause()
+        {
+            return new WWhereClause() { SearchCondition = Predicates };
+        }
+
+        public WOrderByClause GetOrderByClause()
+        {
+            var newOrderByClause = new WOrderByClause();
+            return newOrderByClause;
         }
 
         public WDeleteSpecification ToSqlDelete()
@@ -219,82 +242,6 @@ namespace GraphView.GremlinTranslationOps
             return new WDeleteEdgeSpecification(ToSqlQuery());
         }
 
-        public WFromClause GetFromClause()
-        {
-            var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
-            foreach (var variable in RemainingVariableList)
-            {
-                WNamedTableReference TR = null;
-                if (variable is GremlinVertexVariable)
-                {
-                    TR = new WNamedTableReference()
-                    {
-                        Alias = new Identifier() { Value = variable.VariableName },
-                        TableObjectString = "node",
-                        TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
-                    };
-                }
-                newFromClause.TableReferences.Add(TR);
-            }
-            return newFromClause;
-        }
-
-        public WMatchClause GetMatchClause()
-        {
-            var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
-            return newMatchClause;
-        }
-
-        public List<WSelectElement> GetSelectElement()
-        {
-            var newSelectElementClause = new List<WSelectElement>();
-            foreach (var item in Projection)
-            {
-                WColumnReferenceExpression projection = new WColumnReferenceExpression() { MultiPartIdentifier = GetProjectionIndentifiers(item) };
-                newSelectElementClause.Add(new WSelectScalarExpression() { SelectExpr = projection });
-            }
-            return newSelectElementClause;
-        }
-
-        public WWhereClause GetWhereClause()
-        {
-            //WBooleanExpression allBooleanExpression = null;
-            //foreach (var item in VariablePredicates)
-            //{
-            //    if (allBooleanExpression == null)
-            //    {
-            //        allBooleanExpression = item.Value;
-            //        continue;
-            //    }
-            //    if (item.Value != null)
-            //    {
-            //        allBooleanExpression = new WBooleanBinaryExpression()
-            //        {
-            //            BooleanExpressionType = BooleanBinaryExpressionType.And,
-            //            FirstExpr = item.Value,
-            //            SecondExpr = allBooleanExpression
-            //        };
-            //    }
-
-            //}
-
-            return new WWhereClause() { SearchCondition = Predicates };
-        }
-
-        public WOrderByClause GetOrderByClause()
-        {
-            var newOrderByClause = new WOrderByClause();
-            return newOrderByClause;
-        }
-
-        public WMultiPartIdentifier GetProjectionIndentifiers(Tuple<GremlinVariable, string> item)
-        {
-            var identifiers = new List<Identifier>();
-            identifiers.Add(new Identifier() { Value = item.Item1.VariableName });
-            identifiers.Add(new Identifier() { Value = item.Item2 });
-            return new WMultiPartIdentifier() { Identifiers = identifiers };
-        }
-
         public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)
         {
             if (source.GetType() == typeof(GremlinVertexVariable))
@@ -310,19 +257,6 @@ namespace GraphView.GremlinTranslationOps
 
         public void AddPredicate(WBooleanExpression expr)
         {
-            //if (VariablePredicates.ContainsKey(target))
-            //{
-            //    VariablePredicates[target] = new WBooleanBinaryExpression()
-            //    {
-            //        BooleanExpressionType = BooleanBinaryExpressionType.And,
-            //        FirstExpr = VariablePredicates[target],
-            //        SecondExpr = expr
-            //    };
-            //}
-            //else
-            //{
-            //    VariablePredicates[target] = andExpression;
-            //}
             Predicates = Predicates == null ? expr : new WBooleanBinaryExpression()
             {
                 BooleanExpressionType = BooleanBinaryExpressionType.And,

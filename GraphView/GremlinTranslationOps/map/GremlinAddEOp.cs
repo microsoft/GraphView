@@ -20,7 +20,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable();
             inputContext.AddNewVariable(newEdgeVar);
             inputContext.SetCurrentVariable(newEdgeVar);
-            inputContext.AddNewDefaultProjection(newEdgeVar);
+            inputContext.SetDefaultProjection(newEdgeVar);
 
             return inputContext;
         }

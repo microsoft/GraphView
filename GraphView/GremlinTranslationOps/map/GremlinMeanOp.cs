@@ -18,11 +18,14 @@ namespace GraphView.GremlinTranslationOps.map
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("count"));
             return new GremlinToSqlContext();
         }
         public override WSqlFragment ToWSqlFragment()
         {
-            return GetInputContext().ToSqlFunctionCallQuery("mean");
+            GremlinToSqlContext inputContext = GetInputContext();
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("mean"));
+            return inputContext.ToSqlQuery();
         }
     }
 }

@@ -18,6 +18,9 @@ namespace GraphView.GremlinTranslationOps.filter
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("range", Low, High));
+            
+
             return inputContext;
         }
     }

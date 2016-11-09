@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps
             GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
             inputContext.AddNewVariable(newVertexVar);
             inputContext.SetCurrentVariable(newVertexVar);
-            inputContext.AddNewDefaultProjection(newVertexVar);
+            inputContext.SetDefaultProjection(newVertexVar);
             return inputContext;
         }
     }

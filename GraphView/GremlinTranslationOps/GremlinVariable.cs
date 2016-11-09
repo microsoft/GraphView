@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GremlinTranslationOps
 {
@@ -61,7 +62,40 @@ namespace GraphView.GremlinTranslationOps
         public WBooleanExpression UntilCondition { get; set; }
     }
 
-    internal class GremlinDerivedVariable : GremlinVariable
+    internal class GremlinJoinVariable : GremlinVariable
+    {
+        public GremlinVariable LeftVariable;
+        public GremlinVariable RightVariable;
+        public GremlinJoinVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
+        {
+            LeftVariable = leftGremlinVariable;
+            RightVariable = righGremlinVariable;
+
+            //automaticlly generate the name of node
+            VariableName = "J_" + GremlinJoinVariable._count.ToString();
+            _count += 1;
+        }
+        private static long _count = 0;
+    }
+
+    internal class GremlinDerivedVariable: GremlinVariable
+    {
+        public WQueryDerivedTable QueryDerivedTable;
+
+        public GremlinDerivedVariable(WSelectQueryBlock selectQueryBlock)
+        {
+            VariableName = "D_" + GremlinDerivedVariable._count.ToString();
+            _count += 1;
+            QueryDerivedTable = new WQueryDerivedTable()
+            {
+                QueryExpr = selectQueryBlock,
+                Alias = GremlinUtil.GetIdentifier(VariableName)
+            };
+        }
+        private static long _count = 0;
+    }
+
+    internal class GremlinScalarVariable : GremlinVariable
     {
         
     }
@@ -71,4 +105,54 @@ namespace GraphView.GremlinTranslationOps
         local,
         global
     }
+
+    internal class Projection
+    {
+        public GremlinVariable CurrVariable;
+        public virtual WScalarExpression ToSelectScalarExpression()
+        {
+            return null;
+        }
+    }
+
+    internal class ValueProjection: Projection
+    {
+        public string Value;
+
+        public ValueProjection(GremlinVariable gremlinVar, string value)
+        {
+            CurrVariable = gremlinVar;
+            Value = value;
+        }
+
+        public override WScalarExpression ToSelectScalarExpression()
+        {
+            return new WColumnReferenceExpression() { MultiPartIdentifier = GetProjectionIndentifiers() };
+        }
+
+        public WMultiPartIdentifier GetProjectionIndentifiers()
+        {
+            var identifiers = new List<Identifier>();
+            identifiers.Add(new Identifier() { Value = CurrVariable.VariableName });
+            identifiers.Add(new Identifier() { Value = Value });
+            return new WMultiPartIdentifier() { Identifiers = identifiers };
+        }
+    }
+
+    internal class FunctionCallProjection : Projection
+    {
+        public WFunctionCall FunctionCall;
+
+        public FunctionCallProjection(GremlinVariable gremlinVar, WFunctionCall functionCall)
+        {
+            CurrVariable = gremlinVar;
+            FunctionCall = functionCall;
+        }
+        public override WScalarExpression ToSelectScalarExpression()
+        {
+            return FunctionCall;
+        }
+    }
+
+
 }

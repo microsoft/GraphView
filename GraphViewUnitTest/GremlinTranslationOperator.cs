@@ -24,9 +24,8 @@ namespace GremlinTranslationOperator.Tests
         public void test()
         {
             const string q2 = @"
-                    select count(*)
-                    from node v1, node v2, v1 join v2 cross apply tvf as v3
-                ";
+                    select  count(*)
+                    from (select * from node n_0) as a";
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
             IList<ParseError> errors;

@@ -17,12 +17,15 @@ namespace GraphView.GremlinTranslationOps.map
             var currEdge = inputContext.CurrVariable;
             GremlinUtil.CheckIsGremlinEdgeVariable(currEdge);
 
-            var ExistInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);
+            var existInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);
 
             //TODO
             //v1 join v2 cross  .. as v3
             //create new variable
-            //inputContext.SetCurrentVariable();
+            GremlinJoinVariable newVariable = new GremlinJoinVariable(existInPath.Item1, existInPath.Item3);
+            inputContext.AddNewVariable(newVariable);
+            inputContext.SetDefaultProjection(newVariable);
+            inputContext.SetCurrentVariable(newVariable);
             
             return inputContext;
         }

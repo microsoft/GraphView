@@ -79,7 +79,8 @@ namespace GraphView.GremlinTranslationOps.filter
             if (OpType == HasOpType.HasKey)
             {
                 //has(key)
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, "type", Key);
+                WBooleanExpression booleanExpr = GremlinUtil.GetHasKeyBooleanExpression(currVar, Key);
+
                 inputContext.AddPredicate(booleanExpr);
             }
             else if (OpType == HasOpType.HasKeyValue)
@@ -134,7 +135,11 @@ namespace GraphView.GremlinTranslationOps.filter
             }
             else if (OpType == HasOpType.HasKeys)
             {
-                    
+                foreach (var key in Values as string[])
+                {
+                    WBooleanExpression booleanExpr = GremlinUtil.GetHasKeyBooleanExpression(currVar, key);
+                    inputContext.AddPredicate(booleanExpr);
+                }
             }
             else if (OpType == HasOpType.HasLabel)
             {
