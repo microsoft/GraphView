@@ -28,43 +28,42 @@ namespace GraphView.GremlinTranslationOps
         public GremlinVertexVariable()
         {
             //automaticlly generate the name of node
-            VariableName = "N_" + GremlinVertexVariable.count.ToString();
-            count += 1;
+            VariableName = "N_" + GremlinVertexVariable._count.ToString();
+            _count += 1;
         }
-        static long count = 0;
+        private static long _count = 0;
     }
     internal class GremlinEdgeVariable : GremlinVariable
     {
         public GremlinEdgeVariable()
         {
             //automaticlly generate the name of edge
-            VariableName = "E_" + GremlinEdgeVariable.count.ToString();
-            count += 1;
+            VariableName = "E_" + GremlinEdgeVariable._count.ToString();
+            _count += 1;
         }
 
         public GremlinEdgeVariable(GremlinEdgeType type)
         {
             //automaticlly generate the name of edge
-            VariableName = "E_" + GremlinEdgeVariable.count.ToString();
-            count += 1;
+            VariableName = "E_" + GremlinEdgeVariable._count.ToString();
+            _count += 1;
             EdgeType = type;
         }
 
-        public GremlinEdgeVariable(string variableName, GremlinEdgeType type)
-        {
-            VariableName = variableName;
-            EdgeType = type;
-        }
-
-        static long count = 0;
+        private static long _count = 0;
         public GremlinEdgeType EdgeType { get; set; }
     }
 
     internal class GremlinRecursiveEdgeVariable : GremlinVariable
     {
         public WSelectQueryBlock GremlinTranslationOperatorQuery { get; set; }
-        public int iterationCount;
-        public WBooleanExpression untilCondition { get; set; }
+        public int IterationCount;
+        public WBooleanExpression UntilCondition { get; set; }
+    }
+
+    internal class GremlinDerivedVariable : GremlinVariable
+    {
+        
     }
 
     public enum Scope

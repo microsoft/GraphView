@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps.map
         }
         public override WSqlFragment ToWSqlFragment()
         {
-            return GetInputContext().ToFunctionCallQuery("mean");
+            return GetInputContext().ToSqlFunctionCallQuery("mean");
         }
     }
 }

@@ -22,27 +22,20 @@ namespace GraphView.GremlinTranslationOps
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
+
             GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(GremlinEdgeType.OutEdge);
-            GremlinVertexVariable sinkVar = null;
             inputContext.AddNewVariable(newEdgeVar);
             inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
 
-            List<GremlinVertexVariable> tempNewVariable = new List<GremlinVertexVariable>();
-            foreach (var currVertex in inputContext.CurrVariableList)
-            {
-                GremlinUtil.CheckIsGremlinVertexVariable(currVertex);
-                sinkVar = new GremlinVertexVariable();
-                tempNewVariable.Add(sinkVar);
-                inputContext.AddNewVariable(sinkVar);
-                inputContext.SetDefaultProjection(sinkVar);
-                inputContext.AddPaths(currVertex, newEdgeVar, sinkVar);
-            }
+            GremlinVertexVariable sinkVar = new GremlinVertexVariable();
+            inputContext.AddNewVariable(sinkVar);
+            inputContext.SetDefaultProjection(sinkVar);
+            
+            inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, sinkVar);
 
-            inputContext.ClearCurrentVariable();
-            foreach (var newVar in tempNewVariable)
-            {
-                inputContext.AddCurrentVariable(newVar);
-            }
+            inputContext.SetCurrentVariable(newVar);
 
             return inputContext;
         }

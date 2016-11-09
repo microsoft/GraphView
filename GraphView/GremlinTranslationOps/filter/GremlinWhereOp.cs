@@ -30,25 +30,20 @@ namespace GraphView.GremlinTranslationOps.filter
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            GremlinVariable currVar = inputContext.CurrVariable;
 
             if (ParamOp == null && StartKey == null)
             {
                 //where(Predicate)
                 //use Predicates
-                foreach (var currVar in inputContext.CurrVariableList)
-                {
-                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, "id", Predicate);
-                    inputContext.AddPredicate(booleanExpr);
-                }
+                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, "id", Predicate);
+                inputContext.AddPredicate(booleanExpr);
             }
             else if (ParamOp == null && StartKey != null)
             {
                 //where(StartKey, Predicate)
-                foreach (var currVar in inputContext.CurrVariableList)
-                {
-                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, StartKey, Predicate);
-                    inputContext.AddPredicate(booleanExpr);
-                }
+                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, StartKey, Predicate);
+                inputContext.AddPredicate(booleanExpr);
             }
             else
             {
@@ -62,7 +57,7 @@ namespace GraphView.GremlinTranslationOps.filter
 
                 if (rootOp.GetType() == typeof(GremlinParentContextOp)) {
                     GremlinParentContextOp rootAsContext = rootOp as GremlinParentContextOp;
-                    rootAsContext.InheritedVariable = inputContext.CurrVariableList;
+                    rootAsContext.InheritedVariable = inputContext.CurrVariable;
                 }
 
                 GremlinToSqlContext subQueryContext = ParamOp.GetContext();

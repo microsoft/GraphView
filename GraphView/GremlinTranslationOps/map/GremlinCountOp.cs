@@ -19,7 +19,7 @@ namespace GraphView.GremlinTranslationOps.map
 
         public override WSqlFragment ToWSqlFragment()
         {
-            return GetInputContext().ToFunctionCallQuery("count");
+            return GetInputContext().ToSqlFunctionCallQuery("count");
         }
     }
 }

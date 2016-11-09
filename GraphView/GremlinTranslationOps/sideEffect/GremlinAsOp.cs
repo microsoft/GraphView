@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 
             foreach (var stepLabel in StepLabels)
             {
-                inputContext.AliasToGremlinVariable.Add(stepLabel, inputContext.CurrVariableList.Copy());
+                inputContext.AliasToGremlinVariable.Add(stepLabel, inputContext.CurrVariable);
             }
 
             return inputContext;

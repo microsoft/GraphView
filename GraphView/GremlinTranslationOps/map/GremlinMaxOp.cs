@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
 
         public override WSqlFragment ToWSqlFragment()
         {
-            return GetInputContext().ToFunctionCallQuery("max");
+            return GetInputContext().ToSqlFunctionCallQuery("max");
         }
     }
 }

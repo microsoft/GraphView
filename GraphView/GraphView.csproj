@@ -73,6 +73,7 @@
     <Compile Include="GremlinTranslationOps\filter\GremlinHasOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinLimitOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinOrOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinRangeOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinByOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinEOp.cs" />

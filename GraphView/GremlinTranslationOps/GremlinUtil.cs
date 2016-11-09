@@ -29,25 +29,25 @@ namespace GraphView.GremlinTranslationOps
 
         internal static WMultiPartIdentifier ConvertListToMultiPartIdentifier(string[] parts)
         {
-            var MultiIdentifierList = new List<Identifier>();
+            var multiIdentifierList = new List<Identifier>();
             foreach (var part in parts)
             {
-                MultiIdentifierList.Add(new Identifier() { Value = part });
+                multiIdentifierList.Add(new Identifier() { Value = part });
             }
-            return new WMultiPartIdentifier() { Identifiers = MultiIdentifierList };
+            return new WMultiPartIdentifier() { Identifiers = multiIdentifierList };
         }
 
-        internal static void CheckIsGremlinVertexVariable(GremlinVariable GremlinVar)
+        internal static void CheckIsGremlinVertexVariable(GremlinVariable gremlinVar)
         {
-            if (GremlinVar.GetType() != typeof(GremlinVertexVariable))
+            if (gremlinVar.GetType() != typeof(GremlinVertexVariable))
             {
                 throw new Exception("It's not a GremlinVertexVariable");
             }
         }
 
-        internal static void CheckIsGremlinEdgeVariable(GremlinVariable GremlinVar)
+        internal static void CheckIsGremlinEdgeVariable(GremlinVariable gremlinVar)
         {
-            if (GremlinVar.GetType() != typeof(GremlinEdgeVariable)) {
+            if (gremlinVar.GetType() != typeof(GremlinEdgeVariable)) {
                 throw new Exception("It's not a GremlinEdgeVariable");
             }
         }
@@ -67,25 +67,24 @@ namespace GraphView.GremlinTranslationOps
         {
             if (value.GetType() == typeof(string))
             {
-                return new WValueExpression(value as string, true);
+                return new WValueExpression((string)value, true);
             }
             else
             {
-                return new WValueExpression(value as string, false);
+                return new WValueExpression(value.ToString(), false);
             }
         }
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
                                                                                      string key, object value)
         {
-            WMultiPartIdentifier MultiIdentifierValue = GetMultiPartIdentifier(gremlinVar.VariableName, key);
-            WScalarExpression ValueExpression = GetValueExpression(value);
+            WScalarExpression valueExpression = GetValueExpression(value);
 
             return new WBooleanComparisonExpression()
             {
                 ComparisonType = BooleanComparisonType.Equals,
                 FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
-                SecondExpr = ValueExpression
+                SecondExpr = valueExpression
             };
         }
 
@@ -128,20 +127,20 @@ namespace GraphView.GremlinTranslationOps
             }
             else
             {
-                WScalarExpression ValueExpression = null;
+                WScalarExpression valueExpression = null;
                 if (predicate.IsAliasValue)
                 {
-                    ValueExpression = GremlinUtil.GetColumnReferenceExpression(predicate.Value as string, "id");
+                    valueExpression = GetColumnReferenceExpression(predicate.Value as string, "id");
                 }
                 else
                 {
-                    ValueExpression = GremlinUtil.GetValueExpression(predicate.Value);
+                    valueExpression = GetValueExpression(predicate.Value);
                 }
                 return new WBooleanComparisonExpression()
                 {
-                    ComparisonType = GremlinUtil.GetComparisonTypeFromPredicateType(predicate.PredicateType),
-                    FirstExpr = GremlinUtil.GetColumnReferenceExpression(gremlinVar.VariableName, key),
-                    SecondExpr = ValueExpression
+                    ComparisonType = GetComparisonTypeFromPredicateType(predicate.PredicateType),
+                    FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
+                    SecondExpr = valueExpression
                 };
             }
         }

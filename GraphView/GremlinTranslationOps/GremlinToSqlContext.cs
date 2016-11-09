@@ -9,8 +9,8 @@ namespace GraphView.GremlinTranslationOps
 {
     internal class GremlinToSqlContext
     {
-        public IList<GremlinVariable> RootVariable { get; set; }
-        public bool fromOuter;
+        public GremlinVariable RootVariable { get; set; }
+        public bool FromOuter;
 
 
         public GremlinToSqlContext()
@@ -58,9 +58,9 @@ namespace GraphView.GremlinTranslationOps
         //        }
         //    }
         //}
-        public IList<GremlinVariable> CurrVariableList;
+        public GremlinVariable CurrVariable;
 
-        public Dictionary<string, IList<GremlinVariable>> AliasToGremlinVariable;
+        public Dictionary<string, GremlinVariable> AliasToGremlinVariable;
 
         /// <summary>
         /// A list of Gremlin variables and their properties the query projects. 
@@ -90,38 +90,10 @@ namespace GraphView.GremlinTranslationOps
 
         public void SetCurrentVariable(GremlinVariable gremlinVar)
         {
-            CurrVariableList.Clear();
-            CurrVariableList.Add(gremlinVar);
-        }
-
-        public void SetCurrentVariable(params GremlinVariable[] gremlinVars)
-        {
-            CurrVariableList.Clear();
-            foreach (var gremlinVar in gremlinVars) {
-                CurrVariableList.Add(gremlinVar);
-            }
-        }
-
-        public void ClearCurrentVariable()
-        {
-            CurrVariableList.Clear();
-        }
-
-        public void AddCurrentVariable(GremlinVariable gremlinVar)
-        {
-            CurrVariableList.Add(gremlinVar);
+            CurrVariable = gremlinVar;
         }
         
         //Projection
-
-        public void SetAllProjection(string value)
-        {
-            Projection.Clear();
-            foreach (var currVar in CurrVariableList)
-            {
-                AddProjection(currVar, value);
-            }
-        }
 
         public void AddProjection(GremlinVariable gremlinVar, string value)
         {
@@ -206,11 +178,11 @@ namespace GraphView.GremlinTranslationOps
 
         public WDeleteSpecification ToSqlDelete()
         {
-            if (CurrVariableList.First() is GremlinVertexVariable)
+            if (CurrVariable is GremlinVertexVariable)
             {
                 return ToSqlDeleteNode();
             }
-            else if (CurrVariableList.First() is GremlinEdgeVariable)
+            else if (CurrVariable is GremlinEdgeVariable)
             {
                 return ToSqlDeleteEdge();
             }
@@ -224,7 +196,7 @@ namespace GraphView.GremlinTranslationOps
         {
             // delete node
             // where node.id in (subquery)
-            SetAllProjection("id");
+            //SetProjection("id");
             WSelectQueryExpression selectQueryExpr = ToSqlQuery();
             WInPredicate inPredicate = new WInPredicate()
             {
@@ -249,7 +221,7 @@ namespace GraphView.GremlinTranslationOps
 
         public WFromClause GetFromClause()
         {
-            var NewFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
+            var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
             foreach (var variable in RemainingVariableList)
             {
                 WNamedTableReference TR = null;
@@ -262,26 +234,26 @@ namespace GraphView.GremlinTranslationOps
                         TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
                     };
                 }
-                NewFromClause.TableReferences.Add(TR);
+                newFromClause.TableReferences.Add(TR);
             }
-            return NewFromClause;
+            return newFromClause;
         }
 
         public WMatchClause GetMatchClause()
         {
-            var NewMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
-            return NewMatchClause;
+            var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
+            return newMatchClause;
         }
 
         public List<WSelectElement> GetSelectElement()
         {
-            var NewSelectElementClause = new List<WSelectElement>();
+            var newSelectElementClause = new List<WSelectElement>();
             foreach (var item in Projection)
             {
                 WColumnReferenceExpression projection = new WColumnReferenceExpression() { MultiPartIdentifier = GetProjectionIndentifiers(item) };
-                NewSelectElementClause.Add(new WSelectScalarExpression() { SelectExpr = projection });
+                newSelectElementClause.Add(new WSelectScalarExpression() { SelectExpr = projection });
             }
-            return NewSelectElementClause;
+            return newSelectElementClause;
         }
 
         public WWhereClause GetWhereClause()
@@ -311,16 +283,16 @@ namespace GraphView.GremlinTranslationOps
 
         public WOrderByClause GetOrderByClause()
         {
-            var NewOrderByClause = new WOrderByClause();
-            return NewOrderByClause;
+            var newOrderByClause = new WOrderByClause();
+            return newOrderByClause;
         }
 
         public WMultiPartIdentifier GetProjectionIndentifiers(Tuple<GremlinVariable, string> item)
         {
-            var Identifiers = new List<Identifier>();
-            Identifiers.Add(new Identifier() { Value = item.Item1.VariableName });
-            Identifiers.Add(new Identifier() { Value = item.Item2 });
-            return new WMultiPartIdentifier() { Identifiers = Identifiers };
+            var identifiers = new List<Identifier>();
+            identifiers.Add(new Identifier() { Value = item.Item1.VariableName });
+            identifiers.Add(new Identifier() { Value = item.Item2 });
+            return new WMultiPartIdentifier() { Identifiers = identifiers };
         }
 
         public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)

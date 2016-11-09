@@ -24,10 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             inputContext.ClearProjection();
             foreach (var propertyKey in PropertyKeys) {
-                foreach (var currVariable in inputContext.CurrVariableList)
-                {
-                    inputContext.AddProjection(currVariable, propertyKey);
-                }
+                inputContext.AddProjection(inputContext.CurrVariable, propertyKey);
             }
 
             return inputContext;
