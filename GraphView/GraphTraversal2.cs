@@ -220,25 +220,25 @@ namespace GraphView
         
         public GraphTraversal2 hasId(params object[] values)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.hasId, values));
+            AddGremlinOperator(new GremlinHasOp(HasOpType.HasId, values));
             return this;
         }
 
         public GraphTraversal2 hasKey(params object[] values)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.hasKeys, values));
+            AddGremlinOperator(new GremlinHasOp(HasOpType.HasKeys, values));
             return this;
         }
 
         public GraphTraversal2 hasLabel(params object[] values)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.hasLabel, values));
+            AddGremlinOperator(new GremlinHasOp(HasOpType.HasLabel, values));
             return this;
         }
 
         public GraphTraversal2 hasValue(string value, params string[] values)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.hasValue, values));
+            AddGremlinOperator(new GremlinHasOp(HasOpType.HasValue, values));
             return this;
         }
         public GraphTraversal2 hasNot(string propertyKey)

@@ -25,10 +25,7 @@ namespace GremlinTranslationOperator.Tests
         {
             const string q2 = @"
                     select count(*)
-                    from
-                    (
-	                    select * from EmployeeNode
-                    ) as tmp
+                    from node v1, node v2, v1 join v2 cross apply tvf as v3
                 ";
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
