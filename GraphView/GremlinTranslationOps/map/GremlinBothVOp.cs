@@ -25,7 +25,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinJoinVariable newVariable = new GremlinJoinVariable(existInPath.Item1, existInPath.Item3);
             inputContext.AddNewVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
-            inputContext.SetCurrentVariable(newVariable);
+            inputContext.SetCurrVariable(newVariable);
             
             return inputContext;
         }

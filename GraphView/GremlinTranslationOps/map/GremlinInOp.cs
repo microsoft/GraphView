@@ -36,7 +36,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             inputContext.AddPaths(sourceVar, newEdgeVar, inputContext.CurrVariable);
 
-            inputContext.SetCurrentVariable(sourceVar);
+            inputContext.SetCurrVariable(sourceVar);
 
             return inputContext;
         }

@@ -23,9 +23,9 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"
-                    select  count(*)
-                    from (select * from node n_0) as a";
+            const string q2 = @"select *
+from node n_0
+where sample(n_0, 2) = true";
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
             IList<ParseError> errors;

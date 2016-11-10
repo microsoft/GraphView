@@ -63,20 +63,13 @@ namespace GraphView.GremlinTranslationOps
             throw new Exception("Error: GetComparisonTypeFromPredicateType");
         }
 
-        internal static WValueExpression GetValueExpression(object value)
+        internal static WValueExpression GetValueExpression(string value)
         {
-            if (value.GetType() == typeof(string))
-            {
-                return new WValueExpression((string)value, true);
-            }
-            else
-            {
-                return new WValueExpression(value.ToString(), false);
-            }
+            return new WValueExpression(value, false);
         }
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
-                                                                                     string key, object value)
+                                                                                     string key, string value)
         {
             WScalarExpression valueExpression = GetValueExpression(value);
 
@@ -85,6 +78,17 @@ namespace GraphView.GremlinTranslationOps
                 ComparisonType = BooleanComparisonType.Equals,
                 FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
                 SecondExpr = valueExpression
+            };
+        }
+
+        internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression firstExpr,
+                                                                                     WScalarExpression secondExpr, BooleanComparisonType type)
+        {
+            return new WBooleanComparisonExpression()
+            {
+                ComparisonType = type,
+                FirstExpr = firstExpr,
+                SecondExpr = secondExpr
             };
         }
 
@@ -134,7 +138,7 @@ namespace GraphView.GremlinTranslationOps
                 }
                 else
                 {
-                    valueExpression = GetValueExpression(predicate.Value);
+                    valueExpression = GetValueExpression(predicate.Value as string);
                 }
                 return new WBooleanComparisonExpression()
                 {
@@ -233,9 +237,18 @@ namespace GraphView.GremlinTranslationOps
             return booleanExpr;
         }
 
-        internal static WFunctionCall GetFunctionCall(string functionName, params object[] parameters)
+        internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameters)
         {
-            return new WFunctionCall() { FunctionName = GremlinUtil.GetIdentifier(functionName) };
+            IList<WScalarExpression> parameterList = new List<WScalarExpression>();
+            foreach (var parameter in parameters)
+            {
+                parameterList.Add(parameter);
+            }
+            return new WFunctionCall()
+            {
+                FunctionName = GremlinUtil.GetIdentifier(functionName),
+                Parameters = parameters
+            };
         }
     }
 }

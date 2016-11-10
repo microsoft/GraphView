@@ -25,8 +25,23 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
+            if (SelectKeys.Count == 0)
+            {
 
+            }
+            else if (SelectKeys.Count == 1)
+            {
+                GremlinVariable selectVar = inputContext.AliasToGremlinVariable[SelectKeys.First()];
+                inputContext.SetCurrVariable(selectVar);
+            }
+            else
+            {
+                foreach (var selectKey in SelectKeys)
+                {
 
+                }
+            }
+            
             return inputContext;
         }
     }

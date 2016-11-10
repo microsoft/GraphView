@@ -4,29 +4,26 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.filter
+namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinLimitOp: GremlinTranslationOperator
+    internal class GremlinValueMapOp: GremlinTranslationOperator
     {
-        public long Limit;
-        
-        public GremlinLimitOp(long limit)
-        {
-            Limit = limit;
-        }
+        public GremlinValueMapOp() { }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("limit", Limit));
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("ValueMap"));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSqlQuery());
+            GremlinDerivedVariable newDerivedVariable = new GremlinMapVariable(inputContext.ToSqlQuery());
             newContext.AddNewVariable(newDerivedVariable);
             newContext.SetDefaultProjection(newDerivedVariable);
             newContext.SetCurrVariable(newDerivedVariable);
 
-            return inputContext;
+            //TODO: inherit some variable?
+
+            return newContext;
         }
     }
 }

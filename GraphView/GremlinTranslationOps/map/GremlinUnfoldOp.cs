@@ -6,18 +6,13 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinInVOp: GremlinTranslationOperator
+    internal class GremlinUnfoldOp: GremlinTranslationOperator
     {
-        public GremlinInVOp() { }
+        public GremlinUnfoldOp() { }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            GremlinUtil.CheckIsGremlinEdgeVariable(inputContext.CurrVariable);
-            var existInPath = inputContext.Paths.Find(p => p.Item2 == inputContext.CurrVariable);
-                inputContext.SetCurrVariable(existInPath.Item3);
-
             return inputContext;
         }
     }

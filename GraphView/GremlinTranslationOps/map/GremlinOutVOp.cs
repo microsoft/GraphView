@@ -17,7 +17,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinUtil.CheckIsGremlinEdgeVariable(inputContext.CurrVariable);
             var existInPath = inputContext.Paths.Find(p => p.Item2 == inputContext.CurrVariable);
 
-            inputContext.SetCurrentVariable(existInPath.Item1);
+            inputContext.SetCurrVariable(existInPath.Item1);
 
             return inputContext;
         }

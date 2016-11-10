@@ -20,8 +20,15 @@ namespace GraphView.GremlinTranslationOps.filter
             GremlinToSqlContext inputContext = GetInputContext();
             inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("range", Low, High));
             
+            GremlinToSqlContext newContext = new GremlinToSqlContext();
+            GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSqlQuery());
+            newContext.AddNewVariable(newDerivedVariable);
+            newContext.SetDefaultProjection(newDerivedVariable);
+            newContext.SetCurrVariable(newDerivedVariable);
 
-            return inputContext;
+            //TODO: inherit some variable?
+
+            return newContext;
         }
     }
 }

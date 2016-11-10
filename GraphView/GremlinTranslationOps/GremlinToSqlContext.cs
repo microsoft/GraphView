@@ -74,7 +74,7 @@ namespace GraphView.GremlinTranslationOps
             RemainingVariableList.Add(gremlinVar);
         }
 
-        public void SetCurrentVariable(GremlinVariable gremlinVar)
+        public void SetCurrVariable(GremlinVariable gremlinVar)
         {
             CurrVariable = gremlinVar;
         }

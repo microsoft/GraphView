@@ -6,11 +6,16 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.filter
 {
-    internal class GremlinLimitOp: GremlinTranslationOperator
+    internal class GremlinTailOp: GremlinTranslationOperator
     {
         public long Limit;
-        
-        public GremlinLimitOp(long limit)
+
+        public GremlinTailOp()
+        {
+            Limit = 1;
+        }
+
+        public GremlinTailOp(long limit)
         {
             Limit = limit;
         }
@@ -18,7 +23,7 @@ namespace GraphView.GremlinTranslationOps.filter
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("limit", Limit));
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("tail", Limit));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
             GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSqlQuery());
@@ -28,5 +33,6 @@ namespace GraphView.GremlinTranslationOps.filter
 
             return inputContext;
         }
+
     }
 }

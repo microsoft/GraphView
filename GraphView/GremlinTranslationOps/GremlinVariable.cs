@@ -29,7 +29,7 @@ namespace GraphView.GremlinTranslationOps
         public GremlinVertexVariable()
         {
             //automaticlly generate the name of node
-            VariableName = "N_" + GremlinVertexVariable._count.ToString();
+            VariableName = "N_" + _count.ToString();
             _count += 1;
         }
         private static long _count = 0;
@@ -39,14 +39,14 @@ namespace GraphView.GremlinTranslationOps
         public GremlinEdgeVariable()
         {
             //automaticlly generate the name of edge
-            VariableName = "E_" + GremlinEdgeVariable._count.ToString();
+            VariableName = "E_" + _count.ToString();
             _count += 1;
         }
 
         public GremlinEdgeVariable(GremlinEdgeType type)
         {
             //automaticlly generate the name of edge
-            VariableName = "E_" + GremlinEdgeVariable._count.ToString();
+            VariableName = "E_" + _count.ToString();
             _count += 1;
             EdgeType = type;
         }
@@ -72,7 +72,7 @@ namespace GraphView.GremlinTranslationOps
             RightVariable = righGremlinVariable;
 
             //automaticlly generate the name of node
-            VariableName = "J_" + GremlinJoinVariable._count.ToString();
+            VariableName = "J_" + _count.ToString();
             _count += 1;
         }
         private static long _count = 0;
@@ -81,23 +81,50 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinDerivedVariable: GremlinVariable
     {
         public WQueryDerivedTable QueryDerivedTable;
-
         public GremlinDerivedVariable(WSelectQueryBlock selectQueryBlock)
         {
-            VariableName = "D_" + GremlinDerivedVariable._count.ToString();
-            _count += 1;
             QueryDerivedTable = new WQueryDerivedTable()
             {
                 QueryExpr = selectQueryBlock,
                 Alias = GremlinUtil.GetIdentifier(VariableName)
             };
         }
-        private static long _count = 0;
     }
 
     internal class GremlinScalarVariable : GremlinVariable
     {
         
+    }
+
+    internal class GremlinMapVariable : GremlinDerivedVariable
+    {
+        public GremlinMapVariable(WSelectQueryBlock selectQueryBlock): base(selectQueryBlock)
+        {
+            VariableName = "M_" + _count.ToString();
+            _count += 1;
+        }
+
+        private static long _count = 0;
+    }
+
+    internal class GremlinListVariable : GremlinDerivedVariable
+    {
+        public GremlinListVariable(WSelectQueryBlock selectQueryBlock) : base(selectQueryBlock)
+        {
+            VariableName = "L_" + _count.ToString();
+            _count += 1;
+        }
+        private static long _count = 0;
+    }
+
+    internal class GremlinPropertyVariable : GremlinVariable
+    {
+        public GremlinPropertyVariable()
+        {
+            VariableName = "L_" + _count.ToString();
+            _count += 1;
+        }
+        private static long _count = 0;
     }
 
     public enum Scope

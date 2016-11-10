@@ -74,6 +74,8 @@
     <Compile Include="GremlinTranslationOps\filter\GremlinLimitOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinOrOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinRangeOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinSampleOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinTailOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinByOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinEOp.cs" />
@@ -83,6 +85,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinAddEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinFoldStep.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInVOp.cs" />
@@ -112,6 +115,9 @@
     <Compile Include="GremlinTranslationOps\GremlinTranslationOperator.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinSelectOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinSumOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinUnfoldOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinValueMapOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinValuesOp.cs" />
     <Compile Include="GremlinTranslationOps\Predicate.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAggregateOp.cs" />
