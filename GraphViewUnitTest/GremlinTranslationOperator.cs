@@ -23,9 +23,11 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"select *
-from node n_0
-where sample(n_0, 2) = true";
+            const string q2 = @"INSERT INTO Edge (type, reason)
+                SELECT A, B, 'lives', 'loves fresh breezes'
+                FROM   Node A, Node B
+                WHERE  A.name = 'jupiter' AND B.name = 'sky' ";
+
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
             IList<ParseError> errors;

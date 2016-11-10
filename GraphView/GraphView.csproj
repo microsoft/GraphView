@@ -69,8 +69,10 @@
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinAndOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinCoinOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinDropOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinHasOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinIsOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinLimitOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinOrOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinRangeOp.cs" />
@@ -83,6 +85,7 @@
     <Compile Include="GremlinTranslationOps\GremlinUtil.cs" />
     <Compile Include="GremlinTranslationOps\GremlinVariable.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinAddEOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinAddVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinFoldStep.cs" />
@@ -122,6 +125,7 @@
     <Compile Include="GremlinTranslationOps\Predicate.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAggregateOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAsOp.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />

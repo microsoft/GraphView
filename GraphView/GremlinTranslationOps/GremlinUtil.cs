@@ -52,6 +52,14 @@ namespace GraphView.GremlinTranslationOps
             }
         }
 
+        internal static void CheckIsGremlinAddEVariable(GremlinVariable gremlinVar)
+        {
+            if (gremlinVar.GetType() != typeof(GremlinAddEVariable))
+            {
+                throw new Exception("It's not a GremlinAddEVariable");
+            }
+        }
+
         internal static BooleanComparisonType GetComparisonTypeFromPredicateType(PredicateType predicateType)
         {
             if (predicateType == PredicateType.eq) return BooleanComparisonType.Equals;
@@ -63,13 +71,20 @@ namespace GraphView.GremlinTranslationOps
             throw new Exception("Error: GetComparisonTypeFromPredicateType");
         }
 
-        internal static WValueExpression GetValueExpression(string value)
+        internal static WValueExpression GetValueExpression(object value)
         {
-            return new WValueExpression(value, false);
+            if (value is string)
+            {
+                return new WValueExpression(value as string, true);
+            }
+            else
+            {
+                return new WValueExpression(value as string, false);
+            }
         }
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
-                                                                                     string key, string value)
+                                                                                     string key, object value)
         {
             WScalarExpression valueExpression = GetValueExpression(value);
 
@@ -138,7 +153,7 @@ namespace GraphView.GremlinTranslationOps
                 }
                 else
                 {
-                    valueExpression = GetValueExpression(predicate.Value as string);
+                    valueExpression = GetValueExpression(predicate.Value);
                 }
                 return new WBooleanComparisonExpression()
                 {
@@ -159,7 +174,7 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WExistsPredicate GetExistPredicate(WSelectQueryExpression SubQueryExpr)
+        internal static WExistsPredicate GetExistPredicate(WSqlStatement SubQueryExpr)
         {
             return new WExistsPredicate()
             {
@@ -167,11 +182,11 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WScalarSubquery GetScalarSubquery(WSelectQueryExpression SubQueryExpr)
+        internal static WScalarSubquery GetScalarSubquery(WSqlStatement SubQueryExpr)
         {
             return new WScalarSubquery
             {
-                SubQueryExpr = SubQueryExpr
+                SubQueryExpr = SubQueryExpr as WSelectQueryExpression
             };
         }
 
@@ -249,6 +264,11 @@ namespace GraphView.GremlinTranslationOps
                 FunctionName = GremlinUtil.GetIdentifier(functionName),
                 Parameters = parameters
             };
+        }
+
+        internal static WSelectScalarExpression GetSelectScalarExpression(WValueExpression valueExpr)
+        {
+            return new WSelectScalarExpression() {SelectExpr = valueExpr};
         }
     }
 }

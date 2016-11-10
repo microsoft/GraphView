@@ -81,11 +81,11 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinDerivedVariable: GremlinVariable
     {
         public WQueryDerivedTable QueryDerivedTable;
-        public GremlinDerivedVariable(WSelectQueryBlock selectQueryBlock)
+        public GremlinDerivedVariable(WSqlStatement selectQueryBlock)
         {
             QueryDerivedTable = new WQueryDerivedTable()
             {
-                QueryExpr = selectQueryBlock,
+                QueryExpr = selectQueryBlock as WSelectQueryExpression,
                 Alias = GremlinUtil.GetIdentifier(VariableName)
             };
         }
@@ -98,7 +98,7 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinMapVariable : GremlinDerivedVariable
     {
-        public GremlinMapVariable(WSelectQueryBlock selectQueryBlock): base(selectQueryBlock)
+        public GremlinMapVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock)
         {
             VariableName = "M_" + _count.ToString();
             _count += 1;
@@ -109,7 +109,7 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinListVariable : GremlinDerivedVariable
     {
-        public GremlinListVariable(WSelectQueryBlock selectQueryBlock) : base(selectQueryBlock)
+        public GremlinListVariable(WSqlStatement selectQueryBlock) : base(selectQueryBlock)
         {
             VariableName = "L_" + _count.ToString();
             _count += 1;
@@ -125,6 +125,21 @@ namespace GraphView.GremlinTranslationOps
             _count += 1;
         }
         private static long _count = 0;
+    }
+
+    internal class GremlinAddEVariable : GremlinVariable
+    {
+        public GremlinVertexVariable FromVariable;
+        public GremlinVertexVariable ToVariable;
+        public Dictionary<string, object> Properties;
+        public string EdgeLabel;
+
+        public GremlinAddEVariable(string edgeLabel, GremlinVertexVariable currVariable)
+        {
+            FromVariable = currVariable;
+            ToVariable = currVariable;
+            EdgeLabel = edgeLabel;
+        }
     }
 
     public enum Scope

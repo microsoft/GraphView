@@ -115,7 +115,7 @@ namespace GraphView.GremlinTranslationOps
 
         public WBooleanExpression ToSqlBoolean()
         {
-            WSelectQueryExpression subQueryExpr = ToSqlQuery();
+            WSqlStatement subQueryExpr = ToSelectSqlQuery();
             return GremlinUtil.GetExistPredicate(subQueryExpr);
         }
 
@@ -124,7 +124,19 @@ namespace GraphView.GremlinTranslationOps
             return null;
         }
 
-        public WSelectQueryBlock ToSqlQuery()
+        public WSqlStatement ToSqlQuery()
+        {
+            if (CurrVariable is GremlinAddEVariable)
+            {
+                return ToAddESqlQuery();
+            }
+            else
+            {
+                return ToSelectSqlQuery();
+            }
+        }
+
+        public WSqlStatement ToSelectSqlQuery()
         {
             //Consturct the new From Cluase;
             var newFromClause = GetFromClause();
@@ -151,6 +163,41 @@ namespace GraphView.GremlinTranslationOps
                 OrderByClause = newOrderByClause,
             };
         }
+
+        public WSqlStatement ToAddESqlQuery()
+        {
+            var columnK = new List<WColumnReferenceExpression>();
+            var columnV = new List<WScalarExpression>();
+            var currVar = CurrVariable as GremlinAddEVariable;
+            var selectBlock = ToSelectSqlQuery() as WSelectQueryBlock;
+            selectBlock.SelectElements.Clear();
+
+            var fromVarExpr = GremlinUtil.GetValueExpression(currVar.FromVariable.VariableName);
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(fromVarExpr));
+
+            var toVarExpr = GremlinUtil.GetValueExpression(currVar.ToVariable.VariableName);
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(toVarExpr));
+
+            foreach (var property in currVar.Properties)
+            {
+                columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
+                var valueExpr = GremlinUtil.GetValueExpression(property.Value);
+                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+            }
+            
+            var insertStatement = new WInsertSpecification()
+            {
+                Columns = columnK,
+                InsertSource = new WSelectInsertSource() { Select = selectBlock },
+                Target = GremlinUtil.GetNamedTableReference("Edge")
+            };
+
+            return new WInsertEdgeSpecification(insertStatement)
+            {
+                SelectInsertSource = new WSelectInsertSource() { Select = selectBlock }
+            };
+        }
+
         public WFromClause GetFromClause()
         {
             var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
@@ -220,7 +267,7 @@ namespace GraphView.GremlinTranslationOps
             // delete node
             // where node.id in (subquery)
             //SetProjection("id");
-            WSelectQueryExpression selectQueryExpr = ToSqlQuery();
+            WSelectQueryExpression selectQueryExpr = ToSqlQuery() as WSelectQueryBlock;
             WInPredicate inPredicate = new WInPredicate()
             {
                 Subquery = new WScalarSubquery() { SubQueryExpr = selectQueryExpr },
@@ -239,7 +286,7 @@ namespace GraphView.GremlinTranslationOps
 
         public WDeleteEdgeSpecification ToSqlDeleteEdge()
         {
-            return new WDeleteEdgeSpecification(ToSqlQuery());
+            return new WDeleteEdgeSpecification(ToSqlQuery() as WSelectQueryBlock);
         }
 
         public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)
