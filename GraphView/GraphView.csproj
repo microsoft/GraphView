@@ -86,7 +86,9 @@
     <Compile Include="GremlinTranslationOps\GremlinVariable.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinAddEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinAddVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinBothEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinConstantOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinFoldStep.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInEOp.cs" />

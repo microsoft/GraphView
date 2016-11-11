@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps.map
             //TODO
             //v1 join v2 cross  .. as v3
             //create new variable
-            GremlinJoinVariable newVariable = new GremlinJoinVariable(existInPath.Item1, existInPath.Item3);
+            GremlinJoinVertexVariable newVariable = new GremlinJoinVertexVariable(existInPath.Item1, existInPath.Item3);
             inputContext.AddNewVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
             inputContext.SetCurrVariable(newVariable);

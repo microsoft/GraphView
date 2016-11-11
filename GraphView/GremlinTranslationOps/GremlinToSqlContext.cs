@@ -20,7 +20,7 @@ namespace GraphView.GremlinTranslationOps
             //CrossVariableConditions = new List<WBooleanExpression>();
             Predicates = null;
             Projection = new List<Tuple<GremlinVariable, Projection>>();
-            // GroupByVariable = new Tuple<GremlinVariable, string>();
+            //GroupByVariable = new Tuple<GremlinVariable, OrderByRecord>();
             // OrderByVariable = new Tuple<GremlinVariable, string>();
         }
         /// <summary>
@@ -62,12 +62,13 @@ namespace GraphView.GremlinTranslationOps
         /// <summary>
         /// The Gremlin variable and its property by which the query groups
         /// </summary>
-        public Tuple<GremlinVariable, string> GroupByVariable { get; set; }
+        public Tuple<GremlinVariable, OrderByRecord> GroupByVariable { get; set; }
 
         /// <summary>
         /// The Gremlin variable and its property by which the query orders
         /// </summary>
-        public Tuple<GremlinVariable, string> OrderByVariable { get; set; }
+        public Tuple<GremlinVariable, OrderByRecord> OrderByVariable { get; set; }
+
 
         public void AddNewVariable(GremlinVariable gremlinVar)
         {
@@ -130,6 +131,10 @@ namespace GraphView.GremlinTranslationOps
             {
                 return ToAddESqlQuery();
             }
+            else if (CurrVariable is GremlinAddVVariable)
+            {
+                return ToAddVSqlQuery();
+            }
             else
             {
                 return ToSelectSqlQuery();
@@ -167,7 +172,6 @@ namespace GraphView.GremlinTranslationOps
         public WSqlStatement ToAddESqlQuery()
         {
             var columnK = new List<WColumnReferenceExpression>();
-            var columnV = new List<WScalarExpression>();
             var currVar = CurrVariable as GremlinAddEVariable;
             var selectBlock = ToSelectSqlQuery() as WSelectQueryBlock;
             selectBlock.SelectElements.Clear();
@@ -196,6 +200,31 @@ namespace GraphView.GremlinTranslationOps
             {
                 SelectInsertSource = new WSelectInsertSource() { Select = selectBlock }
             };
+        }
+
+        public WSqlStatement ToAddVSqlQuery()
+        {
+            var columnK = new List<WColumnReferenceExpression>();
+            var columnV = new List<WScalarExpression>();
+            var currVar = CurrVariable as GremlinAddEVariable;
+
+            foreach (var property in currVar.Properties)
+            {
+                columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
+                columnV.Add(GremlinUtil.GetValueExpression(property.Value));
+            }
+
+            var row = new List<WRowValue>() {new WRowValue() {ColumnValues = columnV}};
+            var source = new WValuesInsertSource() {RowValues = row};
+
+            var insertStatement = new WInsertSpecification()
+            {
+                Columns = columnK,
+                InsertSource = source,
+                Target = GremlinUtil.GetNamedTableReference("Edge")
+            };
+
+            return new WInsertNodeSpecification(insertStatement);
         }
 
         public WFromClause GetFromClause()

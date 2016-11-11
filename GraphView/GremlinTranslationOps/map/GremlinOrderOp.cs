@@ -8,11 +8,22 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinOrderOp: GremlinTranslationOperator
     {
+        //public Order Order;
+        public List<string> KeyList;
+        //public GremlinTranslationOperator ParamOp; 
+
         public GremlinOrderOp() { }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            inputContext.OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>(inputContext.CurrVariable, new OrderByRecord());
+
+            foreach (var key in KeyList)
+            {
+                inputContext.OrderByVariable.Item2.SortOrderList.Add(GremlinUtil.GetExpressionWithSortOrder(key, Order.Desr));
+            }
 
             return inputContext;
         }
@@ -20,8 +31,8 @@ namespace GraphView.GremlinTranslationOps.map
 
     public enum Order
     {
-        shuffle,
-        desr,
-        incr
+        Shuffle,
+        Desr,
+        Incr
     }
 }

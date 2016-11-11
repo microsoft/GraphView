@@ -30,6 +30,9 @@ namespace GraphView.GremlinTranslationOps
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+
+
             return inputContext;
         }
     }

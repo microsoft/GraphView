@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GremlinTranslationOps.map;
 
 namespace GraphView.GremlinTranslationOps
 {
@@ -269,6 +270,23 @@ namespace GraphView.GremlinTranslationOps
         internal static WSelectScalarExpression GetSelectScalarExpression(WValueExpression valueExpr)
         {
             return new WSelectScalarExpression() {SelectExpr = valueExpr};
+        }
+
+        internal static WExpressionWithSortOrder GetExpressionWithSortOrder(string key, Order order)
+        {
+            return new WExpressionWithSortOrder()
+            {
+                ScalarExpr = GetColumnReferenceExpression(key),
+                SortOrder = ConvertGremlinOrderToSqlOrder(order)
+            };
+        }
+
+        internal static SortOrder ConvertGremlinOrderToSqlOrder(Order order)
+        {
+            if (Order.Desr == order) return SortOrder.Descending;
+            if (Order.Incr == order) return SortOrder.Ascending;
+            if (Order.Shuffle == order) return SortOrder.NotSpecified;
+            return SortOrder.Descending;
         }
     }
 }

@@ -62,17 +62,33 @@ namespace GraphView.GremlinTranslationOps
         public WBooleanExpression UntilCondition { get; set; }
     }
 
-    internal class GremlinJoinVariable : GremlinVariable
+    internal class GremlinJoinVertexVariable : GremlinVertexVariable
     {
         public GremlinVariable LeftVariable;
         public GremlinVariable RightVariable;
-        public GremlinJoinVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
+        public GremlinJoinVertexVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
         {
             LeftVariable = leftGremlinVariable;
             RightVariable = righGremlinVariable;
 
             //automaticlly generate the name of node
-            VariableName = "J_" + _count.ToString();
+            VariableName = "JV_" + _count.ToString();
+            _count += 1;
+        }
+        private static long _count = 0;
+    }
+
+    internal class GremlinJoinEdgeVariable : GremlinEdgeVariable
+    {
+        public GremlinVariable LeftVariable;
+        public GremlinVariable RightVariable;
+        public GremlinJoinEdgeVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
+        {
+            LeftVariable = leftGremlinVariable;
+            RightVariable = righGremlinVariable;
+
+            //automaticlly generate the name of node
+            VariableName = "JE_" + _count.ToString();
             _count += 1;
         }
         private static long _count = 0;
@@ -142,6 +158,23 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
+    internal class GremlinAddVVariable : GremlinVariable
+    {
+        public Dictionary<string, object> Properties;
+        
+        public GremlinAddVVariable() { }
+    }
+
+    internal class GremlinConstantVariable : GremlinVariable
+    {
+        public object Constant;
+
+        public GremlinConstantVariable(object constant)
+        {
+            Constant = constant;
+        }
+    }
+
     public enum Scope
     {
         local,
@@ -196,5 +229,15 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
+
+    internal class OrderByRecord
+    {
+        public List<WExpressionWithSortOrder> SortOrderList;
+
+        public OrderByRecord()
+        {
+            SortOrderList = new List<WExpressionWithSortOrder>();
+        }
+    }
 
 }
