@@ -424,9 +424,31 @@ namespace GraphView
             // Construct the second part of the head which is defined as 
             // ...|Select element|Select element|Select element|...
             // ...|  "ELEMENT1"  |  "ELEMENT2"  |  "ELEMENT3"  |...
-            foreach (var element in SelectElements)
+            for (var i = 0; i < SelectElements.Count; i++)
             {
-                if (element is WSelectScalarExpression)
+                var element = SelectElements[i];
+                if (element is WSelectStarExpression)
+                {
+                    if (FromClause.TableReferences != null && FromClause.TableReferences.Count > 1)
+                        throw new GraphViewException("'SELECT *' is only valid with a single input set.");
+                    var tr = FromClause.TableReferences[0] as WNamedTableReference;
+                    var expr = tr.Alias.Value;
+                    var alias = expr + ".doc";
+                    header.Add(expr);
+                    columnToAliasDict.Add(expr, alias);
+                    headerToColumnRefDict[expr] = new DColumnReferenceExpression
+                    {
+                        ColumnName = alias,
+                        MultiPartIdentifier = new DMultiPartIdentifier(expr),
+                    };
+                    var iden = new Identifier {Value = expr};
+                    SelectElements[i] = new WSelectScalarExpression
+                    {
+                        ColumnName = alias,
+                        SelectExpr = new WColumnReferenceExpression { MultiPartIdentifier = new WMultiPartIdentifier(iden) }
+                    };
+                }
+                else if (element is WSelectScalarExpression)
                 {
                     var scalarExpr = element as WSelectScalarExpression;
                     if (scalarExpr.SelectExpr is WValueExpression) continue;
@@ -446,6 +468,7 @@ namespace GraphView
                     };
                 }
             }
+
             if (OrderByClause != null && OrderByClause.OrderByElements != null)
             {
                 foreach (var element in OrderByClause.OrderByElements)
