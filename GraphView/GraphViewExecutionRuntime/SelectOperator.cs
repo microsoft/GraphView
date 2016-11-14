@@ -473,9 +473,9 @@ namespace GraphView
                 // Decode the result retrived from server and generate new record
                 foreach (var item in Node)
                 {
-                    Tuple<string, string, string, List<string>> ItemInfo = DecodeJObject((JObject) item,header, NumberOfProcessedVertices);
-                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices,ItemInfo, OldRecord, header);
-                        if (RecordFilter(crossDocumentJoinPredicates,NewRecord))
+                    Tuple<string, string, string, List<string>> ItemInfo = DecodeJObject((JObject)item, header, NumberOfProcessedVertices * 3);
+                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, OldRecord, header);
+                    if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
                         OutputBuffer.Enqueue(NewRecord);
                 }
             }
