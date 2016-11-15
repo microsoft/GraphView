@@ -18,23 +18,26 @@ namespace GraphView
         internal GremlinTranslationOperator LastGremlinTranslationOp { set; get; }
 
         public GraphTraversal2() {
-
+            GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
         public GraphTraversal2(GraphTraversal rhs)
         {
-
+            GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
         public GraphTraversal2(GraphViewConnection pConnection)
         {
+            GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
         public void next()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest"); ;
+                "GroupMatch", "MarvelTest");
+            var sqlFragment = LastGremlinTranslationOp.ToWSqlFragment();
+
             var sqlQuery = LastGremlinTranslationOp.ToWSqlFragment().Generate(connection);
         }
 
@@ -44,13 +47,13 @@ namespace GraphView
             if (LastGremlinTranslationOp == null)
             {
                 LastGremlinTranslationOp = newGremlinTranslationOp;
-            } else
+            }
+            else
             {
                 newGremlinTranslationOp.InputOperator = LastGremlinTranslationOp;
                 LastGremlinTranslationOp = newGremlinTranslationOp;
             }
         }
-
         //GremlinTranslationOperator
 
         //public GraphTraversal addE(Direction direction, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
@@ -89,12 +92,7 @@ namespace GraphView
 
         public GraphTraversal2 and(params GraphTraversal2[] andTraversals)
         {
-            GremlinAndOp AndOp = new GremlinAndOp();
-            foreach (var traversal in andTraversals)
-            {
-                AndOp.ConjunctiveOperators.Add(traversal.LastGremlinTranslationOp);
-            }
-            AddGremlinOperator(AndOp);
+            AddGremlinOperator(new GremlinAndOp(andTraversals));
             return this;
         }
 
@@ -112,7 +110,11 @@ namespace GraphView
             //return this;
         //}
 
-        //public GraphTraversal2 bothE(params string[] edgeLabels)
+        public GraphTraversal2 bothE(params string[] edgeLabels)
+        {
+            AddGremlinOperator(new GremlinBothEOp(edgeLabels));
+            return this;
+        }
 
 
         public GraphTraversal2 bothV()
@@ -126,7 +128,7 @@ namespace GraphView
 
         public GraphTraversal2 by()
         {
-            AddGremlinOperator(new GremlinByOp());
+            ((IGremlinByModulating)LastGremlinTranslationOp).ModulateBy();
             return this;
         }
 
@@ -136,13 +138,13 @@ namespace GraphView
 
         public GraphTraversal2 by(Order order)
         {
-            AddGremlinOperator(new GremlinByOp(order));
+            ((IGremlinByModulating)LastGremlinTranslationOp).ModulateBy(order);
             return this;
         }
 
         public GraphTraversal2 by(string key)
         {
-            AddGremlinOperator(new GremlinByOp(key));
+            ((IGremlinByModulating)LastGremlinTranslationOp).ModulateBy(key);
             return this;
         }
 
@@ -214,8 +216,17 @@ namespace GraphView
         }
         //public GraphTraversal2 from(Traversal<E, Vertex> fromVertex)
 
-        //public GraphTraversal2 group()
-        //public GraphTraversal2 group(string sideEffectKey)
+        public GraphTraversal2 group()
+        {
+            AddGremlinOperator(new GremlinGroupOp());
+            return this;
+        }
+
+        public GraphTraversal2 group(string sideEffectKey)
+        {
+            AddGremlinOperator(new GremlinGroupOp(sideEffectKey));
+            return this;
+        }
         //public GraphTraversal2 groupCount()
         //public GraphTraversal2 groupCount(string sideEffectKey)
         //public GraphTraversal2 groupV3d0() //Deprecated
@@ -307,12 +318,17 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 Is(string value)
+        public GraphTraversal2 Is(object value)
         {
+            AddGremlinOperator(new GremlinIsOp(value));
             return this;
         }
 
-        //public GraphTraversal2 Is(P<E> predicate)
+        public GraphTraversal2 Is(Predicate predicate)
+        {
+            AddGremlinOperator(new GremlinIsOp(predicate));
+            return this;
+        }
 
         public GraphTraversal2 iterate()
         {
@@ -389,12 +405,7 @@ namespace GraphView
 
         public GraphTraversal2 Or(params GraphTraversal2[] orTraversals)
         {
-            GremlinOrOp orOp = new GremlinOrOp();
-            foreach (var traversal in orTraversals)
-            {
-                orOp.ConjunctiveOperators.Add(traversal.LastGremlinTranslationOp);
-            }
-            AddGremlinOperator(orOp);
+            AddGremlinOperator(new GremlinOrOp(orTraversals));
             return this;
         }
 
@@ -439,13 +450,15 @@ namespace GraphView
         //public GraphTraversal2 program(VertexProgram<?> vertexProgram)
         //public GraphTraversal2 project(string projectKey, params string[] otherProjectKeys)
 
-        public GraphTraversal2 properties(params string[] propertyKeys)
-        {
-            return this;
-        }
+        //public GraphTraversal2 properties(params string[] propertyKeys)
+        //{
+        //    AddGremlinOperator(new GremlinPropertiesOp(propertyKeys));
+        //    return this;
+        //}
 
-        public GraphTraversal2 property(string key, string value, params string[] keyValues)
+        public GraphTraversal2 property(params string[] keyValues)
         {
+            AddGremlinOperator(new GremlinPropertyOp(keyValues));
             return this;
         }
 
@@ -473,6 +486,7 @@ namespace GraphView
 
         public GraphTraversal2 sample(int amountToSample)
         {
+            AddGremlinOperator(new GremlinSampleOp(amountToSample));
             return this;
         }
 

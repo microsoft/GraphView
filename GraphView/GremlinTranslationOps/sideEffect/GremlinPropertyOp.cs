@@ -15,7 +15,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
             if (properties.Length % 2 != 0) throw new Exception("The parameter of property should be even");
             if (properties.Length < 2) throw new Exception("The number of parameter of property should be larger than 2");
             Properties = new Dictionary<string, object>();
-            for (int i = 0; i < properties.Length; i++)
+            for (int i = 0; i < properties.Length; i += 2)
             {
                 Properties[properties[i]] = properties[i + 1];
             }

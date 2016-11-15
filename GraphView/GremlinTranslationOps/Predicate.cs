@@ -48,22 +48,22 @@ namespace GraphView.GremlinTranslationOps
 
         public static Predicate neq(object value, bool isAliasValue = false)
         {
-            return new Predicate(PredicateType.eq, value, isAliasValue);
+            return new Predicate(PredicateType.neq, value, isAliasValue);
         }
 
         public static Predicate lt(int value)
         {
-            return new Predicate(PredicateType.eq, value);
+            return new Predicate(PredicateType.lt, value);
         }
 
         public static Predicate gt(int value)
         {
-            return new Predicate(PredicateType.eq, value);
+            return new Predicate(PredicateType.gt, value);
         }
 
         public static Predicate gte(int value)
         {
-            return new Predicate(PredicateType.eq, value);
+            return new Predicate(PredicateType.gte, value);
         }
 
         public static Predicate inside(int low, int high)

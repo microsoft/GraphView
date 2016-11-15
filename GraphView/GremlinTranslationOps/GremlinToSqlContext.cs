@@ -20,8 +20,10 @@ namespace GraphView.GremlinTranslationOps
             //CrossVariableConditions = new List<WBooleanExpression>();
             Predicates = null;
             Projection = new List<Tuple<GremlinVariable, Projection>>();
-            //GroupByVariable = new Tuple<GremlinVariable, OrderByRecord>();
-            // OrderByVariable = new Tuple<GremlinVariable, string>();
+            Paths = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            AliasToGremlinVariable = new Dictionary<string, GremlinVariable>();
+            //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
+            //OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>();
         }
         /// <summary>
         /// A list of Gremlin variables. The variables are expected to 
@@ -62,7 +64,7 @@ namespace GraphView.GremlinTranslationOps
         /// <summary>
         /// The Gremlin variable and its property by which the query groups
         /// </summary>
-        public Tuple<GremlinVariable, OrderByRecord> GroupByVariable { get; set; }
+        public Tuple<GremlinVariable, GroupByRecord> GroupByVariable { get; set; }
 
         /// <summary>
         /// The Gremlin variable and its property by which the query orders
@@ -107,6 +109,12 @@ namespace GraphView.GremlinTranslationOps
                 AddProjection(CurrVariable, new ValueProjection(CurrVariable, value as string));
             }
         }
+
+        public void SetConstantProjection(object value)
+        {
+            Projection.Clear();
+            AddProjection(CurrVariable, new ConstantProjection(CurrVariable, value as string));
+        }
         public void ClearProjection()
         {
             Projection.Clear();
@@ -116,8 +124,15 @@ namespace GraphView.GremlinTranslationOps
 
         public WBooleanExpression ToSqlBoolean()
         {
-            WSqlStatement subQueryExpr = ToSelectSqlQuery();
-            return GremlinUtil.GetExistPredicate(subQueryExpr);
+            if (RemainingVariableList.Count == 0)
+            {
+                return Predicates;
+            }
+            else
+            {
+                WSqlStatement subQueryExpr = ToSelectSqlQuery();
+                return GremlinUtil.GetExistPredicate(subQueryExpr);
+            }
         }
 
         public WScalarExpression ToSqlScalar()
@@ -157,6 +172,9 @@ namespace GraphView.GremlinTranslationOps
 
             // Construct the OrderBy Clause
             var newOrderByClause = GetOrderByClause();
+            
+            // Construct the GroupBy Clause
+            var newGroupByClause = GetGroupByClause();
 
             // Construct the SelectBlock
             return new WSelectQueryBlock()
@@ -166,6 +184,7 @@ namespace GraphView.GremlinTranslationOps
                 WhereClause = newWhereClause,
                 MatchClause = newMatchClause,
                 OrderByClause = newOrderByClause,
+                GroupByClause = newGroupByClause
             };
         }
 
@@ -176,16 +195,20 @@ namespace GraphView.GremlinTranslationOps
             var selectBlock = ToSelectSqlQuery() as WSelectQueryBlock;
             selectBlock.SelectElements.Clear();
 
-            var fromVarExpr = GremlinUtil.GetValueExpression(currVar.FromVariable.VariableName);
+            var fromVarExpr = GremlinUtil.GetColumnReferenceExpression(currVar.FromVariable.VariableName);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(fromVarExpr));
 
-            var toVarExpr = GremlinUtil.GetValueExpression(currVar.ToVariable.VariableName);
+            var toVarExpr = GremlinUtil.GetColumnReferenceExpression(currVar.ToVariable.VariableName);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(toVarExpr));
 
+            //Add edge key-value
+            columnK.Add(GremlinUtil.GetColumnReferenceExpression("type"));
+            var valueExpr = GremlinUtil.GetValueExpression(currVar.EdgeLabel);
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
             foreach (var property in currVar.Properties)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
-                var valueExpr = GremlinUtil.GetValueExpression(property.Value);
+                valueExpr = GremlinUtil.GetValueExpression(property.Value);
                 selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
             }
             
@@ -206,7 +229,7 @@ namespace GraphView.GremlinTranslationOps
         {
             var columnK = new List<WColumnReferenceExpression>();
             var columnV = new List<WScalarExpression>();
-            var currVar = CurrVariable as GremlinAddEVariable;
+            var currVar = CurrVariable as GremlinAddVVariable;
 
             foreach (var property in currVar.Properties)
             {
@@ -221,7 +244,7 @@ namespace GraphView.GremlinTranslationOps
             {
                 Columns = columnK,
                 InsertSource = source,
-                Target = GremlinUtil.GetNamedTableReference("Edge")
+                Target = GremlinUtil.GetNamedTableReference("Node")
             };
 
             return new WInsertNodeSpecification(insertStatement);
@@ -230,19 +253,46 @@ namespace GraphView.GremlinTranslationOps
         public WFromClause GetFromClause()
         {
             var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
-            foreach (var variable in RemainingVariableList)
+            for (var i = 0; i < RemainingVariableList.Count; i++)
             {
-                WNamedTableReference TR = null;
-                if (variable is GremlinVertexVariable)
+                if (RemainingVariableList[i] is GremlinVertexVariable)
                 {
-                    TR = new WNamedTableReference()
+                    if (RemainingVariableList[i] is GremlinJoinVertexVariable)
                     {
-                        Alias = new Identifier() { Value = variable.VariableName },
-                        TableObjectString = "node",
-                        TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
-                    };
+                        //across apply tvf as v3
+                        GremlinJoinVertexVariable currVar = RemainingVariableList[i] as GremlinJoinVertexVariable;;
+                        GremlinVariable lastVar = RemainingVariableList[i - 1];
+                        newFromClause.TableReferences.RemoveAt(newFromClause.TableReferences.Count - 1);
+
+                        WSchemaObjectFunctionTableReference secondTableRef = new WSchemaObjectFunctionTableReference()
+                        {
+                            Alias = GremlinUtil.GetIdentifier(RemainingVariableList[i].VariableName),
+                            Parameters = new List<WScalarExpression>()
+                            {
+                                GremlinUtil.GetColumnReferenceExpression(currVar.LeftVariable.VariableName),
+                                GremlinUtil.GetColumnReferenceExpression(currVar.RightVariable.VariableName )
+                            },
+                            SchemaObject = new WSchemaObjectName()
+                            {
+                                Identifiers = new List<Identifier>() { GremlinUtil.GetIdentifier("BothV") }
+                            }
+                        };
+
+                        WUnqualifiedJoin uniUnqualifiedJoin = new WUnqualifiedJoin()
+                        {
+                            FirstTableRef = GremlinUtil.GetNamedTableReference(lastVar),
+                            SecondTableRef = secondTableRef,
+                            UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+                        };
+                        newFromClause.TableReferences.Add(uniUnqualifiedJoin);
+                    }
+                    else
+                    {
+                        WNamedTableReference TR = null;
+                        TR = GremlinUtil.GetNamedTableReference(RemainingVariableList[i]);
+                        newFromClause.TableReferences.Add(TR);
+                    }
                 }
-                newFromClause.TableReferences.Add(TR);
             }
             return newFromClause;
         }
@@ -250,6 +300,15 @@ namespace GraphView.GremlinTranslationOps
         public WMatchClause GetMatchClause()
         {
             var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
+            foreach (var path in Paths)
+            {
+                var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
+                pathEdges.Add(GremlinUtil.GetPathExpression(path));
+                var tailNode = GremlinUtil.GetSchemaObjectName(path.Item3.VariableName);
+                var newPath = new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
+                newMatchClause.Paths.Add((newPath));
+            }
+
             return newMatchClause;
         }
 
@@ -258,8 +317,7 @@ namespace GraphView.GremlinTranslationOps
             var newSelectElementClause = new List<WSelectElement>();
             foreach (var dict in Projection)
             {
-                WScalarExpression projection = dict.Item2.ToSelectScalarExpression();
-                newSelectElementClause.Add(new WSelectScalarExpression() { SelectExpr = projection });
+                newSelectElementClause.Add(dict.Item2.ToSelectScalarExpression());
             }
             return newSelectElementClause;
         }
@@ -271,9 +329,29 @@ namespace GraphView.GremlinTranslationOps
 
         public WOrderByClause GetOrderByClause()
         {
-            var newOrderByClause = new WOrderByClause();
+            if (OrderByVariable == null) 
+                return new WOrderByClause();
+            OrderByRecord orderByRecord = OrderByVariable.Item2;
+            WOrderByClause newOrderByClause = new WOrderByClause()
+            {
+                OrderByElements = orderByRecord.SortOrderList
+            };
             return newOrderByClause;
         }
+
+        public WGroupByClause GetGroupByClause()
+        {
+            if (GroupByVariable == null)
+                return new WGroupByClause();
+            GroupByRecord groupByRecord = GroupByVariable.Item2;
+            WGroupByClause newGroupByClause = new WGroupByClause()
+            {
+                GroupingSpecifications = groupByRecord.GroupingSpecList
+            };
+
+            return newGroupByClause;
+        }
+
 
         public WDeleteSpecification ToSqlDelete()
         {
