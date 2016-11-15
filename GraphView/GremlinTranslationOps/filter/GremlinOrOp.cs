@@ -11,6 +11,14 @@ namespace GraphView.GremlinTranslationOps.filter
     {
         public IList<GremlinTranslationOperator> ConjunctiveOperators { get; set; }
 
+        public GremlinOrOp(params GraphTraversal2[] andTraversals)
+        {
+            ConjunctiveOperators = new List<GremlinTranslationOperator>();
+            foreach (var traversal in andTraversals)
+            {
+                ConjunctiveOperators.Add(traversal.LastGremlinTranslationOp);
+            }
+        }
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = InputOperator.GetContext();

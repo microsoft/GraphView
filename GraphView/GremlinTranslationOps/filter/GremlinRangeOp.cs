@@ -18,19 +18,26 @@ namespace GraphView.GremlinTranslationOps.filter
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            WScalarExpression lowExpr = GremlinUtil.GetValueExpression(Low.ToString());
-            WScalarExpression highExpr = GremlinUtil.GetValueExpression(High.ToString());
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("range", lowExpr, highExpr));
+            //WScalarExpression lowExpr = GremlinUtil.GetValueExpression(Low.ToString());
+            //WScalarExpression highExpr = GremlinUtil.GetValueExpression(High.ToString());
+            //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("range", lowExpr, highExpr));
             
-            GremlinToSqlContext newContext = new GremlinToSqlContext();
-            GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSqlQuery());
-            newContext.AddNewVariable(newDerivedVariable);
-            newContext.SetDefaultProjection(newDerivedVariable);
-            newContext.SetCurrVariable(newDerivedVariable);
+            //GremlinToSqlContext newContext = new GremlinToSqlContext();
+            //GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSqlQuery());
+            //newContext.AddNewVariable(newDerivedVariable);
+            //newContext.SetDefaultProjection(newDerivedVariable);
+            //newContext.SetCurrVariable(newDerivedVariable);
 
             //TODO: inherit some variable?
 
-            return newContext;
+
+            GremlinRangeVariable newVar = new GremlinRangeVariable(Low, High);
+            inputContext.AddNewVariable(newVar);
+            // TODO
+            // Projection ??
+            inputContext.SetCurrVariable(newVar);
+
+            return inputContext;
         }
     }
 }

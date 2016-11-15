@@ -152,6 +152,7 @@ namespace GraphView.GremlinTranslationOps
 
         public GremlinAddEVariable(string edgeLabel, GremlinVertexVariable currVariable)
         {
+            Properties = new Dictionary<string, object>();
             FromVariable = currVariable;
             ToVariable = currVariable;
             EdgeLabel = edgeLabel;
@@ -161,8 +162,11 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinAddVVariable : GremlinVariable
     {
         public Dictionary<string, object> Properties;
-        
-        public GremlinAddVVariable() { }
+
+        public GremlinAddVVariable()
+        {
+            Properties = new Dictionary<string, object>();
+        }
     }
 
     internal class GremlinConstantVariable : GremlinVariable
@@ -175,6 +179,22 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
+    internal class GremlinRangeVariable: GremlinVariable
+    {
+        public long Low;
+        public long High;
+        public GremlinRangeVariable(long low, long high)
+        {
+            Low = low;
+            High = high;
+
+            VariableName = "R_" + _count.ToString();
+            _count += 1;
+        }
+        private static long _count = 0;
+
+    }
+
     public enum Scope
     {
         local,
@@ -184,7 +204,7 @@ namespace GraphView.GremlinTranslationOps
     internal class Projection
     {
         public GremlinVariable CurrVariable;
-        public virtual WScalarExpression ToSelectScalarExpression()
+        public virtual WSelectScalarExpression ToSelectScalarExpression()
         {
             return null;
         }
@@ -200,9 +220,13 @@ namespace GraphView.GremlinTranslationOps
             Value = value;
         }
 
-        public override WScalarExpression ToSelectScalarExpression()
+        public override WSelectScalarExpression ToSelectScalarExpression()
         {
-            return new WColumnReferenceExpression() { MultiPartIdentifier = GetProjectionIndentifiers() };
+            return new WSelectScalarExpression()
+                {
+                    SelectExpr = new WColumnReferenceExpression()
+                    { MultiPartIdentifier = GetProjectionIndentifiers() }
+                };
         }
 
         public WMultiPartIdentifier GetProjectionIndentifiers()
@@ -211,6 +235,21 @@ namespace GraphView.GremlinTranslationOps
             identifiers.Add(new Identifier() { Value = CurrVariable.VariableName });
             identifiers.Add(new Identifier() { Value = Value });
             return new WMultiPartIdentifier() { Identifiers = identifiers };
+        }
+    }
+
+    internal class ConstantProjection : Projection
+    {
+        public string Value;
+
+        public ConstantProjection(GremlinVariable gremlinVar, string value)
+        {
+            CurrVariable = gremlinVar;
+            Value = value;
+        }
+        public override WSelectScalarExpression ToSelectScalarExpression()
+        {
+            return new WSelectScalarExpression() { SelectExpr = GremlinUtil.GetValueExpression(Value) };
         }
     }
 
@@ -223,9 +262,9 @@ namespace GraphView.GremlinTranslationOps
             CurrVariable = gremlinVar;
             FunctionCall = functionCall;
         }
-        public override WScalarExpression ToSelectScalarExpression()
+        public override WSelectScalarExpression ToSelectScalarExpression()
         {
-            return FunctionCall;
+            return new WSelectScalarExpression() { SelectExpr = FunctionCall };
         }
     }
 
@@ -240,4 +279,13 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
+    internal class GroupByRecord
+    {
+        public List<WGroupingSpecification> GroupingSpecList;
+
+        public GroupByRecord()
+        {
+            GroupingSpecList = new List<WGroupingSpecification>();
+        }
+    }
 }

@@ -6,13 +6,18 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinOrderOp: GremlinTranslationOperator
+    internal class GremlinOrderOp: GremlinTranslationOperator, IGremlinByModulating
     {
-        //public Order Order;
+        public List<Order> OrderList;
         public List<string> KeyList;
-        //public GremlinTranslationOperator ParamOp; 
+        public List<GremlinTranslationOperator> ParamOpList;
 
-        public GremlinOrderOp() { }
+        public GremlinOrderOp()
+        {
+            OrderList = new List<Order>();
+            KeyList = new List<string>();
+            ParamOpList = new List<GremlinTranslationOperator>();
+        }
 
         public override GremlinToSqlContext GetContext()
         {
@@ -26,6 +31,26 @@ namespace GraphView.GremlinTranslationOps.map
             }
 
             return inputContext;
+        }
+
+        public void ModulateBy()
+        {
+            
+        }
+
+        public void ModulateBy(GremlinTranslationOperator paramOp)
+        {
+            ParamOpList.Add(paramOp);
+        }
+
+        public void ModulateBy(string key)
+        {
+            KeyList.Add(key);
+        }
+
+        public void ModulateBy(Order order)
+        {
+            OrderList.Add(order);
         }
     }
 

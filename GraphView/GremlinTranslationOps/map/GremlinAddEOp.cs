@@ -20,6 +20,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
             GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, inputContext.CurrVariable as GremlinVertexVariable);
+            newAddEVar.EdgeLabel = EdgeLabel;
             inputContext.AddNewVariable(newAddEVar);
             inputContext.SetCurrVariable(newAddEVar);
             inputContext.ClearProjection();

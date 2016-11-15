@@ -25,7 +25,7 @@ namespace GraphView.GremlinTranslationOps
 
         internal static Identifier GetIdentifier(string value)
         {
-            return new Identifier() { Value = value };
+            return new Identifier() {Value = value};
         }
 
         internal static WMultiPartIdentifier ConvertListToMultiPartIdentifier(string[] parts)
@@ -33,9 +33,9 @@ namespace GraphView.GremlinTranslationOps
             var multiIdentifierList = new List<Identifier>();
             foreach (var part in parts)
             {
-                multiIdentifierList.Add(new Identifier() { Value = part });
+                multiIdentifierList.Add(new Identifier() {Value = part});
             }
-            return new WMultiPartIdentifier() { Identifiers = multiIdentifierList };
+            return new WMultiPartIdentifier() {Identifiers = multiIdentifierList};
         }
 
         internal static void CheckIsGremlinVertexVariable(GremlinVariable gremlinVar)
@@ -48,7 +48,8 @@ namespace GraphView.GremlinTranslationOps
 
         internal static void CheckIsGremlinEdgeVariable(GremlinVariable gremlinVar)
         {
-            if (gremlinVar.GetType() != typeof(GremlinEdgeVariable)) {
+            if (gremlinVar.GetType() != typeof(GremlinEdgeVariable))
+            {
                 throw new Exception("It's not a GremlinEdgeVariable");
             }
         }
@@ -80,12 +81,12 @@ namespace GraphView.GremlinTranslationOps
             }
             else
             {
-                return new WValueExpression(value as string, false);
+                return new WValueExpression(value.ToString(), false);
             }
         }
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
-                                                                                     string key, object value)
+            string key, object value)
         {
             WScalarExpression valueExpression = GetValueExpression(value);
 
@@ -98,7 +99,7 @@ namespace GraphView.GremlinTranslationOps
         }
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression firstExpr,
-                                                                                     WScalarExpression secondExpr, BooleanComparisonType type)
+            WScalarExpression secondExpr, BooleanComparisonType type)
         {
             return new WBooleanComparisonExpression()
             {
@@ -109,7 +110,7 @@ namespace GraphView.GremlinTranslationOps
         }
 
         internal static WBooleanExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
-                                                                             string key, Predicate predicate)
+            string key, Predicate predicate)
         {
             if (predicate.PredicateType == PredicateType.within ||
                 predicate.PredicateType == PredicateType.without ||
@@ -123,13 +124,15 @@ namespace GraphView.GremlinTranslationOps
                     case PredicateType.within:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(gremlinVar, key, new Predicate(PredicateType.eq, value, predicate.IsAliasValue)));
+                            booleanExprList.Add(GetBooleanComparisonExpr(gremlinVar, key,
+                                new Predicate(PredicateType.eq, value, predicate.IsAliasValue)));
                         }
                         return ConcatBooleanExpressionListWithOr(booleanExprList);
                     case PredicateType.without:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(gremlinVar, key, new Predicate(PredicateType.neq, value, predicate.IsAliasValue)));
+                            booleanExprList.Add(GetBooleanComparisonExpr(gremlinVar, key,
+                                new Predicate(PredicateType.neq, value, predicate.IsAliasValue)));
                         }
                         return ConcatBooleanExpressionListWithAnd(booleanExprList);
                     case PredicateType.inside:
@@ -165,7 +168,8 @@ namespace GraphView.GremlinTranslationOps
             }
         }
 
-        internal static WBooleanBinaryExpression GetAndBooleanBinaryExpr(WBooleanExpression booleanExpr1, WBooleanExpression booleanExpr2)
+        internal static WBooleanBinaryExpression GetAndBooleanBinaryExpr(WBooleanExpression booleanExpr1,
+            WBooleanExpression booleanExpr2)
         {
             return new WBooleanBinaryExpression()
             {
@@ -201,7 +205,8 @@ namespace GraphView.GremlinTranslationOps
             return ConcatBooleanExpressionList(booleanExprList, BooleanBinaryExpressionType.And);
         }
 
-        internal static WBooleanExpression ConcatBooleanExpressionList(List<WBooleanExpression> booleanExprList, BooleanBinaryExpressionType type)
+        internal static WBooleanExpression ConcatBooleanExpressionList(List<WBooleanExpression> booleanExprList,
+            BooleanBinaryExpressionType type)
         {
             WBooleanExpression concatExpr = null;
             foreach (var booleanExpr in booleanExprList)
@@ -219,10 +224,11 @@ namespace GraphView.GremlinTranslationOps
             return concatExpr;
         }
 
-        internal static WSchemaObjectName GetSchemaObjectName(string value) {
+        internal static WSchemaObjectName GetSchemaObjectName(string value)
+        {
             return new WSchemaObjectName()
             {
-                Identifiers = new List<Identifier>() { new Identifier() { Value = value } }
+                Identifiers = new List<Identifier>() {new Identifier() {Value = value}}
             };
         }
 
@@ -234,21 +240,35 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
+        internal static WNamedTableReference GetNamedTableReference(GremlinVariable gremlinVar)
+        {
+            return new WNamedTableReference()
+            {
+                Alias = new Identifier() { Value = gremlinVar.VariableName },
+                TableObjectString = "node",
+                TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
+            };
+        }
+
         internal static WBooleanExpression GetHasKeyBooleanExpression(GremlinVariable currVar, string key)
         {
             WFunctionCall functionCall = new WFunctionCall()
             {
                 FunctionName = GremlinUtil.GetIdentifier("IS_DEFINED"),
                 Parameters = new List<WScalarExpression>()
+                {
+                    new WColumnReferenceExpression()
                     {
-                        new WColumnReferenceExpression() { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(currVar.VariableName, key) }
+                        MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(currVar.VariableName, key)
                     }
+                }
             };
             WBooleanExpression booleanExpr = new WBooleanComparisonExpression()
             {
                 ComparisonType = BooleanComparisonType.Equals,
                 FirstExpr = functionCall,
-                SecondExpr = new WColumnReferenceExpression() { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier("true") }
+                SecondExpr =
+                    new WColumnReferenceExpression() {MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier("true")}
             };
             return booleanExpr;
         }
@@ -267,7 +287,7 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WSelectScalarExpression GetSelectScalarExpression(WValueExpression valueExpr)
+        internal static WSelectScalarExpression GetSelectScalarExpression(WScalarExpression valueExpr)
         {
             return new WSelectScalarExpression() {SelectExpr = valueExpr};
         }
@@ -287,6 +307,32 @@ namespace GraphView.GremlinTranslationOps
             if (Order.Incr == order) return SortOrder.Ascending;
             if (Order.Shuffle == order) return SortOrder.NotSpecified;
             return SortOrder.Descending;
+        }
+
+        internal static WGroupingSpecification GetGroupingSpecification(string key)
+        {
+            return new WExpressionGroupingSpec()
+            {
+                Expression = GetColumnReferenceExpression(key)
+            };
+        }
+
+        internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(
+            Tuple<GremlinVariable, GremlinVariable, GremlinVariable> path)
+        {
+            return new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
+                GetSchemaObjectName(path.Item1.VariableName),
+                new WEdgeColumnReferenceExpression()
+                {
+                    MultiPartIdentifier = new WMultiPartIdentifier()
+                    {
+                        Identifiers = new List<Identifier>() {new Identifier() {Value = "Edge"}}
+                    },
+                    Alias = path.Item2.VariableName,
+                    MinLength = 1,
+                    MaxLength = 1,
+                }
+            );
         }
     }
 }

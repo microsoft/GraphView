@@ -33,6 +33,7 @@ namespace GraphView
         {
             GremlinToSqlContext newContext = new GremlinToSqlContext();
             newContext.RootVariable = InheritedVariable;
+            newContext.SetCurrVariable(InheritedVariable);
             newContext.FromOuter = true;
 
             return newContext;
