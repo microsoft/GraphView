@@ -124,6 +124,7 @@ namespace GraphView
 
     public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
     {
+        internal WEdgeType EdgeType;
         internal string Alias;
         internal int MinLength { get; set; }
         internal int MaxLength { get; set; }
@@ -146,6 +147,13 @@ namespace GraphView
             }
             
         }
+    }
+
+    public enum WEdgeType
+    {
+        InEdge,
+        OutEdge,
+        BothEdge
     }
 
     /// <summary>

@@ -320,6 +320,8 @@ namespace GraphView.GremlinTranslationOps
         internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(
             Tuple<GremlinVariable, GremlinVariable, GremlinVariable> path)
         {
+            
+
             return new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
                 GetSchemaObjectName(path.Item1.VariableName),
                 new WEdgeColumnReferenceExpression()

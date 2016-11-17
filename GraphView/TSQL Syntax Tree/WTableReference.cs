@@ -140,7 +140,10 @@ namespace GraphView
             TableObjectString = TableObjectName == null ? TableObjectString : TableObjectName.ToString();
 
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}{1}", indent, TableObjectString);
+            if (Low != null && High != null)
+                sb.AppendFormat("{0}{1}[{2},{3}]", indent, TableObjectString, Low, High);
+            else
+                sb.AppendFormat("{0}{1}", indent, TableObjectString);
             if (Alias != null)
                 sb.Append(" AS " + string.Format("[{0}]", Alias.Value));
             if (TableHints != null && TableHints.Count > 0)

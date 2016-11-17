@@ -359,7 +359,12 @@ namespace GraphView
         //public GraphTraversal2 map(Traversal<?, E2> mapTraversal)
         //public GraphTraversal2 mapKeys() //Deprecated
         //public GraphTraversal2 mapvalues() //Deprecated
-        //public GraphTraversal2 match(Traversal<?, ?>..matchTraversals)
+
+        public GraphTraversal2 match(params GraphTraversal2[] matchTraversals)
+        {
+            AddGremlinOperator(new GremlinMatchOp(matchTraversals));
+            return this;
+        }
 
         public GraphTraversal2 max()
         {

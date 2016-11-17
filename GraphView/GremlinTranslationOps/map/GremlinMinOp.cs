@@ -18,7 +18,9 @@ namespace GraphView.GremlinTranslationOps.map
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("count"));
+            List<string> parameters = new List<string>();
+
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("min"));
             return new GremlinToSqlContext();
         }
         public override WSqlFragment ToWSqlFragment()

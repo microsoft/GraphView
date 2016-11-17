@@ -18,13 +18,13 @@ namespace GremlinTranslationOperator.Tests
         public void nextTest()
         {
             GraphTraversal2 g = new GraphTraversal2();
-            //g.V().As("a").Out().As("b").addE("123").@from("a").next(); //pass
+            g.V().As("a").Out().As("b").addE("123").@from("a").next(); //pass
+            //g.V().As("a").Out().As("b").addE("123").@from("a").to("b").next(); //pass
             //g.V().addV().next(); //pass
             //g.V().addV().property("name", "jinjin").next(); //pass
 
             // TODO: add property 
             //g.V().property("name", "jinjin").next();
-
 
             //g.constant("123").next(); //pass
             //g.V().drop().next(); //pass
@@ -47,6 +47,11 @@ namespace GremlinTranslationOperator.Tests
 
             //g.V().bothE("create").next(); //pass
             //g.V().count().next();  //pass
+            //g.V().values("age").next(); //pass
+            //g.V().values("name", "age").next(); //pass
+            g.V().values("age").max().next();
+            g.V().values("age").min().next();
+            g.V().values("age").mean().next();
             //g.V().fold().next();
             //g.V().fold().unfold().next();
 
