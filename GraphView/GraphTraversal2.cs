@@ -476,6 +476,7 @@ namespace GraphView
 
         public GraphTraversal2 range(long low, long high)
         {
+            AddGremlinOperator(new GremlinRangeOp(low, high));
             return this;
         }
 
@@ -509,6 +510,7 @@ namespace GraphView
 
         public GraphTraversal2 sum()
         {
+            AddGremlinOperator(new GremlinSumOp());
             return this;
         }
 

@@ -10,6 +10,14 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinVariable
     {
         public string VariableName { get; set; }
+        public long Low;
+        public long High;
+
+        public GremlinVariable()
+        {
+            Low = Int64.MinValue;
+            High = Int64.MaxValue;
+        }
 
         public override int GetHashCode()
         {
@@ -78,59 +86,47 @@ namespace GraphView.GremlinTranslationOps
         private static long _count = 0;
     }
 
-    internal class GremlinJoinEdgeVariable : GremlinEdgeVariable
-    {
-        public GremlinVariable LeftVariable;
-        public GremlinVariable RightVariable;
-        public GremlinJoinEdgeVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
-        {
-            LeftVariable = leftGremlinVariable;
-            RightVariable = righGremlinVariable;
+    //internal class GremlinJoinEdgeVariable : GremlinEdgeVariable
+    //{
+    //    public GremlinVariable LeftVariable;
+    //    public GremlinVariable RightVariable;
+    //    public GremlinJoinEdgeVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
+    //    {
+    //        LeftVariable = leftGremlinVariable;
+    //        RightVariable = righGremlinVariable;
 
-            //automaticlly generate the name of node
-            VariableName = "JE_" + _count.ToString();
+    //        //automaticlly generate the name of node
+    //        VariableName = "JE_" + _count.ToString();
+    //        _count += 1;
+    //    }
+    //    private static long _count = 0;
+    //}
+
+    internal class GremlinDerivedVariable: GremlinVariable
+    {
+        public WSelectQueryBlock SelectQueryBlock;
+        public GremlinDerivedVariable(WSqlStatement selectQueryBlock)
+        {
+            VariableName = "D_" + _count.ToString();
             _count += 1;
+            SelectQueryBlock = selectQueryBlock as WSelectQueryBlock;
         }
         private static long _count = 0;
     }
 
-    internal class GremlinDerivedVariable: GremlinVariable
+    internal class GremlinScalarVariable : GremlinDerivedVariable
     {
-        public WQueryDerivedTable QueryDerivedTable;
-        public GremlinDerivedVariable(WSqlStatement selectQueryBlock)
-        {
-            QueryDerivedTable = new WQueryDerivedTable()
-            {
-                QueryExpr = selectQueryBlock as WSelectQueryExpression,
-                Alias = GremlinUtil.GetIdentifier(VariableName)
-            };
-        }
-    }
-
-    internal class GremlinScalarVariable : GremlinVariable
-    {
-        
+        public GremlinScalarVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock) {}
     }
 
     internal class GremlinMapVariable : GremlinDerivedVariable
     {
-        public GremlinMapVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock)
-        {
-            VariableName = "M_" + _count.ToString();
-            _count += 1;
-        }
-
-        private static long _count = 0;
+        public GremlinMapVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock) {}
     }
 
     internal class GremlinListVariable : GremlinDerivedVariable
     {
-        public GremlinListVariable(WSqlStatement selectQueryBlock) : base(selectQueryBlock)
-        {
-            VariableName = "L_" + _count.ToString();
-            _count += 1;
-        }
-        private static long _count = 0;
+        public GremlinListVariable(WSqlStatement selectQueryBlock) : base(selectQueryBlock) {}
     }
 
     internal class GremlinPropertyVariable : GremlinVariable
@@ -179,22 +175,6 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
-    internal class GremlinRangeVariable: GremlinVariable
-    {
-        public long Low;
-        public long High;
-        public GremlinRangeVariable(long low, long high)
-        {
-            Low = low;
-            High = high;
-
-            VariableName = "R_" + _count.ToString();
-            _count += 1;
-        }
-        private static long _count = 0;
-
-    }
-
     public enum Scope
     {
         local,
@@ -204,7 +184,7 @@ namespace GraphView.GremlinTranslationOps
     internal class Projection
     {
         public GremlinVariable CurrVariable;
-        public virtual WSelectScalarExpression ToSelectScalarExpression()
+        public virtual WSelectElement ToSelectElement()
         {
             return null;
         }
@@ -220,21 +200,13 @@ namespace GraphView.GremlinTranslationOps
             Value = value;
         }
 
-        public override WSelectScalarExpression ToSelectScalarExpression()
+        public override WSelectElement ToSelectElement()
         {
             return new WSelectScalarExpression()
                 {
                     SelectExpr = new WColumnReferenceExpression()
-                    { MultiPartIdentifier = GetProjectionIndentifiers() }
+                    { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(CurrVariable.VariableName, Value) }
                 };
-        }
-
-        public WMultiPartIdentifier GetProjectionIndentifiers()
-        {
-            var identifiers = new List<Identifier>();
-            identifiers.Add(new Identifier() { Value = CurrVariable.VariableName });
-            identifiers.Add(new Identifier() { Value = Value });
-            return new WMultiPartIdentifier() { Identifiers = identifiers };
         }
     }
 
@@ -247,7 +219,7 @@ namespace GraphView.GremlinTranslationOps
             CurrVariable = gremlinVar;
             Value = value;
         }
-        public override WSelectScalarExpression ToSelectScalarExpression()
+        public override WSelectElement ToSelectElement()
         {
             return new WSelectScalarExpression() { SelectExpr = GremlinUtil.GetValueExpression(Value) };
         }
@@ -262,9 +234,19 @@ namespace GraphView.GremlinTranslationOps
             CurrVariable = gremlinVar;
             FunctionCall = functionCall;
         }
-        public override WSelectScalarExpression ToSelectScalarExpression()
+        public override WSelectElement ToSelectElement()
         {
             return new WSelectScalarExpression() { SelectExpr = FunctionCall };
+        }
+    }
+
+    internal class StarProjection : Projection
+    {
+        public StarProjection() { }
+
+        public override WSelectElement ToSelectElement()
+        {
+            return new WSelectStarExpression();
         }
     }
 

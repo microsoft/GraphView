@@ -32,11 +32,17 @@ namespace GraphView.GremlinTranslationOps.filter
             //newContext.SetDefaultProjection(newDerivedVariable);
             //newContext.SetCurrVariable(newDerivedVariable);
 
-            GremlinRangeVariable newVar = new GremlinRangeVariable(-1, Limit);
-            inputContext.AddNewVariable(newVar);
-            // TODO
-            // Projection ??
-            inputContext.SetCurrVariable(newVar);
+            if (inputContext.CurrVariable is GremlinEdgeVariable)
+            {
+                var existInPath = inputContext.Paths.Find(p => p.Item2 == inputContext.CurrVariable);
+                existInPath.Item3.Low = 0 - Limit;
+                existInPath.Item3.High = 0;
+            }
+            else
+            {
+                inputContext.CurrVariable.Low = 0 - Limit;
+                inputContext.CurrVariable.High = 0;
+            }
 
             return inputContext;
         }

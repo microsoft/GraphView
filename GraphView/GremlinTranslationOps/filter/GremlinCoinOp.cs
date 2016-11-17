@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps.filter
 
             WColumnReferenceExpression columnRefExpr =
                 GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName);
-            WValueExpression valueExpr = GremlinUtil.GetValueExpression(Probability.ToString());
+            WValueExpression valueExpr = GremlinUtil.GetValueExpression(Probability);
             WFunctionCall functionCall = GremlinUtil.GetFunctionCall("coin", columnRefExpr, valueExpr);
 
             WColumnReferenceExpression trueExpr = GremlinUtil.GetColumnReferenceExpression("true");

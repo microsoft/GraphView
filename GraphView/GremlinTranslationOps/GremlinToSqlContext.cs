@@ -115,6 +115,12 @@ namespace GraphView.GremlinTranslationOps
             Projection.Clear();
             AddProjection(CurrVariable, new ConstantProjection(CurrVariable, value as string));
         }
+
+        public void SetStarProjection(object value)
+        {
+            Projection.Clear();
+            AddProjection(CurrVariable, new StarProjection());
+        }
         public void ClearProjection()
         {
             Projection.Clear();
@@ -158,14 +164,14 @@ namespace GraphView.GremlinTranslationOps
 
         public WSqlStatement ToSelectSqlQuery()
         {
+            // Construct the new Select Component
+            var newSelectElementClause = GetSelectElement();
+
             //Consturct the new From Cluase;
             var newFromClause = GetFromClause();
 
             // Construct the new Match Cluase
             var newMatchClause = GetMatchClause();
-
-            // Construct the new Select Component
-            var newSelectElementClause = GetSelectElement();
 
             // Construct the Where Clause
             var newWhereClause = GetWhereClause();
@@ -255,43 +261,30 @@ namespace GraphView.GremlinTranslationOps
             var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
             for (var i = 0; i < RemainingVariableList.Count; i++)
             {
-                if (RemainingVariableList[i] is GremlinVertexVariable)
+                GremlinVariable currVar = RemainingVariableList[i];
+                if (currVar is GremlinJoinVertexVariable)
                 {
-                    if (RemainingVariableList[i] is GremlinJoinVertexVariable)
-                    {
-                        //across apply tvf as v3
-                        GremlinJoinVertexVariable currVar = RemainingVariableList[i] as GremlinJoinVertexVariable;;
-                        GremlinVariable lastVar = RemainingVariableList[i - 1];
-                        newFromClause.TableReferences.RemoveAt(newFromClause.TableReferences.Count - 1);
+                    //across apply tvf as v3
+                    GremlinVariable lastVar = RemainingVariableList[i - 1];
+                    newFromClause.TableReferences.RemoveAt(newFromClause.TableReferences.Count - 1);
 
-                        WSchemaObjectFunctionTableReference secondTableRef = new WSchemaObjectFunctionTableReference()
-                        {
-                            Alias = GremlinUtil.GetIdentifier(RemainingVariableList[i].VariableName),
-                            Parameters = new List<WScalarExpression>()
-                            {
-                                GremlinUtil.GetColumnReferenceExpression(currVar.LeftVariable.VariableName),
-                                GremlinUtil.GetColumnReferenceExpression(currVar.RightVariable.VariableName )
-                            },
-                            SchemaObject = new WSchemaObjectName()
-                            {
-                                Identifiers = new List<Identifier>() { GremlinUtil.GetIdentifier("BothV") }
-                            }
-                        };
-
-                        WUnqualifiedJoin uniUnqualifiedJoin = new WUnqualifiedJoin()
-                        {
-                            FirstTableRef = GremlinUtil.GetNamedTableReference(lastVar),
-                            SecondTableRef = secondTableRef,
-                            UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-                        };
-                        newFromClause.TableReferences.Add(uniUnqualifiedJoin);
-                    }
-                    else
+                    WUnqualifiedJoin unqualifiedJoin = GremlinUtil.GetUnqualifiedJoin(currVar, lastVar);
+                    newFromClause.TableReferences.Add(unqualifiedJoin);
+                }
+                else if (currVar is GremlinVertexVariable)
+                {
+                    WNamedTableReference tableReference = GremlinUtil.GetNamedTableReference(currVar);
+                    newFromClause.TableReferences.Add(tableReference);
+                }
+                else if (currVar is GremlinScalarVariable)
+                {
+                    GremlinScalarVariable scalarVariable = currVar as GremlinScalarVariable;
+                    WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
                     {
-                        WNamedTableReference TR = null;
-                        TR = GremlinUtil.GetNamedTableReference(RemainingVariableList[i]);
-                        newFromClause.TableReferences.Add(TR);
-                    }
+                        Alias = GremlinUtil.GetIdentifier(scalarVariable.VariableName),
+                        QueryExpr = scalarVariable.SelectQueryBlock
+                    };
+                    newFromClause.TableReferences.Add(queryDerivedTable);
                 }
             }
             return newFromClause;
@@ -317,7 +310,7 @@ namespace GraphView.GremlinTranslationOps
             var newSelectElementClause = new List<WSelectElement>();
             foreach (var dict in Projection)
             {
-                newSelectElementClause.Add(dict.Item2.ToSelectScalarExpression());
+                newSelectElementClause.Add(dict.Item2.ToSelectElement());
             }
             return newSelectElementClause;
         }

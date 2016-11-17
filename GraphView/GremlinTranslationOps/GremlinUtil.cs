@@ -18,6 +18,14 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
+        internal static WColumnReferenceExpression GetStarColumnReferenceExpression()
+        {
+            return new WColumnReferenceExpression()
+            {
+                ColumnType = ColumnType.Wildcard,
+            };
+        }
+
         internal static WMultiPartIdentifier GetMultiPartIdentifier(params string[] parts)
         {
             return ConvertListToMultiPartIdentifier(parts);
@@ -179,20 +187,15 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WExistsPredicate GetExistPredicate(WSqlStatement SubQueryExpr)
+        internal static WExistsPredicate GetExistPredicate(WSqlStatement subQueryExpr)
         {
             return new WExistsPredicate()
             {
-                Subquery = GetScalarSubquery(SubQueryExpr)
-            };
-        }
-
-        internal static WScalarSubquery GetScalarSubquery(WSqlStatement SubQueryExpr)
-        {
-            return new WScalarSubquery
-            {
-                SubQueryExpr = SubQueryExpr as WSelectQueryExpression
-            };
+                Subquery = new WScalarSubquery
+                {
+                    SubQueryExpr = subQueryExpr as WSelectQueryExpression
+                }
+        };
         }
 
         internal static WBooleanExpression ConcatBooleanExpressionListWithOr(List<WBooleanExpression> booleanExprList)
@@ -246,7 +249,9 @@ namespace GraphView.GremlinTranslationOps
             {
                 Alias = new Identifier() { Value = gremlinVar.VariableName },
                 TableObjectString = "node",
-                TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" })
+                TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" }),
+                Low = gremlinVar.Low,
+                High = gremlinVar.High
             };
         }
 
@@ -259,7 +264,7 @@ namespace GraphView.GremlinTranslationOps
                 {
                     new WColumnReferenceExpression()
                     {
-                        MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(currVar.VariableName, key)
+                        MultiPartIdentifier = GetMultiPartIdentifier(currVar.VariableName, key)
                     }
                 }
             };
@@ -268,7 +273,7 @@ namespace GraphView.GremlinTranslationOps
                 ComparisonType = BooleanComparisonType.Equals,
                 FirstExpr = functionCall,
                 SecondExpr =
-                    new WColumnReferenceExpression() {MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier("true")}
+                    new WColumnReferenceExpression() {MultiPartIdentifier = GetMultiPartIdentifier("true")}
             };
             return booleanExpr;
         }
@@ -282,7 +287,7 @@ namespace GraphView.GremlinTranslationOps
             }
             return new WFunctionCall()
             {
-                FunctionName = GremlinUtil.GetIdentifier(functionName),
+                FunctionName = GetIdentifier(functionName),
                 Parameters = parameters
             };
         }
@@ -320,7 +325,7 @@ namespace GraphView.GremlinTranslationOps
         internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(
             Tuple<GremlinVariable, GremlinVariable, GremlinVariable> path)
         {
-            
+            WEdgeType edgeType = GetEdgeType(path.Item2);
 
             return new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
                 GetSchemaObjectName(path.Item1.VariableName),
@@ -333,8 +338,82 @@ namespace GraphView.GremlinTranslationOps
                     Alias = path.Item2.VariableName,
                     MinLength = 1,
                     MaxLength = 1,
+                    EdgeType =  edgeType
                 }
             );
+        }
+
+        internal static WEdgeType GetEdgeType(GremlinVariable edgeVar)
+        {
+            if ((edgeVar as GremlinEdgeVariable).EdgeType == GremlinEdgeType.BothEdge)
+                return WEdgeType.BothEdge;
+            if ((edgeVar as GremlinEdgeVariable).EdgeType == GremlinEdgeType.InEdge)
+                return WEdgeType.InEdge;
+            if ((edgeVar as GremlinEdgeVariable).EdgeType == GremlinEdgeType.OutEdge)
+                return WEdgeType.OutEdge;
+
+            return WEdgeType.OutEdge;
+        }
+
+        internal static WBooleanParenthesisExpression GetBooleanParenthesisExpression(WBooleanExpression booleanExpr)
+        {
+            return new WBooleanParenthesisExpression()
+            {
+                Expression = booleanExpr
+            };
+        }
+
+        internal static WUnqualifiedJoin GetUnqualifiedJoin(GremlinVariable currVar, GremlinVariable lastVar)
+        {
+            var joinVertexVar = currVar as GremlinJoinVertexVariable;
+            WSchemaObjectFunctionTableReference secondTableRef = new WSchemaObjectFunctionTableReference()
+            {
+                Alias = GremlinUtil.GetIdentifier(currVar.VariableName),
+                Parameters = new List<WScalarExpression>()
+                {
+                    GetColumnReferenceExpression(joinVertexVar.LeftVariable.VariableName),
+                    GetColumnReferenceExpression(joinVertexVar.RightVariable.VariableName )
+                },
+                SchemaObject = new WSchemaObjectName()
+                {
+                    Identifiers = new List<Identifier>() { GremlinUtil.GetIdentifier("BothV") }
+                }
+            };
+
+            return new WUnqualifiedJoin()
+            {
+                FirstTableRef = GetNamedTableReference(lastVar),
+                SecondTableRef = secondTableRef,
+                UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+            };
+        }
+
+        internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext)
+        {
+            if (inputContext.Projection.Count > 1) throw new Exception("Can't process more than two projection");
+
+            Projection projection = inputContext.Projection.First().Item2;
+            WScalarExpression parameter = null;
+            if (projection is ValueProjection)
+            {
+                string projectionValue = (projection as ValueProjection).Value;
+                parameter = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, projectionValue);
+            }
+            else
+            {
+                //projection is ConstantProjection || projection is StarProjection
+                parameter = GremlinUtil.GetStarColumnReferenceExpression();
+            }
+
+            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall(functionName, parameter));
+
+            GremlinToSqlContext newContext = new GremlinToSqlContext();
+            GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
+            newContext.AddNewVariable(newScalarVariable);
+            newContext.SetCurrVariable(newScalarVariable);
+            newContext.SetStarProjection(newScalarVariable);
+
+            return newContext;
         }
     }
 }

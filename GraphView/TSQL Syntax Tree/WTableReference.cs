@@ -140,8 +140,10 @@ namespace GraphView
             TableObjectString = TableObjectName == null ? TableObjectString : TableObjectName.ToString();
 
             var sb = new StringBuilder();
-            if (Low != null && High != null)
-                sb.AppendFormat("{0}{1}[{2},{3}]", indent, TableObjectString, Low, High);
+            if (Low < 0 && High == 0)
+                sb.AppendFormat("{0}{1}[{2}:]", indent, TableObjectString, Low);
+            else if (Low != Int64.MinValue && High != Int64.MaxValue)
+                sb.AppendFormat("{0}{1}[{2}:{3}]", indent, TableObjectString, Low, High);
             else
                 sb.AppendFormat("{0}{1}", indent, TableObjectString);
             if (Alias != null)

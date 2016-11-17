@@ -57,7 +57,7 @@ namespace GraphView.GremlinTranslationOps.filter
             }
 
             // Puts andExpression into inputContext
-            inputContext.AddPredicate(andExpression);
+            inputContext.AddPredicate(GremlinUtil.GetBooleanParenthesisExpression(andExpression));
 
             return inputContext;
         }

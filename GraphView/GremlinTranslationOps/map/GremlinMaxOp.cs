@@ -18,15 +18,8 @@ namespace GraphView.GremlinTranslationOps.map
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("max"));
-            return new GremlinToSqlContext();
-        }
 
-        public override WSqlFragment ToWSqlFragment()
-        {
-            GremlinToSqlContext inputContext = GetInputContext();
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("max"));
-            return inputContext.ToSqlQuery();
+            return GremlinUtil.ProcessByFunctionStep("max", inputContext);
         }
     }
 }

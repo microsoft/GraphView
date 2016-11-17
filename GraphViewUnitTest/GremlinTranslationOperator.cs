@@ -18,7 +18,7 @@ namespace GremlinTranslationOperator.Tests
         public void nextTest()
         {
             GraphTraversal2 g = new GraphTraversal2();
-            g.V().As("a").Out().As("b").addE("123").@from("a").next(); //pass
+            //g.V().As("a").Out().As("b").addE("123").@from("a").next(); //pass
             //g.V().As("a").Out().As("b").addE("123").@from("a").to("b").next(); //pass
             //g.V().addV().next(); //pass
             //g.V().addV().property("name", "jinjin").next(); //pass
@@ -43,28 +43,30 @@ namespace GremlinTranslationOperator.Tests
             //g.V().inE("create").next(); //pass
             //g.E().bothV().next(); //pass
 
-            //g.V().bothE().next();
+            //g.V().bothE().next(); //pass
 
             //g.V().bothE("create").next(); //pass
             //g.V().count().next();  //pass
             //g.V().values("age").next(); //pass
             //g.V().values("name", "age").next(); //pass
-            g.V().values("age").max().next();
-            g.V().values("age").min().next();
-            g.V().values("age").mean().next();
+            //g.V().values("age").max().next(); //pass
+            //g.V().values("age").min().next(); //pass
+            //g.V().values("age").mean().next(); //pass
+            //g.V().values("age").sum().next(); //pass
             //g.V().fold().next();
             //g.V().fold().unfold().next();
 
-            //g.V().sample(5).next(); // sample can't be predicate
-            //g.V().coin(0.5).next();
-            //g.V().limit(5).next();
-            //g.V().range(1, 5).next();
-            //g.V().tail(5).next();
+            //g.V().sample(5).next(); // pass
+            //g.V().coin(0.5).next(); //pass
+            //g.V().limit(5).next(); //pass
+            //g.V().range(1, 5).next(); //pass
+            //g.E().range(1, 5).next(); //pass
+            //g.V().tail(5).next(); //pass
             //g.V().@where("name", Predicate.eq("jinjin")).next(); //pass
             //g.V().@where("age", Predicate.neq(1)).next(); //pass
             //g.V().@where("name", Predicate.lt(1)).next(); //pass
             //g.V().@where("name", Predicate.gt(1)).next(); //pass
-            //g.V().@where("name", Predicate.gte(1)).next();
+            //g.V().@where("name", Predicate.gte(1)).next(); //pass
             //g.V().next();
 
             //g.V().and(GraphTraversal2.underscore().outE("knows"),
@@ -113,7 +115,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"SELECT 1, n_0.id FROM node n_0, node_n1 cross apply tvf(n_0, n_1) as n2 Group BY name";
+            const string q2 = @"SELECT count(*) FROM (select * from node n_1) as n_0 where (n_0.id = 1 or n_0.id = 2) and n_0.name = 'jinjin'";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();

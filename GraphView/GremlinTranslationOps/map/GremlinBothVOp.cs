@@ -19,9 +19,6 @@ namespace GraphView.GremlinTranslationOps.map
 
             var existInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);
 
-            //TODO
-            //v1 join v2 cross  .. as v3
-            //create new variable
             GremlinJoinVertexVariable newVariable = new GremlinJoinVertexVariable(existInPath.Item1, existInPath.Item3);
             inputContext.AddNewVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);

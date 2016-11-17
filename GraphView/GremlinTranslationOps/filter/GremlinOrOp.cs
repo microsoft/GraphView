@@ -55,7 +55,7 @@ namespace GraphView.GremlinTranslationOps.filter
             }
 
             // Puts orExpression into inputContext
-            inputContext.AddPredicate(orExpression);
+            inputContext.AddPredicate(GremlinUtil.GetBooleanParenthesisExpression(orExpression)); ;
             return inputContext;
         }
     }
