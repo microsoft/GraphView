@@ -154,10 +154,29 @@ namespace GraphView
         //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
         //public GraphTraversal2 cap(string sideEffectKey, params string[] sideEffectKeys)
         //public GraphTraversal2 choose(Function<E, M> choiceFunction)
-        //public GraphTraversal2 choose(Predicate<E> choosePredicate, Traversal<?, E2> trueChoice, Traversal<?, E2> falseChoice)
-        //public GraphTraversal2 choose(Traversal<?, ?>t traversalPredicate, Travaersal<?, E2> trueChoice, Traversal<?, E2> falseChoice)
-        //public GraphTraversal2 choose(Traversal<?, M> choiceTraversal)
-        //public GraphTraversal2 coalesce(Traversal<?, E2> ..coalesceTraversals)
+
+        public GraphTraversal2 choose(Predicate choosePredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
+        {
+            AddGremlinOperator(new GremlinChooseOp(choosePredicate, trueChoice, falseChoice));
+            return this;
+        }
+        public GraphTraversal2 choose(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
+        {
+            AddGremlinOperator(new GremlinChooseOp(traversalPredicate, trueChoice, falseChoice));
+            return this;
+        }
+
+        public GraphTraversal2 choose(GraphTraversal2 choiceTraversal)
+        {
+            AddGremlinOperator(new GremlinChooseOp(choiceTraversal));
+            return this;
+        }
+
+        public GraphTraversal2 coalesce(params GraphTraversal2[] coalesceTraversals)
+        {
+            AddGremlinOperator(new GremlinCoalesceStep(coalesceTraversals));
+            return this;
+        }
 
         public GraphTraversal2 coin(double probability)
         {
@@ -253,9 +272,11 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 has(string label, string propertyKey, Predicate predicate)
-        //{
-        //}
+        public GraphTraversal2 has(string label, string propertyKey, Predicate predicate)
+        {
+            AddGremlinOperator(new GremlinHasOp(label, propertyKey, predicate));
+            return this;
+        }
 
         public GraphTraversal2 has(string propertyKey, GraphTraversal2 propertyTraversal)
         {
@@ -290,8 +311,6 @@ namespace GraphView
         {
             return this;
         }
-
-
 
         public GraphTraversal2 id()
         {
@@ -404,9 +423,25 @@ namespace GraphView
 
 
         //public GraphTraversal2 not(Traversal<?, ?> notTraversal)
-        //public GraphTraversal2 option(M pickToken, Traversal<E, E2> traversalOption)
+        public GraphTraversal2 option(object pickToken, GraphTraversal2 traversalOption)
+        {
+            if (LastGremlinTranslationOp is GremlinChooseOp)
+            {
+                (LastGremlinTranslationOp as GremlinChooseOp).OptionDict[pickToken] = traversalOption;
+                return this;
+            }
+            else
+            {
+                throw new Exception("Option step only can follow by choose step.");
+            }
+        }
         //public GraphTraversal2 option(Traversal<E, E2 tarversalOption>
-        //public GraphTraversal2 optional(Traversal<E, E2> traversalOption)
+
+        public GraphTraversal2 optional(GraphTraversal2 traversalOption)
+        {
+            AddGremlinOperator(new GremlinOptionalOp(traversalOption));
+            return this;
+        }
 
         public GraphTraversal2 Or(params GraphTraversal2[] orTraversals)
         {

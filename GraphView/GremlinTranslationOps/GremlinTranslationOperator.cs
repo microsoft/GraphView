@@ -28,9 +28,17 @@ namespace GraphView
     internal class GremlinParentContextOp : GremlinTranslationOperator
     {
         public GremlinVariable InheritedVariable { get; set; }
+        public bool IsInheritedEntireContext = false;
+        public GremlinToSqlContext InheritedContext;
 
+        public void SetContext(GremlinToSqlContext context)
+        {
+            IsInheritedEntireContext = true;
+            InheritedContext = context;
+        }
         public override GremlinToSqlContext GetContext()
         {
+            if (IsInheritedEntireContext) return InheritedContext;
             GremlinToSqlContext newContext = new GremlinToSqlContext();
             newContext.RootVariable = InheritedVariable;
             newContext.SetCurrVariable(InheritedVariable);

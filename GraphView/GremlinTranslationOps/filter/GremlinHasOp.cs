@@ -22,6 +22,7 @@ namespace GraphView.GremlinTranslationOps.filter
             HasKey,
             HasKeyValue,
             HasLabelKeyValue,
+            HasLabelKeyPredicate,
             HasKeyPredicate,
             HasKeyTraversal,
 
@@ -69,6 +70,13 @@ namespace GraphView.GremlinTranslationOps.filter
         {
             Values = values;
             OpType = type;
+        }
+
+        public GremlinHasOp(string label, string propertyKey, Predicate predicate)
+        {
+            Label = label;
+            Key = propertyKey;
+            Predicate = predicate;
         }
 
         public override GremlinToSqlContext GetContext()
@@ -154,6 +162,10 @@ namespace GraphView.GremlinTranslationOps.filter
             else if (OpType == HasOpType.HasValue)
             {
 
+            }
+            else if (OpType == HasOpType.HasLabelKeyPredicate)
+            {
+                
             }
             return inputContext;
         }

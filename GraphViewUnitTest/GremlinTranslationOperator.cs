@@ -69,6 +69,14 @@ namespace GremlinTranslationOperator.Tests
             //g.V().@where("name", Predicate.gte(1)).next(); //pass
             //g.V().next();
 
+            //g.V().choose(GraphTraversal2.underscore().values("age"))
+            //    .option(1, GraphTraversal2.underscore().values("first_name"))
+            //    .option(2, GraphTraversal2.underscore().values("lase_name")).next(); //pass
+
+            //g.V().choose(GraphTraversal2.underscore().values("isMale"),
+            //    GraphTraversal2.underscore().values("first_name"),
+            //    GraphTraversal2.underscore().values("last_name")).next(); //pass
+
             //g.V().and(GraphTraversal2.underscore().outE("knows"),
             //            GraphTraversal2.underscore().@where("name", Predicate.eq("jinjin"))).values("name").next(); //pass
             //g.V().Or(GraphTraversal2.underscore().outE("knows"),
@@ -115,7 +123,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"SELECT count(*) FROM (select * from node n_1) as n_0 where (n_0.id = 1 or n_0.id = 2) and n_0.name = 'jinjin'";
+            const string q2 = @"SELECT * FROM node n_0 where (n_0.isTrue = 1) and not (n_0.isTrue = false)";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();

@@ -175,6 +175,16 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
+    internal class GremlinChooseVariable: GremlinVariable
+    {
+        public WChoose2 ChooseExpr;
+
+        public GremlinChooseVariable(WChoose2 chooseExpr)
+        {
+            ChooseExpr = chooseExpr;
+        }
+    }
+
     public enum Scope
     {
         local,
@@ -199,25 +209,31 @@ namespace GraphView.GremlinTranslationOps
             CurrVariable = gremlinVar;
             Value = value;
         }
+    }
+
+    internal class ColumnProjection : ValueProjection
+    {
+
+        public ColumnProjection(GremlinVariable gremlinVar, string value): base(gremlinVar, value)
+        {
+        }
 
         public override WSelectElement ToSelectElement()
         {
             return new WSelectScalarExpression()
-                {
-                    SelectExpr = new WColumnReferenceExpression()
-                    { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(CurrVariable.VariableName, Value) }
-                };
+            {
+                SelectExpr = new WColumnReferenceExpression()
+                { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(CurrVariable.VariableName, Value) }
+            };
         }
     }
 
-    internal class ConstantProjection : Projection
+    internal class ConstantProjection : ValueProjection
     {
         public string Value;
 
-        public ConstantProjection(GremlinVariable gremlinVar, string value)
+        public ConstantProjection(GremlinVariable gremlinVar, string value): base(gremlinVar, value)
         {
-            CurrVariable = gremlinVar;
-            Value = value;
         }
         public override WSelectElement ToSelectElement()
         {

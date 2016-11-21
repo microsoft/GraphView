@@ -15,6 +15,17 @@ namespace GraphView
         }
     }
 
+    public partial class WChoose2 : WTableReference
+    {
+        internal Dictionary<WScalarExpression, WSqlStatement> ChooseDict;
+        internal WBooleanExpression PredicateExpr;
+        internal WSqlStatement ChooseSqlStatement;
+        internal override string ToString(string indent)
+        {
+            return "WChoose(" + ChooseDict.Count.ToString() + ")";
+        }
+    } 
+
     public partial class WCoalesce : WSqlStatement
     {
         internal List<WSqlFragment> InputExpr { get; set; }

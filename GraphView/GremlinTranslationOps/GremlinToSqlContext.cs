@@ -85,7 +85,7 @@ namespace GraphView.GremlinTranslationOps
         //Projection
         public void AddProjection(GremlinVariable gremlinVar, string value)
         {
-            Projection.Add(new Tuple<GremlinVariable, Projection>(gremlinVar, new ValueProjection(gremlinVar, value)));
+            Projection.Add(new Tuple<GremlinVariable, Projection>(gremlinVar, new ColumnProjection(gremlinVar, value)));
         }
         public void AddProjection(GremlinVariable gremlinVar, Projection projection)
         {
@@ -94,7 +94,7 @@ namespace GraphView.GremlinTranslationOps
         public void SetDefaultProjection(GremlinVariable newGremlinVar)
         {
             Projection.Clear();
-            AddProjection(newGremlinVar, new ValueProjection(newGremlinVar, "id"));
+            AddProjection(newGremlinVar, new ColumnProjection(newGremlinVar, "id"));
         }
 
         public void SetCurrProjection(object value)
@@ -106,7 +106,7 @@ namespace GraphView.GremlinTranslationOps
             }
             else
             {
-                AddProjection(CurrVariable, new ValueProjection(CurrVariable, value as string));
+                AddProjection(CurrVariable, new ColumnProjection(CurrVariable, value as string));
             }
         }
 
@@ -285,6 +285,10 @@ namespace GraphView.GremlinTranslationOps
                         QueryExpr = scalarVariable.SelectQueryBlock
                     };
                     newFromClause.TableReferences.Add(queryDerivedTable);
+                }
+                else if (currVar is GremlinChooseVariable)
+                {
+                    newFromClause.TableReferences.Add((currVar as GremlinChooseVariable).ChooseExpr);
                 }
             }
             return newFromClause;

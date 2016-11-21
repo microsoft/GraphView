@@ -397,15 +397,15 @@ namespace GraphView.GremlinTranslationOps
             if (projection is ValueProjection)
             {
                 string projectionValue = (projection as ValueProjection).Value;
-                parameter = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, projectionValue);
+                parameter = GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, projectionValue);
             }
             else
             {
                 //projection is ConstantProjection || projection is StarProjection
-                parameter = GremlinUtil.GetStarColumnReferenceExpression();
+                parameter = GetStarColumnReferenceExpression();
             }
 
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall(functionName, parameter));
+            inputContext.SetCurrProjection(GetFunctionCall(functionName, parameter));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
             GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
@@ -415,5 +415,20 @@ namespace GraphView.GremlinTranslationOps
 
             return newContext;
         }
+
+        internal static void InheritedVariableFromParent(GremlinTranslationOperator op, GremlinToSqlContext inputContext)
+        {
+            while (op.InputOperator != null)
+            {
+                op = op.InputOperator;
+            }
+            if (op.GetType() == typeof(GremlinParentContextOp))
+            {
+                GremlinParentContextOp rootAsContextOp = op as GremlinParentContextOp;
+                rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
+            }
+        }
+
+        //internal static void GetTrue
     }
 }

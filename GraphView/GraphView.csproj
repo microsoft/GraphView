@@ -67,6 +67,7 @@
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
+    <Compile Include="GremlinTranslationOps\branch\GremlinChooseOp.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinAndOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinCoinOp.cs" />
@@ -88,6 +89,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinAddVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinCoalesceStep.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinConstantOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinFoldStep.cs" />
@@ -99,6 +101,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinMaxOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMeanOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMinOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinOptionalOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOrderOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutOp.cs" />
