@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -20,9 +21,10 @@ namespace GraphView
         internal Dictionary<WScalarExpression, WSqlStatement> ChooseDict;
         internal WBooleanExpression PredicateExpr;
         internal WSqlStatement ChooseSqlStatement;
+        internal Identifier Alias;
         internal override string ToString(string indent)
         {
-            return "WChoose(" + ChooseDict.Count.ToString() + ")";
+            return "WChoose(" + ChooseDict.Count.ToString() + ") AS" + "[" + Alias.Value + "]";
         }
     } 
 
@@ -38,4 +40,15 @@ namespace GraphView
             return string.Join("", ChooseString);
         }
     }
+
+    public partial class WCoalesce2 : WTableReference
+    {
+        internal Identifier Alias;
+        internal List<WSqlStatement> CoalesceQuery;
+
+        internal override string ToString(string indent)
+        {
+            return "WCoalesce2(" + CoalesceQuery.Count.ToString() + ") AS" + "[" + Alias.Value + "]";
+        }
+    } 
 }

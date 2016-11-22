@@ -181,8 +181,26 @@ namespace GraphView.GremlinTranslationOps
 
         public GremlinChooseVariable(WChoose2 chooseExpr)
         {
+            VariableName = "Choose_" + _count.ToString();
+            _count += 1;
             ChooseExpr = chooseExpr;
+            ChooseExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
         }
+        private static long _count = 0;
+    }
+
+    internal class GremlinCoalesceVariable : GremlinVariable
+    {
+        public WCoalesce2 CoalesceExpr;
+
+        public GremlinCoalesceVariable(WCoalesce2 coalesceExpr)
+        {
+            VariableName = "Coalesce_" + _count.ToString();
+            _count += 1;
+            CoalesceExpr = coalesceExpr;
+            CoalesceExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
+        }
+        private static long _count = 0;
     }
 
     public enum Scope

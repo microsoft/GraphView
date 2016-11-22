@@ -77,6 +77,9 @@ namespace GremlinTranslationOperator.Tests
             //    GraphTraversal2.underscore().values("first_name"),
             //    GraphTraversal2.underscore().values("last_name")).next(); //pass
 
+            //g.V().coalesce(GraphTraversal2.underscore().outE("'knows'"),
+            //                GraphTraversal2.underscore().outE("'created'")).next(); //pass
+
             //g.V().and(GraphTraversal2.underscore().outE("knows"),
             //            GraphTraversal2.underscore().@where("name", Predicate.eq("jinjin"))).values("name").next(); //pass
             //g.V().Or(GraphTraversal2.underscore().outE("knows"),

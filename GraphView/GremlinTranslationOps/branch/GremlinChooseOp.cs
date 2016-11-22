@@ -14,7 +14,7 @@ namespace GraphView.GremlinTranslationOps.branch
         public GremlinTranslationOperator FalseChocieOperator;
         public GremlinTranslationOperator ChoiceOperator;
         public Predicate Predicate;
-        public ChooseType type;
+        public ChooseType Type;
         public Dictionary<object, GraphTraversal2> OptionDict;
 
         public GremlinChooseOp(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice,
@@ -23,14 +23,14 @@ namespace GraphView.GremlinTranslationOps.branch
             PredicateOperator = traversalPredicate.LastGremlinTranslationOp;
             TrueChoiceOperator = trueChoice.LastGremlinTranslationOp;
             FalseChocieOperator = falseChoice.LastGremlinTranslationOp;
-            type = ChooseType.TraversalPredicate;
+            Type = ChooseType.TraversalPredicate;
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
 
         public GremlinChooseOp(GraphTraversal2 choiceTraversal)
         {
             ChoiceOperator = choiceTraversal.LastGremlinTranslationOp;
-            type = ChooseType.Option;
+            Type = ChooseType.Option;
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
 
@@ -39,7 +39,7 @@ namespace GraphView.GremlinTranslationOps.branch
             Predicate = predicate;
             TrueChoiceOperator = trueChoice.LastGremlinTranslationOp;
             FalseChocieOperator = falseChoice.LastGremlinTranslationOp;
-            type = ChooseType.Predicate;
+            Type = ChooseType.Predicate;
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
 
@@ -51,7 +51,7 @@ namespace GraphView.GremlinTranslationOps.branch
             WScalarExpression trueExpr = GremlinUtil.GetColumnReferenceExpression("true");
             WScalarExpression falseExpr = GremlinUtil.GetColumnReferenceExpression("false");
 
-            switch (type)
+            switch (Type)
             {
                 case ChooseType.Predicate:
                     var value = (inputContext.Projection.First().Item2 as ValueProjection).Value;

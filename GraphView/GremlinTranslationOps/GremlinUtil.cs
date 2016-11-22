@@ -394,9 +394,9 @@ namespace GraphView.GremlinTranslationOps
 
             Projection projection = inputContext.Projection.First().Item2;
             WScalarExpression parameter = null;
-            if (projection is ValueProjection)
+            if (projection is ColumnProjection)
             {
-                string projectionValue = (projection as ValueProjection).Value;
+                string projectionValue = (projection as ColumnProjection).Value;
                 parameter = GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, projectionValue);
             }
             else

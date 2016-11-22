@@ -290,6 +290,10 @@ namespace GraphView.GremlinTranslationOps
                 {
                     newFromClause.TableReferences.Add((currVar as GremlinChooseVariable).ChooseExpr);
                 }
+                else if (currVar is GremlinCoalesceVariable)
+                {
+                    newFromClause.TableReferences.Add((currVar as GremlinCoalesceVariable).CoalesceExpr);
+                }
             }
             return newFromClause;
         }
