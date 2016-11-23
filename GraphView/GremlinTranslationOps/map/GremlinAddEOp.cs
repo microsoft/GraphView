@@ -21,7 +21,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
             GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, inputContext.CurrVariable as GremlinVertexVariable);
             newAddEVar.EdgeLabel = EdgeLabel;
-            inputContext.AddNewVariable(newAddEVar);
+            inputContext.AddNewVariable(newAddEVar, Labels);
             inputContext.SetCurrVariable(newAddEVar);
             inputContext.ClearProjection();
 
@@ -43,10 +43,17 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinUtil.CheckIsGremlinAddEVariable(inputContext.CurrVariable);
-            GremlinUtil.CheckIsGremlinVertexVariable(inputContext.AliasToGremlinVariable[StepLabel]);
+            GremlinVariable fromVariable = null;
+            foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
+            {
+                if (aliasToGremlinVariable.Item1 == StepLabel)
+                {
+                    GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
+                    fromVariable = aliasToGremlinVariable.Item2;
+                }
+            }
 
-            (inputContext.CurrVariable as GremlinAddEVariable).FromVariable =
-                inputContext.AliasToGremlinVariable[StepLabel] as GremlinVertexVariable;
+            (inputContext.CurrVariable as GremlinAddEVariable).FromVariable = fromVariable as GremlinVertexVariable;
             return inputContext;
         }
     }
@@ -65,10 +72,16 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinUtil.CheckIsGremlinAddEVariable(inputContext.CurrVariable);
-            GremlinUtil.CheckIsGremlinVertexVariable(inputContext.AliasToGremlinVariable[StepLabel]);
-
-            (inputContext.CurrVariable as GremlinAddEVariable).ToVariable =
-                inputContext.AliasToGremlinVariable[StepLabel] as GremlinVertexVariable;
+            GremlinVariable toVariable = null;
+            foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
+            {
+                if (aliasToGremlinVariable.Item1 == StepLabel)
+                {
+                    GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
+                    toVariable = aliasToGremlinVariable.Item2;
+                }
+            }
+            (inputContext.CurrVariable as GremlinAddEVariable).ToVariable =toVariable as GremlinVertexVariable;
             return inputContext;
         }
     }

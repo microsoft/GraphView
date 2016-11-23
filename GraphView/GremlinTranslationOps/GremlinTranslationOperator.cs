@@ -7,6 +7,7 @@ namespace GraphView
 {
     internal abstract class GremlinTranslationOperator
     {
+        public List<string> Labels = new List<string>();
         public GremlinTranslationOperator InputOperator;
         public virtual GremlinToSqlContext GetContext()
         {
@@ -22,6 +23,16 @@ namespace GraphView
         }
         public virtual WSqlFragment ToWSqlFragment() {
             return GetContext().ToSqlQuery();
+        }
+
+        public List<string> GetLabels()
+        {
+            return Labels;
+        }
+
+        public void ClearLabels()
+        {
+            Labels.Clear();
         }
     }
     

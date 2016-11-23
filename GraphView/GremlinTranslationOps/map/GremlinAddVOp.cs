@@ -29,7 +29,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
             GremlinAddVVariable newAddEVar = new GremlinAddVVariable();
-            inputContext.AddNewVariable(newAddEVar);
+            inputContext.AddNewVariable(newAddEVar, Labels);
             inputContext.SetCurrVariable(newAddEVar);
             inputContext.ClearProjection();
 

@@ -14,9 +14,9 @@ namespace GraphView.GremlinTranslationOps
             GremlinVertexVariable sourceVertex = new GremlinVertexVariable();
             GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable();
             GremlinVertexVariable sinkVertex = new GremlinVertexVariable();
-            inputContext.AddNewVariable(sourceVertex);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.AddNewVariable(sinkVertex);
+            inputContext.AddNewVariable(sourceVertex, Labels);
+            inputContext.AddNewVariable(newEdgeVar, Labels);
+            inputContext.AddNewVariable(sinkVertex, Labels);
             inputContext.SetCurrVariable(newEdgeVar);
             inputContext.SetDefaultProjection(newEdgeVar);
             inputContext.Paths.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>(sourceVertex, newEdgeVar, sinkVertex));

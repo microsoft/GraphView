@@ -388,7 +388,7 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext)
+        internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext, List<string> labels)
         {
             if (inputContext.Projection.Count > 1) throw new Exception("Can't process more than two projection");
 
@@ -409,7 +409,7 @@ namespace GraphView.GremlinTranslationOps
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
             GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
-            newContext.AddNewVariable(newScalarVariable);
+            newContext.AddNewVariable(newScalarVariable, labels);
             newContext.SetCurrVariable(newScalarVariable);
             newContext.SetStarProjection(newScalarVariable);
 
@@ -426,6 +426,20 @@ namespace GraphView.GremlinTranslationOps
             {
                 GremlinParentContextOp rootAsContextOp = op as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
+            }
+        }
+
+        internal static void InheritedContextFromParent(GraphTraversal2 traversal, GremlinToSqlContext inputContext)
+        {
+            GremlinTranslationOperator rootOp = traversal.GetEndOp();
+            while (rootOp.InputOperator != null)
+            {
+                rootOp = rootOp.InputOperator;
+            }
+            if (rootOp.GetType() == typeof(GremlinParentContextOp))
+            {
+                GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
+                rootAsContextOp.SetContext(inputContext);
             }
         }
 

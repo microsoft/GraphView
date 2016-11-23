@@ -87,6 +87,26 @@ namespace GremlinTranslationOperator.Tests
             //g.V().and(GraphTraversal2.underscore().outE("knows"),
             //            GraphTraversal2.underscore().values("age").Is(Predicate.lt(30))).values("name").next();
 
+            //g.V().match(
+            //    GraphTraversal2.underscore().As("a").Out("created").As("b"),
+            //    GraphTraversal2.underscore().As("b").has("name", "lop"),
+            //    GraphTraversal2.underscore().As("b").In("created").As("c"),
+            //    GraphTraversal2.underscore().As("c").has("age", 29)).next();  //pass
+
+            //g.V().match(
+            //    GraphTraversal2.underscore().As("a").Out("created").has("name", "lop").As("b"),
+            //    GraphTraversal2.underscore().As("b").In("created").has("age", 29).As("c")).next(); //pass
+
+            //g.V().match(
+            //     GraphTraversal2.underscore().As("a").has("name", "Garcia"),
+            //     GraphTraversal2.underscore().As("a").In("writtenBy").As("b"),
+            //     GraphTraversal2.underscore().As("a").In("sungBy").As("b")).next(); //pass
+
+            g.V().match(
+                GraphTraversal2.underscore().As("a").Out().count().As("b"),
+                GraphTraversal2.underscore().As("a").In().count().As("b")
+            ).next();
+
             //g.E().next();
             /*
                 sqlFragment: WSqlFragment
@@ -126,7 +146,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"SELECT * FROM node n_0 where (n_0.isTrue = 1) and not (n_0.isTrue = false)";
+            const string q2 = @"SELECT * FROM node n_0 where (select count(*) from node n_1) = 1";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();

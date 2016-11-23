@@ -14,7 +14,7 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            return GremlinUtil.ProcessByFunctionStep("sum", inputContext);
+            return GremlinUtil.ProcessByFunctionStep("sum", inputContext, Labels);
         }
     }
 }

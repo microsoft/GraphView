@@ -19,7 +19,7 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            return GremlinUtil.ProcessByFunctionStep("max", inputContext);
+            return GremlinUtil.ProcessByFunctionStep("max", inputContext, Labels);
         }
     }
 }

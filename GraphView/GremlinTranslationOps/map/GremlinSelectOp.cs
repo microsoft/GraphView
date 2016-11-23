@@ -31,8 +31,8 @@ namespace GraphView.GremlinTranslationOps.map
             }
             else if (SelectKeys.Count == 1)
             {
-                GremlinVariable selectVar = inputContext.AliasToGremlinVariable[SelectKeys.First()];
-                inputContext.SetCurrVariable(selectVar);
+                //GremlinVariable selectVar = inputContext.AliasToGremlinVariable[SelectKeys.First()];
+                //inputContext.SetCurrVariable(selectVar);
             }
             else
             {

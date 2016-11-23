@@ -54,6 +54,21 @@ namespace GraphView
                 LastGremlinTranslationOp = newGremlinTranslationOp;
             }
         }
+
+        internal void InsertAfterOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
+        {
+            GremlinTranslationOpList.Insert(index + 1, newGremlinTranslationOp);
+        }
+
+        internal GremlinTranslationOperator GetStartOp()
+        {
+            return GremlinTranslationOpList.Count == 0 ? null : GremlinTranslationOpList.First();
+        }
+
+        internal GremlinTranslationOperator GetEndOp()
+        {
+            return LastGremlinTranslationOp;
+        }
         //GremlinTranslationOperator
 
         //public GraphTraversal addE(Direction direction, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
@@ -96,9 +111,11 @@ namespace GraphView
             return this;
         }
 
-
         public GraphTraversal2 As(params string[] GremlinTranslationOperatorLabels) {
-            AddGremlinOperator(new GremlinAsOp(GremlinTranslationOperatorLabels));
+            foreach (var GremlinTranslationOperatorLabel in GremlinTranslationOperatorLabels)
+            {
+                LastGremlinTranslationOp.Labels.Add(GremlinTranslationOperatorLabel);
+            }
             return this;    
         }
         //public GraphTraversal2 barrier()

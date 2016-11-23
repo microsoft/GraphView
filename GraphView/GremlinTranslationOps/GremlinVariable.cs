@@ -105,6 +105,9 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinDerivedVariable: GremlinVariable
     {
         public WSelectQueryBlock SelectQueryBlock;
+
+        public GremlinDerivedVariable() { }
+
         public GremlinDerivedVariable(WSqlStatement selectQueryBlock)
         {
             VariableName = "D_" + _count.ToString();
@@ -116,7 +119,15 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinScalarVariable : GremlinDerivedVariable
     {
-        public GremlinScalarVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock) {}
+        public WScalarSubquery ScalarSubquery;
+
+        public GremlinScalarVariable(WSqlStatement selectQueryBlock)
+        {
+            ScalarSubquery = new WScalarSubquery()
+            {
+                SubQueryExpr = selectQueryBlock as WSelectQueryBlock
+            };
+        }
     }
 
     internal class GremlinMapVariable : GremlinDerivedVariable
@@ -165,15 +176,6 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
-    internal class GremlinConstantVariable : GremlinVariable
-    {
-        public object Constant;
-
-        public GremlinConstantVariable(object constant)
-        {
-            Constant = constant;
-        }
-    }
 
     internal class GremlinChooseVariable: GremlinVariable
     {

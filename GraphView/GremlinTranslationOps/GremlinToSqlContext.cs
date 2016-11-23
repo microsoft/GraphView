@@ -21,7 +21,7 @@ namespace GraphView.GremlinTranslationOps
             Predicates = null;
             Projection = new List<Tuple<GremlinVariable, Projection>>();
             Paths = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
-            AliasToGremlinVariable = new Dictionary<string, GremlinVariable>();
+            AliasToGremlinVariableList = new List<Tuple<string, GremlinVariable>>();
             //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
             //OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>();
         }
@@ -48,7 +48,7 @@ namespace GraphView.GremlinTranslationOps
         /// </summary>
         public GremlinVariable CurrVariable;
 
-        public Dictionary<string, GremlinVariable> AliasToGremlinVariable;
+        public List<Tuple<string, GremlinVariable>> AliasToGremlinVariableList;
 
         /// <summary>
         /// A list of Gremlin variables and their properties the query projects. 
@@ -72,9 +72,14 @@ namespace GraphView.GremlinTranslationOps
         public Tuple<GremlinVariable, OrderByRecord> OrderByVariable { get; set; }
 
 
-        public void AddNewVariable(GremlinVariable gremlinVar)
+        public void AddNewVariable(GremlinVariable gremlinVar, List<string> labels)
         {
             RemainingVariableList.Add(gremlinVar);
+            if (labels.Count == 0) return;
+            foreach (var label in labels)
+            {
+                AliasToGremlinVariableList.Add(new Tuple<string, GremlinVariable>(label, gremlinVar));
+            }
         }
 
         public void SetCurrVariable(GremlinVariable gremlinVar)
