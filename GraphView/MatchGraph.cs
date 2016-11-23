@@ -129,6 +129,12 @@ namespace GraphView
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         public DocDbScript AttachedQuerySegment { get; set; }
+        // <index of id field, index of adj field>
+        public Dictionary<int, int> ReverseCheckList { get; set; }
+        // The meta header length of the node, consisting of node's id and node's outgoing edges
+        // Every edge will have a field as adjList and a field as single sink id
+        // | node id | edge1 | edge1.sink | edge2 | edge2.sink | ...
+        public int HeaderLength { get; set; }
         public string DeleteEdge { get; set; }
 
         /// <summary>
@@ -166,6 +172,7 @@ namespace GraphView
         public Dictionary<string, MatchEdge> Edges { get; set; }
         public Dictionary<MatchNode, bool> IsTailNode { get; set; }
         public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
+        public Dictionary<string, List<MatchEdge>> NodeToMaterializedEdgesDict { get; set; } 
 
         public ConnectedComponent()
         {

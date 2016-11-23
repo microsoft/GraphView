@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Data;
+using System.Text;
+using GraphView.GraphViewExecutionRuntime;
 // Add DocumentDB references
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Documents.Client;
@@ -9,6 +11,24 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+
+    public class JTokenComparer : IEqualityComparer<JToken>
+    {
+        public bool Equals(JToken x, JToken y)
+        {
+            if (Object.ReferenceEquals(x, y)) return true;
+            if (Object.ReferenceEquals(x, null) || Object.ReferenceEquals(y, null)) return false;
+            return x["_ID"].ToString().Equals(y["_ID"].ToString());
+        }
+
+        public int GetHashCode(JToken obj)
+        {
+            if (Object.ReferenceEquals(obj, null)) return 0;
+            return obj["_ID"].ToString().GetHashCode();
+        }
+    }
+
+
     /// <summary>
     /// Base class of the traversal operator and the fetch-node operator.
     /// providing common properties and utility functions. 
@@ -19,6 +39,9 @@ namespace GraphView
         internal BooleanFunction crossDocumentJoinPredicates;
 
         internal GraphViewConnection connection;
+
+        // The meta header length of the current node
+        internal int metaHeaderLength;
 
         // For the ith node processed, Record[3*i + 1] is its adjacent list, Record[3*i + 2] is its reverse adjacent list.
         // The last element of it is the path (Record[count - 1]).
@@ -39,78 +62,48 @@ namespace GraphView
             return script.Substring(0, script.Length - len);
         }
 
-        /// <summary>
-        /// Constructs a new record produced by this operator
-        /// </summary>
-        /// <param name="NumberOfProcessedNode"></param>
-        /// <param name="ItemInfo">Info of the node newly processed by this operator</param>
-        /// <param name="OldRecord">The input record of the operator</param>
-        /// <param name="header"></param>
-        /// <param name="addpath">Whether to produce a path string for all the nodes processed so far</param>
-        /// <returns>The record to be returned</returns>
-        internal static RawRecord ConstructRawRecord(int NumberOfProcessedNode, Tuple<string, string, string, List<string>> ItemInfo, RawRecord OldRecord, List<string> header, string appendedPath = "")
-        {
-            // copy the old internal information into new record
-            RawRecord NewRecord = new RawRecord(header.Count);
-            for (int i = 0; i < NumberOfProcessedNode * 3; i++)
-                NewRecord.fieldValues[i] = OldRecord.fieldValues[i];
-            // put the nodes into new record.
-            NewRecord.fieldValues[NumberOfProcessedNode * 3] = ItemInfo.Item1;
-            NewRecord.fieldValues[NumberOfProcessedNode * 3 + ADJ_OFFSET] = ItemInfo.Item2;
-            NewRecord.fieldValues[NumberOfProcessedNode * 3 + REV_ADJ_OFFSET] = ItemInfo.Item3;
-            for (int i = NumberOfProcessedNode * 3; i < header.Count - 3; i++)
-                NewRecord.fieldValues[i + 3] = OldRecord.fieldValues[i];
-            // extend the path if needed.
-            if (appendedPath != "") NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = appendedPath;
-            NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] += ItemInfo.Item1 + "-->";
-            // put the result elements that are consturcted before into new record.
-            for (int i = NumberOfProcessedNode * 3 + 3; i < NewRecord.fieldValues.Count; i++)
-            {
-                if (NewRecord.RetriveData(i) == "" && ItemInfo.Item4[i] != "")
-                    NewRecord.fieldValues[i] = ItemInfo.Item4[i];
-            }
-            return NewRecord;
-        }
         // Check whether the giving record r satisfy the giving boolean check function. 
         internal static bool RecordFilter(BooleanFunction BooleanCheck, RawRecord r)
         {
             if (BooleanCheck == null) return true;
             else return BooleanCheck.eval(r);
         }
-        // Decode JObject into (id, adjacent list, reverse adjacent list, selected elements) quadruple
-        internal static Tuple<string, string, string, List<string>> DecodeJObject(JObject Item, List<string> header, int StartOfResultField)
+
+        /// <summary>
+        /// Constructs a new record produced by this operator
+        /// </summary>
+        /// <param name="itemInfo">Info of the node newly processed by this operator</param>
+        /// <param name="oldRecord">The input record of the operator</param>
+        /// <param name="header"></param>
+        /// <param name="nodeIdx">The current node id's index</param>
+        /// <param name="metaHeaderLength">The current node's meta header length</param>
+        /// <param name="appendedPath">Whether to produce a path string for all the nodes processed so far</param>
+        /// <returns>The record to be returned</returns>
+        internal static RawRecord ConstructRawRecord(Tuple<string, Dictionary<string, string>, List<string>> itemInfo, RawRecord oldRecord, List<string> header, int nodeIdx, int metaHeaderLength, string appendedPath = "")
         {
-            JToken NodeInfo = ((JObject)Item)["NodeInfo"];
-            JToken id = NodeInfo["id"];
-            JToken edge = ((JObject)NodeInfo)["edge"];
-            JToken reverse = ((JObject)NodeInfo)["reverse"];
-            string ReverseEdgeID = "";
-            foreach (var x in reverse)
+            // copy the old record's field values into new record
+            RawRecord NewRecord = new RawRecord(oldRecord);
+
+            // put current node's meta info into new record.
+            NewRecord.fieldValues[nodeIdx] = itemInfo.Item1;
+            for (var i = nodeIdx + 1; i < nodeIdx + metaHeaderLength - 1; i += 2)
+                NewRecord.fieldValues[i] = itemInfo.Item2[header[i]];
+
+            // extend the path if needed.
+            if (appendedPath != "") NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = appendedPath;
+            NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] += itemInfo.Item1 + "-->";
+
+            // put the new select elements into new record.
+            var startOfSelectElementsIdx = nodeIdx + metaHeaderLength;
+            for (var i = startOfSelectElementsIdx; i < NewRecord.fieldValues.Count; i++)
             {
-                ReverseEdgeID += "\"" + x["_sink"] + "\"" + ",";
+                if (NewRecord.RetriveData(i) == "" && itemInfo.Item3[i] != "")
+                    NewRecord.fieldValues[i] = itemInfo.Item3[i];
             }
-            string EdgeID = "";
-            foreach (var x in edge)
-            {
-                EdgeID += "\"" + x["_sink"] + "\"" + ",";
-            }
-            // Generate the result list that need to be joined with the original one
-            // ... |     SELECTED ELEMENT 1 ("A_NAME")  |   SELECTED ELEMENT 2 ("A"_AGE") |    SELECTED ELEMENT  3 ("B_AGE")   |
-            //                  a.name                             a.age                    Not found when dealing with node A
-            RawRecord ResultRecord = new RawRecord(header.Count);
-            foreach (
-                string ResultFieldName in header.GetRange(StartOfResultField, header.Count - StartOfResultField))
-            {
-                string result = "";
-                // Alias with dot and whitespace is illegal in documentDB, so they will be replaced by "_"
-                string alias = ResultFieldName.Replace(".", "_").Replace(" ", "_");
-                if (Item[alias] != null)
-                    result = (Item)[alias].ToString();
-                ResultRecord.fieldValues[header.IndexOf(ResultFieldName)] = result;
-            }
-            return new Tuple<string, string, string,List<string>>(id.ToString(), CutTheTail(EdgeID), CutTheTail(ReverseEdgeID), ResultRecord.fieldValues);
+            return NewRecord;
         }
     }
+
     /// <summary>
     /// TraversalOperator is used to traval a graph pattern and return asked result.
     /// TraversalOperator.Next() returns one result of what its specifier specified.
@@ -128,21 +121,21 @@ namespace GraphView
 
         // The starting index of the vertex in the input record from which the traversal starts
         internal int src;
-
+        internal int srcAdj;
+        // The index of the destination node in the record
+        internal int dest;
         // Segement of DocDb script for querying.
         // Containing complete SELECT/FROM/MATCH clause and partial WHERE clause (IN clause should be construct below)
         private DocDbScript docDbScript;
-        // A list of forward/backward edges from the traversal's sink pointing to the vertices produced by the input operator
-        // A vertex produced by the input operator is identified by the index in the input record
-        private List<Tuple<int,string>> CheckList;
-        
+        // Reverse check list, using to indicate which two field should be compared when performing JOIN 
+        private Dictionary<int, int> checkList;
         // The operator of a SELECT query defining a single step of a path expression
         internal GraphViewExecutionOperator pathStepOperator;
 
         // A mark to tell whether the traversal go through normal edge or reverse edge. 
         private bool IsReverse; 
 
-        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, DocDbScript pScript, int pSrc, List<string> pheader, List<Tuple<int, string>> pCheckList, int pNumberOfProcessedVertices, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
+        internal TraversalOperator(GraphViewConnection pConnection, GraphViewExecutionOperator pChildProcessor, DocDbScript pScript, int pSrc, int pSrcAdj, int pDest, List<string> pheader, int pMetaHeaderLength, Dictionary<int, int> pCheckList, int pInputBufferSize, int pOutputBufferSize, bool pReverse, GraphViewExecutionOperator pInternalOperator = null, BooleanFunction pBooleanCheck = null)
         {
             this.Open();
             inputOperator = pChildProcessor;
@@ -153,14 +146,17 @@ namespace GraphView
             InputBuffer = new Queue<RawRecord>();
             OutputBuffer = new Queue<RawRecord>();
             src = pSrc;
-            CheckList = pCheckList;
+            srcAdj = pSrcAdj;
+            dest = pDest;
+            checkList = pCheckList;
+            metaHeaderLength = pMetaHeaderLength;
             header = pheader;
-            NumberOfProcessedVertices = pNumberOfProcessedVertices;
             crossDocumentJoinPredicates = pBooleanCheck;
             pathStepOperator = pInternalOperator;
             IsReverse = pReverse;
             if (pathStepOperator != null) pathStepOperator = (pathStepOperator as OutputOperator).ChildOperator;
         }
+
         public override RawRecord Next()
         {
             // If the output buffer is not empty, returns a result.
@@ -187,23 +183,18 @@ namespace GraphView
                 }
             }
 
-            // The collection maps each input record to a list of paths starting from it. 
-            // Each paths is in a <sink, path_string> pair. 
-            Dictionary<RawRecord, List<Tuple<string, string>>> pathCollection = new Dictionary<RawRecord, List<Tuple<string, string>>>();
-
             // Consturct the "IN" clause
             if (InputBuffer.Count != 0)
             {
                 // To deduplicate edge reference from record in the input buffer, and put them into in clause. 
                 HashSet<string> EdgeRefSet = new HashSet<string>();
+                // Temp table generated by the cross apply process
+                List<RawRecord> inputRecords = new List<RawRecord>();
+                var decoder = new DocDbDecoder(); 
                 if (pathStepOperator == null)
                 {
                     foreach (RawRecord record in InputBuffer)
-                    {
-                        var adj = record.RetriveData(src + (IsReverse ? REV_ADJ_OFFSET : ADJ_OFFSET)).Split(',');
-                        foreach (var edge in adj)
-                            EdgeRefSet.Add(edge);
-                    }
+                        decoder.CrossApplyEdge(record, ref EdgeRefSet, ref inputRecords, header, srcAdj, dest, metaHeaderLength);
                 }
                 else
                 {
@@ -215,128 +206,77 @@ namespace GraphView
                     root.inputOperator = source;
 
                     foreach (RawRecord record in InputBuffer)
-                    {
-                        var inputRecord = new RawRecord(0);
-                        // Extracts the triple of the starting node from the input record 
-                        inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3]);
-                        inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 1]);
-                        inputRecord.fieldValues.Add(record.fieldValues[(NumberOfProcessedVertices - 1) * 3 + 2]);
-                        inputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
-                        // put it into path function
-                        var PathResult = PathFunction(inputRecord, ref source);
-                        // sink and corresponding path.
-                        List<Tuple<string,string>> pathList = new List<Tuple<string, string>>();
-                        foreach (var x in PathResult)
-                        {
-                            pathList.Add(new Tuple<string, string>(x.SinkId, x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1]));
-                            var adj = x.SinkId.Split(',');
-                            foreach (var edge in adj)
-                                    EdgeRefSet.Add(edge);
-                        }
-
-                        pathCollection.Add(record, pathList);
-                    }
+                        decoder.CrossApplyPath(record, pathStepOperator, source, ref EdgeRefSet,
+                            ref inputRecords, header, src, srcAdj, dest, metaHeaderLength);
                 }
 
                 // Skip redundant SendQuery when there is no adj in the InputBuffer
                 EdgeRefSet.Remove("");
                 if (EdgeRefSet.Count > 0)
                 { 
-                    List<WScalarExpression> sinkIdList = EdgeRefSet.Select(edge => new WValueExpression {SingleQuoted = false, Value = edge}).Cast<WScalarExpression>().ToList();
+                    List<WScalarExpression> sinkIdList = EdgeRefSet.Select(edge => new WValueExpression {SingleQuoted = true, Value = edge}).Cast<WScalarExpression>().ToList();
                     WInPredicate sinkCheck = new WInPredicate
                     {
                         Expression =
-                            WColumnReferenceExpression.CreateColumnExpression(header[NumberOfProcessedVertices*3], "id"),
+                            WColumnReferenceExpression.CreateColumnExpression(header[dest], "id"),
                         Values = sinkIdList
                     };
                     docDbScript.WhereClause.SearchCondition =
                         WBooleanBinaryExpression.Conjunction(docDbScript.WhereClause.SearchCondition, sinkCheck);
-
-                    if (pathStepOperator == null)
-                    {
-                        foreach (var reverseEdge in CheckList)
-                        {
-                            EdgeRefSet.Clear();
-                            foreach (RawRecord record in InputBuffer)
-                            {
-                                var adj = record.RetriveData(reverseEdge.Item1).Split(',');
-                                foreach (var edge in adj)
-                                    EdgeRefSet.Add(edge);
-                            }
-                            // Remove the "_REV" tail
-                            EdgeRefSet.Remove("");
-                            List<WScalarExpression> sourceIdList = EdgeRefSet.Select(edge => new WValueExpression { SingleQuoted = true, Value = edge }).Cast<WScalarExpression>().ToList();
-                            WInPredicate sourceCheck = new WInPredicate
-                            {
-                                Expression =
-                                    WColumnReferenceExpression.CreateColumnExpression(CutTheTail(reverseEdge.Item2, 4), "_sink"),
-                                Values = sourceIdList
-                            };
-                            docDbScript.WhereClause.SearchCondition =
-                                WBooleanBinaryExpression.Conjunction(docDbScript.WhereClause.SearchCondition, sourceCheck);
-                        }
-                    }
 
                     // Send query to server and decode the result.
                     try
                     {
                         //HashSet<string> UniqueRecord = new HashSet<string>();
                         var script = docDbScript.ToString();
-                        IQueryable<dynamic> sinkNodeCollection = (IQueryable<dynamic>)SendQuery(script, connection);
-                        foreach (var sinkJsonObject in sinkNodeCollection)
+                        var sinkNodeCollection = (IQueryable<dynamic>)SendQuery(script, connection);
+                        var results = decoder.DecodeJObjects(sinkNodeCollection.ToList(), header, dest, metaHeaderLength);
+                        var joinedRecords = new List<RawRecord>();
+                        foreach (var item in results)
                         {
-                            // Decode some information that describe the found node.
-                            Tuple<string, string, string, List<string>> sinkVertex = DecodeJObject((JObject)sinkJsonObject, header, NumberOfProcessedVertices * 3);
-                            string vertexId = sinkVertex.Item1;
-
-                            // If it is a path traversal, matches the returned sink vertex against every source vertex and their outgoing paths. 
-                            // A new record is constructed and returned when the sink vertex happens to be the last vertex of a path. 
-                            // No reverse check can be performed here.
-                            if (pathStepOperator != null)
+                            var sinkId = item.Item1;
+                            // Join the old record with the new one if edge.sinkId = item.Id
+                            foreach (var oldRecord in inputRecords)
                             {
-                                foreach (RawRecord sourceRec in pathCollection.Keys)
+                                if (oldRecord.fieldValues[srcAdj+1].Equals(sinkId))
+                                    joinedRecords.Add(ConstructRawRecord(item, oldRecord, header, dest, metaHeaderLength));
+                            }
+                        }
+
+                        var allJoinedRecords = new List<RawRecord>();
+
+                        // Join all other edges
+                        if (pathStepOperator != null)
+                            allJoinedRecords = joinedRecords;
+                        else
+                        {
+                            // srcAdj edge has been joined before
+                            checkList.Remove(srcAdj);
+                            
+                            if (checkList.Any())
+                            {
+                                var tmpSet = new HashSet<string>();
+                                foreach (var pair in checkList)
                                 {
-                                    foreach (Tuple<string, string> pathTuple in pathCollection[sourceRec])
+                                    var adjIdx = pair.Key;
+                                    var joinDestIdx = pair.Value;
+
+                                    foreach (var record in joinedRecords)
                                     {
-                                        string pathSink = pathTuple.Item1;
-                                        if (pathSink.Contains(vertexId))
-                                        {
-                                            RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex,
-                                                sourceRec, header,
-                                                pathTuple.Item2);
-                                            if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
-                                                OutputBuffer.Enqueue(NewRecord);
-                                        }
+                                        decoder.CrossApplyEdge(record, ref tmpSet, ref allJoinedRecords, header,
+                                            adjIdx, joinDestIdx);
                                     }
                                 }
                             }
                             else
-                                // For normal edge, join the old record with the new one if checked valid.
-                                foreach (var record in InputBuffer)
-                                {
-                                    // reverse check
-                                    bool ValidFlag = true;
-                                    if (CheckList != null)
-                                        foreach (var neighbor in CheckList)
-                                        {
-                                            // Alignment and reverse checking.
-                                            string edge = (((JObject)sinkJsonObject)[neighbor.Item2])["_sink"].ToString();
-                                            if (edge != record.RetriveData(neighbor.Item1))
-                                            {
-                                                ValidFlag = false;
-                                                break;
-                                            }
-                                        }
-                                    if (ValidFlag)
-                                    {
-                                        // If aligned and reverse checked vailied, join the old record with the new one.
-                                        RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, sinkVertex, record,
-                                            header);
-                                        // If the cross document join successed, put the record into output buffer. 
-                                        if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
-                                            OutputBuffer.Enqueue(NewRecord);
-                                    }
-                                }
+                                allJoinedRecords = joinedRecords;
+                        }
+
+                        foreach (var newRecord in allJoinedRecords)
+                        {
+                            // If the cross document join successed, put the record into output buffer. 
+                            if (RecordFilter(crossDocumentJoinPredicates, newRecord))
+                                OutputBuffer.Enqueue(newRecord);
                         }
                     }
                     catch (AggregateException e)
@@ -442,17 +382,20 @@ namespace GraphView
     internal class FetchNodeOperator : TraversalBaseOperator
     {
         private Queue<RawRecord> OutputBuffer;
-
+        private int nodeIdx;
         private DocDbScript docDbScript;
-        public FetchNodeOperator(GraphViewConnection pConnection, DocDbScript pScript, int pnode, List<string> pheader, int pNumberOfProcessedVertices, int pOutputBufferSize, GraphViewExecutionOperator pChildOperator = null)
+
+        public FetchNodeOperator(GraphViewConnection pConnection, DocDbScript pScript, int pnode, List<string> pheader, int pMetaHeaderLength, int pOutputBufferSize, GraphViewExecutionOperator pChildOperator = null)
         {
             this.Open();
             connection = pConnection;
             docDbScript = pScript;
             header = pheader;
-            NumberOfProcessedVertices = pNumberOfProcessedVertices;
+            nodeIdx = pnode;
+            metaHeaderLength = pMetaHeaderLength;
         }
-        override public RawRecord Next()
+
+        public override RawRecord Next()
         {
             // Set up output buffer
             if (OutputBuffer == null)
@@ -465,24 +408,24 @@ namespace GraphView
             }
 
             string script = docDbScript.ToString();
-            RawRecord OldRecord = new RawRecord(header.Count);
-
+            RawRecord oldRecord = new RawRecord(header.Count);
             try
             {   // Send query to the server
-                IQueryable<dynamic> Node = (IQueryable<dynamic>) SendQuery(script, connection);
+                var nodes = (IQueryable<dynamic>) SendQuery(script, connection);
+                var decoder = new DocDbDecoder();
+                var results = decoder.DecodeJObjects(nodes.ToList(), header, 0, metaHeaderLength);
                 // Decode the result retrived from server and generate new record
-                foreach (var item in Node)
+                foreach (var item in results)
                 {
-                    Tuple<string, string, string, List<string>> ItemInfo = DecodeJObject((JObject)item, header, NumberOfProcessedVertices * 3);
-                    RawRecord NewRecord = ConstructRawRecord(NumberOfProcessedVertices, ItemInfo, OldRecord, header);
-                    if (RecordFilter(crossDocumentJoinPredicates, NewRecord))
-                        OutputBuffer.Enqueue(NewRecord);
+                    RawRecord newRecord = ConstructRawRecord(item, oldRecord, header, nodeIdx, metaHeaderLength);
+                    OutputBuffer.Enqueue(newRecord);
                 }
             }
             catch (AggregateException e)
             {
                 throw e.InnerException;
             }
+
             // Close output buffer
             if (OutputBuffer.Count <= 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();

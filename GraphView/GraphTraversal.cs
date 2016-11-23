@@ -140,7 +140,7 @@ namespace GraphView
                     if (RepeatSubstring != null)
                     {
                         GraphViewGremlinParser ExtendParser1 = new GraphViewGremlinParser();
-                        ExtendParser1.Parse(CutTail(RepeatSubstring));
+                        ExtendParser1.Parse(CutTail(RepeatSubstring + "values('_edge')."));
                         var X = new WWithPathClause(new Tuple<string, WSelectQueryBlock, int>("P_0",ExtendParser1.SqlTree as WSelectQueryBlock, -1));
                         GraphViewGremlinParser ExtendParser2 = new GraphViewGremlinParser();
                         ExtendParser2.Parse(CutTail(AppendExecutableString));

@@ -237,7 +237,7 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
 
-            sb.Append(ScriptBase.Replace("node", FromClause.TableReference));
+            sb.Append(ScriptBase);
 
             if (SelectElements != null)
             {

@@ -77,6 +77,8 @@ namespace GraphView
                                 SrcNode.ReverseNeighbors = new List<MatchEdge>();
                                 SrcNode.External = false;
                                 SrcNode.Predicates = new List<WBooleanExpression>();
+                                SrcNode.ReverseCheckList = new Dictionary<int, int>();
+                                SrcNode.HeaderLength = 0;
                             }
 
                             // Consturct the edge of a path in MatchClause.Paths
@@ -183,6 +185,8 @@ namespace GraphView
                             DestNode.Neighbors = new List<MatchEdge>();
                             DestNode.ReverseNeighbors = new List<MatchEdge>();
                             DestNode.Predicates = new List<WBooleanExpression>();
+                            DestNode.ReverseCheckList = new Dictionary<int, int>();
+                            DestNode.HeaderLength = 0;
                         }
                         if (EdgeToSrcNode != null)
                         {
@@ -337,17 +341,15 @@ namespace GraphView
                     BooleanList.Add(NewCBF);
                 }
             }
-            // Calculate how much nodes the whole match graph has.
-            int StartOfResult = 0;
-            foreach (var subgraph in graph.ConnectedSubGraphs)
-                StartOfResult += subgraph.Nodes.Count() * 3;
+            // Calculate the start index of select elements
+            int StartOfResult =
+                graph.ConnectedSubGraphs.Sum(
+                    subgraph => subgraph.Nodes.Select(n => n.Value.HeaderLength).Aggregate(0, (cur, next) => cur + next));
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
-                // Use Topological Sort to give a sorted node list.
-                // Note that if there's a cycle in the match graph, a random node will be chose as the start.
-                //var SortedNodeList = TopoSorting.TopoSort(subgraph.Nodes);
                 var SortedNodeList = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
-                // Marking down which node has been processed for later reverse checking.  
+                var NodeToMatEdgesDict = subgraph.NodeToMaterializedEdgesDict;
+                // Marking which node has been processed for later reverse checking.  
                 List<string> ProcessedNodeList = new List<string>();
                 // Build query segment on both source node and dest node, 
                 while (SortedNodeList.Count != 0)
@@ -357,13 +359,13 @@ namespace GraphView
                     if (!ProcessedNodeList.Contains(TargetNode.Item1.NodeAlias))
                     {
                         CurrentProcessingNode = TargetNode.Item1;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, headerToColumnRefDict, StartOfResult);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, NodeToMatEdgesDict, columnToAliasDict, headerToColumnRefDict, StartOfResult);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                     if (TargetNode.Item2 != null)
                     {
                         CurrentProcessingNode = TargetNode.Item2.SinkNode;
-                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, columnToAliasDict, headerToColumnRefDict, StartOfResult, TargetNode.Item2 is MatchPath);
+                        BuildQuerySegementOnNode(ProcessedNodeList, CurrentProcessingNode, header, NodeToMatEdgesDict, columnToAliasDict, headerToColumnRefDict, StartOfResult, TargetNode.Item2 is MatchPath);
                         ProcessedNodeList.Add(CurrentProcessingNode.NodeAlias);
                     }
                 }
@@ -375,44 +377,69 @@ namespace GraphView
         {
             var graphOptimizer = new DocDbGraphOptimizer(graph);
             foreach (var subGraph in graph.ConnectedSubGraphs)
-                subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph);
+            {
+                // <node, node's edges which need to be pulled from the server>
+                Dictionary<string, List<MatchEdge>> nodeToMatEdgesDict;
+                subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph, out nodeToMatEdgesDict);
+                subGraph.NodeToMaterializedEdgesDict = nodeToMatEdgesDict;
+            }
         }
 
         private List<string> ConstructHeader(MatchGraph graph, out Dictionary<string, string> columnToAliasDict, out Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict)
         {
-
             List<string> header = new List<string>();
             HashSet<string> aliasSet = new HashSet<string>();
             columnToAliasDict = new Dictionary<string, string>();
             headerToColumnRefDict = new Dictionary<string, DColumnReferenceExpression>();
             // Construct the first part of the head which is defined as 
-            // |Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|Node's Alias|Node's Adjacent list|Node's reverse Adjacent list|...
-            // |   "NODE1"  |   "NODE1_ADJ"      |   "NODE1_REVADJ"           |  "NODE2"   |   "NODE2_ADJ"      |   "NODE2_REVADJ"           |...
+            // |    Node's Alias     {[|  Node's Adjacent list |       _SINK      ][|...n]}
+            // |  "node.NodeAlias"   {[|   "edgeAlias_ADJ"     | "edgeAlias_SINK" ][|...n]}
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
                 HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
-                //var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
-                var SortedNodes = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
 
+                var SortedNodes = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
+                var nodeToMatEdgesDict = subgraph.NodeToMaterializedEdgesDict;
                 while (SortedNodes.Count != 0) {
                     var processingNodePair = SortedNodes.Pop();
                     var srcNode = processingNodePair.Item1;
                     var sinkNode = processingNodePair.Item2?.SinkNode;
+
                     if (!ProcessedNode.Contains(srcNode))
                     {
                         MatchNode node = srcNode;
                         header.Add(node.NodeAlias);
-                        header.Add(node.NodeAlias + "_ADJ");
-                        header.Add(node.NodeAlias + "_REVADJ");
+
+                        if (nodeToMatEdgesDict != null)
+                        {
+                            foreach (var edge in nodeToMatEdgesDict[srcNode.NodeAlias])
+                            {
+                                header.Add(edge.EdgeAlias + "_ADJ");
+                                header.Add(edge.EdgeAlias + "_SINK");
+                            }
+                        }
+                        // The meta header length of the node, consisting of node's id and node's outgoing edges
+                        // Every edge will have a field as adjList and a field as single sink id
+                        // | node id | edge1 | edge1.sink | edge2 | edge2.sink | ...
+                        srcNode.HeaderLength = nodeToMatEdgesDict?[srcNode.NodeAlias].Count * 2 + 1 ?? 1;
                         ProcessedNode.Add(node);
                         aliasSet.Add(node.NodeAlias);
                     }
-                    if (sinkNode != null)
+                    if (sinkNode != null && !ProcessedNode.Contains(sinkNode))
                     {
                         MatchNode node = sinkNode;
                         header.Add(node.NodeAlias);
-                        header.Add(node.NodeAlias + "_ADJ");
-                        header.Add(node.NodeAlias + "_REVADJ");
+
+                        if (nodeToMatEdgesDict != null)
+                        {
+                            foreach (var edge in nodeToMatEdgesDict[sinkNode.NodeAlias])
+                            {
+                                header.Add(edge.EdgeAlias + "_ADJ");
+                                header.Add(edge.EdgeAlias + "_SINK");
+                            }
+                        }
+
+                        sinkNode.HeaderLength = nodeToMatEdgesDict?[sinkNode.NodeAlias].Count * 2 + 1 ?? 1;
                         ProcessedNode.Add(node);
                         aliasSet.Add(node.NodeAlias);
                     }
@@ -517,14 +544,12 @@ namespace GraphView
             {
                 FunctionVaildalityCheck.Add(0);
             }
-            int StartOfResult = 0;
+            int StartOfResult = 0, CurrentMetaHeaderLength = 0;
             // Generate operator for each subgraph.
             foreach (var subgraph in graph.ConnectedSubGraphs)
             {
-                // Use Topological Sorting to define the order of nodes it will travel.
-                //var SortedNodes = TopoSorting.TopoSort(subgraph.Nodes);
                 var SortedNodes = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
-                StartOfResult += subgraph.Nodes.Count * 3;
+                StartOfResult += subgraph.Nodes.Select(n => n.Value.HeaderLength).Aggregate(0, (cur, next) => cur + next);
                 HashSet<MatchNode> ProcessedNode = new HashSet<MatchNode>();
                 while (SortedNodes.Count != 0)
                 {
@@ -536,19 +561,15 @@ namespace GraphView
                     {
                         int node = header.IndexOf(CurrentProcessingNode.Item1.NodeAlias);
                         TempNode = CurrentProcessingNode.Item1;
-                        HeaderForOneOperator = new List<string>();
-                        for (int i = 0; i <= ProcessedNode.Count; i++)
-                        {
-                            HeaderForOneOperator.Add(header[i * 3]);
-                            HeaderForOneOperator.Add(header[i * 3 + 1]);
-                            HeaderForOneOperator.Add(header[i * 3 + 2]);
-                        }
+                        CurrentMetaHeaderLength += TempNode.HeaderLength;
+                        HeaderForOneOperator = header.GetRange(0, CurrentMetaHeaderLength);
+
                         for (int i = StartOfResult; i < header.Count; i++)
                             HeaderForOneOperator.Add(header[i]);
                         if (ChildrenProcessor.Count == 0)
-                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, ProcessedNode.Count, 50));
-                        else
-                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, ProcessedNode.Count, 50, ChildrenProcessor.Last()));
+                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, TempNode.HeaderLength, 50));
+                        //else
+                        //    ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, ProcessedNode.Count, 50, ChildrenProcessor.Last()));
                         if (functions != null && functions.Count != 0)
                             CheckFunctionValidate(ref header, ref functions, ref TempNode, ref FunctionVaildalityCheck, ref ChildrenProcessor);
                         ProcessedNode.Add(CurrentProcessingNode.Item1);
@@ -558,21 +579,16 @@ namespace GraphView
                     {
                         TempNode = CurrentProcessingNode.Item2.SinkNode;
 
-
                         int src = header.IndexOf(CurrentProcessingNode.Item2.SourceNode.NodeAlias);
+                        int srcAdj = header.IndexOf(CurrentProcessingNode.Item2.EdgeAlias + "_ADJ");
                         int dest = header.IndexOf(CurrentProcessingNode.Item2.SinkNode.NodeAlias);
 
-                        HeaderForOneOperator = new List<string>();
-                        for (int i = 0; i <= ProcessedNode.Count; i++)
-                        {
-                            HeaderForOneOperator.Add(header[i * 3]);
-                            HeaderForOneOperator.Add(header[i * 3 + 1]);
-                            HeaderForOneOperator.Add(header[i * 3 + 2]);
-                        }
+                        CurrentMetaHeaderLength += TempNode.HeaderLength;
+                        HeaderForOneOperator = header.GetRange(0, CurrentMetaHeaderLength);
+
                         for (int i = StartOfResult; i < header.Count; i++)
                             HeaderForOneOperator.Add(header[i]);
 
-                        List<Tuple<int, string>> ReverseCheckList = new List<Tuple<int, string>>();
                         Tuple<string, GraphViewExecutionOperator, int> InternalOperator = null;
                         if (WithPathClause != null && (InternalOperator =
                                     WithPathClause.PathOperators.Find(
@@ -580,16 +596,16 @@ namespace GraphView
                                 null)
                         {
                             // if WithPathClause != null, internal operator should be constructed for the traversal operator that deals with path.
-                            ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                                TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
+                                TempNode.AttachedQuerySegment, src, srcAdj, dest, HeaderForOneOperator,
+                                TempNode.HeaderLength, TempNode.ReverseCheckList, INPUT_BUFFER_SIZE,
                                 OUTPUT_BUFFER_SIZE, false, InternalOperator.Item2));
                         }
                         else
                         {
-                            ReverseCheckList = ConsturctReverseCheckList(TempNode, ref ProcessedNode, header);
                             ChildrenProcessor.Add(new TraversalOperator(pConnection, ChildrenProcessor.Last(),
-                                TempNode.AttachedQuerySegment, src, HeaderForOneOperator, ReverseCheckList, ProcessedNode.Count, INPUT_BUFFER_SIZE,
+                                TempNode.AttachedQuerySegment, src, srcAdj, dest, HeaderForOneOperator,
+                                TempNode.HeaderLength, TempNode.ReverseCheckList, INPUT_BUFFER_SIZE,
                                 OUTPUT_BUFFER_SIZE, CurrentProcessingNode.Item2.IsReversed));
                         }
                         ProcessedNode.Add(TempNode);
@@ -669,31 +685,33 @@ namespace GraphView
         }
 
         private void BuildQuerySegementOnNode(List<string> ProcessedNodeList, MatchNode node, List<string> header, 
-            Dictionary<string, string> columnToAliasDict, Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict,
+            Dictionary<string, List<MatchEdge>> nodeToMatEdgesDict, Dictionary<string, string> columnToAliasDict, Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict,
             int pStartOfResultField, bool isPathTailNode = false)
         {
             DFromClause fromClause = new DFromClause();
-            WBooleanExpression searchCondition = null;
             string FromClauseString = "";
-            // Node predicates will be attached here.
+            WBooleanExpression searchCondition = null;
+
+            string scriptBase = string.Format("SELECT {{\"id\":{0}.id}} AS _nodeid", node.NodeAlias);
+            const string edgeProjectBase = "{{\"_sink\": {0}._sink, \"_ID\": {0}._ID";
+            // <edge, extra properties need to be pulled from the server besides _sink and _ID>
+            var edgeProjection = new Dictionary<string, List<DColumnReferenceExpression>>();
+
             fromClause.TableReference = node.NodeAlias;
 
-            if (!isPathTailNode)
+            if (!isPathTailNode && nodeToMatEdgesDict != null)
             {
-                foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
+                // Join every edge needs to be pulled
+                foreach (var edge in nodeToMatEdgesDict[node.NodeAlias])
                 {
-                    // Join with all the edges it need to use later.
-                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias))
-                    {
-                        if (node.ReverseNeighbors.Contains(edge))
-                            FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._reverse_edge ";
-                        else
-                            FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + "._edge ";
-
-                        // Add all the predicates on edges to the where clause.
-                        foreach (var predicate in edge.Predicates)
-                            searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
-                    }
+                    FromClauseString += " Join " + edge.EdgeAlias + " in " + node.NodeAlias + 
+                        (edge.IsReversed
+                        ? "._reverse_edge "
+                        : "._edge ");
+                    // Add all the predicates on edges to the where clause.
+                    foreach (var predicate in edge.Predicates)
+                        searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
+                    edgeProjection[edge.EdgeAlias] = new List<DColumnReferenceExpression>();
                 }
             }
             fromClause.FromClauseString = FromClauseString;
@@ -702,7 +720,7 @@ namespace GraphView
             foreach (var predicate in node.Predicates)
                 searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
 
-            // Select elements that related to current node will be attached here.
+            // Select elements that related to current node and its edges will be attached here.
             List<DColumnReferenceExpression> DSelectElements = new List<DColumnReferenceExpression>();
             for (var i = pStartOfResultField; i < header.Count; i++)
             {
@@ -715,35 +733,47 @@ namespace GraphView
                     header[i] = columnToAliasDict[str];
                     DSelectElements.Add(headerToColumnRefDict[str]);
                 }
-                foreach (var edge in node.ReverseNeighbors.Concat(node.Neighbors))
+                if (nodeToMatEdgesDict != null)
                 {
-                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias) && str.Substring(0, CutPoint) == edge.EdgeAlias)
+                    foreach (var edge in nodeToMatEdgesDict[node.NodeAlias])
                     {
-                        header[i] = columnToAliasDict[str];
-                        DSelectElements.Add(headerToColumnRefDict[str]);
+                        if (str.Substring(0, CutPoint) == edge.EdgeAlias)
+                        {
+                            header[i] = columnToAliasDict[str];
+                            edgeProjection[edge.EdgeAlias].Add(headerToColumnRefDict[str]);
+                        }
                     }
                 }
             }
 
-            // Reverse checking related script will be attached here.
-            if (!isPathTailNode)
+            // Reverse checking pair generation
+            if (!isPathTailNode && nodeToMatEdgesDict != null)
             {
-                foreach (var ReverseEdge in node.ReverseNeighbors.Concat(node.Neighbors))
+                foreach (var edge in nodeToMatEdgesDict[node.NodeAlias])
                 {
-                    if (ProcessedNodeList.Contains(ReverseEdge.SinkNode.NodeAlias))
-                    {
-                        DSelectElements.Add(new DColumnReferenceExpression
-                        {
-                            ColumnName = ReverseEdge.EdgeAlias + "_REV",
-                            MultiPartIdentifier = new DMultiPartIdentifier(ReverseEdge.EdgeAlias)
-                        });
-                    } 
+                    // <index of adj field, index of dest id field>
+                    if (ProcessedNodeList.Contains(edge.SinkNode.NodeAlias))
+                        node.ReverseCheckList.Add(header.IndexOf(edge.EdgeAlias + "_ADJ"), header.IndexOf(edge.SinkNode.NodeAlias));
+                    else
+                        edge.SinkNode.ReverseCheckList.Add(header.IndexOf(edge.EdgeAlias + "_ADJ"), header.IndexOf(edge.SinkNode.NodeAlias));
                 }
+            }
+
+            foreach (var pair in edgeProjection)
+            {
+                var edgeAlias = pair.Key;
+                var projects = pair.Value;
+                scriptBase += ", " + string.Format(edgeProjectBase, edgeAlias);
+                scriptBase = projects.Aggregate(scriptBase,
+                    (current, project) =>
+                        current + ", " +
+                        string.Format("\"{0}\": {1}", project.ColumnName, project.MultiPartIdentifier.ToString()));
+                scriptBase += string.Format("}} AS {0}_ADJ", edgeAlias);
             }
 
             // The DocDb script of the current node will be assembled here.
             WWhereClause whereClause = new WWhereClause {SearchCondition = searchCondition};
-            DocDbScript script = new DocDbScript {SelectElements = DSelectElements, FromClause = fromClause, WhereClause = whereClause, OriginalSearchCondition = searchCondition};
+            DocDbScript script = new DocDbScript {ScriptBase = scriptBase, SelectElements = DSelectElements, FromClause = fromClause, WhereClause = whereClause, OriginalSearchCondition = searchCondition};
             node.AttachedQuerySegment = script;
         }
 
@@ -797,19 +827,20 @@ namespace GraphView
             }
         }
 
-        private List<Tuple<int, string>> ConsturctReverseCheckList(MatchNode TempNode, ref HashSet<MatchNode> ProcessedNode, List<string> header)
-        {
-            List<Tuple<int, string>> ReverseCheckList = new List<Tuple<int, string>>();
-            foreach (var neighbor in TempNode.ReverseNeighbors)
-                if (ProcessedNode.Contains(neighbor.SinkNode))
-                    ReverseCheckList.Add(new Tuple<int, string>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                        neighbor.EdgeAlias + "_REV"));
-            foreach (var neighbor in TempNode.Neighbors)
-                if (ProcessedNode.Contains(neighbor.SinkNode))
-                    ReverseCheckList.Add(new Tuple<int, string>(header.IndexOf(neighbor.SinkNode.NodeAlias),
-                        neighbor.EdgeAlias + "_REV"));
-            return ReverseCheckList;
-        }
+        //private List<Tuple<int, string>> ConsturctReverseCheckList(MatchNode TempNode, ref HashSet<MatchNode> ProcessedNode, List<string> header)
+        //{
+        //    List<Tuple<int, string>> ReverseCheckList = new List<Tuple<int, string>>();
+        //    foreach (var neighbor in TempNode.ReverseNeighbors)
+        //        if (ProcessedNode.Contains(neighbor.SinkNode))
+        //            ReverseCheckList.Add(new Tuple<int, string>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+        //                neighbor.EdgeAlias + "_REV"));
+        //    foreach (var neighbor in TempNode.Neighbors)
+        //        if (ProcessedNode.Contains(neighbor.SinkNode))
+        //            ReverseCheckList.Add(new Tuple<int, string>(header.IndexOf(neighbor.SinkNode.NodeAlias),
+        //                neighbor.EdgeAlias + "_REV"));
+        //    return ReverseCheckList;
+        //}
+
         // Cut the last character of a string.
         private string CutTheTail(string InRangeScript)
         {
@@ -898,7 +929,7 @@ namespace GraphView
         {
             foreach (var path in Paths)
             {
-                path.Item2.SelectElements = new List<WSelectElement>();
+                //path.Item2.SelectElements = new List<WSelectElement>();
                 PathOperators.Add(new Tuple<string, GraphViewExecutionOperator, int>(path.Item1,
                     path.Item2.Generate(dbConnection), path.Item3));
             }
