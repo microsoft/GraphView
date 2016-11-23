@@ -566,8 +566,8 @@ namespace GraphView
 
                         for (int i = StartOfResult; i < header.Count; i++)
                             HeaderForOneOperator.Add(header[i]);
-                        if (ChildrenProcessor.Count == 0)
-                            ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, TempNode.HeaderLength, 50));
+                        //if (ChildrenProcessor.Count == 0)
+                        ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, TempNode.HeaderLength, 50));
                         //else
                         //    ChildrenProcessor.Add(new FetchNodeOperator(pConnection, CurrentProcessingNode.Item1.AttachedQuerySegment, node, HeaderForOneOperator, ProcessedNode.Count, 50, ChildrenProcessor.Last()));
                         if (functions != null && functions.Count != 0)
@@ -1291,7 +1291,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Generate(GraphViewConnection dbConnection)
         {
             var search = WhereClause.SearchCondition;
-            var target = Target.ToString();
+            var target = (Target as WNamedTableReference).ToStringWithoutRange();
 
             if (search != null)
             {

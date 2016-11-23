@@ -164,6 +164,30 @@ namespace GraphView
             return sb.ToString();
         }
 
+        internal string ToStringWithoutRange()
+        {
+            TableObjectString = TableObjectName == null ? TableObjectString : TableObjectName.ToString();
+
+            var sb = new StringBuilder();
+            sb.AppendFormat("{0}", TableObjectString);
+            if (Alias != null)
+                sb.Append(" AS " + string.Format("[{0}]", Alias.Value));
+            if (TableHints != null && TableHints.Count > 0)
+            {
+                sb.Append(" WITH (");
+                var index = 0;
+                for (var count = TableHints.Count; index < count; ++index)
+                {
+                    if (index > 0)
+                        sb.Append(", ");
+                    sb.Append(TableHints[index]);
+                }
+                sb.Append(')');
+            }
+
+            return sb.ToString();
+        }
+
         internal override IList<string> TableAliases()
         {
             var aliases = new List<string>(1) { Alias != null ? Alias.Value : TableObjectName.BaseIdentifier.Value };
