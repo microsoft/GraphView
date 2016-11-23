@@ -1322,66 +1322,41 @@ namespace GraphView
             while (currentToken < _tokens.Count)
             {
                 var nextToken = currentToken;
-                if (ReadToken(_tokens, "insert", ref nextToken, ref farestError))
+                if (ReadToken(_tokens, "insert", ref nextToken, ref farestError) 
+                    && ReadToken(_tokens, "into", ref nextToken, ref farestError))
                 {
-
                     var pos = nextToken;
                     if (ReadToken(_tokens, "node", ref nextToken, ref farestError))
                     {
                         ret.Add(new InsertNodeAnnotation { Position = pos });
-                        _tokens[pos].TokenType = TSqlTokenType.MultilineComment;
-                        _tokens[pos].Text = "/*__GRAPHVIEW_INSERT_NODE*/";
+                        //_tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        //_tokens[pos].Text = "/*__GRAPHVIEW_INSERT_NODE*/";
                         currentToken = nextToken;
                     }
                     else if (ReadToken(_tokens, "edge", ref nextToken, ref farestError))
                     {
-                        var identifiers = new WMultiPartIdentifier();
-                        if (!ReadToken(_tokens, "into", ref nextToken, ref farestError) ||
-                            !ParseMultiPartIdentifier(_tokens, ref nextToken, ref identifiers, ref farestError))
-                        {
-                            var error = _tokens[farestError];
-                            errors.Add(new ParseError(0, error.Offset, error.Line, error.Column, "Incorrect syntax near edge"));
-                            return null;
-                        }
-
                         ret.Add(new InsertEdgeAnnotation
                         {
                             Position = pos,
-                            EdgeColumn = identifiers.Identifiers.Last(),
+                            EdgeColumn = new Identifier()
                         });
-                        var lastColumnIndex = identifiers.Identifiers.Last().LastTokenIndex;
-                        _tokens[pos].TokenType = TSqlTokenType.MultilineComment;
-                        _tokens[pos].Text = "/*__GRAPHVIEW_INSERT_EDGE*/";
-                        if (identifiers.Identifiers.Count == 1)
-                        {
 
-                            _tokens[lastColumnIndex].TokenType = TSqlTokenType.MultilineComment;
-                            _tokens[lastColumnIndex].Text = "/*__GRAPHVIEW_INSERT_EDGE*/";
-                        }
-                        else
-                        {
-                            var firstColumnIndex =
-                                identifiers.Identifiers[identifiers.Identifiers.Count - 2].LastTokenIndex + 1;
-                            for (var i = firstColumnIndex; i <= lastColumnIndex; ++i)
-                            {
-                                _tokens[i].TokenType = TSqlTokenType.MultilineComment;
-                                _tokens[i].Text = "/*__GRAPHVIEW_INSERT_EDGE*/";
-                            }
-                        }
+                        //_tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        //_tokens[pos].Text = "/*__GRAPHVIEW_INSERT_EDGE*/";
                     }
                     currentToken = nextToken;
                 }
                 else if (ReadToken(_tokens, "delete", ref nextToken, ref farestError))
                 {
                     var pos = nextToken;
-                    if (ReadToken(_tokens, "node", ref nextToken, ref farestError))
+                    if (ReadToken(_tokens, "from", ref nextToken, ref farestError) && ReadToken(_tokens, "node", ref nextToken, ref farestError))
                     {
                         ret.Add(new DeleteNodeAnnotation
                         {
                             Position = pos,
                         });
-                        _tokens[pos].TokenType = TSqlTokenType.MultilineComment;
-                        _tokens[pos].Text = "/*__GRAPHVIEW_DELETE_NODE*/";
+                        //_tokens[pos].TokenType = TSqlTokenType.MultilineComment;
+                        //_tokens[pos].Text = "/*__GRAPHVIEW_DELETE_NODE*/";
                         currentToken = nextToken;
                     }
                     else if (ReadToken(_tokens, "edge", ref nextToken, ref farestError))

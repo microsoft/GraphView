@@ -165,15 +165,15 @@ namespace GraphView
                         {
                             var insertSpecification = (statement as WInsertSpecification);
 
-                            if (insertSpecification.Target.ToString().Equals("node", StringComparison.OrdinalIgnoreCase))
+                            if (insertSpecification is WInsertNodeSpecification)
                             {
-                                var insertNodeStatement = new WInsertNodeSpecification(insertSpecification);
+                                var insertNodeStatement = insertSpecification as WInsertNodeSpecification;
                                 var Insertop = insertNodeStatement.Generate(DocumentDBConnection);
                                 Insertop.Next();
                             }
-                            else if (insertSpecification.Target.ToString().Equals("edge", StringComparison.OrdinalIgnoreCase))
+                            else if (insertSpecification is WInsertEdgeSpecification)
                             {
-                                var insertEdgeStatement = new WInsertEdgeSpecification(insertSpecification);
+                                var insertEdgeStatement = insertSpecification as WInsertEdgeSpecification;
                                 var Insertop = insertEdgeStatement.Generate(DocumentDBConnection);
                                 Insertop.Next();
                             }
@@ -188,9 +188,9 @@ namespace GraphView
                                 var Deleteop = deleteEdgeStatement.Generate(DocumentDBConnection);
                                 Deleteop.Next();
                             }
-                            else if (deletespecification.Target.ToString().Equals("node", StringComparison.OrdinalIgnoreCase))
+                            else if (deletespecification is WDeleteNodeSpecification)
                             {
-                                var deleteNodeStatement = new WDeleteNodeSpecification(deletespecification);
+                                var deleteNodeStatement = deletespecification as WDeleteNodeSpecification;
                                 var Deleteop = deleteNodeStatement.Generate(DocumentDBConnection);
                                 Deleteop.Next();
                             }

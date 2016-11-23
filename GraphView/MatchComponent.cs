@@ -61,6 +61,9 @@ namespace GraphView
         // and new edges point to this sink node. 
         public Dictionary<MatchNode, Statistics> SinkNodeStatisticsDict { get; set; }
 
+        // A collection of nodes and their edges which need to be pulled from the server
+        public Dictionary<string, List<MatchEdge>> NodeToMaterializedEdgesDict { get; set; }
+
         // Estimated number of rows returned by this component
         public double Cardinality { get; set; }
 
@@ -74,6 +77,7 @@ namespace GraphView
             TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
+            NodeToMaterializedEdgesDict = new Dictionary<string, List<MatchEdge>>();
             Cardinality = 1.0;
             Cost = 0.0;
         }
@@ -83,6 +87,7 @@ namespace GraphView
             Nodes.Add(node);
             MaterializedNodeSplitCount[node] = 0;
             //SinkNodeStatisticsDict[node] = new Statistics ();
+            NodeToMaterializedEdgesDict[node.NodeAlias] = new List<MatchEdge>();
             Cardinality *= node.EstimatedRows;
 
             foreach (var edge in node.Neighbors)
@@ -101,17 +106,31 @@ namespace GraphView
             Nodes = new HashSet<MatchNode>(component.Nodes);
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>(component.EdgeMaterilizedDict);
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>(component.MaterializedNodeSplitCount);
+
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             foreach (var nodeMapping in component.UnmaterializedNodeMapping)
             {
                 UnmaterializedNodeMapping[nodeMapping.Key] = new List<MatchEdge>(nodeMapping.Value);
             }
+
             TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
             foreach (var chain in component.TraversalChain)
             {
                 TraversalChain.Add(new Tuple<MatchNode, MatchEdge>(chain.Item1, chain.Item2));
             }
-            SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>(component.SinkNodeStatisticsDict);
+
+            NodeToMaterializedEdgesDict = new Dictionary<string, List<MatchEdge>>();
+            foreach (var nodeMatEdges in component.NodeToMaterializedEdgesDict)
+            {
+                NodeToMaterializedEdgesDict[nodeMatEdges.Key] = new List<MatchEdge>(nodeMatEdges.Value);
+            }
+
+            SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
+            foreach (var stat in component.SinkNodeStatisticsDict)
+            {
+                SinkNodeStatisticsDict[stat.Key] = stat.Value;
+            }
+
             Cardinality = component.Cardinality;
             Cost = component.Cost;
         }
