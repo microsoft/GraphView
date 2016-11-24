@@ -94,7 +94,7 @@ namespace GraphView
         internal List<string> UnionString;
         // A mark that tells whether the script need to be executed now or later(only for AddV(), AddE() and Drop())
         internal bool LazyMark;
-        // A static graph traversal, used to pass information between normal graph traversal and those begin with "__underscore"
+        // A static graph traversal, used to pass information between normal graph traversal and those begin with "____"
         internal static GraphTraversal held;
 
         public List<Record> ToList()
@@ -316,7 +316,7 @@ namespace GraphView
             return "decr";
         }
 
-        public static GraphTraversal _underscore()
+        public static GraphTraversal ___()
         {
             GraphViewConnection NullConnection = new GraphViewConnection();
             GraphTraversal HeldPipe = new GraphTraversal(NullConnection);

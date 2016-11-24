@@ -69,42 +69,42 @@ namespace GremlinTranslationOperator.Tests
             //g.V().@where("name", Predicate.gte(1)).next(); //pass
             //g.V().next();
 
-            //g.V().choose(GraphTraversal2.underscore().values("age"))
-            //    .option(1, GraphTraversal2.underscore().values("first_name"))
-            //    .option(2, GraphTraversal2.underscore().values("lase_name")).next(); //pass
+            //g.V().choose(GraphTraversal2.__().values("age"))
+            //    .option(1, GraphTraversal2.__().values("first_name"))
+            //    .option(2, GraphTraversal2.__().values("lase_name")).next(); //pass
 
-            //g.V().choose(GraphTraversal2.underscore().values("isMale"),
-            //    GraphTraversal2.underscore().values("first_name"),
-            //    GraphTraversal2.underscore().values("last_name")).next(); //pass
+            //g.V().choose(GraphTraversal2.__().values("isMale"),
+            //    GraphTraversal2.__().values("first_name"),
+            //    GraphTraversal2.__().values("last_name")).next(); //pass
 
-            //g.V().coalesce(GraphTraversal2.underscore().outE("'knows'"),
-            //                GraphTraversal2.underscore().outE("'created'")).next(); //pass
+            //g.V().coalesce(GraphTraversal2.__().outE("'knows'"),
+            //                GraphTraversal2.__().outE("'created'")).next(); //pass
 
-            //g.V().and(GraphTraversal2.underscore().outE("knows"),
-            //            GraphTraversal2.underscore().@where("name", Predicate.eq("jinjin"))).values("name").next(); //pass
-            //g.V().Or(GraphTraversal2.underscore().outE("knows"),
-            //            GraphTraversal2.underscore().@where("name", Predicate.eq("jinjin"))).values("name").next(); //pass
-            //g.V().and(GraphTraversal2.underscore().outE("knows"),
-            //            GraphTraversal2.underscore().values("age").Is(Predicate.lt(30))).values("name").next();
-
-            //g.V().match(
-            //    GraphTraversal2.underscore().As("a").Out("created").As("b"),
-            //    GraphTraversal2.underscore().As("b").has("name", "lop"),
-            //    GraphTraversal2.underscore().As("b").In("created").As("c"),
-            //    GraphTraversal2.underscore().As("c").has("age", 29)).next();  //pass
+            //g.V().and(GraphTraversal2.__().outE("knows"),
+            //            GraphTraversal2.__().@where("name", Predicate.eq("jinjin"))).values("name").next(); //pass
+            //g.V().Or(GraphTraversal2.__().outE("knows"),
+            //            GraphTraversal2.__().@where("name", Predicate.eq("jinjin"))).values("name").next(); //pass
+            //g.V().and(GraphTraversal2.__().outE("knows"),
+            //            GraphTraversal2.__().values("age").Is(Predicate.lt(30))).values("name").next();
 
             //g.V().match(
-            //    GraphTraversal2.underscore().As("a").Out("created").has("name", "lop").As("b"),
-            //    GraphTraversal2.underscore().As("b").In("created").has("age", 29).As("c")).next(); //pass
+            //    GraphTraversal2.__().As("a").Out("created").As("b"),
+            //    GraphTraversal2.__().As("b").has("name", "lop"),
+            //    GraphTraversal2.__().As("b").In("created").As("c"),
+            //    GraphTraversal2.__().As("c").has("age", 29)).next();  //pass
 
             //g.V().match(
-            //     GraphTraversal2.underscore().As("a").has("name", "Garcia"),
-            //     GraphTraversal2.underscore().As("a").In("writtenBy").As("b"),
-            //     GraphTraversal2.underscore().As("a").In("sungBy").As("b")).next(); //pass
+            //    GraphTraversal2.__().As("a").Out("created").has("name", "lop").As("b"),
+            //    GraphTraversal2.__().As("b").In("created").has("age", 29).As("c")).next(); //pass
+
+            //g.V().match(
+            //     GraphTraversal2.__().As("a").has("name", "Garcia"),
+            //     GraphTraversal2.__().As("a").In("writtenBy").As("b"),
+            //     GraphTraversal2.__().As("a").In("sungBy").As("b")).next(); //pass
 
             g.V().match(
-                GraphTraversal2.underscore().As("a").Out().count().As("b"),
-                GraphTraversal2.underscore().As("a").In().count().As("b")
+                GraphTraversal2.__().As("a").Out().count().As("b"),
+                GraphTraversal2.__().As("a").In().count().As("b")
             ).next();
 
             //g.E().next();
@@ -146,7 +146,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"select * from (select 1) as n_1";
+            const string q2 = @"select * from inject(1) as n_1";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
@@ -159,7 +159,44 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void GremlinFuntionalTestSuite()
         {
+            //g.addV("application").property("_app", "test-app").property("_id", "test-app").property("_provisioningState", 1).property("_deleted", false).next();
 
+            GraphTraversal2.g().inject(0)
+                .union(GraphTraversal2.__().not(GraphTraversal2.g().V()
+                            .has("_app", "test-app")
+                            .hasLabel("application")
+                            .has("_deleted", false))
+                        .constant("~0"),
+                    GraphTraversal2.g().V()
+                        .has("_app", "test-app")
+                        .hasLabel("application")
+                        .has("_provisioningState", 0)
+                        .constant("~1"),
+                    GraphTraversal2.g().V()
+                        .has("_app", "test-app")
+                        .hasLabel("application")
+                        .has("_provisioningState", 2)
+                        .constant("~2"),
+                    GraphTraversal2.g().V()
+                        .has("_app", "test-app")
+                        .has("_id", "product:soda-machine")
+                        .hasLabel("product-model")
+                        .constant("~3"),
+                    GraphTraversal2.g().V()
+                        .has("_app", "test-app")
+                        .has("_id", "uber-product:soda-machine")
+                        .hasLabel("product-model")
+                        .constant("~4"),
+                    GraphTraversal2.g().V()
+                        .has("_app", "test-app")
+                        .has("_id", "device:ice-machine")
+                        .hasLabel("device-model")
+                        .constant("~5"),
+                    GraphTraversal2.g().V()
+                        .has("_app", "test-app")
+                        .has("_id", "device:soda-mixer")
+                        .hasLabel("device-model")
+                        .constant("~6")).next();
         }
     }
 }

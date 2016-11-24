@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GremlinTranslationOps.map
 {
@@ -18,6 +19,21 @@ namespace GraphView.GremlinTranslationOps.map
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+            {
+                QueryExpr = NotTraversal.GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock
+            };
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable);
+            inputContext.AddNewVariable(newVariable, Labels); //??Labels?
+
+            WBooleanComparisonExpression booleanComparisonExpr = new WBooleanComparisonExpression()
+            {
+                ComparisonType = BooleanComparisonType.NotEqualToExclamation,
+                FirstExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id"),
+                SecondExpr = GremlinUtil.GetColumnReferenceExpression(newVariable.VariableName, "id")
+            };
+            inputContext.AddPredicate(booleanComparisonExpr);
 
             return inputContext;
         }

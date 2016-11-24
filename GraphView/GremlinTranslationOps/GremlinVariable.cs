@@ -105,11 +105,11 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinDerivedVariable: GremlinVariable
     {
         //public WSelectQueryBlock SelectQueryBlock;
-        public WQueryDerivedTable QueryDerivedTable;
+        public WTableReferenceWithAliasAndColumns QueryDerivedTable;
 
         public GremlinDerivedVariable() { }
 
-        public GremlinDerivedVariable(WQueryDerivedTable queryDerivedTable)
+        public GremlinDerivedVariable(WTableReferenceWithAliasAndColumns queryDerivedTable)
         {
             VariableName = "D_" + _count.ToString();
             _count += 1;
