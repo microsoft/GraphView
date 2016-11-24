@@ -109,8 +109,8 @@ namespace GraphView
     public partial class WNamedTableReference : WTableReferenceWithAlias
     {
         internal WSchemaObjectName TableObjectName { set; get; }
-        internal long Low;
-        internal long High;
+        internal long Low = Int64.MinValue;
+        internal long High = Int64.MaxValue;
 
         internal IList<WTableHint> TableHints { set; get; }
 

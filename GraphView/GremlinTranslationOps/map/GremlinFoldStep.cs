@@ -16,10 +16,11 @@ namespace GraphView.GremlinTranslationOps.map
             //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("fold"));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            GremlinListVariable newDerivedVariable = new GremlinListVariable(inputContext.ToSqlQuery());
-            newContext.AddNewVariable(newDerivedVariable, Labels);
-            newContext.SetDefaultProjection(newDerivedVariable);
-            newContext.SetCurrVariable(newDerivedVariable);
+
+            //newDerivedVariable = new GremlinListVariable(inputContext.ToSqlQuery());
+            //newContext.AddNewVariable(newDerivedVariable, Labels);
+            //newContext.SetDefaultProjection(newDerivedVariable);
+            //newContext.SetCurrVariable(newDerivedVariable);
 
             //TODO: inherit some variable?
 

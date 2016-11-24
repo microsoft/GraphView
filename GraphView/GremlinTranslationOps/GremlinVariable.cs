@@ -104,20 +104,22 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinDerivedVariable: GremlinVariable
     {
-        public WSelectQueryBlock SelectQueryBlock;
+        //public WSelectQueryBlock SelectQueryBlock;
+        public WQueryDerivedTable QueryDerivedTable;
 
         public GremlinDerivedVariable() { }
 
-        public GremlinDerivedVariable(WSqlStatement selectQueryBlock)
+        public GremlinDerivedVariable(WQueryDerivedTable queryDerivedTable)
         {
             VariableName = "D_" + _count.ToString();
             _count += 1;
-            SelectQueryBlock = selectQueryBlock as WSelectQueryBlock;
+            QueryDerivedTable = queryDerivedTable;
+            QueryDerivedTable.Alias = GremlinUtil.GetIdentifier(VariableName);
         }
         private static long _count = 0;
     }
 
-    internal class GremlinScalarVariable : GremlinDerivedVariable
+    internal class GremlinScalarVariable : GremlinVariable
     {
         public WScalarSubquery ScalarSubquery;
 
@@ -130,15 +132,15 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
-    internal class GremlinMapVariable : GremlinDerivedVariable
-    {
-        public GremlinMapVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock) {}
-    }
+    //internal class GremlinMapVariable : GremlinDerivedVariable
+    //{
+    //    public GremlinMapVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock) {}
+    //}
 
-    internal class GremlinListVariable : GremlinDerivedVariable
-    {
-        public GremlinListVariable(WSqlStatement selectQueryBlock) : base(selectQueryBlock) {}
-    }
+    //internal class GremlinListVariable : GremlinDerivedVariable
+    //{
+    //    public GremlinListVariable(WSqlStatement selectQueryBlock) : base(selectQueryBlock) {}
+    //}
 
     internal class GremlinPropertyVariable : GremlinVariable
     {
@@ -154,12 +156,12 @@ namespace GraphView.GremlinTranslationOps
     {
         public GremlinVertexVariable FromVariable;
         public GremlinVertexVariable ToVariable;
-        public Dictionary<string, object> Properties;
+        public Dictionary<string, List<object>> Properties;
         public string EdgeLabel;
 
         public GremlinAddEVariable(string edgeLabel, GremlinVertexVariable currVariable)
         {
-            Properties = new Dictionary<string, object>();
+            Properties = new Dictionary<string, List<object>>();
             FromVariable = currVariable;
             ToVariable = currVariable;
             EdgeLabel = edgeLabel;
@@ -168,11 +170,13 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinAddVVariable : GremlinVariable
     {
-        public Dictionary<string, object> Properties;
+        public Dictionary<string, List<object>> Properties;
+        public string VertexLabel;
 
-        public GremlinAddVVariable()
+        public GremlinAddVVariable(string vertexLabel)
         {
-            Properties = new Dictionary<string, object>();
+            Properties = new Dictionary<string, List<object>>();
+            VertexLabel = vertexLabel;
         }
     }
 

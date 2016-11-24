@@ -210,15 +210,15 @@ namespace GraphView.GremlinTranslationOps.map
                             SecondExpr = GremlinUtil.GetColumnReferenceExpression(matchVariable.VariableName, "id")
                         };
                     }
-                    else if (matchVariable is GremlinScalarVariable)
-                    {
-                        booleanExpr = new WBooleanComparisonExpression()
-                        {
-                            ComparisonType = BooleanComparisonType.Equals,
-                            FirstExpr = GremlinUtil.GetValueExpression((matchVariable as GremlinScalarVariable).ScalarSubquery),
-                            SecondExpr = GremlinUtil.GetValueExpression((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
-                        };
-                    }
+                    //else if (matchVariable is GremlinScalarVariable)
+                    //{
+                    //    booleanExpr = new WBooleanComparisonExpression()
+                    //    {
+                    //        ComparisonType = BooleanComparisonType.Equals,
+                    //        FirstExpr = GremlinUtil.GetValueExpression((matchVariable as GremlinScalarVariable).ScalarSubquery),
+                    //        SecondExpr = GremlinUtil.GetValueExpression((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
+                    //    };
+                    //}
                     inputContext.AddPredicate(booleanExpr);
                     isNewAlias = false;
                     break;

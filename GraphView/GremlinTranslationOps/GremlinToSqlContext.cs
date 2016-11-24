@@ -213,14 +213,17 @@ namespace GraphView.GremlinTranslationOps
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(toVarExpr));
 
             //Add edge key-value
-            columnK.Add(GremlinUtil.GetColumnReferenceExpression("type"));
+            columnK.Add(GremlinUtil.GetColumnReferenceExpression("label"));
             var valueExpr = GremlinUtil.GetValueExpression(currVar.EdgeLabel);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
             foreach (var property in currVar.Properties)
             {
-                columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
-                valueExpr = GremlinUtil.GetValueExpression(property.Value);
-                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                foreach (var value in property.Value)
+                {
+                    columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
+                    valueExpr = GremlinUtil.GetValueExpression(value.ToString());
+                    selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                }
             }
             
             var insertStatement = new WInsertSpecification()
@@ -242,10 +245,19 @@ namespace GraphView.GremlinTranslationOps
             var columnV = new List<WScalarExpression>();
             var currVar = CurrVariable as GremlinAddVVariable;
 
+            if (currVar.VertexLabel != null)
+            {
+                columnK.Add(GremlinUtil.GetColumnReferenceExpression("label"));
+                columnV.Add(GremlinUtil.GetValueExpression(currVar.VertexLabel));
+            }
+
             foreach (var property in currVar.Properties)
             {
-                columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
-                columnV.Add(GremlinUtil.GetValueExpression(property.Value));
+                foreach (var value in property.Value)
+                {
+                    columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
+                    columnV.Add(GremlinUtil.GetValueExpression(value));
+                }
             }
 
             var row = new List<WRowValue>() {new WRowValue() {ColumnValues = columnV}};
@@ -281,16 +293,16 @@ namespace GraphView.GremlinTranslationOps
                     WNamedTableReference tableReference = GremlinUtil.GetNamedTableReference(currVar);
                     newFromClause.TableReferences.Add(tableReference);
                 }
-                else if (currVar is GremlinScalarVariable)
-                {
-                    GremlinScalarVariable scalarVariable = currVar as GremlinScalarVariable;
-                    WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-                    {
-                        Alias = GremlinUtil.GetIdentifier(scalarVariable.VariableName),
-                        QueryExpr = scalarVariable.SelectQueryBlock
-                    };
-                    newFromClause.TableReferences.Add(queryDerivedTable);
-                }
+                //else if (currVar is GremlinScalarVariable)
+                //{
+                //    GremlinScalarVariable scalarVariable = currVar as GremlinScalarVariable;
+                //    WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+                //    {
+                //        Alias = GremlinUtil.GetIdentifier(scalarVariable.VariableName),
+                //        QueryExpr = scalarVariable.ScalarSubquery
+                //    };
+                //    newFromClause.TableReferences.Add(queryDerivedTable);
+                //}
                 else if (currVar is GremlinChooseVariable)
                 {
                     newFromClause.TableReferences.Add((currVar as GremlinChooseVariable).ChooseExpr);
@@ -298,6 +310,10 @@ namespace GraphView.GremlinTranslationOps
                 else if (currVar is GremlinCoalesceVariable)
                 {
                     newFromClause.TableReferences.Add((currVar as GremlinCoalesceVariable).CoalesceExpr);
+                }
+                else if (currVar is GremlinDerivedVariable)
+                {
+                    newFromClause.TableReferences.Add((currVar as GremlinDerivedVariable).QueryDerivedTable);
                 }
             }
             return newFromClause;
@@ -433,7 +449,7 @@ namespace GraphView.GremlinTranslationOps
                 WBooleanComparisonExpression comExpression = new WBooleanComparisonExpression()
                 {
                     ComparisonType = BooleanComparisonType.Equals,
-                    FirstExpr = GremlinUtil.GetColumnReferenceExpression(edgeVar.VariableName, "type"),
+                    FirstExpr = GremlinUtil.GetColumnReferenceExpression(edgeVar.VariableName, "label"),
                     SecondExpr = predicateValue
                 };
                 AddPredicate(comExpression);

@@ -11,7 +11,7 @@ namespace GraphView.GremlinTranslationOps.filter
     {
         public string Key;
         public object Value;
-        public object Values;
+        public List<object> Values;
         public string Label;
         public Predicate Predicate;
         public GremlinTranslationOperator ParamOp;
@@ -68,7 +68,11 @@ namespace GraphView.GremlinTranslationOps.filter
 
         public GremlinHasOp(HasOpType type, params object[] values)
         {
-            Values = values;
+            Values = new List<object>();
+            foreach (var value in values)
+            {
+                Values.Add(value);
+            }
             OpType = type;
         }
 
@@ -106,7 +110,7 @@ namespace GraphView.GremlinTranslationOps.filter
             else if (OpType == HasOpType.HasLabelKeyValue)
             {
                 //has(label, key, value)
-                WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpr(currVar, "type", Label);
+                WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpr(currVar, "label", Label);
                 WBooleanExpression booleanExpr2 = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Value.ToString());
                 WBooleanExpression booleanExprBoth = GremlinUtil.GetAndBooleanBinaryExpr(booleanExpr1, booleanExpr2);
                 inputContext.AddPredicate(booleanExprBoth);
@@ -134,7 +138,7 @@ namespace GraphView.GremlinTranslationOps.filter
             else if (OpType == HasOpType.HasId)
             {
                 List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-                foreach (var value in Values as string[])
+                foreach (var value in Values)
                 {
                     booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "id", value));
                 }
@@ -143,18 +147,18 @@ namespace GraphView.GremlinTranslationOps.filter
             }
             else if (OpType == HasOpType.HasKeys)
             {
-                foreach (var key in Values as string[])
+                foreach (var key in Values)
                 {
-                    WBooleanExpression booleanExpr = GremlinUtil.GetHasKeyBooleanExpression(currVar, key);
+                    WBooleanExpression booleanExpr = GremlinUtil.GetHasKeyBooleanExpression(currVar, key as string);
                     inputContext.AddPredicate(booleanExpr);
                 }
             }
             else if (OpType == HasOpType.HasLabel)
             {
                 List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-                foreach (var value in Values as string[])
+                foreach (var value in Values)
                 {
-                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "type", value));
+                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "label", value));
                 }
                 WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
                 inputContext.AddPredicate(concatSql);

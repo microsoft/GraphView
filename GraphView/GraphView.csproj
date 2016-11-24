@@ -70,6 +70,7 @@
     <Compile Include="GremlinTranslationOps\branch\GremlinChooseOp.cs" />
     <Compile Include="GraphViewExecutionRuntime\Decoder.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
+    <Compile Include="GremlinTranslationOps\branch\GremlinUnionOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinAndOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinCoinOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinDropOp.cs" />
@@ -102,6 +103,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinMaxOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMeanOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinMinOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinNotOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOptionalOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOrderOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutEOp.cs" />
@@ -132,6 +134,7 @@
     <Compile Include="GremlinTranslationOps\Predicate.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAggregateOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAsOp.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinInjectOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="MatchComponent.cs" />

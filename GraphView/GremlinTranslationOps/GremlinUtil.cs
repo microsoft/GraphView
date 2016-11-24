@@ -408,10 +408,15 @@ namespace GraphView.GremlinTranslationOps
             inputContext.SetCurrProjection(GetFunctionCall(functionName, parameter));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
-            newContext.AddNewVariable(newScalarVariable, labels);
-            newContext.SetCurrVariable(newScalarVariable);
-            newContext.SetStarProjection(newScalarVariable);
+            //GremlinScalarVariable newVariabel = new GremlinScalarVariable(inputContext.ToSqlQuery());
+            WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+            {
+                QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
+            };
+            GremlinDerivedVariable newVariabel = new GremlinDerivedVariable(queryDerivedTable);
+            newContext.AddNewVariable(newVariabel, labels);
+            newContext.SetCurrVariable(newVariabel);
+            newContext.SetStarProjection(newVariabel);
 
             return newContext;
         }
@@ -443,6 +448,18 @@ namespace GraphView.GremlinTranslationOps
             }
         }
 
-        //internal static void GetTrue
+        internal static WQueryDerivedTable GetConstantQueryDerivedTable(object constant)
+        {
+            return new WQueryDerivedTable()
+            {
+                QueryExpr = new WSelectQueryBlock()
+                {
+                    SelectElements = new List<WSelectElement>() { new WSelectScalarExpression()
+                    {
+                        SelectExpr = GetValueExpression(constant)
+                    } }
+                }
+            };
+        } 
     }
 }

@@ -146,7 +146,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"SELECT * FROM node n_0 where (select count(*) from node n_1) = 1";
+            const string q2 = @"select * from (select 1) as n_1";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
@@ -156,5 +156,10 @@ namespace GremlinTranslationOperator.Tests
                 throw new SyntaxErrorException(errors);
         }
 
+        [TestMethod]
+        public void GremlinFuntionalTestSuite()
+        {
+
+        }
     }
 }
