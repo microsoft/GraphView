@@ -9,31 +9,18 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinInjectOp: GremlinTranslationOperator
     {
-        public List<object> Injections;
+        public object[] Injections;
 
         public GremlinInjectOp(params object[] injections)
         {
-            Injections = new List<object>();
-            foreach (var injection in injections)
-            {
-                Injections.Add(injection);
-            }
+            Injections = injections;
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameters = new List<WScalarExpression>();
-            foreach (var injection in Injections)
-            {
-                parameters.Add(GremlinUtil.GetValueExpression(injection));
-            }
-            WSchemaObjectFunctionTableReference functionTableReference = new WSchemaObjectFunctionTableReference()
-            {
-                SchemaObject = new WSchemaObjectName(GremlinUtil.GetIdentifier("inject")),
-                Parameters = parameters
-            };
+            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("inject", Injections);
 
             GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
             inputContext.AddNewVariable(newVariable, Labels);

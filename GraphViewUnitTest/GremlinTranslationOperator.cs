@@ -159,44 +159,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void GremlinFuntionalTestSuite()
         {
-            //g.addV("application").property("_app", "test-app").property("_id", "test-app").property("_provisioningState", 1).property("_deleted", false).next();
 
-            GraphTraversal2.g().inject(0)
-                .union(GraphTraversal2.__().not(GraphTraversal2.g().V()
-                            .has("_app", "test-app")
-                            .hasLabel("application")
-                            .has("_deleted", false))
-                        .constant("~0"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .hasLabel("application")
-                        .has("_provisioningState", 0)
-                        .constant("~1"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .hasLabel("application")
-                        .has("_provisioningState", 2)
-                        .constant("~2"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "product:soda-machine")
-                        .hasLabel("product-model")
-                        .constant("~3"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "uber-product:soda-machine")
-                        .hasLabel("product-model")
-                        .constant("~4"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "device:ice-machine")
-                        .hasLabel("device-model")
-                        .constant("~5"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "device:soda-mixer")
-                        .hasLabel("device-model")
-                        .constant("~6")).next();
         }
     }
 }

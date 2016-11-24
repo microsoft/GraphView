@@ -460,6 +460,21 @@ namespace GraphView.GremlinTranslationOps
                     } }
                 }
             };
-        } 
+        }
+
+        internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
+            params object[] parameters)
+        {
+            List<WScalarExpression> parameterList = new List<WScalarExpression>();
+            foreach (var parameter in parameters)
+            {
+                parameterList.Add(GetValueExpression(parameter));
+            }
+            return new WSchemaObjectFunctionTableReference()
+            {
+                SchemaObject = new WSchemaObjectName(GremlinUtil.GetIdentifier(functionName)),
+                Parameters = parameterList
+            };
+        }
     }
 }

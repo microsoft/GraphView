@@ -316,7 +316,7 @@ namespace GraphView
             return "decr";
         }
 
-        public static GraphTraversal ___()
+        public static GraphTraversal _underscore()
         {
             GraphViewConnection NullConnection = new GraphViewConnection();
             GraphTraversal HeldPipe = new GraphTraversal(NullConnection);
