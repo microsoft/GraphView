@@ -121,11 +121,11 @@ namespace GraphView
         //public GraphTraversal2 barrier()
         //public GraphTraversal2 barrier(Comsumer<org.apache.tinkerpop.gremlin.process.traversal.traverser.util,.TraverserSet<Object>> barrierConsumer)
 
-        //public GraphTraversal2 both(params string[] edgeLabels)
-        //{
-            //AddGremlinOperator(new GremlinBothEOp(edgeLabels));
-            //return this;
-        //}
+        public GraphTraversal2 both(params string[] edgeLabels)
+        {
+            AddGremlinOperator(new GremlinBothOp(edgeLabels));
+            return this;
+        }
 
         public GraphTraversal2 bothE(params string[] edgeLabels)
         {
@@ -562,8 +562,14 @@ namespace GraphView
         //public GraphTraversal2 select(Pop pop, string selectKey1, string selectKey2, params string[] otherSelectKeys)
         //public GraphTraversal2 select(string selectKey)
         //public GraphTraversal2 select(string selectKey1, string selectKey2, params string[] otherSelectKeys)
+
+
         //public GraphTraversal2 sideEffect(Consumer<Traverser<E>> consumer)
-        //public GraphTraversal2 sideEffect(Traversal<?, ?> sideEffectTraversal)
+        public GraphTraversal2 sideEffect(GraphTraversal2 sideEffectTraversal)
+        {
+            return this;    
+        }
+
         //public GraphTraversal2 simplePath()
         //public GraphTraversal2 store(string sideEffectKey)
         //public GraphTraversal2 subgraph(string sideEffectKey)
@@ -612,7 +618,10 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 to(Traversal<E, Vertex> toVertex)
+        public GraphTraversal2 to(GraphTraversal2 toVertex)
+        {
+            return this;
+        }
         //public GraphTraversal2 toE(Direction direction, params string[] edgeLabels)
         //public GraphTraversal2 toV(Direction direction)
         //public GraphTraversal2 tree()
@@ -672,7 +681,7 @@ namespace GraphView
 
         public GraphTraversal2 where(GraphTraversal2 whereTraversal)
         {
-            AddGremlinOperator(new GremlinWhereOp(whereTraversal.LastGremlinTranslationOp));
+            AddGremlinOperator(new GremlinWhereOp(whereTraversal));
             return this;
         }
 

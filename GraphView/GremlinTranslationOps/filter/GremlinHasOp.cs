@@ -98,20 +98,24 @@ namespace GraphView.GremlinTranslationOps.filter
             else if (OpType == HasOpType.HasKeyValue)
             {
                 //has(key, value)
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Value.ToString());
+                WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, Key);
+                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(keyExpr, Value.ToString());
                 inputContext.AddPredicate(booleanExpr);
             }
             else if (OpType == HasOpType.HasKeyPredicate)
             {
                 //has(key, predicate)
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Predicate);
+                WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, Key);
+                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(keyExpr, Predicate);
                 inputContext.AddPredicate(booleanExpr);
             }
             else if (OpType == HasOpType.HasLabelKeyValue)
             {
                 //has(label, key, value)
-                WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpr(currVar, "label", Label);
-                WBooleanExpression booleanExpr2 = GremlinUtil.GetBooleanComparisonExpr(currVar, Key, Value.ToString());
+                WScalarExpression keyExpr1 = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "label");
+                WScalarExpression keyExpr2 = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, Key);
+                WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpr(keyExpr1, Label);
+                WBooleanExpression booleanExpr2 = GremlinUtil.GetBooleanComparisonExpr(keyExpr2, Value.ToString());
                 WBooleanExpression booleanExprBoth = GremlinUtil.GetAndBooleanBinaryExpr(booleanExpr1, booleanExpr2);
                 inputContext.AddPredicate(booleanExprBoth);
             }
@@ -140,7 +144,8 @@ namespace GraphView.GremlinTranslationOps.filter
                 List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
                 foreach (var value in Values)
                 {
-                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "id", value));
+                    WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id");
+                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(keyExpr, value));
                 }
                 WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
                 inputContext.AddPredicate(concatSql);
@@ -158,7 +163,8 @@ namespace GraphView.GremlinTranslationOps.filter
                 List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
                 foreach (var value in Values)
                 {
-                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(currVar, "label", value));
+                    WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "label");
+                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(keyExpr, value));
                 }
                 WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
                 inputContext.AddPredicate(concatSql);

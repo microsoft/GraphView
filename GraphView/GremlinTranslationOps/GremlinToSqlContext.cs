@@ -315,6 +315,10 @@ namespace GraphView.GremlinTranslationOps
                 {
                     newFromClause.TableReferences.Add((currVar as GremlinDerivedVariable).QueryDerivedTable);
                 }
+                else if (currVar is GremlinOptionalVariable)
+                {
+                    newFromClause.TableReferences.Add((currVar as GremlinOptionalVariable).OptionalExpr);
+                }
             }
             return newFromClause;
         }

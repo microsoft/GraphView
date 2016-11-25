@@ -209,6 +209,20 @@ namespace GraphView.GremlinTranslationOps
         private static long _count = 0;
     }
 
+    internal class GremlinOptionalVariable : GremlinVariable
+    {
+        public WOptional OptionalExpr;
+
+        public GremlinOptionalVariable(WOptional optionalExpr)
+        {
+            VariableName = "Optional_" + _count.ToString();
+            _count += 1;
+            OptionalExpr = optionalExpr;
+            OptionalExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
+        }
+        private static long _count = 0;
+    }
+
     public enum Scope
     {
         local,

@@ -93,15 +93,14 @@ namespace GraphView.GremlinTranslationOps
             }
         }
 
-        internal static WBooleanComparisonExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
-            string key, object value)
+        internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression key, object value)
         {
             WScalarExpression valueExpression = GetValueExpression(value);
 
             return new WBooleanComparisonExpression()
             {
                 ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
+                FirstExpr = key,
                 SecondExpr = valueExpression
             };
         }
@@ -117,8 +116,7 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WBooleanExpression GetBooleanComparisonExpr(GremlinVariable gremlinVar,
-            string key, Predicate predicate)
+        internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression key, Predicate predicate)
         {
             if (predicate.PredicateType == PredicateType.within ||
                 predicate.PredicateType == PredicateType.without ||
@@ -132,14 +130,14 @@ namespace GraphView.GremlinTranslationOps
                     case PredicateType.within:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(gremlinVar, key,
+                            booleanExprList.Add(GetBooleanComparisonExpr(key,
                                 new Predicate(PredicateType.eq, value, predicate.IsAliasValue)));
                         }
                         return ConcatBooleanExpressionListWithOr(booleanExprList);
                     case PredicateType.without:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(gremlinVar, key,
+                            booleanExprList.Add(GetBooleanComparisonExpr(key,
                                 new Predicate(PredicateType.neq, value, predicate.IsAliasValue)));
                         }
                         return ConcatBooleanExpressionListWithAnd(booleanExprList);
@@ -170,7 +168,7 @@ namespace GraphView.GremlinTranslationOps
                 return new WBooleanComparisonExpression()
                 {
                     ComparisonType = GetComparisonTypeFromPredicateType(predicate.PredicateType),
-                    FirstExpr = GetColumnReferenceExpression(gremlinVar.VariableName, key),
+                    FirstExpr = key,
                     SecondExpr = valueExpression
                 };
             }
@@ -421,15 +419,12 @@ namespace GraphView.GremlinTranslationOps
             return newContext;
         }
 
-        internal static void InheritedVariableFromParent(GremlinTranslationOperator op, GremlinToSqlContext inputContext)
+        internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
         {
-            while (op.InputOperator != null)
+            var startOp = childTraversal.GetStartOp();
+            if (startOp.GetType() == typeof(GremlinParentContextOp))
             {
-                op = op.InputOperator;
-            }
-            if (op.GetType() == typeof(GremlinParentContextOp))
-            {
-                GremlinParentContextOp rootAsContextOp = op as GremlinParentContextOp;
+                GremlinParentContextOp rootAsContextOp = startOp as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
             }
         }

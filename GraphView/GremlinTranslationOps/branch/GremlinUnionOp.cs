@@ -39,8 +39,8 @@ namespace GraphView.GremlinTranslationOps.branch
             }
             else
             {
-                GremlinUtil.InheritedVariableFromParent(UnionTraversals[0].GetStartOp(), inputContext);
-                GremlinUtil.InheritedVariableFromParent(UnionTraversals[1].GetStartOp(), inputContext);
+                GremlinUtil.InheritedVariableFromParent(UnionTraversals[0], inputContext);
+                GremlinUtil.InheritedVariableFromParent(UnionTraversals[1], inputContext);
                 binaryQueryExpression = new WBinaryQueryExpression()
                 {
                     FirstQueryExpr = UnionTraversals[0].GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock,
@@ -50,7 +50,7 @@ namespace GraphView.GremlinTranslationOps.branch
                 };
                 for (var i = 2; i < UnionTraversals.Count; i++)
                 {
-                    GremlinUtil.InheritedVariableFromParent(UnionTraversals[i].GetStartOp(), inputContext);
+                    GremlinUtil.InheritedVariableFromParent(UnionTraversals[i], inputContext);
                     binaryQueryExpression = new WBinaryQueryExpression()
                     {
                         FirstQueryExpr = binaryQueryExpression,

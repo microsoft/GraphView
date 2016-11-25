@@ -8,13 +8,13 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinCoalesceStep: GremlinTranslationOperator
     {
-        public List<GremlinTranslationOperator> CoalesceOperators;
+        public List<GraphTraversal2> CoalesceTraversals;
         public GremlinCoalesceStep(params GraphTraversal2[] coalesceTraversals)
         {
-            CoalesceOperators = new List<GremlinTranslationOperator>();
+            CoalesceTraversals = new List<GraphTraversal2>();
             foreach (var coalesceTraversal in coalesceTraversals)
             {
-                CoalesceOperators.Add(coalesceTraversal.LastGremlinTranslationOp);
+                CoalesceTraversals.Add(coalesceTraversal);
             }
         }
 
@@ -24,10 +24,10 @@ namespace GraphView.GremlinTranslationOps.map
 
             WCoalesce2 coalesceExpr = new WCoalesce2() { CoalesceQuery = new List<WSqlStatement>()};
             
-            foreach (var coalesceOperator in CoalesceOperators)
+            foreach (var coalesceTraversal in CoalesceTraversals)
             {
-                GremlinUtil.InheritedVariableFromParent(coalesceOperator, inputContext);
-                coalesceExpr.CoalesceQuery.Add(coalesceOperator.GetContext().ToSqlQuery());
+                GremlinUtil.InheritedVariableFromParent(coalesceTraversal, inputContext);
+                coalesceExpr.CoalesceQuery.Add(coalesceTraversal.GetEndOp().GetContext().ToSqlQuery());
             }
 
             GremlinCoalesceVariable newVariable = new GremlinCoalesceVariable(coalesceExpr);

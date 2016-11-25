@@ -90,6 +90,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinAddEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinAddVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothEOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinBothOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinBothVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCoalesceStep.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinConstantOp.cs" />
@@ -136,6 +137,7 @@
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinAsOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinInjectOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinPropertyOp.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />

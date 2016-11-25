@@ -26,7 +26,17 @@ namespace GraphView
         {
             return "WChoose(" + ChooseDict.Count.ToString() + ") AS" + "[" + Alias.Value + "]";
         }
-    } 
+    }
+
+    public partial class WOptional : WTableReference
+    {
+        internal WSqlStatement SqlStatement;
+        internal Identifier Alias;
+        internal override string ToString(string indent)
+        {
+            return "WOptional() AS" + "[" + Alias.Value + "]";
+        }
+    }
 
     public partial class WCoalesce : WSqlStatement
     {

@@ -9,10 +9,10 @@ namespace GraphView.GremlinTranslationOps.branch
 {
     internal class GremlinChooseOp: GremlinTranslationOperator
     {
-        public GremlinTranslationOperator PredicateOperator;
-        public GremlinTranslationOperator TrueChoiceOperator;
-        public GremlinTranslationOperator FalseChocieOperator;
-        public GremlinTranslationOperator ChoiceOperator;
+        public GraphTraversal2 PredicateTraversal;
+        public GraphTraversal2 TrueChoiceTraversal;
+        public GraphTraversal2 FalseChocieTraversal;
+        public GraphTraversal2 ChoiceTraversal;
         public Predicate Predicate;
         public ChooseType Type;
         public Dictionary<object, GraphTraversal2> OptionDict;
@@ -20,16 +20,16 @@ namespace GraphView.GremlinTranslationOps.branch
         public GremlinChooseOp(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice,
             GraphTraversal2 falseChoice)
         {
-            PredicateOperator = traversalPredicate.LastGremlinTranslationOp;
-            TrueChoiceOperator = trueChoice.LastGremlinTranslationOp;
-            FalseChocieOperator = falseChoice.LastGremlinTranslationOp;
+            PredicateTraversal = traversalPredicate;
+            TrueChoiceTraversal = trueChoice;
+            FalseChocieTraversal = falseChoice;
             Type = ChooseType.TraversalPredicate;
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
 
         public GremlinChooseOp(GraphTraversal2 choiceTraversal)
         {
-            ChoiceOperator = choiceTraversal.LastGremlinTranslationOp;
+            ChoiceTraversal = choiceTraversal;
             Type = ChooseType.Option;
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
@@ -37,8 +37,8 @@ namespace GraphView.GremlinTranslationOps.branch
         public GremlinChooseOp(Predicate predicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
         {
             Predicate = predicate;
-            TrueChoiceOperator = trueChoice.LastGremlinTranslationOp;
-            FalseChocieOperator = falseChoice.LastGremlinTranslationOp;
+            TrueChoiceTraversal = trueChoice;
+            FalseChocieTraversal = falseChoice;
             Type = ChooseType.Predicate;
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
@@ -55,37 +55,37 @@ namespace GraphView.GremlinTranslationOps.branch
             {
                 case ChooseType.Predicate:
                     var value = (inputContext.Projection.First().Item2 as ValueProjection).Value;
-                    var predicateExpr = GremlinUtil.GetBooleanComparisonExpr(inputContext.CurrVariable, value,
-                        Predicate);
+                    WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, value);
+                    var predicateExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
                     chooseExpr.PredicateExpr = predicateExpr;
-                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceOperator.GetContext().ToSqlQuery();
-                    chooseExpr.ChooseDict[falseExpr] = FalseChocieOperator.GetContext().ToSqlQuery();
+                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceTraversal.GetEndOp().GetContext().ToSqlQuery();
+                    chooseExpr.ChooseDict[falseExpr] = FalseChocieTraversal.GetEndOp().GetContext().ToSqlQuery();
                     break;
                 case ChooseType.TraversalPredicate:
                     //Move the context to the choice traversal
-                    GremlinUtil.InheritedVariableFromParent(PredicateOperator, inputContext);
-                    chooseExpr.ChooseSqlStatement = PredicateOperator.GetContext().ToSqlQuery();
+                    GremlinUtil.InheritedVariableFromParent(PredicateTraversal, inputContext);
+                    chooseExpr.ChooseSqlStatement = PredicateTraversal.GetEndOp().GetContext().ToSqlQuery();
 
                     //create different branch context
-                    GremlinUtil.InheritedVariableFromParent(TrueChoiceOperator, inputContext);
-                    GremlinUtil.InheritedVariableFromParent(FalseChocieOperator, inputContext);
-                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceOperator.GetContext().ToSqlQuery();
-                    chooseExpr.ChooseDict[falseExpr] = FalseChocieOperator.GetContext().ToSqlQuery();
+                    GremlinUtil.InheritedVariableFromParent(TrueChoiceTraversal, inputContext);
+                    GremlinUtil.InheritedVariableFromParent(FalseChocieTraversal, inputContext);
+                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceTraversal.GetEndOp().GetContext().ToSqlQuery();
+                    chooseExpr.ChooseDict[falseExpr] = FalseChocieTraversal.GetEndOp().GetContext().ToSqlQuery();
                     break;
 
                 case ChooseType.Option:
                     //Move the context to the choice traversal
-                    GremlinUtil.InheritedVariableFromParent(ChoiceOperator, inputContext);
-                    chooseExpr.ChooseSqlStatement = ChoiceOperator.GetContext().ToSqlQuery();
+                    GremlinUtil.InheritedVariableFromParent(ChoiceTraversal, inputContext);
+                    chooseExpr.ChooseSqlStatement = ChoiceTraversal.GetEndOp().GetContext().ToSqlQuery();
 
                     //create different branch context
                     foreach (var option in OptionDict)
                     {
                         var valueExpr = GremlinUtil.GetValueExpression(option.Key);
-                        var op = option.Value.LastGremlinTranslationOp;
+                        var optionTraversal = option.Value;
 
-                        GremlinUtil.InheritedVariableFromParent(op, inputContext);
-                        chooseExpr.ChooseDict[valueExpr] = op.GetContext().ToSqlQuery();
+                        GremlinUtil.InheritedVariableFromParent(optionTraversal, inputContext);
+                        chooseExpr.ChooseDict[valueExpr] = optionTraversal.GetEndOp().GetContext().ToSqlQuery();
                     }
                     break;
             }

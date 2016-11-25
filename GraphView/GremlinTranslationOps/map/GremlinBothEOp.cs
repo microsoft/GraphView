@@ -43,6 +43,13 @@ namespace GraphView.GremlinTranslationOps.map
             inputContext.AddNewVariable(newEdgeVar, Labels);
             inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, newVertexVar);
 
+            foreach (var edgeLabel in EdgeLabels)
+            {
+                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(newEdgeVar.VariableName, "label");
+                WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, edgeLabel);
+                inputContext.AddPredicate(booleanExpr);
+            }
+
             inputContext.SetCurrVariable(newEdgeVar);
             inputContext.SetDefaultProjection(newEdgeVar);
 
