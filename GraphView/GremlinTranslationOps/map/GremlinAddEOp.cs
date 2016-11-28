@@ -18,12 +18,13 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
+            //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
             GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, inputContext.CurrVariable as GremlinVertexVariable);
-            newAddEVar.EdgeLabel = EdgeLabel;
+
+            //inputContext.AddPaths(newAddEVar.FromVariable, newAddEVar, newAddEVar.ToVariable);
             inputContext.AddNewVariable(newAddEVar, Labels);
             inputContext.SetCurrVariable(newAddEVar);
-            inputContext.ClearProjection();
+            inputContext.SetDefaultProjection(newAddEVar);
 
             return inputContext;
         }
@@ -32,10 +33,19 @@ namespace GraphView.GremlinTranslationOps.map
     internal class GremlinFromOp : GremlinTranslationOperator
     {
         internal string StepLabel;
+        public GraphTraversal2 FromVertexTraversal;
+        public FromType Type;
 
         public GremlinFromOp(string stepLabel)
         {
             StepLabel = stepLabel;
+            Type = FromType.FromStepLabel;
+        }
+
+        public GremlinFromOp(GraphTraversal2 fromVertexTraversal)
+        {
+            FromVertexTraversal = fromVertexTraversal;
+            Type = FromType.FromVertexTraversal;
         }
 
         public override GremlinToSqlContext GetContext()
@@ -44,27 +54,58 @@ namespace GraphView.GremlinTranslationOps.map
 
             GremlinUtil.CheckIsGremlinAddEVariable(inputContext.CurrVariable);
             GremlinVariable fromVariable = null;
-            foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
-            {
-                if (aliasToGremlinVariable.Item1 == StepLabel)
+
+            if (Type == FromType.FromStepLabel) {
+                foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
                 {
-                    GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
-                    fromVariable = aliasToGremlinVariable.Item2;
+                    if (aliasToGremlinVariable.Item1 == StepLabel)
+                    {
+                        //GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
+                        fromVariable = aliasToGremlinVariable.Item2;
+                    }
                 }
             }
+            else if (Type == FromType.FromVertexTraversal)
+            {
+                GremlinUtil.InheritedVariableFromParent(FromVertexTraversal, inputContext);
 
-            (inputContext.CurrVariable as GremlinAddEVariable).FromVariable = fromVariable as GremlinVertexVariable;
+                WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+                {
+                    QueryExpr = FromVertexTraversal.GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock
+                };
+
+                fromVariable = new GremlinDerivedVariable(queryDerivedTable);
+            }
+
+            (inputContext.CurrVariable as GremlinAddEVariable).FromVariable = fromVariable;
+
+
             return inputContext;
+        }
+
+        public enum FromType
+        {
+            FromStepLabel,
+            FromVertexTraversal
         }
     }
 
     internal class GremlinToOp : GremlinTranslationOperator
     {
-        internal string StepLabel;
+        public string StepLabel;
+        public GraphTraversal2 ToVertexTraversal;
+        public ToType Type;
 
         public GremlinToOp(string stepLabel)
         {
             StepLabel = stepLabel;
+            Type = ToType.ToStepLabel; 
+        }
+
+        public GremlinToOp(GraphTraversal2 toVertexTraversal)
+        {
+            ToVertexTraversal = toVertexTraversal;
+            Type = ToType.ToVertexTraversal;
         }
 
         public override GremlinToSqlContext GetContext()
@@ -72,17 +113,38 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinUtil.CheckIsGremlinAddEVariable(inputContext.CurrVariable);
+
             GremlinVariable toVariable = null;
-            foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
+            if (Type == ToType.ToStepLabel)
             {
-                if (aliasToGremlinVariable.Item1 == StepLabel)
+                foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
                 {
-                    GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
-                    toVariable = aliasToGremlinVariable.Item2;
+                    if (aliasToGremlinVariable.Item1 == StepLabel)
+                    {
+                        //GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
+                        toVariable = aliasToGremlinVariable.Item2;
+                    }
                 }
             }
-            (inputContext.CurrVariable as GremlinAddEVariable).ToVariable =toVariable as GremlinVertexVariable;
+            else if (Type == ToType.ToVertexTraversal)
+            {
+                GremlinUtil.InheritedVariableFromParent(ToVertexTraversal, inputContext);
+
+                WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+                {
+                    QueryExpr = ToVertexTraversal.GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock
+                };
+
+                toVariable = new GremlinDerivedVariable(queryDerivedTable);
+            }
+            (inputContext.CurrVariable as GremlinAddEVariable).ToVariable = toVariable;
             return inputContext;
+        }
+
+        public enum ToType 
+        {
+            ToStepLabel,
+            ToVertexTraversal
         }
     }
 }

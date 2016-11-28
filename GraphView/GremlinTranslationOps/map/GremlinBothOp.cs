@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinVertexVariable newVertexVariable = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVariable = new GremlinEdgeVariable(GremlinEdgeType.BothEdge);
+            GremlinEdgeVariable newEdgeVariable = new GremlinEdgeVariable(WEdgeType.BothEdge);
             inputContext.AddNewVariable(newVertexVariable, Labels);
             inputContext.AddNewVariable(newEdgeVariable, Labels);
             inputContext.AddPaths(inputContext.CurrVariable, newEdgeVariable, newVertexVariable);

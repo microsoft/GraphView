@@ -19,6 +19,17 @@ namespace GraphView.GremlinTranslationOps.sideEffect
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            GremlinUtil.InheritedVariableFromParent(SideEffectTraversal, inputContext);
+
+            WSideEffect sideEffect = new WSideEffect()
+            {
+                SqlStatement = SideEffectTraversal.GetEndOp().GetContext().ToSqlQuery()
+            };
+
+            GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffect);
+            inputContext.AddNewVariable(newVariable, Labels);
+
             return inputContext;
 
         }

@@ -250,7 +250,12 @@ namespace GraphView
             AddGremlinOperator(new GremlinFromOp(fromGremlinTranslationOperatorLabel));
             return this;
         }
-        //public GraphTraversal2 from(Traversal<E, Vertex> fromVertex)
+
+        public GraphTraversal2 from(GraphTraversal2 fromVertexTraversal)
+        {
+            AddGremlinOperator(new GremlinFromOp(fromVertexTraversal));
+            return this;
+        }
 
         public GraphTraversal2 group()
         {
@@ -263,10 +268,9 @@ namespace GraphView
             AddGremlinOperator(new GremlinGroupOp(sideEffectKey));
             return this;
         }
+
         //public GraphTraversal2 groupCount()
         //public GraphTraversal2 groupCount(string sideEffectKey)
-        //public GraphTraversal2 groupV3d0() //Deprecated
-        //public GraphTraversal2 groupV3d0(string sideEffectKey) //Deprecated
 
         public GraphTraversal2 has(string propertyKey)
         {
@@ -567,6 +571,7 @@ namespace GraphView
         //public GraphTraversal2 sideEffect(Consumer<Traverser<E>> consumer)
         public GraphTraversal2 sideEffect(GraphTraversal2 sideEffectTraversal)
         {
+            AddGremlinOperator(new GremlinSideEffectOp(sideEffectTraversal));
             return this;    
         }
 
@@ -620,6 +625,7 @@ namespace GraphView
 
         public GraphTraversal2 to(GraphTraversal2 toVertex)
         {
+            AddGremlinOperator(new GremlinToOp(toVertex));
             return this;
         }
         //public GraphTraversal2 toE(Direction direction, params string[] edgeLabels)

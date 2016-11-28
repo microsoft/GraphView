@@ -15,11 +15,13 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             var currEdge = inputContext.CurrVariable;
-            GremlinUtil.CheckIsGremlinEdgeVariable(currEdge);
+            //GremlinUtil.CheckIsGremlinEdgeVariable(currEdge);
 
             var existInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);
+            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("bothV", existInPath.Item1.VariableName, existInPath.Item3.VariableName);
 
-            GremlinJoinVertexVariable newVariable = new GremlinJoinVertexVariable(existInPath.Item1, existInPath.Item3);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+
             inputContext.AddNewVariable(newVariable, Labels);
             inputContext.SetDefaultProjection(newVariable);
             inputContext.SetCurrVariable(newVariable);

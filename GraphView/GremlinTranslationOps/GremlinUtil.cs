@@ -343,11 +343,12 @@ namespace GraphView.GremlinTranslationOps
 
         internal static WEdgeType GetEdgeType(GremlinVariable edgeVar)
         {
-            if ((edgeVar as GremlinEdgeVariable).EdgeType == GremlinEdgeType.BothEdge)
+            if (edgeVar is GremlinAddEVariable) return WEdgeType.OutEdge;
+            if ((edgeVar as GremlinEdgeVariable).EdgeType == WEdgeType.BothEdge)
                 return WEdgeType.BothEdge;
-            if ((edgeVar as GremlinEdgeVariable).EdgeType == GremlinEdgeType.InEdge)
+            if ((edgeVar as GremlinEdgeVariable).EdgeType == WEdgeType.InEdge)
                 return WEdgeType.InEdge;
-            if ((edgeVar as GremlinEdgeVariable).EdgeType == GremlinEdgeType.OutEdge)
+            if ((edgeVar as GremlinEdgeVariable).EdgeType == WEdgeType.OutEdge)
                 return WEdgeType.OutEdge;
 
             return WEdgeType.OutEdge;
@@ -361,30 +362,30 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WUnqualifiedJoin GetUnqualifiedJoin(GremlinVariable currVar, GremlinVariable lastVar)
-        {
-            var joinVertexVar = currVar as GremlinJoinVertexVariable;
-            WSchemaObjectFunctionTableReference secondTableRef = new WSchemaObjectFunctionTableReference()
-            {
-                Alias = GremlinUtil.GetIdentifier(currVar.VariableName),
-                Parameters = new List<WScalarExpression>()
-                {
-                    GetColumnReferenceExpression(joinVertexVar.LeftVariable.VariableName),
-                    GetColumnReferenceExpression(joinVertexVar.RightVariable.VariableName )
-                },
-                SchemaObject = new WSchemaObjectName()
-                {
-                    Identifiers = new List<Identifier>() { GremlinUtil.GetIdentifier("BothV") }
-                }
-            };
+        //internal static WUnqualifiedJoin GetUnqualifiedJoin(GremlinVariable currVar, GremlinVariable lastVar)
+        //{
+        //    var joinVertexVar = currVar as GremlinJoinVertexVariable;
+        //    WSchemaObjectFunctionTableReference secondTableRef = new WSchemaObjectFunctionTableReference()
+        //    {
+        //        Alias = GremlinUtil.GetIdentifier(currVar.VariableName),
+        //        Parameters = new List<WScalarExpression>()
+        //        {
+        //            GetColumnReferenceExpression(joinVertexVar.LeftVariable.VariableName),
+        //            GetColumnReferenceExpression(joinVertexVar.RightVariable.VariableName )
+        //        },
+        //        SchemaObject = new WSchemaObjectName()
+        //        {
+        //            Identifiers = new List<Identifier>() { GremlinUtil.GetIdentifier("BothV") }
+        //        }
+        //    };
 
-            return new WUnqualifiedJoin()
-            {
-                FirstTableRef = GetNamedTableReference(lastVar),
-                SecondTableRef = secondTableRef,
-                UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-            };
-        }
+        //    return new WUnqualifiedJoin()
+        //    {
+        //        FirstTableRef = GetNamedTableReference(lastVar),
+        //        SecondTableRef = secondTableRef,
+        //        UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+        //    };
+        //}
 
         internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext, List<string> labels)
         {
@@ -406,15 +407,15 @@ namespace GraphView.GremlinTranslationOps
             inputContext.SetCurrProjection(GetFunctionCall(functionName, parameter));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //GremlinScalarVariable newVariabel = new GremlinScalarVariable(inputContext.ToSqlQuery());
+            //GremlinScalarVariable newVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
             WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
             {
                 QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
             };
-            GremlinDerivedVariable newVariabel = new GremlinDerivedVariable(queryDerivedTable);
-            newContext.AddNewVariable(newVariabel, labels);
-            newContext.SetCurrVariable(newVariabel);
-            newContext.SetStarProjection(newVariabel);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable);
+            newContext.AddNewVariable(newVariable, labels);
+            newContext.SetCurrVariable(newVariable);
+            newContext.SetStarProjection(newVariable);
 
             return newContext;
         }
@@ -467,9 +468,11 @@ namespace GraphView.GremlinTranslationOps
             }
             return new WSchemaObjectFunctionTableReference()
             {
-                SchemaObject = new WSchemaObjectName(GremlinUtil.GetIdentifier(functionName)),
+                SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
                 Parameters = parameterList
             };
         }
+
+
     }
 }

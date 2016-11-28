@@ -217,3 +217,5 @@ TestConfiguration.cs
 *.pk
 *.jky
 /GraphViewUnitTest/TempTest.cs
+
+/GraphViewUnitTest/GremlinTranslationOperator.cs

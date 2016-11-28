@@ -25,13 +25,6 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
-    internal enum GremlinEdgeType
-    {
-        InEdge,
-        OutEdge,
-        BothEdge
-    }
-
     internal class GremlinVertexVariable : GremlinVariable
     {
         public GremlinVertexVariable()
@@ -51,7 +44,7 @@ namespace GraphView.GremlinTranslationOps
             _count += 1;
         }
 
-        public GremlinEdgeVariable(GremlinEdgeType type)
+        public GremlinEdgeVariable(WEdgeType type)
         {
             //automaticlly generate the name of edge
             VariableName = "E_" + _count.ToString();
@@ -60,7 +53,7 @@ namespace GraphView.GremlinTranslationOps
         }
 
         private static long _count = 0;
-        public GremlinEdgeType EdgeType { get; set; }
+        public WEdgeType EdgeType { get; set; }
     }
 
     internal class GremlinRecursiveEdgeVariable : GremlinVariable
@@ -70,21 +63,21 @@ namespace GraphView.GremlinTranslationOps
         public WBooleanExpression UntilCondition { get; set; }
     }
 
-    internal class GremlinJoinVertexVariable : GremlinVertexVariable
-    {
-        public GremlinVariable LeftVariable;
-        public GremlinVariable RightVariable;
-        public GremlinJoinVertexVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
-        {
-            LeftVariable = leftGremlinVariable;
-            RightVariable = righGremlinVariable;
+    //internal class GremlinJoinVertexVariable : GremlinVertexVariable
+    //{
+    //    public GremlinVariable LeftVariable;
+    //    public GremlinVariable RightVariable;
+    //    public GremlinJoinVertexVariable(GremlinVariable leftGremlinVariable, GremlinVariable righGremlinVariable)
+    //    {
+    //        LeftVariable = leftGremlinVariable;
+    //        RightVariable = righGremlinVariable;
 
-            //automaticlly generate the name of node
-            VariableName = "JV_" + _count.ToString();
-            _count += 1;
-        }
-        private static long _count = 0;
-    }
+    //        //automaticlly generate the name of node
+    //        VariableName = "JV_" + _count.ToString();
+    //        _count += 1;
+    //    }
+    //    private static long _count = 0;
+    //}
 
     //internal class GremlinJoinEdgeVariable : GremlinEdgeVariable
     //{
@@ -152,20 +145,28 @@ namespace GraphView.GremlinTranslationOps
         private static long _count = 0;
     }
 
+
+    //=============================================================================
+
+
     internal class GremlinAddEVariable : GremlinVariable
     {
-        public GremlinVertexVariable FromVariable;
-        public GremlinVertexVariable ToVariable;
+        public GremlinVariable FromVariable;
+        public GremlinVariable ToVariable;
         public Dictionary<string, List<object>> Properties;
         public string EdgeLabel;
 
         public GremlinAddEVariable(string edgeLabel, GremlinVertexVariable currVariable)
         {
+            VariableName = "AddE_" + _count.ToString();
+            _count += 1;
+
             Properties = new Dictionary<string, List<object>>();
             FromVariable = currVariable;
             ToVariable = currVariable;
             EdgeLabel = edgeLabel;
         }
+        private static long _count = 0;
     }
 
     internal class GremlinAddVVariable : GremlinVariable
@@ -175,9 +176,13 @@ namespace GraphView.GremlinTranslationOps
 
         public GremlinAddVVariable(string vertexLabel)
         {
+            VariableName = "AddV_" + _count.ToString();
+            _count += 1;
+
             Properties = new Dictionary<string, List<object>>();
             VertexLabel = vertexLabel;
         }
+        private static long _count = 0;
     }
 
 
@@ -223,6 +228,21 @@ namespace GraphView.GremlinTranslationOps
         private static long _count = 0;
     }
 
+    internal class GremlinSideEffectVariable : GremlinVariable
+    {
+        public WSideEffect SideEffectExpr;
+
+        public GremlinSideEffectVariable(WSideEffect optionalExpr)
+        {
+            VariableName = "SideEffect_" + _count.ToString();
+            _count += 1;
+            SideEffectExpr = optionalExpr;
+            SideEffectExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
+        }
+        private static long _count = 0;
+    }
+
+    //====================================================================================
     public enum Scope
     {
         local,

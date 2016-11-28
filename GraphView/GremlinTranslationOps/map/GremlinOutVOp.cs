@@ -14,10 +14,20 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.CheckIsGremlinEdgeVariable(inputContext.CurrVariable);
-            var existInPath = inputContext.Paths.Find(p => p.Item2 == inputContext.CurrVariable);
+            //GremlinUtil.CheckIsGremlinEdgeVariable(inputContext.CurrVariable);
+            GremlinVariable outVariable = null;
 
-            inputContext.SetCurrVariable(existInPath.Item1);
+            if (inputContext.CurrVariable is GremlinAddEVariable)
+            {
+                outVariable = (inputContext.CurrVariable as GremlinAddEVariable).FromVariable;
+            }
+            else
+            {
+                outVariable = inputContext.Paths.Find(p => p.Item2 == inputContext.CurrVariable).Item3;
+            }
+
+            inputContext.SetCurrVariable(outVariable);
+            inputContext.SetDefaultProjection(outVariable);
 
             return inputContext;
         }

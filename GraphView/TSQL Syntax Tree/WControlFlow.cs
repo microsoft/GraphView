@@ -60,5 +60,35 @@ namespace GraphView
         {
             return "WCoalesce2(" + CoalesceQuery.Count.ToString() + ") AS" + "[" + Alias.Value + "]";
         }
-    } 
+    }
+
+    public partial class WAddV : WTableReference
+    {
+        internal WSqlStatement SqlStatement;
+        internal Identifier Alias;
+        internal override string ToString(string indent)
+        {
+            return "WAddV() AS" + "[" + Alias.Value + "]";
+        }
+    }
+
+    public partial class WAddE : WTableReference
+    {
+        internal WSqlStatement SqlStatement;
+        internal Identifier Alias;
+        internal override string ToString(string indent)
+        {
+            return "WAddE() AS" + "[" + Alias.Value + "]";
+        }
+    }
+
+    public partial class WSideEffect : WTableReference
+    {
+        internal WSqlStatement SqlStatement;
+        internal Identifier Alias;
+        internal override string ToString(string indent)
+        {
+            return "WSideEffect() AS" + "[" + Alias.Value + "]";
+        }
+    }
 }
