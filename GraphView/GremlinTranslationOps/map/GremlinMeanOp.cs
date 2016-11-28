@@ -19,7 +19,17 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            return GremlinUtil.ProcessByFunctionStep("mean", inputContext, Labels);
+            //return GremlinUtil.ProcessByFunctionStep("mean", inputContext, Labels);
+
+            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("mean");
+
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+
+            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.SetDefaultProjection(newVariable);
+            inputContext.SetCurrVariable(newVariable);
+
+            return inputContext;
         }
     }
 }

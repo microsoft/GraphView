@@ -14,15 +14,20 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("count"));
+            //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("count"));
 
-            GremlinToSqlContext newContext = new GremlinToSqlContext();
-            GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
-            newContext.AddNewVariable(newScalarVariable, Labels);
-            newContext.SetCurrVariable(newScalarVariable);
-            newContext.SetStarProjection(newScalarVariable);
+            //GremlinToSqlContext newContext = new GremlinToSqlContext();
+            //GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
 
-            return newContext;
+            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("count");
+
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+
+            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.SetDefaultProjection(newVariable);
+            inputContext.SetCurrVariable(newVariable);
+
+            return inputContext;
         }
     }
 }

@@ -359,11 +359,7 @@ namespace GraphView.GremlinTranslationOps
             var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
             foreach (var path in Paths)
             {
-                var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
-                pathEdges.Add(GremlinUtil.GetPathExpression(path));
-                var tailNode = GremlinUtil.GetSchemaObjectName(path.Item3.VariableName);
-                var newPath = new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
-                newMatchClause.Paths.Add((newPath));
+                newMatchClause.Paths.Add(GremlinUtil.GetMatchPath(path));
             }
 
             foreach (var variable in RemainingVariableList)
@@ -371,13 +367,10 @@ namespace GraphView.GremlinTranslationOps
                 if (variable is GremlinAddEVariable)
                 {
                     var addEVar = variable as GremlinAddEVariable;
-                    var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
                     var path = new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>(addEVar.FromVariable,
                         addEVar, addEVar.ToVariable);
-                    pathEdges.Add(GremlinUtil.GetPathExpression(path));
-                    var tailNode = GremlinUtil.GetSchemaObjectName(path.Item3.VariableName);
-                    var newPath = new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
-                    newMatchClause.Paths.Add((newPath));
+
+                    newMatchClause.Paths.Add(GremlinUtil.GetMatchPath(path));
                 }
             }
 
