@@ -8,16 +8,43 @@ namespace GraphView.GremlinTranslationOps.branch
 {
     internal class GremlinRepeatOp: GremlinTranslationOperator
     {
-        GremlinTranslationOperator ParamOp;
+        public int MaxLoops;
+        public GraphTraversal2 RepeatTraversal;
+        public GraphTraversal2 UntilTraversal;
+        public GraphTraversal2 EmitTraversal;
+        public Predicate UntilPredicate;
+        public Predicate EmitPredicate;
 
-        public GremlinRepeatOp(GremlinTranslationOperator paramOp)
+        public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
         {
-            ParamOp = paramOp;
+            RepeatTraversal = repeatTraversal;
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            GremlinUtil.InheritedVariableFromParent(RepeatTraversal, inputContext);
+
+            WRepeat repeatExpr = new WRepeat()
+            {
+                SqlStatement = RepeatTraversal.GetEndOp().GetContext().ToSqlQuery()
+            };
+
+            if (MaxLoops != null)
+            {
+                repeatExpr.MaxLoops = MaxLoops;
+            }
+            if (UntilTraversal != null)
+            {
+                repeatExpr.UntilCondition =
+                    GremlinUtil.GetExistPredicate(UntilTraversal.GetEndOp().GetContext().ToSqlQuery());
+            }
+            if (UntilPredicate != null)
+            {
+                //TODO
+            }
+
             return inputContext;
         }
 

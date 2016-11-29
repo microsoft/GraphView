@@ -13,6 +13,14 @@ namespace GraphView.GremlinTranslationOps.map
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("unfold");
+
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "unfold");
+            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.SetCurrVariable(newVariable);
+            inputContext.SetDefaultProjection(newVariable);
+
             return inputContext;
         }
     }

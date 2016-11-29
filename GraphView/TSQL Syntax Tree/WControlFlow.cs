@@ -91,4 +91,16 @@ namespace GraphView
             return "WSideEffect() AS" + "[" + Alias.Value + "]";
         }
     }
+
+    public partial class WRepeat : WTableReference
+    {
+        internal WSqlStatement SqlStatement;
+        internal WBooleanExpression UntilCondition;
+        internal Identifier Alias;
+        internal int MaxLoops;
+        internal override string ToString(string indent)
+        {
+            return "WRepeat() AS" + "[" + Alias.Value + "]";
+        }
+    }
 }

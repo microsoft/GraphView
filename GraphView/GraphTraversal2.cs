@@ -234,9 +234,24 @@ namespace GraphView
         }
 
 
-        //public GraphTraversal2 emit()
-        //public GraphTraversal2 emit(Predicate<Traversal<E>> emitPredicate)
-        //public GraphTraversal2 emit(Traversal<?, ?> emitTraversal)
+        public GraphTraversal2 emit()
+        {
+            //TODO
+            return this;
+        }
+
+        public GraphTraversal2 emit(Predicate emitPredicate)
+        {
+            //TODO
+            return this;
+        }
+
+        public GraphTraversal2 emit(GraphTraversal2 emitTraversal)
+        {
+            //TODO
+            return this;
+        }
+
         //public GraphTraversal2 filter(Predicate<Traversal<E>> predicate)
         //public GraphTraversal2 filter(Traversal<?, ?> filterTraversal)
         //public GraphTraversal2 flatMap(Funtion<Traversal<E>, Iterator<E>> funtion)
@@ -555,7 +570,7 @@ namespace GraphView
 
         public GraphTraversal2 repeat(GraphTraversal2 repeatTraversal)
         {
-            AddGremlinOperator(new GremlinRepeatOp(repeatTraversal.LastGremlinTranslationOp));
+            AddGremlinOperator(new GremlinRepeatOp(repeatTraversal));
             return this;
         }
 
@@ -616,11 +631,13 @@ namespace GraphView
 
         public GraphTraversal2 timeLimit(long timeLimit)
         {
+            //TODO
             return this;
         }
 
         public GraphTraversal2 times(int maxLoops)
         {
+            //TODO
             return this;
         }
 
@@ -652,8 +669,18 @@ namespace GraphView
             AddGremlinOperator(new GremlinUnionOp(unionTraversals));
             return this;
         }
-        //public GraphTraversal2 until(Predicate<Traverser<E>> untilPredicate)
-        //public GraphTraversal2 unitl(Traversal<?, ?> untilTraversal)
+
+        public GraphTraversal2 until(Predicate untilPredicate)
+        {
+            //TODO
+            return this;
+        }
+
+        public GraphTraversal2 unitl(GraphTraversal2 untilTraversal)
+        {
+            //TODO
+            return this;
+        }
 
         public GraphTraversal2 V(params object[] vertexIdsOrElements)
         {

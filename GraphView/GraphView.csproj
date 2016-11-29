@@ -96,7 +96,8 @@
     <Compile Include="GremlinTranslationOps\map\GremlinCoalesceStep.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinConstantOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinCountOp.cs" />
-    <Compile Include="GremlinTranslationOps\map\GremlinFoldStep.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinFlatMapOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinFoldOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinGroupOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinInOp.cs" />
@@ -128,6 +129,7 @@
     <Compile Include="GraphTraversal.cs" />
     <Compile Include="GremlinTranslationOps\GremlinTranslationOperator.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinPropertiesOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinSelectOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinSumOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinUnfoldOp.cs" />

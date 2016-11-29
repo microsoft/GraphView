@@ -247,6 +247,20 @@ namespace GraphView.GremlinTranslationOps
         private static long _count = 0;
     }
 
+    internal class GremlinRepeatVariable : GremlinVariable
+    {
+        public WRepeat RepeatExpr;
+
+        public GremlinRepeatVariable(WRepeat repeatExpr)
+        {
+            VariableName = "Repeat" + _count.ToString();
+            _count += 1;
+            RepeatExpr = repeatExpr;
+            RepeatExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
+        }
+        private static long _count = 0;
+    }
+
     //====================================================================================
     public enum Scope
     {

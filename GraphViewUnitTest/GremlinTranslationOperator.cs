@@ -159,7 +159,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void GremlinFuntionalTestSuite()
         {
-
+            GraphTraversal2.g().V().Out().next();
         }
     }
 }
