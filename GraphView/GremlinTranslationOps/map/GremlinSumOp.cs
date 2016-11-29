@@ -15,6 +15,15 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             return GremlinUtil.ProcessByFunctionStep("sum", inputContext, Labels);
+            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("sum");
+
+            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "sum");
+
+            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.SetDefaultProjection(newVariable);
+            //inputContext.SetCurrVariable(newVariable);
+
+            //return inputContext;
         }
     }
 }

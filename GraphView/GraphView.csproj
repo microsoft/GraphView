@@ -73,6 +73,7 @@
     <Compile Include="GremlinTranslationOps\branch\GremlinUnionOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinAndOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinCoinOp.cs" />
+    <Compile Include="GremlinTranslationOps\filter\GremlinDedupOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinDropOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinHasOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinIsOp.cs" />

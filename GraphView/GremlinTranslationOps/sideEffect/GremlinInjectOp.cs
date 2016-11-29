@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 
             var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("inject", Injections);
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "inject");
             inputContext.AddNewVariable(newVariable, Labels);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);

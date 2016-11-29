@@ -39,6 +39,7 @@ namespace GraphView
     internal class GremlinParentContextOp : GremlinTranslationOperator
     {
         public GremlinVariable InheritedVariable { get; set; }
+        public List<Projection> InheritedProjection;
         public bool IsInheritedEntireContext = false;
         public GremlinToSqlContext InheritedContext;
 
@@ -46,6 +47,7 @@ namespace GraphView
         {
             IsInheritedEntireContext = true;
             InheritedContext = context;
+            InheritedProjection = new List<Projection>();
         }
         public override GremlinToSqlContext GetContext()
         {
@@ -54,7 +56,7 @@ namespace GraphView
             newContext.RootVariable = InheritedVariable;
             newContext.SetCurrVariable(InheritedVariable);
             newContext.FromOuter = true;
-
+            newContext.ProjectionList = InheritedProjection;
             return newContext;
         }
     }

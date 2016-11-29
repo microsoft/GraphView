@@ -66,7 +66,7 @@ namespace GraphView.GremlinTranslationOps.branch
             }
              
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "union");
             inputContext.AddNewVariable(newVariable, Labels);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);

@@ -21,10 +21,10 @@ namespace GraphView.GremlinTranslationOps.map
 
             WQueryDerivedTable queryDerivedTable = GremlinUtil.GetConstantQueryDerivedTable(Constant);
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "constant");
             inputContext.AddNewVariable(newVariable, Labels);
             inputContext.SetCurrVariable(newVariable);
-            inputContext.SetStarProjection(Constant);
+            inputContext.SetStarProjection();
 
             return inputContext;
         }

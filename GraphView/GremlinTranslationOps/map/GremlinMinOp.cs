@@ -19,16 +19,16 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //return GremlinUtil.ProcessByFunctionStep("min", inputContext, Labels);
-            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("min");
+            return GremlinUtil.ProcessByFunctionStep("min", inputContext, Labels);
+            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("min");
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "min");
 
-            inputContext.AddNewVariable(newVariable, Labels);
-            inputContext.SetDefaultProjection(newVariable);
-            inputContext.SetCurrVariable(newVariable);
+            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.SetDefaultProjection(newVariable);
+            //inputContext.SetCurrVariable(newVariable);
 
-            return inputContext;
+            //return inputContext;
         }
     }
 }

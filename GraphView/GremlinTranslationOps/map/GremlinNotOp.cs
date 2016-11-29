@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
             {
                 QueryExpr = NotTraversal.GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock
             };
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "not");
             inputContext.AddNewVariable(newVariable, Labels); //??Labels?
 
             WBooleanComparisonExpression booleanComparisonExpr = new WBooleanComparisonExpression()

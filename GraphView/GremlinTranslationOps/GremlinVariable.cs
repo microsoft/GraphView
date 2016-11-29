@@ -102,9 +102,10 @@ namespace GraphView.GremlinTranslationOps
 
         public GremlinDerivedVariable() { }
 
-        public GremlinDerivedVariable(WTableReferenceWithAliasAndColumns queryDerivedTable)
+        public GremlinDerivedVariable(WTableReferenceWithAliasAndColumns queryDerivedTable, string derivedType = "")
         {
-            VariableName = "D_" + _count.ToString();
+
+            VariableName = "D" + derivedType + "_" + _count.ToString();
             _count += 1;
             QueryDerivedTable = queryDerivedTable;
             QueryDerivedTable.Alias = GremlinUtil.GetIdentifier(VariableName);
@@ -152,11 +153,13 @@ namespace GraphView.GremlinTranslationOps
     internal class GremlinAddEVariable : GremlinVariable
     {
         public GremlinVariable FromVariable;
+        public bool IsNewFromVariable;
         public GremlinVariable ToVariable;
+        public bool IsNewToVariable;
         public Dictionary<string, List<object>> Properties;
         public string EdgeLabel;
 
-        public GremlinAddEVariable(string edgeLabel, GremlinVertexVariable currVariable)
+        public GremlinAddEVariable(string edgeLabel, GremlinVariable currVariable)
         {
             VariableName = "AddE_" + _count.ToString();
             _count += 1;
@@ -165,6 +168,8 @@ namespace GraphView.GremlinTranslationOps
             FromVariable = currVariable;
             ToVariable = currVariable;
             EdgeLabel = edgeLabel;
+            IsNewFromVariable = false;
+            IsNewToVariable = false;
         }
         private static long _count = 0;
     }
@@ -258,22 +263,24 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
-    internal class ValueProjection: Projection
-    {
-        public string Value;
+    //internal class ValueProjection: Projection
+    //{
+    //    public string Value;
 
-        public ValueProjection(GremlinVariable gremlinVar, string value)
+    //    public ValueProjection(GremlinVariable gremlinVar, string value)
+    //    {
+    //        CurrVariable = gremlinVar;
+    //        Value = value;
+    //    }
+    //}
+
+    internal class ColumnProjection : Projection
+    {
+        public string Key;
+        public ColumnProjection(GremlinVariable gremlinVar, string key)
         {
             CurrVariable = gremlinVar;
-            Value = value;
-        }
-    }
-
-    internal class ColumnProjection : ValueProjection
-    {
-
-        public ColumnProjection(GremlinVariable gremlinVar, string value): base(gremlinVar, value)
-        {
+            Key = key;
         }
 
         public override WSelectElement ToSelectElement()
@@ -281,23 +288,23 @@ namespace GraphView.GremlinTranslationOps
             return new WSelectScalarExpression()
             {
                 SelectExpr = new WColumnReferenceExpression()
-                { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(CurrVariable.VariableName, Value) }
+                { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(CurrVariable.VariableName, Key) }
             };
         }
     }
 
-    internal class ConstantProjection : ValueProjection
-    {
-        public string Value;
+    //internal class ConstantProjection : ValueProjection
+    //{
+    //    public string Value;
 
-        public ConstantProjection(GremlinVariable gremlinVar, string value): base(gremlinVar, value)
-        {
-        }
-        public override WSelectElement ToSelectElement()
-        {
-            return new WSelectScalarExpression() { SelectExpr = GremlinUtil.GetValueExpression(Value) };
-        }
-    }
+    //    public ConstantProjection(GremlinVariable gremlinVar, string value): base(gremlinVar, value)
+    //    {
+    //    }
+    //    public override WSelectElement ToSelectElement()
+    //    {
+    //        return new WSelectScalarExpression() { SelectExpr = GremlinUtil.GetValueExpression(Value) };
+    //    }
+    //}
 
     internal class FunctionCallProjection : Projection
     {

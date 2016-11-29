@@ -54,7 +54,7 @@ namespace GraphView.GremlinTranslationOps.branch
             switch (Type)
             {
                 case ChooseType.Predicate:
-                    var value = (inputContext.Projection.First().Item2 as ValueProjection).Value;
+                    var value = (inputContext.ProjectionList.First() as ColumnProjection).Key;
                     WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, value);
                     var predicateExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
                     chooseExpr.PredicateExpr = predicateExpr;

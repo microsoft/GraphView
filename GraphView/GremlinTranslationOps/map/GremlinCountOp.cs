@@ -14,20 +14,31 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
+            return GremlinUtil.ProcessByFunctionStep("count", inputContext, Labels);
+
             //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("count"));
 
             //GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //GremlinScalarVariable newScalarVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
+            //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+            //{
+            //    QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
+            //};
+            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "count");
+            //newContext.AddNewVariable(newVariable, Labels);
+            //newContext.SetCurrVariable(newVariable);
+            //newContext.SetDefaultProjection(newVariable);
 
-            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("count");
+            //return newContext;
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("count");
 
-            inputContext.AddNewVariable(newVariable, Labels);
-            inputContext.SetDefaultProjection(newVariable);
-            inputContext.SetCurrVariable(newVariable);
+            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "count");
 
-            return inputContext;
+            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.SetDefaultProjection(newVariable);
+            //inputContext.SetCurrVariable(newVariable);
+
+            //return inputContext;
         }
     }
 }

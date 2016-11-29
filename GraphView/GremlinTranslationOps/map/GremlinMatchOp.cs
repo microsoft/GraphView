@@ -45,7 +45,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinVariable parentVariable = inputContext.CurrVariable;
 
             string startLabel = FindStartLabel(MatchTraversals);
-            inputContext.AliasToGremlinVariableList.Add(new Tuple<string, GremlinVariable>(startLabel, parentVariable));
+            inputContext.AddAliasToGremlinVariable(startLabel, parentVariable);
 
             Queue<GraphTraversal2> traversalQueue = new Queue<GraphTraversal2>();
             Dictionary<string, bool> isTraversalDict = new Dictionary<string, bool>();
@@ -77,13 +77,9 @@ namespace GraphView.GremlinTranslationOps.map
 
                 GremlinUtil.InheritedContextFromParent(currTraversal, inputContext);
                 inputContext.CurrVariable = parentVariable;
-                for (var i = inputContext.AliasToGremlinVariableList.Count - 1; i >= 0; i--)
-                {
-                    if (inputContext.AliasToGremlinVariableList[i].Item1 == currTraversal.GetStartOp().Labels.First())
-                    {
-                        inputContext.CurrVariable = inputContext.AliasToGremlinVariableList[i].Item2;
-                        break;
-                    }
+                startLabel = currTraversal.GetStartOp().Labels.First();
+                if(inputContext.AliasToGremlinVariableList.ContainsKey(startLabel)) {
+                        inputContext.CurrVariable = inputContext.AliasToGremlinVariableList[startLabel].Last();
                 }
                 inputContext = currTraversal.GetEndOp().GetContext();
             }
@@ -193,40 +189,36 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             bool isNewAlias = true;
-            for (var i = inputContext.AliasToGremlinVariableList.Count - 1; i >= 0; i--)
+            if (inputContext.AliasToGremlinVariableList.ContainsKey(Labels.First()))
             {
-                if (inputContext.AliasToGremlinVariableList[i].Item1 == Labels.First())
+                GremlinVariable matchVariable = inputContext.AliasToGremlinVariableList[Labels.First()].Last();
+                WBooleanExpression booleanExpr = null;
+                if (matchVariable is GremlinVertexVariable
+                    || matchVariable is GremlinEdgeVariable)
                 {
-                    GremlinVariable matchVariable = inputContext.AliasToGremlinVariableList[i].Item2;
-                    WBooleanExpression booleanExpr = null;
-                    if (matchVariable is GremlinVertexVariable
-                        || matchVariable is GremlinEdgeVariable)
+                    booleanExpr = new WBooleanComparisonExpression()
                     {
-                        booleanExpr = new WBooleanComparisonExpression()
-                        {
-                            ComparisonType = BooleanComparisonType.Equals,
-                            FirstExpr =
-                                GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id"),
-                            SecondExpr = GremlinUtil.GetColumnReferenceExpression(matchVariable.VariableName, "id")
-                        };
-                    }
-                    //else if (matchVariable is GremlinScalarVariable)
-                    //{
-                    //    booleanExpr = new WBooleanComparisonExpression()
-                    //    {
-                    //        ComparisonType = BooleanComparisonType.Equals,
-                    //        FirstExpr = GremlinUtil.GetValueExpression((matchVariable as GremlinScalarVariable).ScalarSubquery),
-                    //        SecondExpr = GremlinUtil.GetValueExpression((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
-                    //    };
-                    //}
-                    inputContext.AddPredicate(booleanExpr);
-                    isNewAlias = false;
-                    break;
+                        ComparisonType = BooleanComparisonType.Equals,
+                        FirstExpr =
+                            GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id"),
+                        SecondExpr = GremlinUtil.GetColumnReferenceExpression(matchVariable.VariableName, "id")
+                    };
                 }
+                //else if (matchVariable is GremlinScalarVariable)
+                //{
+                //    booleanExpr = new WBooleanComparisonExpression()
+                //    {
+                //        ComparisonType = BooleanComparisonType.Equals,
+                //        FirstExpr = GremlinUtil.GetValueExpression((matchVariable as GremlinScalarVariable).ScalarSubquery),
+                //        SecondExpr = GremlinUtil.GetValueExpression((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
+                //    };
+                //}
+                inputContext.AddPredicate(booleanExpr);
+                isNewAlias = false;
             }
             if (isNewAlias)
             {
-                inputContext.AliasToGremlinVariableList.Add(new Tuple<string, GremlinVariable>(Labels.First(), inputContext.CurrVariable));
+                inputContext.AddAliasToGremlinVariable(Labels.First(), inputContext.CurrVariable);
             }
 
             return inputContext;

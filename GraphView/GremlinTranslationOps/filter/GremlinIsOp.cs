@@ -29,16 +29,40 @@ namespace GraphView.GremlinTranslationOps.filter
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinVariable currVariable = inputContext.CurrVariable;
-            WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName);
+            List<WScalarExpression> keyList = new List<WScalarExpression>();
+            foreach (var projection in inputContext.ProjectionList)
+            {
+                WScalarExpression key = null;
+                if (projection is ColumnProjection)
+                {
+                    key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName, (projection as ColumnProjection).Key);
+                    keyList.Add(key);
+                }
+                else if (projection is FunctionCallProjection)
+                {
+                    //TODO
+                }
+                else if (projection is StarProjection)
+                {
+                    key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName);
+                    keyList.Add(key);
+                }
+            }
             if (Type == IsType.IsValue)
             {
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Value);
-                inputContext.AddPredicate(booleanExpr);
+                foreach (var key in keyList)
+                {
+                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Value);
+                    inputContext.AddPredicate(booleanExpr);
+                }
             }
             else if (Type == IsType.IsPredicate)
             {
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
-                inputContext.AddPredicate(booleanExpr);
+                foreach (var key in keyList)
+                {
+                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
+                    inputContext.AddPredicate(booleanExpr);
+                }
             }
 
             return inputContext;

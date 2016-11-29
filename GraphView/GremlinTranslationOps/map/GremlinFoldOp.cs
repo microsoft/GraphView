@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinFoldStep: GremlinTranslationOperator
+    internal class GremlinFoldOp: GremlinTranslationOperator
     {
-        public GremlinFoldStep() { }
+        public GremlinFoldOp() { }
 
         public override GremlinToSqlContext GetContext()
         {
@@ -16,7 +16,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("fold");
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference);
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "fold");
             inputContext.AddNewVariable(newVariable, Labels);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);

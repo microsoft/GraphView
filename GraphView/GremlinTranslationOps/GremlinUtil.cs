@@ -276,19 +276,19 @@ namespace GraphView.GremlinTranslationOps
             return booleanExpr;
         }
 
-        //internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameters)
-        //{
-        //    IList<WScalarExpression> parameterList = new List<WScalarExpression>();
-        //    foreach (var parameter in parameters)
-        //    {
-        //        parameterList.Add(parameter);
-        //    }
-        //    return new WFunctionCall()
-        //    {
-        //        FunctionName = GetIdentifier(functionName),
-        //        Parameters = parameters
-        //    };
-        //}
+        internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameters)
+        {
+            IList<WScalarExpression> parameterList = new List<WScalarExpression>();
+            foreach (var parameter in parameters)
+            {
+                parameterList.Add(parameter);
+            }
+            return new WFunctionCall()
+            {
+                FunctionName = GetIdentifier(functionName),
+                Parameters = parameters
+            };
+        }
 
         internal static WSelectScalarExpression GetSelectScalarExpression(WScalarExpression valueExpr)
         {
@@ -395,38 +395,39 @@ namespace GraphView.GremlinTranslationOps
         //    };
         //}
 
-        //internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext, List<string> labels)
-        //{
-        //    if (inputContext.Projection.Count > 1) throw new Exception("Can't process more than two projection");
+        internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext, List<string> labels)
+        {
+            //if (inputContext.Projection.Count > 1) throw new Exception("Can't process more than two projection");
 
-        //    Projection projection = inputContext.Projection.First().Item2;
-        //    WScalarExpression parameter = null;
-        //    if (projection is ColumnProjection)
-        //    {
-        //        string projectionValue = (projection as ColumnProjection).Value;
-        //        parameter = GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, projectionValue);
-        //    }
-        //    else
-        //    {
-        //        //projection is ConstantProjection || projection is StarProjection
-        //        parameter = GetStarColumnReferenceExpression();
-        //    }
+            Projection projection = inputContext.ProjectionList.First();
+            WScalarExpression parameter = null;
+            var currVar = inputContext.CurrVariable;
+            if (projection is ColumnProjection)
+            {
+                string projectionValue = (projection as ColumnProjection).Key;
+                parameter = GetColumnReferenceExpression(currVar.VariableName, projectionValue);
+            }
+            else
+            {
+                //projection is ConstantProjection || projection is StarProjection
+                parameter = GetStarColumnReferenceExpression();
+            }
 
-        //    inputContext.SetCurrProjection(GetFunctionCall(functionName, parameter));
+            inputContext.SetCurrProjection(new FunctionCallProjection(currVar, GetFunctionCall(functionName, parameter)));
 
-        //    GremlinToSqlContext newContext = new GremlinToSqlContext();
-        //    //GremlinScalarVariable newVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
-        //    WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-        //    {
-        //        QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
-        //    };
-        //    GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable);
-        //    newContext.AddNewVariable(newVariable, labels);
-        //    newContext.SetCurrVariable(newVariable);
-        //    newContext.SetStarProjection(newVariable);
+            GremlinToSqlContext newContext = new GremlinToSqlContext();
+            //GremlinScalarVariable newVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
+            WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+            {
+                QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
+            };
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, functionName);
+            newContext.AddNewVariable(newVariable, labels);
+            newContext.SetCurrVariable(newVariable);
+            newContext.SetStarProjection();
 
-        //    return newContext;
-        //}
+            return newContext;
+        }
 
         internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
         {
@@ -435,6 +436,7 @@ namespace GraphView.GremlinTranslationOps
             {
                 GremlinParentContextOp rootAsContextOp = startOp as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
+                rootAsContextOp.InheritedProjection = inputContext.ProjectionList.Copy();
             }
         }
 
@@ -469,15 +471,30 @@ namespace GraphView.GremlinTranslationOps
         internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
             params object[] parameters)
         {
-            List<WScalarExpression> parameterList = new List<WScalarExpression>();
+            List<WScalarExpression> parameterExprList = new List<WScalarExpression>();
             foreach (var parameter in parameters)
             {
-                parameterList.Add(GetValueExpression(parameter));
+                parameterExprList.Add(GetValueExpression(parameter));
             }
             return new WSchemaObjectFunctionTableReference()
             {
                 SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
-                Parameters = parameterList
+                Parameters = parameterExprList
+            };
+        }
+
+        internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
+            List<object> parameterList)
+        {
+            List<WScalarExpression> parameterExprList = new List<WScalarExpression>();
+            foreach (var parameter in parameterList)
+            {
+                parameterExprList.Add(GetValueExpression(parameter));
+            }
+            return new WSchemaObjectFunctionTableReference()
+            {
+                SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
+                Parameters = parameterExprList
             };
         }
 

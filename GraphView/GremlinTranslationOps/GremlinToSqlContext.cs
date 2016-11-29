@@ -19,9 +19,9 @@ namespace GraphView.GremlinTranslationOps
             //VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
             //CrossVariableConditions = new List<WBooleanExpression>();
             Predicates = null;
-            Projection = new List<Tuple<GremlinVariable, Projection>>();
+            ProjectionList = new List<Projection>();
             Paths = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
-            AliasToGremlinVariableList = new List<Tuple<string, GremlinVariable>>();
+            AliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
             //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
             //OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>();
         }
@@ -48,7 +48,7 @@ namespace GraphView.GremlinTranslationOps
         /// </summary>
         public GremlinVariable CurrVariable;
 
-        public List<Tuple<string, GremlinVariable>> AliasToGremlinVariableList;
+        public Dictionary<string, List<GremlinVariable>> AliasToGremlinVariableList;
 
         /// <summary>
         /// A list of Gremlin variables and their properties the query projects. 
@@ -58,7 +58,7 @@ namespace GraphView.GremlinTranslationOps
         /// 
         /// The projection is updated, as it is passed through every traversal. 
         /// </summary> 
-        public List<Tuple<GremlinVariable, Projection>> Projection { get; set; }
+        public List<Projection> ProjectionList { get; set; }
 
         public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> Paths { get; set; }
         /// <summary>
@@ -78,8 +78,17 @@ namespace GraphView.GremlinTranslationOps
             if (labels.Count == 0) return;
             foreach (var label in labels)
             {
-                AliasToGremlinVariableList.Add(new Tuple<string, GremlinVariable>(label, gremlinVar));
+                AddAliasToGremlinVariable(label, gremlinVar);
             }
+        }
+
+        public void AddAliasToGremlinVariable(string label, GremlinVariable gremlinVar)
+        {
+            if (!AliasToGremlinVariableList.ContainsKey(label))
+            {
+                AliasToGremlinVariableList[label] = new List<GremlinVariable>();
+            }
+            AliasToGremlinVariableList[label].Add(gremlinVar);
         }
 
         public void SetCurrVariable(GremlinVariable gremlinVar)
@@ -88,47 +97,30 @@ namespace GraphView.GremlinTranslationOps
         }
 
         //Projection
-        public void AddProjection(GremlinVariable gremlinVar, string value)
-        {
-            Projection.Add(new Tuple<GremlinVariable, Projection>(gremlinVar, new ColumnProjection(gremlinVar, value)));
-        }
-        public void AddProjection(GremlinVariable gremlinVar, Projection projection)
-        {
-            Projection.Add(new Tuple<GremlinVariable, Projection>(gremlinVar, projection));
-        }
         public void SetDefaultProjection(GremlinVariable newGremlinVar)
         {
-            Projection.Clear();
-            AddProjection(newGremlinVar, new ColumnProjection(newGremlinVar, "id"));
+            ProjectionList.Clear();
+            ProjectionList.Add(new ColumnProjection(newGremlinVar, "id"));
         }
 
-        public void SetCurrProjection(object value)
+        public void SetCurrProjection(params Projection[] projections)
         {
-            Projection.Clear();
-            if (value.GetType() == typeof(WFunctionCall))
+            ProjectionList.Clear();
+            foreach (var projection in projections)
             {
-                AddProjection(CurrVariable, new FunctionCallProjection(CurrVariable, value as WFunctionCall));
-            }
-            else
-            {
-                AddProjection(CurrVariable, new ColumnProjection(CurrVariable, value as string));
+                ProjectionList.Add(projection);
             }
         }
 
-        public void SetConstantProjection(object value)
+        public void SetCurrProjection(List<Projection> projections)
         {
-            Projection.Clear();
-            AddProjection(CurrVariable, new ConstantProjection(CurrVariable, value as string));
+            ProjectionList = projections;
         }
 
-        public void SetStarProjection(object value)
+        public void SetStarProjection()
         {
-            Projection.Clear();
-            AddProjection(CurrVariable, new StarProjection());
-        }
-        public void ClearProjection()
-        {
-            Projection.Clear();
+            ProjectionList.Clear();
+            ProjectionList.Add(new StarProjection());
         }
 
         //------
@@ -211,6 +203,23 @@ namespace GraphView.GremlinTranslationOps
                 SelectElements = new List<WSelectElement>(),
                 FromClause = new WFromClause()
             };
+
+            selectBlock.FromClause.TableReferences = new List<WTableReference>();
+            //from(traversal), so we should add variable in the fromClause, which means the fromVariable is not from outer variable
+            if (currVar.IsNewFromVariable)
+            {
+                var tableReference = GetTableReferenceFromVariable(currVar.FromVariable);
+                if (tableReference != null)
+                    selectBlock.FromClause.TableReferences.Add(tableReference);
+            }
+            //to(traversal), so we should add variable in the fromClause, which means the toVariable is not from outer variable
+            if (currVar.IsNewToVariable)
+            {
+                var tableReference = GetTableReferenceFromVariable(currVar.ToVariable);
+                if (tableReference != null)
+                    selectBlock.FromClause.TableReferences.Add(tableReference);
+            }
+            
 
             var fromVarExpr = GremlinUtil.GetColumnReferenceExpression(currVar.FromVariable.VariableName);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(fromVarExpr));
@@ -348,7 +357,8 @@ namespace GraphView.GremlinTranslationOps
             {
                 return new WAddE()
                 {
-                    SqlStatement = ToAddESqlQuery(currVar as GremlinAddEVariable)
+                    SqlStatement = ToAddESqlQuery(currVar as GremlinAddEVariable),
+                    Alias = GremlinUtil.GetIdentifier(currVar.VariableName)
                 };
             }
             return null;
@@ -380,9 +390,9 @@ namespace GraphView.GremlinTranslationOps
         public List<WSelectElement> GetSelectElement()
         {
             var newSelectElementClause = new List<WSelectElement>();
-            foreach (var dict in Projection)
+            foreach (var projection in ProjectionList)
             {
-                newSelectElementClause.Add(dict.Item2.ToSelectElement());
+                newSelectElementClause.Add(projection.ToSelectElement());
             }
             return newSelectElementClause;
         }

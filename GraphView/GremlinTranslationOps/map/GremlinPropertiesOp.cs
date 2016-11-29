@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinValuesOp: GremlinTranslationOperator
+    internal class GremlinPropertiesOp: GremlinTranslationOperator
     {
         public List<string> PropertyKeys;
 
-        public GremlinValuesOp(params string[] propertyKeys) {
+        public GremlinPropertiesOp(params string[] propertyKeys)
+        {
             PropertyKeys = new List<string>();
-            foreach (var propertyKey in propertyKeys)
+            foreach (var propertyKey in  propertyKeys)
             {
                 PropertyKeys.Add(propertyKey);
             }
@@ -22,13 +23,7 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<Projection> projectionList = new List<Projection>();
-            foreach (var propertyKey in PropertyKeys) {
-                projectionList.Add(new ColumnProjection(inputContext.CurrVariable, propertyKey));
-            }
-            inputContext.SetCurrProjection(projectionList);
             return inputContext;
         }
-
     }
 }

@@ -19,7 +19,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
-            GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, inputContext.CurrVariable as GremlinVertexVariable);
+            GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, inputContext.CurrVariable);
 
             //inputContext.AddPaths(newAddEVar.FromVariable, newAddEVar, newAddEVar.ToVariable);
             inputContext.AddNewVariable(newAddEVar, Labels);
@@ -56,14 +56,8 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinVariable fromVariable = null;
 
             if (Type == FromType.FromStepLabel) {
-                foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
-                {
-                    if (aliasToGremlinVariable.Item1 == StepLabel)
-                    {
-                        //GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
-                        fromVariable = aliasToGremlinVariable.Item2;
-                    }
-                }
+                //GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
+                fromVariable = inputContext.AliasToGremlinVariableList[StepLabel].Last();
             }
             else if (Type == FromType.FromVertexTraversal)
             {
@@ -74,11 +68,11 @@ namespace GraphView.GremlinTranslationOps.map
                     QueryExpr = FromVertexTraversal.GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock
                 };
 
-                fromVariable = new GremlinDerivedVariable(queryDerivedTable);
+                fromVariable = new GremlinDerivedVariable(queryDerivedTable, "from");
+                (inputContext.CurrVariable as GremlinAddEVariable).IsNewFromVariable = true;
             }
 
             (inputContext.CurrVariable as GremlinAddEVariable).FromVariable = fromVariable;
-
 
             return inputContext;
         }
@@ -117,14 +111,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinVariable toVariable = null;
             if (Type == ToType.ToStepLabel)
             {
-                foreach (var aliasToGremlinVariable in inputContext.AliasToGremlinVariableList)
-                {
-                    if (aliasToGremlinVariable.Item1 == StepLabel)
-                    {
-                        //GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
-                        toVariable = aliasToGremlinVariable.Item2;
-                    }
-                }
+                toVariable = inputContext.AliasToGremlinVariableList[StepLabel].Last();
             }
             else if (Type == ToType.ToVertexTraversal)
             {
@@ -135,7 +122,8 @@ namespace GraphView.GremlinTranslationOps.map
                     QueryExpr = ToVertexTraversal.GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock
                 };
 
-                toVariable = new GremlinDerivedVariable(queryDerivedTable);
+                toVariable = new GremlinDerivedVariable(queryDerivedTable, "to");
+                (inputContext.CurrVariable as GremlinAddEVariable).IsNewToVariable = true;
             }
             (inputContext.CurrVariable as GremlinAddEVariable).ToVariable = toVariable;
             return inputContext;

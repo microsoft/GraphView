@@ -215,7 +215,11 @@ namespace GraphView
         //public GraphTraversal2 count(Scope scope)
         //public GraphTraversal2 cyclicPath()
         //public GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
-        //public GraphTraversal2 dedup(params string[] dedupLabels)
+        public GraphTraversal2 dedup(params string[] dedupLabels)
+        {
+            AddGremlinOperator(new GremlinDedupOp(dedupLabels));
+            return this;
+        }
 
         public GraphTraversal2 drop()
         {
@@ -236,10 +240,14 @@ namespace GraphView
         //public GraphTraversal2 filter(Predicate<Traversal<E>> predicate)
         //public GraphTraversal2 filter(Traversal<?, ?> filterTraversal)
         //public GraphTraversal2 flatMap(Funtion<Traversal<E>, Iterator<E>> funtion)
-        //public GraphTraversal2 flatMap(Traversal<?, E2> flatMapTraversal)
+        public GraphTraversal2 flatMap(GraphTraversal2 flatMapTraversal)
+        {
+            AddGremlinOperator(new GremlinFlatMapOp(flatMapTraversal));
+            return this;
+        }
         public GraphTraversal2 fold()
         {
-            AddGremlinOperator(new GremlinFoldStep());
+            AddGremlinOperator(new GremlinFoldOp());
             return this;
         }
 
@@ -335,6 +343,7 @@ namespace GraphView
 
         public GraphTraversal2 id()
         {
+            AddGremlinOperator(new GremlinValuesOp("id"));
             return this;
         }
 
@@ -519,11 +528,11 @@ namespace GraphView
         //public GraphTraversal2 program(VertexProgram<?> vertexProgram)
         //public GraphTraversal2 project(string projectKey, params string[] otherProjectKeys)
 
-        //public GraphTraversal2 properties(params string[] propertyKeys)
-        //{
-        //    AddGremlinOperator(new GremlinPropertiesOp(propertyKeys));
-        //    return this;
-        //}
+        public GraphTraversal2 properties(params string[] propertyKeys)
+        {
+            AddGremlinOperator(new GremlinPropertiesOp(propertyKeys));
+            return this;
+        }
 
         public GraphTraversal2 property(params object[] keyValues)
         {
