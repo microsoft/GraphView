@@ -9,6 +9,170 @@ using System.Diagnostics;
 
 namespace GraphView
 {
+    public static class GraphLoaderFactory
+    {
+        public static void parseData(string path, GraphViewConnection connection, string collectionName, Boolean resetCollection, int threadNum,
+            Dictionary<string, Dictionary<string, string>> nodePropertiesHashMap, Dictionary<string, Dictionary<string, string>> outEdgePropertiesHashMap, Dictionary<string, Dictionary<string, string>> inEdgePropertiesHashMap)
+        {
+        }
+
+        public static void loadAzureIOT(string path, GraphViewConnection connection, string collectionName,  Boolean resetCollection, int threadNum)
+        {
+         
+        }
+
+        public static void parseAndDumpIOTData(string path, GraphViewConnection connection, string collectionName, Boolean resetCollection, int threadNum, string nodeFilePath, string edgeFilePath)
+        {
+           
+        }
+    }
+
+    public class DocDBInsertNodeToFileWorkerByNewAPI
+    {
+        public int threadId;
+        GraphViewConnection connection = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = null;
+        public List<Double> result = null;
+        public StreamWriter nodeFile = null;
+
+        public DocDBInsertNodeToFileWorkerByNewAPI(GraphViewConnection _connection,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputNodeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputInEdgeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputOutEdgeBuffer)
+        {
+            this.connection = _connection;
+            this.inputNodeBuffer = _inputNodeBuffer;
+            this.inputInEdgeBuffer = _inputInEdgeBuffer;
+            this.inputOutEdgeBuffer = _inputOutEdgeBuffer;
+        }
+
+        public void BulkInsert()
+        {
+          
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    public class DocDBInsertEdgeToFileWorkerByNewAPI
+    {
+        public int threadId;
+        //GraphViewGremlinParser parser = new GraphViewGremlinParser();
+        GraphViewConnection connection = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = null;
+        public List<Double> result = null;
+        public StreamWriter edgeFile = null;
+
+        public DocDBInsertEdgeToFileWorkerByNewAPI(GraphViewConnection _connection,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputNodeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputInEdgeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputOutEdgeBuffer)
+        {
+            this.connection = _connection;
+            this.inputNodeBuffer = _inputNodeBuffer;
+            this.inputInEdgeBuffer = _inputInEdgeBuffer;
+            this.inputOutEdgeBuffer = _inputOutEdgeBuffer;
+        }
+
+        public void BulkInsert()
+        {
+        
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    public class DocDBInsertNodeWorkerByNewAPI
+    {
+        public int threadId;
+        //GraphViewGremlinParser parser = new GraphViewGremlinParser();
+        GraphViewConnection connection = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = null;
+        public List<Double> result = null;
+
+        public DocDBInsertNodeWorkerByNewAPI(GraphViewConnection _connection,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputNodeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputInEdgeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputOutEdgeBuffer)
+        {
+            this.connection = _connection;
+            this.inputNodeBuffer = _inputNodeBuffer;
+            this.inputInEdgeBuffer = _inputInEdgeBuffer;
+            this.inputOutEdgeBuffer = _inputOutEdgeBuffer;
+        }
+
+        public void BulkInsert()
+        {
+            
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+    public class DocDBInsertEdgeWorkerByNewAPI
+    {
+        public int threadId;
+        GraphViewConnection connection = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputNodeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputInEdgeBuffer = null;
+        BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> inputOutEdgeBuffer = null;
+        public List<Double> result = null;
+        public DocDBInsertEdgeWorkerByNewAPI(GraphViewConnection _connection,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputNodeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputInEdgeBuffer,
+            BoundedBuffer<KeyValuePair<string, Dictionary<string, string>>> _inputOutEdgeBuffer)
+        {
+            this.connection = _connection;
+            this.inputNodeBuffer = _inputNodeBuffer;
+            this.inputInEdgeBuffer = _inputInEdgeBuffer;
+            this.inputOutEdgeBuffer = _inputOutEdgeBuffer;
+        }
+
+        public void BulkInsert()
+        {
+           
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    public class DocDBInsertWorker
+    {
+        BoundedBuffer<string> inputStream;
+        public int threadId;
+        GraphViewGremlinParser parser = new GraphViewGremlinParser();
+        GraphViewConnection connection = null;
+
+        public DocDBInsertWorker(GraphViewConnection _connection,
+            BoundedBuffer<string> _inputStream)
+        {
+            this.connection = _connection;
+            this.inputStream = _inputStream;
+        }
+
+        public void BulkInsert()
+        {
+          
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
     public class BoundedBuffer<T>
     {
         public int bufferSize;
