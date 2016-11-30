@@ -384,6 +384,28 @@ namespace GraphView
         }
     }
 
+    public partial class WVariableReference : WValueExpression
+    {
+        public WVariableReference() {}
+
+        public string Name { get; set; }
+
+        internal override string ToString(string indent)
+        {
+            return Name;
+        }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            //TODO
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            //TODO
+        }
+    }
+
     public partial class WParenthesisExpression : WPrimaryExpression
     {
         internal WScalarExpression Expression { get; set; }

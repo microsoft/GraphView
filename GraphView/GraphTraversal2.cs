@@ -36,7 +36,7 @@ namespace GraphView
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            var sqlFragment = LastGremlinTranslationOp.ToWSqlFragment();
+            //var sqlFragment = LastGremlinTranslationOp.ToWSqlFragment();
 
             var sqlQuery = LastGremlinTranslationOp.ToWSqlFragment().Generate(connection);
         }

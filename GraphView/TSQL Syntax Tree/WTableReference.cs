@@ -534,4 +534,28 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
     }
+
+    public partial class WVariableTableReference : WTableReferenceWithAlias
+    {
+        internal WVariableReference Variable;
+
+        internal override string ToString(string indent)
+        {
+            return Variable.ToString();
+        }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor == null)
+                return;
+            visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            if (this.Variable != null)
+                this.Variable.Accept(visitor);
+            base.AcceptChildren(visitor);
+        }
+    }
 }

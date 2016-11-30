@@ -360,6 +360,20 @@ namespace GraphView
                     };
                     break;
                 }
+                case "SetVariableStatement":
+                {
+                    var svs = tsqlStat as SetVariableStatement;
+                    wstat = new WSetVariableStatement()
+                    {
+                        Expression = ParseScalarExpression(svs.Expression),
+                        Identifier = svs.Identifier,
+                        FirstTokenIndex = svs.FirstTokenIndex,
+                        LastTokenIndex =  svs.LastTokenIndex,
+                        Variable = ParseVariableReference(svs.Variable)
+                    };
+                    
+                    break;
+                }
                 default:
                     {
                         wstat = new WSqlUnknownStatement(tsqlStat)
@@ -1341,6 +1355,20 @@ namespace GraphView
 
                         return wptab;
                     }
+                case "VariableTableReference":
+                    {
+                        var ptab = tabRef as VariableTableReference;
+
+                        var wptab = new WVariableTableReference
+                        {
+                            FirstTokenIndex = ptab.FirstTokenIndex,
+                            LastTokenIndex = ptab.LastTokenIndex,
+                            Alias = ptab.Alias,
+                            Variable = ParseVariableReference(ptab.Variable)
+                        };
+
+                        return wptab;
+                    }
                 default:
                     return null;
             }
@@ -1699,6 +1727,14 @@ namespace GraphView
                 LastTokenIndex = value.LastTokenIndex,
                 Identifier = value.Identifier,
                 ValueExpression = ParseScalarExpression(value.ValueExpression) as WValueExpression
+            };
+        }
+
+        private WVariableReference ParseVariableReference(VariableReference value)
+        {
+            return  new WVariableReference()
+            {
+                Name = value.Name
             };
         }
     }

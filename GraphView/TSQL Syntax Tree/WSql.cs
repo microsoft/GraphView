@@ -524,4 +524,141 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
     }
+
+    public class WSetVariableStatement : WSqlStatement
+    {
+        private List<WScalarExpression> _parameters = new List<WScalarExpression>();
+        private WVariableReference _variable;
+        private SeparatorType _separatorType;
+        private Identifier _identifier;
+        private bool _functionCallExists;
+        private WScalarExpression _expression;
+        private CursorDefinition _cursorDefinition;
+        private AssignmentKind _assignmentKind;
+
+        public WVariableReference Variable
+        {
+            get
+            {
+                return this._variable;
+            }
+            set
+            {
+                this.UpdateTokenInfo((WSqlFragment)value);
+                this._variable = value;
+            }
+        }
+
+        //public SeparatorType SeparatorType
+        //{
+        //    get
+        //    {
+        //        return this._separatorType;
+        //    }
+        //    set
+        //    {
+        //        this._separatorType = value;
+        //    }
+        //}
+
+        public Identifier Identifier
+        {
+            get
+            {
+                return this._identifier;
+            }
+            set
+            {
+                this.UpdateTokenInfo(value);
+                this._identifier = value;
+            }
+        }
+
+        //public bool FunctionCallExists
+        //{
+        //    get
+        //    {
+        //        return this._functionCallExists;
+        //    }
+        //    set
+        //    {
+        //        this._functionCallExists = value;
+        //    }
+        //}
+
+        public IList<WScalarExpression> Parameters
+        {
+            get
+            {
+                return (IList<WScalarExpression>)this._parameters;
+            }
+        }
+
+        public WScalarExpression Expression
+        {
+            get
+            {
+                return this._expression;
+            }
+            set
+            {
+                this.UpdateTokenInfo((WSqlFragment)value);
+                this._expression = value;
+            }
+        }
+
+        public CursorDefinition CursorDefinition
+        {
+            get
+            {
+                return this._cursorDefinition;
+            }
+            set
+            {
+                this.UpdateTokenInfo(value);
+                this._cursorDefinition = value;
+            }
+        }
+
+        //public AssignmentKind AssignmentKind
+        //{
+        //    get
+        //    {
+        //        return this._assignmentKind;
+        //    }
+        //    set
+        //    {
+        //        this._assignmentKind = value;
+        //    }
+        //}
+        internal override string ToString(string indent)
+        {
+            return "SET " + Variable.ToString() + " = " + (Expression.ToString()) + "\r\n";
+        }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor == null)
+                return;
+            visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            //if (this.Variable != null)
+            //    this.Variable.Accept(visitor);
+            //if (this.Identifier != null)
+            //    this.Identifier.Accept(visitor);
+            //int index = 0;
+            //for (int count = this.Parameters.Count; index < count; ++index)
+            //    this.Parameters[index].Accept(visitor);
+            //if (this.Expression != null)
+            //    this.Expression.Accept(visitor);
+            //if (this.CursorDefinition != null)
+            //    this.CursorDefinition.Accept(visitor);
+            //base.AcceptChildren(visitor);
+            
+            //TODO
+        }
+    }
 }

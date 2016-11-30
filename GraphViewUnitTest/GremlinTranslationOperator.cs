@@ -146,12 +146,13 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"select * from inject(1) as n_1";
+            const string q2 = @"SET @myvar = 'This is a test'; set @A = (select n_0.id from node n_0); select * from @A";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
             IList<ParseError> errors;
             var script = parser.Parse(sr, out errors) as WSqlScript;
+
             if (errors.Count > 0)
                 throw new SyntaxErrorException(errors);
         }
