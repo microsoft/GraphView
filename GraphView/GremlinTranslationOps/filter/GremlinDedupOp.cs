@@ -24,18 +24,18 @@ namespace GraphView.GremlinTranslationOps.filter
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<object> parametersList = new List<object>();
-            foreach (var dedupLabel in DedupLabels)
-            {
-                parametersList.Add(inputContext.AliasToGremlinVariableList[dedupLabel].Last().VariableName);
-            }
-            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("dedup", parametersList);
+            //List<object> parametersList = new List<object>();
+            //foreach (var dedupLabel in DedupLabels)
+            //{
+            //    parametersList.Add(inputContext.AliasToGremlinVariableList[dedupLabel].Last().VariableName);
+            //}
+            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("dedup", parametersList);
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "dedup");
+            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "dedup");
 
-            inputContext.AddNewVariable(newVariable, Labels);
-            inputContext.SetDefaultProjection(newVariable);
-            inputContext.SetCurrVariable(newVariable);
+            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.SetDefaultProjection(newVariable);
+            //inputContext.SetCurrVariable(newVariable);
 
             return inputContext;
         }

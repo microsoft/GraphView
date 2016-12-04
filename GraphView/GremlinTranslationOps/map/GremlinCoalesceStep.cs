@@ -27,7 +27,7 @@ namespace GraphView.GremlinTranslationOps.map
             foreach (var coalesceTraversal in CoalesceTraversals)
             {
                 GremlinUtil.InheritedVariableFromParent(coalesceTraversal, inputContext);
-                coalesceExpr.CoalesceQuery.Add(coalesceTraversal.GetEndOp().GetContext().ToSqlQuery());
+                coalesceExpr.CoalesceQuery.Add(coalesceTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
             }
 
             GremlinCoalesceVariable newVariable = new GremlinCoalesceVariable(coalesceExpr);

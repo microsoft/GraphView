@@ -21,8 +21,8 @@ namespace GraphView
                 return new GremlinToSqlContext();
             }
         }
-        public virtual WSqlFragment ToWSqlFragment() {
-            return GetContext().ToSqlQuery();
+        public virtual WSqlScript ToSqlScript() {
+            return GetContext().ToSqlScript();
         }
 
         public List<string> GetLabels()

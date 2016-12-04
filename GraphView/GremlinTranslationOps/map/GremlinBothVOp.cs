@@ -17,14 +17,14 @@ namespace GraphView.GremlinTranslationOps.map
             var currEdge = inputContext.CurrVariable;
             //GremlinUtil.CheckIsGremlinEdgeVariable(currEdge);
 
-            var existInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);
-            var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("bothV", existInPath.Item1.VariableName, existInPath.Item3.VariableName);
+            //var existInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);
+            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("bothV", existInPath.Item1.VariableName, existInPath.Item3.VariableName);
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "bothV");
+            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "bothV");
 
-            inputContext.AddNewVariable(newVariable, Labels);
-            inputContext.SetDefaultProjection(newVariable);
-            inputContext.SetCurrVariable(newVariable);
+            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.SetDefaultProjection(newVariable);
+            //inputContext.SetCurrVariable(newVariable);
             
             return inputContext;
         }

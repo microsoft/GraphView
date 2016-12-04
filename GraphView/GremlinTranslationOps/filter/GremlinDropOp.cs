@@ -17,9 +17,9 @@ namespace GraphView.GremlinTranslationOps.filter
             //remove element and properties from the graph
             return new GremlinToSqlContext();
         }
-        public override WSqlFragment ToWSqlFragment()
-        {
-            return GetInputContext().ToSqlDelete();
-        }
+        //public override WSqlScript ToSqlScript()
+        //{
+        //    return GetInputContext().ToSqlDelete();
+        //}
     }
 }

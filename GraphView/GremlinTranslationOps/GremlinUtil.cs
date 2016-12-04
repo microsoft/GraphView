@@ -325,6 +325,7 @@ namespace GraphView.GremlinTranslationOps
             var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
             pathEdges.Add(GetPathExpression(path));
             var tailNode = GetSchemaObjectName(path.Item3.VariableName);
+
             return new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
         }
 
@@ -416,12 +417,12 @@ namespace GraphView.GremlinTranslationOps
             inputContext.SetCurrProjection(new FunctionCallProjection(currVar, GetFunctionCall(functionName, parameter)));
 
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //GremlinScalarVariable newVariable = new GremlinScalarVariable(inputContext.ToSqlQuery());
-            WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-            {
-                QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
-            };
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, functionName);
+            //GremlinScalarVariable newVariable = new GremlinScalarVariable(inputContext.ToSelectQueryBlock());
+            //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
+            //{
+            //    QueryExpr = inputContext.ToSelectQueryBlock() as WSelectQueryBlock
+            //};
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(inputContext.ToSelectQueryBlock(), functionName);
             newContext.AddNewVariable(newVariable, labels);
             newContext.SetCurrVariable(newVariable);
             newContext.SetStarProjection();
@@ -498,5 +499,31 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
+        internal static WSetVariableStatement GetSetVariableStatement(string name, WSqlStatement statement)
+        {
+            return new WSetVariableStatement()
+            {
+                Expression = new WScalarSubquery()
+                {
+                    SubQueryExpr = statement
+                },
+                Variable = new WVariableReference()
+                {
+                    Name = "@" + name
+                }
+            };
+        }
+
+        internal static WVariableTableReference GetVariableTableReference(string name)
+        {
+            return new WVariableTableReference()
+            {
+                Alias = GetIdentifier(name),
+                Variable = new WVariableReference()
+                {
+                    Name = name
+                }
+            };
+        }
     }
 }

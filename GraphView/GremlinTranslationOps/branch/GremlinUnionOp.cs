@@ -26,47 +26,54 @@ namespace GraphView.GremlinTranslationOps.branch
 
             WQueryDerivedTable queryDerivedTable = null;
             WBinaryQueryExpression binaryQueryExpression = null;
+            WSqlStatement statement = null;
             if (UnionTraversals.Count == 0)
             {
                 
             }
             else if (UnionTraversals.Count == 1)
             {
-                queryDerivedTable = new WQueryDerivedTable()
-                {
-                    QueryExpr = UnionTraversals.First().GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock 
-                };
+                //queryDerivedTable = new WQueryDerivedTable()
+                //{
+                //    QueryExpr = UnionTraversals.First().GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock 
+                //};
+                //GremlinUtil.InheritedContextFromParent(UnionTraversals.First(), inputContext);
+                return UnionTraversals.First().GetEndOp().GetContext();
             }
-            else
+
+            GremlinUtil.InheritedContextFromParent(UnionTraversals[0], inputContext);
+            GremlinUtil.InheritedContextFromParent(UnionTraversals[1], inputContext);
+
+            binaryQueryExpression = new WBinaryQueryExpression()
             {
-                GremlinUtil.InheritedVariableFromParent(UnionTraversals[0], inputContext);
-                GremlinUtil.InheritedVariableFromParent(UnionTraversals[1], inputContext);
+                FirstQueryExpr = UnionTraversals[0].GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock,
+                SecondQueryExpr = UnionTraversals[1].GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock,
+                All = true,
+                BinaryQueryExprType = BinaryQueryExpressionType.Union,
+            };
+            for (var i = 2; i < UnionTraversals.Count; i++)
+            {
+                GremlinUtil.InheritedVariableFromParent(UnionTraversals[i], inputContext);
                 binaryQueryExpression = new WBinaryQueryExpression()
                 {
-                    FirstQueryExpr = UnionTraversals[0].GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock,
-                    SecondQueryExpr = UnionTraversals[1].GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock,
+                    FirstQueryExpr = binaryQueryExpression,
+                    SecondQueryExpr = UnionTraversals[i].GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock,
                     All = true,
                     BinaryQueryExprType = BinaryQueryExpressionType.Union,
                 };
-                for (var i = 2; i < UnionTraversals.Count; i++)
-                {
-                    GremlinUtil.InheritedVariableFromParent(UnionTraversals[i], inputContext);
-                    binaryQueryExpression = new WBinaryQueryExpression()
-                    {
-                        FirstQueryExpr = binaryQueryExpression,
-                        SecondQueryExpr = UnionTraversals[i].GetEndOp().GetContext().ToSqlQuery() as WSelectQueryBlock,
-                        All = true,
-                        BinaryQueryExprType = BinaryQueryExpressionType.Union,
-                    };
-                }
-                queryDerivedTable = new WQueryDerivedTable()
-                {
-                    QueryExpr = binaryQueryExpression
-                };
             }
-             
+            //queryDerivedTable = new WQueryDerivedTable()
+            //{
+            //    QueryExpr = binaryQueryExpression
+            //};
+            statement = binaryQueryExpression;
+            
+            GremlinDerivedVariable tempVariable = new GremlinDerivedVariable(statement, "union");
+            WSetVariableStatement setVarStatement = GremlinUtil.GetSetVariableStatement(tempVariable.VariableName, statement);
+            inputContext.Statements.Add(setVarStatement);
 
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "union");
+            GremlinVariableReference newVariable = new GremlinVariableReference(setVarStatement.Variable);
+
             inputContext.AddNewVariable(newVariable, Labels);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);

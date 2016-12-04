@@ -244,7 +244,8 @@ namespace GraphView
 
     public partial class WScalarSubquery : WPrimaryExpression
     {
-        internal WSelectQueryExpression SubQueryExpr { get; set; }
+        //internal WSelectQueryExpression SubQueryExpr { get; set; }
+        internal WSqlStatement SubQueryExpr { get; set; }
 
         internal override bool OneLine()
         {

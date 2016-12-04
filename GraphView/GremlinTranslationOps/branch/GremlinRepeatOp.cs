@@ -28,7 +28,7 @@ namespace GraphView.GremlinTranslationOps.branch
 
             WRepeat repeatExpr = new WRepeat()
             {
-                SqlStatement = RepeatTraversal.GetEndOp().GetContext().ToSqlQuery()
+                SqlStatement = RepeatTraversal.GetEndOp().GetContext().ToSelectQueryBlock()
             };
 
             if (MaxLoops != null)
@@ -38,7 +38,7 @@ namespace GraphView.GremlinTranslationOps.branch
             if (UntilTraversal != null)
             {
                 repeatExpr.UntilCondition =
-                    GremlinUtil.GetExistPredicate(UntilTraversal.GetEndOp().GetContext().ToSqlQuery());
+                    GremlinUtil.GetExistPredicate(UntilTraversal.GetEndOp().GetContext().ToSqlStatement());
             }
             if (UntilPredicate != null)
             {

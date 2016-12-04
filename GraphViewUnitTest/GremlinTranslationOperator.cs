@@ -146,7 +146,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"SET @myvar = 'This is a test'; set @A = (select n_0.id from node n_0); select * from @A";
+            const string q2 = @"UPDATE Person SET Address = 'Zhongshan 23', City = 'Nanjing'";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
@@ -160,7 +160,43 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void GremlinFuntionalTestSuite()
         {
-            GraphTraversal2.g().V().Out().next();
+            //GraphTraversal g = new GraphTraversal();
+            //g.V().repeat(GraphTraversal._underscore().Out()).next();
+
+            //GraphTraversal2.g().addV("product-model")
+            //    .property("_app", "test-app")
+            //    .property("_id", "uber-product:soda-machine").next();
+
+                GraphTraversal2.g().V().sideEffect(
+                    GraphTraversal2.__().addE("_val")
+                        .to(GraphTraversal2.__().addV("_val")
+                            .property("_app", "test-app"))
+                        .property("_key", "_properties")
+                        .property("_ary", true)
+                        .inV()).next();
+
+            GraphTraversal2.g().V().union(
+                GraphTraversal2.__().property("_name", "Uber Soda Machine"),
+                GraphTraversal2.__().sideEffect(
+                    GraphTraversal2.__().addE("_val")
+                        .to(GraphTraversal2.__().addV("_val")
+                            .property("_app", "test-app"))
+                        .property("_key", "_properties")
+                        .property("_ary", true)
+                        .inV())).next();
+
+            GraphTraversal2.g().addV("product-model")
+                .property("_app", "test-app")
+                .property("_id", "uber-product:soda-machine")
+            .sideEffect(GraphTraversal2.__().union(
+                GraphTraversal2.__().property("_name", "Uber Soda Machine"),
+                GraphTraversal2.__().sideEffect(
+                    GraphTraversal2.__().addE("_val")
+                        .to(GraphTraversal2.__().addV("_val")
+                            .property("_app", "test-app"))
+                        .property("_key", "_properties")
+                        .property("_ary", true)
+                        .inV())));
         }
     }
 }

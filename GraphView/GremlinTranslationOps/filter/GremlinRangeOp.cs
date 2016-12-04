@@ -23,7 +23,7 @@ namespace GraphView.GremlinTranslationOps.filter
             //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("range", lowExpr, highExpr));
             
             //GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSqlQuery());
+            //GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSelectQueryBlock());
             //newContext.AddNewVariable(newDerivedVariable);
             //newContext.SetDefaultProjection(newDerivedVariable);
             //newContext.SetCurrVariable(newDerivedVariable);

@@ -94,23 +94,52 @@ namespace GraphView.GremlinTranslationOps
     //    }
     //    private static long _count = 0;
     //}
+    internal class GremlinVariableReference: GremlinVariable
+    {
+        public WVariableReference Variable;
+        public GremlinVariableReference(WVariableReference var)
+        {
+            Variable = var;
+            VariableName = var.Name;
+        }
+    }
 
     internal class GremlinDerivedVariable: GremlinVariable
     {
         //public WSelectQueryBlock SelectQueryBlock;
-        public WTableReferenceWithAliasAndColumns QueryDerivedTable;
-
+        //public WTableReferenceWithAliasAndColumns QueryDerivedTable;
+        public WSqlStatement Statement;
+        public DerivedType Type;
         public GremlinDerivedVariable() { }
 
-        public GremlinDerivedVariable(WTableReferenceWithAliasAndColumns queryDerivedTable, string derivedType = "")
+        public GremlinDerivedVariable(WSqlStatement statement, string derivedType = "")
         {
 
             VariableName = "D" + derivedType + "_" + _count.ToString();
             _count += 1;
-            QueryDerivedTable = queryDerivedTable;
-            QueryDerivedTable.Alias = GremlinUtil.GetIdentifier(VariableName);
+            //QueryDerivedTable = queryDerivedTable;
+            Statement = statement;
+            //QueryDerivedTable.Alias = GremlinUtil.GetIdentifier(VariableName);
+            Type = GetDerivedType(derivedType);
+        }
+
+        public DerivedType GetDerivedType(string derivedType)
+        {
+            if (derivedType == "union") return DerivedType.UNION;
+            if (derivedType == "from") return DerivedType.FROM;
+            if (derivedType == "to") return DerivedType.TO;
+            return DerivedType.DEFAULT;
         }
         private static long _count = 0;
+
+        public enum DerivedType
+        {
+            UNION,
+            FROM,
+            TO,
+            DEFAULT
+        }
+
     }
 
     internal class GremlinScalarVariable : GremlinVariable
@@ -156,7 +185,7 @@ namespace GraphView.GremlinTranslationOps
         public bool IsNewFromVariable;
         public GremlinVariable ToVariable;
         public bool IsNewToVariable;
-        public Dictionary<string, List<object>> Properties;
+        public Dictionary<string, object> Properties;
         public string EdgeLabel;
 
         public GremlinAddEVariable(string edgeLabel, GremlinVariable currVariable)
@@ -164,7 +193,7 @@ namespace GraphView.GremlinTranslationOps
             VariableName = "AddE_" + _count.ToString();
             _count += 1;
 
-            Properties = new Dictionary<string, List<object>>();
+            Properties = new Dictionary<string, object>();
             FromVariable = currVariable;
             ToVariable = currVariable;
             EdgeLabel = edgeLabel;
@@ -176,7 +205,7 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinAddVVariable : GremlinVariable
     {
-        public Dictionary<string, List<object>> Properties;
+        public Dictionary<string, object> Properties;
         public string VertexLabel;
 
         public GremlinAddVVariable(string vertexLabel)
@@ -184,7 +213,7 @@ namespace GraphView.GremlinTranslationOps
             VariableName = "AddV_" + _count.ToString();
             _count += 1;
 
-            Properties = new Dictionary<string, List<object>>();
+            Properties = new Dictionary<string, object>();
             VertexLabel = vertexLabel;
         }
         private static long _count = 0;

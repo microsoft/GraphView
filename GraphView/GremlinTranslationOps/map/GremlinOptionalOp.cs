@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinUtil.InheritedVariableFromParent(TraversalOption, inputContext);
             var optionalExpr = new WOptional()
             {
-                SqlStatement = TraversalOption.GetEndOp().GetContext().ToSqlQuery()
+                SqlStatement = TraversalOption.GetEndOp().GetContext().ToSelectQueryBlock()
             };
 
             GremlinOptionalVariable newVariable = new GremlinOptionalVariable(optionalExpr);

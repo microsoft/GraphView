@@ -58,25 +58,25 @@ namespace GraphView.GremlinTranslationOps.branch
                     WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, value);
                     var predicateExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
                     chooseExpr.PredicateExpr = predicateExpr;
-                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceTraversal.GetEndOp().GetContext().ToSqlQuery();
-                    chooseExpr.ChooseDict[falseExpr] = FalseChocieTraversal.GetEndOp().GetContext().ToSqlQuery();
+                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
+                    chooseExpr.ChooseDict[falseExpr] = FalseChocieTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
                     break;
                 case ChooseType.TraversalPredicate:
                     //Move the context to the choice traversal
                     GremlinUtil.InheritedVariableFromParent(PredicateTraversal, inputContext);
-                    chooseExpr.ChooseSqlStatement = PredicateTraversal.GetEndOp().GetContext().ToSqlQuery();
+                    chooseExpr.ChooseSqlStatement = PredicateTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
 
                     //create different branch context
                     GremlinUtil.InheritedVariableFromParent(TrueChoiceTraversal, inputContext);
                     GremlinUtil.InheritedVariableFromParent(FalseChocieTraversal, inputContext);
-                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceTraversal.GetEndOp().GetContext().ToSqlQuery();
-                    chooseExpr.ChooseDict[falseExpr] = FalseChocieTraversal.GetEndOp().GetContext().ToSqlQuery();
+                    chooseExpr.ChooseDict[trueExpr] = TrueChoiceTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
+                    chooseExpr.ChooseDict[falseExpr] = FalseChocieTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
                     break;
 
                 case ChooseType.Option:
                     //Move the context to the choice traversal
                     GremlinUtil.InheritedVariableFromParent(ChoiceTraversal, inputContext);
-                    chooseExpr.ChooseSqlStatement = ChoiceTraversal.GetEndOp().GetContext().ToSqlQuery();
+                    chooseExpr.ChooseSqlStatement = ChoiceTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
 
                     //create different branch context
                     foreach (var option in OptionDict)
@@ -85,7 +85,7 @@ namespace GraphView.GremlinTranslationOps.branch
                         var optionTraversal = option.Value;
 
                         GremlinUtil.InheritedVariableFromParent(optionTraversal, inputContext);
-                        chooseExpr.ChooseDict[valueExpr] = optionTraversal.GetEndOp().GetContext().ToSqlQuery();
+                        chooseExpr.ChooseDict[valueExpr] = optionTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
                     }
                     break;
             }

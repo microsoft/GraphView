@@ -8,20 +8,16 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinPropertyOp: GremlinTranslationOperator
     {
-        public Dictionary<string, List<object>> Properties;
+        public Dictionary<string, object> Properties;
 
         public GremlinPropertyOp(params object[] properties)
         {
             if (properties.Length % 2 != 0) throw new Exception("The parameter of property should be even");
             if (properties.Length < 2) throw new Exception("The number of parameter of property should be larger than 2");
-            Properties = new Dictionary<string, List<object>>();
+            Properties = new Dictionary<string, object>();
             for (int i = 0; i < properties.Length; i += 2)
             {
-                if (!Properties.ContainsKey(properties[i] as string))
-                {
-                    Properties[properties[i] as string] = new List<object>();                    
-                }
-                Properties[properties[i] as string].Add(properties[i + 1]);
+                Properties[properties[i] as string] = properties[i + 1];
             }
         }
 
@@ -37,10 +33,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
                     {
                         (inputContext.CurrVariable as GremlinAddEVariable).Properties[property.Key] = new List<object>();
                     }
-                    foreach (var value in property.Value)
-                    {
-                        (inputContext.CurrVariable as GremlinAddEVariable).Properties[property.Key].Add(value);
-                    }
+                    (inputContext.CurrVariable as GremlinAddEVariable).Properties[property.Key] = property.Value;
                 }
             }
             else if (inputContext.CurrVariable is GremlinAddVVariable)
@@ -51,10 +44,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
                     {
                         (inputContext.CurrVariable as GremlinAddVVariable).Properties[property.Key] = new List<object>();
                     }
-                    foreach (var value in property.Value)
-                    {
-                        (inputContext.CurrVariable as GremlinAddVVariable).Properties[property.Key].Add(value);
-                    }
+                    (inputContext.CurrVariable as GremlinAddVVariable).Properties[property.Key] = property.Value;
                 }
             }
             else
@@ -89,8 +79,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
                     SetClauses = setClause
                 };
 
-                //TODO
-                // execute the update sql
+                inputContext.Statements.Add(updateSpec);
 
             }
             return inputContext;

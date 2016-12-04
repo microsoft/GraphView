@@ -21,7 +21,7 @@ namespace GraphView.GremlinTranslationOps.map
             //GremlinToSqlContext newContext = new GremlinToSqlContext();
             //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
             //{
-            //    QueryExpr = inputContext.ToSqlQuery() as WSelectQueryBlock
+            //    QueryExpr = inputContext.ToSelectQueryBlock() as WSelectQueryBlock
             //};
             //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "count");
             //newContext.AddNewVariable(newVariable, Labels);
