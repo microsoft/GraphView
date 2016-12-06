@@ -91,12 +91,12 @@ namespace GraphView
         {
         }
         
-        public virtual async Task RunDocDbScript(GraphViewConnection docDbConnection)
+        internal virtual GraphViewExecutionOperator Generate(GraphViewConnection dbConnection) 
         {
-
+            return null;
         }
 
-        internal virtual GraphViewExecutionOperator Generate(GraphViewConnection dbConnection) 
+        internal virtual GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             return null;
         }

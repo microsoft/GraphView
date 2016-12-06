@@ -30,12 +30,22 @@ using System.Linq;
 
 namespace GraphView
 {
+    internal enum TableVariableType
+    {
+        Vertex,
+        Edge,
+        Property,
+        Value
+    }
+
     /// <summary>
-    /// A query context that records the definitions of node/edge variables. 
+    /// Query compilation context records  the definitions of node/edge variables. 
     /// </summary>
-    public class QueryCompilationContext
+    internal class QueryCompilationContext
     {
         public QueryCompilationContext ParentContext { get; set; }
+
+        public Dictionary<string, Tuple<TableVariableType>> TableVariableCollection;
 
         // A collection of node table variables
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
@@ -68,70 +78,6 @@ namespace GraphView
         public Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> EdgeDictionary
         {
             get { return _edgeDictionary; }
-        }
-
-        public WTableReferenceWithAlias this[string name]
-        {
-            get
-            {
-                var currentContext = this;
-                while (currentContext != null)
-                {
-                    WTableReferenceWithAlias value;
-                    if (currentContext.NodeTableDictionary.TryGetValue(name, out value))
-                        return value;
-                    currentContext = currentContext.ParentContext;
-                }
-                return null;
-            }
-        }
-
-        public bool CheckTable(string name)
-        {
-            return this[name] != null;
-        }
-
-        /// <summary>
-        /// Bind edge/edge view to node/node view
-        /// </summary>
-        /// <param name="schema"></param>
-        /// <param name="edgeColumn"></param>
-        /// <param name="nodeTable"></param>
-        /// <param name="graphMetaData"></param>
-        /// <returns>Return null when there not exists the binding node/node view, 
-        /// otherwise return name of the node/node view bound to the edge/edge view</returns>
-        public string BindEdgeToNode(string schema, string edgeColumn, string nodeTable, GraphMetaData graphMetaData)
-        {
-            var edgeNodeTuple = new Tuple<string, string>(nodeTable, edgeColumn);
-            string resNode;
-            if (_edgeNodeBinding.TryGetValue(edgeNodeTuple, out resNode))
-                return resNode;
-
-            var nodeTuple = new Tuple<string, string>(schema, nodeTable);
-            if (graphMetaData.ColumnsOfNodeTables[nodeTuple].ContainsKey(edgeColumn))
-            {
-                _edgeNodeBinding[edgeNodeTuple] = nodeTable.ToLower();
-                return nodeTable;
-            }
-            else if (graphMetaData.NodeViewMapping.ContainsKey(nodeTuple))
-            {
-                foreach (var node in graphMetaData.NodeViewMapping[nodeTuple])
-                {
-                    if (graphMetaData.ColumnsOfNodeTables[new Tuple<string, string>(schema, node)].ContainsKey(edgeColumn))
-                    {
-                        if (string.IsNullOrEmpty(resNode))
-                            resNode = node;
-                        else
-                            return null;
-                    }
-                }
-                _edgeNodeBinding[edgeNodeTuple] = resNode;
-                return resNode;
-            }
-            else
-            {
-                return null;
-            }
         }
 
         /// <summary>
@@ -198,23 +144,6 @@ namespace GraphView
                     _columnToAliasMapping.Remove(col);
             }
             return _columnToAliasMapping;
-        }
-
-        public void AddNodeTable(string name, WTableReferenceWithAlias tableName)
-        {
-            if (_nodeTableDictionary.ContainsKey(name) || _edgeDictionary.ContainsKey(name))
-                throw new GraphViewException("Duplicate Alias");
-            _nodeTableDictionary.Add(name, tableName);
-        }
-
-        public void AddEdgeReference(MatchEdge edge)
-        {
-            var edgeAlias = edge.EdgeAlias;
-            if (_nodeTableDictionary.ContainsKey(edgeAlias) || _edgeDictionary.ContainsKey(edgeAlias))
-                throw new GraphViewException("Duplicate Alias");
-            _edgeDictionary.Add(edgeAlias,
-                new Tuple<WSchemaObjectName, WColumnReferenceExpression>(edge.SourceNode.NodeTableObjectName,
-                    edge.EdgeColumn));
         }
     }
 }

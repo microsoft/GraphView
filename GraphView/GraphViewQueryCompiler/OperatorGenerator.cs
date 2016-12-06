@@ -25,6 +25,11 @@ namespace GraphView
             return ConstructOperator(graph, header, columnToAliasDict, pConnection, Functions);
         }
 
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            return null;
+        }
+
         private MatchGraph ConstructGraph()
         {
             Dictionary<string, List<string>> EdgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
