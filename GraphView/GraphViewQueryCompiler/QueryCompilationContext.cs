@@ -30,12 +30,85 @@ using System.Linq;
 
 namespace GraphView
 {
-    internal enum TableVariableType
+    //internal enum TableVariableType
+    //{
+    //    Vertex,
+    //    Edge,
+    //    Property,
+    //    Value
+    //}
+
+    //internal class TableVariable
+    //{
+    //    public string VariableName { get; private set; }
+    //    public TableVariableType VariableType { get; private set; }
+
+    //    public TableVariable(string variableName, TableVariableType varType)
+    //    {
+    //        VariableName = variableName;
+    //        VariableType = varType;
+    //    }
+
+    //    public override bool Equals(object obj)
+    //    {
+    //        TableVariable var = obj as TableVariable;
+    //        if (var == null)
+    //        {
+    //            return false;
+    //        }
+
+    //        return VariableName == var.VariableName && VariableType == var.VariableType;
+    //    }
+
+    //    public override int GetHashCode()
+    //    {
+    //        return VariableName.GetHashCode();
+    //    }
+    //}
+
+    internal enum PropertyType
     {
-        Vertex,
-        Edge,
-        Property,
+        VertexId,
+        EdgeSource,
+        EdgeOffset,
+        EdgeSink,
+        AdjacencyList,
+        ReverseAdjacencyList,
         Value
+    }
+
+    /// <summary>
+    /// TableHeader defines the columns of a temporary table
+    /// </summary>
+    internal class TempTableHeader
+    {
+        Dictionary<string, Tuple<int, PropertyType>> columnSet;
+
+        public TempTableHeader()
+        {
+            columnSet = new Dictionary<string, Tuple<int, PropertyType>>();
+        }
+
+        public void Add(string columnName, PropertyType ptype)
+        {
+            int index = columnSet.Count;
+            // If the same column name has appeared before, the newly defined column
+            // will override the older one and the older one will not be accessible.
+            columnSet[columnName] = new Tuple<int, PropertyType>(index, ptype);
+        }
+
+        public void Add(List<Tuple<string, PropertyType>> columnList)
+        {
+            for (int i = 0; i < columnList.Count; i++)
+            {
+                columnSet[columnList[i].Item1] = new Tuple<int, PropertyType>(i, columnList[i].Item2);
+            }
+        }
+
+        public int GetColumnIndex(string columnName)
+        {
+            return columnSet.ContainsKey(columnName) ? columnSet[columnName].Item1 : -1;
+        }
     }
 
     /// <summary>
@@ -44,8 +117,10 @@ namespace GraphView
     internal class QueryCompilationContext
     {
         public QueryCompilationContext ParentContext { get; set; }
+        // A collection of temporary tables defined in the script.
+        // A temporary table has a table name and a table header defining columns 
+        public Dictionary<string, TempTableHeader> TableVariableCollection;
 
-        public Dictionary<string, Tuple<TableVariableType>> TableVariableCollection;
 
         // A collection of node table variables
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
