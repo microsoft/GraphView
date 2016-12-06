@@ -272,7 +272,7 @@ namespace GraphView
         {
             // Call attach predicate visitor to attach predicates on nodes.
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
-            WSqlTableContext Context = new WSqlTableContext();
+            QueryCompilationContext Context = new QueryCompilationContext();
             GraphMetaData GraphMeta = new GraphMetaData();
             Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
             AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);

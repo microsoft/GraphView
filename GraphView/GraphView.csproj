@@ -62,10 +62,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AttachWhereClauseVisitor.cs" />
+    <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
-    <Compile Include="DocDBGraphOptimizer.cs" />
+    <Compile Include="GraphViewQueryCompiler\DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinChooseOp.cs" />
@@ -113,7 +113,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinOutEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinVOp.cs" />
-    <Compile Include="GraphOptimizer.cs" />
+    <Compile Include="GraphViewQueryCompiler\GraphOptimizer.cs" />
     <Compile Include="GraphTraversal2.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphLoaderFactory.cs" />
@@ -143,11 +143,11 @@
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
-    <Compile Include="MatchComponent.cs" />
+    <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperator.cs" />
-    <Compile Include="OperatorGenerator.cs" />
-    <Compile Include="Statistics.cs" />
+    <Compile Include="GraphViewQueryCompiler\OperatorGenerator.cs" />
+    <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
@@ -162,7 +162,7 @@
     <Compile Include="GraphViewException.cs" />
     <Compile Include="MatchClauseVisitor.cs" />
     <Compile Include="GraphViewParser.cs" />
-    <Compile Include="MatchGraph.cs" />
+    <Compile Include="GraphViewQueryCompiler\MatchGraph.cs" />
     <Compile Include="TSQL Syntax Tree\WCallTarget.cs" />
     <Compile Include="TSQL Syntax Tree\WColumnDefinition.cs" />
     <Compile Include="TSQL Syntax Tree\WCommonTableExpression .cs" />
@@ -193,7 +193,7 @@
     <Compile Include="TSQL Syntax Tree\WSelectQuery.cs" />
     <Compile Include="TSQL Syntax Tree\WSql.cs" />
     <Compile Include="TSQL Syntax Tree\WTableReference.cs" />
-    <Compile Include="WSqlTableContext.cs" />
+    <Compile Include="GraphViewQueryCompiler\QueryCompilationContext.cs" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />

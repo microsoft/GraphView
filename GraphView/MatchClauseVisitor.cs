@@ -32,7 +32,7 @@ namespace GraphView
     /// <summary>
     /// The visitor that puts the MATCH clause back to the SELECT query block
     /// </summary>
-    class MatchClauseVisitor : WSqlFragmentVisitor
+    class ParseMatchClauseVisitor : WSqlFragmentVisitor
     {
         /// <summary>
         /// List of MATCH clauses

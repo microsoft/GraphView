@@ -1441,7 +1441,7 @@ namespace GraphView
             if (script == null)
                 return null;
             // Puts the MATCH clause(s) into the syntax tree
-            var matchClauseVisitor = new MatchClauseVisitor
+            var matchClauseVisitor = new ParseMatchClauseVisitor
             {
                 MatchList = _matchList,
                 MatchFlag = _matchFlag,
