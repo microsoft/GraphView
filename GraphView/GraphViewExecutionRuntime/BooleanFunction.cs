@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace GraphView
 {
@@ -90,6 +91,31 @@ namespace GraphView
             if (type == BinaryType.and) return lhs.Evaluate(r) && rhs.Evaluate(r);
             if (type == BinaryType.or) return lhs.Evaluate(r) || rhs.Evaluate(r);
             return false;
+        }
+    }
+
+    internal class ExistsFunction : BooleanFunction
+    {
+        // When a subquery is compiled, the tuple from the outer context
+        // is injected into the subquery through a constant-source scan, 
+        // which is in a Cartesian product with the operators compiled from the query. 
+        private GraphViewExecutionOperator subqueryOp;
+        private ConstantSourceOperator constantSourceOp;
+
+        public ExistsFunction(GraphViewExecutionOperator subqueryOp, ConstantSourceOperator constantSourceOp)
+        {
+            this.subqueryOp = subqueryOp;
+            this.constantSourceOp = constantSourceOp;
+        }
+
+        internal override bool Evaluate(RawRecord r)
+        {
+            constantSourceOp.ConstantSource = r;
+            subqueryOp.Open();
+            RawRecord firstResult = subqueryOp.Next();
+            subqueryOp.Close();
+
+            return firstResult != null;
         }
     }
 }
