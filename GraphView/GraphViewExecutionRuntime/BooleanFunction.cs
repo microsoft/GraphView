@@ -5,7 +5,7 @@ namespace GraphView
     internal abstract class BooleanFunction
     {
         internal List<string> header { get; set; }
-        internal abstract bool eval(RawRecord r);
+        internal abstract bool Evaluate(RawRecord r);
     }
 
     internal abstract class ComparisonBooleanFunction : BooleanFunction
@@ -42,7 +42,7 @@ namespace GraphView
             RhsFieldName = rhs;
             type = pType;
         }
-        internal override bool eval(RawRecord r)
+        internal override bool Evaluate(RawRecord r)
         {
             var lhsIndex = header.IndexOf(LhsFieldName);
             var rhsIndex = header.IndexOf(RhsFieldName);
@@ -85,10 +85,10 @@ namespace GraphView
             rhs = prhs;
             type = ptype;
         }
-        internal override bool eval(RawRecord r)
+        internal override bool Evaluate(RawRecord r)
         {
-            if (type == BinaryType.and) return lhs.eval(r) && rhs.eval(r);
-            if (type == BinaryType.or) return lhs.eval(r) || rhs.eval(r);
+            if (type == BinaryType.and) return lhs.Evaluate(r) && rhs.Evaluate(r);
+            if (type == BinaryType.or) return lhs.Evaluate(r) || rhs.Evaluate(r);
             return false;
         }
     }

@@ -47,21 +47,22 @@ namespace GraphView
         {
             return fieldValues[index];
         }
-        internal int RetriveIndex(string value)
-        {
-            if (fieldValues.IndexOf(value) == -1) return -1;
-            else return fieldValues.IndexOf(value);
-        }
-        internal String RetriveRow()
-        {
-            String row = "";
-            if (fieldValues == null) return row;
-            for(int i = 0; i < fieldValues.Count; i++)
-            {
-                row += fieldValues[i].ToString() + ",";
-            }
-            return row;
-        }
+
+        //internal int RetriveIndex(string value)
+        //{
+        //    if (fieldValues.IndexOf(value) == -1) return -1;
+        //    else return fieldValues.IndexOf(value);
+        //}
+        //internal String RetriveRow()
+        //{
+        //    String row = "";
+        //    if (fieldValues == null) return row;
+        //    for(int i = 0; i < fieldValues.Count; i++)
+        //    {
+        //        row += fieldValues[i].ToString() + ",";
+        //    }
+        //    return row;
+        //}
         internal List<string> fieldValues;
     }
 

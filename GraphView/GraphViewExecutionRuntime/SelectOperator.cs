@@ -66,7 +66,7 @@ namespace GraphView
         internal static bool RecordFilter(BooleanFunction BooleanCheck, RawRecord r)
         {
             if (BooleanCheck == null) return true;
-            else return BooleanCheck.eval(r);
+            else return BooleanCheck.Evaluate(r);
         }
 
         /// <summary>
@@ -495,7 +495,7 @@ namespace GraphView
         private bool RecordFilter(RawRecord r)
         {
             if (BooleanCheck == null) return true;
-            else return BooleanCheck.eval(r);
+            else return BooleanCheck.Evaluate(r);
         }
 
         // Find the cartesian product of giving sets of records.
@@ -740,7 +740,7 @@ namespace GraphView
 
     internal class ConstantSourceOperator : GraphViewExecutionOperator
     {
-        internal RawRecord ConstantSource;
+        public RawRecord ConstantSource { get; set; }
 
         public ConstantSourceOperator(RawRecord pConstant)
         {

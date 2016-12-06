@@ -63,10 +63,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AttachWhereClauseVisitor.cs" />
-    <Compile Include="BooleanFunction.cs" />
+    <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
+    <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinChooseOp.cs" />
     <Compile Include="GraphViewExecutionRuntime\Decoder.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
