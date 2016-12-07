@@ -31,73 +31,125 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    /// <summary>
-    /// BindTableVisitor traverses a boolean expression and returns exposed name of a table
-    /// if all columns involved in the expression are from that table, otherwise it returns 
-    /// an empty string.
-    /// </summary>
-    internal class BindTableVisitor : WSqlFragmentVisitor
+    internal enum TableType
     {
-        private string _tableName;
+        Vertex,
+        Edge,
+        Unknown
+    }
 
-        private bool _tableBind;
+    /// <summary>
+    /// ScalarExprTableReferenceVisitor traverses a scalar expression and returns all the tables and properties it references
+    /// </summary>
+    internal class ScalarExprTableReferenceVisitor : WSqlFragmentVisitor
+    {
+        private MatchGraph _graph;
+        private Dictionary<string, HashSet<string>> _tableandPropertiesDict;
 
-        private Dictionary<string, string> _columnToTable;
-
-
-
-        private void Bind(string table)
+        // <table name, table type, properties referenced>
+        public List<Tuple<string, TableType, HashSet<string>>> Invoke(WScalarExpression expr, MatchGraph graph)
         {
-            if (_tableBind)
-            {
-                if (!string.IsNullOrEmpty(_tableName) && table != _tableName)
-                    _tableName = "";
-            }
-            else
-            {
-                _tableName = table;
-                _tableBind = true;
-            }
-        }
+            _graph = graph;
+            _tableandPropertiesDict = new Dictionary<string, HashSet<string>>();
+            expr.Accept(this);
 
-        public string Invoke(WBooleanExpression node, Dictionary<string, string> columnToTable)
-        {
-            _tableBind = false;
-            _columnToTable = columnToTable;
-            node.Accept(this);
-            return _tableName;
+            var result = new List<Tuple<string, TableType, HashSet<string>>>();
+            foreach (var pair in _tableandPropertiesDict)
+            {
+                var tableName = pair.Key;
+                var properties = pair.Value;
+                var tableType = TableType.Unknown;
+
+                MatchEdge edge;
+                MatchNode node;
+                if (_graph.TryGetEdge(tableName, out edge))
+                    tableType = TableType.Edge;
+                else if (_graph.TryGetNode(tableName, out node))
+                    tableType = TableType.Vertex;
+
+                result.Add(new Tuple<string, TableType, HashSet<string>>(tableName, tableType, properties));
+            }
+
+            return result;
         }
 
         public override void Visit(WColumnReferenceExpression node)
         {
             var column = node.MultiPartIdentifier.Identifiers;
+
             if (column.Count >= 2)
             {
-                Bind(column[column.Count - 2].Value);
+                var tableName = column.First().Value;
+                var propertyName = "";
+                HashSet<string> properties;
+                if (!_tableandPropertiesDict.TryGetValue(tableName, out properties))
+                    _tableandPropertiesDict[tableName] = new HashSet<string>();
+
+                propertyName += column[1].Value;
+                for (var i = 2; i < column.Count; i++)
+                    propertyName += "." + column[i].ToString();
+                _tableandPropertiesDict[tableName].Add(propertyName);
             }
             else
-            {
-                var columnName = column.Last().Value;
-                Bind(_columnToTable.ContainsKey(columnName) ?
-                    _columnToTable[columnName] :
-                    "");
-            }
-        }
-
-        public override void Visit(WScalarSubquery node)
-        {
-        }
-
-        public override void Visit(WFunctionCall node)
-        {
-        }
-
-        public override void Visit(WSearchedCaseExpression node)
-        {
+                throw new GraphViewException("Identifier " + column.ToString() + " should be bound to a table.");
         }
     }
 
+    /// <summary>
+    /// BooleanExprTableReferenceVisitor traverses a boolean expression and returns all the tables and properties it references
+    /// </summary>
+    internal class BooleanExprTableReferenceVisitor : WSqlFragmentVisitor
+    {
+        private MatchGraph _graph;
+        private Dictionary<string, HashSet<string>> _tableandPropertiesDict;
 
+        // <table name, table type, properties referenced>
+        public List<Tuple<string, TableType, HashSet<string>>> Invoke(WBooleanExpression expr, MatchGraph graph)
+        {
+            _graph = graph;
+            _tableandPropertiesDict = new Dictionary<string, HashSet<string>>();
+            expr.Accept(this);
+
+            var result = new List<Tuple<string, TableType, HashSet<string>>>();
+            foreach (var pair in _tableandPropertiesDict)
+            {
+                var tableName = pair.Key;
+                var properties = pair.Value;
+                var tableType = TableType.Unknown;
+
+                MatchEdge edge;
+                MatchNode node;
+                if (_graph.TryGetEdge(tableName, out edge))
+                    tableType = TableType.Edge;
+                else if (_graph.TryGetNode(tableName, out node))
+                    tableType = TableType.Vertex;
+
+                result.Add(new Tuple<string, TableType, HashSet<string>>(tableName, tableType, properties));
+            }
+
+            return result;
+        }
+
+        public override void Visit(WColumnReferenceExpression node)
+        {
+            var column = node.MultiPartIdentifier.Identifiers;
+
+            if (column.Count >= 2 )
+            {
+                var tableName = column.First().Value;
+                var propertyName = "";
+                HashSet<string> properties;
+                if (!_tableandPropertiesDict.TryGetValue(tableName, out properties))
+                    _tableandPropertiesDict[tableName] = new HashSet<string>();
+                propertyName += column[1].Value;
+                for (var i = 2; i < column.Count; i++)
+                    propertyName += "." + column[i].ToString();
+                _tableandPropertiesDict[tableName].Add(propertyName);
+            }
+            else
+                throw new GraphViewException("Identifier " + column.ToString() + " should be bound to a table.");
+        }
+    }
 
     /// <summary>
     /// AttachWhereClauseVisitor traverses the WHERE clause and attachs predicates
@@ -107,8 +159,10 @@ namespace GraphView
     {
         private MatchGraph _graph;
         private Dictionary<string, string> _columnTableMapping;
-        private readonly BindTableVisitor _bindTableVisitor = new BindTableVisitor();
+
+        private readonly BooleanExprTableReferenceVisitor _booleanTabRefVisitor = new BooleanExprTableReferenceVisitor();
         internal List<WBooleanExpression> FailedToAssign = new List<WBooleanExpression>();
+
         public void Invoke(WWhereClause node, MatchGraph graph, Dictionary<string, string> columnTableMapping)
         {
             _graph = graph;
@@ -120,11 +174,13 @@ namespace GraphView
 
         private void Attach(WBooleanExpression expr)
         {
-            var table = _bindTableVisitor.Invoke(expr,_columnTableMapping);
+            var table = _booleanTabRefVisitor.Invoke(expr, _graph);
+            // Only expression who reference one table can be attached
+            var tableName = table.Count == 1 ? table[0].Item1 : "";
 
             MatchEdge edge;
             MatchNode node;
-            if (_graph.TryGetEdge(table,out edge))
+            if (_graph.TryGetEdge(tableName, out edge))
             {
                 if (edge.Predicates == null)
                 {
@@ -132,7 +188,7 @@ namespace GraphView
                 }
                 edge.Predicates.Add(expr);
             }
-            else if (_graph.TryGetNode(table,out node))
+            else if (_graph.TryGetNode(tableName, out node))
             {
                 if (node.Predicates == null)
                 {
@@ -151,6 +207,7 @@ namespace GraphView
             }
             else
             {
+                // TODO: Remove parenthesis
                 Attach(new WBooleanParenthesisExpression { Expression = node });
             }
         }
@@ -182,10 +239,12 @@ namespace GraphView
 
         public override void Visit(WSubqueryComparisonPredicate node)
         {
+            Attach(node);
         }
 
         public override void Visit(WExistsPredicate node)
         {
+            Attach(node);
         }
     }
 
