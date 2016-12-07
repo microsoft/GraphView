@@ -30,43 +30,7 @@ using System.Linq;
 
 namespace GraphView
 {
-    //internal enum TableVariableType
-    //{
-    //    Vertex,
-    //    Edge,
-    //    Property,
-    //    Value
-    //}
-
-    //internal class TableVariable
-    //{
-    //    public string VariableName { get; private set; }
-    //    public TableVariableType VariableType { get; private set; }
-
-    //    public TableVariable(string variableName, TableVariableType varType)
-    //    {
-    //        VariableName = variableName;
-    //        VariableType = varType;
-    //    }
-
-    //    public override bool Equals(object obj)
-    //    {
-    //        TableVariable var = obj as TableVariable;
-    //        if (var == null)
-    //        {
-    //            return false;
-    //        }
-
-    //        return VariableName == var.VariableName && VariableType == var.VariableType;
-    //    }
-
-    //    public override int GetHashCode()
-    //    {
-    //        return VariableName.GetHashCode();
-    //    }
-    //}
-
-    internal enum PropertyType
+    internal enum RawRecordFieldType
     {
         VertexId,
         EdgeSource,
@@ -82,32 +46,63 @@ namespace GraphView
     /// </summary>
     internal class TempTableHeader
     {
-        Dictionary<string, Tuple<int, PropertyType>> columnSet;
+        Dictionary<string, Tuple<int, RawRecordFieldType>> columnSet;
 
         public TempTableHeader()
         {
-            columnSet = new Dictionary<string, Tuple<int, PropertyType>>();
+            columnSet = new Dictionary<string, Tuple<int, RawRecordFieldType>>();
         }
 
-        public void Add(string columnName, PropertyType ptype)
+        public TempTableHeader(List<Tuple<string, RawRecordFieldType>> columnList)
         {
-            int index = columnSet.Count;
-            // If the same column name has appeared before, the newly defined column
-            // will override the older one and the older one will not be accessible.
-            columnSet[columnName] = new Tuple<int, PropertyType>(index, ptype);
-        }
-
-        public void Add(List<Tuple<string, PropertyType>> columnList)
-        {
+            columnSet = new Dictionary<string, Tuple<int, RawRecordFieldType>>(columnList.Count);
+            
             for (int i = 0; i < columnList.Count; i++)
             {
-                columnSet[columnList[i].Item1] = new Tuple<int, PropertyType>(i, columnList[i].Item2);
+                columnSet[columnList[i].Item1] = new Tuple<int, RawRecordFieldType>(i, columnList[i].Item2);
             }
+        }
+
+        public void AddColumn(string columnName, RawRecordFieldType ptype, int index)
+        {
+            // If the same column name has appeared before, the newly defined column
+            // will override the older one and the older one will not be accessible.
+            columnSet[columnName] = new Tuple<int, RawRecordFieldType>(index, ptype);
         }
 
         public int GetColumnIndex(string columnName)
         {
             return columnSet.ContainsKey(columnName) ? columnSet[columnName].Item1 : -1;
+        }
+    }
+
+    internal class RawRecordField
+    {
+        public string TableAlias { get; set; }
+        public string ColumnName { get; set; }
+        public RawRecordFieldType ColumnType { get; set; }
+
+        public RawRecordField(string tableAlias, string propertyName, RawRecordFieldType type)
+        {
+            TableAlias = tableAlias;
+            ColumnName = propertyName;
+            ColumnType = type;
+        }
+
+        public override bool Equals(object obj)
+        {
+            RawRecordField field = obj as RawRecordField;
+            if (field == null)
+            {
+                return false;
+            }
+
+            return TableAlias == field.TableAlias && ColumnName == field.ColumnName;
+        }
+
+        public override int GetHashCode()
+        {
+            return string.Format("{0}.{1}", TableAlias, ColumnName).GetHashCode();
         }
     }
 
@@ -117,10 +112,51 @@ namespace GraphView
     internal class QueryCompilationContext
     {
         public QueryCompilationContext ParentContext { get; set; }
-        // A collection of temporary tables defined in the script.
-        // A temporary table has a table name and a table header defining columns 
-        public Dictionary<string, TempTableHeader> TableVariableCollection;
 
+        // A collection of temporary tables defined in the script.
+        // A temporary table has a table name, a table header defining column names and their types 
+        // and an execution operator producing the records that fill in the table 
+        public Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>> TableVariableCollection { get; private set; }
+
+        public Dictionary<RawRecordField, int> RawRecordLayout { get; private set; }
+
+        public QueryCompilationContext()
+        {
+            TableVariableCollection = new Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>>();
+            RawRecordLayout = new Dictionary<RawRecordField, int>();
+        }
+
+        public QueryCompilationContext(QueryCompilationContext parentContext)
+        {
+            ParentContext = parentContext;
+            TableVariableCollection = new Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>>();
+            RawRecordLayout = new Dictionary<RawRecordField, int>();
+        }
+
+        public QueryCompilationContext(Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>> tmpTables)
+        {
+            TableVariableCollection = tmpTables;
+            RawRecordLayout = new Dictionary<RawRecordField, int>();
+        }
+
+        public void AddField(string tableAlias, string propertyName, RawRecordFieldType type)
+        {
+            int index = RawRecordLayout.Count;
+            RawRecordLayout[new RawRecordField(tableAlias, propertyName, type)] = index;
+        }
+
+        public TempTableHeader ToTableHeader()
+        {
+            TempTableHeader header = new TempTableHeader();
+            foreach (var pair in RawRecordLayout.OrderBy(e => e.Value))
+            {
+                header.AddColumn(pair.Key.ColumnName, pair.Key.ColumnType, pair.Value);
+            }
+
+            return header;
+        }
+
+         
 
         // A collection of node table variables
         private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =

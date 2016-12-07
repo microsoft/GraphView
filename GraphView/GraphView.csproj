@@ -62,6 +62,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GraphViewExecutionRuntime\ScriptOperator.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
