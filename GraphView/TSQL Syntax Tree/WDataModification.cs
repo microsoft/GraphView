@@ -210,8 +210,26 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            //sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            //if (EdgeColumn != null)
+            //    sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            //else
+            //    sb.AppendFormat("{0}INSERT EDGE INTO {1}\r\n", indent, Target.ToString());
+            sb.AppendFormat("{0}INSERT INTO {1}", indent, Target.ToString());
+            if (Columns != null && Columns.Count > 0)
+            {
+                sb.AppendFormat(" ({0}", Columns[0].ToString(indent));
+                for (var i = 1; i < Columns.Count; ++i)
+                {
+                    sb.AppendFormat(", {0}", Columns[i].ToString(indent));
+                }
+                sb.Append(")");
+            }
+            sb.Append("\r\n");
             sb.Append(SelectInsertSource.ToString(indent));
+
+            //sb.Append(SelectInsertSource.ToString(indent));
+            //sb.Append("\r\n");
             return sb.ToString();
         }
 
@@ -260,7 +278,10 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            if (EdgeColumn != null)
+                sb.AppendFormat("{0}INSERT EDGE INTO {1}.{2}\r\n", indent, Target.ToString(), EdgeColumn.ToString());
+            else
+                sb.AppendFormat("{0}INSERT EDGE INTO {1}\r\n", indent, Target.ToString());
             return sb.ToString();
         }
 
@@ -484,7 +505,7 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}UPDATE ", indent);
+            sb.AppendFormat("{0}UPDATE", indent);
             if (TopRowFilter != null)
                 sb.Append(TopRowFilter.ToString(indent));
 
@@ -511,6 +532,7 @@ namespace GraphView
                 sb.AppendFormat("\r\n{0}{1}", indent, FromClause.ToString(indent));
             if (WhereClause != null && WhereClause.SearchCondition != null)
                 sb.AppendFormat("\r\n{0}{1}", indent, WhereClause.ToString(indent));
+            sb.Append("\r\n");
             return sb.ToString();
         }
 

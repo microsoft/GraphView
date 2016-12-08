@@ -19,17 +19,11 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            return GremlinUtil.ProcessByFunctionStep("max", inputContext, Labels);
+            WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
 
-            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("max");
+            inputContext.ProcessProjectWithFunctionCall(Labels, "max", parameter);
 
-            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "max");
-
-            //inputContext.AddNewVariable(newVariable, Labels);
-            //inputContext.SetDefaultProjection(newVariable);
-            //inputContext.SetCurrVariable(newVariable);
-
-            //return inputContext;
+            return inputContext;
         }
     }
 }

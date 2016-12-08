@@ -4,24 +4,22 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.map
+namespace GraphView.GremlinTranslationOps.sideEffect
 {
-    internal class GremlinMeanOp: GremlinTranslationOperator
+    internal class GremlinTreeOp: GremlinTranslationOperator
     {
-        public Scope Scope;
-        public GremlinMeanOp() { }
-
-        public GremlinMeanOp(Scope scope)
+        public GremlinTreeOp()
         {
-            Scope = scope;
+            
         }
+
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
             WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
 
-            inputContext.ProcessProjectWithFunctionCall(Labels, "mean", parameter);
+            inputContext.ProcessProjectWithFunctionCall(Labels, "tree", parameter);
 
             return inputContext;
         }

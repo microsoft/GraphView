@@ -553,12 +553,16 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder(128);
 
-            sb.AppendFormat("{0}MATCH {1}", indent, Paths[0].ToString());
-
-            for (int i = 1; i < Paths.Count; i++)
+            sb.AppendFormat("{0}MATCH ", indent);
+            if (Paths.Count > 0)
             {
-                sb.Append("\r\n");
-                sb.AppendFormat("  {0}{1}", indent, Paths[i].ToString());
+                sb.AppendFormat("{1}", Paths[0].ToString());
+
+                for (int i = 1; i < Paths.Count; i++)
+                {
+                    sb.Append("\r\n");
+                    sb.AppendFormat("  {0}{1}", indent, Paths[i].ToString());
+                }
             }
 
             return sb.ToString();

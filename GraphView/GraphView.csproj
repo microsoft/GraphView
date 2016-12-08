@@ -111,6 +111,7 @@
     <Compile Include="GremlinTranslationOps\map\GremlinNotOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOptionalOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOrderOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinOtherVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutEOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinVOp.cs" />
@@ -143,6 +144,7 @@
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinInjectOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslationOps\sideEffect\GremlinSideEffectOp.cs" />
+    <Compile Include="GremlinTranslationOps\sideEffect\GremlinTreeOp.cs" />
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />

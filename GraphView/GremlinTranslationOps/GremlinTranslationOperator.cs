@@ -53,10 +53,20 @@ namespace GraphView
         {
             if (IsInheritedEntireContext) return InheritedContext;
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            newContext.RootVariable = InheritedVariable;
-            newContext.SetCurrVariable(InheritedVariable);
-            newContext.FromOuter = true;
-            newContext.ProjectionList = InheritedProjection;
+
+            if (InheritedVariable != null)
+            {
+                newContext.RootVariable = InheritedVariable;
+                //newContext.AddNewVariable(InheritedVariable, Labels);
+                //newContext.AddPredicate(GremlinUtil.GetBooleanComparisonExpr(
+                //    GremlinUtil.GetColumnReferenceExpression(InheritedVariable.VariableName, "id"), //TODO 
+                //    GremlinUtil.GetColumnReferenceExpression("@id"), //todo
+                //    BooleanComparisonType.Equals
+                //    ));
+                //newContext.SetCurrVariable(InheritedVariable);
+                newContext.FromOuter = true;
+                //newContext.ProjectionList = InheritedProjection;
+            } 
             return newContext;
         }
     }

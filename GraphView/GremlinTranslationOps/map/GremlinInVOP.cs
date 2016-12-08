@@ -14,8 +14,6 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //GremlinUtil.CheckIsGremlinEdgeVariable(inputContext.CurrVariable);
-
             GremlinVariable inVariable = null;
 
             if (inputContext.CurrVariable is GremlinAddEVariable)

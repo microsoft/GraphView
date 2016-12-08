@@ -14,12 +14,21 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("fold");
+            //Hack for union variable
+            if (inputContext.CurrVariable is GremlinDerivedVariable
+                &&
+                (inputContext.CurrVariable as GremlinDerivedVariable).Type == GremlinDerivedVariable.DerivedType.UNION)
+            {
+                WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
+                inputContext.ClearAndCreateNewContextInfo();
+                GremlinVariableReference newCurrVar = new GremlinVariableReference(statement);
+                inputContext.AddNewVariable(newCurrVar, Labels);
+                inputContext.SetCurrVariable(newCurrVar);
+                inputContext.SetDefaultProjection(newCurrVar);
+            }
 
-            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "fold");
-            //inputContext.AddNewVariable(newVariable, Labels);
-            //inputContext.SetCurrVariable(newVariable);
-            //inputContext.SetDefaultProjection(newVariable);
+            WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
+            inputContext.ProcessProjectWithFunctionCall(Labels, "fold", parameter);
 
             return inputContext;
         }

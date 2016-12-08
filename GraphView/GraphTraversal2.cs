@@ -37,6 +37,7 @@ namespace GraphView
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             //var sqlFragment = LastGremlinTranslationOp.ToWSqlFragment();
+            var str = LastGremlinTranslationOp.ToSqlScript().ToString();
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
 
             var sqlQuery = LastGremlinTranslationOp.ToSqlScript().Generate(connection);

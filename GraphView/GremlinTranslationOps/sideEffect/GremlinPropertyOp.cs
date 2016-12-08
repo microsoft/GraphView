@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GremlinTranslationOps.sideEffect
 {
@@ -50,17 +51,61 @@ namespace GraphView.GremlinTranslationOps.sideEffect
             else
             {
                 string tableName;
-                if (inputContext.CurrVariable is GremlinEdgeVariable)
+                WWhereClause whereClause = null;
+
+                if (inputContext.CurrVariable is GremlinEdgeVariable ||
+                    (inputContext.CurrVariable is GremlinVariableReference &&
+                     (inputContext.CurrVariable as GremlinVariableReference).Type == VariableType.EGDE))
                 {
-                    tableName = "Edge";
+                    throw new NotImplementedException();
+                    //tableName = "Edge";
+                    //WBooleanExpression inSourceExpr = new WInPredicate()
+                    //{
+                    //    Expression = GremlinUtil.GetColumnReferenceExpression("Edge", "source"),
+                    //    Values =
+                    //        new List<WScalarExpression>()
+                    //        {
+                    //            GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.SetVariableName,
+                    //                "source")
+                    //        }
+                    //};
+                    //WBooleanExpression inIdExpr = new WInPredicate()
+                    //{
+                    //    Expression = GremlinUtil.GetColumnReferenceExpression("Edge", "id"),
+                    //    Values =
+                    //        new List<WScalarExpression>()
+                    //        {
+                    //            GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.SetVariableName, "id")
+                    //        }
+                    //};
+                    //WBooleanExpression wherePredicate = new WBooleanBinaryExpression()
+                    //{
+                    //    BooleanExpressionType = BooleanBinaryExpressionType.And,
+                    //    FirstExpr = inSourceExpr,
+                    //    SecondExpr = inIdExpr
+                    //};
+                    //whereClause = new WWhereClause() {SearchCondition = wherePredicate };
                 }
                 else
                 {
+                    if (!(inputContext.CurrVariable is GremlinVariableReference))
+                        throw new NotImplementedException();
                     tableName = "Node";
+                    WBooleanExpression inExpr = new WInPredicate()
+                    {
+                        Expression = GremlinUtil.GetColumnReferenceExpression("Node", "id"),
+                        Values =
+                            new List<WScalarExpression>()
+                            {
+                                new WScalarSubquery()
+                                {
+                                    SubQueryExpr = GremlinUtil.GetSelectQueryBlockFromVariableReference(inputContext.CurrVariable as GremlinVariableReference)
+                                }
+                            }
+                    };
+                    whereClause = new WWhereClause() {SearchCondition = inExpr};
                 }
                 //Add or update properties
-                WNamedTableReference target = GremlinUtil.GetNamedTableReference(tableName);
-
                 List<WSetClause> setClause = new List<WSetClause>();
                 foreach (var property in Properties)
                 {
@@ -71,11 +116,12 @@ namespace GraphView.GremlinTranslationOps.sideEffect
                     };
                     setClause.Add(assignmentSetClause);
                 }
+
                 WUpdateSpecification updateSpec = new WUpdateSpecification()
                 {
-                    FromClause = inputContext.GetFromClause(),
-                    WhereClause =  inputContext.GetWhereClause(),
-                    Target = target,
+                    //FromClause = inputContext.GetFromClause(),
+                    WhereClause = whereClause,
+                    Target = GremlinUtil.GetNamedTableReference(tableName),
                     SetClauses = setClause
                 };
 
