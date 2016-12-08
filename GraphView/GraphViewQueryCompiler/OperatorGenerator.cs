@@ -278,9 +278,9 @@ namespace GraphView
             // Call attach predicate visitor to attach predicates on nodes.
             AttachWhereClauseVisitor AttachPredicateVistor = new AttachWhereClauseVisitor();
             QueryCompilationContext Context = new QueryCompilationContext();
-            GraphMetaData GraphMeta = new GraphMetaData();
-            Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
-            AttachPredicateVistor.Invoke(WhereClause, graph, ColumnTableMapping);
+            // GraphMetaData GraphMeta = new GraphMetaData();
+            // Dictionary<string, string> ColumnTableMapping = Context.GetColumnToAliasMapping(GraphMeta.ColumnsOfNodeTables);
+            AttachPredicateVistor.Invoke(WhereClause, graph);
             List<BooleanFunction> BooleanList = new List<BooleanFunction>();
 
             // If some predictaes are failed to be assigned to one node, turn them into boolean functions

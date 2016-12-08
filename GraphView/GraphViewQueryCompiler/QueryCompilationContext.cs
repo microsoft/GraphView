@@ -42,18 +42,19 @@ namespace GraphView
     }
 
     /// <summary>
-    /// TableHeader defines the columns of a temporary table
+    /// TemporaryTableHeader defines the columns of a temporary table
     /// </summary>
-    internal class TempTableHeader
+    internal class TemporaryTableHeader
     {
+        // A map from column names to their offsets in raw records and their types
         Dictionary<string, Tuple<int, RawRecordFieldType>> columnSet;
 
-        public TempTableHeader()
+        public TemporaryTableHeader()
         {
             columnSet = new Dictionary<string, Tuple<int, RawRecordFieldType>>();
         }
 
-        public TempTableHeader(List<Tuple<string, RawRecordFieldType>> columnList)
+        public TemporaryTableHeader(List<Tuple<string, RawRecordFieldType>> columnList)
         {
             columnSet = new Dictionary<string, Tuple<int, RawRecordFieldType>>(columnList.Count);
             
@@ -76,22 +77,34 @@ namespace GraphView
         }
     }
 
-    internal class RawRecordField
+    /// <summary>
+    ///  RawRecordField defines the origin of a field in a raw record by a table alias, 
+    ///  a column name in the table and the column type. 
+    /// </summary>
+    internal class RawRecordFieldName : Tuple<string, string>
     {
-        public string TableAlias { get; set; }
-        public string ColumnName { get; set; }
-        public RawRecordFieldType ColumnType { get; set; }
+        public RawRecordFieldName(string tableAlias, string columnName)
+            : base (tableAlias, columnName) { }
 
-        public RawRecordField(string tableAlias, string propertyName, RawRecordFieldType type)
+        public string TableAlias
         {
-            TableAlias = tableAlias;
-            ColumnName = propertyName;
-            ColumnType = type;
+            get
+            {
+                return Item1;
+            }
+        }
+
+        public string ColumnName
+        {
+            get
+            {
+                return Item2;
+            }
         }
 
         public override bool Equals(object obj)
         {
-            RawRecordField field = obj as RawRecordField;
+            RawRecordFieldName field = obj as RawRecordFieldName;
             if (field == null)
             {
                 return false;
@@ -107,154 +120,108 @@ namespace GraphView
     }
 
     /// <summary>
-    /// Query compilation context records  the definitions of node/edge variables. 
+    /// QueryCompilationContext is an entity providing contexts 
+    /// for translating a SQL statement or a nested SQL query. 
+    /// The context information includes temporary tables defined so far in the script 
+    /// and the layout of raw records produced by the execution of the SQL statement/query.
     /// </summary>
     internal class QueryCompilationContext
     {
-        public QueryCompilationContext ParentContext { get; set; }
-
         // A collection of temporary tables defined in the script.
         // A temporary table has a table name, a table header defining column names and their types 
-        // and an execution operator producing the records that fill in the table 
-        public Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>> TableVariableCollection { get; private set; }
+        // and an execution operator producing the records in the table 
+        public Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> TemporaryTableCollection { get; private set; }
 
-        public Dictionary<RawRecordField, int> RawRecordLayout { get; private set; }
+        /// <summary>
+        /// The layout of the raw records produced by the execution of the current query.
+        /// A raw record is a collection of fields, each having a composite name in a pair of (table alias, column name)
+        /// and pointing to the field's offset in the record and the field's type. 
+        /// </summary>
+        public Dictionary<RawRecordFieldName, Tuple<int, RawRecordFieldType>> RawRecordLayout { get; private set; }
 
         public QueryCompilationContext()
         {
-            TableVariableCollection = new Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>>();
-            RawRecordLayout = new Dictionary<RawRecordField, int>();
+            TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
+            RawRecordLayout = new Dictionary<RawRecordFieldName, Tuple<int, RawRecordFieldType>>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
         {
-            ParentContext = parentContext;
-            TableVariableCollection = new Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>>();
-            RawRecordLayout = new Dictionary<RawRecordField, int>();
+            TemporaryTableCollection = parentContext.TemporaryTableCollection;
+            RawRecordLayout = new Dictionary<RawRecordFieldName, Tuple<int, RawRecordFieldType>>(parentContext.RawRecordLayout);
         }
 
-        public QueryCompilationContext(Dictionary<string, Tuple<TempTableHeader, GraphViewExecutionOperator>> tmpTables)
+        public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables)
         {
-            TableVariableCollection = tmpTables;
-            RawRecordLayout = new Dictionary<RawRecordField, int>();
+            TemporaryTableCollection = priorTemporaryTables;
         }
 
-        public void AddField(string tableAlias, string propertyName, RawRecordFieldType type)
+        /// <summary>
+        /// Adds a new field to the raw records when a new execution operator is added to the execution plan.
+        /// </summary>
+        /// <param name="tableAlias"></param>
+        /// <param name="columnName"></param>
+        /// <param name="type"></param>
+        public void AddField(string tableAlias, string columnName, RawRecordFieldType type)
         {
             int index = RawRecordLayout.Count;
-            RawRecordLayout[new RawRecordField(tableAlias, propertyName, type)] = index;
+            RawRecordLayout[new RawRecordFieldName(tableAlias, columnName)] = new Tuple<int, RawRecordFieldType>(index, type);
         }
 
-        public TempTableHeader ToTableHeader()
+        public TemporaryTableHeader ToTableHeader()
         {
-            TempTableHeader header = new TempTableHeader();
-            foreach (var pair in RawRecordLayout.OrderBy(e => e.Value))
+            TemporaryTableHeader header = new TemporaryTableHeader();
+            foreach (var pair in RawRecordLayout.OrderBy(e => e.Value.Item1))
             {
-                header.AddColumn(pair.Key.ColumnName, pair.Key.ColumnType, pair.Value);
+                header.AddColumn(pair.Key.ColumnName, pair.Value.Item2, pair.Value.Item1);
             }
 
             return header;
         }
 
-         
-
-        // A collection of node table variables
-        private readonly Dictionary<string, WTableReferenceWithAlias> _nodeTableDictionary =
-            new Dictionary<string, WTableReferenceWithAlias>(StringComparer.OrdinalIgnoreCase);
-
-        // A collection of edge variables
-        private readonly Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> _edgeDictionary =
-            new Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>>(StringComparer.OrdinalIgnoreCase);
-
-        // A caching collection of a mapping from unbound node properties to node table aliases 
-        // & unbound edge attributes to edge aliases in the current context.
-        private Dictionary<string, string> _columnToAliasMapping;
-
-        // A mapping from edges referenced by node/node view in the query context to the physical node table/node view name which the edges are bound to
-        // (node table/node view name, edge column name) -> node table/node view name which the edges are bound to
-        private readonly Dictionary<Tuple<string,string>, string> _edgeNodeBinding =
-            new Dictionary<Tuple<string,string>, string>();
- 
-
-        public Dictionary<string, WTableReferenceWithAlias> NodeTableDictionary
+        /// <summary>
+        /// Given a column reference, i.e., the composite key of (table alias, column name), 
+        /// return its offset in raw records produced by the SQL statement.
+        /// </summary>
+        /// <param name="tableAlias">Table alias</param>
+        /// <param name="columnName">Column name</param>
+        /// <returns>The offset of the column reference in the raw records</returns>
+        public int LocateColumnReference(string tableAlias, string columnName)
         {
-            get { return _nodeTableDictionary; }
-        }
-
-        public Dictionary<Tuple<string, string>, string> EdgeNodeBinding
-        {
-            get { return _edgeNodeBinding; }
-        }
-
-        public Dictionary<string, Tuple<WSchemaObjectName, WColumnReferenceExpression>> EdgeDictionary
-        {
-            get { return _edgeDictionary; }
+            RawRecordFieldName targetName = new RawRecordFieldName(tableAlias, columnName);
+            if (RawRecordLayout.ContainsKey(targetName))
+            {
+                return RawRecordLayout[targetName].Item1;
+            }
+            else
+            {
+                throw new QueryCompilationException(string.Format("Column reference {0}.{1} cannot be located in the raw records in the current execution pipeline.",
+                    tableAlias, columnName));
+            }
         }
 
         /// <summary>
-        /// Retrieves the mapping from ubound node properties to noda table aliases and edge attributes to edge aliases.
-        /// If the caching dictionary is empty, updates the cache using columns information in the metatable.
-        /// Otherwise, returns the caching dictionary.
+        /// Given a column reference and an expected column type, 
+        /// return the reference's offset in raw records produced by the SQL statement.
         /// </summary>
-        /// <param name="columnsOfNodeTables"></param>
-        /// <returns></returns>
-        public Dictionary<string, string> GetColumnToAliasMapping(
-            Dictionary<Tuple<string, string>, Dictionary<string, NodeColumns>> columnsOfNodeTables)
+        /// <param name="tableAlias">Table alias</param>
+        /// <param name="columnName">Column name</param>
+        /// <param name="type">Column type</param>
+        /// <returns>The offset of the column reference in raw records</returns>
+        public int LocateColumnReference(string tableAlias, string columnName, RawRecordFieldType type)
         {
-            if (_columnToAliasMapping == null)
+            RawRecordFieldName targetName = new RawRecordFieldName(tableAlias, columnName);
+            if (RawRecordLayout.ContainsKey(targetName) && RawRecordLayout[targetName].Item2 == type)
             {
-                _columnToAliasMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                var duplicateColumns = new HashSet<string>();
-                foreach (var kvp in NodeTableDictionary)
-                {
-                    var nodeTable = kvp.Value as WNamedTableReference;
-                    if (nodeTable != null)
-                    {
-                        var nodeTableObjectName = nodeTable.TableObjectName;
-                        var nodeTableTuple = WNamedTableReference.SchemaNameToTuple(nodeTableObjectName);
-                        foreach (
-                            var property in
-                                columnsOfNodeTables[nodeTableTuple].Where(e => e.Value.Role != WNodeTableColumnRole.Edge)
-                                    .Select(e => e.Key))
-                        {
-                            if (!_columnToAliasMapping.ContainsKey(property.ToLower()))
-                            {
-                                _columnToAliasMapping[property.ToLower()] = kvp.Key;
-                            }
-                            else
-                            {
-                                duplicateColumns.Add(property.ToLower());
-                            }
-                        }
-                    }
-                }
-                foreach (var kvp in EdgeDictionary)
-                {
-                    var tuple = kvp.Value;
-                    string schema = tuple.Item1.SchemaIdentifier.Value.ToLower();
-                    string sourceTableName = tuple.Item1.BaseIdentifier.Value.ToLower();
-                    string edgeName = tuple.Item2.MultiPartIdentifier.Identifiers.Last().Value.ToLower();
-                    var bindNodeTableTuple =new Tuple<string, string>(schema, _edgeNodeBinding[new Tuple<string, string>(sourceTableName,edgeName)]);
-                    var edgeProperties =
-                        columnsOfNodeTables[bindNodeTableTuple][edgeName].EdgeInfo;
-                    foreach (var attribute in edgeProperties.ColumnAttributes)
-                    {
-                        if (!_columnToAliasMapping.ContainsKey(attribute.ToLower()))
-                        {
-                            _columnToAliasMapping[attribute.ToLower()] = kvp.Key;
-                        }
-                        else
-                        {
-                            duplicateColumns.Add(attribute.ToLower());
-                        }
-                    }
-
-
-                }
-                foreach (var col in duplicateColumns)
-                    _columnToAliasMapping.Remove(col);
+                return RawRecordLayout[targetName].Item1;
             }
-            return _columnToAliasMapping;
+            else
+            {
+                throw new QueryCompilationException(string.Format("Column reference {0}.{1} cannot be located in the raw records in the current execution pipeline.",
+                    tableAlias, columnName));
+            }
         }
+
+
     }
 }

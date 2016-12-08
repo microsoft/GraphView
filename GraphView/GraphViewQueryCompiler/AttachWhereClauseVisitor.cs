@@ -158,15 +158,13 @@ namespace GraphView
     internal class AttachWhereClauseVisitor : WSqlFragmentVisitor
     {
         private MatchGraph _graph;
-        private Dictionary<string, string> _columnTableMapping;
 
         private readonly BooleanExprTableReferenceVisitor _booleanTabRefVisitor = new BooleanExprTableReferenceVisitor();
         internal List<WBooleanExpression> FailedToAssign = new List<WBooleanExpression>();
 
-        public void Invoke(WWhereClause node, MatchGraph graph, Dictionary<string, string> columnTableMapping)
+        public void Invoke(WWhereClause node, MatchGraph graph)
         {
             _graph = graph;
-            _columnTableMapping = columnTableMapping;
 
             if (node.SearchCondition != null)
                 node.SearchCondition.Accept(this);
