@@ -558,4 +558,9 @@ namespace GraphView
             base.AcceptChildren(visitor);
         }
     }
+
+    internal partial class WOuterContextTableReference : WTableReferenceWithAlias
+    {
+
+    }
 }
