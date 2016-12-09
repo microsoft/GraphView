@@ -156,6 +156,17 @@ namespace GraphView
         BothEdge
     }
 
+    public enum ColumnGraphType
+    {
+        Value,
+        VertexId,
+        EdgeSource,
+        EdgeOffset,
+        EdgeSink,
+        AdjacencyList,
+        ReverseAdjacencyList,
+    }
+
     /// <summary>
     /// A reference to a column. 
     /// 
@@ -167,12 +178,19 @@ namespace GraphView
     {
         internal WMultiPartIdentifier MultiPartIdentifier { get; set; }
         internal ColumnType ColumnType { get; set; }
+        internal ColumnGraphType ColumnGraphType { get; set; }
 
-        // MultiPartIdentifier cannot be modified externally. 
-        // This data structure is used when we need to add new column references to the parsed tree. 
+        public WColumnReferenceExpression() { }
 
-        public WColumnReferenceExpression() {}
+        public WColumnReferenceExpression(string tableName, string columnName)
+        {
+            ColumnType = ColumnType.Regular;
 
+            Identifier tableIdent = tableName != null ? new Identifier { Value = tableName } : null;
+            Identifier columnIdent = columnName != null ? new Identifier { Value = columnName } : null;
+
+            MultiPartIdentifier = new WMultiPartIdentifier(tableIdent, columnIdent);
+        }
 
         internal void Add(Identifier identifier)
         {
@@ -190,6 +208,22 @@ namespace GraphView
         {
             var ident = new Identifier { Value = identValue };
             Add(ident);
+        }
+
+        public string ColumnName
+        {
+            get
+            {
+                return MultiPartIdentifier.Count == 2 ? MultiPartIdentifier[1].Value : null;
+            }
+        }
+
+        public string TableReference
+        {
+            get
+            {
+                return MultiPartIdentifier.Count == 2 ? MultiPartIdentifier[0].Value : null;
+            }
         }
 
         internal override bool OneLine()
@@ -217,28 +251,34 @@ namespace GraphView
             }
         }
 
-        internal static WColumnReferenceExpression CreateColumnExpression(string tableName, string columnName)
-        {
-            var columnExpr = new WColumnReferenceExpression { ColumnType = ColumnType.Regular };
-
-            if (tableName != null)
-            {
-                var tabIdent = new Identifier { Value = tableName };
-                columnExpr.Add(tabIdent);
-            }
-
-            if (columnName == null) return columnExpr;
-
-            var colIdent = new Identifier { Value = columnName };
-            columnExpr.Add(colIdent);
-
-            return columnExpr;
-        }
-
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)
                 visitor.Visit(this);
+        }
+
+        public override bool Equals(object obj)
+        {
+            WColumnReferenceExpression colRef = obj as WColumnReferenceExpression;
+            if (colRef == null || MultiPartIdentifier.Count != colRef.MultiPartIdentifier.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < MultiPartIdentifier.Count; i++)
+            {
+                if (MultiPartIdentifier[i].Value != colRef.MultiPartIdentifier[i].Value)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return ToString("").GetHashCode();
         }
     }
 

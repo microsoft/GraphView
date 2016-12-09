@@ -30,92 +30,39 @@ using System.Linq;
 
 namespace GraphView
 {
-    internal enum RawRecordFieldType
-    {
-        VertexId,
-        EdgeSource,
-        EdgeOffset,
-        EdgeSink,
-        AdjacencyList,
-        ReverseAdjacencyList,
-        Value
-    }
-
     /// <summary>
     /// TemporaryTableHeader defines the columns of a temporary table
     /// </summary>
     internal class TemporaryTableHeader
     {
         // A map from column names to their offsets in raw records and their types
-        Dictionary<string, Tuple<int, RawRecordFieldType>> columnSet;
+        Dictionary<string, Tuple<int, ColumnGraphType>> columnSet;
 
         public TemporaryTableHeader()
         {
-            columnSet = new Dictionary<string, Tuple<int, RawRecordFieldType>>();
+            columnSet = new Dictionary<string, Tuple<int, ColumnGraphType>>();
         }
 
-        public TemporaryTableHeader(List<Tuple<string, RawRecordFieldType>> columnList)
+        public TemporaryTableHeader(List<Tuple<string, ColumnGraphType>> columnList)
         {
-            columnSet = new Dictionary<string, Tuple<int, RawRecordFieldType>>(columnList.Count);
+            columnSet = new Dictionary<string, Tuple<int, ColumnGraphType>>(columnList.Count);
             
             for (int i = 0; i < columnList.Count; i++)
             {
-                columnSet[columnList[i].Item1] = new Tuple<int, RawRecordFieldType>(i, columnList[i].Item2);
+                columnSet[columnList[i].Item1] = new Tuple<int, ColumnGraphType>(i, columnList[i].Item2);
             }
         }
 
-        public void AddColumn(string columnName, RawRecordFieldType ptype, int index)
+        public void AddColumn(string columnName, ColumnGraphType ptype, int index)
         {
             // If the same column name has appeared before, the newly defined column
             // will override the older one and the older one will not be accessible.
-            columnSet[columnName] = new Tuple<int, RawRecordFieldType>(index, ptype);
+            columnSet[columnName] = new Tuple<int, ColumnGraphType>(index, ptype);
         }
 
         public int GetColumnIndex(string columnName)
         {
             return columnSet.ContainsKey(columnName) ? columnSet[columnName].Item1 : -1;
-        }
-    }
-
-    /// <summary>
-    ///  RawRecordField defines the origin of a field in a raw record by a table alias, 
-    ///  a column name in the table and the column type. 
-    /// </summary>
-    internal class RawRecordFieldName : Tuple<string, string>
-    {
-        public RawRecordFieldName(string tableAlias, string columnName)
-            : base (tableAlias, columnName) { }
-
-        public string TableAlias
-        {
-            get
-            {
-                return Item1;
-            }
-        }
-
-        public string ColumnName
-        {
-            get
-            {
-                return Item2;
-            }
-        }
-
-        public override bool Equals(object obj)
-        {
-            RawRecordFieldName field = obj as RawRecordFieldName;
-            if (field == null)
-            {
-                return false;
-            }
-
-            return TableAlias == field.TableAlias && ColumnName == field.ColumnName;
-        }
-
-        public override int GetHashCode()
-        {
-            return string.Format("{0}.{1}", TableAlias, ColumnName).GetHashCode();
         }
     }
 
@@ -137,18 +84,21 @@ namespace GraphView
         /// A raw record is a collection of fields, each having a composite name in a pair of (table alias, column name)
         /// and pointing to the field's offset in the record and the field's type. 
         /// </summary>
-        public Dictionary<RawRecordFieldName, Tuple<int, RawRecordFieldType>> RawRecordLayout { get; private set; }
+        public Dictionary<WColumnReferenceExpression, int> RawRecordLayout { get; private set; }
+
+        public ConstantSourceOperator outerContextOp;
 
         public QueryCompilationContext()
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
-            RawRecordLayout = new Dictionary<RawRecordFieldName, Tuple<int, RawRecordFieldType>>();
+            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
         {
             TemporaryTableCollection = parentContext.TemporaryTableCollection;
-            RawRecordLayout = new Dictionary<RawRecordFieldName, Tuple<int, RawRecordFieldType>>(parentContext.RawRecordLayout);
+            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout);
+            outerContextOp = new ConstantSourceOperator(null);
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables)
@@ -162,18 +112,20 @@ namespace GraphView
         /// <param name="tableAlias"></param>
         /// <param name="columnName"></param>
         /// <param name="type"></param>
-        public void AddField(string tableAlias, string columnName, RawRecordFieldType type)
+        public void AddField(string tableAlias, string columnName, ColumnGraphType type)
         {
             int index = RawRecordLayout.Count;
-            RawRecordLayout[new RawRecordFieldName(tableAlias, columnName)] = new Tuple<int, RawRecordFieldType>(index, type);
+            WColumnReferenceExpression colRef = new WColumnReferenceExpression(tableAlias, columnName);
+            colRef.ColumnGraphType = type;
+            RawRecordLayout[colRef] = index;
         }
 
         public TemporaryTableHeader ToTableHeader()
         {
             TemporaryTableHeader header = new TemporaryTableHeader();
-            foreach (var pair in RawRecordLayout.OrderBy(e => e.Value.Item1))
+            foreach (var pair in RawRecordLayout.OrderBy(e => e.Value))
             {
-                header.AddColumn(pair.Key.ColumnName, pair.Value.Item2, pair.Value.Item1);
+                header.AddColumn(pair.Key.ColumnName, pair.Key.ColumnGraphType, pair.Value);
             }
 
             return header;
@@ -188,10 +140,10 @@ namespace GraphView
         /// <returns>The offset of the column reference in the raw records</returns>
         public int LocateColumnReference(string tableAlias, string columnName)
         {
-            RawRecordFieldName targetName = new RawRecordFieldName(tableAlias, columnName);
+            WColumnReferenceExpression targetName = new WColumnReferenceExpression(tableAlias, columnName);
             if (RawRecordLayout.ContainsKey(targetName))
             {
-                return RawRecordLayout[targetName].Item1;
+                return RawRecordLayout[targetName];
             }
             else
             {
@@ -208,12 +160,12 @@ namespace GraphView
         /// <param name="columnName">Column name</param>
         /// <param name="type">Column type</param>
         /// <returns>The offset of the column reference in raw records</returns>
-        public int LocateColumnReference(string tableAlias, string columnName, RawRecordFieldType type)
+        public int LocateColumnReference(string tableAlias, string columnName, ColumnGraphType type)
         {
-            RawRecordFieldName targetName = new RawRecordFieldName(tableAlias, columnName);
-            if (RawRecordLayout.ContainsKey(targetName) && RawRecordLayout[targetName].Item2 == type)
+            WColumnReferenceExpression targetName = new WColumnReferenceExpression(tableAlias, columnName);
+            if (RawRecordLayout.ContainsKey(targetName) && targetName.ColumnGraphType == type)
             {
-                return RawRecordLayout[targetName].Item1;
+                return RawRecordLayout[targetName];
             }
             else
             {

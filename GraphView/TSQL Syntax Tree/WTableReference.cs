@@ -535,9 +535,19 @@ namespace GraphView
         }
     }
 
+    public enum VariableTableType
+    {
+        Unknown,
+        Vertex,
+        Edge,
+        Value,
+        Hybrid
+    }
+
     public partial class WVariableTableReference : WTableReferenceWithAlias
     {
-        internal WVariableReference Variable;
+        internal WVariableReference Variable { get; set; }
+        //internal VariableTableType VariableTableType { get; set; }
 
         internal override string ToString(string indent)
         {
@@ -557,10 +567,5 @@ namespace GraphView
                 this.Variable.Accept(visitor);
             base.AcceptChildren(visitor);
         }
-    }
-
-    internal partial class WOuterContextTableReference : WTableReferenceWithAlias
-    {
-
     }
 }

@@ -453,5 +453,15 @@ namespace GraphView
         {
             node.AcceptChildren(this);
         }
+
+        public virtual void Visit(WSchemaObjectFunctionTableReference node)
+        {
+            node.AcceptChildren(this);
+        }
+
+        public virtual void Visit(WVariableTableReference node)
+        {
+            node.AcceptChildren(this);
+        }
     }
 }

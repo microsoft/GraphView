@@ -66,9 +66,12 @@
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
+    <Compile Include="GraphViewQueryCompiler\CompileScalarExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
+    <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinChooseOp.cs" />
     <Compile Include="GraphViewExecutionRuntime\Decoder.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
@@ -147,7 +150,7 @@
     <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperator.cs" />
-    <Compile Include="GraphViewQueryCompiler\OperatorGenerator.cs" />
+    <Compile Include="GraphViewQueryCompiler\CompileSelect.cs" />
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />

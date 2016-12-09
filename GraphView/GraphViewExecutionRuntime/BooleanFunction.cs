@@ -67,20 +67,19 @@ namespace GraphView
             
         }
     }
-    internal abstract class BinaryBooleanFunction : BooleanFunction
+
+    internal enum BooleanBinaryFunctionType
     {
-        internal enum BinaryType
-        {
-            or,
-            and,
-        }
+        And,
+        Or,
     }
-    internal class BinaryFunction : BinaryBooleanFunction
+
+    internal class BooleanBinaryFunction : BooleanFunction
     {
-        private BinaryType type;
+        private BooleanBinaryFunctionType type;
         private BooleanFunction lhs;
         private BooleanFunction rhs;
-        internal BinaryFunction(BooleanFunction plhs, BooleanFunction prhs, BinaryType ptype)
+        internal BooleanBinaryFunction(BooleanFunction plhs, BooleanFunction prhs, BooleanBinaryFunctionType ptype)
         {
             lhs = plhs;
             rhs = prhs;
@@ -88,8 +87,8 @@ namespace GraphView
         }
         internal override bool Evaluate(RawRecord r)
         {
-            if (type == BinaryType.and) return lhs.Evaluate(r) && rhs.Evaluate(r);
-            if (type == BinaryType.or) return lhs.Evaluate(r) || rhs.Evaluate(r);
+            if (type == BooleanBinaryFunctionType.And) return lhs.Evaluate(r) && rhs.Evaluate(r);
+            if (type == BooleanBinaryFunctionType.Or) return lhs.Evaluate(r) || rhs.Evaluate(r);
             return false;
         }
     }

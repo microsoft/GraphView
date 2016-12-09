@@ -272,6 +272,254 @@ namespace GraphView
             return Graph;
         }
 
+        private MatchGraph ConstructGraph2(out List<WTableReferenceWithAlias> nonVertexTableReferences)
+        {
+            nonVertexTableReferences = new List<WTableReferenceWithAlias>();
+
+            Dictionary<string, List<string>> edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, MatchPath> pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, MatchEdge> reversedEdgeDict = new Dictionary<string, MatchEdge>();
+
+            UnionFind unionFind = new UnionFind();
+            Dictionary<string, MatchNode> vertexTableCollection = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
+            List<ConnectedComponent> connectedSubGraphs = new List<ConnectedComponent>();
+            Dictionary<string, ConnectedComponent> subGraphMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            unionFind.Parent = parent;
+
+            // Goes through the FROM clause and extracts vertex table references and non-vertex table references
+            if (FromClause != null)
+            {
+                List<WNamedTableReference> vertexTableList = new List<WNamedTableReference>();
+                TableClassifyVisitor tcVisitor = new TableClassifyVisitor();
+                tcVisitor.Invoke(FromClause, vertexTableList, nonVertexTableReferences);
+
+                foreach (WNamedTableReference vertexTableRef in vertexTableList)
+                {
+                    vertexTableCollection.GetOrCreate(vertexTableRef.Alias.Value);
+                    if (!parent.ContainsKey(vertexTableRef.Alias.Value))
+                        parent[vertexTableRef.Alias.Value] = vertexTableRef.Alias.Value;
+                }
+            }
+
+            // Consturct nodes and edges of a match graph defined by the SelectQueryBlock
+            if (MatchClause != null)
+            {
+                if (MatchClause.Paths.Count > 0)
+                {
+                    foreach (var path in MatchClause.Paths)
+                    {
+                        var index = 0;
+                        // Consturct the source node of a path in MatchClause.Paths
+                        MatchEdge EdgeToSrcNode = null;
+                        for (var count = path.PathEdgeList.Count; index < count; ++index)
+                        {
+                            var CurrentNodeTableRef = path.PathEdgeList[index].Item1;
+                            var CurrentEdgeColumnRef = path.PathEdgeList[index].Item2;
+                            var CurrentNodeExposedName = CurrentNodeTableRef.BaseIdentifier.Value;
+                            var nextNodeTableRef = index != count - 1
+                                ? path.PathEdgeList[index + 1].Item1
+                                : path.Tail;
+                            var nextNodeExposedName = nextNodeTableRef.BaseIdentifier.Value;
+                            var SrcNode = vertexTableCollection.GetOrCreate(CurrentNodeExposedName);
+                            if (SrcNode.NodeAlias == null)
+                            {
+                                SrcNode.NodeAlias = CurrentNodeExposedName;
+                                SrcNode.Neighbors = new List<MatchEdge>();
+                                SrcNode.ReverseNeighbors = new List<MatchEdge>();
+                                SrcNode.External = false;
+                                SrcNode.Predicates = new List<WBooleanExpression>();
+                                SrcNode.ReverseCheckList = new Dictionary<int, int>();
+                                SrcNode.HeaderLength = 0;
+                            }
+
+                            // Consturct the edge of a path in MatchClause.Paths
+                            string EdgeAlias = CurrentEdgeColumnRef.Alias;
+                            if (EdgeAlias == null)
+                            {
+                                bool isReversed = path.IsReversed;
+                                var CurrentEdgeName = CurrentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
+                                string originalEdgeName = null;
+
+                                EdgeAlias = string.Format("{0}_{1}_{2}", CurrentNodeExposedName, CurrentEdgeName,
+                                    nextNodeExposedName);
+
+                                // when current edge is a reversed edge, the key should still be the original edge name
+                                var edgeNameKey = isReversed ? originalEdgeName : CurrentEdgeName;
+                                if (edgeColumnToAliasesDict.ContainsKey(edgeNameKey))
+                                {
+                                    edgeColumnToAliasesDict[edgeNameKey].Add(EdgeAlias);
+                                }
+                                else
+                                {
+                                    edgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { EdgeAlias });
+                                }
+                            }
+
+                            MatchEdge EdgeFromSrcNode;
+                            if (CurrentEdgeColumnRef.MinLength == 1 && CurrentEdgeColumnRef.MaxLength == 1)
+                            {
+                                EdgeFromSrcNode = new MatchEdge
+                                {
+                                    SourceNode = SrcNode,
+                                    EdgeColumn = CurrentEdgeColumnRef,
+                                    EdgeAlias = EdgeAlias,
+                                    Predicates = new List<WBooleanExpression>(),
+                                    BindNodeTableObjName =
+                                        new WSchemaObjectName(
+                                            ),
+                                    IsReversed = false,
+                                };
+                            }
+                            else
+                            {
+                                MatchPath matchPath = new MatchPath
+                                {
+                                    SourceNode = SrcNode,
+                                    EdgeColumn = CurrentEdgeColumnRef,
+                                    EdgeAlias = EdgeAlias,
+                                    Predicates = new List<WBooleanExpression>(),
+                                    BindNodeTableObjName =
+                                        new WSchemaObjectName(
+                                            ),
+                                    MinLength = CurrentEdgeColumnRef.MinLength,
+                                    MaxLength = CurrentEdgeColumnRef.MaxLength,
+                                    ReferencePathInfo = false,
+                                    AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict,
+                                    IsReversed = false,
+                                };
+                                pathDictionary[EdgeAlias] = matchPath;
+                                EdgeFromSrcNode = matchPath;
+                            }
+
+                            if (EdgeToSrcNode != null)
+                            {
+                                EdgeToSrcNode.SinkNode = SrcNode;
+                                if (!(EdgeToSrcNode is MatchPath))
+                                {
+                                    //Add ReverseEdge
+                                    MatchEdge reverseEdge = new MatchEdge
+                                    {
+                                        SourceNode = EdgeToSrcNode.SinkNode,
+                                        SinkNode = EdgeToSrcNode.SourceNode,
+                                        EdgeColumn = EdgeToSrcNode.EdgeColumn,
+                                        EdgeAlias = EdgeToSrcNode.EdgeAlias,
+                                        Predicates = EdgeToSrcNode.Predicates,
+                                        BindNodeTableObjName =
+                                            new WSchemaObjectName(
+                                            ),
+                                        IsReversed = true,
+                                    };
+                                    SrcNode.ReverseNeighbors.Add(reverseEdge);
+                                    reversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
+                                }
+                            }
+
+                            EdgeToSrcNode = EdgeFromSrcNode;
+
+                            if (!parent.ContainsKey(CurrentNodeExposedName))
+                                parent[CurrentNodeExposedName] = CurrentNodeExposedName;
+                            if (!parent.ContainsKey(nextNodeExposedName))
+                                parent[nextNodeExposedName] = nextNodeExposedName;
+
+                            unionFind.Union(CurrentNodeExposedName, nextNodeExposedName);
+
+                            SrcNode.Neighbors.Add(EdgeFromSrcNode);
+
+
+                        }
+                        // Consturct destination node of a path in MatchClause.Paths
+                        var tailExposedName = path.Tail.BaseIdentifier.Value;
+                        var DestNode = vertexTableCollection.GetOrCreate(tailExposedName);
+                        if (DestNode.NodeAlias == null)
+                        {
+                            DestNode.NodeAlias = tailExposedName;
+                            DestNode.Neighbors = new List<MatchEdge>();
+                            DestNode.ReverseNeighbors = new List<MatchEdge>();
+                            DestNode.Predicates = new List<WBooleanExpression>();
+                            DestNode.ReverseCheckList = new Dictionary<int, int>();
+                            DestNode.HeaderLength = 0;
+                        }
+                        if (EdgeToSrcNode != null)
+                        {
+                            EdgeToSrcNode.SinkNode = DestNode;
+                            if (!(EdgeToSrcNode is MatchPath))
+                            {
+                                //Add ReverseEdge
+                                MatchEdge reverseEdge = new MatchEdge
+                                {
+                                    SourceNode = EdgeToSrcNode.SinkNode,
+                                    SinkNode = EdgeToSrcNode.SourceNode,
+                                    EdgeColumn = EdgeToSrcNode.EdgeColumn,
+                                    EdgeAlias = EdgeToSrcNode.EdgeAlias,
+                                    Predicates = EdgeToSrcNode.Predicates,
+                                    BindNodeTableObjName =
+                                        new WSchemaObjectName(
+                                        ),
+                                    IsReversed = true,
+                                };
+                                DestNode.ReverseNeighbors.Add(reverseEdge);
+                                reversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
+                            }
+
+                        }
+                    }
+
+                }
+            }
+            // Use union find algorithmn to define which subgraph does a node belong to and put it into where it belongs to.
+            foreach (var node in vertexTableCollection)
+            {
+                string root;
+
+                root = unionFind.Find(node.Key);  // put them into the same graph
+
+                var patternNode = node.Value;
+
+                if (patternNode.NodeAlias == null)
+                {
+                    patternNode.NodeAlias = node.Key;
+                    patternNode.Neighbors = new List<MatchEdge>();
+                    patternNode.ReverseNeighbors = new List<MatchEdge>();
+                    patternNode.External = false;
+                    patternNode.Predicates = new List<WBooleanExpression>();
+                }
+
+                if (!subGraphMap.ContainsKey(root))
+                {
+                    var subGraph = new ConnectedComponent();
+                    subGraph.Nodes[node.Key] = node.Value;
+                    foreach (var edge in node.Value.Neighbors)
+                    {
+                        subGraph.Edges[edge.EdgeAlias] = edge;
+                    }
+                    subGraphMap[root] = subGraph;
+                    connectedSubGraphs.Add(subGraph);
+                    subGraph.IsTailNode[node.Value] = false;
+                }
+                else
+                {
+                    var subGraph = subGraphMap[root];
+                    subGraph.Nodes[node.Key] = node.Value;
+                    foreach (var edge in node.Value.Neighbors)
+                    {
+                        subGraph.Edges[edge.EdgeAlias] = edge;
+                    }
+                    subGraph.IsTailNode[node.Value] = false;
+                }
+            }
+
+            // Combine all subgraphs into a complete match graph and return it
+            MatchGraph graphPattern = new MatchGraph
+            {
+                ConnectedSubGraphs = connectedSubGraphs,
+                ReversedEdgeDict = reversedEdgeDict,
+            };
+
+            return graphPattern;
+        }
+
         private List<BooleanFunction> AttachScriptSegment(MatchGraph graph, List<string> header, Dictionary<string, string> columnToAliasDict, 
             Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict)
         {
@@ -640,8 +888,8 @@ namespace GraphView
                     {
                         if ((root as CartesianProductOperator).BooleanCheck == null)
                             (root as CartesianProductOperator).BooleanCheck = functions[i];
-                        else (root as CartesianProductOperator).BooleanCheck = new BinaryFunction((root as CartesianProductOperator).BooleanCheck,
-                                        functions[i], BinaryBooleanFunction.BinaryType.and);
+                        else (root as CartesianProductOperator).BooleanCheck = new BooleanBinaryFunction((root as CartesianProductOperator).BooleanCheck,
+                                        functions[i], BooleanBinaryFunctionType.And);
                     }
                 }
             }
@@ -821,10 +1069,10 @@ namespace GraphView
                                         functions[i];
                                 else
                                     (ChildrenProcessor.Last() as TraversalBaseOperator).crossDocumentJoinPredicates =
-                                        new BinaryFunction(
+                                        new BooleanBinaryFunction(
                                             (ChildrenProcessor.Last() as TraversalBaseOperator)
                                                 .crossDocumentJoinPredicates,
-                                            functions[i], BinaryBooleanFunction.BinaryType.and);
+                                            functions[i], BooleanBinaryFunctionType.And);
                             }
                             FunctionVaildalityCheck[i] = 0;
                         }

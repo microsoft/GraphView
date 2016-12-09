@@ -35,6 +35,7 @@ namespace GraphView
     {
         Vertex,
         Edge,
+        Temporary,
         Unknown
     }
 
@@ -91,7 +92,7 @@ namespace GraphView
                 _tableandPropertiesDict[tableName].Add(propertyName);
             }
             else
-                throw new GraphViewException("Identifier " + column.ToString() + " should be bound to a table.");
+                throw new QueryCompilationException("Identifier " + column.ToString() + " must be bound to a table alias.");
         }
     }
 

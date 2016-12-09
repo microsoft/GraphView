@@ -217,8 +217,7 @@ namespace GraphView
                     List<WScalarExpression> sinkIdList = EdgeRefSet.Select(edge => new WValueExpression {SingleQuoted = true, Value = edge}).Cast<WScalarExpression>().ToList();
                     WInPredicate sinkCheck = new WInPredicate
                     {
-                        Expression =
-                            WColumnReferenceExpression.CreateColumnExpression(header[dest], "id"),
+                        Expression = new WColumnReferenceExpression(header[dest], "id"),
                         Values = sinkIdList
                     };
                     docDbScript.WhereClause.SearchCondition =
@@ -760,6 +759,32 @@ namespace GraphView
             return ConstantSource;
         }
 
+    }
+
+    internal class FilterOperator : GraphViewExecutionOperator
+    {
+        public GraphViewExecutionOperator Input { get; private set; }
+        public BooleanFunction Func { get; private set; }
+
+        public FilterOperator(GraphViewExecutionOperator input, BooleanFunction func)
+        {
+            Input = input;
+            Func = func;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord rec = null;
+            while (Input.State() && (rec = Input.Next()) != null)
+            {
+                if (Func.Evaluate(rec))
+                {
+                    break;
+                }
+            }
+
+            return rec;
+        }
     }
 
     public class GraphViewDataReader : IDataReader
