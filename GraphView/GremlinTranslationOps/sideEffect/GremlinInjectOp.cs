@@ -20,12 +20,20 @@ namespace GraphView.GremlinTranslationOps.sideEffect
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("inject", Injections);
+            if (inputContext.RemainingVariableList.Count == 0)
+            {
+                WSqlStatement statement = GremlinUtil.GetInjectStatement(Injections);
+                GremlinDerivedVariable newVariable = new GremlinDerivedVariable(statement, "inject");
 
-            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "inject");
-            //inputContext.AddNewVariable(newVariable, Labels);
-            //inputContext.SetCurrVariable(newVariable);
-            //inputContext.SetDefaultProjection(newVariable);
+                inputContext.AddNewVariable(newVariable, Labels);
+                inputContext.SetCurrVariable(newVariable);
+                inputContext.SetDefaultProjection(newVariable);
+            }
+            else
+            {
+                //TODO
+                throw new NotImplementedException();
+            }
 
             return inputContext;
         }

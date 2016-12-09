@@ -551,7 +551,9 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            return Variable.ToString();
+            var sb = new StringBuilder();
+            sb.AppendFormat("{0}{1} as [{2}]", indent, Variable.ToString(), Alias.Value);
+            return sb.ToString();
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)

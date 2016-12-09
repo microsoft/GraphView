@@ -27,10 +27,17 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinAddVVariable newAddEVar = new GremlinAddVVariable(VertexLabel);
-            inputContext.AddNewVariable(newAddEVar, Labels);
-            inputContext.SetCurrVariable(newAddEVar);
-            inputContext.SetDefaultProjection(newAddEVar);
+            GremlinAddVVariable newAddVVar = new GremlinAddVVariable(VertexLabel);
+            inputContext.CurrVariable = newAddVVar;
+            inputContext.SaveCurrentState();
+            WSetVariableStatement statement = inputContext.ToSetVariableStatement();
+            inputContext.ResetSavedState();
+            inputContext.Statements.Add(statement);
+            var newVar = new GremlinVariableReference(statement);
+            newVar.Type = VariableType.NODE;
+            inputContext.AddNewVariable(newVar, Labels);
+            inputContext.SetCurrVariable(newVar);
+            inputContext.SetDefaultProjection(newVar);
 
             return inputContext;
         }

@@ -44,7 +44,7 @@ namespace GraphView.GremlinTranslationOps.filter
                 }
                 else if (projection is StarProjection)
                 {
-                    key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName);
+                    key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName, "_value");
                     keyList.Add(key);
                 }
             }

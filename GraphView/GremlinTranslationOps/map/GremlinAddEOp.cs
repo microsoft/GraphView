@@ -19,9 +19,11 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
-            GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, inputContext.CurrVariable);
+            WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
+            var newVariableReference = new GremlinVariableReference(statement);
+            newVariableReference.Type = VariableType.NODE;
 
-            //inputContext.AddPaths(newAddEVar.FromVariable, newAddEVar, newAddEVar.ToVariable);
+            GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, newVariableReference);
             inputContext.AddNewVariable(newAddEVar, Labels);
             inputContext.SetCurrVariable(newAddEVar);
             inputContext.SetDefaultProjection(newAddEVar);
@@ -56,26 +58,27 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinVariable fromVariable = null;
 
             if (Type == FromType.FromStepLabel) {
-                //GremlinUtil.CheckIsGremlinVertexVariable(aliasToGremlinVariable.Item2);
                 fromVariable = inputContext.AliasToGremlinVariableList[StepLabel].Last();
             }
             else if (Type == FromType.FromVertexTraversal)
             {
-                GremlinUtil.InheritedVariableFromParent(FromVertexTraversal, inputContext);
+                GremlinUtil.InheritedContextFromParent(FromVertexTraversal, inputContext);
 
-                //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-                //{
-                //    QueryExpr = FromVertexTraversal.GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock
-                //};
-
-                //fromVariable = new GremlinDerivedVariable(queryDerivedTable, "from");
-
-                WSqlStatement statement = FromVertexTraversal.GetEndOp().GetContext().ToSetVariableStatement();
-                inputContext.Statements.Add(statement);
-
-                fromVariable = new GremlinVariableReference((statement as WSetVariableStatement).Variable);
-                (inputContext.CurrVariable as GremlinAddEVariable).IsNewFromVariable = true;
+                inputContext.SaveCurrentState();
+                var context = FromVertexTraversal.GetEndOp().GetContext();
+                WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
+                fromVariable = new GremlinVariableReference(statement);
+                fromVariable.Type = VariableType.NODE;
                 inputContext.AddNewVariable(fromVariable, Labels);
+                inputContext.ResetSavedState();
+
+                if (!(FromVertexTraversal.GetStartOp() is GremlinParentContextOp))
+                {
+                    foreach (var s in context.Statements)
+                    {
+                        inputContext.Statements.Add(s);
+                    }
+                }
             }
 
             (inputContext.CurrVariable as GremlinAddEVariable).FromVariable = fromVariable;
@@ -112,8 +115,6 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.CheckIsGremlinAddEVariable(inputContext.CurrVariable);
-
             GremlinVariable toVariable = null;
             if (Type == ToType.ToStepLabel)
             {
@@ -121,21 +122,23 @@ namespace GraphView.GremlinTranslationOps.map
             }
             else if (Type == ToType.ToVertexTraversal)
             {
-                GremlinUtil.InheritedVariableFromParent(ToVertexTraversal, inputContext);
+                GremlinUtil.InheritedContextFromParent(ToVertexTraversal, inputContext);
 
-                //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-                //{
-                //    QueryExpr = ToVertexTraversal.GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock
-                //};
-
-                //toVariable = new GremlinDerivedVariable(queryDerivedTable, "to");
-
-                WSqlStatement statement = ToVertexTraversal.GetEndOp().GetContext().ToSetVariableStatement();
-                inputContext.Statements.Add(statement);
-                
-                toVariable = new GremlinVariableReference((statement as WSetVariableStatement).Variable);
-                (inputContext.CurrVariable as GremlinAddEVariable).IsNewToVariable = true;
+                inputContext.SaveCurrentState();
+                var context = ToVertexTraversal.GetEndOp().GetContext();
+                WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
+                toVariable = new GremlinVariableReference(statement);
+                toVariable.Type = VariableType.NODE;
                 inputContext.AddNewVariable(toVariable, Labels);
+                inputContext.ResetSavedState();
+
+                if (!(ToVertexTraversal.GetStartOp() is GremlinParentContextOp))
+                {
+                    foreach (var s in context.Statements)
+                    {
+                        inputContext.Statements.Add(s);
+                    }
+                }
             }
             (inputContext.CurrVariable as GremlinAddEVariable).ToVariable = toVariable;
             return inputContext;

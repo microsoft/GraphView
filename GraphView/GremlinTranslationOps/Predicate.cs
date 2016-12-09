@@ -30,7 +30,7 @@ namespace GraphView.GremlinTranslationOps
             IsAliasValue = isAliasValue;
         }
 
-        public Predicate(PredicateType type, bool isAliasValue = false, params object[] values)
+        public Predicate(PredicateType type, params object[] values)
         {
             Values = new List<object>();
             foreach(var value in values)
@@ -38,7 +38,7 @@ namespace GraphView.GremlinTranslationOps
                 Values.Add(value);
             }
             PredicateType = type;
-            IsAliasValue = isAliasValue;
+            IsAliasValue = false;
         }
 
         public static Predicate eq(object value, bool isAliasValue = false)
@@ -81,14 +81,14 @@ namespace GraphView.GremlinTranslationOps
             return new Predicate(PredicateType.between, low, high);
         }
 
-        public static Predicate within(bool isAliasValue = false, params object[] objects)
+        public static Predicate within(params object[] objects)
         {
-            return new Predicate(PredicateType.within, objects, isAliasValue);
+            return new Predicate(PredicateType.within, objects);
         }
 
-        public static Predicate without(bool isAliasValue = false, params object[] objects)
+        public static Predicate without(params object[] objects)
         {
-            return new Predicate(PredicateType.without, objects, isAliasValue);
+            return new Predicate(PredicateType.without, objects);
         }
     }
 

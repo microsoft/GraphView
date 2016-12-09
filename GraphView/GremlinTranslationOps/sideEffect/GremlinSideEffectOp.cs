@@ -22,17 +22,16 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 
             GremlinUtil.InheritedContextFromParent(SideEffectTraversal, inputContext);
 
-            //inputContext.AddContextStatements(SideEffectTraversal.GetEndOp().GetContext());
-            GremlinVariable currVariable = inputContext.CurrVariable;
-            List<GremlinVariable> currVariableList = inputContext.RemainingVariableList.Copy();
-            List<Projection> currProjection = inputContext.ProjectionList.Copy();
-            List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> currPath = inputContext.Paths.Copy();
-            inputContext.Statements.Add(SideEffectTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
+            inputContext.SaveCurrentState();
+            GremlinToSqlContext context = SideEffectTraversal.GetEndOp().GetContext();
+            WSqlStatement statement = context.ToSqlStatement();
+            //add statement if it's not a selectqueryblock, skip this statement if it's a selectqueryblock statement
+            if (!(statement is WSelectQueryBlock))
+            {
+                inputContext.Statements.Add(statement);
+            }
+            inputContext.ResetSavedState();
 
-            inputContext.SetCurrVariable(currVariable);
-            inputContext.ProjectionList = currProjection;
-            inputContext.RemainingVariableList = currVariableList;
-            inputContext.Paths = currPath;
             return inputContext;
 
         }

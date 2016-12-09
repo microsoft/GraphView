@@ -20,20 +20,11 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-            //{
-            //    QueryExpr = NotTraversal.GetEndOp().GetContext().ToSelectQueryBlock() as WSelectQueryBlock
-            //};
-            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(queryDerivedTable, "not");
-            //inputContext.AddNewVariable(newVariable, Labels); //??Labels?
+            GremlinUtil.InheritedVariableFromParent(NotTraversal, inputContext);
 
-            //WBooleanComparisonExpression booleanComparisonExpr = new WBooleanComparisonExpression()
-            //{
-            //    ComparisonType = BooleanComparisonType.NotEqualToExclamation,
-            //    FirstExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id"),
-            //    SecondExpr = GremlinUtil.GetColumnReferenceExpression(newVariable.VariableName, "id")
-            //};
-            //inputContext.AddPredicate(booleanComparisonExpr);
+            WBooleanExpression booleanExpr = GremlinUtil.GetNotExistPredicate(NotTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
+
+            inputContext.AddPredicate(booleanExpr);
 
             return inputContext;
         }

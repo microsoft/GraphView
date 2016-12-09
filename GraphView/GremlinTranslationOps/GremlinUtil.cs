@@ -193,8 +193,17 @@ namespace GraphView.GremlinTranslationOps
                 {
                     SubQueryExpr = subQueryExpr as WSelectQueryExpression
                 }
-        };
+            };
         }
+
+        internal static WBooleanNotExpression GetNotExistPredicate(WSqlStatement subQueryExpr)
+        {
+            return new WBooleanNotExpression()
+            {
+                Expression = GetExistPredicate(subQueryExpr)
+            };
+        }
+
 
         internal static WBooleanExpression ConcatBooleanExpressionListWithOr(List<WBooleanExpression> booleanExprList)
         {
@@ -396,58 +405,20 @@ namespace GraphView.GremlinTranslationOps
         //    };
         //}
 
-        internal static GremlinToSqlContext ProcessByFunctionStep(string functionName, GremlinToSqlContext inputContext, List<string> labels)
-        {
-            //if (inputContext.Projection.Count > 1) throw new Exception("Can't process more than two projection");
-
-            Projection projection = inputContext.ProjectionList.First();
-            WScalarExpression parameter = null;
-            var currVar = inputContext.CurrVariable;
-            if (projection is ColumnProjection)
-            {
-                string projectionValue = (projection as ColumnProjection).Key;
-                parameter = GetColumnReferenceExpression(currVar.VariableName, projectionValue);
-            }
-            else
-            {
-                //projection is ConstantProjection || projection is StarProjection
-                parameter = GetStarColumnReferenceExpression();
-            }
-
-            inputContext.SetCurrProjection(new FunctionCallProjection(currVar, GetFunctionCall(functionName, parameter)));
-
-            GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //GremlinScalarVariable newVariable = new GremlinScalarVariable(inputContext.ToSelectQueryBlock());
-            //WQueryDerivedTable queryDerivedTable = new WQueryDerivedTable()
-            //{
-            //    QueryExpr = inputContext.ToSelectQueryBlock() as WSelectQueryBlock
-            //};
-            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(inputContext.ToSelectQueryBlock(), functionName);
-            newContext.AddNewVariable(newVariable, labels);
-            newContext.SetCurrVariable(newVariable);
-            newContext.SetStarProjection();
-
-            return newContext;
-        }
-
         internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
         {
-            var startOp = childTraversal.GetStartOp();
-            if (startOp.GetType() == typeof(GremlinParentContextOp))
+            var rootOp = childTraversal.GetStartOp();
+            if (rootOp.GetType() == typeof(GremlinParentContextOp))
             {
-                GremlinParentContextOp rootAsContextOp = startOp as GremlinParentContextOp;
+                GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
                 rootAsContextOp.InheritedProjection = inputContext.ProjectionList.Copy();
             }
         }
 
-        internal static void InheritedContextFromParent(GraphTraversal2 traversal, GremlinToSqlContext inputContext)
+        internal static void InheritedContextFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
         {
-            GremlinTranslationOperator rootOp = traversal.GetEndOp();
-            while (rootOp.InputOperator != null)
-            {
-                rootOp = rootOp.InputOperator;
-            }
+            GremlinTranslationOperator rootOp = childTraversal.GetStartOp();
             if (rootOp.GetType() == typeof(GremlinParentContextOp))
             {
                 GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
@@ -470,21 +441,6 @@ namespace GraphView.GremlinTranslationOps
         }
 
         internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
-            params object[] parameters)
-        {
-            List<WScalarExpression> parameterExprList = new List<WScalarExpression>();
-            foreach (var parameter in parameters)
-            {
-                parameterExprList.Add(GetValueExpression(parameter));
-            }
-            return new WSchemaObjectFunctionTableReference()
-            {
-                SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
-                Parameters = parameterExprList
-            };
-        }
-
-        internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
             List<object> parameterList)
         {
             List<WScalarExpression> parameterExprList = new List<WScalarExpression>();
@@ -499,7 +455,7 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WSetVariableStatement GetSetVariableStatement(string name, WSqlStatement statement)
+        internal static WSetVariableStatement GetSetVariableStatement(GremlinVariable variable, WSqlStatement statement)
         {
             return new WSetVariableStatement()
             {
@@ -507,23 +463,156 @@ namespace GraphView.GremlinTranslationOps
                 {
                     SubQueryExpr = statement
                 },
-                Variable = new WVariableReference()
-                {
-                    Name = "@" + name
-                }
+                Variable = GetVariableReference(variable.VariableName)
             };
         }
 
-        internal static WVariableTableReference GetVariableTableReference(string name)
+        internal static WSqlStatement GetInjectStatement(params object[] injections)
+        {
+            var selectBlock = new WSelectQueryBlock()
+            {
+                SelectElements = new List<WSelectElement>() {}
+            };
+            foreach (var injection in injections)
+            {
+                var valueExpr = GetValueExpression(injection);
+                selectBlock.SelectElements.Add(GetSelectScalarExpression(valueExpr));
+            }
+            return selectBlock;
+        }
+
+        internal static WTableReference GetVariableTableReference(GremlinVariableReference variableReference)
         {
             return new WVariableTableReference()
             {
-                Alias = GetIdentifier(name),
-                Variable = new WVariableReference()
-                {
-                    Name = name
-                }
+                Alias = GetIdentifier(variableReference.VariableName),
+                Variable = variableReference.Variable
             };
+        }
+
+        internal static WTableReference GetVariableTableReference(GremlinAddVVariable addVVariable)
+        {
+            return new WVariableTableReference()
+            {
+                Alias = GetIdentifier(addVVariable.VariableName),
+                Variable = addVVariable.Variable
+            };
+        }
+
+        internal static WVariableReference GetVariableReference(string name)
+        {
+            return new WVariableReference()
+            {
+                Name = "@" + name
+            };
+        }
+
+        internal static WSelectQueryBlock GetSelectQueryBlockFromVariableStatement(WSetVariableStatement statement)
+        {
+            WSelectQueryBlock queryBlock = new WSelectQueryBlock()
+            {
+                SelectElements = new List<WSelectElement>(),
+                FromClause = new WFromClause() {TableReferences = new List<WTableReference>()}
+            };
+            GremlinVariableReference newVariable = new GremlinVariableReference(statement);
+            WColumnReferenceExpression columnReferenceExpression = GetColumnReferenceExpression(newVariable.VariableName, "id");
+            queryBlock.SelectElements.Add(GetSelectScalarExpression(columnReferenceExpression));
+            queryBlock.FromClause.TableReferences.Add(GetTableReferenceFromVariable(newVariable));
+            return queryBlock;
+        }
+
+        internal static WSelectQueryBlock GetSelectQueryBlockFromVariableReference(GremlinVariableReference variableReference)
+        {
+            WSelectQueryBlock queryBlock = new WSelectQueryBlock()
+            {
+                SelectElements = new List<WSelectElement>(),
+                FromClause = new WFromClause() { TableReferences = new List<WTableReference>() }
+            };
+            WColumnReferenceExpression columnReferenceExpression = GetColumnReferenceExpression(variableReference.VariableName, "id");
+            queryBlock.SelectElements.Add(GetSelectScalarExpression(columnReferenceExpression));
+            queryBlock.FromClause.TableReferences.Add(GetTableReferenceFromVariable(variableReference));
+            return queryBlock;
+        }
+
+        internal static WTableReference GetTableReferenceFromVariable(GremlinVariable currVar)
+        {
+            if (currVar is GremlinVertexVariable)
+            {
+                return GetNamedTableReference(currVar);
+            }
+            else if (currVar is GremlinChooseVariable)
+            {
+                return (currVar as GremlinChooseVariable).TableReference;
+            }
+            else if (currVar is GremlinCoalesceVariable)
+            {
+                return (currVar as GremlinCoalesceVariable).TableReference;
+            }
+            else if (currVar is GremlinDerivedVariable)
+            {
+                WTableReference temp = new WQueryDerivedTable()
+                {
+                    QueryExpr = (currVar as GremlinDerivedVariable).Statement as WSelectQueryExpression,
+                    Alias = GetIdentifier((currVar as GremlinDerivedVariable).VariableName)
+                };
+                return temp;
+            }
+            else if (currVar is GremlinTVFVariable)
+            {
+                return (currVar as GremlinTVFVariable).TableReference;
+            }
+            else if (currVar is GremlinVariableReference)
+            {
+                //TODO
+                var variableReference = currVar as GremlinVariableReference;
+                if (variableReference.Type == VariableType.EGDE)
+                {
+                    throw new NotImplementedException();
+                }
+                else if (variableReference.Type == VariableType.NODE)
+                {
+                    return GetVariableTableReference(variableReference);
+                }
+                else if (variableReference.Type == VariableType.PROPERTIES)
+                {
+                    throw new NotImplementedException();
+                }
+                else if (variableReference.Type == VariableType.VALUE)
+                {
+                    throw new NotImplementedException();
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+                throw new NotImplementedException();
+            }
+            else if (currVar is GremlinOptionalVariable)
+            {
+                return (currVar as GremlinOptionalVariable).TableReference;
+            }
+            else if (currVar is GremlinAddVVariable)
+            {
+                return GetVariableTableReference(currVar as GremlinAddVVariable);
+            }
+            //else if (currVar is GremlinAddEVariable)
+            //{
+            //var addEVariable = currVar as GremlinAddEVariable;
+            //WBooleanExpression sourceExpr = new WInPredicate()
+            //{
+            //    Expression = GremlinUtil.GetColumnReferenceExpression(addEVariable.VariableName, "source"),
+            //    Values = new List<WScalarExpression>() { GremlinUtil.GetColumnReferenceExpression(addEVariable.SetVariableName, "source") }
+            //};
+            //AddPredicate(sourceExpr);
+            //WBooleanExpression sinkExpr = new WInPredicate()
+            //{
+            //    Expression = GremlinUtil.GetColumnReferenceExpression(addEVariable.VariableName, "source"),
+            //    Values = new List<WScalarExpression>() { GremlinUtil.GetColumnReferenceExpression(addEVariable.SetVariableName, "source") }
+            //};
+            //AddPredicate(sinkExpr);
+            //return GremlinUtil.GetVariableTableReference(currVar.SetVariableName);
+            //}
+            return null;
         }
     }
 }

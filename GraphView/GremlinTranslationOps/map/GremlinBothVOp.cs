@@ -15,6 +15,8 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             var currEdge = inputContext.CurrVariable;
+
+            //TODO
             //GremlinUtil.CheckIsGremlinEdgeVariable(currEdge);
 
             //var existInPath = inputContext.Paths.Find(p => p.Item2 == currEdge);

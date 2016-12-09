@@ -31,14 +31,6 @@ namespace GraphView.GremlinTranslationOps.filter
 
             inputContext.AddPredicate(booleanExpr);
 
-            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("coin", Probability);
-
-            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "coin");
-
-            //inputContext.AddNewVariable(newVariable, Labels);
-            //inputContext.SetDefaultProjection(newVariable);
-            //inputContext.SetCurrVariable(newVariable);
-
             return inputContext;
         }
     }
