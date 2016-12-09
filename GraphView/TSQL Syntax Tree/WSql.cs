@@ -525,7 +525,7 @@ namespace GraphView
         }
     }
 
-    public class WSetVariableStatement : WSqlStatement
+    public partial class WSetVariableStatement : WSqlStatement
     {
         private List<WScalarExpression> _parameters = new List<WScalarExpression>();
         private WVariableReference _variable;

@@ -67,6 +67,7 @@
     <Compile Include="GraphViewExecutionRuntime\BooleanFunction.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileBooleanExpression.cs" />
+    <Compile Include="GraphViewQueryCompiler\CompileModification.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileScalarExpression.cs" />
     <Compile Include="GraphViewQueryCompiler\DocDBGraphOptimizer.cs" />
     <Compile Include="DocDBScript.cs" />
