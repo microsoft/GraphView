@@ -85,8 +85,17 @@ namespace GraphView.GremlinTranslationOps
 
         public void ReplaceVariable(GremlinVariable newVariable, List<string> labels)
         {
-            int index = RemainingVariableList.FindIndex(p => p == CurrVariable);
-            RemainingVariableList.Remove(CurrVariable);
+            int index = -1;
+            //can't use findIndex, because when we call SaveCurrentState, RemainingVariableList will be copied.
+            for (var i = 0; i < RemainingVariableList.Count; i++)
+            {
+                if (RemainingVariableList[i].VariableName == CurrVariable.VariableName)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            RemainingVariableList.RemoveAt(index);
             RemainingVariableList.Insert(index, newVariable);
         }
 

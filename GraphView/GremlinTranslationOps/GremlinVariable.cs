@@ -64,7 +64,6 @@ namespace GraphView.GremlinTranslationOps
         {
             //automaticlly generate the name of edge
             VariableName = GetVariableName();
-            _count += 1;
             EdgeType = type;
         }
         public static string GetVariableName()

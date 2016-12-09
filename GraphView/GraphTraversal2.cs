@@ -658,7 +658,11 @@ namespace GraphView
         }
         //public GraphTraversal2 toE(Direction direction, params string[] edgeLabels)
         //public GraphTraversal2 toV(Direction direction)
-        //public GraphTraversal2 tree()
+        public GraphTraversal2 tree()
+        {
+            AddGremlinOperator(new GremlinTreeOp());
+            return this;
+        }
         //public GraphTraversal2 tree(string sideEffectKey)
 
         public GraphTraversal2 unfold()

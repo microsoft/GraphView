@@ -556,7 +556,7 @@ namespace GraphView
             sb.AppendFormat("{0}MATCH ", indent);
             if (Paths.Count > 0)
             {
-                sb.AppendFormat("{1}", Paths[0].ToString());
+                sb.AppendFormat("{0}", Paths[0].ToString());
 
                 for (int i = 1; i < Paths.Count; i++)
                 {
