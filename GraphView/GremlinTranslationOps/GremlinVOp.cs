@@ -17,6 +17,11 @@ namespace GraphView.GremlinTranslationOps
                 VertexIdsOrElements.Add(vertexIdsOrElement);
             }
         }
+
+        public GremlinVOp(List<object> vertexIdsOrElements)
+        {
+            VertexIdsOrElements = vertexIdsOrElements;
+        }
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();

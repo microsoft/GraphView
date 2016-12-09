@@ -11,7 +11,7 @@ namespace GraphView.GremlinTranslationOps
     internal interface IGremlinByModulating
     {
         void ModulateBy();
-        void ModulateBy(GremlinTranslationOperator paramOp);
+        void ModulateBy(GraphTraversal2 paramOp);
         void ModulateBy(string key);
         void ModulateBy(Order order);
 

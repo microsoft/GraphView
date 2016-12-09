@@ -14,7 +14,7 @@ namespace GraphView.GremlinTranslationOps.filter
         public List<object> Values;
         public string Label;
         public Predicate Predicate;
-        public GremlinTranslationOperator ParamOp;
+        public GraphTraversal2 Traversal;
         public HasOpType OpType;
 
         internal enum HasOpType
@@ -59,10 +59,10 @@ namespace GraphView.GremlinTranslationOps.filter
         }
 
 
-        public GremlinHasOp(string key, GremlinTranslationOperator paramOp)
+        public GremlinHasOp(string key, GraphTraversal2 traversal)
         {
             Key = key;
-            ParamOp = paramOp;
+            Traversal = traversal;
             OpType = HasOpType.HasKeyTraversal;
         }
 
@@ -122,19 +122,9 @@ namespace GraphView.GremlinTranslationOps.filter
             else if (OpType == HasOpType.HasKeyTraversal)
             {
                 //has(key, traversal)
-                var rootOp = ParamOp;
-                while (rootOp.InputOperator != null)
-                {
-                    rootOp = rootOp.InputOperator;
-                }
+                GremlinUtil.InheritedVariableFromParent(Traversal, inputContext);
 
-                if (rootOp.GetType() == typeof(GremlinParentContextOp))
-                {
-                    GremlinParentContextOp rootAsContext = rootOp as GremlinParentContextOp;
-                    rootAsContext.InheritedVariable = inputContext.CurrVariable;
-                }
-
-                GremlinToSqlContext booleanContext = ParamOp.GetContext();
+                GremlinToSqlContext booleanContext = Traversal.GetEndOp().GetContext();
                 WBooleanExpression booleanSql = booleanContext.ToSqlBoolean();
 
                 inputContext.AddPredicate(booleanSql);

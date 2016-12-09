@@ -20,10 +20,12 @@ namespace GraphView.GremlinTranslationOps.filter
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WColumnReferenceExpression columnRefExpr =
-                GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName);
-            WValueExpression valueExpr = GremlinUtil.GetValueExpression(AmountToSample);
-            WFunctionCall functionCall = GremlinUtil.GetFunctionCall("sample", columnRefExpr, valueExpr);
+            List<WScalarExpression> parameterList = new List<WScalarExpression>()
+            {
+                //GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName),
+                GremlinUtil.GetValueExpression(AmountToSample)
+            };
+            WFunctionCall functionCall = GremlinUtil.GetFunctionCall("sample", parameterList);
 
             WColumnReferenceExpression trueExpr = GremlinUtil.GetColumnReferenceExpression("true");
 

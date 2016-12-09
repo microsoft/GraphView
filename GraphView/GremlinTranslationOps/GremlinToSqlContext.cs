@@ -185,11 +185,11 @@ namespace GraphView.GremlinTranslationOps
             ProjectionList.Add(new StarProjection());
         }
 
-        public void ProcessProjectWithFunctionCall(List<string> labels, string functionName, params WScalarExpression[] parameters)
+        public void ProcessProjectWithFunctionCall(List<string> labels, string functionName, List<WScalarExpression> parameterList)
         {
-            WFunctionCall functionCall = GremlinUtil.GetFunctionCall(functionName, parameters);
+            WFunctionCall functionCall = GremlinUtil.GetFunctionCall(functionName, parameterList);
 
-            FunctionCallProjection funcionCallProjection = new FunctionCallProjection(CurrVariable, functionCall);
+            FunctionCallProjection funcionCallProjection = new FunctionCallProjection(functionCall);
             SetCurrProjection(funcionCallProjection);
 
             GremlinDerivedVariable newVariable = new GremlinDerivedVariable(ToSelectQueryBlock(), functionName);

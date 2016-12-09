@@ -17,9 +17,9 @@ namespace GraphView.GremlinTranslationOps.sideEffect
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
+            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() }; //TODO
 
-            inputContext.ProcessProjectWithFunctionCall(Labels, "tree", parameter);
+            inputContext.ProcessProjectWithFunctionCall(Labels, "tree", parameterList);
 
             return inputContext;
         }

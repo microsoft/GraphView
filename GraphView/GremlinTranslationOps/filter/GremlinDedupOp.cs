@@ -24,9 +24,9 @@ namespace GraphView.GremlinTranslationOps.filter
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
+            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() }; //TODO
 
-            inputContext.ProcessProjectWithFunctionCall(Labels, "dedup", parameter);
+            inputContext.ProcessProjectWithFunctionCall(Labels, "dedup", parameterList);
 
             return inputContext;
         }

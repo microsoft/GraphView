@@ -19,9 +19,9 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
+            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() };
 
-            inputContext.ProcessProjectWithFunctionCall(Labels, "max", parameter);
+            inputContext.ProcessProjectWithFunctionCall(Labels, "max", parameterList);
 
             return inputContext;
         }

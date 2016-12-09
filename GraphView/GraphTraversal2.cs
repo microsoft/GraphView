@@ -147,7 +147,7 @@ namespace GraphView
 
         public GraphTraversal2 by()
         {
-            ((IGremlinByModulating)LastGremlinTranslationOp).ModulateBy();
+            ((IGremlinByModulating)GetEndOp()).ModulateBy();
             return this;
         }
 
@@ -157,19 +157,23 @@ namespace GraphView
 
         public GraphTraversal2 by(Order order)
         {
-            ((IGremlinByModulating)LastGremlinTranslationOp).ModulateBy(order);
+            ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
             return this;
         }
 
         public GraphTraversal2 by(string key)
         {
-            ((IGremlinByModulating)LastGremlinTranslationOp).ModulateBy(key);
+            ((IGremlinByModulating)GetEndOp()).ModulateBy(key);
             return this;
         }
 
         //public GraphTraversal2 by(string key, Comparator<V> comparator)
         //public GraphTraversal2 by(T token)
-        //public GraphTraversal2 by(Traversal<?, ?> traversal)
+        public GraphTraversal2 by(GraphTraversal2 traversal)
+        {
+            ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
+            return this;
+        }
         //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
         //public GraphTraversal2 cap(string sideEffectKey, params string[] sideEffectKeys)
         //public GraphTraversal2 choose(Function<E, M> choiceFunction)
@@ -326,7 +330,7 @@ namespace GraphView
 
         public GraphTraversal2 has(string propertyKey, GraphTraversal2 propertyTraversal)
         {
-            AddGremlinOperator(new GremlinHasOp(propertyKey, propertyTraversal.LastGremlinTranslationOp));
+            AddGremlinOperator(new GremlinHasOp(propertyKey, propertyTraversal));
             return this;
         }
         
@@ -543,7 +547,11 @@ namespace GraphView
         //public GraphTraversal2 profile()
         //public GraphTraversal2 profile(string sideEffectKey)
         //public GraphTraversal2 program(VertexProgram<?> vertexProgram)
-        //public GraphTraversal2 project(string projectKey, params string[] otherProjectKeys)
+        public GraphTraversal2 project(params string[] projectKeys)
+        {
+            AddGremlinOperator(new GremlinProjectOp(projectKeys));
+            return this;
+        }
 
         public GraphTraversal2 properties(params string[] propertyKeys)
         {
@@ -589,9 +597,17 @@ namespace GraphView
         //public GraphTraversal2 sample(Scope scope, int amountToSample)
         //public GraphTraversal2 select(Column column)
         //public GraphTraversal2 select(Pop pop, string selectKey)
-        //public GraphTraversal2 select(Pop pop, string selectKey1, string selectKey2, params string[] otherSelectKeys)
+        public GraphTraversal2 select(GremlinKeyword.Pop pop, params string[] selectKeys)
+        {
+            AddGremlinOperator(new GremlinSelectOp(pop, selectKeys));
+            return this;
+        }
         //public GraphTraversal2 select(string selectKey)
-        //public GraphTraversal2 select(string selectKey1, string selectKey2, params string[] otherSelectKeys)
+        public GraphTraversal2 select(params string[] selectKeys)
+        {
+            AddGremlinOperator(new GremlinSelectOp(selectKeys));
+            return this;
+        }
 
 
         //public GraphTraversal2 sideEffect(Consumer<Traverser<E>> consumer)
@@ -682,13 +698,19 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 unitl(GraphTraversal2 untilTraversal)
+        public GraphTraversal2 until(GraphTraversal2 untilTraversal)
         {
             //TODO
             return this;
         }
 
         public GraphTraversal2 V(params object[] vertexIdsOrElements)
+        {
+            AddGremlinOperator(new GremlinVOp(vertexIdsOrElements));
+            return this;
+        }
+
+        public GraphTraversal2 V(List<object> vertexIdsOrElements)
         {
             AddGremlinOperator(new GremlinVOp(vertexIdsOrElements));
             return this;
@@ -743,6 +765,13 @@ namespace GraphView
         public static GraphTraversal2 g()
         {
             return new GraphTraversal2(); ;
+        }
+
+        public List<object> toList()
+        {
+            //TODO
+            var Params = LastGremlinTranslationOp.ToSqlScript().ToString();
+            return new List<object>() {1,2,3,4,5};
         }
     }
 }

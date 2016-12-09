@@ -285,17 +285,12 @@ namespace GraphView.GremlinTranslationOps
             return booleanExpr;
         }
 
-        internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameters)
+        internal static WFunctionCall GetFunctionCall(string functionName, List<WScalarExpression> parameterList)
         {
-            IList<WScalarExpression> parameterList = new List<WScalarExpression>();
-            foreach (var parameter in parameters)
-            {
-                parameterList.Add(parameter);
-            }
             return new WFunctionCall()
             {
                 FunctionName = GetIdentifier(functionName),
-                Parameters = parameters
+                Parameters = parameterList
             };
         }
 

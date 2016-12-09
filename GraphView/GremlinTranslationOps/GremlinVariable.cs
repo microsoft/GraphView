@@ -378,9 +378,8 @@ namespace GraphView.GremlinTranslationOps
     {
         public WFunctionCall FunctionCall;
 
-        public FunctionCallProjection(GremlinVariable gremlinVar, WFunctionCall functionCall)
+        public FunctionCallProjection(WFunctionCall functionCall)
         {
-            CurrVariable = gremlinVar;
             FunctionCall = functionCall;
         }
         public override WSelectElement ToSelectElement()

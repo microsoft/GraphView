@@ -63,7 +63,7 @@ namespace GraphView
                 //    GremlinUtil.GetColumnReferenceExpression("@id"), //todo
                 //    BooleanComparisonType.Equals
                 //    ));
-                //newContext.SetCurrVariable(InheritedVariable);
+                newContext.SetCurrVariable(InheritedVariable);
                 newContext.FromOuter = true;
                 //newContext.ProjectionList = InheritedProjection;
             } 

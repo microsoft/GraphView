@@ -10,13 +10,13 @@ namespace GraphView.GremlinTranslationOps.map
     {
         public List<Order> OrderList;
         public List<string> KeyList;
-        public List<GremlinTranslationOperator> ParamOpList;
+        public List<GraphTraversal2> TraversalList;
 
         public GremlinOrderOp()
         {
             OrderList = new List<Order>();
             KeyList = new List<string>();
-            ParamOpList = new List<GremlinTranslationOperator>();
+            TraversalList = new List<GraphTraversal2>();
         }
 
         public override GremlinToSqlContext GetContext()
@@ -38,9 +38,9 @@ namespace GraphView.GremlinTranslationOps.map
             
         }
 
-        public void ModulateBy(GremlinTranslationOperator paramOp)
+        public void ModulateBy(GraphTraversal2 traversal)
         {
-            ParamOpList.Add(paramOp);
+            TraversalList.Add(traversal);
         }
 
         public void ModulateBy(string key)

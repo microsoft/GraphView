@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
 
         public void ModulateBy() { }
 
-        public void ModulateBy(GremlinTranslationOperator paramOp) { }
+        public void ModulateBy(GraphTraversal2 paramOp) { }
 
         public void ModulateBy(string key)
         {

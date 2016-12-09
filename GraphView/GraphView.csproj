@@ -89,6 +89,7 @@
     <Compile Include="GremlinTranslationOps\filter\GremlinSampleOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinTailOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinWhereOp.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinKeyword.cs" />
     <Compile Include="GremlinTranslationOps\IGremlinByModulating.cs" />
     <Compile Include="GremlinTranslationOps\GremlinEOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinToSqlContext.cs" />
@@ -136,6 +137,7 @@
     <Compile Include="GraphTraversal.cs" />
     <Compile Include="GremlinTranslationOps\GremlinTranslationOperator.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutVOp.cs" />
+    <Compile Include="GremlinTranslationOps\map\GremlinProjectOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinPropertiesOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinSelectOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinSumOp.cs" />

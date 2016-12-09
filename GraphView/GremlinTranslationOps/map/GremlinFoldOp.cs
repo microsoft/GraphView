@@ -27,8 +27,8 @@ namespace GraphView.GremlinTranslationOps.map
                 inputContext.SetDefaultProjection(newCurrVar);
             }
 
-            WScalarExpression parameter = GremlinUtil.GetStarColumnReferenceExpression(); //TODO
-            inputContext.ProcessProjectWithFunctionCall(Labels, "fold", parameter);
+            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() }; //TODO
+            inputContext.ProcessProjectWithFunctionCall(Labels, "fold", parameterList);
 
             return inputContext;
         }

@@ -10,11 +10,18 @@ namespace GraphView.GremlinTranslationOps.map
     {
         public List<string> SelectKeys;
 
-        public GremlinSelectOp(string selectKey, params string[] selectKeys)
+        public GremlinSelectOp(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
             SelectKeys = new List<string>();
-            SelectKeys.Add(selectKey);
+            foreach (var key in selectKeys)
+            {
+                SelectKeys.Add(key);
+            }
+        }
 
+        public GremlinSelectOp(params string[] selectKeys)
+        {
+            SelectKeys = new List<string>();
             foreach (var key in selectKeys)
             {
                 SelectKeys.Add(key);
