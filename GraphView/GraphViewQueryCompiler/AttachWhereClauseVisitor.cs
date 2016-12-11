@@ -31,47 +31,94 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal enum TableType
+    /// <summary>
+    /// BooleanExprNormalizeVisitor traverses a boolean expression and normalizes it
+    /// </summary>
+    internal class BooleanExprNormalizeVisitor : WSqlFragmentVisitor
     {
-        Vertex,
-        Edge,
-        Temporary,
-        Unknown
+        private List<WBooleanExpression> _normalizedList;
+
+        public List<WBooleanExpression> Invoke(WBooleanExpression expr)
+        {
+            _normalizedList = new List<WBooleanExpression>();
+            expr.Accept(this);
+
+            return _normalizedList;
+        }
+
+        private void Extract(WBooleanExpression expr)
+        {
+            _normalizedList.Add(expr);
+        }
+
+        public override void Visit(WBooleanBinaryExpression node)
+        {
+            if (node.BooleanExpressionType == BooleanBinaryExpressionType.And)
+            {
+                base.Visit(node);
+            }
+            else
+            {
+                Extract(new WBooleanParenthesisExpression { Expression = node });
+            }
+        }
+
+        public override void Visit(WBooleanComparisonExpression node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WBooleanIsNullExpression node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WBetweenExpression node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WLikePredicate node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WInPredicate node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WSubqueryComparisonPredicate node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WExistsPredicate node)
+        {
+            Extract(node);
+        }
+
+        public override void Visit(WBooleanNotExpression node)
+        {
+            Extract(node);
+        }
     }
+
 
     /// <summary>
     /// ScalarExprTableReferenceVisitor traverses a scalar expression and returns all the tables and properties it references
     /// </summary>
     internal class ScalarExprTableReferenceVisitor : WSqlFragmentVisitor
     {
-        private MatchGraph _graph;
         private Dictionary<string, HashSet<string>> _tableandPropertiesDict;
 
-        // <table name, table type, properties referenced>
-        public List<Tuple<string, TableType, HashSet<string>>> Invoke(WScalarExpression expr, MatchGraph graph)
+        // <table name, properties referenced>
+        public Dictionary<string, HashSet<string>> Invoke(WScalarExpression expr)
         {
-            _graph = graph;
             _tableandPropertiesDict = new Dictionary<string, HashSet<string>>();
             expr.Accept(this);
 
-            var result = new List<Tuple<string, TableType, HashSet<string>>>();
-            foreach (var pair in _tableandPropertiesDict)
-            {
-                var tableName = pair.Key;
-                var properties = pair.Value;
-                var tableType = TableType.Unknown;
-
-                MatchEdge edge;
-                MatchNode node;
-                if (_graph.TryGetEdge(tableName, out edge))
-                    tableType = TableType.Edge;
-                else if (_graph.TryGetNode(tableName, out node))
-                    tableType = TableType.Vertex;
-
-                result.Add(new Tuple<string, TableType, HashSet<string>>(tableName, tableType, properties));
-            }
-
-            return result;
+            return _tableandPropertiesDict;
         }
 
         public override void Visit(WColumnReferenceExpression node)
@@ -101,34 +148,15 @@ namespace GraphView
     /// </summary>
     internal class BooleanExprTableReferenceVisitor : WSqlFragmentVisitor
     {
-        private MatchGraph _graph;
         private Dictionary<string, HashSet<string>> _tableandPropertiesDict;
 
-        // <table name, table type, properties referenced>
-        public List<Tuple<string, TableType, HashSet<string>>> Invoke(WBooleanExpression expr, MatchGraph graph)
+        // <table name, properties referenced>
+        public Dictionary<string, HashSet<string>> Invoke(WBooleanExpression expr)
         {
-            _graph = graph;
             _tableandPropertiesDict = new Dictionary<string, HashSet<string>>();
             expr.Accept(this);
 
-            var result = new List<Tuple<string, TableType, HashSet<string>>>();
-            foreach (var pair in _tableandPropertiesDict)
-            {
-                var tableName = pair.Key;
-                var properties = pair.Value;
-                var tableType = TableType.Unknown;
-
-                MatchEdge edge;
-                MatchNode node;
-                if (_graph.TryGetEdge(tableName, out edge))
-                    tableType = TableType.Edge;
-                else if (_graph.TryGetNode(tableName, out node))
-                    tableType = TableType.Vertex;
-
-                result.Add(new Tuple<string, TableType, HashSet<string>>(tableName, tableType, properties));
-            }
-
-            return result;
+            return _tableandPropertiesDict;
         }
 
         public override void Visit(WColumnReferenceExpression node)
@@ -173,9 +201,9 @@ namespace GraphView
 
         private void Attach(WBooleanExpression expr)
         {
-            var table = _booleanTabRefVisitor.Invoke(expr, _graph);
+            var table = _booleanTabRefVisitor.Invoke(expr);
             // Only expression who reference one table can be attached
-            var tableName = table.Count == 1 ? table[0].Item1 : "";
+            var tableName = table.Count == 1 ? table.First().Key : "";
 
             MatchEdge edge;
             MatchNode node;
@@ -242,6 +270,11 @@ namespace GraphView
         }
 
         public override void Visit(WExistsPredicate node)
+        {
+            Attach(node);
+        }
+
+        public override void Visit(WBooleanNotExpression node)
         {
             Attach(node);
         }
