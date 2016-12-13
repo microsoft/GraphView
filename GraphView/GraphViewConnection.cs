@@ -83,6 +83,11 @@ namespace GraphView
         public GraphViewConnection()
         { }
 
+        internal DbPortal CreateDatabasePortal()
+        {
+            return new DocumentDbPortal(this);
+        }
+
         /// <summary>
         ///     Connection to a SQL database
         /// </summary>

@@ -435,6 +435,7 @@ namespace GraphView
             this.Open();
         }
     }
+
     /// <summary>
     /// CartesianProductOperator is used to generate cartesian product of the record from different sub graphs
     /// CartesianProductOperator.Next() returns the combination of all the records that generated from giving operators.
