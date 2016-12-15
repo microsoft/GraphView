@@ -91,7 +91,7 @@ namespace GraphView.GremlinTranslationOps.branch
             }
             //Pack the WChoose to a GremlinVariable
             GremlinChooseVariable newVariable = new GremlinChooseVariable(chooseExpr);
-            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.AddNewVariable(newVariable);
 
             return inputContext;
         }

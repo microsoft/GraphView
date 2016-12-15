@@ -7,11 +7,12 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GremlinTranslationOps.map
 {
-    internal class GremlinValuesOp: GremlinTranslationOperator
+    internal class GremlinValuesOp : GremlinTranslationOperator
     {
         public List<object> PropertyKeys;
 
-        public GremlinValuesOp(params object[] propertyKeys) {
+        public GremlinValuesOp(params object[] propertyKeys)
+        {
             PropertyKeys = new List<object>();
             foreach (var propertyKey in propertyKeys)
             {
@@ -23,20 +24,31 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
+            if (inputContext.CurrVariable is GremlinVertexVariable)
             {
-                FirstTableRef = GremlinUtil.GetNamedTableReference(inputContext.CurrVariable),
-                SecondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("values", PropertyKeys),
-                UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-            };
+                PropertyKeys.Insert(0, "node");
+                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("values", PropertyKeys);
 
-            GremlinTVFVariable newVariable = new GremlinTVFVariable(tableReference);
-            inputContext.ReplaceVariable(newVariable, Labels);
-            inputContext.SetCurrVariable(newVariable);
-            inputContext.SetDefaultProjection(newVariable);
+                var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
+                inputContext.SetCurrVariable(newVariable);
+                inputContext.SetDefaultProjection(newVariable);
+            }
+            else if (inputContext.CurrVariable is GremlinEdgeVariable)
+            {
+                PropertyKeys.Insert(0, "edge");
+                var oldVariable = inputContext.PathList.Find(p => p.Item2.VariableName == inputContext.CurrVariable.VariableName).Item1;
+                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("values", PropertyKeys);
 
+                var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
+                inputContext.SetCurrVariable(newVariable);
+                inputContext.SetDefaultProjection(newVariable);
+
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
             return inputContext;
         }
-
     }
 }

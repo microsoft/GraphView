@@ -35,7 +35,7 @@ namespace GraphView.GremlinTranslationOps.map
             inputContext.Statements.Add(statement);
             var newVar = new GremlinVariableReference(statement);
             newVar.Type = VariableType.NODE;
-            inputContext.AddNewVariable(newVar, Labels);
+            inputContext.AddNewVariable(newVar);
             inputContext.SetCurrVariable(newVar);
             inputContext.SetDefaultProjection(newVar);
 

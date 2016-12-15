@@ -28,15 +28,15 @@ namespace GraphView
         }
     }
 
-    public partial class WOptional : WTableReference
-    {
-        internal WSqlStatement SqlStatement;
-        internal Identifier Alias;
-        internal override string ToString(string indent)
-        {
-            return "WOptional() AS" + "[" + Alias.Value + "]";
-        }
-    }
+    //public partial class WOptional : WTableReference
+    //{
+    //    internal WSqlStatement SqlStatement;
+    //    internal Identifier Alias;
+    //    internal override string ToString(string indent)
+    //    {
+    //        return "WOptional() AS" + "[" + Alias.Value + "]";
+    //    }
+    //}
 
     public partial class WCoalesce : WSqlStatement
     {
@@ -92,15 +92,21 @@ namespace GraphView
         }
     }
 
-    public partial class WRepeat : WTableReference
+    public class WRepeatPath
     {
-        internal WSqlStatement SqlStatement;
-        internal WBooleanExpression UntilCondition;
-        internal Identifier Alias;
-        internal int MaxLoops;
-        internal override string ToString(string indent)
+        public WSelectQueryBlock SubQueryExpr;
+        public bool IsEmitBefore;
+        public bool IsEmitAfter;
+        public bool IsEmitTrue;
+        public bool IsUntilBefore;
+        public bool IsUntilAfter;
+        public bool IsTimes;
+        public WSelectQueryBlock ConditionSubQueryBlock;
+        public WBooleanExpression ConditionBooleanExpr;
+        public long Times;
+
+        public WRepeatPath()
         {
-            return "WRepeat() AS" + "[" + Alias.Value + "]";
         }
     }
 }

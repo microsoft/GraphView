@@ -31,7 +31,7 @@ namespace GraphView.GremlinTranslationOps.map
             }
 
             GremlinCoalesceVariable newVariable = new GremlinCoalesceVariable(coalesceExpr);
-            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.AddNewVariable(newVariable);
 
             return inputContext;
         }

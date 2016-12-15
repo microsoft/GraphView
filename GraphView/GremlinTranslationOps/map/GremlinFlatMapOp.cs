@@ -21,7 +21,9 @@ namespace GraphView.GremlinTranslationOps.map
 
             GremlinUtil.InheritedContextFromParent(FlatMapTraversal, inputContext);
 
-            return FlatMapTraversal.GetEndOp().GetContext();
+            inputContext = FlatMapTraversal.GetEndOp().GetContext();
+            inputContext.SetLabelsToCurrentVariable(Labels);
+            return inputContext;
         }
     }
 }

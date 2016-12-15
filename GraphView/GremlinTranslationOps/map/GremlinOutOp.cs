@@ -26,15 +26,13 @@ namespace GraphView.GremlinTranslationOps
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
 
             GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(WEdgeType.OutEdge);
-            inputContext.AddNewVariable(newEdgeVar, Labels);
+            inputContext.AddNewVariable(newEdgeVar);
             inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
 
             GremlinVertexVariable sinkVar = new GremlinVertexVariable();
-            inputContext.AddNewVariable(sinkVar, Labels);
-            inputContext.SetDefaultProjection(sinkVar);
-            
             inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, sinkVar);
-
+            inputContext.AddNewVariable(sinkVar);
+            inputContext.SetDefaultProjection(sinkVar);
             inputContext.SetCurrVariable(sinkVar);
 
             return inputContext;

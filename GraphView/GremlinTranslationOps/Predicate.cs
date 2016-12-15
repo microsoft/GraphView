@@ -13,6 +13,7 @@ namespace GraphView.GremlinTranslationOps
         public object Low;
         public object High;
         public List<object> Values;
+        public string VariableName;
         public PredicateType PredicateType;
 
         public Predicate(PredicateType type, object value, bool isAliasValue = false)
@@ -43,12 +44,18 @@ namespace GraphView.GremlinTranslationOps
 
         public static Predicate eq(object value, bool isAliasValue = false)
         {
-            return new Predicate(PredicateType.eq, value, isAliasValue);
+            if (value is string)
+                return new Predicate(PredicateType.eq, value, true);
+            else
+                return new Predicate(PredicateType.eq, value, false);
         }
 
         public static Predicate neq(object value, bool isAliasValue = false)
         {
-            return new Predicate(PredicateType.neq, value, isAliasValue);
+            if (value is string)
+                return new Predicate(PredicateType.neq, value, true);
+            else
+                return new Predicate(PredicateType.neq, value, false);
         }
 
         public static Predicate lt(int value)

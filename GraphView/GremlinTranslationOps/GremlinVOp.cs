@@ -37,7 +37,7 @@ namespace GraphView.GremlinTranslationOps
                 }
             }
 
-            inputContext.AddNewVariable(newVertexVar, Labels);
+            inputContext.AddNewVariable(newVertexVar);
             inputContext.SetCurrVariable(newVertexVar);
             inputContext.SetDefaultProjection(newVertexVar);
             return inputContext;

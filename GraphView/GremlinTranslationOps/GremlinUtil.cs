@@ -159,7 +159,7 @@ namespace GraphView.GremlinTranslationOps
                 WScalarExpression valueExpression = null;
                 if (predicate.IsAliasValue)
                 {
-                    valueExpression = GetColumnReferenceExpression(predicate.Value as string, "id");
+                    valueExpression = GetColumnReferenceExpression(predicate.VariableName, "id");
                 }
                 else
                 {
@@ -337,14 +337,14 @@ namespace GraphView.GremlinTranslationOps
             Tuple<GremlinVariable, GremlinVariable, GremlinVariable> path)
         {
             WEdgeType edgeType = GetEdgeType(path.Item2);
-
+            String value = edgeType == WEdgeType.Path ? "Path" : "Edge";
             return new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
                 GetSchemaObjectName(path.Item1.VariableName),
                 new WEdgeColumnReferenceExpression()
                 {
                     MultiPartIdentifier = new WMultiPartIdentifier()
                     {
-                        Identifiers = new List<Identifier>() {new Identifier() {Value = "Edge"}}
+                        Identifiers = new List<Identifier>() {new Identifier() {Value = value } }
                     },
                     Alias = path.Item2.VariableName,
                     MinLength = 1,
@@ -357,14 +357,16 @@ namespace GraphView.GremlinTranslationOps
         internal static WEdgeType GetEdgeType(GremlinVariable edgeVar)
         {
             if (edgeVar is GremlinAddEVariable) return WEdgeType.OutEdge;
-            if ((edgeVar as GremlinEdgeVariable).EdgeType == WEdgeType.BothEdge)
-                return WEdgeType.BothEdge;
-            if ((edgeVar as GremlinEdgeVariable).EdgeType == WEdgeType.InEdge)
-                return WEdgeType.InEdge;
-            if ((edgeVar as GremlinEdgeVariable).EdgeType == WEdgeType.OutEdge)
-                return WEdgeType.OutEdge;
+            if (edgeVar is GremlinPathVariable)
+            {
+                return (edgeVar as GremlinPathVariable).EdgeType;
+            }
+            if (edgeVar is GremlinEdgeVariable)
+            {
+                return (edgeVar as GremlinEdgeVariable).EdgeType;
+            }
 
-            return WEdgeType.OutEdge;
+            throw new NotImplementedException();
         }
 
         internal static WBooleanParenthesisExpression GetBooleanParenthesisExpression(WBooleanExpression booleanExpr)
@@ -375,31 +377,6 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        //internal static WUnqualifiedJoin GetUnqualifiedJoin(GremlinVariable currVar, GremlinVariable lastVar)
-        //{
-        //    var joinVertexVar = currVar as GremlinJoinVertexVariable;
-        //    WSchemaObjectFunctionTableReference secondTableRef = new WSchemaObjectFunctionTableReference()
-        //    {
-        //        Alias = GremlinUtil.GetIdentifier(currVar.VariableName),
-        //        Parameters = new List<WScalarExpression>()
-        //        {
-        //            GetColumnReferenceExpression(joinVertexVar.LeftVariable.VariableName),
-        //            GetColumnReferenceExpression(joinVertexVar.RightVariable.VariableName )
-        //        },
-        //        SchemaObject = new WSchemaObjectName()
-        //        {
-        //            Identifiers = new List<Identifier>() { GremlinUtil.GetIdentifier("BothV") }
-        //        }
-        //    };
-
-        //    return new WUnqualifiedJoin()
-        //    {
-        //        FirstTableRef = GetNamedTableReference(lastVar),
-        //        SecondTableRef = secondTableRef,
-        //        UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-        //    };
-        //}
-
         internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
         {
             var rootOp = childTraversal.GetStartOp();
@@ -408,6 +385,17 @@ namespace GraphView.GremlinTranslationOps
                 GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
                 rootAsContextOp.InheritedProjection = inputContext.ProjectionList.Copy();
+                rootAsContextOp.InheritedVariableList = new List<GremlinVariable>();
+                foreach (var variable in inputContext.InheritedVariableList)
+                {
+                    rootAsContextOp.InheritedVariableList.Add(variable);
+                }
+                foreach (var variable in inputContext.NewVariableList)
+                {
+                    rootAsContextOp.InheritedVariableList.Add(variable);
+                }
+                rootAsContextOp.InheritedAliasToGremlinVariableList = inputContext.AliasToGremlinVariableList.Copy();
+                rootAsContextOp.InheritedPathList = inputContext.PathList.Copy();
             }
         }
 
@@ -581,10 +569,6 @@ namespace GraphView.GremlinTranslationOps
                     throw new NotImplementedException();
                 }
                 throw new NotImplementedException();
-            }
-            else if (currVar is GremlinOptionalVariable)
-            {
-                return (currVar as GremlinOptionalVariable).TableReference;
             }
             else if (currVar is GremlinAddVVariable)
             {

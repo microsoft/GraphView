@@ -22,18 +22,11 @@ namespace GraphView.GremlinTranslationOps.map
 
             List<object> parameter = new List<object>() {Constant};
 
-            WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
-            {
-                FirstTableRef = GremlinUtil.GetTableReferenceFromVariable(inputContext.CurrVariable),
-                SecondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("constant", parameter),
-                UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-            };
+            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("constant", parameter);
 
-            GremlinTVFVariable newVariable = new GremlinTVFVariable(tableReference);
-            inputContext.ReplaceVariable(newVariable, Labels);
+            var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
-
 
             return inputContext;
         }

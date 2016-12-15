@@ -22,7 +22,7 @@ namespace GraphView.GremlinTranslationOps.map
                 WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
                 inputContext.ClearAndCreateNewContextInfo();
                 GremlinVariableReference newCurrVar = new GremlinVariableReference(statement);
-                inputContext.AddNewVariable(newCurrVar, Labels);
+                inputContext.AddNewVariable(newCurrVar);
                 inputContext.SetCurrVariable(newCurrVar);
                 inputContext.SetDefaultProjection(newCurrVar);
             }

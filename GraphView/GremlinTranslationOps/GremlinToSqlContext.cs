@@ -14,12 +14,15 @@ namespace GraphView.GremlinTranslationOps
 
         public GremlinToSqlContext()
         {
-            RemainingVariableList = new List<GremlinVariable>();
+            InheritedVariableList = new List<GremlinVariable>();
+            NewVariableList = new List<GremlinVariable>();
             //VariablePredicates = new Dictionary<GremlinVariable, WBooleanExpression>();
             //CrossVariableConditions = new List<WBooleanExpression>();
             Predicates = null;
             ProjectionList = new List<Projection>();
-            Paths = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            NewPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            PathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            WithPaths = new Dictionary<string, WRepeatPath> ();
             AliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
             //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
             //OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>();
@@ -29,8 +32,9 @@ namespace GraphView.GremlinTranslationOps
         /// A list of Gremlin variables. The variables are expected to 
         /// follow the (vertex)-(edge|path)-(vertex)-... pattern
         /// </summary>
-        public List<GremlinVariable> RemainingVariableList { get; set; }
-
+        //public List<GremlinVariable> RemainingVariableList { get; set; }
+        public List<GremlinVariable> InheritedVariableList { get; set; }
+        public List<GremlinVariable> NewVariableList;
         /// <summary>
         /// A collection of variables and their predicates
         /// </summary>
@@ -60,7 +64,9 @@ namespace GraphView.GremlinTranslationOps
         /// </summary> 
         public List<Projection> ProjectionList { get; set; }
 
-        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> Paths { get; set; }
+        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> NewPathList { get; set; }
+        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> PathList { get; set; }
+        public Dictionary<string, WRepeatPath> WithPaths;
         /// <summary>
         /// The Gremlin variable and its property by which the query groups
         /// </summary>
@@ -73,30 +79,84 @@ namespace GraphView.GremlinTranslationOps
 
         public List<WSqlStatement> Statements;
 
-        public void AddNewVariable(GremlinVariable newVariable, List<string> labels)
+        public void SetLabelsToCurrentVariable(List<string> labels)
         {
-            RemainingVariableList.Add(newVariable);
-            if (labels.Count == 0) return;
             foreach (var label in labels)
             {
-                AddAliasToGremlinVariable(label, newVariable);
+                AddAliasToGremlinVariable(label, CurrVariable);
             }
         }
 
-        public void ReplaceVariable(GremlinVariable newVariable, List<string> labels)
+        //public void AddNewVariable(GremlinVariable newVariable, List<string> labels)
+        //{
+        //    VariableList.Add(newVariable);
+        //    NewVariableList.Add(newVariable);
+        //    if (labels.Count == 0) return;
+        //    foreach (var label in labels)
+        //    {
+        //        AddAliasToGremlinVariable(label, newVariable);
+        //    }
+        //}
+
+        public void AddNewVariable(GremlinVariable newVariable)
+        {
+            NewVariableList.Add(newVariable);
+        }
+
+        public GremlinTVFVariable CrossApplyToVariable(GremlinVariable oldVariable, WSchemaObjectFunctionTableReference secondTableRef, List<string> labels)
         {
             int index = -1;
-            //can't use findIndex, because when we call SaveCurrentState, RemainingVariableList will be copied.
-            for (var i = 0; i < RemainingVariableList.Count; i++)
+            //can't use findIndex, because when we call SaveCurrentState, VariableList will be copied.
+            for (var i = 0; i < NewVariableList.Count; i++)
             {
-                if (RemainingVariableList[i].VariableName == CurrVariable.VariableName)
+                if (NewVariableList[i].VariableName == oldVariable.VariableName)
                 {
+                    WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
+                    {
+                        FirstTableRef = GremlinUtil.GetNamedTableReference(oldVariable),
+                        SecondTableRef = secondTableRef,
+                        UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+                    };
+                    GremlinTVFVariable newVariable = new GremlinTVFVariable(tableReference);
+
                     index = i;
+                    NewVariableList.RemoveAt(index);
+                    NewVariableList.Insert(index, newVariable);
+                    return newVariable;
+                }
+            }
+            for (var i = 0; i < InheritedVariableList.Count; i++)
+            {
+                if (InheritedVariableList[i].VariableName == oldVariable.VariableName)
+                {
+                    if (InheritedVariableList[i] is GremlinVertexVariable)
+                    {
+                        GremlinVertexVariable vertexVariable = new GremlinVertexVariable();
+
+                        WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
+                        {
+                            FirstTableRef = GremlinUtil.GetNamedTableReference(vertexVariable),
+                            SecondTableRef = secondTableRef,
+                            UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+                        };
+                        GremlinTVFVariable newTVFVariable = new GremlinTVFVariable(tableReference);
+                        WColumnReferenceExpression key =
+                            GremlinUtil.GetColumnReferenceExpression(oldVariable.VariableName, "_value");
+                        WColumnReferenceExpression value =
+                            GremlinUtil.GetColumnReferenceExpression(vertexVariable.VariableName, "_value");
+                        WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, value);
+                        AddPredicate(booleanExpr);
+                        AddNewVariable(newTVFVariable);
+                        return newTVFVariable;
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
                     break;
                 }
             }
-            RemainingVariableList.RemoveAt(index);
-            RemainingVariableList.Insert(index, newVariable);
+            throw new Exception("Can't replace any variable");
         }
 
         public void AddAliasToGremlinVariable(string label, GremlinVariable gremlinVar)
@@ -194,7 +254,7 @@ namespace GraphView.GremlinTranslationOps
 
             GremlinDerivedVariable newVariable = new GremlinDerivedVariable(ToSelectQueryBlock(), functionName);
             ClearAndCreateNewContextInfo();
-            AddNewVariable(newVariable, labels);
+            AddNewVariable(newVariable);
             SetCurrVariable(newVariable);
             SetStarProjection();
         }
@@ -203,7 +263,7 @@ namespace GraphView.GremlinTranslationOps
 
         public WBooleanExpression ToSqlBoolean()
         {
-            if (RemainingVariableList.Count == 0)
+            if (NewVariableList.Count == 0)
             {
                 return Predicates;
             }
@@ -319,6 +379,9 @@ namespace GraphView.GremlinTranslationOps
             // Construct the GroupBy Clause
             var newGroupByClause = GetGroupByClause();
 
+            // Construct the WithPath Clause
+            var newWithPathClause = GetWithPathClause();
+
             // Construct the SelectBlock
             return new WSelectQueryBlock()
             {
@@ -327,8 +390,14 @@ namespace GraphView.GremlinTranslationOps
                 WhereClause = newWhereClause,
                 MatchClause = newMatchClause,
                 OrderByClause = newOrderByClause,
-                GroupByClause = newGroupByClause
+                GroupByClause = newGroupByClause,
+                WithPathClause2 = newWithPathClause
             };
+        }
+
+        public WWithPathClause2 GetWithPathClause()
+        {
+            return new WWithPathClause2(WithPaths); 
         }
 
         public WSqlStatement ToAddESqlQuery(GremlinAddEVariable currVar)
@@ -362,7 +431,16 @@ namespace GraphView.GremlinTranslationOps
                 valueExpr = GremlinUtil.GetValueExpression(property.Value.ToString());
                 selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
             }
+
+            //hack
+            string temp = "\"label\", \"" + currVar.EdgeLabel + "\"";
+            foreach (var property in currVar.Properties)
+            {
+                temp += ", \"" + property.Key + "\", \"" + property.Value + "\"";
+            }
             
+            //=====
+
             var insertStatement = new WInsertSpecification()
             {
                 Columns = columnK,
@@ -409,9 +487,9 @@ namespace GraphView.GremlinTranslationOps
         public WFromClause GetFromClause()
         {
             var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
-            for (var i = 0; i < RemainingVariableList.Count; i++)
+            for (var i = 0; i < NewVariableList.Count; i++)
             {
-                GremlinVariable currVar = RemainingVariableList[i];
+                GremlinVariable currVar = NewVariableList[i];
                 var tableReference = GremlinUtil.GetTableReferenceFromVariable(currVar);
                 //AddTableReference(currVar);
                 if (tableReference != null)
@@ -423,7 +501,7 @@ namespace GraphView.GremlinTranslationOps
         public WMatchClause GetMatchClause()
         {
             var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
-            foreach (var path in Paths)
+            foreach (var path in NewPathList)
             {
                 newMatchClause.Paths.Add(GremlinUtil.GetMatchPath(path));
             }
@@ -529,7 +607,9 @@ namespace GraphView.GremlinTranslationOps
         {
             if (source.GetType() == typeof(GremlinVertexVariable))
             {
-                Paths.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
+                NewPathList.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
+                    (source, edge, target));
+                PathList.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
                     (source, edge, target));
             }
             else
@@ -567,8 +647,10 @@ namespace GraphView.GremlinTranslationOps
         public void ClearAndCreateNewContextInfo()
         {
             CurrVariable = null;
-            RemainingVariableList = new List<GremlinVariable>();
-            Paths = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            InheritedVariableList = new List<GremlinVariable>();
+            NewVariableList = new List<GremlinVariable>();
+            NewPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            PathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
             ProjectionList = new List<Projection>();
             GroupByVariable = null;
             OrderByVariable = null;
@@ -576,9 +658,11 @@ namespace GraphView.GremlinTranslationOps
         }
 
         private Stack<GremlinVariable> _storedCurrVariableStack = new Stack<GremlinVariable>();
-        private Stack<List<GremlinVariable>> _storedCurrVariableListStack = new Stack<List<GremlinVariable>>();
+        private Stack<List<GremlinVariable>> _storedInheritedVariableListStack = new Stack<List<GremlinVariable>>();
+        private Stack<List<GremlinVariable>> _storedNewVariableListStack = new Stack<List<GremlinVariable>>();
         private Stack<List<Projection>> _storedCurrProjectionStack = new Stack<List<Projection>>();
-        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedCurrPathStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
+        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedNewPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
+        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
         private Stack<WBooleanExpression> _storedPredicatedStack = new Stack<WBooleanExpression>();
         private Stack<Tuple<GremlinVariable, GroupByRecord>> _storedGroupByVariableStack = new Stack<Tuple<GremlinVariable, GroupByRecord>>();
         private Stack<Tuple<GremlinVariable, OrderByRecord>> _storedOrderByVariableStack = new Stack<Tuple<GremlinVariable, OrderByRecord>>();
@@ -587,9 +671,11 @@ namespace GraphView.GremlinTranslationOps
         {
             _isSubTraversal = true;
             _storedCurrVariableStack.Push(CurrVariable);
-            _storedCurrVariableListStack.Push(RemainingVariableList.Copy());
+            _storedInheritedVariableListStack.Push(InheritedVariableList.Copy());
+            _storedNewVariableListStack.Push(NewVariableList.Copy());
             _storedCurrProjectionStack.Push(ProjectionList.Copy());
-            _storedCurrPathStack.Push(Paths.Copy());
+            _storedNewPathListStack.Push(NewPathList.Copy());
+            _storedPathListStack.Push(PathList.Copy());
             _storedPredicatedStack.Push(Predicates);
             _storedOrderByVariableStack.Push(OrderByVariable);
             _storedGroupByVariableStack.Push(GroupByVariable);
@@ -598,9 +684,11 @@ namespace GraphView.GremlinTranslationOps
         public void ResetSavedState()
         {
             CurrVariable = _storedCurrVariableStack.Pop();
-            RemainingVariableList = _storedCurrVariableListStack.Pop();
+            InheritedVariableList = _storedInheritedVariableListStack.Pop();
+            NewVariableList = _storedNewVariableListStack.Pop();
             ProjectionList = _storedCurrProjectionStack.Pop();
-            Paths = _storedCurrPathStack.Pop();
+            NewPathList = _storedNewPathListStack.Pop();
+            PathList = _storedPathListStack.Pop();
             Predicates = _storedPredicatedStack.Pop();
             OrderByVariable = _storedOrderByVariableStack.Pop();
             GroupByVariable = _storedGroupByVariableStack.Pop();

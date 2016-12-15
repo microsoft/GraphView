@@ -17,7 +17,7 @@ namespace GraphView.GremlinTranslationOps.map
             //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("unfold");
 
             //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "unfold");
-            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.AddNewVariable(newVariable);
             //inputContext.SetCurrVariable(newVariable);
             //inputContext.SetDefaultProjection(newVariable);
 

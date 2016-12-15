@@ -74,12 +74,32 @@ namespace GraphView.GremlinTranslationOps
         public WEdgeType EdgeType { get; set; }
     }
 
-    //internal class GremlinRecursiveEdgeVariable : GremlinVariable
-    //{
-    //    public WSelectQueryBlock GremlinTranslationOperatorQuery { get; set; }
-    //    public int IterationCount;
-    //    public WBooleanExpression UntilCondition { get; set; }
-    //}
+    internal class GremlinPathVariable : GremlinVariable
+    {
+        public GremlinPathVariable()
+        {
+            //automaticlly generate the name of edge
+            VariableName = GetVariableName();
+            Type = VariableType.EGDE;
+        }
+
+        public GremlinPathVariable(WEdgeType type)
+        {
+            //automaticlly generate the name of edge
+            VariableName = GetVariableName();
+            EdgeType = type;
+        }
+        public static string GetVariableName()
+        {
+            return "P_" + _count++;
+        }
+        private static long _count = 0;
+        public WEdgeType EdgeType { get; set; }
+
+        //public WSelectQueryBlock GremlinTranslationOperatorQuery { get; set; }
+        //public int IterationCount;
+        //public WBooleanExpression UntilCondition { get; set; }
+    }
 
     internal class GremlinVariableReference: GremlinVariable
     {
@@ -294,22 +314,22 @@ namespace GraphView.GremlinTranslationOps
         }
     }
 
-    internal class GremlinOptionalVariable : GremlinVariable
-    {
-        public WOptional TableReference;
+    //internal class GremlinOptionalVariable : GremlinVariable
+    //{
+    //    public WOptional TableReference;
 
-        public GremlinOptionalVariable(WOptional tableReference)
-        {
-            VariableName = GetVariableName();
-            TableReference = tableReference;
-            TableReference.Alias = GremlinUtil.GetIdentifier(VariableName);
-        }
-        private static long _count = 0;
-        public static string GetVariableName()
-        {
-            return "Optional_" + _count++;
-        }
-    }
+    //    public GremlinOptionalVariable(WOptional tableReference)
+    //    {
+    //        VariableName = GetVariableName();
+    //        TableReference = tableReference;
+    //        TableReference.Alias = GremlinUtil.GetIdentifier(VariableName);
+    //    }
+    //    private static long _count = 0;
+    //    public static string GetVariableName()
+    //    {
+    //        return "Optional_" + _count++;
+    //    }
+    //}
 
     //internal class GremlinSideEffectVariable : GremlinVariable
     //{

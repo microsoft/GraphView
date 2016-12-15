@@ -153,7 +153,8 @@ namespace GraphView
     {
         InEdge,
         OutEdge,
-        BothEdge
+        BothEdge,
+        Path
     }
 
     public enum ColumnGraphType
