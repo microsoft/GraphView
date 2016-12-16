@@ -204,6 +204,7 @@ namespace GraphView
         internal WMatchClause MatchClause { get; set; }
         internal WLimitClause LimitClause { get; set; }
         internal WWithPathClause WithPathClause { get; set; }
+        internal WWithPathClause2 WithPathClause2 { get; set; }
         internal UniqueRowFilter UniqueRowFilter { get; set; }
         internal bool OutputPath { get; set; }
         public WSelectQueryBlock()
@@ -427,6 +428,31 @@ namespace GraphView
             if (Paths == null) Paths = new List<Tuple<string, WSelectQueryBlock, int>>();
             Paths.Add(path);
         }
+
+    }
+
+    public partial class WWithPathClause2 : WSqlFragment
+    {
+        // Definition of a path: 
+        // item1 is the binding name
+        // item2 is the path description
+        // item3 is the length limitation of it (-1 for no limitation)
+        //internal List<Tuple<string, WSelectQueryBlock, int>> Paths;
+        internal Dictionary<string, GraphViewExecutionOperator> PathOperators;
+        internal Dictionary<string, WRepeatPath> Paths;
+
+        public WWithPathClause2(Dictionary<string, WRepeatPath> pPaths)
+        {
+            Paths = pPaths;
+            PathOperators = new Dictionary<string, GraphViewExecutionOperator>();
+        }
+
+        //public WWithPathClause2(Tuple<string, WRepeatPath> path)
+        //{
+        //    PathOperators = new List<Tuple<string, GraphViewExecutionOperator>>();
+        //    if (Paths == null) Paths = new Dictionary<string, WRepeatPath>();
+        //    Paths.Add(path);
+        //}
 
     }
 

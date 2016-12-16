@@ -32,6 +32,11 @@ namespace GraphView.GremlinTranslationOps.filter
             GremlinToSqlContext inputContext = GetInputContext();
             GremlinVariable currVar = inputContext.CurrVariable;
 
+            if (Predicate != null && Predicate.IsAliasValue)
+            {
+                Predicate.VariableName = inputContext.AliasToGremlinVariableList[Predicate.Value as string].Last().VariableName;
+            }
+
             if (WhereTraversal == null && StartKey == null)
             {
                 //where(Predicate)

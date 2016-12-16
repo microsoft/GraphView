@@ -16,7 +16,12 @@ namespace GraphView
         public GremlinToSqlContext GetInputContext()
         {
             if (InputOperator != null) {
-                return InputOperator.GetContext();
+                GremlinToSqlContext context = InputOperator.GetContext();
+                if (InputOperator.Labels != null)
+                {
+                    context.SetLabelsToCurrentVariable(InputOperator.Labels);
+                }
+                return context;
             } else {
                 return new GremlinToSqlContext();
             }
@@ -42,12 +47,18 @@ namespace GraphView
         public List<Projection> InheritedProjection;
         public bool IsInheritedEntireContext = false;
         public GremlinToSqlContext InheritedContext;
+        public List<GremlinVariable> InheritedVariableList;
+        public Dictionary<string, List<GremlinVariable>> InheritedAliasToGremlinVariableList;
+        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> InheritedPathList;
 
         public void SetContext(GremlinToSqlContext context)
         {
             IsInheritedEntireContext = true;
             InheritedContext = context;
             InheritedProjection = new List<Projection>();
+            InheritedVariableList = new List<GremlinVariable>();
+            InheritedAliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
+            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
         }
         public override GremlinToSqlContext GetContext()
         {
@@ -57,15 +68,11 @@ namespace GraphView
             if (InheritedVariable != null)
             {
                 newContext.RootVariable = InheritedVariable;
-                //newContext.AddNewVariable(InheritedVariable, Labels);
-                //newContext.AddPredicate(GremlinUtil.GetBooleanComparisonExpr(
-                //    GremlinUtil.GetColumnReferenceExpression(InheritedVariable.VariableName, "id"), //TODO 
-                //    GremlinUtil.GetColumnReferenceExpression("@id"), //todo
-                //    BooleanComparisonType.Equals
-                //    ));
+                newContext.InheritedVariableList = InheritedVariableList;
+                newContext.AliasToGremlinVariableList = InheritedAliasToGremlinVariableList;
                 newContext.SetCurrVariable(InheritedVariable);
                 newContext.FromOuter = true;
-                //newContext.ProjectionList = InheritedProjection;
+                newContext.PathList = InheritedPathList;
             } 
             return newContext;
         }

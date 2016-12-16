@@ -27,11 +27,11 @@ namespace GraphView.GremlinTranslationOps.map
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
 
             GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(WEdgeType.OutEdge);
-            inputContext.AddNewVariable(newEdgeVar, Labels);
+            inputContext.AddNewVariable(newEdgeVar);
             inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
 
             GremlinVertexVariable sourceVar = new GremlinVertexVariable();
-            inputContext.AddNewVariable(sourceVar, Labels);
+            inputContext.AddNewVariable(sourceVar);
             inputContext.SetDefaultProjection(sourceVar);
 
             inputContext.AddPaths(sourceVar, newEdgeVar, inputContext.CurrVariable);

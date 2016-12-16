@@ -92,7 +92,7 @@ namespace GraphView.GremlinTranslationOps.branch
             }
             //Todo: If we should set the union as a VariableReference?
             GremlinDerivedVariable newVariable = new GremlinDerivedVariable(binaryQueryExpression, "union");
-            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.AddNewVariable(newVariable);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
 

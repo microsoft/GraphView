@@ -24,15 +24,9 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
-            {
-                FirstTableRef = GremlinUtil.GetNamedTableReference(inputContext.CurrVariable),
-                SecondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys),
-                UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-            };
+            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
 
-            GremlinTVFVariable newVariable = new GremlinTVFVariable(tableReference);
-            inputContext.ReplaceVariable(newVariable, Labels);
+            var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
 

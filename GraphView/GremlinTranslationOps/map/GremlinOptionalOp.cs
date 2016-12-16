@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,14 +20,32 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedVariableFromParent(TraversalOption, inputContext);
-            var optionalExpr = new WOptional()
+            GremlinToSqlContext existOptionQueryContext = inputContext.Copy();
+            GremlinToSqlContext notexistOptionQueryContext = inputContext.Copy();
+            GraphTraversal2 traversal;
+
+            traversal = TraversalOption.Copy();
+            GremlinUtil.InheritedContextFromParent(traversal, existOptionQueryContext);
+            var existOptionQueryExpr = traversal.GetEndOp().GetContext().ToSelectQueryBlock();
+
+            traversal = TraversalOption.Copy();
+            GremlinUtil.InheritedVariableFromParent(traversal, notexistOptionQueryContext);
+            var optionQueryExpr = traversal.GetEndOp().GetContext().ToSelectQueryBlock();
+            var notExistBooleanExpr = GremlinUtil.GetNotExistPredicate(optionQueryExpr);
+            notexistOptionQueryContext.AddPredicate(notExistBooleanExpr);
+            var notExistOptionQueryExpr = notexistOptionQueryContext.ToSelectQueryBlock();
+
+            var unionExpr = new WBinaryQueryExpression()
             {
-                SqlStatement = TraversalOption.GetEndOp().GetContext().ToSelectQueryBlock()
+                FirstQueryExpr = existOptionQueryExpr,
+                SecondQueryExpr = notExistOptionQueryExpr,
+                All = true,
+                BinaryQueryExprType = BinaryQueryExpressionType.Union,
             };
 
-            GremlinOptionalVariable newVariable = new GremlinOptionalVariable(optionalExpr);
-            inputContext.AddNewVariable(newVariable, Labels);
+            inputContext.ClearAndCreateNewContextInfo();
+            GremlinDerivedVariable newVariable = new GremlinDerivedVariable(unionExpr, "optional");
+            inputContext.AddNewVariable(newVariable);
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
 

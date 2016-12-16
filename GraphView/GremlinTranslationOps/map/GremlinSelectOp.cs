@@ -9,6 +9,7 @@ namespace GraphView.GremlinTranslationOps.map
     internal class GremlinSelectOp: GremlinTranslationOperator
     {
         public List<string> SelectKeys;
+        public GremlinKeyword.Pop Pop;
 
         public GremlinSelectOp(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
@@ -17,6 +18,7 @@ namespace GraphView.GremlinTranslationOps.map
             {
                 SelectKeys.Add(key);
             }
+            Pop = pop;
         }
 
         public GremlinSelectOp(params string[] selectKeys)
@@ -38,8 +40,18 @@ namespace GraphView.GremlinTranslationOps.map
             }
             else if (SelectKeys.Count == 1)
             {
-                //GremlinVariable selectVar = inputContext.AliasToGremlinVariable[SelectKeys.First()];
-                //inputContext.SetCurrVariable(selectVar);
+                if (Pop == GremlinKeyword.Pop.first)
+                {
+                    inputContext.SetCurrVariable(inputContext.AliasToGremlinVariableList[SelectKeys.First()].First());
+                }
+                else if (Pop == GremlinKeyword.Pop.last)
+                {
+                    inputContext.SetCurrVariable(inputContext.AliasToGremlinVariableList[SelectKeys.First()].Last());
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
             }
             else
             {

@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "bothV");
 
-            //inputContext.AddNewVariable(newVariable, Labels);
+            //inputContext.AddNewVariable(newVariable);
             //inputContext.SetDefaultProjection(newVariable);
             //inputContext.SetCurrVariable(newVariable);
             

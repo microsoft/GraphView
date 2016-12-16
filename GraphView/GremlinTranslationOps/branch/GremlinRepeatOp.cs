@@ -8,16 +8,25 @@ namespace GraphView.GremlinTranslationOps.branch
 {
     internal class GremlinRepeatOp: GremlinTranslationOperator
     {
-        public int MaxLoops;
         public GraphTraversal2 RepeatTraversal;
-        public GraphTraversal2 UntilTraversal;
-        public GraphTraversal2 EmitTraversal;
-        public Predicate UntilPredicate;
-        public Predicate EmitPredicate;
+        public Predicate ConditionPredicate;
+        public GraphTraversal2 ConditionTraversal;
+
+        public bool IsEmitTrue = false;
+        public bool IsEmitBefore = false;
+        public bool IsEmitAfter = false;
+        public bool IsUntilBefore = false;
+        public bool IsUntilAfter = false;
+        public bool IsTimes = false;
+        public long Times;
 
         public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
         {
             RepeatTraversal = repeatTraversal;
+        }
+
+        public GremlinRepeatOp()
+        {
         }
 
         public override GremlinToSqlContext GetContext()
@@ -26,24 +35,39 @@ namespace GraphView.GremlinTranslationOps.branch
 
             GremlinUtil.InheritedVariableFromParent(RepeatTraversal, inputContext);
 
-            WRepeat repeatExpr = new WRepeat()
+            WRepeatPath repeatPath = new WRepeatPath() {};
+            repeatPath.IsUntilBefore = IsUntilBefore;
+            repeatPath.IsUntilAfter = IsUntilAfter;
+            repeatPath.IsEmitTrue = IsEmitTrue;
+            repeatPath.IsEmitBefore = IsEmitBefore;
+            repeatPath.IsEmitAfter = IsEmitAfter;
+            repeatPath.IsTimes = IsTimes;
+            repeatPath.Times = Times;
+            
+            if (ConditionTraversal != null)
             {
-                SqlStatement = RepeatTraversal.GetEndOp().GetContext().ToSelectQueryBlock()
-            };
+                inputContext.SaveCurrentState();
+                repeatPath.ConditionSubQueryBlock = ConditionTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
+                inputContext.ResetSavedState();
+            }
+            if (ConditionPredicate != null)
+            {
+                throw new NotImplementedException();
+            }
+            inputContext.SaveCurrentState();
+            repeatPath.SubQueryExpr = RepeatTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
+            inputContext.ResetSavedState();
 
-            if (MaxLoops != null)
-            {
-                repeatExpr.MaxLoops = MaxLoops;
-            }
-            if (UntilTraversal != null)
-            {
-                repeatExpr.UntilCondition =
-                    GremlinUtil.GetExistPredicate(UntilTraversal.GetEndOp().GetContext().ToSqlStatement());
-            }
-            if (UntilPredicate != null)
-            {
-                //TODO
-            }
+            GremlinPathVariable newEdgeVar = new GremlinPathVariable(WEdgeType.Path);
+            inputContext.AddNewVariable(newEdgeVar);
+
+            GremlinVertexVariable sinkVar = new GremlinVertexVariable();
+            inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, sinkVar);
+            inputContext.AddNewVariable(sinkVar);
+            inputContext.SetDefaultProjection(sinkVar);
+            inputContext.SetCurrVariable(sinkVar);
+            
+            inputContext.WithPaths[newEdgeVar.VariableName] = repeatPath;
 
             return inputContext;
         }

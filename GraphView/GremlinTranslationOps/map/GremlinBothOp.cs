@@ -25,8 +25,8 @@ namespace GraphView.GremlinTranslationOps.map
 
             GremlinVertexVariable newVertexVariable = new GremlinVertexVariable();
             GremlinEdgeVariable newEdgeVariable = new GremlinEdgeVariable(WEdgeType.BothEdge);
-            inputContext.AddNewVariable(newVertexVariable, Labels);
-            inputContext.AddNewVariable(newEdgeVariable, Labels);
+            inputContext.AddNewVariable(newVertexVariable);
+            inputContext.AddNewVariable(newEdgeVariable);
             inputContext.AddPaths(inputContext.CurrVariable, newEdgeVariable, newVertexVariable);
 
             foreach (var edgeLabel in EdgeLabels)

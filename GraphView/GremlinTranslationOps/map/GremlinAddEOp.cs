@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
             newVariableReference.Type = VariableType.NODE;
 
             GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, newVariableReference);
-            inputContext.AddNewVariable(newAddEVar, Labels);
+            inputContext.AddNewVariable(newAddEVar);
             inputContext.SetCurrVariable(newAddEVar);
             inputContext.SetDefaultProjection(newAddEVar);
 
@@ -69,7 +69,7 @@ namespace GraphView.GremlinTranslationOps.map
                 WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
                 fromVariable = new GremlinVariableReference(statement);
                 fromVariable.Type = VariableType.NODE;
-                inputContext.AddNewVariable(fromVariable, Labels);
+                inputContext.AddNewVariable(fromVariable);
                 inputContext.ResetSavedState();
 
                 if (!(FromVertexTraversal.GetStartOp() is GremlinParentContextOp))
@@ -129,7 +129,7 @@ namespace GraphView.GremlinTranslationOps.map
                 WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
                 toVariable = new GremlinVariableReference(statement);
                 toVariable.Type = VariableType.NODE;
-                inputContext.AddNewVariable(toVariable, Labels);
+                inputContext.AddNewVariable(toVariable);
                 inputContext.ResetSavedState();
 
                 if (!(ToVertexTraversal.GetStartOp() is GremlinParentContextOp))
