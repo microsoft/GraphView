@@ -58,16 +58,29 @@ namespace GraphView.GremlinTranslationOps.branch
             repeatPath.SubQueryExpr = RepeatTraversal.GetEndOp().GetContext().ToSelectQueryBlock();
             inputContext.ResetSavedState();
 
-            GremlinPathVariable newEdgeVar = new GremlinPathVariable(WEdgeType.Path);
-            inputContext.AddNewVariable(newEdgeVar);
+            if (inputContext.CurrVariable is GremlinVertexVariable)
+            {
+                GremlinPathVariable newEdgeVar = new GremlinPathVariable(WEdgeType.Path);
+                inputContext.AddNewVariable(newEdgeVar);
 
-            GremlinVertexVariable sinkVar = new GremlinVertexVariable();
-            inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, sinkVar);
-            inputContext.AddNewVariable(sinkVar);
-            inputContext.SetDefaultProjection(sinkVar);
-            inputContext.SetCurrVariable(sinkVar);
-            
-            inputContext.WithPaths[newEdgeVar.VariableName] = repeatPath;
+                GremlinVertexVariable sinkVar = new GremlinVertexVariable();
+                inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, sinkVar);
+                inputContext.AddNewVariable(sinkVar);
+                inputContext.SetDefaultProjection(sinkVar);
+                inputContext.SetCurrVariable(sinkVar);
+
+                inputContext.WithPaths[newEdgeVar.VariableName] = repeatPath;
+            }
+            else if (inputContext.CurrVariable is GremlinEdgeVariable)
+            {
+
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+
 
             return inputContext;
         }

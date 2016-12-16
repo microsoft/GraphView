@@ -137,7 +137,6 @@
     <Compile Include="Gremlin Parser Tree\WProgram.cs" />
     <Compile Include="Gremlin Parser Tree\WSyntaxTree.cs" />
     <Compile Include="GraphTraversal.cs" />
-    <Compile Include="GremlinTranslationOps\GremlinTranslationOperator.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinOutVOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinProjectOp.cs" />
     <Compile Include="GremlinTranslationOps\map\GremlinPropertiesOp.cs" />

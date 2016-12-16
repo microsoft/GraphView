@@ -34,7 +34,7 @@ namespace GraphView.GremlinTranslationOps.filter
 
             if (inputContext.CurrVariable is GremlinEdgeVariable)
             {
-                var existInPath = inputContext.PathList.Find(p => p.Item2 == inputContext.CurrVariable);
+                var existInPath = inputContext.PathList.Find(p => p.Item2.VariableName == inputContext.CurrVariable.VariableName);
                 existInPath.Item3.Low = 0 - Limit;
                 existInPath.Item3.High = 0;
             }

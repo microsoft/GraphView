@@ -17,7 +17,7 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            var existInPath = inputContext.PathList.Find(p => p.Item1 == inputContext.CurrVariable || p.Item3 == inputContext.CurrVariable);
+            var existInPath = inputContext.PathList.Find(p => p.Item1.VariableName == inputContext.CurrVariable.VariableName || p.Item3.VariableName == inputContext.CurrVariable.VariableName);
 
             if (existInPath.Item1 == inputContext.CurrVariable)
             {

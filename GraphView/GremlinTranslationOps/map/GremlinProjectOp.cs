@@ -26,14 +26,11 @@ namespace GraphView.GremlinTranslationOps.map
 
             List<WScalarExpression> parameterList = new List<WScalarExpression>();
 
-            if (ProjectKeys.Count > TraversalList.Count)
-                throw new Exception("Project Step Error: Didn't have enough ByModulating");
-
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
                 inputContext.SaveCurrentState();
-                GremlinUtil.InheritedVariableFromParent(TraversalList[i], inputContext);
-                WSelectQueryBlock selectQueryBlock = TraversalList[i].GetEndOp().GetContext().ToSelectQueryBlock();
+                GremlinUtil.InheritedVariableFromParent(TraversalList[i % TraversalList.Count], inputContext);
+                WSelectQueryBlock selectQueryBlock = TraversalList[i % TraversalList.Count].GetEndOp().GetContext().ToSelectQueryBlock();
                 inputContext.ResetSavedState();
 
                 WScalarExpression scalarExpr = new WScalarSubquery()

@@ -23,7 +23,7 @@ namespace GraphView.GremlinTranslationOps.map
             }
             else
             {
-                outVariable = inputContext.PathList.Find(p => p.Item2 == inputContext.CurrVariable).Item3;
+                outVariable = inputContext.PathList.Find(p => p.Item2.VariableName == inputContext.CurrVariable.VariableName).Item3;
             }
 
             inputContext.SetCurrVariable(outVariable);
