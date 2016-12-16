@@ -32,7 +32,8 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphView
 {
     /// <summary>
-    /// BooleanExprNormalizeVisitor traverses a boolean expression and normalizes it
+    /// BooleanExprNormalizeVisitor traverses a boolean expression 
+    /// and normalizes it to a list of conjunctive predicates.
     /// </summary>
     internal class BooleanExprNormalizeVisitor : WSqlFragmentVisitor
     {

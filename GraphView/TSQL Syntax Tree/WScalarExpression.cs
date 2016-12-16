@@ -164,8 +164,9 @@ namespace GraphView
         EdgeSource,
         EdgeOffset,
         EdgeSink,
-        AdjacencyList,
-        ReverseAdjacencyList,
+        OutAdjacencyList,
+        InAdjacencyList,
+        BothAdjacencyList
     }
 
     /// <summary>
@@ -215,7 +216,15 @@ namespace GraphView
         {
             get
             {
-                return MultiPartIdentifier.Count == 2 ? MultiPartIdentifier[1].Value : null;
+                switch (MultiPartIdentifier.Count)
+                {
+                    case 1:
+                        return MultiPartIdentifier[0].Value;
+                    case 2:
+                        return MultiPartIdentifier[1].Value;
+                    default:
+                        return null;
+                }
             }
         }
 

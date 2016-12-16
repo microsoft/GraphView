@@ -326,6 +326,8 @@ namespace GraphView
         {
             if (FromClause != null)
                 FromClause.Accept(visitor);
+            if (MatchClause != null)
+                MatchClause.Accept(visitor);
             if (WhereClause != null)
                 WhereClause.Accept(visitor);
             if (TopRowFilter != null)
