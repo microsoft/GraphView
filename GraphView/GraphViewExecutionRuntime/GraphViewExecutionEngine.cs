@@ -38,9 +38,22 @@ namespace GraphView
             }
         }
 
+        public void Append(string fieldValue)
+        {
+            fieldValues.Add(fieldValue);
+        }
+
         public void Append(RawRecord record)
         {
             fieldValues.AddRange(record.fieldValues);
+        }
+
+        public int Length
+        {
+            get
+            {
+                return fieldValues.Count;
+            }
         }
 
         internal string RetriveData(List<string> header,string FieldName)
@@ -60,7 +73,6 @@ namespace GraphView
             {
                 return fieldValues[index];
             }
-           
         }
 
         //internal int RetriveIndex(string value)

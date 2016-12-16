@@ -63,10 +63,11 @@ namespace GraphView
 
     /// <summary>
     /// The operator that takes a list of records as source vertexes and 
-    /// traverses to their one-hop or multi-hop neighbors. One-hop vertices
-    /// are defined in the adjacency list of the sources. Multi-hop
-    /// vertices are usually defined as a (recursive) function that takes a vertex as input
-    /// and produces one or more vertex references. 
+    /// traverses to their one-hop or multi-hop neighbors. One-hop neighbors
+    /// are defined in the adjacency lists of the sources. Multi-hop
+    /// vertices are defined by a recursive function that has a sub-query
+    /// specifying a single hop from a vertex to another and a boolean fuction 
+    /// controlling when the recursion terminates (in other words, # of hops).  
     /// 
     /// This operators emulates the nested-loop join algorithm.
     /// </summary>
@@ -82,9 +83,11 @@ namespace GraphView
         // The index of the adjacency list in the record from which the traversal starts
         private int adjacencyListIndex = -1;
 
+        // The table-valued scalar function that given a record of a source vertex,
+        // returns the references of the sink vertices
         private TableValuedScalarFunction crossApplySinkReference; 
 
-        // The query that describes predicates on the sink vertices and the properties to return.
+        // The query that describes predicates on the sink vertices and its properties to return.
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
         private JsonQuery sinkVertexQuery;
@@ -125,7 +128,7 @@ namespace GraphView
             {
                 List<Tuple<RawRecord, string>> inputSequence = new List<Tuple<RawRecord, string>>(batchSize);
 
-                // Loads X input records and populates their sink references 
+                // Loads a batch of source records and populates the sink references to which the sources point
                 for (int i = 0; i < batchSize && inputOp.State(); i++)
                 {
                     RawRecord record = inputOp.Next();
@@ -140,12 +143,34 @@ namespace GraphView
                     }
                 }
 
-                // Groups results by sink vertices' references
+                // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
+                // As a result, there is no need to send queries the underlying system to retrieve 
+                // the sink vertices.  
+                if (sinkVertexQuery == null)
+                {
+                    foreach (Tuple<RawRecord, string> pair in inputSequence)
+                    {
+                        RawRecord resultRecord = new RawRecord(pair.Item1.Length);
+                        resultRecord.Append(pair.Item1);
+                        resultRecord.Append(pair.Item2);
+                        outputBuffer.Enqueue(resultRecord);
+                    }
+
+                    continue;
+                }
+
+                // Groups records returned by sinkVertexQuery by sink vertices' references
                 Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(inClauseLimit);
 
-                int j = 0;
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 StringBuilder sinkReferenceList = new StringBuilder();
+                // Given a list of sink references, sends queries to the underlying system
+                // to retrieve the sink vertices. To reduce the number of queries to send,
+                // we pack multiple sink references in one query using the IN clause, i.e., 
+                // IN (ref1, ref2, ...). Since the total number of references to locate may exceed
+                // the limit that is allowed in the IN clause, we may need to send more than one 
+                // query to retrieve all sink vertices. 
+                int j = 0;
                 while (j < inputSequence.Count)
                 {
                     sinkReferenceSet.Clear();
@@ -251,6 +276,61 @@ namespace GraphView
             {
                 return outputBuffer.Dequeue();
             }
+        }
+    }
+
+    internal class CartesianProductOperator2 : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator leftInput;
+        private ContainerEnumerator rightInputEnumerator;
+        private RawRecord leftRecord;
+
+        public CartesianProductOperator2(
+            GraphViewExecutionOperator leftInput, 
+            GraphViewExecutionOperator rightInput)
+        {
+            this.leftInput = leftInput;
+            ContainerOperator rightInputContainer = new ContainerOperator(rightInput);
+            rightInputEnumerator = rightInputContainer.GetEnumerator();
+            leftRecord = null;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord cartesianRecord = null;
+
+            while (cartesianRecord == null && State())
+            {
+                if (leftRecord == null && leftInput.State())
+                {
+                    leftRecord = leftInput.Next();
+                }
+
+                if (leftRecord == null)
+                {
+                    Close();
+                    break;
+                }
+                else
+                {
+                    if (rightInputEnumerator.MoveNext())
+                    {
+                        RawRecord rightRecord = rightInputEnumerator.Current;
+                        cartesianRecord = new RawRecord(leftRecord);
+                        cartesianRecord.Append(rightRecord);
+                    }
+                    else
+                    {
+                        // For the current left record, the enumerator on the right input has reached the end.
+                        // Moves to the next left record and resets the enumerator.
+                        rightInputEnumerator.Reset();
+                        leftRecord = null;
+                    }
+                }
+            }
+
+            return cartesianRecord;
         }
     }
 
