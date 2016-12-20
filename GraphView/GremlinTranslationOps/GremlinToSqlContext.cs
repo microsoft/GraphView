@@ -21,7 +21,7 @@ namespace GraphView.GremlinTranslationOps
             Predicates = null;
             ProjectionList = new List<Projection>();
             NewPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
-            PathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
             WithPaths = new Dictionary<string, WRepeatPath> ();
             AliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
             //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
@@ -65,7 +65,7 @@ namespace GraphView.GremlinTranslationOps
         public List<Projection> ProjectionList { get; set; }
 
         public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> NewPathList { get; set; }
-        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> PathList { get; set; }
+        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> InheritedPathList { get; set; }
         public Dictionary<string, WRepeatPath> WithPaths;
         /// <summary>
         /// The Gremlin variable and its property by which the query groups
@@ -605,17 +605,42 @@ namespace GraphView.GremlinTranslationOps
 
         public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)
         {
-            if (source.GetType() == typeof(GremlinVertexVariable))
+            //if (source.GetType() == typeof(GremlinVertexVariable) )
+            if (source.Type == VariableType.NODE)
             {
                 NewPathList.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
-                    (source, edge, target));
-                PathList.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
                     (source, edge, target));
             }
             else
             {
                 throw new Exception("Edges can't have a out step.");
             }
+        }
+
+        public GremlinVariable GetSourceNode(GremlinVariable edge)
+        {
+            foreach (var path in NewPathList)
+            {
+                if (path.Item2.VariableName == edge.VariableName) return path.Item1;
+            }
+            foreach (var path in InheritedPathList)
+            {
+                if (path.Item2.VariableName == edge.VariableName) return path.Item1;
+            }
+            throw new NotImplementedException();
+        }
+
+        public GremlinVariable GetSinkNode(GremlinVariable edge)
+        {
+            foreach (var path in NewPathList)
+            {
+                if (path.Item2.VariableName == edge.VariableName) return path.Item3;
+            }
+            foreach (var path in InheritedPathList)
+            {
+                if (path.Item2.VariableName == edge.VariableName) return path.Item3;
+            }
+            throw new NotImplementedException();
         }
 
         public void AddPredicate(WBooleanExpression expr)
@@ -650,7 +675,7 @@ namespace GraphView.GremlinTranslationOps
             InheritedVariableList = new List<GremlinVariable>();
             NewVariableList = new List<GremlinVariable>();
             NewPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
-            PathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
             ProjectionList = new List<Projection>();
             GroupByVariable = null;
             OrderByVariable = null;
@@ -662,7 +687,7 @@ namespace GraphView.GremlinTranslationOps
         private Stack<List<GremlinVariable>> _storedNewVariableListStack = new Stack<List<GremlinVariable>>();
         private Stack<List<Projection>> _storedCurrProjectionStack = new Stack<List<Projection>>();
         private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedNewPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
-        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
+        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedInheritedPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
         private Stack<WBooleanExpression> _storedPredicatedStack = new Stack<WBooleanExpression>();
         private Stack<Tuple<GremlinVariable, GroupByRecord>> _storedGroupByVariableStack = new Stack<Tuple<GremlinVariable, GroupByRecord>>();
         private Stack<Tuple<GremlinVariable, OrderByRecord>> _storedOrderByVariableStack = new Stack<Tuple<GremlinVariable, OrderByRecord>>();
@@ -675,7 +700,7 @@ namespace GraphView.GremlinTranslationOps
             _storedNewVariableListStack.Push(NewVariableList.Copy());
             _storedCurrProjectionStack.Push(ProjectionList.Copy());
             _storedNewPathListStack.Push(NewPathList.Copy());
-            _storedPathListStack.Push(PathList.Copy());
+            _storedInheritedPathListStack.Push(InheritedPathList.Copy());
             _storedPredicatedStack.Push(Predicates);
             _storedOrderByVariableStack.Push(OrderByVariable);
             _storedGroupByVariableStack.Push(GroupByVariable);
@@ -688,7 +713,7 @@ namespace GraphView.GremlinTranslationOps
             NewVariableList = _storedNewVariableListStack.Pop();
             ProjectionList = _storedCurrProjectionStack.Pop();
             NewPathList = _storedNewPathListStack.Pop();
-            PathList = _storedPathListStack.Pop();
+            InheritedPathList = _storedInheritedPathListStack.Pop();
             Predicates = _storedPredicatedStack.Pop();
             OrderByVariable = _storedOrderByVariableStack.Pop();
             GroupByVariable = _storedGroupByVariableStack.Pop();

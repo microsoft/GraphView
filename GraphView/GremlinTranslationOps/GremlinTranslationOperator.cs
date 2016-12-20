@@ -72,7 +72,7 @@ namespace GraphView
                 newContext.AliasToGremlinVariableList = InheritedAliasToGremlinVariableList;
                 newContext.SetCurrVariable(InheritedVariable);
                 newContext.FromOuter = true;
-                newContext.PathList = InheritedPathList;
+                newContext.InheritedPathList = InheritedPathList;
             } 
             return newContext;
         }

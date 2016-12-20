@@ -29,9 +29,9 @@ namespace GraphView.GremlinTranslationOps.filter
 
             if (inputContext.CurrVariable is GremlinEdgeVariable)
             {
-                var existInPath = inputContext.PathList.Find(p => p.Item2.VariableName == inputContext.CurrVariable.VariableName);
-                existInPath.Item3.Low = 0;
-                existInPath.Item3.High = Limit;
+                var sinkNode = inputContext.GetSinkNode(inputContext.CurrVariable);
+                sinkNode.Low = 0;
+                sinkNode.High = Limit;
             }
             else
             {

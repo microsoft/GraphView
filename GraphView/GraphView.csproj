@@ -77,6 +77,7 @@
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinChooseOp.cs" />
     <Compile Include="GraphViewExecutionRuntime\Decoder.cs" />
+    <Compile Include="GremlinTranslationOps\branch\GremlinLocalOp.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinRepeatOp.cs" />
     <Compile Include="GremlinTranslationOps\branch\GremlinUnionOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinAndOp.cs" />

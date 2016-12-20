@@ -456,7 +456,11 @@ namespace GraphView
 
         //public GraphTraversal2 limit(Scope scope, long limit)
 
-        //public GraphTraversal2 local(Traversal<?, E2> localTraversal)
+        public GraphTraversal2 local(GraphTraversal2 localTraversal)
+        {
+            AddGremlinOperator(new GremlinLocalOp(localTraversal));
+            return this;
+        }
         //public GraphTraversal2 loops()
         //public GraphTraversal2 map(Function<Traversal<?, E2>> function)
         //public GraphTraversal2 map(Traversal<?, E2> mapTraversal)

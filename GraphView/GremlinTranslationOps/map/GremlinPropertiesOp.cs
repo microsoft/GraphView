@@ -24,11 +24,32 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
+            if (inputContext.CurrVariable is GremlinVertexVariable)
+            {
+                PropertyKeys.Insert(0, "node");
+                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
 
-            var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-            inputContext.SetCurrVariable(newVariable);
-            inputContext.SetDefaultProjection(newVariable);
+                var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
+                newVariable.Type = VariableType.VALUE;
+                inputContext.SetCurrVariable(newVariable);
+                inputContext.SetDefaultProjection(newVariable);
+
+            }
+            else if (inputContext.CurrVariable is GremlinEdgeVariable)
+            {
+                PropertyKeys.Insert(0, "edge");
+                var oldVariable = inputContext.GetSinkNode(inputContext.CurrVariable);
+                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
+
+                var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
+                newVariable.Type = VariableType.VALUE;
+                inputContext.SetCurrVariable(newVariable);
+                inputContext.SetDefaultProjection(newVariable);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
 
             return inputContext;
         }

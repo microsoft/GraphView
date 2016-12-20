@@ -385,6 +385,8 @@ namespace GraphView.GremlinTranslationOps
                 GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
                 rootAsContextOp.InheritedProjection = inputContext.ProjectionList.Copy();
+                rootAsContextOp.InheritedAliasToGremlinVariableList = inputContext.AliasToGremlinVariableList.Copy();
+
                 rootAsContextOp.InheritedVariableList = new List<GremlinVariable>();
                 foreach (var variable in inputContext.InheritedVariableList)
                 {
@@ -394,8 +396,16 @@ namespace GraphView.GremlinTranslationOps
                 {
                     rootAsContextOp.InheritedVariableList.Add(variable);
                 }
-                rootAsContextOp.InheritedAliasToGremlinVariableList = inputContext.AliasToGremlinVariableList.Copy();
-                rootAsContextOp.InheritedPathList = inputContext.PathList.Copy();
+                
+                rootAsContextOp.InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+                foreach (var path in inputContext.InheritedPathList)
+                {
+                    rootAsContextOp.InheritedPathList.Add(path);
+                }
+                foreach (var path in inputContext.NewPathList)
+                {
+                    rootAsContextOp.InheritedPathList.Add(path);
+                }
             }
         }
 
