@@ -27,6 +27,43 @@ namespace GraphView
 
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
+            List<WTableReferenceWithAlias> nonVertexTableReferences = null;
+            MatchGraph graphPattern = ConstructGraph2(context.TableReferences, out nonVertexTableReferences);
+
+            // Vertex and edge aliases from the graph pattern, plus non-vertex table references.
+            List<string> vertexAndEdgeAliases = null;
+
+            // Normalizes the search condition into conjunctive predicates
+            BooleanExpressionNormalizeVisitor booleanNormalize = new BooleanExpressionNormalizeVisitor();
+            List<WBooleanExpression> conjunctivePredicates = 
+                WhereClause != null && WhereClause.SearchCondition != null ?
+                conjunctivePredicates = booleanNormalize.Invoke(WhereClause.SearchCondition) :
+                new List<WBooleanExpression>();
+
+            // For each predicate, extracts its accessed table and column references
+            List<Tuple<WBooleanExpression, Dictionary<string, HashSet<string>>>>
+                predicatesAndTheirTableColumnReferences = new List<Tuple<WBooleanExpression, Dictionary<string, HashSet<string>>>>(conjunctivePredicates.Count);
+            AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
+            foreach (WBooleanExpression predicate in conjunctivePredicates)
+            {
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate, vertexAndEdgeAliases);
+            } 
+ 
+
+            Dictionary<string, HashSet<string>> projectionCollection = new Dictionary<string, HashSet<string>>();
+            foreach (string alias in vertexAndEdgeAliases)
+            {
+                projectionCollection.Add(alias, new HashSet<string>());
+            }
+            
+
+            //foreach (WSelectElement selectElement in SelectElements)
+            //{
+            //    columnVisitor.Invoke(selectElement, projectionCollection);
+            //}
+
+            ConstructTraversalChain(graphPattern);
+
             return null;
         }
 
@@ -272,7 +309,9 @@ namespace GraphView
             return Graph;
         }
 
-        private MatchGraph ConstructGraph2(out List<WTableReferenceWithAlias> nonVertexTableReferences)
+        private MatchGraph ConstructGraph2(
+            Dictionary<string, TableGraphType> outerContextTableReferences,
+            out List<WTableReferenceWithAlias> nonVertexTableReferences)
         {
             nonVertexTableReferences = new List<WTableReferenceWithAlias>();
 

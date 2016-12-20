@@ -67,15 +67,24 @@ namespace GraphView
         // accessed in the query block
         Dictionary<string, HashSet<string>> accessedColumns;
 
-        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> tableAliases)
+        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> targetTableReferences)
         {
-            accessedColumns = new Dictionary<string, HashSet<string>>(tableAliases.Count);
-            foreach (string tabAlias in tableAliases)
+            accessedColumns = new Dictionary<string, HashSet<string>>(targetTableReferences.Count);
+            foreach (string tabAlias in targetTableReferences)
             {
                 accessedColumns.Add(tabAlias, new HashSet<string>());
             }
 
             sqlFragment.Accept(this);
+
+            foreach (string tableRef in targetTableReferences)
+            {
+                if (accessedColumns[tableRef].Count == 0)
+                {
+                    accessedColumns.Remove(tableRef);
+                }
+            }
+
             return accessedColumns;
         }
 
@@ -95,26 +104,32 @@ namespace GraphView
             }
         }
 
-        //public override void Visit(WMatchPath node)
-        //{
-        //    foreach (var sourceEdge in node.PathEdgeList)
-        //    {
-        //        WSchemaObjectName source = sourceEdge.Item1;
-        //        string tableAlias = source.BaseIdentifier.Value;
-        //        WEdgeColumnReferenceExpression edge = sourceEdge.Item2;
+        public override void Visit(WMatchPath node)
+        {
+            foreach (var sourceEdge in node.PathEdgeList)
+            {
+                WSchemaObjectName source = sourceEdge.Item1;
+                string tableAlias = source.BaseIdentifier.Value;
+                WEdgeColumnReferenceExpression edge = sourceEdge.Item2;
 
-        //        if (accessedColumns.ContainsKey(tableAlias))
-        //        {
-        //            switch (edge.EdgeType)
-        //            {
-        //                case WEdgeType.OutEdge:
-        //                    accessedColumns[tableAlias].Add(ColumnGraphType.OutAdjacencyList.ToString());
-        //                    break;
-        //                case WEdgeType.InEdge:
-
-        //            }
-        //        }
-        //    }
-        //}
+                if (accessedColumns.ContainsKey(tableAlias))
+                {
+                    switch (edge.EdgeType)
+                    {
+                        case WEdgeType.OutEdge:
+                            accessedColumns[tableAlias].Add(ColumnGraphType.OutAdjacencyList.ToString());
+                            break;
+                        case WEdgeType.InEdge:
+                            accessedColumns[tableAlias].Add(ColumnGraphType.InAdjacencyList.ToString());
+                            break;
+                        case WEdgeType.BothEdge:
+                            accessedColumns[tableAlias].Add(ColumnGraphType.BothAdjacencyList.ToString());
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
     }
 }

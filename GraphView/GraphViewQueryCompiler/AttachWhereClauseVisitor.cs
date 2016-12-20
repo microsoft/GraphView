@@ -35,7 +35,7 @@ namespace GraphView
     /// BooleanExprNormalizeVisitor traverses a boolean expression 
     /// and normalizes it to a list of conjunctive predicates.
     /// </summary>
-    internal class BooleanExprNormalizeVisitor : WSqlFragmentVisitor
+    internal class BooleanExpressionNormalizeVisitor : WSqlFragmentVisitor
     {
         private List<WBooleanExpression> _normalizedList;
 

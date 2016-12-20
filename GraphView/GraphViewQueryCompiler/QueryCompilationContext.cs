@@ -66,6 +66,13 @@ namespace GraphView
         }
     }
 
+    internal enum TableGraphType
+    {
+        Vertex,
+        Edge,
+        Value
+    }
+
     /// <summary>
     /// QueryCompilationContext is an entity providing contexts 
     /// for translating a SQL statement or a nested SQL query. 
@@ -86,24 +93,30 @@ namespace GraphView
         /// </summary>
         public Dictionary<WColumnReferenceExpression, int> RawRecordLayout { get; private set; }
 
-        public ConstantSourceOperator outerContextOp;
+        public ConstantSourceOperator OuterContextOp { get; private set; }
+
+        public Dictionary<string, TableGraphType> TableReferences { get; private set; }
 
         public QueryCompilationContext()
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
+            TableReferences = new Dictionary<string, TableGraphType>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
         {
             TemporaryTableCollection = parentContext.TemporaryTableCollection;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout);
-            outerContextOp = new ConstantSourceOperator(null);
+            TableReferences = new Dictionary<string, TableGraphType>(parentContext.TableReferences);
+            OuterContextOp = new ConstantSourceOperator(null);
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables)
         {
             TemporaryTableCollection = priorTemporaryTables;
+            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
+            TableReferences = new Dictionary<string, TableGraphType>();
         }
 
         /// <summary>
