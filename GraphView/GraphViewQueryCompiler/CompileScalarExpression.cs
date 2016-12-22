@@ -20,7 +20,7 @@ namespace GraphView
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             GraphViewExecutionOperator subQueryOp = SubQueryExpr.Compile(subContext, dbConnection);
-            return new ScalarSubqueryFunction(subQueryOp, subContext.outerContextOp);
+            return new ScalarSubqueryFunction(subQueryOp, subContext.OuterContextOp);
         }
     }
 }

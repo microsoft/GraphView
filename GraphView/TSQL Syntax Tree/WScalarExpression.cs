@@ -161,6 +161,8 @@ namespace GraphView
     {
         Value,
         VertexId,
+        VertexObject,
+        EdgeObject,
         EdgeSource,
         EdgeOffset,
         EdgeSink,

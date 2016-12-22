@@ -47,7 +47,7 @@ namespace GraphView
         {
             QueryCompilationContext subContext = new QueryCompilationContext(context);
             GraphViewExecutionOperator subQueryOp = Subquery.Compile(subContext, dbConnection);
-            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, subContext.outerContextOp);
+            ExistsFunction existsFunc = new ExistsFunction(subQueryOp, subContext.OuterContextOp);
 
             return existsFunc;
         }
