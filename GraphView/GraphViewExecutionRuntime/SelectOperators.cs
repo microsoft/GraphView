@@ -100,7 +100,7 @@ namespace GraphView
 
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
-            int adjacencyListIndex,
+            int sinkIndex,
             JsonQuery sinkVertexQuery,
             List<Tuple<int, int>> matchingIndexes,
             GraphViewConnection connection,
@@ -108,13 +108,13 @@ namespace GraphView
         {
             Open();
             this.inputOp = inputOp;
-            this.adjacencyListIndex = adjacencyListIndex;
+            this.adjacencyListIndex = sinkIndex;
             this.sinkVertexQuery = sinkVertexQuery;
             this.matchingIndexes = matchingIndexes;
             this.connection = connection;
             this.outputBufferSize = outputBufferSize;
 
-            crossApplySinkReference = new CrossApplyAdjacencyList(adjacencyListIndex);
+            crossApplySinkReference = new CrossApplyAdjacencyList(sinkIndex);
         }
 
         public override RawRecord Next()
@@ -331,6 +331,43 @@ namespace GraphView
             }
 
             return cartesianRecord;
+        }
+    }
+
+    internal abstract class TableValuedFunction : GraphViewExecutionOperator
+    {
+        public abstract IEnumerable<RawRecord> Apply(RawRecord record);
+    }
+
+    internal class AdjacencyListDecoder : TableValuedFunction
+    {
+        GraphViewExecutionOperator input;
+        int adjacencyListIndex;
+        BooleanFunction edgePredicate;
+        List<string> projectedFields;
+        string edgeTableAlias;
+
+        public override IEnumerable<RawRecord> Apply(RawRecord record)
+        {
+            string jsonArray = record[adjacencyListIndex];
+            throw new NotImplementedException();
+        }
+
+        public override RawRecord Next()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Dictionary<WColumnReferenceExpression, int> PrivateRecordLayout()
+        {
+            if (privateRecordLayout != null)
+            {
+                return privateRecordLayout;
+            }
+
+            privateRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
+
+            return base.PrivateRecordLayout();
         }
     }
 

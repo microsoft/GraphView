@@ -37,7 +37,10 @@ namespace GraphView
     {
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            return null;
+            ScalarFunction f1 = FirstExpr.CompileToFunction(context, dbConnection);
+            ScalarFunction f2 = SecondExpr.CompileToFunction(context, dbConnection);
+
+            return new ComparisonFunction(f1, f2, ComparisonType);
         }
     }
 

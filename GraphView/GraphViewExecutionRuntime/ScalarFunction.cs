@@ -84,6 +84,21 @@ namespace GraphView
         }
     }
 
+    internal class FieldValue : ScalarFunction
+    {
+        private int fieldIndex;
+
+        public FieldValue(int fieldIndex)
+        {
+            this.fieldIndex = fieldIndex;
+        }
+
+        public override string Evaluate(RawRecord record)
+        {
+            return record[fieldIndex];
+        }
+    }
+
     internal class BinaryScalarFunction : ScalarFunction
     {
         ScalarFunction f1;
@@ -110,41 +125,42 @@ namespace GraphView
             string value1 = f1.Evaluate(record);
             string value2 = f2.Evaluate(record);
 
-            try
+            switch (targetType)
             {
-                switch(targetType)
-                {
-                    case JsonDataType.Boolean:
-                        bool bool_value1 = value1 == "true" ? true : false;
-                        bool bool_value2 = value2 == "true" ? true : false;
-                        bool bool_result = false;
+                case JsonDataType.Boolean:
+                    bool bool_value1, bool_value2;
+                    if (bool.TryParse(value1, out bool_value1) && bool.TryParse(value2, out bool_value2))
+                    {
                         switch (binaryType)
                         {
                             case BinaryExpressionType.BitwiseAnd:
-                                bool_result = bool_value1 ^ bool_value2;
-                                break;
+                                return (bool_value1 ^ bool_value2).ToString();
                             case BinaryExpressionType.BitwiseOr:
-                                bool_result = bool_value1 | bool_value2;
-                                break;
+                                return (bool_value1 | bool_value2).ToString();
                             case BinaryExpressionType.BitwiseXor:
-                                bool_result = bool_value1 ^ bool_value2;
-                                break;
+                                return (bool_value1 ^ bool_value2).ToString();
                             default:
-                                break;
+                                throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"boolean\".");
                         }
-                        return bool_result ? "true" : "false";
-                    case JsonDataType.Bytes:
+                    } 
+                    else
+                    {
+                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"boolean\"",
+                            value1, value2));
+                    }
+                case JsonDataType.Bytes:
+                    switch (binaryType)
+                    {
+                        case BinaryExpressionType.Add:
+                            return value1 + value2.Substring(2);    // A binary string starts with 0x
+                        default:
+                            throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"bytes\".");
+                    }
+                case JsonDataType.Int:
+                    int int_value1, int_value2;
+                    if (int.TryParse(value1, out int_value1) && int.TryParse(value2, out int_value2))
+                    {
                         switch (binaryType)
-                        {
-                            case BinaryExpressionType.Add:
-                                return value1 + value2.Substring(2);    // A binary string starts with 0x
-                            default:
-                                return value1;
-                        }
-                    case JsonDataType.Int:
-                        int int_value1 = int.Parse(value1);
-                        int int_value2 = int.Parse(value2);
-                        switch(binaryType)
                         {
                             case BinaryExpressionType.Add:
                                 return (int_value1 + int_value2).ToString();
@@ -165,9 +181,16 @@ namespace GraphView
                             default:
                                 return "";
                         }
-                    case JsonDataType.Long:
-                        long long_value1 = long.Parse(value1);
-                        long long_value2 = long.Parse(value2);
+                    }
+                    else
+                    {
+                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"int\"",
+                            value1, value2));
+                    }
+                case JsonDataType.Long:
+                    long long_value1, long_value2;
+                    if (long.TryParse(value1, out long_value1) && long.TryParse(value2, out long_value2))
+                    {
                         switch (binaryType)
                         {
                             case BinaryExpressionType.Add:
@@ -189,9 +212,16 @@ namespace GraphView
                             default:
                                 return "";
                         }
-                    case JsonDataType.Double:
-                        double double_value1 = double.Parse(value1);
-                        double double_value2 = double.Parse(value2);
+                    }
+                    else
+                    {
+                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"long\"",
+                            value1, value2));
+                    }
+                case JsonDataType.Double:
+                    double double_value1, double_value2; 
+                    if (double.TryParse(value1, out double_value1) && double.TryParse(value2, out double_value2))
+                    {
                         switch (binaryType)
                         {
                             case BinaryExpressionType.Add:
@@ -205,17 +235,54 @@ namespace GraphView
                             case BinaryExpressionType.Subtract:
                                 return (double_value1 - double_value2).ToString();
                             default:
-                                throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied values of type 'double'.");
+                                throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type 'double'.");
                         }
-                    default:
-                        return null;
-                }
+                    }
+                    else
+                    {
+                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"double\"",
+                            value1, value2));
+                    }
+                case JsonDataType.Float:
+                    float float_value1, float_value2;
+                    if (float.TryParse(value1, out float_value1) && float.TryParse(value2, out float_value2))
+                    {
+                        switch (binaryType)
+                        {
+                            case BinaryExpressionType.Add:
+                                return (float_value1 + float_value2).ToString();
+                            case BinaryExpressionType.Divide:
+                                return (float_value1 / float_value2).ToString();
+                            case BinaryExpressionType.Modulo:
+                                return (float_value1 % float_value2).ToString();
+                            case BinaryExpressionType.Multiply:
+                                return (float_value1 * float_value2).ToString();
+                            case BinaryExpressionType.Subtract:
+                                return (float_value1 - float_value2).ToString();
+                            default:
+                                throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type 'float'.");
+                        }
+                    }
+                    else
+                    {
+                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"float\"",
+                            value1, value2));
+                    }
+                case JsonDataType.String:
+                    switch (binaryType)
+                    {
+                        case BinaryExpressionType.Add:
+                            return value1 + value2;
+                        default:
+                            throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"string\".");
+                    }
+                case JsonDataType.Date:
+                    throw new NotImplementedException();
+                case JsonDataType.Null:
+                    return null;
+                default:
+                    throw new QueryCompilationException("Unsupported data type.");
             }
-            catch (Exception e)
-            {
-                throw new QueryCompilationException("An exception occurred when evaluating the scalar expression.", e);
-            }
-            
         }
     }
 }

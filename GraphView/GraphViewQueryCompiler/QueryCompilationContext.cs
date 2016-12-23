@@ -166,27 +166,21 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Given a column reference and an expected column type, 
-        /// return the reference's offset in raw records produced by the SQL statement.
+        /// Given a column reference, returns its offset in the raw records produced by the SQL statement.
         /// </summary>
-        /// <param name="tableAlias">Table alias</param>
-        /// <param name="columnName">Column name</param>
-        /// <param name="type">Column type</param>
-        /// <returns>The offset of the column reference in raw records</returns>
-        public int LocateColumnReference(string tableAlias, string columnName, ColumnGraphType type)
+        /// <param name="columnReference"></param>
+        /// <returns></returns>
+        public int LocateColumnReference(WColumnReferenceExpression columnReference)
         {
-            WColumnReferenceExpression targetName = new WColumnReferenceExpression(tableAlias, columnName);
-            if (RawRecordLayout.ContainsKey(targetName) && targetName.ColumnGraphType == type)
+            if (RawRecordLayout.ContainsKey(columnReference))
             {
-                return RawRecordLayout[targetName];
+                return RawRecordLayout[columnReference];
             }
             else
             {
-                throw new QueryCompilationException(string.Format("Column reference {0}.{1} cannot be located in the raw records in the current execution pipeline.",
-                    tableAlias, columnName));
+                throw new QueryCompilationException(string.Format("Column reference {0} cannot be located in the raw records in the current execution pipeline.",
+                    columnReference.ToString("")));
             }
         }
-
-
     }
 }

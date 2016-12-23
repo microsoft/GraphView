@@ -170,7 +170,9 @@ namespace GraphView
         }
         public abstract RawRecord Next();
 
-        public List<string> header;
+        public List<string> header;     // To be removed. 
+
+        protected Dictionary<WColumnReferenceExpression, int> privateRecordLayout;
 
         // Number of vertices processed so far
         internal int NumberOfProcessedVertices;
@@ -182,6 +184,11 @@ namespace GraphView
                 UriFactory.CreateDocumentCollectionUri(connection.DocDB_DatabaseId, connection.DocDB_CollectionId), 
                 script, QueryOptions);
             return Result;
+        }
+
+        public virtual Dictionary<WColumnReferenceExpression, int> PrivateRecordLayout()
+        {
+            return null;
         }
     }
 }
