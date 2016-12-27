@@ -93,6 +93,8 @@
     <Compile Include="GremlinTranslationOps\filter\GremlinTailOp.cs" />
     <Compile Include="GremlinTranslationOps\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinKeyword.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinToSqlContext2.cs" />
+    <Compile Include="GremlinTranslationOps\GremlinVariable2.cs" />
     <Compile Include="GremlinTranslationOps\IGremlinByModulating.cs" />
     <Compile Include="GremlinTranslationOps\GremlinEOp.cs" />
     <Compile Include="GremlinTranslationOps\GremlinToSqlContext.cs" />
