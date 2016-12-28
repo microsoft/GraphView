@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinVariable2 PivotVariable { get; set; }
         public Dictionary<string, GremlinVariable2> TaggedVariables;
-        public List<GremlinVariable2> ProjectedVariables;
+        public List<GremlinScalarVariable> ProjectedVariables;
 
         public List<GremlinVariable2> VariableList { get; private set; }
 
@@ -19,7 +19,7 @@ namespace GraphView
         public GremlinToSqlContext2()
         {
             TaggedVariables = new Dictionary<string, GremlinVariable2>();
-            ProjectedVariables = new List<GremlinVariable2>();
+            ProjectedVariables = new List<GremlinScalarVariable>();
             VariableList = new List<GremlinVariable2>();
         }
 
@@ -31,13 +31,21 @@ namespace GraphView
         internal void By(GremlinToSqlContext2 byContext)
         {
             // To consider: By steps may be applied to variables in order
-            PivotVariable.By(this, byContext);
+            // PivotVariable.By(this, byContext);
+            if (VariableList.Count > 0)
+            {
+                VariableList[VariableList.Count - 1].By(this, byContext);
+            }
         }
 
         internal void By(string byName)
         {
             // To consider: BY steps may be applied to variables in order
-            PivotVariable.By(this, byName);
+            // PivotVariable.By(this, byName);
+            if (VariableList.Count > 0)
+            {
+                VariableList[VariableList.Count - 1].By(this, byName);
+            }
         }
 
         internal void Cap(params string[] keys)
@@ -99,18 +107,25 @@ namespace GraphView
         internal void Populate(string propertyName)
         {
             // For a query with a GROUP BY clause, the ouptut format is determined
-            // by the aggregation functions following GROUP BY and cannot be manipulated.
+            // by the aggregation functions following GROUP BY and cannot be changed.
             if (GroupVariable != null)
             {
                 return;
             }
 
             PivotVariable.Populate(propertyName);
+            ProjectedVariables.Add(new GremlinVariableProperty(PivotVariable, propertyName));
         }
 
         internal void Group()
         {
-            
+            GroupVariable = new GremlinGroupVariable();
+            VariableList.Add(GroupVariable);
+        }
+
+        internal void Both()
+        {
+
         }
     }
 
