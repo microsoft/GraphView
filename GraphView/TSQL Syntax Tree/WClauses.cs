@@ -492,32 +492,20 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder(64);
 
-            if (PathEdgeList[0].Item2.EdgeType == WEdgeType.BothEdge)
+            sb.Append(indent);
+            for (int i = 0; i < PathEdgeList.Count; i++)
             {
-                sb.AppendFormat("{0}{1}-[{2}]-",
-                    indent,
-                    PathEdgeList[0].Item1.BaseIdentifier.Value,
-                    PathEdgeList[0].Item2.ToString("")
-                );
-                for (int i = 1; i < PathEdgeList.Count; i++)
+                string arrowSink = PathEdgeList[i].Item2.EdgeType == WEdgeType.BothEdge ? "-" : "->";
+                string arrowSource = Tail != null ? "-" : "->";
+                sb.AppendFormat("{0}{1}[{2}]", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource,
+                    PathEdgeList[i].Item2.ToString());
+                if (Tail != null)
                 {
-                    sb.AppendFormat("{0}-[{1}]-", PathEdgeList[i].Item1.BaseIdentifier.Value,
-                        PathEdgeList[i].Item2.ToString(""));
+                    sb.Append(arrowSink);
                 }
-                sb.Append(Tail.BaseIdentifier.Value);
             }
-            else
+            if (Tail != null)
             {
-                sb.AppendFormat("{0}{1}-[{2}]->",
-                    indent,
-                    PathEdgeList[0].Item1.BaseIdentifier.Value,
-                    PathEdgeList[0].Item2.ToString("")
-                );
-                for (int i = 1; i < PathEdgeList.Count; i++)
-                {
-                    sb.AppendFormat("{0}-[{1}]->", PathEdgeList[i].Item1.BaseIdentifier.Value,
-                        PathEdgeList[i].Item2.ToString(""));
-                }
                 sb.Append(Tail.BaseIdentifier.Value);
             }
             return sb.ToString();

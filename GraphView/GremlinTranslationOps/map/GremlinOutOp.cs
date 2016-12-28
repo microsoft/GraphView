@@ -25,7 +25,7 @@ namespace GraphView.GremlinTranslationOps
 
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
 
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(WEdgeType.OutEdge);
+            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(inputContext.CurrVariable, WEdgeType.OutEdge);
             inputContext.AddNewVariable(newEdgeVar);
             inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
 

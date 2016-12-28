@@ -24,6 +24,10 @@ namespace GraphView.GremlinTranslationOps.branch
             inputContext.SaveCurrentState();
             GremlinUtil.InheritedVariableFromParent(LocalTraversal, inputContext);
             GremlinToSqlContext context = LocalTraversal.GetEndOp().GetContext();
+            foreach (var statement in context.Statements)
+            {
+                inputContext.Statements.Add(statement);
+            }
             WScalarSubquery ScalarSubquery = new WScalarSubquery()
             {
                 SubQueryExpr = context.ToSelectQueryBlock()
@@ -34,9 +38,11 @@ namespace GraphView.GremlinTranslationOps.branch
             {
                 PropertyKeys.Add("node");
                 PropertyKeys.Add(ScalarSubquery);
-                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
+                //inputContext.IsUsedInTVF[inputContext.CurrVariable.VariableName] = true;
+                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("local", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
+
                 newVariable.Type = context.CurrVariable.Type;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
@@ -46,8 +52,10 @@ namespace GraphView.GremlinTranslationOps.branch
             {
                 PropertyKeys.Add("edge");
                 PropertyKeys.Add(ScalarSubquery);
+                //inputContext.IsUsedInTVF[inputContext.CurrVariable.VariableName] = true;
+
                 var oldVariable = inputContext.GetSinkNode(inputContext.CurrVariable);
-                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
+                var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("local", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
                 newVariable.Type = context.CurrVariable.Type;

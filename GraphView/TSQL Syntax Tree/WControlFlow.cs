@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
@@ -28,16 +29,6 @@ namespace GraphView
         }
     }
 
-    //public partial class WOptional : WTableReference
-    //{
-    //    internal WSqlStatement SqlStatement;
-    //    internal Identifier Alias;
-    //    internal override string ToString(string indent)
-    //    {
-    //        return "WOptional() AS" + "[" + Alias.Value + "]";
-    //    }
-    //}
-
     public partial class WCoalesce : WSqlStatement
     {
         internal List<WSqlFragment> InputExpr { get; set; }
@@ -48,17 +39,6 @@ namespace GraphView
             foreach (var x in InputExpr)
                 ChooseString.Add(x.ToString());
             return string.Join("", ChooseString);
-        }
-    }
-
-    public partial class WCoalesce2 : WTableReference
-    {
-        internal Identifier Alias;
-        internal List<WSqlStatement> CoalesceQuery;
-
-        internal override string ToString(string indent)
-        {
-            return "WCoalesce2(" + CoalesceQuery.Count.ToString() + ") AS" + "[" + Alias.Value + "]";
         }
     }
 
@@ -82,17 +62,7 @@ namespace GraphView
         }
     }
 
-    public partial class WSideEffect : WTableReference
-    {
-        internal WSqlStatement SqlStatement;
-        internal Identifier Alias;
-        internal override string ToString(string indent)
-        {
-            return "WSideEffect() AS" + "[" + Alias.Value + "]";
-        }
-    }
-
-    public class WRepeatPath
+    public class WRepeatPath: WSqlFragment
     {
         public WSelectQueryBlock SubQueryExpr;
         public bool IsEmitBefore;
@@ -101,12 +71,37 @@ namespace GraphView
         public bool IsUntilBefore;
         public bool IsUntilAfter;
         public bool IsTimes;
-        public WSelectQueryBlock ConditionSubQueryBlock;
+        public WSqlFragment ConditionSubQueryBlock;
         public WBooleanExpression ConditionBooleanExpr;
         public long Times;
+        public Dictionary<string, string> Parameters;
 
         public WRepeatPath()
         {
         }
+
+        internal override string ToString(string indent)
+        {
+            var sb = new StringBuilder(32);
+
+            sb.Append("( "+ SubQueryExpr.ToString() + " )");
+            sb.Append("\r\n");
+            sb.Append("Until ( " + ConditionSubQueryBlock.ToString() + " )");
+            return sb.ToString();
+        }
+    }
+
+    public class WRepeathNodePath : WRepeatPath
+    {
+        public WRepeathNodePath()
+        {
+        }
+    }
+
+    public class WRepeatEdgePath : WRepeatPath
+    {
+        public WEdgeColumnReferenceExpression EdgeAlias;
+
+        public WRepeatEdgePath() { }
     }
 }

@@ -49,7 +49,8 @@ namespace GraphView
         public GremlinToSqlContext InheritedContext;
         public List<GremlinVariable> InheritedVariableList;
         public Dictionary<string, List<GremlinVariable>> InheritedAliasToGremlinVariableList;
-        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> InheritedPathList;
+        public List<GremlinMatchPath> InheritedPathList;
+        //public Dictionary<string, bool> InheritedIsUsedInTVF;
 
         public void SetContext(GremlinToSqlContext context)
         {
@@ -58,7 +59,7 @@ namespace GraphView
             InheritedProjection = new List<Projection>();
             InheritedVariableList = new List<GremlinVariable>();
             InheritedAliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
-            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            InheritedPathList = new List<GremlinMatchPath>();
         }
         public override GremlinToSqlContext GetContext()
         {
@@ -73,6 +74,7 @@ namespace GraphView
                 newContext.SetCurrVariable(InheritedVariable);
                 newContext.FromOuter = true;
                 newContext.InheritedPathList = InheritedPathList;
+                //newContext.IsUsedInTVF = InheritedIsUsedInTVF;
             } 
             return newContext;
         }

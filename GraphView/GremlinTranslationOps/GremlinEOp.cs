@@ -12,7 +12,7 @@ namespace GraphView.GremlinTranslationOps
         {
             GremlinToSqlContext inputContext = GetInputContext();
             GremlinVertexVariable sourceVertex = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable();
+            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(sourceVertex, WEdgeType.OutEdge);
             GremlinVertexVariable sinkVertex = new GremlinVertexVariable();
             inputContext.AddNewVariable(sourceVertex);
             inputContext.AddNewVariable(newEdgeVar);

@@ -21,7 +21,7 @@ namespace GraphView.GremlinTranslationOps.map
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
             WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
             var newVariableReference = new GremlinVariableReference(statement);
-            newVariableReference.Type = VariableType.NODE;
+            newVariableReference.Type = VariableType.Vertex;
 
             GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, newVariableReference);
             inputContext.AddNewVariable(newAddEVar);
@@ -68,7 +68,7 @@ namespace GraphView.GremlinTranslationOps.map
                 var context = FromVertexTraversal.GetEndOp().GetContext();
                 WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
                 fromVariable = new GremlinVariableReference(statement);
-                fromVariable.Type = VariableType.NODE;
+                fromVariable.Type = VariableType.Vertex;
                 inputContext.AddNewVariable(fromVariable);
                 inputContext.ResetSavedState();
 
@@ -128,7 +128,7 @@ namespace GraphView.GremlinTranslationOps.map
                 var context = ToVertexTraversal.GetEndOp().GetContext();
                 WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
                 toVariable = new GremlinVariableReference(statement);
-                toVariable.Type = VariableType.NODE;
+                toVariable.Type = VariableType.Vertex;
                 inputContext.AddNewVariable(toVariable);
                 inputContext.ResetSavedState();
 

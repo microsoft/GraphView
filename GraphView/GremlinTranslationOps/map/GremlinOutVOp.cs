@@ -24,6 +24,12 @@ namespace GraphView.GremlinTranslationOps.map
             else
             {
                 outVariable = inputContext.GetSinkNode(inputContext.CurrVariable);
+                if (outVariable == null)
+                {
+                    outVariable = new GremlinVertexVariable();
+                    inputContext.AddNewVariable(outVariable);
+                    inputContext.SetSourceNode(inputContext.CurrVariable, outVariable);
+                }
             }
 
             inputContext.SetCurrVariable(outVariable);

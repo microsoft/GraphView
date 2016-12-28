@@ -20,13 +20,16 @@ namespace GraphView.GremlinTranslationOps
             //CrossVariableConditions = new List<WBooleanExpression>();
             Predicates = null;
             ProjectionList = new List<Projection>();
-            NewPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
-            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            NewPathList = new List<GremlinMatchPath>();
+            InheritedPathList = new List<GremlinMatchPath>();
             WithPaths = new Dictionary<string, WRepeatPath> ();
             AliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
             //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
             //OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>();
             Statements = new List<WSqlStatement>();
+
+            //IsUsedInTVF = new Dictionary<string, bool>();
+            RepeatOuterAliasCnt = new Dictionary<string, int>();
         }
         /// <summary>
         /// A list of Gremlin variables. The variables are expected to 
@@ -35,6 +38,8 @@ namespace GraphView.GremlinTranslationOps
         //public List<GremlinVariable> RemainingVariableList { get; set; }
         public List<GremlinVariable> InheritedVariableList { get; set; }
         public List<GremlinVariable> NewVariableList;
+        //public Dictionary<string, bool> IsUsedInTVF;
+        public Dictionary<string, int> RepeatOuterAliasCnt;
         /// <summary>
         /// A collection of variables and their predicates
         /// </summary>
@@ -64,8 +69,8 @@ namespace GraphView.GremlinTranslationOps
         /// </summary> 
         public List<Projection> ProjectionList { get; set; }
 
-        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> NewPathList { get; set; }
-        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> InheritedPathList { get; set; }
+        public List<GremlinMatchPath> NewPathList { get; set; }
+        public List<GremlinMatchPath> InheritedPathList { get; set; }
         public Dictionary<string, WRepeatPath> WithPaths;
         /// <summary>
         /// The Gremlin variable and its property by which the query groups
@@ -87,17 +92,6 @@ namespace GraphView.GremlinTranslationOps
             }
         }
 
-        //public void AddNewVariable(GremlinVariable newVariable, List<string> labels)
-        //{
-        //    VariableList.Add(newVariable);
-        //    NewVariableList.Add(newVariable);
-        //    if (labels.Count == 0) return;
-        //    foreach (var label in labels)
-        //    {
-        //        AddAliasToGremlinVariable(label, newVariable);
-        //    }
-        //}
-
         public void AddNewVariable(GremlinVariable newVariable)
         {
             NewVariableList.Add(newVariable);
@@ -113,7 +107,7 @@ namespace GraphView.GremlinTranslationOps
                 {
                     WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
                     {
-                        FirstTableRef = GremlinUtil.GetNamedTableReference(oldVariable),
+                        FirstTableRef = GremlinUtil.GetTableReferenceFromVariable(oldVariable),
                         SecondTableRef = secondTableRef,
                         UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
                     };
@@ -131,21 +125,14 @@ namespace GraphView.GremlinTranslationOps
                 {
                     if (InheritedVariableList[i] is GremlinVertexVariable)
                     {
-                        GremlinVertexVariable vertexVariable = new GremlinVertexVariable();
-
                         WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
                         {
-                            FirstTableRef = GremlinUtil.GetNamedTableReference(vertexVariable),
+                            FirstTableRef = null,
                             SecondTableRef = secondTableRef,
                             UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
                         };
                         GremlinTVFVariable newTVFVariable = new GremlinTVFVariable(tableReference);
-                        WColumnReferenceExpression key =
-                            GremlinUtil.GetColumnReferenceExpression(oldVariable.VariableName, "_value");
-                        WColumnReferenceExpression value =
-                            GremlinUtil.GetColumnReferenceExpression(vertexVariable.VariableName, "_value");
-                        WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, value);
-                        AddPredicate(booleanExpr);
+
                         AddNewVariable(newTVFVariable);
                         return newTVFVariable;
                     }
@@ -196,28 +183,54 @@ namespace GraphView.GremlinTranslationOps
         {
             ProjectionList.Clear();
             if (newGremlinVar is GremlinVertexVariable ||
-                newGremlinVar is GremlinEdgeVariable ||
                 newGremlinVar is GremlinAddEVariable ||
-                newGremlinVar is GremlinAddVVariable)
+                newGremlinVar is GremlinAddVVariable ||
+                newGremlinVar is GremlinPathEdgeVariable ||
+                newGremlinVar is GremlinPathNodeVariable)
             {
-                ProjectionList.Add(new ColumnProjection(newGremlinVar, "id"));
+                ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "id"));
+            }
+            else if (newGremlinVar is GremlinEdgeVariable)
+            {
+                var newEdgeGremlinVar = newGremlinVar as GremlinEdgeVariable;
+                //ProjectionList.Add(new ColumnProjection(newEdgeGremlinVar.SourceVariable.VariableName, "id", "source_id"));
+                ProjectionList.Add(new ColumnProjection(newEdgeGremlinVar.VariableName, "id"));
+                //ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "*", "_edge")); //TODO
             }
             else if (newGremlinVar is GremlinTVFVariable || newGremlinVar is GremlinDerivedVariable)
             {
-                ProjectionList.Add(new ColumnProjection(newGremlinVar, "_value"));
+                if (newGremlinVar.Type == VariableType.Value)
+                {
+                    ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "_value"));
+                }
+                else if (newGremlinVar.Type == VariableType.Vertex)
+                {
+                    ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "id"));
+                }
+                else if (newGremlinVar.Type == VariableType.Edge)
+                {
+                    //ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "source_id"));
+                    ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "id"));
+                    //ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "_edge")); //TODO
+                }
             }
             else if (newGremlinVar is GremlinVariableReference)
             {
-                if ((newGremlinVar as GremlinVariableReference).Type == VariableType.NODE
-                    || (newGremlinVar as GremlinVariableReference).Type == VariableType.EGDE)
+                if ((newGremlinVar as GremlinVariableReference).Type == VariableType.Vertex
+                    || (newGremlinVar as GremlinVariableReference).Type == VariableType.Edge)
                 {
-                    ProjectionList.Add(new ColumnProjection(newGremlinVar, "id"));
+                    ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "id"));
                 }
-                else if ((newGremlinVar as GremlinVariableReference).Type == VariableType.VALUE
-                    || (newGremlinVar as GremlinVariableReference).Type == VariableType.PROPERTIES)
+                else if ((newGremlinVar as GremlinVariableReference).Type == VariableType.Value
+                    || (newGremlinVar as GremlinVariableReference).Type == VariableType.Properties)
                 {
-                    ProjectionList.Add(new ColumnProjection(newGremlinVar, "_value"));
+                    ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "_value"));
                 }
+            }
+            else if (newGremlinVar is GremlinScalarVariable)
+            {
+                var tempVar = newGremlinVar as GremlinScalarVariable;
+                ProjectionList.Add(new ColumnProjection(tempVar.FromVariable.VariableName, tempVar.Key));
             }
             else
             {
@@ -500,6 +513,7 @@ namespace GraphView.GremlinTranslationOps
 
         public WMatchClause GetMatchClause()
         {
+            if (NewPathList.Count == 0) return null;
             var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
             foreach (var path in NewPathList)
             {
@@ -520,18 +534,13 @@ namespace GraphView.GremlinTranslationOps
 
         public WWhereClause GetWhereClause()
         {
+            if (Predicates == null) return null;
             return new WWhereClause() { SearchCondition = Predicates };
         }
 
         public WOrderByClause GetOrderByClause()
         {
-            if (OrderByVariable == null)
-            {
-                return new WOrderByClause()
-                {
-                    OrderByElements = new List<WExpressionWithSortOrder>()
-                };
-            }
+            if (OrderByVariable == null) return null;
 
             OrderByRecord orderByRecord = OrderByVariable.Item2;
             WOrderByClause newOrderByClause = new WOrderByClause()
@@ -543,13 +552,8 @@ namespace GraphView.GremlinTranslationOps
 
         public WGroupByClause GetGroupByClause()
         {
-            if (GroupByVariable == null)
-            {
-                return new WGroupByClause()
-                {
-                    GroupingSpecifications = new List<WGroupingSpecification>()
-                };
-            }
+            if (GroupByVariable == null) return null;
+
             GroupByRecord groupByRecord = GroupByVariable.Item2;
             WGroupByClause newGroupByClause = new WGroupByClause()
             {
@@ -558,7 +562,6 @@ namespace GraphView.GremlinTranslationOps
 
             return newGroupByClause;
         }
-
 
         public WDeleteSpecification ToSqlDelete()
         {
@@ -605,11 +608,9 @@ namespace GraphView.GremlinTranslationOps
 
         public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)
         {
-            //if (source.GetType() == typeof(GremlinVertexVariable) )
-            if (source.Type == VariableType.NODE)
+            if (source.Type == VariableType.Vertex)
             {
-                NewPathList.Add(new Tuple<GremlinVariable, GremlinVariable, GremlinVariable>
-                    (source, edge, target));
+                NewPathList.Add(new GremlinMatchPath(source, edge, target));
             }
             else
             {
@@ -619,26 +620,70 @@ namespace GraphView.GremlinTranslationOps
 
         public GremlinVariable GetSourceNode(GremlinVariable edge)
         {
+            if (edge.Type != VariableType.Edge) throw new Exception("Paremeter should be a edge type");
             foreach (var path in NewPathList)
             {
-                if (path.Item2.VariableName == edge.VariableName) return path.Item1;
+                if (path.EdgeVariable.VariableName == edge.VariableName) return path.SourceVariable;
             }
             foreach (var path in InheritedPathList)
             {
-                if (path.Item2.VariableName == edge.VariableName) return path.Item1;
+                if (path.EdgeVariable.VariableName == edge.VariableName) return path.SourceVariable;
             }
             throw new NotImplementedException();
         }
 
         public GremlinVariable GetSinkNode(GremlinVariable edge)
         {
+            if (edge.Type != VariableType.Edge) throw new Exception("Paremeter should be a edge type");
             foreach (var path in NewPathList)
             {
-                if (path.Item2.VariableName == edge.VariableName) return path.Item3;
+                if (path.EdgeVariable.VariableName == edge.VariableName) return path.SinkVariable;
             }
             foreach (var path in InheritedPathList)
             {
-                if (path.Item2.VariableName == edge.VariableName) return path.Item3;
+                if (path.EdgeVariable.VariableName == edge.VariableName) return path.SinkVariable;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void SetSinkNode(GremlinVariable edge, GremlinVariable sinkNode)
+        {
+            foreach (var path in NewPathList)
+            {
+                if (path.EdgeVariable.VariableName == edge.VariableName)
+                {
+                    path.SinkVariable = sinkNode;
+                    return;
+                }
+            }
+            foreach (var path in InheritedPathList)
+            {
+                if (path.EdgeVariable.VariableName == edge.VariableName)
+                {
+                    path.SinkVariable = sinkNode;
+                    return;
+                }
+            }
+            throw new NotImplementedException();
+        }
+
+        public void SetSourceNode(GremlinVariable edge, GremlinVariable sourceNode)
+        {
+            foreach (var path in NewPathList)
+            {
+                if (path.EdgeVariable.VariableName == edge.VariableName)
+                {
+                    path.SourceVariable = sourceNode;
+                    return;
+                }
+            }
+            foreach (var path in InheritedPathList)
+            {
+                if (path.EdgeVariable.VariableName == edge.VariableName)
+                {
+                    path.SourceVariable = sourceNode;
+                    return;
+                }
             }
             throw new NotImplementedException();
         }
@@ -674,8 +719,8 @@ namespace GraphView.GremlinTranslationOps
             CurrVariable = null;
             InheritedVariableList = new List<GremlinVariable>();
             NewVariableList = new List<GremlinVariable>();
-            NewPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
-            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            NewPathList = new List<GremlinMatchPath>();
+            InheritedPathList = new List<GremlinMatchPath>();
             ProjectionList = new List<Projection>();
             GroupByVariable = null;
             OrderByVariable = null;
@@ -686,8 +731,8 @@ namespace GraphView.GremlinTranslationOps
         private Stack<List<GremlinVariable>> _storedInheritedVariableListStack = new Stack<List<GremlinVariable>>();
         private Stack<List<GremlinVariable>> _storedNewVariableListStack = new Stack<List<GremlinVariable>>();
         private Stack<List<Projection>> _storedCurrProjectionStack = new Stack<List<Projection>>();
-        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedNewPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
-        private Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>> _storedInheritedPathListStack = new Stack<List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>>();
+        private Stack<List<GremlinMatchPath>> _storedNewPathListStack = new Stack<List<GremlinMatchPath>>();
+        private Stack<List<GremlinMatchPath>> _storedInheritedPathListStack = new Stack<List<GremlinMatchPath>>();
         private Stack<WBooleanExpression> _storedPredicatedStack = new Stack<WBooleanExpression>();
         private Stack<Tuple<GremlinVariable, GroupByRecord>> _storedGroupByVariableStack = new Stack<Tuple<GremlinVariable, GroupByRecord>>();
         private Stack<Tuple<GremlinVariable, OrderByRecord>> _storedOrderByVariableStack = new Stack<Tuple<GremlinVariable, OrderByRecord>>();

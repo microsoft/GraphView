@@ -465,17 +465,24 @@ namespace GraphView
         public UnqualifiedJoinType UnqualifiedJoinType { get; set; }
         internal override bool OneLine()
         {
-            return FirstTableRef.OneLine() &&
-                   SecondTableRef.OneLine();
+            //return FirstTableRef.OneLine() &&
+            //       SecondTableRef.OneLine();
+            return true;
         }
 
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder(32);
 
-            sb.Append(FirstTableRef.ToString(indent)+"\n");
-
-            sb.AppendFormat(" {1}\t{0} ", TsqlFragmentToString.JoinType(UnqualifiedJoinType),indent);
+            if (FirstTableRef != null)
+            {
+                sb.Append(FirstTableRef.ToString(indent) + "\n");
+                sb.AppendFormat("{1}\t{0}", TsqlFragmentToString.JoinType(UnqualifiedJoinType), indent);
+            }
+            else
+            {
+                sb.AppendFormat("{0}", TsqlFragmentToString.JoinType(UnqualifiedJoinType));
+            }
 
             //if (SecondTableRef.OneLine())
             //{
@@ -484,7 +491,7 @@ namespace GraphView
             //else
             {
                 //sb.Append("\r\n");
-                sb.Append(SecondTableRef.ToString(""));
+                sb.Append(SecondTableRef.ToString(indent));
             }
 
             return sb.ToString();

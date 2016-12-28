@@ -22,16 +22,16 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            WCoalesce2 coalesceExpr = new WCoalesce2() { CoalesceQuery = new List<WSqlStatement>()};
+            //WCoalesce2 coalesceExpr = new WCoalesce2() { CoalesceQuery = new List<WSqlStatement>()};
             
-            foreach (var coalesceTraversal in CoalesceTraversals)
-            {
-                GremlinUtil.InheritedVariableFromParent(coalesceTraversal, inputContext);
-                coalesceExpr.CoalesceQuery.Add(coalesceTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
-            }
+            //foreach (var coalesceTraversal in CoalesceTraversals)
+            //{
+            //    GremlinUtil.InheritedVariableFromParent(coalesceTraversal, inputContext);
+            //    coalesceExpr.CoalesceQuery.Add(coalesceTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
+            //}
 
-            GremlinCoalesceVariable newVariable = new GremlinCoalesceVariable(coalesceExpr);
-            inputContext.AddNewVariable(newVariable);
+            //GremlinCoalesceVariable newVariable = new GremlinCoalesceVariable(coalesceExpr);
+            //inputContext.AddNewVariable(newVariable);
 
             return inputContext;
         }

@@ -229,6 +229,11 @@ namespace GraphView
         {
             var sb = new StringBuilder(1024);
 
+            if (WithPathClause2 != null)
+            {
+                sb.Append(WithPathClause2.ToString(indent));
+            }
+
             sb.AppendFormat("{0}SELECT ", indent);
 
             if (TopRowFilter != null)
@@ -289,7 +294,7 @@ namespace GraphView
                 sb.Append(MatchClause.ToString(indent));
             }
 
-            if (WhereClause.SearchCondition != null || !string.IsNullOrEmpty(WhereClause.GhostString))
+            if (WhereClause != null && (WhereClause.SearchCondition != null || !string.IsNullOrEmpty(WhereClause.GhostString)))
             {
                 sb.Append("\r\n");
                 sb.Append(WhereClause.ToString(indent));
@@ -435,11 +440,7 @@ namespace GraphView
 
     public partial class WWithPathClause2 : WSqlFragment
     {
-        // Definition of a path: 
-        // item1 is the binding name
-        // item2 is the path description
-        // item3 is the length limitation of it (-1 for no limitation)
-        //internal List<Tuple<string, WSelectQueryBlock, int>> Paths;
+
         internal Dictionary<string, GraphViewExecutionOperator> PathOperators;
         internal Dictionary<string, WRepeatPath> Paths;
 
@@ -449,12 +450,25 @@ namespace GraphView
             PathOperators = new Dictionary<string, GraphViewExecutionOperator>();
         }
 
-        //public WWithPathClause2(Tuple<string, WRepeatPath> path)
-        //{
-        //    PathOperators = new List<Tuple<string, GraphViewExecutionOperator>>();
-        //    if (Paths == null) Paths = new Dictionary<string, WRepeatPath>();
-        //    Paths.Add(path);
-        //}
+        internal override string ToString(string indent)
+        {
+            var sb = new StringBuilder(32);
+
+            if (Paths.Count > 0)
+            {
+                sb.AppendFormat("{0}With ", indent);
+                sb.Append(Paths.ElementAt(0).Key + " AS " + "\r\n" + Paths.ElementAt(0).Value.ToString());
+                for (var i = 1; i < Paths.Count; i++)
+                {
+                    sb.Append("\r\n");
+                    sb.Append(", " + Paths.ElementAt(i).Key + " AS " + "\r\n" + Paths.ElementAt(i).Value.ToString());
+                }
+
+                sb.Append("\r\n");
+            }
+            return sb.ToString();
+        }
+
 
     }
 

@@ -14,6 +14,7 @@ namespace GraphView.GremlinTranslationOps
         public object High;
         public List<object> Values;
         public string VariableName;
+        public string CompareString;
         public PredicateType PredicateType;
 
         public Predicate(PredicateType type, object value, bool isAliasValue = false)

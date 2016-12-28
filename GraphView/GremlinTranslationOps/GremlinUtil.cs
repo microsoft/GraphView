@@ -14,7 +14,7 @@ namespace GraphView.GremlinTranslationOps
         {
             return new WColumnReferenceExpression()
             {
-                MultiPartIdentifier = ConvertListToMultiPartIdentifier(parts)
+                MultiPartIdentifier = GetMultiPartIdentifier(parts)
             };
         }
 
@@ -28,24 +28,18 @@ namespace GraphView.GremlinTranslationOps
 
         internal static WMultiPartIdentifier GetMultiPartIdentifier(params string[] parts)
         {
-            return ConvertListToMultiPartIdentifier(parts);
+            var multiIdentifierList = new List<Identifier>();
+            foreach (var part in parts)
+            {
+                multiIdentifierList.Add(new Identifier() { Value = part });
+            }
+            return new WMultiPartIdentifier() { Identifiers = multiIdentifierList };
         }
 
         internal static Identifier GetIdentifier(string value)
         {
             return new Identifier() {Value = value};
         }
-
-        internal static WMultiPartIdentifier ConvertListToMultiPartIdentifier(string[] parts)
-        {
-            var multiIdentifierList = new List<Identifier>();
-            foreach (var part in parts)
-            {
-                multiIdentifierList.Add(new Identifier() {Value = part});
-            }
-            return new WMultiPartIdentifier() {Identifiers = multiIdentifierList};
-        }
-
         internal static void CheckIsGremlinVertexVariable(GremlinVariable gremlinVar)
         {
             if (gremlinVar.GetType() != typeof(GremlinVertexVariable))
@@ -143,15 +137,15 @@ namespace GraphView.GremlinTranslationOps
                         return ConcatBooleanExpressionListWithAnd(booleanExprList);
                     case PredicateType.inside:
                         //TODO
-                        return null;
+                        throw new NotImplementedException();
                     case PredicateType.outside:
                         //TODO
-                        return null;
+                        throw new NotImplementedException();
                     case PredicateType.between:
                         //TODO
-                        return null;
+                        throw new NotImplementedException();
                     default:
-                        return null;
+                        throw new NotImplementedException();
                 }
             }
             else
@@ -159,7 +153,7 @@ namespace GraphView.GremlinTranslationOps
                 WScalarExpression valueExpression = null;
                 if (predicate.IsAliasValue)
                 {
-                    valueExpression = GetColumnReferenceExpression(predicate.VariableName, "id");
+                    valueExpression = GetColumnReferenceExpression(predicate.VariableName, predicate.CompareString);
                 }
                 else
                 {
@@ -324,48 +318,58 @@ namespace GraphView.GremlinTranslationOps
             };
         }
 
-        internal static WMatchPath GetMatchPath(Tuple<GremlinVariable, GremlinVariable, GremlinVariable> path)
+        internal static WMatchPath GetMatchPath(GremlinMatchPath path)
         {
             var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
             pathEdges.Add(GetPathExpression(path));
-            var tailNode = GetSchemaObjectName(path.Item3.VariableName);
+
+            WSchemaObjectName tailNode = null;
+            if (path.SinkVariable != null)
+            {
+               tailNode = GetSchemaObjectName(path.SinkVariable.VariableName);
+            }
 
             return new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
         }
 
-        internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(
-            Tuple<GremlinVariable, GremlinVariable, GremlinVariable> path)
+        internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(GremlinMatchPath path)
         {
-            WEdgeType edgeType = GetEdgeType(path.Item2);
-            String value = edgeType == WEdgeType.Path ? "Path" : "Edge";
-            return new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
-                GetSchemaObjectName(path.Item1.VariableName),
+            WEdgeType edgeType = GetEdgeType(path.EdgeVariable);
+            String value = "Edge";
+            if (edgeType == WEdgeType.PathE || edgeType == WEdgeType.PathN)
+            {
+                value = path.EdgeVariable.VariableName;
+            }
+
+            WSchemaObjectName sourceName = null;
+            if (path.SourceVariable != null)
+            {
+                sourceName = GetSchemaObjectName(path.SourceVariable.VariableName);
+            }
+            var pathExpr = new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
+                sourceName,
                 new WEdgeColumnReferenceExpression()
                 {
-                    MultiPartIdentifier = new WMultiPartIdentifier()
-                    {
-                        Identifiers = new List<Identifier>() {new Identifier() {Value = value } }
-                    },
-                    Alias = path.Item2.VariableName,
+                    MultiPartIdentifier = GetMultiPartIdentifier(value),
+                    Alias = path.EdgeVariable.VariableName,
                     MinLength = 1,
                     MaxLength = 1,
                     EdgeType =  edgeType
                 }
             );
+            if (edgeType == WEdgeType.PathE)
+            {
+                pathExpr.Item2.FirstEdgeAlias = (path.EdgeVariable as GremlinPathEdgeVariable).EdgeVariable.VariableName;
+            }
+            return pathExpr;
         }
 
         internal static WEdgeType GetEdgeType(GremlinVariable edgeVar)
         {
             if (edgeVar is GremlinAddEVariable) return WEdgeType.OutEdge;
-            if (edgeVar is GremlinPathVariable)
-            {
-                return (edgeVar as GremlinPathVariable).EdgeType;
-            }
-            if (edgeVar is GremlinEdgeVariable)
-            {
-                return (edgeVar as GremlinEdgeVariable).EdgeType;
-            }
-
+            if (edgeVar is GremlinPathEdgeVariable) return WEdgeType.PathE;
+            if (edgeVar is GremlinPathNodeVariable) return WEdgeType.PathN;
+            if (edgeVar is GremlinEdgeVariable) return (edgeVar as GremlinEdgeVariable).EdgeType;
             throw new NotImplementedException();
         }
 
@@ -385,8 +389,8 @@ namespace GraphView.GremlinTranslationOps
                 GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
                 rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
                 rootAsContextOp.InheritedProjection = inputContext.ProjectionList.Copy();
-                rootAsContextOp.InheritedAliasToGremlinVariableList = inputContext.AliasToGremlinVariableList.Copy();
-
+                rootAsContextOp.InheritedAliasToGremlinVariableList = inputContext.AliasToGremlinVariableList;
+                //rootAsContextOp.InheritedIsUsedInTVF = inputContext.IsUsedInTVF;
                 rootAsContextOp.InheritedVariableList = new List<GremlinVariable>();
                 foreach (var variable in inputContext.InheritedVariableList)
                 {
@@ -397,7 +401,7 @@ namespace GraphView.GremlinTranslationOps
                     rootAsContextOp.InheritedVariableList.Add(variable);
                 }
                 
-                rootAsContextOp.InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+                rootAsContextOp.InheritedPathList = new List<GremlinMatchPath>();
                 foreach (var path in inputContext.InheritedPathList)
                 {
                     rootAsContextOp.InheritedPathList.Add(path);
@@ -537,10 +541,6 @@ namespace GraphView.GremlinTranslationOps
             {
                 return (currVar as GremlinChooseVariable).TableReference;
             }
-            else if (currVar is GremlinCoalesceVariable)
-            {
-                return (currVar as GremlinCoalesceVariable).TableReference;
-            }
             else if (currVar is GremlinDerivedVariable)
             {
                 WTableReference temp = new WQueryDerivedTable()
@@ -558,25 +558,26 @@ namespace GraphView.GremlinTranslationOps
             {
                 //TODO
                 var variableReference = currVar as GremlinVariableReference;
-                if (variableReference.Type == VariableType.EGDE)
+                if (variableReference.Type == VariableType.Edge)
                 {
                     throw new NotImplementedException();
                 }
-                else if (variableReference.Type == VariableType.NODE)
+                else if (variableReference.Type == VariableType.Vertex)
                 {
                     return GetVariableTableReference(variableReference);
                 }
-                else if (variableReference.Type == VariableType.PROPERTIES)
+                else if (variableReference.Type == VariableType.Properties)
                 {
                     throw new NotImplementedException();
                 }
-                else if (variableReference.Type == VariableType.VALUE)
+                else if (variableReference.Type == VariableType.Value)
                 {
                     throw new NotImplementedException();
                 }
                 else
                 {
-                    throw new NotImplementedException();
+                    //Union
+                    return GetVariableTableReference(variableReference);
                 }
                 throw new NotImplementedException();
             }
@@ -602,6 +603,27 @@ namespace GraphView.GremlinTranslationOps
             //return GremlinUtil.GetVariableTableReference(currVar.SetVariableName);
             //}
             return null;
+        }
+
+
+        internal static string GetCompareString(GremlinVariable variable)
+        {
+            if (variable.Type == VariableType.Edge || variable.Type == VariableType.Vertex)
+            {
+                return "id";
+            }
+            else if (variable is GremlinScalarVariable)
+            {
+                return (variable as GremlinScalarVariable).Key;
+            }
+            else if (variable.Type == VariableType.Value)
+            {
+                return "_value";
+            }
+            else
+            {
+                throw new NotImplementedException();
+            } 
         }
     }
 }

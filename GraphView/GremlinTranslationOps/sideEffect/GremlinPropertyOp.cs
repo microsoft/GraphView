@@ -55,7 +55,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 
                 if (inputContext.CurrVariable is GremlinEdgeVariable ||
                     (inputContext.CurrVariable is GremlinVariableReference &&
-                     (inputContext.CurrVariable as GremlinVariableReference).Type == VariableType.EGDE))
+                     (inputContext.CurrVariable as GremlinVariableReference).Type == VariableType.Edge))
                 {
                     throw new NotImplementedException();
                     //tableName = "Edge";
