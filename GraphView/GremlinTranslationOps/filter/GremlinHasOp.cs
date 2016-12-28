@@ -9,13 +9,13 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinHasOp: GremlinTranslationOperator
     {
-        public string Key;
-        public object Value;
-        public List<object> Values;
-        public string Label;
-        public Predicate Predicate;
-        public GraphTraversal2 Traversal;
-        public HasOpType OpType;
+        public string Key { get; set; }
+        public object Value { get; set; }
+        public List<object> Values { get; set; }
+        public string Label { get; set; }
+        public Predicate Predicate { get; set; }
+        public GraphTraversal2 Traversal { get; set; }
+        public HasOpType OpType { get; set; }
 
         internal enum HasOpType
         {
@@ -31,11 +31,13 @@ namespace GraphView.GremlinTranslationOps.filter
             HasLabel,
             HasValue
         }
+
         public GremlinHasOp(string key)
         {
             Key = key;
             OpType = HasOpType.HasKey;
         }
+
         public GremlinHasOp(string key, object value)
         {
             Key = key;

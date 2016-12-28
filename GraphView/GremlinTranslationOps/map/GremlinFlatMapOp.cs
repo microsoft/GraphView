@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinFlatMapOp: GremlinTranslationOperator
     {
-        internal GraphTraversal2 FlatMapTraversal;
+        internal GraphTraversal2 FlatMapTraversal { get; set; }
 
         public GremlinFlatMapOp(GraphTraversal2 flatMapTraversal)
         {

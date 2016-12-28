@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinPropertyOp: GremlinTranslationOperator
     {
-        public Dictionary<string, object> Properties;
+        public Dictionary<string, object> Properties { get; set; }
 
         public GremlinPropertyOp(params object[] properties)
         {
@@ -55,7 +55,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 
                 if (inputContext.CurrVariable is GremlinEdgeVariable ||
                     (inputContext.CurrVariable is GremlinVariableReference &&
-                     (inputContext.CurrVariable as GremlinVariableReference).Type == VariableType.EGDE))
+                     (inputContext.CurrVariable as GremlinVariableReference).GetVariableType() == GremlinVariableType.Edge))
                 {
                     throw new NotImplementedException();
                     //tableName = "Edge";

@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinAddEOp: GremlinTranslationOperator
     {
-        internal string EdgeLabel;
+        internal string EdgeLabel { get; set; }
 
         public GremlinAddEOp(string label)
         {
@@ -21,7 +21,6 @@ namespace GraphView.GremlinTranslationOps.map
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
             WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
             var newVariableReference = new GremlinVariableReference(statement);
-            newVariableReference.Type = VariableType.NODE;
 
             GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, newVariableReference);
             inputContext.AddNewVariable(newAddEVar);
@@ -54,7 +53,6 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.CheckIsGremlinAddEVariable(inputContext.CurrVariable);
             GremlinVariable fromVariable = null;
 
             if (Type == FromType.FromStepLabel) {
@@ -68,7 +66,6 @@ namespace GraphView.GremlinTranslationOps.map
                 var context = FromVertexTraversal.GetEndOp().GetContext();
                 WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
                 fromVariable = new GremlinVariableReference(statement);
-                fromVariable.Type = VariableType.NODE;
                 inputContext.AddNewVariable(fromVariable);
                 inputContext.ResetSavedState();
 
@@ -128,7 +125,6 @@ namespace GraphView.GremlinTranslationOps.map
                 var context = ToVertexTraversal.GetEndOp().GetContext();
                 WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
                 toVariable = new GremlinVariableReference(statement);
-                toVariable.Type = VariableType.NODE;
                 inputContext.AddNewVariable(toVariable);
                 inputContext.ResetSavedState();
 

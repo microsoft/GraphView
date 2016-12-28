@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinSideEffectOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 SideEffectTraversal;
+        public GraphTraversal2 SideEffectTraversal { get; set; }
 
         public GremlinSideEffectOp(GraphTraversal2 sideEffectTraversal)
         {

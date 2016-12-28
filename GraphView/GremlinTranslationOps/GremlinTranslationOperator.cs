@@ -7,12 +7,14 @@ namespace GraphView
 {
     internal abstract class GremlinTranslationOperator
     {
-        public List<string> Labels = new List<string>();
-        public GremlinTranslationOperator InputOperator;
+        public List<string> Labels { get; set; }
+        public GremlinTranslationOperator InputOperator { get; set; }
+
         public virtual GremlinToSqlContext GetContext()
         {
             return null;
         }
+
         public GremlinToSqlContext GetInputContext()
         {
             if (InputOperator != null) {
@@ -26,6 +28,7 @@ namespace GraphView
                 return new GremlinToSqlContext();
             }
         }
+
         public virtual WSqlScript ToSqlScript() {
             return GetContext().ToSqlScript();
         }
@@ -44,12 +47,12 @@ namespace GraphView
     internal class GremlinParentContextOp : GremlinTranslationOperator
     {
         public GremlinVariable InheritedVariable { get; set; }
-        public List<Projection> InheritedProjection;
-        public bool IsInheritedEntireContext = false;
-        public GremlinToSqlContext InheritedContext;
-        public List<GremlinVariable> InheritedVariableList;
-        public Dictionary<string, List<GremlinVariable>> InheritedAliasToGremlinVariableList;
-        public List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>> InheritedPathList;
+        public List<Projection> InheritedProjection { get; set; }
+        public bool IsInheritedEntireContext { get; set; }
+        public GremlinToSqlContext InheritedContext { get; set; }
+        public List<GremlinVariable> InheritedVariableList { get; set; }
+        public Dictionary<string, List<GremlinVariable>> InheritedAliasToGremlinVariableList { get; set; }
+        public List<GremlinMatchPath> InheritedPathList { get; set; }
 
         public void SetContext(GremlinToSqlContext context)
         {
@@ -58,8 +61,9 @@ namespace GraphView
             InheritedProjection = new List<Projection>();
             InheritedVariableList = new List<GremlinVariable>();
             InheritedAliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
-            InheritedPathList = new List<Tuple<GremlinVariable, GremlinVariable, GremlinVariable>>();
+            InheritedPathList = new List<GremlinMatchPath>();
         }
+
         public override GremlinToSqlContext GetContext()
         {
             if (IsInheritedEntireContext) return InheritedContext;
@@ -73,6 +77,7 @@ namespace GraphView
                 newContext.SetCurrVariable(InheritedVariable);
                 newContext.FromOuter = true;
                 newContext.InheritedPathList = InheritedPathList;
+                //newContext.IsUsedInTVF = InheritedIsUsedInTVF;
             } 
             return newContext;
         }

@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinCoinOp: GremlinTranslationOperator
     {
-        public double Probability;
+        public double Probability { get; set; }
 
         public GremlinCoinOp(double probability)
         {

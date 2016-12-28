@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinConstantOp: GremlinTranslationOperator
     {
-        public object Constant;
+        public object Constant { get; set; }
 
         public GremlinConstantOp(object constant)
         {

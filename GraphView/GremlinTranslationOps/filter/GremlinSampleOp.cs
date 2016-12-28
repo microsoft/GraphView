@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinSampleOp: GremlinTranslationOperator
     {
-        public long AmountToSample;
+        public long AmountToSample { get; set; }
 
         public GremlinSampleOp(long amountToSample)
         {

@@ -8,9 +8,9 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinWhereOp: GremlinTranslationOperator
     {
-        public Predicate Predicate;
-        public string StartKey;
-        public GraphTraversal2 WhereTraversal;
+        public Predicate Predicate { get; set; }
+        public string StartKey { get; set; }
+        public GraphTraversal2 WhereTraversal { get; set; }
 
         public GremlinWhereOp(Predicate predicate)
         {
@@ -34,14 +34,16 @@ namespace GraphView.GremlinTranslationOps.filter
 
             if (Predicate != null && Predicate.IsAliasValue)
             {
-                Predicate.VariableName = inputContext.AliasToGremlinVariableList[Predicate.Value as string].Last().VariableName;
+                var compareVar = inputContext.AliasToGremlinVariableList[Predicate.Value as string].Last();
+                Predicate.VariableName = compareVar.VariableName;
+                Predicate.CompareString = GremlinUtil.GetCompareString(compareVar);
             }
 
             if (WhereTraversal == null && StartKey == null)
             {
                 //where(Predicate)
                 //use Predicates
-                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(currVar.VariableName, "id");
+                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(currVar.VariableName, GremlinUtil.GetCompareString(currVar));
                 WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
                 inputContext.AddPredicate(booleanExpr);
             }

@@ -125,6 +125,8 @@ namespace GraphView
     public partial class WEdgeColumnReferenceExpression : WColumnReferenceExpression
     {
         internal WEdgeType EdgeType;
+        internal string FirstEdgeAlias;
+
         internal string Alias;
         internal int MinLength { get; set; }
         internal int MaxLength { get; set; }
@@ -137,15 +139,27 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
+            StringBuilder sb = new StringBuilder(64);
+            if (EdgeType == WEdgeType.PathE)
+            {
+                if (FirstEdgeAlias == null)
+                {
+                    sb.Append(string.Format("{0}Edge]-[", indent));
+                }
+                else
+                {
+                    sb.Append(string.Format("{0}Edge AS {1}]-[", indent, FirstEdgeAlias));
+                }
+            }
             if (Alias == null || Alias.Length == 0) 
             {
-                return string.Format("{0}{1}", indent, MultiPartIdentifier.ToString());
+                sb.Append(string.Format("{0}{1}", indent, MultiPartIdentifier.ToString()));
             }
             else
             {
-                return string.Format("{0}{1} AS {2}", indent, MultiPartIdentifier.ToString(), Alias);
+                sb.Append(string.Format("{0}{1} AS {2}", indent, MultiPartIdentifier.ToString(), Alias));
             }
-            
+            return sb.ToString();
         }
     }
 
@@ -154,7 +168,8 @@ namespace GraphView
         InEdge,
         OutEdge,
         BothEdge,
-        Path
+        PathE,
+        PathN
     }
 
     public enum ColumnGraphType
@@ -309,8 +324,8 @@ namespace GraphView
             var sb = new StringBuilder(128);
 
             sb.AppendFormat("{0}(\r\n", indent);
-            sb.AppendFormat("{0}\r\n", SubQueryExpr.ToString(indent));
-            sb.AppendFormat("{0})", indent);
+            sb.AppendFormat("{0}\r\n", SubQueryExpr.ToString(indent + "\t"));
+            sb.AppendFormat("{0}\t)", indent);
 
             return sb.ToString();
         }

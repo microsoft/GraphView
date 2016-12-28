@@ -7,110 +7,133 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView.GremlinTranslationOps
 {
-    internal class GremlinVariable
+    internal enum GremlinVariableType
     {
+        Vertex,
+        Edge,
+        Scalar,
+        Table,
+        Undefined
+    }
+    internal abstract class GremlinVariable
+    {
+
         public string VariableName { get; set; }
         public string SetVariableName { get; set; }
-        public WVariableReference Variable;
-        public VariableType Type;
-        public long Low;
-        public long High;
+        public long Low { get; set; }
+        public long High { get; set; }
 
-        public GremlinVariable()
+        public virtual GremlinVariableType GetVariableType()
         {
-            Low = Int64.MinValue;
-            High = Int64.MaxValue;
+            return GremlinVariableType.Undefined;
         }
-
-        public override int GetHashCode()
-        {
-            return VariableName.GetHashCode();
-        }
-    }
-
-    public enum VariableType
-    {
-        NODE,
-        EGDE,
-        PROPERTIES,
-        VALUE
     }
 
     internal class GremlinVertexVariable : GremlinVariable
     {
-        public GremlinVertexVariable()
-        {
-            //automaticlly generate the name of node
-            VariableName = GetVariableName();
-            Type = VariableType.NODE;
-        }
-        
+        private static long _count = 0;
+
         public static string GetVariableName()
         {
             return "N_" + _count++;
         }
-        private static long _count = 0;
+        
+        public GremlinVertexVariable()
+        {
+            VariableName = GetVariableName();
+        }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Vertex;
+        }
+
     }
     internal class GremlinEdgeVariable : GremlinVariable
     {
-        public GremlinEdgeVariable()
-        {
-            //automaticlly generate the name of edge
-            VariableName = GetVariableName();
-            Type = VariableType.EGDE;
-        }
+        private static long _count = 0;
 
-        public GremlinEdgeVariable(WEdgeType type)
-        {
-            //automaticlly generate the name of edge
-            VariableName = GetVariableName();
-            EdgeType = type;
-        }
         public static string GetVariableName()
         {
             return "E_" + _count++;
         }
-        private static long _count = 0;
+
+        public GremlinVariable SourceVariable { get; set; }
         public WEdgeType EdgeType { get; set; }
-    }
 
-    internal class GremlinPathVariable : GremlinVariable
-    {
-        public GremlinPathVariable()
-        {
-            //automaticlly generate the name of edge
-            VariableName = GetVariableName();
-            Type = VariableType.EGDE;
-        }
+        public GremlinEdgeVariable() { }
 
-        public GremlinPathVariable(WEdgeType type)
+        public GremlinEdgeVariable(GremlinVariable sourceVariable, WEdgeType type)
         {
-            //automaticlly generate the name of edge
             VariableName = GetVariableName();
             EdgeType = type;
+            SourceVariable = sourceVariable;
         }
-        public static string GetVariableName()
-        {
-            return "P_" + _count++;
-        }
-        private static long _count = 0;
-        public WEdgeType EdgeType { get; set; }
 
-        //public WSelectQueryBlock GremlinTranslationOperatorQuery { get; set; }
-        //public int IterationCount;
-        //public WBooleanExpression UntilCondition { get; set; }
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Edge;
+        }
     }
+
+    internal class GremlinScalarVariable : GremlinVariable
+    {
+        public GremlinVariable FromVariable { get; set; }
+        public string Key { get; set; }
+
+        public GremlinScalarVariable(GremlinVariable variable, string key)
+        {
+            VariableName = variable.VariableName;
+            FromVariable = variable;
+            Key = key;
+        }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Scalar;
+        }
+    }
+
+    //internal class GremlinPathNodeVariable : GremlinVariable
+    //{
+    //    public GremlinPathNodeVariable()
+    //    {
+    //        VariableName = GetVariableName();
+    //    }
+    //    public static string GetVariableName()
+    //    {
+    //        return "PN_" + _count++;
+    //    }
+    //    private static long _count = 0;
+    //}
+
+    //internal class GremlinPathEdgeVariable : GremlinVariable
+    //{
+    //    public GremlinEdgeVariable EdgeVariable;
+    //    public GremlinPathEdgeVariable(GremlinEdgeVariable edgeVariable)
+    //    {
+    //        VariableName = GetVariableName();
+    //        Type = GremlinVariableType.Edge;
+    //        EdgeVariable = edgeVariable;
+    //    }
+
+    //    public static string GetVariableName()
+    //    {
+    //        return "PE_" + _count++;
+    //    }
+    //    private static long _count = 0;
+    //}
 
     internal class GremlinVariableReference: GremlinVariable
     {
-        public WVariableReference Variable;
-        public GremlinVariable RealGremlinVariable;
-        public WSetVariableStatement Statement;
+        public WVariableReference Variable { get; set; }
+        public GremlinVariable RealGremlinVariable { get; set; }
+        public WSetVariableStatement Statement { get; set; }
 
         public GremlinVariableReference(WSetVariableStatement statement)
         {
 
-            Variable = (statement as WSetVariableStatement).Variable;
+            Variable = statement.Variable;
             SetVariableName = Variable.Name;
             VariableName = Variable.Name.Substring(1, Variable.Name.Length-1);
             Statement = statement;
@@ -119,20 +142,20 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GremlinDerivedVariable: GremlinVariable
     {
-        //public WSelectQueryBlock SelectQueryBlock;
-        //public WTableReferenceWithAliasAndColumns QueryDerivedTable;
-        public WSqlStatement Statement;
-        public DerivedType Type;
-        public GremlinDerivedVariable() { }
-        
-        public GremlinDerivedVariable(WSqlStatement statement, string derivedType = "")
-        {
+        private static long _count = 0;
+        private static Dictionary<DerivedType, long> _typeToCount;
 
+        public WSqlStatement Statement { get; set; }
+        public DerivedType Type { get; set; }
+        public WVariableReference Variable { get; set; }
+
+        public GremlinDerivedVariable() { }
+
+        public GremlinDerivedVariable(WSqlStatement statement, string derivedType = null)
+        {
             VariableName = "D" + derivedType + "_" + getCount(GetDerivedType(derivedType));
             _count += 1;
-            //QueryDerivedTable = queryDerivedTable;
             Statement = statement;
-            //QueryDerivedTable.Alias = GremlinUtil.GetIdentifier(VariableName);
             Type = GetDerivedType(derivedType);
 
             Variable = GremlinUtil.GetVariableReference(VariableName);
@@ -158,9 +181,7 @@ namespace GraphView.GremlinTranslationOps
             }
             return _typeToCount[type]++;
         }
-        private static long _count = 0;
-        private static Dictionary<DerivedType, long> _typeToCount;
-
+        
         public enum DerivedType
         {
             UNION,
@@ -171,32 +192,16 @@ namespace GraphView.GremlinTranslationOps
 
     }
 
-    //internal class GremlinScalarVariable : GremlinVariable
-    //{
-    //    public WScalarSubquery ScalarSubquery;
-
-    //    public GremlinScalarVariable(WSqlStatement selectQueryBlock)
-    //    {
-    //        ScalarSubquery = new WScalarSubquery()
-    //        {
-    //            SubQueryExpr = selectQueryBlock as WSelectQueryBlock
-    //        };
-    //    }
-    //}
-
-    //internal class GremlinMapVariable : GremlinDerivedVariable
-    //{
-    //    public GremlinMapVariable(WSqlStatement selectQueryBlock): base(selectQueryBlock) {}
-    //}
-
-    //internal class GremlinListVariable : GremlinDerivedVariable
-    //{
-    //    public GremlinListVariable(WSqlStatement selectQueryBlock) : base(selectQueryBlock) {}
-    //}
-
     internal class GremlinTVFVariable : GremlinVariable
     {
-        public WUnqualifiedJoin TableReference;
+        private static long _count = 0;
+        public static string GetVariableName()
+        {
+            return "TVF_" + _count++;
+        }
+
+        public WUnqualifiedJoin TableReference { get; set; }
+
         public GremlinTVFVariable(WUnqualifiedJoin tableReference)
         {
             VariableName = GetVariableName();
@@ -204,121 +209,74 @@ namespace GraphView.GremlinTranslationOps
             (TableReference.SecondTableRef as WSchemaObjectFunctionTableReference).Alias =
                 GremlinUtil.GetIdentifier(VariableName);
         }
-        private static long _count = 0;
-        public static string GetVariableName()
+
+        public override GremlinVariableType GetVariableType()
         {
-            return "TVF_" + _count++;
+            return GremlinVariableType.Table;
         }
     }
 
-    //=============================================================================
-
-
-    internal class GremlinAddEVariable : GremlinVariable
+    internal class GremlinAddEVariable : GremlinEdgeVariable
     {
-        public GremlinVariable FromVariable;
-        //public bool IsNewFromVariable;
-        public GremlinVariable ToVariable;
-        //public bool IsNewToVariable;
-        public Dictionary<string, object> Properties;
-        public string EdgeLabel;
-        public bool IsGenerateSql;
-
-        public GremlinAddEVariable(string edgeLabel, GremlinVariable currVariable)
-        {
-            SetVariableName = GetVariableName();
-            //VariableName = GremlinEdgeVariable.GetVariableName();
-            VariableName = SetVariableName;
-
-            Properties = new Dictionary<string, object>();
-            FromVariable = currVariable;
-            ToVariable = currVariable;
-            EdgeLabel = edgeLabel;
-            //IsNewFromVariable = false;
-            //IsNewToVariable = false;
-
-            Type = VariableType.EGDE;
-
-            Variable = GremlinUtil.GetVariableReference(SetVariableName);
-
-            IsGenerateSql = false;
-        }
-
         public static string GetVariableName()
         {
             return "AddE_" + _count++;
         }
+
         private static long _count = 0;
-    }
 
-    internal class GremlinAddVVariable : GremlinVariable
-    {
-        public bool IsGenerateSql;
-        public Dictionary<string, object> Properties;
-        public string VertexLabel;
+        public GremlinVariable FromVariable { get; set; }
+        public GremlinVariable ToVariable { get; set; }
+        public Dictionary<string, object> Properties { get; set; }
+        public string EdgeLabel { get; set; }
+        public bool IsGenerateSql { get; set; }
+        public WVariableReference Variable { get; set; }
 
-        public GremlinAddVVariable(string vertexLabel)
+        public GremlinAddEVariable(string edgeLabel, GremlinVariable currVariable)
         {
             SetVariableName = GetVariableName();
-            //VariableName = GremlinVertexVariable.GetVariableName();
             VariableName = SetVariableName;
-
             Properties = new Dictionary<string, object>();
-            VertexLabel = vertexLabel;
-
-            Type = VariableType.NODE;
-
+            FromVariable = currVariable;
+            ToVariable = currVariable;
+            EdgeLabel = edgeLabel;
             Variable = GremlinUtil.GetVariableReference(SetVariableName);
             IsGenerateSql = false;
         }
+    }
 
+    internal class GremlinAddVVariable : GremlinVertexVariable
+    {
         private static long _count = 0;
+
         public static string GetVariableName()
         {
             return "AddV_" + _count++;
         }
-    }
 
+        public bool IsGenerateSql { get; set; }
+        public Dictionary<string, object> Properties { get; set; }
+        public string VertexLabel { get; set; }
+        public WVariableReference Variable { get; set; }
 
-    internal class GremlinChooseVariable: GremlinVariable
-    {
-        public WChoose2 TableReference;
-
-        public GremlinChooseVariable(WChoose2 tableReference)
+        public GremlinAddVVariable(string vertexLabel)
         {
-            VariableName = GetVariableName();
-            TableReference = tableReference;
-            TableReference.Alias = GremlinUtil.GetIdentifier(VariableName);
-        }
-        private static long _count = 0;
-        public static string GetVariableName()
-        {
-            return "Choose_" + _count++;
+            SetVariableName = GetVariableName();
+            VariableName = SetVariableName;
+
+            Properties = new Dictionary<string, object>();
+            VertexLabel = vertexLabel;
+            Variable = GremlinUtil.GetVariableReference(SetVariableName);
+            IsGenerateSql = false;
         }
     }
 
-    internal class GremlinCoalesceVariable : GremlinVariable
-    {
-        public WCoalesce2 TableReference;
 
-        public GremlinCoalesceVariable(WCoalesce2 tableReference)
-        {
-            VariableName = GetVariableName();
-            TableReference = tableReference;
-            TableReference.Alias = GremlinUtil.GetIdentifier(VariableName);
-        }
-        private static long _count = 0;
-        public static string GetVariableName()
-        {
-            return "Coalesce_" + _count++;
-        }
-    }
-
-    //internal class GremlinOptionalVariable : GremlinVariable
+    //internal class GremlinChooseVariable: GremlinVariable
     //{
-    //    public WOptional TableReference;
+    //    public WChoose2 TableReference;
 
-    //    public GremlinOptionalVariable(WOptional tableReference)
+    //    public GremlinChooseVariable(WChoose2 tableReference)
     //    {
     //        VariableName = GetVariableName();
     //        TableReference = tableReference;
@@ -327,101 +285,28 @@ namespace GraphView.GremlinTranslationOps
     //    private static long _count = 0;
     //    public static string GetVariableName()
     //    {
-    //        return "Optional_" + _count++;
+    //        return "Choose_" + _count++;
     //    }
     //}
 
-    //internal class GremlinSideEffectVariable : GremlinVariable
-    //{
-    //    public WSideEffect SideEffectExpr;
-
-    //    public GremlinSideEffectVariable(WSideEffect optionalExpr)
-    //    {
-    //        VariableName = "SideEffect_" + _count.ToString();
-    //        _count += 1;
-    //        SideEffectExpr = optionalExpr;
-    //        SideEffectExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
-    //    }
-    //    private static long _count = 0;
-    //}
-
-    //internal class GremlinRepeatVariable : GremlinVariable
-    //{
-    //    public WRepeat RepeatExpr;
-
-    //    public GremlinRepeatVariable(WRepeat repeatExpr)
-    //    {
-    //        VariableName = "Repeat" + _count.ToString();
-    //        _count += 1;
-    //        RepeatExpr = repeatExpr;
-    //        RepeatExpr.Alias = GremlinUtil.GetIdentifier(VariableName);
-    //    }
-    //    private static long _count = 0;
-    //}
-
-    //====================================================================================
-    public enum Scope
+    internal class GremlinMatchPath
     {
-        local,
-        global
-    }
+        public GremlinVariable SourceVariable { get; set; }
+        public GremlinVariable EdgeVariable { get; set; }
+        public GremlinVariable SinkVariable { get; set; }
 
-    internal class Projection
-    {
-        public GremlinVariable CurrVariable;
-        public virtual WSelectElement ToSelectElement()
+        public GremlinMatchPath(GremlinVariable sourceVariable, GremlinVariable edgeVariable, GremlinVariable sinkVariable)
         {
-            return null;
-        }
-    }
-
-    internal class ColumnProjection : Projection
-    {
-        public string Key;
-        public ColumnProjection(GremlinVariable gremlinVar, string key)
-        {
-            CurrVariable = gremlinVar;
-            Key = key;
-        }
-
-        public override WSelectElement ToSelectElement()
-        {
-            return new WSelectScalarExpression()
-            {
-                SelectExpr = new WColumnReferenceExpression()
-                { MultiPartIdentifier = GremlinUtil.GetMultiPartIdentifier(CurrVariable.VariableName, Key) }
-            };
-        }
-    }
-
-    internal class FunctionCallProjection : Projection
-    {
-        public WFunctionCall FunctionCall;
-
-        public FunctionCallProjection(WFunctionCall functionCall)
-        {
-            FunctionCall = functionCall;
-        }
-        public override WSelectElement ToSelectElement()
-        {
-            return new WSelectScalarExpression() { SelectExpr = FunctionCall };
-        }
-    }
-
-    internal class StarProjection : Projection
-    {
-        public StarProjection() { }
-
-        public override WSelectElement ToSelectElement()
-        {
-            return new WSelectStarExpression();
+            SourceVariable = sourceVariable;
+            EdgeVariable = edgeVariable;
+            SinkVariable = sinkVariable;
         }
     }
 
 
     internal class OrderByRecord
     {
-        public List<WExpressionWithSortOrder> SortOrderList;
+        public List<WExpressionWithSortOrder> SortOrderList { get; set; }
 
         public OrderByRecord()
         {
@@ -431,11 +316,12 @@ namespace GraphView.GremlinTranslationOps
 
     internal class GroupByRecord
     {
-        public List<WGroupingSpecification> GroupingSpecList;
+        public List<WGroupingSpecification> GroupingSpecList { get; set; }
 
         public GroupByRecord()
         {
             GroupingSpecList = new List<WGroupingSpecification>();
         }
     }
+
 }

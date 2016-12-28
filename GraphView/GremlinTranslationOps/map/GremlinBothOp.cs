@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinBothOp: GremlinTranslationOperator
     {
-        public List<string> EdgeLabels;
+        public List<string> EdgeLabels { get; set; }
 
         public GremlinBothOp(params string[] edgeLabels)
         {
@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslationOps.map
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinVertexVariable newVertexVariable = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVariable = new GremlinEdgeVariable(WEdgeType.BothEdge);
+            GremlinEdgeVariable newEdgeVariable = new GremlinEdgeVariable(newVertexVariable, WEdgeType.BothEdge);
             inputContext.AddNewVariable(newVertexVariable);
             inputContext.AddNewVariable(newEdgeVariable);
             inputContext.AddPaths(inputContext.CurrVariable, newEdgeVariable, newVertexVariable);

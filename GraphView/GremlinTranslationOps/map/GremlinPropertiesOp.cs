@@ -26,23 +26,23 @@ namespace GraphView.GremlinTranslationOps.map
 
             if (inputContext.CurrVariable is GremlinVertexVariable)
             {
-                PropertyKeys.Insert(0, "node");
+                PropertyKeys.Insert(0, inputContext.CurrVariable.VariableName + ".*");
+                //inputContext.IsUsedInTVF[inputContext.CurrVariable.VariableName] = true;
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-                newVariable.Type = VariableType.VALUE;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
 
             }
             else if (inputContext.CurrVariable is GremlinEdgeVariable)
             {
-                PropertyKeys.Insert(0, "edge");
-                var oldVariable = inputContext.GetSinkNode(inputContext.CurrVariable);
+                var oldVariable = inputContext.GetSourceNode(inputContext.CurrVariable);
+                PropertyKeys.Insert(0, inputContext.CurrVariable.VariableName + ".*");
+                //inputContext.IsUsedInTVF[inputContext.CurrVariable.VariableName] = true;
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
-                newVariable.Type = VariableType.VALUE;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
             }

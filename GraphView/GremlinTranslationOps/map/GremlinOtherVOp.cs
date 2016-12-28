@@ -17,15 +17,15 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            var existInPath = inputContext.NewPathList.Find(p => p.Item1.VariableName == inputContext.CurrVariable.VariableName || p.Item3.VariableName == inputContext.CurrVariable.VariableName);
+            var existInPath = inputContext.NewPathList.Find(p => p.SourceVariable.VariableName == inputContext.CurrVariable.VariableName || p.SinkVariable.VariableName == inputContext.CurrVariable.VariableName);
 
-            if (existInPath.Item1 == inputContext.CurrVariable)
+            if (existInPath.SourceVariable == inputContext.CurrVariable)
             {
-                inputContext.SetCurrVariable(existInPath.Item3);
+                inputContext.SetCurrVariable(existInPath.SinkVariable);
             }
-            if (existInPath.Item3 == inputContext.CurrVariable)
+            if (existInPath.SinkVariable == inputContext.CurrVariable)
             {
-                inputContext.SetCurrVariable(existInPath.Item1);
+                inputContext.SetCurrVariable(existInPath.SourceVariable);
             }
             
             return inputContext;

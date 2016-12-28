@@ -8,10 +8,11 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinMeanOp: GremlinTranslationOperator
     {
-        public Scope Scope;
+        public GremlinKeyword.Scope Scope { get; set; }
+
         public GremlinMeanOp() { }
 
-        public GremlinMeanOp(Scope scope)
+        public GremlinMeanOp(GremlinKeyword.Scope scope)
         {
             Scope = scope;
         }

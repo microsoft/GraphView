@@ -17,7 +17,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"with p_0 as (select * from n_1), p_1 as (select * from n_2) select * from n_0, n_3";
+            const string q2 = @"select TVF_1.id from (select n_0.id as [n_0.id] from  node n_0) as D_0 where D_0.n_0.id = 1";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
@@ -31,9 +31,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestStep()
         {
-            //GraphTraversal2.g().V().local(GraphTraversal2.__().Out()).outE().next();
 
-            GraphTraversal2.g().V().outE().local(GraphTraversal2.__().inV()).Out().next();
         }
     }
 }

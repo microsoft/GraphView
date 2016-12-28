@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps
 {
     internal class GremlinVOp: GremlinTranslationOperator
     {
-        public List<object> VertexIdsOrElements;
+        public List<object> VertexIdsOrElements { get; set; }
         public GremlinVOp(params object[] vertexIdsOrElements)
         {
             VertexIdsOrElements = new List<object>();

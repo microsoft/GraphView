@@ -155,7 +155,7 @@ namespace GraphView
         //public GraphTraversal2 by(Function<U, Object> function, Comparator comparator)
         //public GraphTraversal2 by(Function<V, Object> function)
 
-        public GraphTraversal2 by(Order order)
+        public GraphTraversal2 by(GremlinKeyword.Order order)
         {
             ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
             return this;
@@ -479,7 +479,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 max(Scope scope)
+        public GraphTraversal2 max(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinMaxOp(scope));
             return this;
@@ -491,7 +491,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 mean(Scope scope)
+        public GraphTraversal2 mean(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinMeanOp(scope));
             return this;
@@ -503,7 +503,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 min(Scope scope)
+        public GraphTraversal2 min(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinMinOp(scope));
             return this;
@@ -726,13 +726,15 @@ namespace GraphView
         //public GraphTraversal2 toV(Direction direction)
         public GraphTraversal2 tree()
         {
-            AddGremlinOperator(new GremlinTreeOp());
+            //AddGremlinOperator(new GremlinTreeOp()); //TODO
+
             return this;
         }
         //public GraphTraversal2 tree(string sideEffectKey)
 
         public GraphTraversal2 unfold()
         {
+            AddGremlinOperator(new GremlinUnfoldOp());
             return this;
         }
 
@@ -841,7 +843,7 @@ namespace GraphView
         {
             //TODO
             var Params = LastGremlinTranslationOp.ToSqlScript().ToString();
-            return new List<object>() {1,2,3,4,5};
+            return new List<object>() {1};
         }
     }
 }

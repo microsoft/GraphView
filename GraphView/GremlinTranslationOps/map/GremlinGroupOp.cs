@@ -8,8 +8,8 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinGroupOp: GremlinTranslationOperator, IGremlinByModulating
     {
-        public List<object> ByList;
-        public string SideEffect;
+        public List<object> ByList { get; set; }
+        public string SideEffect { get; set; }
 
         public GremlinGroupOp()
         {
@@ -30,7 +30,7 @@ namespace GraphView.GremlinTranslationOps.map
         {
             ByList.Add(key);
         }
-        public void ModulateBy(Order order) { }
+        public void ModulateBy(GremlinKeyword.Order order) { }
 
         public override GremlinToSqlContext GetContext()
         {

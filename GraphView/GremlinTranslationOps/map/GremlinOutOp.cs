@@ -9,7 +9,8 @@ namespace GraphView.GremlinTranslationOps
 {
     internal class GremlinOutOp: GremlinTranslationOperator
     {
-        internal  List<string> EdgeLabels;
+        internal  List<string> EdgeLabels { get; set; }
+
         public GremlinOutOp(params string[] labels)
         {
             EdgeLabels = new List<string>();
@@ -25,7 +26,7 @@ namespace GraphView.GremlinTranslationOps
 
             //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
 
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(WEdgeType.OutEdge);
+            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(inputContext.CurrVariable, WEdgeType.OutEdge);
             inputContext.AddNewVariable(newEdgeVar);
             inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
 

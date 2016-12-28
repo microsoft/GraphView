@@ -14,12 +14,12 @@ namespace GraphView.GremlinTranslationOps.map
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //var functionTableReference = GremlinUtil.GetSchemaObjectFunctionTableReference("unfold");
+            List<object> parameterList = new List<object>();
+            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("unfold", parameterList);
 
-            //GremlinDerivedVariable newVariable = new GremlinDerivedVariable(functionTableReference, "unfold");
-            //inputContext.AddNewVariable(newVariable);
-            //inputContext.SetCurrVariable(newVariable);
-            //inputContext.SetDefaultProjection(newVariable);
+            var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
+            inputContext.SetCurrVariable(newVariable);
+            inputContext.SetDefaultProjection(newVariable);
 
             return inputContext;
         }

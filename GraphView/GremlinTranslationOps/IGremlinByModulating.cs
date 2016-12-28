@@ -13,7 +13,7 @@ namespace GraphView.GremlinTranslationOps
         void ModulateBy();
         void ModulateBy(GraphTraversal2 paramOp);
         void ModulateBy(string key);
-        void ModulateBy(Order order);
+        void ModulateBy(GremlinKeyword.Order order);
 
     }
 }

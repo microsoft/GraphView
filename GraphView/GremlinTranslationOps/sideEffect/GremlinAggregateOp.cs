@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinAggregateOp: GremlinTranslationOperator
     {
-        public string SideEffectKey;
+        public string SideEffectKey { get; set; }
 
         public GremlinAggregateOp(string sideEffectKey)
         {

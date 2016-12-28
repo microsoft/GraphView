@@ -20,5 +20,17 @@ namespace GraphView.GremlinTranslationOps
             keys,
             values
         }
+
+        public enum Scope
+        {
+            local,
+            global
+        }
+        public enum Order
+        {
+            Shuffle,
+            Desr,
+            Incr
+        }
     }
 }
