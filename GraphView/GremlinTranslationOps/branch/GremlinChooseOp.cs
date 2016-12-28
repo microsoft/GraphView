@@ -9,13 +9,13 @@ namespace GraphView.GremlinTranslationOps.branch
 {
     internal class GremlinChooseOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 PredicateTraversal;
-        public GraphTraversal2 TrueChoiceTraversal;
-        public GraphTraversal2 FalseChocieTraversal;
-        public GraphTraversal2 ChoiceTraversal;
-        public Predicate Predicate;
-        public ChooseType Type;
-        public Dictionary<object, GraphTraversal2> OptionDict;
+        public GraphTraversal2 PredicateTraversal { get; set; }
+        public GraphTraversal2 TrueChoiceTraversal { get; set; }
+        public GraphTraversal2 FalseChocieTraversal { get; set; }
+        public GraphTraversal2 ChoiceTraversal { get; set; }
+        public Predicate Predicate { get; set; }
+        public ChooseType Type { get; set; }
+        public Dictionary<object, GraphTraversal2> OptionDict { get; set; }
 
         public GremlinChooseOp(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice,
             GraphTraversal2 falseChoice)
@@ -90,8 +90,9 @@ namespace GraphView.GremlinTranslationOps.branch
                     break;
             }
             //Pack the WChoose to a GremlinVariable
-            GremlinChooseVariable newVariable = new GremlinChooseVariable(chooseExpr);
-            inputContext.AddNewVariable(newVariable);
+            //GremlinChooseVariable newVariable = new GremlinChooseVariable(chooseExpr);
+            //inputContext.AddNewVariable(newVariable);
+            throw new NotImplementedException();
 
             return inputContext;
         }

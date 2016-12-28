@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinConstantOp: GremlinTranslationOperator
     {
-        public object Constant;
+        public object Constant { get; set; }
 
         public GremlinConstantOp(object constant)
         {
@@ -25,7 +25,6 @@ namespace GraphView.GremlinTranslationOps.map
             var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("constant", parameter);
 
             var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-            newVariable.Type = VariableType.Value;
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
 

@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinDedupOp: GremlinTranslationOperator
     {
-        public List<string> DedupLabels;
+        public List<string> DedupLabels { get; set; }
 
         public GremlinDedupOp(params string[] dedupLabels)
         {

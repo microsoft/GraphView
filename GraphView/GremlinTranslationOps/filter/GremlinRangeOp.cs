@@ -8,8 +8,8 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinRangeOp: GremlinTranslationOperator
     {
-        public long Low;
-        public long High;
+        public long Low { get; set; }
+        public long High { get; set; }
         public GremlinRangeOp(long low, long high)
         {
             Low = low;

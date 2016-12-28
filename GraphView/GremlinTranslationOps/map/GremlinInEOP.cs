@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinInEOp: GremlinTranslationOperator
     {
-        internal List<string> EdgeLabels;
+        internal List<string> EdgeLabels { get; set; }
 
         public GremlinInEOp(params string[] labels)
         {

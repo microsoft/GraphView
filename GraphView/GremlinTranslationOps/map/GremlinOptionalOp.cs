@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinOptionalOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 TraversalOption;
+        public GraphTraversal2 TraversalOption { get; set; }
 
         public GremlinOptionalOp(GraphTraversal2 traversalOption)
         {
@@ -69,7 +69,6 @@ namespace GraphView.GremlinTranslationOps.map
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-                newVariable.Type = context.CurrVariable.Type;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
 
@@ -82,7 +81,6 @@ namespace GraphView.GremlinTranslationOps.map
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
-                newVariable.Type = context.CurrVariable.Type;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
             }

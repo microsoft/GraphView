@@ -8,8 +8,9 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinProjectOp: GremlinTranslationOperator, IGremlinByModulating
     {
-        public List<string> ProjectKeys;
-        public List<GraphTraversal2> TraversalList;
+        public List<string> ProjectKeys { get; set; }
+        public List<GraphTraversal2> TraversalList { get; set; }
+
         public GremlinProjectOp(params string[] projectKeys)
         {
             TraversalList = new List<GraphTraversal2>();
@@ -47,12 +48,10 @@ namespace GraphView.GremlinTranslationOps.map
 
             return inputContext;
         }
-
         public void ModulateBy()
         {
 
         }
-
         public void ModulateBy(GraphTraversal2 traversal)
         {
             TraversalList.Add(traversal);
@@ -62,7 +61,7 @@ namespace GraphView.GremlinTranslationOps.map
         {
         }
 
-        public void ModulateBy(Order order)
+        public void ModulateBy(GremlinKeyword.Order order)
         {
         }
     }

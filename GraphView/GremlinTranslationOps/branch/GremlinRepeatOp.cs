@@ -8,17 +8,16 @@ namespace GraphView.GremlinTranslationOps.branch
 {
     internal class GremlinRepeatOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 RepeatTraversal;
-        public Predicate ConditionPredicate;
-        public GraphTraversal2 ConditionTraversal;
-
-        public bool IsEmitTrue = false;
-        public bool IsEmitBefore = false;
-        public bool IsEmitAfter = false;
-        public bool IsUntilBefore = false;
-        public bool IsUntilAfter = false;
-        public bool IsTimes = false;
-        public long Times;
+        public GraphTraversal2 RepeatTraversal { get; set; }
+        public Predicate ConditionPredicate { get; set; }
+        public GraphTraversal2 ConditionTraversal { get; set; }
+        public bool IsEmitTrue { get; set; }
+        public bool IsEmitBefore { get; set; }
+        public bool IsEmitAfter { get; set; }
+        public bool IsUntilBefore { get; set; }
+        public bool IsUntilAfter { get; set; }
+        public bool IsTimes { get; set; }
+        public long Times { get; set; }
 
         public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
         {
@@ -156,7 +155,6 @@ namespace GraphView.GremlinTranslationOps.branch
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("repeat", PropertyKeys);
                 GremlinTVFVariable tvfVariable = inputContext.CrossApplyToVariable(derivedVariable, secondTableRef,
                     Labels);
-                tvfVariable.Type = VariableType.Edge;
                 inputContext.SetCurrVariable(tvfVariable);
                 inputContext.SetDefaultProjection(tvfVariable);
             }

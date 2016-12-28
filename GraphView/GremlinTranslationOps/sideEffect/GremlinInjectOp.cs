@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.sideEffect
 {
     internal class GremlinInjectOp: GremlinTranslationOperator
     {
-        public object[] Injections;
+        public object[] Injections { get; set; }
 
         public GremlinInjectOp(params object[] injections)
         {

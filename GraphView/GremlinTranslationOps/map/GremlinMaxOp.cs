@@ -8,9 +8,11 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinMaxOp: GremlinTranslationOperator
     {
-        public Scope Scope;
+        public GremlinKeyword.Scope Scope { get; set; }
+
         public GremlinMaxOp() { }
-        public GremlinMaxOp(Scope scope)
+
+        public GremlinMaxOp(GremlinKeyword.Scope scope)
         {
             Scope = scope;
         }

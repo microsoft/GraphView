@@ -18,7 +18,6 @@ namespace GraphView.GremlinTranslationOps.map
             var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("unfold", parameterList);
 
             var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-            newVariable.Type = VariableType.Value;
             inputContext.SetCurrVariable(newVariable);
             inputContext.SetDefaultProjection(newVariable);
 

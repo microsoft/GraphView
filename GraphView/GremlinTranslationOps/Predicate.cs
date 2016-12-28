@@ -8,14 +8,14 @@ namespace GraphView.GremlinTranslationOps
 {
     public class Predicate
     {
-        public bool IsAliasValue;
-        public object Value;
-        public object Low;
-        public object High;
-        public List<object> Values;
-        public string VariableName;
-        public string CompareString;
-        public PredicateType PredicateType;
+        public bool IsAliasValue { get; set; }
+        public object Value { get; set; }
+        public object Low { get; set; }
+        public object High { get; set; }
+        public List<object> Values { get; set; }
+        public string VariableName { get; set; }
+        public string CompareString { get; set; }
+        public PredicateType PredicateType { get; set; }
 
         public Predicate(PredicateType type, object value, bool isAliasValue = false)
         {

@@ -8,8 +8,8 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinLimitOp: GremlinTranslationOperator
     {
-        public long Limit;
-        
+        public long Limit { get; set; }
+
         public GremlinLimitOp(long limit)
         {
             Limit = limit;

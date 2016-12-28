@@ -8,9 +8,9 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinIsOp: GremlinTranslationOperator
     {
-        public object Value;
-        public Predicate Predicate;
-        public IsType Type;
+        public object Value { get; set; }
+        public Predicate Predicate { get; set; }
+        public IsType Type { get; set; }
 
         public GremlinIsOp(object value)
         {

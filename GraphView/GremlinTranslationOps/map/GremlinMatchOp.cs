@@ -9,8 +9,8 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinMatchOp: GremlinTranslationOperator
     {
-        public List<GraphTraversal2> MatchTraversals;
-        public Dictionary<string, List<GraphTraversal2>> MatchTraversalsDict;
+        public List<GraphTraversal2> MatchTraversals { get; set; }
+        public Dictionary<string, List<GraphTraversal2>> MatchTraversalsDict { get; set; }
 
         public GremlinMatchOp(params GraphTraversal2[] matchTraversals)
         {

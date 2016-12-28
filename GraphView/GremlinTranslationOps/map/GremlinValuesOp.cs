@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinValuesOp : GremlinTranslationOperator
     {
-        public List<object> PropertyKeys;
+        public List<object> PropertyKeys { get; set; }
 
         public GremlinValuesOp(params object[] propertyKeys)
         {
@@ -42,7 +42,6 @@ namespace GraphView.GremlinTranslationOps.map
                 {
                     throw new NotImplementedException();;
                 }
-                newVariable.Type = VariableType.Value;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
             }
@@ -65,7 +64,6 @@ namespace GraphView.GremlinTranslationOps.map
                 {
                     throw new NotImplementedException();
                 }
-                newVariable.Type = VariableType.Value;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
 

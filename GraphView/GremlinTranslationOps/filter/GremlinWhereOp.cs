@@ -8,9 +8,9 @@ namespace GraphView.GremlinTranslationOps.filter
 {
     internal class GremlinWhereOp: GremlinTranslationOperator
     {
-        public Predicate Predicate;
-        public string StartKey;
-        public GraphTraversal2 WhereTraversal;
+        public Predicate Predicate { get; set; }
+        public string StartKey { get; set; }
+        public GraphTraversal2 WhereTraversal { get; set; }
 
         public GremlinWhereOp(Predicate predicate)
         {

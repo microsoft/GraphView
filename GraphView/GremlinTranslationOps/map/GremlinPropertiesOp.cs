@@ -31,7 +31,6 @@ namespace GraphView.GremlinTranslationOps.map
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-                newVariable.Type = VariableType.Value;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
 
@@ -44,7 +43,6 @@ namespace GraphView.GremlinTranslationOps.map
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("properties", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
-                newVariable.Type = VariableType.Value;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
             }

@@ -8,8 +8,8 @@ namespace GraphView.GremlinTranslationOps.branch
 {
     internal class GremlinLocalOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 LocalTraversal;
-        public List<object> PropertyKeys;
+        public GraphTraversal2 LocalTraversal { get; set; }
+        public List<object> PropertyKeys { get; set; }
 
         public GremlinLocalOp(GraphTraversal2 localTraversal)
         {
@@ -38,12 +38,10 @@ namespace GraphView.GremlinTranslationOps.branch
             {
                 PropertyKeys.Add("node");
                 PropertyKeys.Add(ScalarSubquery);
-                //inputContext.IsUsedInTVF[inputContext.CurrVariable.VariableName] = true;
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("local", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
 
-                newVariable.Type = context.CurrVariable.Type;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
 
@@ -58,7 +56,6 @@ namespace GraphView.GremlinTranslationOps.branch
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("local", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
-                newVariable.Type = context.CurrVariable.Type;
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
             }

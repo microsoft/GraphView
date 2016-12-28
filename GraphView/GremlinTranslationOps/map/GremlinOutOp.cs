@@ -9,7 +9,8 @@ namespace GraphView.GremlinTranslationOps
 {
     internal class GremlinOutOp: GremlinTranslationOperator
     {
-        internal  List<string> EdgeLabels;
+        internal  List<string> EdgeLabels { get; set; }
+
         public GremlinOutOp(params string[] labels)
         {
             EdgeLabels = new List<string>();

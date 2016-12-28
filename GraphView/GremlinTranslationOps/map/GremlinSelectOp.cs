@@ -8,8 +8,8 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinSelectOp: GremlinTranslationOperator
     {
-        public List<string> SelectKeys;
-        public GremlinKeyword.Pop Pop;
+        public List<string> SelectKeys { get; set; }
+        public GremlinKeyword.Pop Pop { get; set; }
 
         public GremlinSelectOp(GremlinKeyword.Pop pop, params string[] selectKeys)
         {

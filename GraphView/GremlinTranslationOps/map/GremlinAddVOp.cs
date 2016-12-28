@@ -8,9 +8,9 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
-        public Dictionary<string, object> Properties;
+        public Dictionary<string, object> Properties { get; set; }
+        public string VertexLabel { get; set; }
 
-        public string VertexLabel;
         public GremlinAddVOp() { }
 
         public GremlinAddVOp(params Object[] propertyKeyValues)
@@ -34,7 +34,6 @@ namespace GraphView.GremlinTranslationOps.map
             inputContext.ResetSavedState();
             inputContext.Statements.Add(statement);
             var newVar = new GremlinVariableReference(statement);
-            newVar.Type = VariableType.Vertex;
             inputContext.AddNewVariable(newVar);
             inputContext.SetCurrVariable(newVar);
             inputContext.SetDefaultProjection(newVar);

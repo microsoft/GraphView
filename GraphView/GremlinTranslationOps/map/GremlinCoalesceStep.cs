@@ -8,7 +8,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinCoalesceStep: GremlinTranslationOperator
     {
-        public List<GraphTraversal2> CoalesceTraversals;
+        public List<GraphTraversal2> CoalesceTraversals { get; set; }
         public GremlinCoalesceStep(params GraphTraversal2[] coalesceTraversals)
         {
             CoalesceTraversals = new List<GraphTraversal2>();

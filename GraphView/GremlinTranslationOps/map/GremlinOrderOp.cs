@@ -8,13 +8,13 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinOrderOp: GremlinTranslationOperator, IGremlinByModulating
     {
-        public List<Order> OrderList;
-        public List<string> KeyList;
-        public List<GraphTraversal2> TraversalList;
+        public List<GremlinKeyword.Order> OrderList { get; set; }
+        public List<string> KeyList { get; set; }
+        public List<GraphTraversal2> TraversalList { get; set; }
 
         public GremlinOrderOp()
         {
-            OrderList = new List<Order>();
+            OrderList = new List<GremlinKeyword.Order>();
             KeyList = new List<string>();
             TraversalList = new List<GraphTraversal2>();
         }
@@ -27,7 +27,7 @@ namespace GraphView.GremlinTranslationOps.map
 
             foreach (var key in KeyList)
             {
-                inputContext.OrderByVariable.Item2.SortOrderList.Add(GremlinUtil.GetExpressionWithSortOrder(key, Order.Desr));
+                inputContext.OrderByVariable.Item2.SortOrderList.Add(GremlinUtil.GetExpressionWithSortOrder(key, GremlinKeyword.Order.Desr));
             }
 
             return inputContext;
@@ -48,16 +48,9 @@ namespace GraphView.GremlinTranslationOps.map
             KeyList.Add(key);
         }
 
-        public void ModulateBy(Order order)
+        public void ModulateBy(GremlinKeyword.Order order)
         {
             OrderList.Add(order);
         }
-    }
-
-    public enum Order
-    {
-        Shuffle,
-        Desr,
-        Incr
     }
 }

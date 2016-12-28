@@ -9,7 +9,7 @@ namespace GraphView.GremlinTranslationOps.map
 {
     internal class GremlinNotOp: GremlinTranslationOperator
     {
-        public GraphTraversal2 NotTraversal;
+        public GraphTraversal2 NotTraversal { get; set; }
 
         public GremlinNotOp(GraphTraversal2 notTraversal)
         {
