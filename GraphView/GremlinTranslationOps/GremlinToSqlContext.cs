@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps
+namespace GraphView
 {
     internal class GremlinToSqlContext
     {
@@ -167,17 +167,6 @@ namespace GraphView.GremlinTranslationOps
             CurrVariable = newVar;
         }
 
-        public bool IsSpecCurrVar()
-        {
-            if (CurrVariable is GremlinAddEVariable) return true;
-            if (CurrVariable is GremlinAddVVariable) return true;
-            if (CurrVariable is GremlinDerivedVariable)
-            {
-                if ((CurrVariable as GremlinDerivedVariable).Type == GremlinDerivedVariable.DerivedType.UNION) return true;
-            }
-            return false;
-        }
-
         public void SetDefaultProjection(GremlinVariable newGremlinVar)
         {
             ProjectionList.Clear();
@@ -213,6 +202,10 @@ namespace GraphView.GremlinTranslationOps
                     ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "id"));
                     //ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "_edge")); //TODO
                 }
+                else
+                {
+                    throw new NotImplementedException();
+                }
             }
             else if (newGremlinVar is GremlinVariableReference)
             {
@@ -226,10 +219,14 @@ namespace GraphView.GremlinTranslationOps
                     ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "_value"));
                 }
             }
-            else if (newGremlinVar is GremlinScalarVariable)
+            else if (newGremlinVar is GremlinScalarVariable2)
             {
-                var tempVar = newGremlinVar as GremlinScalarVariable;
+                var tempVar = newGremlinVar as GremlinScalarVariable2;
                 ProjectionList.Add(new ColumnProjection(tempVar.FromVariable.VariableName, tempVar.Key));
+            }
+            else if (newGremlinVar is GremlinVirtualVertexVariable)
+            {
+                ProjectionList.Add(new ColumnProjection(newGremlinVar.VariableName, "_sink"));
             }
             else
             {
@@ -605,14 +602,7 @@ namespace GraphView.GremlinTranslationOps
 
         public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)
         {
-            if (source.GetVariableType() == GremlinVariableType.Vertex)
-            {
-                NewPathList.Add(new GremlinMatchPath(source, edge, target));
-            }
-            else
-            {
-                throw new Exception("Edges can't have a out step.");
-            }
+            NewPathList.Add(new GremlinMatchPath(source, edge, target));
         }
 
         public GremlinVariable GetSourceNode(GremlinVariable edge)

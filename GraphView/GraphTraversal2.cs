@@ -1,14 +1,8 @@
-﻿using GraphView.GremlinTranslationOps;
-using GraphView.GremlinTranslationOps.map;
-using GraphView.GremlinTranslationOps.filter;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GraphView.GremlinTranslationOps.sideEffect;
-using GraphView.GremlinTranslationOps.branch;
-using static GraphView.GremlinTranslationOps.filter.GremlinHasOp;
 
 namespace GraphView
 {
@@ -116,6 +110,8 @@ namespace GraphView
         public GraphTraversal2 As(params string[] GremlinTranslationOperatorLabels) {
             foreach (var GremlinTranslationOperatorLabel in GremlinTranslationOperatorLabels)
             {
+                if (LastGremlinTranslationOp.Labels == null)
+                    LastGremlinTranslationOp.Labels = new List<string>();
                 LastGremlinTranslationOp.Labels.Add(GremlinTranslationOperatorLabel);
             }
             return this;    

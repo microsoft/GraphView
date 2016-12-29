@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
-using GraphView.GremlinTranslationOps;
 
 namespace GraphView
 {

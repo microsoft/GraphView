@@ -5,8 +5,22 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.filter
+namespace GraphView
 {
+    internal enum HasOpType
+    {
+        HasKey,
+        HasKeyValue,
+        HasLabelKeyValue,
+        HasLabelKeyPredicate,
+        HasKeyPredicate,
+        HasKeyTraversal,
+
+        HasId,
+        HasKeys,
+        HasLabel,
+        HasValue
+    }
     internal class GremlinHasOp: GremlinTranslationOperator
     {
         public string Key { get; set; }
@@ -16,21 +30,6 @@ namespace GraphView.GremlinTranslationOps.filter
         public Predicate Predicate { get; set; }
         public GraphTraversal2 Traversal { get; set; }
         public HasOpType OpType { get; set; }
-
-        internal enum HasOpType
-        {
-            HasKey,
-            HasKeyValue,
-            HasLabelKeyValue,
-            HasLabelKeyPredicate,
-            HasKeyPredicate,
-            HasKeyTraversal,
-
-            HasId,
-            HasKeys,
-            HasLabel,
-            HasValue
-        }
 
         public GremlinHasOp(string key)
         {

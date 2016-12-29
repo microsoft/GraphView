@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.branch
+namespace GraphView
 {
     internal class GremlinRepeatOp: GremlinTranslationOperator
     {
@@ -119,44 +120,43 @@ namespace GraphView.GremlinTranslationOps.branch
             }
             else if (inputContext.CurrVariable is GremlinEdgeVariable)
             {
-                GremlinDerivedVariable derivedVariable = new GremlinDerivedVariable(inputContext.ToSelectQueryBlock());
-
                 GremlinUtil.InheritedVariableFromParent(RepeatTraversal, inputContext);
-                Dictionary<string, List<GremlinVariable>> RepeatOuterAliasList =
-                    new Dictionary<string, List<GremlinVariable>>();
-                foreach (var alias in inputContext.AliasToGremlinVariableList)
-                {
-                    RepeatOuterAliasList[alias.Key] = alias.Value.Copy();
-                }
                 GremlinToSqlContext context = RepeatTraversal.GetEndOp().GetContext();
                 var subQueryExpr = context.ToSelectQueryBlock();
-                foreach (var alias in context.AliasToGremlinVariableList)
+                (subQueryExpr.SelectElements[0] as WSelectScalarExpression).ColumnName = 
+                                                                inputContext.CurrVariable.VariableName + "." 
+                                                                + GremlinUtil.GetCompareString(inputContext.CurrVariable);
+                for (var i = 0; i < inputContext.CurrVariable.Properties.Count; i++)
                 {
-                    if (RepeatOuterAliasList.ContainsKey(alias.Key) &&
-                        RepeatOuterAliasList[alias.Key].Count != alias.Value.Count)
-                    {
-                        GremlinVariable outerLastVar = RepeatOuterAliasList[alias.Key].Last();
-                        GremlinVariable innerLastVar = alias.Value.Last();
-                        subQueryExpr.SelectElements.Add(
-                            new ColumnProjection(innerLastVar.VariableName, "*", outerLastVar.VariableName)
-                                .ToSelectElement());
-                    }
+                    subQueryExpr.SelectElements.Add(new ColumnProjection(
+                        context.CurrVariable.VariableName,
+                        inputContext.CurrVariable.Properties[i],
+                        inputContext.CurrVariable.VariableName + "." + inputContext.CurrVariable.Properties[i]).ToSelectElement()
+                    );
                 }
-                (subQueryExpr.SelectElements[0] as WSelectScalarExpression).ColumnName =
-                    inputContext.CurrVariable.VariableName + ".id";
-                (subQueryExpr.SelectElements[1] as WSelectScalarExpression).ColumnName =
-                    inputContext.GetSinkNode(inputContext.CurrVariable).VariableName + ".id";
-
-                inputContext.ClearAndCreateNewContextInfo();
-                inputContext.AddNewVariable(derivedVariable);
-
+                
                 List<object> PropertyKeys = new List<object>();
                 PropertyKeys.Add(new WScalarSubquery() {SubQueryExpr = subQueryExpr});
+                //PropertyKeys.Add();//for special scalar expression
+                PropertyKeys.Add(GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, GremlinUtil.GetCompareString(inputContext.CurrVariable)));
+                for (var i = 0; i < inputContext.CurrVariable.Properties.Count; i++)
+                {
+                    PropertyKeys.Add(GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, inputContext.CurrVariable.Properties[i]));
+                }
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("repeat", PropertyKeys);
-                GremlinTVFVariable tvfVariable = inputContext.CrossApplyToVariable(derivedVariable, secondTableRef,
-                    Labels);
-                inputContext.SetCurrVariable(tvfVariable);
-                inputContext.SetDefaultProjection(tvfVariable);
+
+                //GremlinUtil.SelectAllNeedProperties(context.CurrVariable, inputContext.CurrVariable.Properties);
+
+                WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
+                {
+                    FirstTableRef = null,
+                    SecondTableRef = secondTableRef,
+                    UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+                };
+                GremlinTVFVariable newVariable = new GremlinTVFVariable(tableReference);
+                inputContext.AddNewVariable(newVariable);
+                inputContext.SetCurrVariable(newVariable);
+                inputContext.SetDefaultProjection(newVariable);
             }
             else
             {

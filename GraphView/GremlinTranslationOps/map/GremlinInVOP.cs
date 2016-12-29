@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.map
+namespace GraphView
 {
     internal class GremlinInVOp: GremlinTranslationOperator
     {
@@ -25,14 +25,8 @@ namespace GraphView.GremlinTranslationOps.map
                 inVariable = inputContext.GetSinkNode(inputContext.CurrVariable);
                 if (inVariable == null)
                 {
-                    inVariable = new GremlinVertexVariable();
-                    inputContext.SetSinkNode(inputContext.CurrVariable, inVariable);
-                    if (inputContext.NewVariableList.Count == 0)
-                    {
-                        inputContext.AddPaths(inputContext.GetSourceNode(inputContext.CurrVariable),
-                                              inputContext.CurrVariable,
-                                              inputContext.GetSinkNode(inputContext.CurrVariable));
-                    }
+                    inputContext.CurrVariable.Properties.Add("_sink");
+                    inVariable = new GremlinVirtualVertexVariable(inputContext.CurrVariable as GremlinEdgeVariable);
                     inputContext.AddNewVariable(inVariable);
                 }
             }

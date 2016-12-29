@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps
+namespace GraphView
 {
     internal class GremlinOutOp: GremlinTranslationOperator
     {

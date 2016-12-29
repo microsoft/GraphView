@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.map
+namespace GraphView
 {
     internal class GremlinOptionalOp: GremlinTranslationOperator
     {
@@ -69,6 +69,7 @@ namespace GraphView.GremlinTranslationOps.map
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
+                newVariable.VariableType = context.CurrVariable.GetVariableType();
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
 
@@ -81,6 +82,7 @@ namespace GraphView.GremlinTranslationOps.map
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
 
                 var newVariable = inputContext.CrossApplyToVariable(oldVariable, secondTableRef, Labels);
+                newVariable.VariableType = context.CurrVariable.GetVariableType();
                 inputContext.SetCurrVariable(newVariable);
                 inputContext.SetDefaultProjection(newVariable);
             }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslationOps.filter
+namespace GraphView
 {
     internal class GremlinRangeOp: GremlinTranslationOperator
     {
