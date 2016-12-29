@@ -35,4 +35,6 @@ namespace GraphView {
             return GremlinVariableType.Edge;
         }
     }
+
+    internal abstract class GremlinEdgeVariable2 : GremlinTableVariable { }
 }

@@ -26,4 +26,5 @@ namespace GraphView
         }
 
     }
+    internal abstract class GremlinVertexVariable2 : GremlinTableVariable { }
 }
