@@ -7,14 +7,14 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    //internal enum GremlinVariableType
-    //{
-    //    Vertex,
-    //    Edge,
-    //    Scalar,
-    //    Table,
-    //    Undefined
-    //}
+    internal enum GremlinVariableType
+    {
+        Vertex,
+        Edge,
+        Scalar,
+        Table,
+        Undefined
+    }
     internal abstract class GremlinVariable
     {
 

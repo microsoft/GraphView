@@ -103,6 +103,7 @@
     <Compile Include="GremlinTranslationOps\variables\GremlinScalarVariable.cs" />
     <Compile Include="GremlinTranslationOps\variables\GremlinTVFEdgeVariable.cs" />
     <Compile Include="GremlinTranslationOps\variables\GremlinTVFVariable.cs" />
+    <Compile Include="GremlinTranslationOps\variables\GremlinVariableProperty2.cs" />
     <Compile Include="GremlinTranslationOps\variables\GremlinVariableReference.cs" />
     <Compile Include="GremlinTranslationOps\variables\GremlinVertexVariable.cs" />
     <Compile Include="GremlinTranslationOps\variables\GremlinVirtualVariable.cs" />
