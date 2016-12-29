@@ -175,13 +175,13 @@ namespace GraphView
             }
             else
             {
-                if (pair.Item1 is GremlinVertexVariable)
+                if (pair.Item1 is GremlinVertexVariable2)
                 {
-                    GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(pair.Item1 as GremlinVertexVariable);
+                    GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(pair.Item1 as GremlinVertexVariable2);
                     currentContext.VariableList.Add(contextVertex);
                     currentContext.PivotVariable = contextVertex;
                 }
-                else if (pair.Item1 is GremlinEdgeVariable)
+                else if (pair.Item1 is GremlinEdgeVariable2)
                 {
                     GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(pair.Item1 as GremlinContextEdgeVariable);
                     currentContext.VariableList.Add(contextEdge);
@@ -234,11 +234,11 @@ namespace GraphView
         }
     }
 
-    internal abstract class GremlinVertexVariable : GremlinTableVariable { }
+    internal abstract class GremlinVertexVariable2 : GremlinTableVariable { }
 
-    internal abstract class GremlinEdgeVariable : GremlinTableVariable { }
+    internal abstract class GremlinEdgeVariable2 : GremlinTableVariable { }
 
-    internal class GremlinFreeVertexVariable : GremlinVertexVariable
+    internal class GremlinFreeVertexVariable : GremlinVertexVariable2
     {
         public GremlinFreeVertexVariable()
         {
@@ -247,7 +247,7 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext2 currentContext)
         {
-            GremlinEdgeVariable bothEdgeVar = new GremlinBoundEdgeVariable(new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinEdgeVariable2 bothEdgeVar = new GremlinBoundEdgeVariable(new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(bothEdgeVar);
             GremlinFreeVertexVariable bothVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(bothVertex);
@@ -265,7 +265,7 @@ namespace GraphView
     /// the FROM clause, whereas a bound vertex variable is translated into
     /// a table-valued function following a prior table-valued function producing vertex references. 
     /// </summary>
-    internal class GremlinBoundVertexVariable : GremlinVertexVariable
+    internal class GremlinBoundVertexVariable : GremlinVertexVariable2
     {
         private GremlinVariableProperty vertexId;
         private List<string> projectedProperties;
@@ -309,11 +309,11 @@ namespace GraphView
         }
     }
 
-    internal class GremlinContextVertexVariable : GremlinVertexVariable
+    internal class GremlinContextVertexVariable : GremlinVertexVariable2
     {
-        GremlinVertexVariable contextVariable;
+        GremlinVertexVariable2 contextVariable;
 
-        public GremlinContextVertexVariable(GremlinVertexVariable contextVariable)
+        public GremlinContextVertexVariable(GremlinVertexVariable2 contextVariable)
         {
             this.contextVariable = contextVariable;
         }
@@ -338,7 +338,7 @@ namespace GraphView
             Populate("BothAdjacencyList");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-            GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
+            GremlinEdgeVariable2 bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
             bothEdge.Populate("_sink");
             currentContext.VariableList.Add(bothEdge);
 
@@ -352,7 +352,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinBoundEdgeVariable : GremlinEdgeVariable
+    internal class GremlinBoundEdgeVariable : GremlinEdgeVariable2
     {
         private GremlinVariableProperty adjacencyList;
         // A list of edge properties to project for this edge table
@@ -393,11 +393,11 @@ namespace GraphView
         }
     }
 
-    internal class GremlinContextEdgeVariable : GremlinEdgeVariable
+    internal class GremlinContextEdgeVariable : GremlinEdgeVariable2
     {
-        GremlinEdgeVariable contextEdge;
+        GremlinEdgeVariable2 contextEdge;
 
-        public GremlinContextEdgeVariable(GremlinEdgeVariable contextEdge)
+        public GremlinContextEdgeVariable(GremlinEdgeVariable2 contextEdge)
         {
             this.contextEdge = contextEdge;
         }
@@ -473,7 +473,7 @@ namespace GraphView
                 // the following both() is not described in the MATH caluse and the corresponding 
                 // vertex variable is not a free vertex variable, but a bound vertex variable. 
                 GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-                GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
+                GremlinEdgeVariable2 bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
                 bothEdge.Populate("_sink");
                 currentContext.VariableList.Add(bothEdge);
 
