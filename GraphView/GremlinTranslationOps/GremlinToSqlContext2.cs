@@ -9,7 +9,7 @@ namespace GraphView
     internal class GremlinToSqlContext2
     {
         public GremlinVariable2 PivotVariable { get; set; }
-        public Dictionary<string, GremlinVariable2> TaggedVariables;
+        public Dictionary<string, Tuple<GremlinVariable2, GremlinToSqlContext2>> TaggedVariables;
         public List<GremlinVariable2> VariableList { get; private set; }
 
 
@@ -19,7 +19,7 @@ namespace GraphView
 
         public GremlinToSqlContext2()
         {
-            TaggedVariables = new Dictionary<string, GremlinVariable2>();
+            TaggedVariables = new Dictionary<string, Tuple<GremlinVariable2, GremlinToSqlContext2>>();
             ProjectedVariables = new List<ISqlScalar>();
             VariableList = new List<GremlinVariable2>();
         }
@@ -29,7 +29,7 @@ namespace GraphView
             return new GremlinToSqlContext2()
             {
                 VariableList = new List<GremlinVariable2>(this.VariableList),
-                TaggedVariables = new Dictionary<string, GremlinVariable2>(this.TaggedVariables),
+                TaggedVariables = new Dictionary<string, Tuple<GremlinVariable2, GremlinToSqlContext2>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<ISqlTable>(this.TableReferences),
                 ProjectedVariables = new List<ISqlScalar>(ProjectedVariables),

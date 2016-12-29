@@ -48,7 +48,7 @@ namespace GraphView
 
         internal virtual void As(GremlinToSqlContext2 currentContext, string name)
         {
-            currentContext.TaggedVariables[name] = this;
+            currentContext.TaggedVariables[name] = new Tuple<GremlinVariable2, GremlinToSqlContext2>(this, currentContext);
         }
 
         internal virtual void Both(GremlinToSqlContext2 currentContext)
@@ -75,7 +75,7 @@ namespace GraphView
                     throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", key));
                 }
 
-                GremlinVariable2 var = currentContext.TaggedVariables[key];
+                GremlinVariable2 var = currentContext.TaggedVariables[key].Item1;
                 currentContext.ProjectedVariables.Add(var.DefaultProjection());
             }
         }
@@ -154,6 +154,42 @@ namespace GraphView
                 currentContext.PivotVariable = injectVar;
             }
         }
+
+        internal virtual void OutV(GremlinToSqlContext2 currentContext)
+        {
+            throw new QueryCompilationException("The OutV() step can only be applied to edges.");
+        }
+
+        internal virtual void Select(GremlinToSqlContext2 currentContext, string tagName)
+        {
+            if (!currentContext.TaggedVariables.ContainsKey(tagName))
+            {
+                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", tagName));
+            }
+
+            var pair = currentContext.TaggedVariables[tagName];
+
+            if (pair.Item2 == currentContext)
+            {
+                currentContext.PivotVariable = pair.Item1;
+            }
+            else
+            {
+                if (pair.Item1 is GremlinVertexVariable)
+                {
+                    GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(pair.Item1 as GremlinVertexVariable);
+                    currentContext.VariableList.Add(contextVertex);
+                    currentContext.PivotVariable = contextVertex;
+                }
+                else if (pair.Item1 is GremlinEdgeVariable)
+                {
+                    GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(pair.Item1 as GremlinContextEdgeVariable);
+                    currentContext.VariableList.Add(contextEdge);
+                    currentContext.PivotVariable = contextEdge;
+                }
+            }
+        }
+
     }
 
     
@@ -188,7 +224,7 @@ namespace GraphView
         }
     }
 
-    internal abstract class GremlinTableVariable : GremlinVariable2
+    internal abstract class GremlinTableVariable : GremlinVariable2, ISqlTable
     {
         protected static int _count = 0;
 
@@ -197,8 +233,12 @@ namespace GraphView
             return "R_" + _count++;
         }
     }
-    
-    internal class GremlinFreeVertexVariable : GremlinTableVariable, ISqlTable
+
+    internal abstract class GremlinVertexVariable : GremlinTableVariable { }
+
+    internal abstract class GremlinEdgeVariable : GremlinTableVariable { }
+
+    internal class GremlinFreeVertexVariable : GremlinVertexVariable
     {
         public GremlinFreeVertexVariable()
         {
@@ -207,27 +247,33 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext2 currentContext)
         {
+            GremlinEdgeVariable bothEdgeVar = new GremlinBoundEdgeVariable(new GremlinVariableProperty(this, "BothAdjacencyList"));
+            currentContext.VariableList.Add(bothEdgeVar);
             GremlinFreeVertexVariable bothVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(bothVertex);
+
+            // In this case, the both-edge variable is not added to the table-reference list. 
+            // Instead, we populate a path this_variable-[bothEdge]->bothVertex in the context
+            currentContext.TableReferences.Add(bothVertex);
+
             currentContext.PivotVariable = bothVertex;
-            // Also populates a path this_variable-->bothVertex in the context
         }
     }
 
     /// <summary>
     /// A free vertex variable is translated to a node table reference in 
     /// the FROM clause, whereas a bound vertex variable is translated into
-    /// a table-valued function. 
+    /// a table-valued function following a prior table-valued function producing vertex references. 
     /// </summary>
-    internal class GremlinBoundVertexVariable : GremlinTableVariable, ISqlTable
+    internal class GremlinBoundVertexVariable : GremlinVertexVariable
     {
-        private GremlinVariableProperty adjacencyList;
+        private GremlinVariableProperty vertexId;
         private List<string> projectedProperties;
 
-        public GremlinBoundVertexVariable(GremlinVariableProperty adjacencyList)
+        public GremlinBoundVertexVariable(GremlinVariableProperty vertexId)
         {
             VariableName = GenerateTableAlias();
-            this.adjacencyList = adjacencyList;
+            this.vertexId = vertexId;
             projectedProperties = new List<string>();
         }
 
@@ -238,15 +284,147 @@ namespace GraphView
 
         internal override void Populate(string name)
         {
-            projectedProperties.Add(name);
+            if (!projectedProperties.Contains(name))
+            {
+                projectedProperties.Add(name);
+            }
         }
 
         internal override void Both(GremlinToSqlContext2 currentContext)
         {
+            Populate("BothAdjacencyList");
+
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-            GremlinBoundVertexVariable boundVertex = new GremlinBoundVertexVariable(adjacencyList);
-            currentContext.VariableList.Add(boundVertex);
-            currentContext.PivotVariable = boundVertex;
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
+            bothEdge.Populate("_sink");
+            currentContext.VariableList.Add(bothEdge);
+
+            GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(bothEdge, "_sink"));
+            currentContext.VariableList.Add(bothVertex);
+
+            currentContext.TableReferences.Add(bothEdge);
+            currentContext.TableReferences.Add(bothVertex);
+
+            currentContext.PivotVariable = bothVertex;
+        }
+    }
+
+    internal class GremlinContextVertexVariable : GremlinVertexVariable
+    {
+        GremlinVertexVariable contextVariable;
+
+        public GremlinContextVertexVariable(GremlinVertexVariable contextVariable)
+        {
+            this.contextVariable = contextVariable;
+        }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return contextVariable.GetVariableType();
+        }
+
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return contextVariable.DefaultProjection();
+        }
+
+        internal override void Populate(string name)
+        {
+            contextVariable.Populate(name);
+        }
+
+        internal override void Both(GremlinToSqlContext2 currentContext)
+        {
+            Populate("BothAdjacencyList");
+
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
+            GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
+            bothEdge.Populate("_sink");
+            currentContext.VariableList.Add(bothEdge);
+
+            GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(bothEdge, "_sink"));
+            currentContext.VariableList.Add(bothVertex);
+
+            currentContext.TableReferences.Add(bothEdge);
+            currentContext.TableReferences.Add(bothVertex);
+
+            currentContext.PivotVariable = bothVertex;
+        }
+    }
+
+    internal class GremlinBoundEdgeVariable : GremlinEdgeVariable
+    {
+        private GremlinVariableProperty adjacencyList;
+        // A list of edge properties to project for this edge table
+        private List<string> projectedProperties;
+
+        public GremlinBoundEdgeVariable(GremlinVariableProperty adjacencyList)
+        {
+            VariableName = GenerateTableAlias();
+            this.adjacencyList = adjacencyList;
+            projectedProperties = new List<string>();
+        }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Edge;
+        }
+
+        // To confirm: what is the default projection of edges in Gremlin
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return base.DefaultProjection();
+        }
+
+        internal override void Populate(string name)
+        {
+            if (projectedProperties.Contains(name))
+            {
+                projectedProperties.Add(name);
+            }
+        }
+
+        internal override void OutV(GremlinToSqlContext2 currentContext)
+        {
+            // A naive implementation would be: add a new bound/free vertex to the variable list. 
+            // A better implementation should reason the status of the edge variable and only reset
+            // the pivot variable if possible, thereby avoiding adding a new vertex variable  
+            // and reducing one join. 
+        }
+    }
+
+    internal class GremlinContextEdgeVariable : GremlinEdgeVariable
+    {
+        GremlinEdgeVariable contextEdge;
+
+        public GremlinContextEdgeVariable(GremlinEdgeVariable contextEdge)
+        {
+            this.contextEdge = contextEdge;
+        }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return contextEdge.GetVariableType();
+        }
+
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return contextEdge.DefaultProjection();
+        }
+
+        internal override void Populate(string name)
+        {
+            contextEdge.Populate(name);
+        }
+
+        internal override void OutV(GremlinToSqlContext2 currentContext)
+        {
+            // A naive implementation: always introduce a new vertex variable
+            contextEdge.Populate("_sink");
+            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(contextEdge, "_sink"));
+            currentContext.VariableList.Add(outVertex);
+
+            currentContext.TableReferences.Add(outVertex);
         }
     }
 
@@ -291,16 +469,24 @@ namespace GraphView
                     traversal2.Populate("BothAdjacencyList");
                 }
 
-                // If one output of the coalesce variable is of type vertex,
-                // the following both() is formulated as a bound vertex variable.
+                // Since a Gremlin binary variable is translated to a table-valued function in SQL,
+                // the following both() is not described in the MATH caluse and the corresponding 
+                // vertex variable is not a free vertex variable, but a bound vertex variable. 
                 GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-                GremlinBoundVertexVariable boundVertex = new GremlinBoundVertexVariable(adjacencyList);
-                currentContext.PivotVariable = boundVertex;
-                currentContext.VariableList.Add(boundVertex);
+                GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjacencyList);
+                bothEdge.Populate("_sink");
+                currentContext.VariableList.Add(bothEdge);
+
+                GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(bothEdge, "_sink"));
+                currentContext.VariableList.Add(bothVertex);
+
+                currentContext.TableReferences.Add(bothEdge);
+                currentContext.TableReferences.Add(bothVertex);
+
+                currentContext.PivotVariable = bothVertex;
             }
         }
     }
-
     
     internal abstract class GremlinCoalesceVariable : GremlinBinaryVariable
     {
