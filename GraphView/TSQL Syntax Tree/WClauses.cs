@@ -497,8 +497,11 @@ namespace GraphView
             {
                 string arrowSink = PathEdgeList[i].Item2.EdgeType == WEdgeType.BothEdge ? "-" : "->";
                 string arrowSource = Tail != null ? "-" : "->";
-                sb.AppendFormat("{0}{1}[{2}]", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource,
-                    PathEdgeList[i].Item2.ToString());
+                if (PathEdgeList[i].Item1 != null)
+                {
+                    sb.AppendFormat("{0}{1}", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource);
+                }
+                sb.AppendFormat("[{0}]", PathEdgeList[i].Item2.ToString());
                 if (Tail != null)
                 {
                     sb.Append(arrowSink);

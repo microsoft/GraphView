@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GraphView.GremlinTranslationOps.filter;
 
-namespace GraphView.GremlinTranslationOps.sideEffect
+namespace GraphView
 {
     internal class GremlinSideEffectOp: GremlinTranslationOperator
     {

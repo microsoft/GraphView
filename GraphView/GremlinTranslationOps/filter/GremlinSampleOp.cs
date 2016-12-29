@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslationOps.filter
+namespace GraphView
 {
     internal class GremlinSampleOp: GremlinTranslationOperator
     {

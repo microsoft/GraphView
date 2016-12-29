@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.IO;
-using GraphView.GremlinTranslationOps;
 
 namespace GremlinTranslationOperator.Tests
 {

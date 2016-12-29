@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslationOps.sideEffect
+namespace GraphView
 {
     internal class GremlinInjectOp: GremlinTranslationOperator
     {

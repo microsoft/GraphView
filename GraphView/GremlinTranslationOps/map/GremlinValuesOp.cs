@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslationOps.map
+namespace GraphView
 {
     internal class GremlinValuesOp : GremlinTranslationOperator
     {
@@ -36,7 +36,7 @@ namespace GraphView.GremlinTranslationOps.map
                 }
                 else if (PropertyKeys.Count == 1)
                 {
-                    newVariable = new GremlinScalarVariable(inputContext.CurrVariable, PropertyKeys.First() as string);
+                    newVariable = new GremlinScalarVariable2(inputContext.CurrVariable, PropertyKeys.First() as string);
                 }
                 else
                 {
@@ -58,7 +58,8 @@ namespace GraphView.GremlinTranslationOps.map
                 }
                 else if (PropertyKeys.Count == 1)
                 {
-                    newVariable = new GremlinScalarVariable(inputContext.CurrVariable, PropertyKeys.First() as string);
+                    inputContext.CurrVariable.Properties.Add(PropertyKeys.First() as string);
+                    newVariable = new GremlinScalarVariable2(inputContext.CurrVariable, PropertyKeys.First() as string);
                 }
                 else
                 {

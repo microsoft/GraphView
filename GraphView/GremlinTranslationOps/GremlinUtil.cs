@@ -4,9 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GraphView.GremlinTranslationOps.map;
 
-namespace GraphView.GremlinTranslationOps
+namespace GraphView
 {
     public class GremlinUtil
     {
@@ -347,6 +346,7 @@ namespace GraphView.GremlinTranslationOps
             //if (edgeVar is GremlinPathEdgeVariable) return WEdgeType.PathE;
             //if (edgeVar is GremlinPathNodeVariable) return WEdgeType.PathN;
             if (edgeVar is GremlinEdgeVariable) return (edgeVar as GremlinEdgeVariable).EdgeType;
+            if (edgeVar is GremlinTVFEdgeVariable) return (edgeVar as GremlinTVFEdgeVariable).EdgeType;
             throw new NotImplementedException();
         }
 
@@ -517,6 +517,10 @@ namespace GraphView.GremlinTranslationOps
             {
                 return (currVar as GremlinTVFVariable).TableReference;
             }
+            else if (currVar is GremlinTVFEdgeVariable)
+            {
+                return (currVar as GremlinTVFEdgeVariable).TableReference;
+            }
             else if (currVar is GremlinVariableReference)
             {
                 //TODO
@@ -549,6 +553,14 @@ namespace GraphView.GremlinTranslationOps
 
         internal static string GetCompareString(GremlinVariable variable)
         {
+            if (variable is GremlinVirtualVertexVariable)
+            {
+                return "_sink";
+            }
+            if (variable is GremlinScalarVariable2)
+            {
+                return (variable as GremlinScalarVariable2).Key;
+            }
             switch (variable.GetVariableType())
             {
                 case GremlinVariableType.Edge:
@@ -559,6 +571,14 @@ namespace GraphView.GremlinTranslationOps
                     return "_value";
                 default:
                     throw new NotImplementedException();
+            }
+        }
+
+        internal static void SelectAllNeedProperties(GremlinVariable gremlinVariable, List<string> Properties)
+        {
+            if (gremlinVariable is GremlinTVFVariable)
+            {
+
             }
         }
     }
