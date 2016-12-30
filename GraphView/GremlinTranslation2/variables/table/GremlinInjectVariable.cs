@@ -12,14 +12,21 @@ namespace GraphView
     /// </summary>
     internal class GremlinInjectVariable : GremlinTableVariable, ISqlTable
     {
-        List<string> rows;
-        // When priorContext is null, the corresponding table reference only contains injected values. 
-        GremlinToSqlContext2 priorContext;
+        protected static int _count = 0;
 
-        public GremlinInjectVariable(GremlinToSqlContext2 priorContext, params string[] values)
+        internal override string GenerateTableAlias()
+        {
+            return "Inject_" + _count++;
+        }
+
+        List<object> rows;
+        // When priorContext is null, the corresponding table reference only contains injected values. 
+        GremlinToSqlContext priorContext;
+
+        public GremlinInjectVariable(GremlinToSqlContext priorContext, params object[] values)
         {
             this.priorContext = priorContext;
-            rows = new List<string>(values);
+            rows = new List<object>(values);
         }
 
         public override GremlinVariableType GetVariableType()
@@ -27,7 +34,17 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
-        internal override GremlinScalarVariable DefaultProjection()
+        public WTableReference ToTableReference()
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<WSelectElement> ToSelectElementList()
+        {
+            throw new NotImplementedException();
+        }
+
+        public GremlinScalarVariable DefaultProjection()
         {
             // When priorContext is not null, the output table has one column,
             // and the column name is determined by priorContext.
@@ -42,6 +59,11 @@ namespace GraphView
             }
         }
 
+        public List<WSelectElement> ToPopulateProjection()
+        {
+            return null;
+        }
+
         internal override void Populate(string name)
         {
             if (priorContext != null)
@@ -50,7 +72,7 @@ namespace GraphView
             }
         }
 
-        internal override void Inject(GremlinToSqlContext2 currentContext, params string[] values)
+        internal override void Inject(GremlinToSqlContext currentContext, params string[] values)
         {
             rows.AddRange(values);
         }

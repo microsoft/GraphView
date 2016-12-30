@@ -11,10 +11,10 @@ namespace GraphView
     /// </summary>
     internal abstract class GremlinBinaryVariable : GremlinTableVariable
     {
-        protected GremlinToSqlContext2 traversal1;
-        protected GremlinToSqlContext2 traversal2;
+        protected GremlinToSqlContext traversal1;
+        protected GremlinToSqlContext traversal2;
 
-        public GremlinBinaryVariable(GremlinToSqlContext2 traversal1, GremlinToSqlContext2 traversal2)
+        public GremlinBinaryVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
         {
             this.traversal1 = traversal1;
             this.traversal2 = traversal2;
@@ -26,14 +26,14 @@ namespace GraphView
             traversal2.Populate(name);
         }
 
-        internal override void Both(GremlinToSqlContext2 currentContext)
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             if (traversal1.PivotVariable.GetVariableType() != GremlinVariableType.Vertex &&
                 traversal2.PivotVariable.GetVariableType() != GremlinVariableType.Vertex)
             {
                 // If neither output of the coalesce variable is of type vertex, 
                 // this coalesce variable cannot be followed by the Both() step.
-                base.Both(currentContext);
+                base.Both(currentContext, edgeLabels);
             }
             else
             {

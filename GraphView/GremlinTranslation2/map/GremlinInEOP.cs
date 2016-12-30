@@ -23,14 +23,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //null?
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(null, WEdgeType.InEdge);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.SetDefaultProjection(newEdgeVar);
-            inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
-
-            inputContext.AddPaths(null, newEdgeVar, inputContext.CurrVariable);
-            inputContext.SetCurrVariable(newEdgeVar);
+            inputContext.PivotVariable.InE(inputContext, EdgeLabels);
 
             return inputContext;          
         }

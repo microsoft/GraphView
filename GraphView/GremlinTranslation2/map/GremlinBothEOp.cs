@@ -23,21 +23,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(newVertexVar,  WEdgeType.BothEdge);
-            inputContext.AddNewVariable(newVertexVar);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, newVertexVar);
-
-            foreach (var edgeLabel in EdgeLabels)
-            {
-                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(newEdgeVar.VariableName, "label");
-                WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, edgeLabel);
-                inputContext.AddPredicate(booleanExpr);
-            }
-
-            inputContext.SetCurrVariable(newEdgeVar);
-            inputContext.SetDefaultProjection(newEdgeVar);
+            throw new NotImplementedException();
 
             return inputContext;
         }

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView
+namespace GraphView.OldVersion
 {
     internal class GremlinToSqlContext
     {
@@ -600,12 +600,12 @@ namespace GraphView
             return new WDeleteEdgeSpecification(ToSelectQueryBlock() as WSelectQueryBlock);
         }
 
-        public void AddPaths(GremlinVariable source, GremlinVariable edge, GremlinVariable target)
+        public void AddPaths(GremlinVariable2 source, GremlinVariable2 edge, GremlinVariable2 target)
         {
             NewPathList.Add(new GremlinMatchPath(source, edge, target));
         }
 
-        public GremlinVariable GetSourceNode(GremlinVariable edge)
+        public GremlinVariable2 GetSourceNode(GremlinVariable2 edge)
         {
             if (edge.GetVariableType() != GremlinVariableType.Edge) throw new Exception("Paremeter should be a edge type");
             foreach (var path in NewPathList)
@@ -619,7 +619,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public GremlinVariable GetSinkNode(GremlinVariable edge)
+        public GremlinVariable2 GetSinkNode(GremlinVariable2 edge)
         {
             if (edge.GetVariableType() != GremlinVariableType.Edge) throw new Exception("Paremeter should be a edge type");
             foreach (var path in NewPathList)
@@ -633,7 +633,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public void SetSinkNode(GremlinVariable edge, GremlinVariable sinkNode)
+        public void SetSinkNode(GremlinVariable2 edge, GremlinVariable2 sinkNode)
         {
             foreach (var path in NewPathList)
             {
@@ -654,7 +654,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public void SetSourceNode(GremlinVariable edge, GremlinVariable sourceNode)
+        public void SetSourceNode(GremlinVariable2 edge, GremlinVariable2 sourceNode)
         {
             foreach (var path in NewPathList)
             {

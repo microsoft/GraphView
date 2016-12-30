@@ -86,7 +86,7 @@ namespace GraphView
             };
         }
 
-        internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression key, Predicate predicate)
+        internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr, Predicate predicate)
         {
             if (predicate.PredicateType == PredicateType.within ||
                 predicate.PredicateType == PredicateType.without ||
@@ -100,15 +100,15 @@ namespace GraphView
                     case PredicateType.within:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(key,
-                                new Predicate(PredicateType.eq, value, predicate.IsAliasValue)));
+                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr,
+                                new Predicate(PredicateType.eq, value)));
                         }
                         return ConcatBooleanExpressionListWithOr(booleanExprList);
                     case PredicateType.without:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(key,
-                                new Predicate(PredicateType.neq, value, predicate.IsAliasValue)));
+                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr,
+                                new Predicate(PredicateType.neq, value)));
                         }
                         return ConcatBooleanExpressionListWithAnd(booleanExprList);
                     case PredicateType.inside:
@@ -126,20 +126,11 @@ namespace GraphView
             }
             else
             {
-                WScalarExpression valueExpression = null;
-                if (predicate.IsAliasValue)
-                {
-                    valueExpression = GetColumnReferenceExpression(predicate.VariableName, predicate.CompareString);
-                }
-                else
-                {
-                    valueExpression = GetValueExpression(predicate.Value);
-                }
                 return new WBooleanComparisonExpression()
                 {
                     ComparisonType = GetComparisonTypeFromPredicateType(predicate.PredicateType),
-                    FirstExpr = key,
-                    SecondExpr = valueExpression
+                    FirstExpr = firstExpr,
+                    SecondExpr = secondExpr
                 };
             }
         }
@@ -220,7 +211,7 @@ namespace GraphView
             };
         }
 
-        internal static WNamedTableReference GetNamedTableReference(GremlinVariable gremlinVar)
+        internal static WNamedTableReference GetNamedTableReference(GremlinVariable2 gremlinVar)
         {
             return new WNamedTableReference()
             {
@@ -302,7 +293,7 @@ namespace GraphView
             WSchemaObjectName tailNode = null;
             if (path.SinkVariable != null)
             {
-               tailNode = GetSchemaObjectName(path.SinkVariable.VariableName);
+                tailNode = GetSchemaObjectName(path.SinkVariable.VariableName);
             }
 
             return new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
@@ -310,12 +301,7 @@ namespace GraphView
 
         internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(GremlinMatchPath path)
         {
-            WEdgeType edgeType = GetEdgeType(path.EdgeVariable);
             String value = "Edge";
-            if (edgeType == WEdgeType.PathE || edgeType == WEdgeType.PathN)
-            {
-                value = path.EdgeVariable.VariableName;
-            }
 
             WSchemaObjectName sourceName = null;
             if (path.SourceVariable != null)
@@ -329,26 +315,21 @@ namespace GraphView
                     MultiPartIdentifier = GetMultiPartIdentifier(value),
                     Alias = path.EdgeVariable.VariableName,
                     MinLength = 1,
-                    MaxLength = 1,
-                    EdgeType =  edgeType
+                    MaxLength = 1
                 }
             );
-            //if (edgeType == WEdgeType.PathE)
-            //{
-            //    pathExpr.Item2.FirstEdgeAlias = (path.EdgeVariable as GremlinPathEdgeVariable).EdgeVariable.VariableName;
-            //}
             return pathExpr;
         }
 
-        internal static WEdgeType GetEdgeType(GremlinVariable edgeVar)
-        {
-            if (edgeVar is GremlinAddEVariable) return WEdgeType.OutEdge;
-            //if (edgeVar is GremlinPathEdgeVariable) return WEdgeType.PathE;
-            //if (edgeVar is GremlinPathNodeVariable) return WEdgeType.PathN;
-            if (edgeVar is GremlinEdgeVariable) return (edgeVar as GremlinEdgeVariable).EdgeType;
-            if (edgeVar is GremlinTVFEdgeVariable) return (edgeVar as GremlinTVFEdgeVariable).EdgeType;
-            throw new NotImplementedException();
-        }
+        //internal static WEdgeType GetEdgeType(GremlinVariable2 edgeVar)
+        //{
+        //    if (edgeVar is GremlinAddEVariable) return WEdgeType.OutEdge;
+        //    //if (edgeVar is GremlinPathEdgeVariable) return WEdgeType.PathE;
+        //    //if (edgeVar is GremlinPathNodeVariable) return WEdgeType.PathN;
+        //    if (edgeVar is GremlinEdgeVariable) return (edgeVar as GremlinEdgeVariable).EdgeType;
+        //    if (edgeVar is GremlinTVFEdgeVariable) return (edgeVar as GremlinTVFEdgeVariable).EdgeType;
+        //    throw new NotImplementedException();
+        //}
 
         internal static WBooleanParenthesisExpression GetBooleanParenthesisExpression(WBooleanExpression booleanExpr)
         {
@@ -364,29 +345,8 @@ namespace GraphView
             if (rootOp.GetType() == typeof(GremlinParentContextOp))
             {
                 GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
-                rootAsContextOp.InheritedVariable = inputContext.CurrVariable;
-                rootAsContextOp.InheritedProjection = inputContext.ProjectionList.Copy();
-                rootAsContextOp.InheritedAliasToGremlinVariableList = inputContext.AliasToGremlinVariableList;
-                //rootAsContextOp.InheritedIsUsedInTVF = inputContext.IsUsedInTVF;
-                rootAsContextOp.InheritedVariableList = new List<GremlinVariable>();
-                foreach (var variable in inputContext.InheritedVariableList)
-                {
-                    rootAsContextOp.InheritedVariableList.Add(variable);
-                }
-                foreach (var variable in inputContext.NewVariableList)
-                {
-                    rootAsContextOp.InheritedVariableList.Add(variable);
-                }
-                
-                rootAsContextOp.InheritedPathList = new List<GremlinMatchPath>();
-                foreach (var path in inputContext.InheritedPathList)
-                {
-                    rootAsContextOp.InheritedPathList.Add(path);
-                }
-                foreach (var path in inputContext.NewPathList)
-                {
-                    rootAsContextOp.InheritedPathList.Add(path);
-                }
+                rootAsContextOp.InheritedPivotVariable = inputContext.PivotVariable;
+                rootAsContextOp.InheritedTaggedVariables = inputContext.TaggedVariables;
             }
         }
 
@@ -401,17 +361,20 @@ namespace GraphView
         }
 
         internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
-            List<object> parameterList)
+            List<WScalarExpression> parameterList)
         {
-            List<WScalarExpression> parameterExprList = new List<WScalarExpression>();
-            foreach (var parameter in parameterList)
-            {
-                parameterExprList.Add(GetValueExpression(parameter));
-            }
             return new WSchemaObjectFunctionTableReference()
             {
                 SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
-                Parameters = parameterExprList
+                Parameters = parameterList
+            };
+        }
+
+        internal static WScalarSubquery GetScalarSubquery(WSelectQueryBlock selectQueryBlock)
+        {
+            return new WScalarSubquery()
+            {
+                SubQueryExpr = selectQueryBlock
             };
         }
 
@@ -496,57 +459,57 @@ namespace GraphView
 
         internal static WTableReference GetTableReferenceFromVariable(GremlinVariable currVar)
         {
-            if (currVar is GremlinVertexVariable)
-            {
-                return GetNamedTableReference(currVar);
-            }
-            //else if (currVar is GremlinChooseVariable)
+            //if (currVar is GremlinVertexVariable)
             //{
-            //    return (currVar as GremlinChooseVariable).TableReference;
+            //    return GetNamedTableReference(currVar);
             //}
-            else if (currVar is GremlinDerivedVariable)
-            {
-                WTableReference temp = new WQueryDerivedTable()
-                {
-                    QueryExpr = (currVar as GremlinDerivedVariable).Statement as WSelectQueryExpression,
-                    Alias = GetIdentifier((currVar as GremlinDerivedVariable).VariableName)
-                };
-                return temp;
-            }
-            else if (currVar is GremlinTVFVariable)
-            {
-                return (currVar as GremlinTVFVariable).TableReference;
-            }
-            else if (currVar is GremlinTVFEdgeVariable)
-            {
-                return (currVar as GremlinTVFEdgeVariable).TableReference;
-            }
-            else if (currVar is GremlinVariableReference)
-            {
-                //TODO
-                var variableReference = currVar as GremlinVariableReference;
-                switch (variableReference.GetVariableType())
-                {
-                    case GremlinVariableType.Edge:
-                        throw new NotImplementedException();
-                        break;
-                    case GremlinVariableType.Vertex:
-                        return GetVariableTableReference(variableReference);
-                        break;
-                    case GremlinVariableType.Scalar:
-                        throw new NotImplementedException();
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                        break;
+            ////else if (currVar is GremlinChooseVariable)
+            ////{
+            ////    return (currVar as GremlinChooseVariable).TableReference;
+            ////}
+            //else if (currVar is GremlinDerivedVariable)
+            //{
+            //    WTableReference temp = new WQueryDerivedTable()
+            //    {
+            //        QueryExpr = (currVar as GremlinDerivedVariable).Statement as WSelectQueryExpression,
+            //        Alias = GetIdentifier((currVar as GremlinDerivedVariable).VariableName)
+            //    };
+            //    return temp;
+            //}
+            //else if (currVar is GremlinTVFVariable)
+            //{
+            //    return (currVar as GremlinTVFVariable).TableReference;
+            //}
+            //else if (currVar is GremlinTVFEdgeVariable)
+            //{
+            //    return (currVar as GremlinTVFEdgeVariable).TableReference;
+            //}
+            //else if (currVar is GremlinVariableReference)
+            //{
+            //    //TODO
+            //    var variableReference = currVar as GremlinVariableReference;
+            //    switch (variableReference.GetVariableType())
+            //    {
+            //        case GremlinVariableType.Edge:
+            //            throw new NotImplementedException();
+            //            break;
+            //        case GremlinVariableType.Vertex:
+            //            return GetVariableTableReference(variableReference);
+            //            break;
+            //        case GremlinVariableType.Scalar:
+            //            throw new NotImplementedException();
+            //            break;
+            //        default:
+            //            throw new NotImplementedException();
+            //            break;
 
-                }
-                throw new NotImplementedException();
-            }
-            else if (currVar is GremlinAddVVariable)
-            {
-                return GetVariableTableReference(currVar as GremlinAddVVariable);
-            }
+            //    }
+            //    throw new NotImplementedException();
+            //}
+            //else if (currVar is GremlinAddVVariable)
+            //{
+            //    return GetVariableTableReference(currVar as GremlinAddVVariable);
+            //}
             return null;
         }
 
@@ -580,6 +543,16 @@ namespace GraphView
             {
 
             }
+        }
+
+        internal static WUnqualifiedJoin GetCrossApplyTableReference(WTableReference firstTableRef, WTableReference secondTableRef)
+        {
+            return new WUnqualifiedJoin()
+            {
+                FirstTableRef = firstTableRef,
+                SecondTableRef = secondTableRef,
+                UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+            };
         }
     }
 }

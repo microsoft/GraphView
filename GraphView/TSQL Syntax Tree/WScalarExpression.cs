@@ -323,9 +323,9 @@ namespace GraphView
         {
             var sb = new StringBuilder(128);
 
-            sb.AppendFormat("{0}(\r\n", indent);
-            sb.AppendFormat("{0}\r\n", SubQueryExpr.ToString(indent + "\t"));
-            sb.AppendFormat("{0}\t)", indent);
+            sb.AppendFormat("\r\n{0}(", indent);
+            sb.AppendFormat("\r\n{0}", SubQueryExpr.ToString(indent + "  "));
+            sb.AppendFormat("\r\n{0})", indent);
 
             return sb.ToString();
         }

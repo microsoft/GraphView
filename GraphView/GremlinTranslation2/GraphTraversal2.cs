@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GremlinTranslation2;
 
 namespace GraphView
 {
@@ -107,13 +108,8 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 As(params string[] GremlinTranslationOperatorLabels) {
-            foreach (var GremlinTranslationOperatorLabel in GremlinTranslationOperatorLabels)
-            {
-                if (LastGremlinTranslationOp.Labels == null)
-                    LastGremlinTranslationOp.Labels = new List<string>();
-                LastGremlinTranslationOp.Labels.Add(GremlinTranslationOperatorLabel);
-            }
+        public GraphTraversal2 As(params string[] labels) {
+            AddGremlinOperator(new GremlinAsOp(labels));
             return this;    
         }
         //public GraphTraversal2 barrier()
@@ -193,7 +189,7 @@ namespace GraphView
 
         public GraphTraversal2 coalesce(params GraphTraversal2[] coalesceTraversals)
         {
-            AddGremlinOperator(new GremlinCoalesceStep(coalesceTraversals));
+            AddGremlinOperator(new GremlinCoalesceOp(coalesceTraversals));
             return this;
         }
 

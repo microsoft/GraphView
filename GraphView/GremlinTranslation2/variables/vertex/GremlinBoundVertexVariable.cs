@@ -16,6 +16,15 @@ namespace GraphView
         private GremlinVariableProperty vertexId;
         private List<string> projectedProperties;
 
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
+            PropertyKeys.Add(vertexId.ToScalarExpression());
+            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("V", PropertyKeys);
+            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+        }
+
         public GremlinBoundVertexVariable(GremlinVariableProperty vertexId)
         {
             VariableName = GenerateTableAlias();
@@ -36,7 +45,7 @@ namespace GraphView
             }
         }
 
-        internal override void Both(GremlinToSqlContext2 currentContext)
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             Populate("BothAdjacencyList");
 
@@ -51,7 +60,36 @@ namespace GraphView
             currentContext.TableReferences.Add(bothEdge);
             currentContext.TableReferences.Add(bothVertex);
 
+            //add Predicate to edge
+            foreach (var edgeLabel in edgeLabels)
+            {
+                var firstExpr = GremlinUtil.GetColumnReferenceExpression(bothEdge.VariableName, "label");
+                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+            }
+
             currentContext.PivotVariable = bothVertex;
+        }
+
+        internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            Populate("_edge");
+
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(adjacencyList);
+            currentContext.VariableList.Add(outEdge);
+
+            currentContext.TableReferences.Add(outEdge);
+
+            //add Predicate to edge
+            foreach (var edgeLabel in edgeLabels)
+            {
+                var firstExpr = GremlinUtil.GetColumnReferenceExpression(outEdge.VariableName, "label");
+                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+            }
+
+            currentContext.PivotVariable = outEdge;
         }
     }
 }

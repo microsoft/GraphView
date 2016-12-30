@@ -8,28 +8,30 @@ namespace GraphView
 {
     public class Predicate
     {
-        public bool IsAliasValue { get; set; }
-        public object Value { get; set; }
-        public object Low { get; set; }
-        public object High { get; set; }
+        public string Label { get; set; }
+        public long Number { get; set; }
         public List<object> Values { get; set; }
-        public string VariableName { get; set; }
-        public string CompareString { get; set; }
+        public long Low { get; set; }
+        public long High { get; set; }
         public PredicateType PredicateType { get; set; }
 
-        public Predicate(PredicateType type, object value, bool isAliasValue = false)
+        public Predicate(PredicateType type, string label)
         {
-            Value = value;
+            Label = label;
             PredicateType = type;
-            IsAliasValue = isAliasValue;
+        }
+        public Predicate(PredicateType type, long number)
+        {
+            Number = number;
+            PredicateType = type;
         }
 
-        public Predicate(PredicateType type, int low, int high, bool isAliasValue = false)
+
+        public Predicate(PredicateType type, int low, int high)
         {
             Low = low;
             High = high;
             PredicateType = type;
-            IsAliasValue = isAliasValue;
         }
 
         public Predicate(PredicateType type, params object[] values)
@@ -40,51 +42,54 @@ namespace GraphView
                 Values.Add(value);
             }
             PredicateType = type;
-            IsAliasValue = false;
         }
 
-        public static Predicate eq(object value, bool isAliasValue = false)
+        public static Predicate eq(string value)
         {
-            if (value is string)
-                return new Predicate(PredicateType.eq, value, true);
-            else
-                return new Predicate(PredicateType.eq, value, false);
+            return new Predicate(PredicateType.eq, value);
         }
 
-        public static Predicate neq(object value, bool isAliasValue = false)
+        public static Predicate eq(long number)
         {
-            if (value is string)
-                return new Predicate(PredicateType.neq, value, true);
-            else
-                return new Predicate(PredicateType.neq, value, false);
+            return new Predicate(PredicateType.eq, number);
         }
 
-        public static Predicate lt(int value)
+        public static Predicate neq(string label)
+        {
+            return new Predicate(PredicateType.neq, label);
+        }
+
+        public static Predicate neq(long number)
+        {
+            return new Predicate(PredicateType.neq, number);
+        }
+
+        public static Predicate lt(long value)
         {
             return new Predicate(PredicateType.lt, value);
         }
 
-        public static Predicate gt(int value)
+        public static Predicate gt(long value)
         {
             return new Predicate(PredicateType.gt, value);
         }
 
-        public static Predicate gte(int value)
+        public static Predicate gte(long value)
         {
             return new Predicate(PredicateType.gte, value);
         }
 
-        public static Predicate inside(int low, int high)
+        public static Predicate inside(long low, long high)
         {
             return new Predicate(PredicateType.inside, low, high);
         }
 
-        public static Predicate outside(int low, int high)
+        public static Predicate outside(long low, long high)
         {
             return new Predicate(PredicateType.outside, low, high);
         }
 
-        public static Predicate between(int low, int high)
+        public static Predicate between(long low, long high)
         {
             return new Predicate(PredicateType.between, low, high);
         }

@@ -21,10 +21,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() };
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "max", parameterList);
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }

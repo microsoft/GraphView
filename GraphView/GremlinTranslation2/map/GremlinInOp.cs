@@ -24,16 +24,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinVertexVariable sourceVar = new GremlinVertexVariable();
-            inputContext.AddNewVariable(sourceVar);
-            inputContext.SetDefaultProjection(sourceVar);
-
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(sourceVar, WEdgeType.OutEdge);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
-            inputContext.AddPaths(sourceVar, newEdgeVar, inputContext.CurrVariable);
-
-            inputContext.SetCurrVariable(sourceVar);
+            inputContext.PivotVariable.In(inputContext, EdgeLabels);
 
             return inputContext;
         }

@@ -59,7 +59,7 @@ namespace GraphView
 
                 if (TableReferences[i].OneLine())
                 {
-                    sb.Append(TableReferences[i].ToString(""));
+                    sb.Append(TableReferences[i].ToString(indent));
                 }
                 else
                 {

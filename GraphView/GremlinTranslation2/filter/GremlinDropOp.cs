@@ -13,13 +13,9 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetContext();
-
+            throw new NotImplementedException();
             //remove element and properties from the graph
             return new GremlinToSqlContext();
         }
-        //public override WSqlScript ToSqlScript()
-        //{
-        //    return GetInputContext().ToSqlDelete();
-        //}
     }
 }

@@ -10,9 +10,19 @@ namespace GraphView
     {
         protected static int _count = 0;
 
-        public string GenerateTableAlias()
+        internal virtual string GenerateTableAlias()
         {
             return "R_" + _count++;
+        }
+
+        public virtual List<WSelectElement> ToSelectElementList()
+        {
+            return null;
+        }
+
+        public virtual WTableReference ToTableReference()
+        {
+            return null;
         }
     }
 }

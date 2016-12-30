@@ -25,21 +25,22 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
 
+            GremlinFreeVertexVariable newVariable = new GremlinFreeVertexVariable();
+            
             foreach (var id in VertexIdsOrElements)
             {
                 if (id is int)
                 {
-                    WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(newVertexVar.VariableName, "id");
+                    WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(newVariable.VariableName, "id");
                     WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, id);
                     inputContext.AddPredicate(booleanExpr);
                 }
             }
 
-            inputContext.AddNewVariable(newVertexVar);
-            inputContext.SetCurrVariable(newVertexVar);
-            inputContext.SetDefaultProjection(newVertexVar);
+            inputContext.VariableList.Add(newVariable);
+            inputContext.PivotVariable = newVariable;
+
             return inputContext;
         }
     }

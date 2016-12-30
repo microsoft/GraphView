@@ -13,6 +13,7 @@ namespace GraphView
         public GremlinContextEdgeVariable(GremlinEdgeVariable2 contextEdge)
         {
             this.contextEdge = contextEdge;
+            VariableName = this.contextEdge.VariableName;
         }
 
         public override GremlinVariableType GetVariableType()
@@ -30,14 +31,23 @@ namespace GraphView
             contextEdge.Populate(name);
         }
 
-        internal override void OutV(GremlinToSqlContext2 currentContext)
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            contextEdge.Populate("_sink");
+            GremlinBoundVertexVariable newVariable = new GremlinBoundVertexVariable(new GremlinVariableProperty(contextEdge, "_sink"));
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
         {
             // A naive implementation: always introduce a new vertex variable
             contextEdge.Populate("_sink");
             GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(contextEdge, "_sink"));
             currentContext.VariableList.Add(outVertex);
-
             currentContext.TableReferences.Add(outVertex);
+            currentContext.PivotVariable = outVertex;
         }
     }
 }

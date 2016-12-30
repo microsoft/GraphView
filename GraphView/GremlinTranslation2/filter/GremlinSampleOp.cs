@@ -20,18 +20,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>()
-            {
-                //GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName),
-                GremlinUtil.GetValueExpression(AmountToSample)
-            };
-            WFunctionCall functionCall = GremlinUtil.GetFunctionCall("sample", parameterList);
-
-            WColumnReferenceExpression trueExpr = GremlinUtil.GetColumnReferenceExpression("true");
-
-            WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(functionCall, trueExpr, BooleanComparisonType.Equals);
-
-            inputContext.AddPredicate(booleanExpr);
+            throw new NotImplementedException();
 
             return inputContext;
         }
