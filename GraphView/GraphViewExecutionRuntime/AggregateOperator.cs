@@ -45,14 +45,9 @@ namespace GraphView
                 result = GroupBySingleColumn(result, i);
 
             return result;
-        } 
-    }
+        }
 
-    internal class CountOperator : AggregateOperator
-    {
-        internal CountOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList) 
-            : base(pInputOperatr, pGroupByFieldsList)
-        { }
+        internal abstract RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords);
 
         public override RawRecord Next()
         {
@@ -84,15 +79,22 @@ namespace GraphView
             var groupedResults = GroupBy(InputBuffer, GroupByFieldsList);
 
             foreach (var groupedResult in groupedResults)
-                OutputBuffer.Enqueue(Count(groupedResult));
+                OutputBuffer.Enqueue(ApplyAggregateFunction(groupedResult));
 
             InputBuffer.Clear();
             if (OutputBuffer.Count <= 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
+    }
 
-        private RawRecord Count(List<RawRecord> groupedRawRecords)
+    internal class CountOperator : AggregateOperator
+    {
+        internal CountOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList) 
+            : base(pInputOperatr, pGroupByFieldsList)
+        { }
+
+        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
             var result = new RawRecord(2);
             result.fieldValues[0] = groupedRawRecords.Count.ToString();
@@ -110,45 +112,7 @@ namespace GraphView
             FoldedFieldIdx = pFoldedFieldIdx;
         }
 
-        public override RawRecord Next()
-        {
-            if (!State()) return null;
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0)
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
-
-            // Fills the input buffer by pulling from the input operator
-            while (InputOperatr.State())
-            {
-                if (InputOperatr != null && InputOperatr.State())
-                {
-                    RawRecord result = InputOperatr.Next();
-                    if (result == null)
-                    {
-                        InputOperatr.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
-                }
-            }
-
-            var groupedResults = GroupBy(InputBuffer, GroupByFieldsList);
-
-            foreach (var groupedResult in groupedResults)
-                OutputBuffer.Enqueue(Fold(groupedResult));
-
-            InputBuffer.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
-            return null;
-        }
-
-        private RawRecord Fold(List<RawRecord> groupedRawRecords)
+        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
             var result = new RawRecord(3);
             var foldedList = new StringBuilder("[");
@@ -181,45 +145,7 @@ namespace GraphView
             : base(pInputOperatr, pGroupByFieldsList)
         { }
 
-        public override RawRecord Next()
-        {
-            if (!State()) return null;
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0)
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
-
-            // Fills the input buffer by pulling from the input operator
-            while (InputOperatr.State())
-            {
-                if (InputOperatr != null && InputOperatr.State())
-                {
-                    RawRecord result = InputOperatr.Next();
-                    if (result == null)
-                    {
-                        InputOperatr.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
-                }
-            }
-
-            var groupedResults = GroupBy(InputBuffer, GroupByFieldsList);
-
-            foreach (var groupedResult in groupedResults)
-                OutputBuffer.Enqueue(Deduplicate(groupedResult));
-
-            InputBuffer.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
-            return null;
-        }
-
-        private RawRecord Deduplicate(List<RawRecord> groupedRawRecords)
+        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
             return groupedRawRecords.First();
         }
@@ -272,45 +198,7 @@ namespace GraphView
             : base(pInputOperatr, pGroupByFieldsList)
         { }
 
-        public override RawRecord Next()
-        {
-            if (!State()) return null;
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0)
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
-
-            // Fills the input buffer by pulling from the input operator
-            while (InputOperatr.State())
-            {
-                if (InputOperatr != null && InputOperatr.State())
-                {
-                    RawRecord result = InputOperatr.Next();
-                    if (result == null)
-                    {
-                        InputOperatr.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
-                }
-            }
-
-            var groupedResults = GroupBy(InputBuffer, GroupByFieldsList);
-
-            foreach (var groupedResult in groupedResults)
-                OutputBuffer.Enqueue(Tree(groupedResult));
-
-            InputBuffer.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
-            return null;
-        }
-
-        private RawRecord Tree(List<RawRecord> groupedRawRecords)
+        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
             var root = new TreeNode("root");
             foreach (RawRecord t in groupedRawRecords)

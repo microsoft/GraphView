@@ -26,17 +26,8 @@ namespace GraphView
             OutputBufferSize = pOutputBufferSize;
             this.Open();
         }
-    }
 
-    internal class PropertiesOperator : TVFOperator
-    {
-        internal List<Tuple<string, int>> PropertyIdxList;
-
-        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, int pNewFieldIdx, List<Tuple<string, int>> pPropertyIdxList, int pInputBufferSize, int pOutputBufferSize)
-            : base(pInputOperatr, pNewFieldIdx, pInputBufferSize, pOutputBufferSize)
-        {
-            PropertyIdxList = pPropertyIdxList;
-        }
+        internal abstract IEnumerable<RawRecord> CrossApply(RawRecord record);
 
         public override RawRecord Next()
         {
@@ -66,7 +57,7 @@ namespace GraphView
 
             var results = new List<RawRecord>();
             foreach (var record in InputBuffer)
-                results.AddRange(CrossApplyProperties(record));
+                results.AddRange(CrossApply(record));
 
             foreach (var record in results)
                 OutputBuffer.Enqueue(record);
@@ -76,8 +67,19 @@ namespace GraphView
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
+    }
 
-        private List<RawRecord> CrossApplyProperties(RawRecord record)
+    internal class PropertiesOperator : TVFOperator
+    {
+        internal List<Tuple<string, int>> PropertyIdxList;
+
+        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, int pNewFieldIdx, List<Tuple<string, int>> pPropertyIdxList, int pInputBufferSize, int pOutputBufferSize)
+            : base(pInputOperatr, pNewFieldIdx, pInputBufferSize, pOutputBufferSize)
+        {
+            PropertyIdxList = pPropertyIdxList;
+        }
+
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
             foreach (var pair in PropertyIdxList)
@@ -103,46 +105,7 @@ namespace GraphView
             ValuesIdxList = pValuesIdxList;
         }
 
-        public override RawRecord Next()
-        {
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (InputOperator != null && !InputOperator.State())))
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
-
-            // Fills the input buffer by pulling from the input operator
-            while (InputBuffer.Count() < InputBufferSize && InputOperator.State())
-            {
-                if (InputOperator != null && InputOperator.State())
-                {
-                    RawRecord result = InputOperator.Next();
-                    if (result == null)
-                    {
-                        InputOperator.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
-                }
-            }
-
-            var results = new List<RawRecord>();
-            foreach (var record in InputBuffer)
-                results.AddRange(CrossApplyValues(record));
-
-            foreach (var record in results)
-                OutputBuffer.Enqueue(record);
-
-            InputBuffer.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
-            return null;
-        }
-
-        private List<RawRecord> CrossApplyValues(RawRecord record)
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
             foreach (var propIdx in ValuesIdxList)
@@ -166,48 +129,12 @@ namespace GraphView
             ConstantValue = pConstantValue;
         }
 
-        public override RawRecord Next()
-        {
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (InputOperator != null && !InputOperator.State())))
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
-
-            // Fills the input buffer by pulling from the input operator
-            while (InputBuffer.Count() < InputBufferSize && InputOperator.State())
-            {
-                if (InputOperator != null && InputOperator.State())
-                {
-                    RawRecord result = InputOperator.Next();
-                    if (result == null)
-                    {
-                        InputOperator.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
-                }
-            }
-
-
-            foreach (var record in InputBuffer)
-                OutputBuffer.Enqueue(CrossApplyConstant(record));
-
-            InputBuffer.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
-            return null;
-        }
-
-        private RawRecord CrossApplyConstant(RawRecord record)
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var result = new RawRecord(record);
             record.fieldValues[NewFieldIdx] = ConstantValue;
 
-            return result;
+            return new List<RawRecord> {result};
         }
     }
 
@@ -223,46 +150,7 @@ namespace GraphView
             FoldedMetaIdx = pFoldedMetaIdx;
         }
 
-        public override RawRecord Next()
-        {
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (InputOperator != null && !InputOperator.State())))
-            {
-                if (OutputBuffer.Count == 1) this.Close();
-                return OutputBuffer.Dequeue();
-            }
-
-            // Fills the input buffer by pulling from the input operator
-            while (InputBuffer.Count() < InputBufferSize && InputOperator.State())
-            {
-                if (InputOperator != null && InputOperator.State())
-                {
-                    RawRecord result = InputOperator.Next();
-                    if (result == null)
-                    {
-                        InputOperator.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
-                }
-            }
-
-            var results = new List<RawRecord>();
-            foreach (var record in InputBuffer)
-                results.AddRange(CrossApplyUnfold(record));
-
-            foreach (var record in results)
-                OutputBuffer.Enqueue(record);
-
-            InputBuffer.Clear();
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
-            return null;
-        }
-
-        private List<RawRecord> CrossApplyUnfold(RawRecord record)
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
             var metaInfo = record.fieldValues[FoldedMetaIdx].Split(',');
