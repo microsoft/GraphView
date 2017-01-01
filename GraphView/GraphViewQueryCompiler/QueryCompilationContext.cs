@@ -30,6 +30,23 @@ using System.Linq;
 
 namespace GraphView
 {
+    internal class WColumnReferenceExpressionComparer : IEqualityComparer<WColumnReferenceExpression>
+    {
+        public bool Equals(WColumnReferenceExpression x, WColumnReferenceExpression y)
+        {
+            if (Object.ReferenceEquals(x, y)) return true;
+            if (Object.ReferenceEquals(x, null) || Object.ReferenceEquals(y, null)) return false;
+            return x.ToString().Equals(y.ToString());
+        }
+
+        public int GetHashCode(WColumnReferenceExpression obj)
+        {
+            if (Object.ReferenceEquals(obj, null)) return 0;
+            return obj.ToString().GetHashCode();
+        }
+    }
+
+
     /// <summary>
     /// TemporaryTableHeader defines the columns of a temporary table
     /// </summary>
@@ -100,14 +117,15 @@ namespace GraphView
         public QueryCompilationContext()
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
-            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
+            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>();
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
         {
             TemporaryTableCollection = parentContext.TemporaryTableCollection;
-            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout);
+            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
+                new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>(parentContext.TableReferences);
             OuterContextOp = new ConstantSourceOperator(null);
         }
@@ -115,7 +133,7 @@ namespace GraphView
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables)
         {
             TemporaryTableCollection = priorTemporaryTables;
-            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
+            RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>();
         }
 

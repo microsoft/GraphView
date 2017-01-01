@@ -130,7 +130,27 @@ namespace GraphView
             }
         }
     }
-    
+
+    internal enum GraphViewNativeAggregateFunctionsEnum
+    {
+        Count,
+        Deduplicate,
+        Fold,
+        Tree,
+    }
+
+    internal enum GraphViewNativeTableValueFunctionsEnum
+    {
+        Unfold,
+        Values,
+        Properties,
+        Constant,
+        Repeat,
+        Coalesce,
+        Optional,
+        Choose,
+    }
+
     /// <summary>
     /// The interface of query execution operators.
     /// An operator is in one of the states: open or closed. 

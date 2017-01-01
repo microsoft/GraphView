@@ -63,6 +63,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
+    <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
+    <Compile Include="GraphViewExecutionRuntime\Decoder2.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScriptOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />
@@ -174,6 +176,7 @@
     <Compile Include="GremlinTranslation2\variables\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\vertex\GremlinVertexVariable.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinChooseOp.cs" />
+    <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\Decoder.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinLocalOp.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinRepeatOp.cs" />
@@ -237,7 +240,6 @@
     <Compile Include="GremlinTranslation\GraphTraversal2.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphLoaderFactory.cs" />
-    <Compile Include="GraphViewDocDBCommand.cs" />
     <Compile Include="GraphViewGremlinParser.cs" />
     <Compile Include="GraphViewJsonCommand.cs" />
     <Compile Include="Gremlin Parser Tree\WFragment.cs" />

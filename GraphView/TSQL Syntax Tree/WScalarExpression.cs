@@ -211,6 +211,17 @@ namespace GraphView
             MultiPartIdentifier = new WMultiPartIdentifier(tableIdent, columnIdent);
         }
 
+        public WColumnReferenceExpression(string tableName, string columnName, ColumnGraphType columnGraphType)
+        {
+            ColumnType = ColumnType.Regular;
+            ColumnGraphType = columnGraphType;
+
+            Identifier tableIdent = tableName != null ? new Identifier { Value = tableName } : null;
+            Identifier columnIdent = columnName != null ? new Identifier { Value = columnName } : null;
+
+            MultiPartIdentifier = new WMultiPartIdentifier(tableIdent, columnIdent);
+        }
+
         internal void Add(Identifier identifier)
         {
             if (MultiPartIdentifier == null)
