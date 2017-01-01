@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GraphViewExecutionRuntime;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -13,13 +15,15 @@ namespace GraphView
         private int outputBufferSize;
         private JsonQuery vertexQuery;
         private GraphViewConnection connection;
+        private List<string> nodeProperties; 
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, int outputBufferSize = 1000)
+        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, List<string> nodeProperties, int outputBufferSize = 1000)
         {
             Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
             this.outputBufferSize = outputBufferSize;
+            this.nodeProperties = nodeProperties;
         }
 
         public override RawRecord Next()
@@ -33,7 +37,14 @@ namespace GraphView
                 // retrieving all the vertices satisfying the query.
                 using (DbPortal databasePortal = connection.CreateDatabasePortal())
                 {
-                    foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
+                    //foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
+                    //{
+                    //    outputBuffer.Enqueue(rec);
+                    //}
+
+                    var rawVertices = databasePortal.GetRawVertices(vertexQuery);
+                    var decoder = new DocDbDecoder2();
+                    foreach (var rec in decoder.GetVertices(rawVertices, nodeProperties))
                     {
                         outputBuffer.Enqueue(rec);
                     }
@@ -81,7 +92,7 @@ namespace GraphView
         private GraphViewExecutionOperator inputOp;
         
         // The index of the adjacency list in the record from which the traversal starts
-        private int adjacencyListIndex = -1;
+        private int adjacencyListSinkIndex = -1;
 
         // The table-valued scalar function that given a record of a source vertex,
         // returns the references of the sink vertices
@@ -98,23 +109,31 @@ namespace GraphView
         // to the vertices other than the source vertices in the records by the input operator. 
         private List<Tuple<int, int>> matchingIndexes;
 
+        // List of edges whose predicates are evaluated by server
+        // and will be filtered by matchingIndexes
+        private List<MatchEdge> reverseEdges;
+
+        private List<string> nodeProperties; 
+
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
+            GraphViewConnection connection,
             int sinkIndex,
             JsonQuery sinkVertexQuery,
             List<Tuple<int, int>> matchingIndexes,
-            GraphViewConnection connection,
+            List<MatchEdge> reverseEdges, 
+            List<string> nodeProperties, 
             int outputBufferSize = 1000)
         {
             Open();
             this.inputOp = inputOp;
-            this.adjacencyListIndex = sinkIndex;
+            this.connection = connection;
+            this.adjacencyListSinkIndex = sinkIndex;
             this.sinkVertexQuery = sinkVertexQuery;
             this.matchingIndexes = matchingIndexes;
-            this.connection = connection;
+            this.reverseEdges = reverseEdges;
+            this.nodeProperties = nodeProperties;
             this.outputBufferSize = outputBufferSize;
-
-            crossApplySinkReference = new CrossApplyAdjacencyList(sinkIndex);
         }
 
         public override RawRecord Next()
@@ -128,7 +147,7 @@ namespace GraphView
             {
                 List<Tuple<RawRecord, string>> inputSequence = new List<Tuple<RawRecord, string>>(batchSize);
 
-                // Loads a batch of source records and populates the sink references to which the sources point
+                // Loads a batch of source records
                 for (int i = 0; i < batchSize && inputOp.State(); i++)
                 {
                     RawRecord record = inputOp.Next();
@@ -137,12 +156,10 @@ namespace GraphView
                         break;
                     }
 
-                    foreach (string sinkId in crossApplySinkReference.Apply(record))
-                    {
-                        inputSequence.Add(new Tuple<RawRecord, string>(record, sinkId));
-                    }
+                    inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex]));
                 }
 
+                // TODO: Figure out whether this condition will have an influence on RawRecordLayout 
                 // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
                 // As a result, there is no need to send queries the underlying system to retrieve 
                 // the sink vertices.  
@@ -175,6 +192,7 @@ namespace GraphView
                 {
                     sinkReferenceSet.Clear();
 
+                    //TODO: Verify whether DocumentDB still has inClauseLimit
                     while (sinkReferenceSet.Count < inClauseLimit && j < inputSequence.Count)
                     {
                         sinkReferenceSet.Add(inputSequence[j].Item2);
@@ -212,7 +230,18 @@ namespace GraphView
 
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
-                        foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
+                        //foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
+                        //{
+                        //    if (!sinkVertexCollection.ContainsKey(rec[0]))
+                        //    {
+                        //        sinkVertexCollection.Add(rec[0], new List<RawRecord>());
+                        //    }
+                        //    sinkVertexCollection[rec[0]].Add(rec);
+                        //}
+
+                        var rawVertices = databasePortal.GetRawVertices(toSendQuery);
+                        var decoder = new DocDbDecoder2();
+                        foreach (var rec in decoder.GetVertices(rawVertices, nodeProperties, reverseEdges))
                         {
                             if (!sinkVertexCollection.ContainsKey(rec[0]))
                             {
@@ -265,6 +294,8 @@ namespace GraphView
 
             if (outputBuffer.Count == 0)
             {
+                if (!inputOp.State())
+                    Close();
                 return null;
             }
             else if (outputBuffer.Count == 1)
@@ -341,21 +372,89 @@ namespace GraphView
 
     internal class AdjacencyListDecoder : TableValuedFunction
     {
-        GraphViewExecutionOperator input;
-        int adjacencyListIndex;
-        BooleanFunction edgePredicate;
-        List<string> projectedFields;
-        string edgeTableAlias;
+        private GraphViewExecutionOperator input;
+        private int adjacencyListIndex;
+        private BooleanFunction edgePredicate;
+        private List<string> projectedFields;
+        private string edgeTableAlias;
+        private int outputBufferSize;
+        private Queue<RawRecord> outputBuffer;
+
+        public AdjacencyListDecoder(GraphViewExecutionOperator input, int adjacencyListIndex,
+            BooleanFunction edgePredicate, List<string> projectedFields, string edgeTableAlias, int outputBufferSize = 1000)
+        {
+            this.input = input;
+            this.adjacencyListIndex = adjacencyListIndex;
+            this.edgePredicate = edgePredicate;
+            this.projectedFields = projectedFields;
+            this.edgeTableAlias = edgeTableAlias;
+        }
 
         public override IEnumerable<RawRecord> Apply(RawRecord record)
         {
             string jsonArray = record[adjacencyListIndex];
-            throw new NotImplementedException();
+            List<RawRecord> results = new List<RawRecord>();
+            // The first column is for '_sink' by default
+            projectedFields.Insert(0, "_sink");
+
+            // Parse the adj list in JSON array
+            var adj = JArray.Parse(jsonArray);
+            foreach (var edge in adj.Children<JObject>())
+            {
+                // Construct new record
+                var result = new RawRecord(projectedFields.Count);
+
+                // Fill the field of selected edge's properties
+                // TODO: support wildcard *
+                for (var i = 0; i < projectedFields.Count; i++)
+                {
+                    var fieldValue = edge[projectedFields[i]];
+                    if (fieldValue != null)
+                        result.fieldValues[i] = fieldValue.ToString();
+                }
+
+                results.Add(result);
+            }
+
+            return results;
         }
 
         public override RawRecord Next()
         {
-            throw new NotImplementedException();
+            if (outputBuffer == null)
+                outputBuffer = new Queue<RawRecord>();
+
+            while (outputBuffer.Count < outputBufferSize && input.State())
+            {
+                RawRecord record = input.Next();
+                if (record == null)
+                    continue;
+                var results = Apply(record);
+                foreach (var edgeRecord in results)
+                {
+                    if (!edgePredicate.Evaluate(edgeRecord))
+                        continue;
+
+                    record.Append(edgeRecord);
+                    outputBuffer.Enqueue(record);
+                }
+            }
+
+            if (outputBuffer.Count == 0)
+            {
+                if (!input.State())
+                    Close();
+                return null;
+            }
+            else if (outputBuffer.Count == 1)
+            {
+                Close();
+                return outputBuffer.Dequeue();
+            }
+            else
+            {
+                return outputBuffer.Dequeue();
+            }
         }
 
         public override Dictionary<WColumnReferenceExpression, int> PrivateRecordLayout()
