@@ -18,10 +18,6 @@ namespace GraphView
         {
             if (InputOperator != null) {
                 GremlinToSqlContext context = InputOperator.GetContext();
-                if (InputOperator.Labels != null)
-                {
-                    context.SetLabelsToCurrentVariable(InputOperator.Labels);
-                }
                 return context;
             } else {
                 return new GremlinToSqlContext();
@@ -45,38 +41,45 @@ namespace GraphView
     
     internal class GremlinParentContextOp : GremlinTranslationOperator
     {
-        public GremlinVariable InheritedVariable { get; set; }
-        public List<Projection> InheritedProjection { get; set; }
+        public GremlinVariable2 InheritedPivotVariable { get; set; }
         public bool IsInheritedEntireContext { get; set; }
         public GremlinToSqlContext InheritedContext { get; set; }
-        public List<GremlinVariable> InheritedVariableList { get; set; }
-        public Dictionary<string, List<GremlinVariable>> InheritedAliasToGremlinVariableList { get; set; }
-        public List<GremlinMatchPath> InheritedPathList { get; set; }
+        public Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>> InheritedTaggedVariables;
+
+        public GremlinParentContextOp()
+        {
+            InheritedTaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>();   
+        }
 
         public void SetContext(GremlinToSqlContext context)
         {
             IsInheritedEntireContext = true;
             InheritedContext = context;
-            InheritedProjection = new List<Projection>();
-            InheritedVariableList = new List<GremlinVariable>();
-            InheritedAliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
-            InheritedPathList = new List<GremlinMatchPath>();
         }
 
         public override GremlinToSqlContext GetContext()
         {
             if (IsInheritedEntireContext) return InheritedContext;
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-
-            if (InheritedVariable != null)
+            newContext.TaggedVariables = InheritedTaggedVariables;
+            if (InheritedPivotVariable != null)
             {
-                newContext.RootVariable = InheritedVariable;
-                newContext.InheritedVariableList = InheritedVariableList;
-                newContext.AliasToGremlinVariableList = InheritedAliasToGremlinVariableList;
-                newContext.SetCurrVariable(InheritedVariable);
-                newContext.FromOuter = true;
-                newContext.InheritedPathList = InheritedPathList;
-                //newContext.IsUsedInTVF = InheritedIsUsedInTVF;
+                if (InheritedPivotVariable is GremlinVertexVariable2)
+                {
+                    var newVertex = new GremlinContextVertexVariable(InheritedPivotVariable as GremlinVertexVariable2);
+                    newContext.VariableList.Add(newVertex);
+                    newContext.PivotVariable = newVertex;
+                }
+                else if (InheritedPivotVariable is GremlinBoundEdgeVariable)
+                {
+                    var newEdge = new GremlinContextEdgeVariable(InheritedPivotVariable as GremlinBoundEdgeVariable);
+                    newContext.VariableList.Add(newEdge);
+                    newContext.PivotVariable = newEdge;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
             } 
             return newContext;
         }

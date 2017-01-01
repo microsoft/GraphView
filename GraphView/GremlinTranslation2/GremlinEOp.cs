@@ -11,15 +11,6 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVertexVariable sourceVertex = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(sourceVertex, WEdgeType.OutEdge);
-            GremlinVertexVariable sinkVertex = new GremlinVertexVariable();
-            inputContext.AddNewVariable(sourceVertex);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.AddNewVariable(sinkVertex);
-            inputContext.SetCurrVariable(newEdgeVar);
-            inputContext.SetDefaultProjection(newEdgeVar);
-            inputContext.AddPaths(sourceVertex, newEdgeVar, sinkVertex);
            
             return inputContext;
         }

@@ -16,18 +16,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            var existInPath = inputContext.NewPathList.Find(p => p.SourceVariable.VariableName == inputContext.CurrVariable.VariableName || p.SinkVariable.VariableName == inputContext.CurrVariable.VariableName);
-
-            if (existInPath.SourceVariable == inputContext.CurrVariable)
-            {
-                inputContext.SetCurrVariable(existInPath.SinkVariable);
-            }
-            if (existInPath.SinkVariable == inputContext.CurrVariable)
-            {
-                inputContext.SetCurrVariable(existInPath.SourceVariable);
-            }
-            
+            throw new NotImplementedException();
             return inputContext;
         }
     }

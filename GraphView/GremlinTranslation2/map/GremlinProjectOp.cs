@@ -24,28 +24,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            List<WScalarExpression> parameterList = new List<WScalarExpression>();
-
-            for (var i = 0; i < ProjectKeys.Count; i++)
-            {
-                inputContext.SaveCurrentState();
-                GremlinUtil.InheritedVariableFromParent(TraversalList[i % TraversalList.Count], inputContext);
-                WSelectQueryBlock selectQueryBlock = TraversalList[i % TraversalList.Count].GetEndOp().GetContext().ToSelectQueryBlock();
-                inputContext.ResetSavedState();
-
-                WScalarExpression scalarExpr = new WScalarSubquery()
-                {
-                    SubQueryExpr = selectQueryBlock
-                };
-                parameterList.Add(scalarExpr);
-                parameterList.Add(GremlinUtil.GetValueExpression(ProjectKeys[i]));
-            }
-            WFunctionCall projectFunctionCall = GremlinUtil.GetFunctionCall("project", parameterList);
-
-            FunctionCallProjection newFunctionCallProjection = new FunctionCallProjection(projectFunctionCall);
-            inputContext.SetCurrProjection(newFunctionCallProjection);
-
+            throw new NotImplementedException();
             return inputContext;
         }
         public void ModulateBy()

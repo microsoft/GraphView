@@ -18,27 +18,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            //WScalarExpression lowExpr = GremlinUtil.GetValueExpression(Low.ToString());
-            //WScalarExpression highExpr = GremlinUtil.GetValueExpression(High.ToString());
-            //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("range", lowExpr, highExpr));
-            
-            //GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //GremlinDerivedVariable newDerivedVariable = new GremlinDerivedVariable(inputContext.ToSelectQueryBlock());
-            //newContext.AddNewVariable(newDerivedVariable);
-            //newContext.SetDefaultProjection(newDerivedVariable);
-            //newContext.SetCurrVariable(newDerivedVariable);
-
-            if (inputContext.CurrVariable is GremlinEdgeVariable)
-            {
-                var sinkNode = inputContext.GetSinkNode(inputContext.CurrVariable);
-                sinkNode.Low = Low;
-                sinkNode.High = High;
-            }
-            else
-            {
-                inputContext.CurrVariable.Low = Low;
-                inputContext.CurrVariable.High = High;
-            }
+            throw new NotImplementedException();
 
             return inputContext;
         }

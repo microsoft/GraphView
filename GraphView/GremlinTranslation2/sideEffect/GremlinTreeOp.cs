@@ -16,11 +16,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() }; //TODO
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "tree", parameterList);
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }

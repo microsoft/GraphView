@@ -42,48 +42,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVariable parentVariable = inputContext.CurrVariable;
-
-            string startLabel = FindStartLabel(MatchTraversals);
-            inputContext.AddAliasToGremlinVariable(startLabel, parentVariable);
-
-            Queue<GraphTraversal2> traversalQueue = new Queue<GraphTraversal2>();
-            Dictionary<string, bool> isTraversalDict = new Dictionary<string, bool>();
-            foreach (var temp in MatchTraversalsDict[startLabel])
-            {
-                traversalQueue.Enqueue(temp);
-            }
-            isTraversalDict[startLabel] = true;
-            while (traversalQueue.Count > 0)
-            {
-                GraphTraversal2 currTraversal = traversalQueue.Dequeue();
-
-                List<string> endLabels = currTraversal.GetEndOp().GetLabels();
-                if (null != endLabels && endLabels.Count > 1)
-                {
-                    throw new Exception("The end step of a match()-traversal can have at most one label");
-                }
-                if (null != endLabels 
-                    && endLabels.Count > 0 
-                    && !isTraversalDict.ContainsKey(endLabels.First()) 
-                    && MatchTraversalsDict.ContainsKey(endLabels.First()))
-                {
-                    isTraversalDict[endLabels.First()] = true;
-                    foreach (var temp in MatchTraversalsDict[endLabels.First()])
-                    {
-                        traversalQueue.Enqueue(temp);
-                    }
-                }
-
-                GremlinUtil.InheritedContextFromParent(currTraversal, inputContext);
-                inputContext.CurrVariable = parentVariable;
-                startLabel = currTraversal.GetStartOp().Labels.First();
-                if(inputContext.AliasToGremlinVariableList.ContainsKey(startLabel)) {
-                        inputContext.CurrVariable = inputContext.AliasToGremlinVariableList[startLabel].Last();
-                }
-                inputContext = currTraversal.GetEndOp().GetContext();
-            }
-
+            throw new NotImplementedException();
             return inputContext;
         }
 
@@ -187,39 +146,6 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            bool isNewAlias = true;
-            if (inputContext.AliasToGremlinVariableList.ContainsKey(Labels.First()))
-            {
-                GremlinVariable matchVariable = inputContext.AliasToGremlinVariableList[Labels.First()].Last();
-                WBooleanExpression booleanExpr = null;
-                if (matchVariable is GremlinVertexVariable
-                    || matchVariable is GremlinEdgeVariable)
-                {
-                    booleanExpr = new WBooleanComparisonExpression()
-                    {
-                        ComparisonType = BooleanComparisonType.Equals,
-                        FirstExpr =
-                            GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id"),
-                        SecondExpr = GremlinUtil.GetColumnReferenceExpression(matchVariable.VariableName, "id")
-                    };
-                }
-                //else if (matchVariable is GremlinScalarVariable)
-                //{
-                //    booleanExpr = new WBooleanComparisonExpression()
-                //    {
-                //        ComparisonType = BooleanComparisonType.Equals,
-                //        FirstExpr = GremlinUtil.GetValueExpression((matchVariable as GremlinScalarVariable).ScalarSubquery),
-                //        SecondExpr = GremlinUtil.GetValueExpression((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
-                //    };
-                //}
-                inputContext.AddPredicate(booleanExpr);
-                isNewAlias = false;
-            }
-            if (isNewAlias)
-            {
-                inputContext.AddAliasToGremlinVariable(Labels.First(), inputContext.CurrVariable);
-            }
 
             return inputContext;
         }

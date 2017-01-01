@@ -334,7 +334,7 @@ namespace GraphView
         {
             var sb = new StringBuilder(512);
 
-            sb.AppendFormat("{0}EXISTS\r\n", indent);
+            sb.AppendFormat("{0}EXISTS", indent);
             sb.Append(Subquery.ToString(indent + " "));
 
             return sb.ToString();

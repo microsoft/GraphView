@@ -27,17 +27,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinAddVVariable newAddVVar = new GremlinAddVVariable(VertexLabel);
-            inputContext.CurrVariable = newAddVVar;
-            inputContext.SaveCurrentState();
-            WSetVariableStatement statement = inputContext.ToSetVariableStatement();
-            inputContext.ResetSavedState();
-            inputContext.Statements.Add(statement);
-            var newVar = new GremlinVariableReference(statement);
-            inputContext.AddNewVariable(newVar);
-            inputContext.SetCurrVariable(newVar);
-            inputContext.SetDefaultProjection(newVar);
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }

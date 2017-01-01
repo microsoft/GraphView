@@ -34,33 +34,15 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            if (SelectKeys.Count == 0)
+            if (Pop != null)
             {
-
-            }
-            else if (SelectKeys.Count == 1)
-            {
-                if (Pop == GremlinKeyword.Pop.first)
-                {
-                    inputContext.SetCurrVariable(inputContext.AliasToGremlinVariableList[SelectKeys.First()].First());
-                }
-                else if (Pop == GremlinKeyword.Pop.last)
-                {
-                    inputContext.SetCurrVariable(inputContext.AliasToGremlinVariableList[SelectKeys.First()].Last());
-                }
-                else
-                {
-                    throw new NotImplementedException();
-                }
+                inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys.First());
             }
             else
             {
-                foreach (var selectKey in SelectKeys)
-                {
-
-                }
+                throw new NotImplementedException();
             }
-            
+
             return inputContext;
         }
     }

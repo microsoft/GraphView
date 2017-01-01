@@ -92,6 +92,7 @@
     <Compile Include="GremlinTranslation2\filter\GremlinTailOp.cs" />
     <Compile Include="GremlinTranslation2\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation2\GraphTraversal2.cs" />
+    <Compile Include="GremlinTranslation2\GremlinAsOp.cs" />
     <Compile Include="GremlinTranslation2\GremlinEOp.cs" />
     <Compile Include="GremlinTranslation2\GremlinKeyword.cs" />
     <Compile Include="GremlinTranslation2\GremlinToSqlContext.cs" />
@@ -106,7 +107,7 @@
     <Compile Include="GremlinTranslation2\map\GremlinBothEOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinBothOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinBothVOp.cs" />
-    <Compile Include="GremlinTranslation2\map\GremlinCoalesceStep.cs" />
+    <Compile Include="GremlinTranslation2\map\GremlinCoalesceOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinConstantOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinCountOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinFlatMapOp.cs" />
@@ -143,7 +144,7 @@
     <Compile Include="GremlinTranslation2\variables\edge\GremlinBoundEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\edge\GremlinContextEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\edge\GremlinEdgeVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\GremlinToSqlContext2.cs" />
+    <Compile Include="GremlinTranslation2\variables\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinAddVVariable.cs" />
@@ -164,6 +165,7 @@
     <Compile Include="GremlinTranslation2\variables\special\GremlinCoalesceTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinGroupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinOptionalVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinRepeatVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinBinaryVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinInjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinTableVariable.cs" />

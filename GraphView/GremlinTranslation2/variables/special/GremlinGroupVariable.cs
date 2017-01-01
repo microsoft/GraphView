@@ -17,7 +17,7 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
-        internal override void By(GremlinToSqlContext2 currentContext, GremlinToSqlContext2 byContext)
+        internal override void By(GremlinToSqlContext currentContext, GremlinToSqlContext byContext)
         {
             // The BY step first sets the group-by key, and then sets the aggregation value.
             if (GroupbyKey == null)
@@ -30,7 +30,7 @@ namespace GraphView
             }
         }
 
-        internal override void By(GremlinToSqlContext2 currentContext, string name)
+        internal override void By(GremlinToSqlContext currentContext, string name)
         {
             if (GroupbyKey == null)
             {

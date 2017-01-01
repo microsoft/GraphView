@@ -8,9 +8,9 @@ namespace GraphView
 {
     internal class GremlinScalarSubquery : GremlinScalarVariable
     {
-        public GremlinToSqlContext2 SubqueryContext { get; private set; }
+        public GremlinToSqlContext SubqueryContext { get; private set; }
 
-        public GremlinScalarSubquery(GremlinToSqlContext2 subqueryContext)
+        public GremlinScalarSubquery(GremlinToSqlContext subqueryContext)
         {
             SubqueryContext = SubqueryContext;
         }

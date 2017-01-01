@@ -22,14 +22,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            inputContext.OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>(inputContext.CurrVariable, new OrderByRecord());
-
-            foreach (var key in KeyList)
-            {
-                inputContext.OrderByVariable.Item2.SortOrderList.Add(GremlinUtil.GetExpressionWithSortOrder(key, GremlinKeyword.Order.Desr));
-            }
-
+            throw new NotImplementedException();
             return inputContext;
         }
 

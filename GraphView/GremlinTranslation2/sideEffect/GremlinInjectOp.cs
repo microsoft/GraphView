@@ -19,22 +19,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            if (inputContext.NewVariableList.Count == 0)
-            {
-                WSqlStatement statement = GremlinUtil.GetInjectStatement(Injections);
-                GremlinDerivedVariable newVariable = new GremlinDerivedVariable(statement, "inject");
-
-                inputContext.AddNewVariable(newVariable);
-                inputContext.SetCurrVariable(newVariable);
-                inputContext.SetDefaultProjection(newVariable);
-            }
-            else
-            {
-                //TODO
-                throw new NotImplementedException();
-            }
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }

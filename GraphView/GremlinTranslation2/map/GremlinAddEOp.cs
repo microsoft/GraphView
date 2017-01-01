@@ -17,16 +17,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
-            WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
-            var newVariableReference = new GremlinVariableReference(statement);
-
-            GremlinAddEVariable newAddEVar = new GremlinAddEVariable(EdgeLabel, newVariableReference);
-            inputContext.AddNewVariable(newAddEVar);
-            inputContext.SetCurrVariable(newAddEVar);
-            inputContext.SetDefaultProjection(newAddEVar);
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }
@@ -53,33 +44,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinVariable fromVariable = null;
-
-            if (Type == FromType.FromStepLabel) {
-                fromVariable = inputContext.AliasToGremlinVariableList[StepLabel].Last();
-            }
-            else if (Type == FromType.FromVertexTraversal)
-            {
-                GremlinUtil.InheritedContextFromParent(FromVertexTraversal, inputContext);
-
-                inputContext.SaveCurrentState();
-                var context = FromVertexTraversal.GetEndOp().GetContext();
-                WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
-                fromVariable = new GremlinVariableReference(statement);
-                inputContext.AddNewVariable(fromVariable);
-                inputContext.ResetSavedState();
-
-                if (!(FromVertexTraversal.GetStartOp() is GremlinParentContextOp))
-                {
-                    foreach (var s in context.Statements)
-                    {
-                        inputContext.Statements.Add(s);
-                    }
-                }
-            }
-
-            (inputContext.CurrVariable as GremlinAddEVariable).FromVariable = fromVariable;
-
+            
             return inputContext;
         }
 
@@ -112,31 +77,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinVariable toVariable = null;
-            if (Type == ToType.ToStepLabel)
-            {
-                toVariable = inputContext.AliasToGremlinVariableList[StepLabel].Last();
-            }
-            else if (Type == ToType.ToVertexTraversal)
-            {
-                GremlinUtil.InheritedContextFromParent(ToVertexTraversal, inputContext);
-
-                inputContext.SaveCurrentState();
-                var context = ToVertexTraversal.GetEndOp().GetContext();
-                WSetVariableStatement statement = context.GetOrCreateSetVariableStatement();
-                toVariable = new GremlinVariableReference(statement);
-                inputContext.AddNewVariable(toVariable);
-                inputContext.ResetSavedState();
-
-                if (!(ToVertexTraversal.GetStartOp() is GremlinParentContextOp))
-                {
-                    foreach (var s in context.Statements)
-                    {
-                        inputContext.Statements.Add(s);
-                    }
-                }
-            }
-            (inputContext.CurrVariable as GremlinAddEVariable).ToVariable = toVariable;
+            
             return inputContext;
         }
 

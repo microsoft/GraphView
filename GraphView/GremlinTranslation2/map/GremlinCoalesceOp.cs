@@ -3,27 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal class GremlinDedupOp: GremlinTranslationOperator
+    internal class GremlinCoalesceOp: GremlinTranslationOperator
     {
-        public List<string> DedupLabels { get; set; }
-
-        public GremlinDedupOp(params string[] dedupLabels)
+        public List<GraphTraversal2> CoalesceTraversals { get; set; }
+        public GremlinCoalesceOp(params GraphTraversal2[] coalesceTraversals)
         {
-            DedupLabels = new List<string>();
-            foreach (var dedupLabel in dedupLabels)
+            CoalesceTraversals = new List<GraphTraversal2>();
+            foreach (var coalesceTraversal in coalesceTraversals)
             {
-                DedupLabels.Add(dedupLabel);
+                CoalesceTraversals.Add(coalesceTraversal);
             }
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
             throw new NotImplementedException();
+
             return inputContext;
         }
     }

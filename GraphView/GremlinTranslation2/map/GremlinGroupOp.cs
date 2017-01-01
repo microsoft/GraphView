@@ -35,14 +35,7 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            inputContext.GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>(inputContext.CurrVariable, new GroupByRecord());
-
-            foreach (var key in ByList)
-            {
-                inputContext.GroupByVariable.Item2.GroupingSpecList.Add(GremlinUtil.GetGroupingSpecification(key as string));
-            }
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }

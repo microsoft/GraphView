@@ -20,12 +20,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedVariableFromParent(NotTraversal, inputContext);
-
-            WBooleanExpression booleanExpr = GremlinUtil.GetNotExistPredicate(NotTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
-
-            inputContext.AddPredicate(booleanExpr);
-
+            throw new NotImplementedException();
             return inputContext;
         }
     }

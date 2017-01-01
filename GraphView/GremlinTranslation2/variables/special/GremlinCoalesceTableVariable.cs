@@ -9,18 +9,23 @@ namespace GraphView
     internal abstract class GremlinCoalesceVariable : GremlinBinaryVariable
     {
 
-        public GremlinCoalesceVariable(GremlinToSqlContext2 traversal1, GremlinToSqlContext2 traversal2)
+        public GremlinCoalesceVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
             : base(traversal1, traversal2) { }
 
         public override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
+
+        public WTableReference ToTableReference()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     internal class GremlinCoalesceVertexVariable : GremlinCoalesceVariable, ISqlTable
     {
-        public GremlinCoalesceVertexVariable(GremlinToSqlContext2 traversal1, GremlinToSqlContext2 traversal2)
+        public GremlinCoalesceVertexVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
             : base(traversal1, traversal2) { }
 
         public override GremlinVariableType GetVariableType()
@@ -33,42 +38,80 @@ namespace GraphView
             return new GremlinVariableProperty(this, "id");
         }
 
-        internal override void Both(GremlinToSqlContext2 currentContext)
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            base.Both(currentContext);
+            base.Both(currentContext, edgeLabels);
+        }
+
+        public WTableReference ToTableReference()
+        {
+            throw new NotImplementedException();
+        }
+        public List<WSelectElement> ToSelectElementList()
+        {
+            throw new NotImplementedException();
         }
     }
 
     internal class GremlinCoalesceEdgeVariable : GremlinCoalesceVariable, ISqlTable
     {
-        public GremlinCoalesceEdgeVariable(GremlinToSqlContext2 traversal1, GremlinToSqlContext2 traversal2)
+        public GremlinCoalesceEdgeVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
             : base(traversal1, traversal2) { }
 
         public override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
         }
+
+        public WTableReference ToTableReference()
+        {
+            throw new NotImplementedException();
+        }
+        public List<WSelectElement> ToSelectElementList()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     internal class GremlinCoalesceTableVariable : GremlinCoalesceVariable, ISqlTable
     {
-        public GremlinCoalesceTableVariable(GremlinToSqlContext2 traversal1, GremlinToSqlContext2 traversal2)
+        public GremlinCoalesceTableVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
             : base(traversal1, traversal2) { }
 
         public override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
+
+        public WTableReference ToTableReference()
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<WSelectElement> ToSelectElementList()
+        {
+            throw new NotImplementedException();
+        }
     }
 
-    internal class GremlinCoalesceValueVariable : GremlinCoalesceVariable
+    internal class GremlinCoalesceValueVariable : GremlinCoalesceVariable, ISqlTable
     {
-        public GremlinCoalesceValueVariable(GremlinToSqlContext2 traversal1, GremlinToSqlContext2 traversal2)
+        public GremlinCoalesceValueVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
             : base(traversal1, traversal2) { }
 
         public override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Scalar;
+        }
+
+        public WTableReference ToTableReference()
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<WSelectElement> ToSelectElementList()
+        {
+            throw new NotImplementedException();
         }
     }
 }

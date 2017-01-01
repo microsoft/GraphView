@@ -28,43 +28,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinVariable currVariable = inputContext.CurrVariable;
-            List<WScalarExpression> keyList = new List<WScalarExpression>();
-            foreach (var projection in inputContext.ProjectionList)
-            {
-                WScalarExpression key = null;
-                if (projection is ColumnProjection)
-                {
-                    key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName, (projection as ColumnProjection).Key);
-                    keyList.Add(key);
-                }
-                else if (projection is FunctionCallProjection)
-                {
-                    //TODO
-                }
-                else if (projection is StarProjection)
-                {
-                    key = GremlinUtil.GetColumnReferenceExpression(currVariable.VariableName, "_value");
-                    keyList.Add(key);
-                }
-            }
-            if (Type == IsType.IsValue)
-            {
-                foreach (var key in keyList)
-                {
-                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Value);
-                    inputContext.AddPredicate(booleanExpr);
-                }
-            }
-            else if (Type == IsType.IsPredicate)
-            {
-                foreach (var key in keyList)
-                {
-                    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
-                    inputContext.AddPredicate(booleanExpr);
-                }
-            }
-
+            throw new NotImplementedException();
             return inputContext;
         }
 

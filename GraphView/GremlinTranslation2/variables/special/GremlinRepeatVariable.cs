@@ -6,25 +6,23 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinOptionalVariable : GremlinTableVariable, ISqlTable
+    internal class GremlinRepeatVariable : GremlinTableVariable
     {
+        private GremlinVariable2 inputVariable;
         private GremlinToSqlContext context;
 
-        public GremlinOptionalVariable(GremlinToSqlContext context)
+        public GremlinRepeatVariable(GremlinVariable2 inputVariable, GremlinToSqlContext context)
         {
-            this.context = context;
             VariableName = GenerateTableAlias();
-        }
-        public List<WSelectElement> ToSelectElementList()
-        {
-            return null;
+            this.context = context;
+            this.inputVariable = inputVariable;
         }
 
-        public WTableReference ToTableReference()
+        public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             PropertyKeys.Add(GremlinUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
+            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("repeat", PropertyKeys);
             secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

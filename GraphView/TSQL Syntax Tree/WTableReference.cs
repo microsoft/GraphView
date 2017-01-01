@@ -283,7 +283,7 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}{1}", indent, SchemaObject);
+            sb.AppendFormat("{0}", SchemaObject);
             if (Parameters != null)
             {
                 var index = 0;
@@ -292,7 +292,10 @@ namespace GraphView
                 {
                     if (index > 0)
                         sb.Append(", ");
-                    sb.Append(Parameters[index]);
+                    if (Parameters[index].OneLine())
+                        sb.Append(Parameters[index].ToString(""));
+                    else
+                        sb.Append(Parameters[index].ToString(indent));
                 }
                 sb.Append(")");
             }
@@ -465,9 +468,8 @@ namespace GraphView
         public UnqualifiedJoinType UnqualifiedJoinType { get; set; }
         internal override bool OneLine()
         {
-            //return FirstTableRef.OneLine() &&
-            //       SecondTableRef.OneLine();
-            return true;
+            if (FirstTableRef == null) return SecondTableRef.OneLine();
+            return FirstTableRef.OneLine() && SecondTableRef.OneLine();
         }
 
         internal override string ToString(string indent)
@@ -477,22 +479,9 @@ namespace GraphView
             if (FirstTableRef != null)
             {
                 sb.Append(FirstTableRef.ToString(indent) + "\n");
-                sb.AppendFormat("{1}\t{0}", TsqlFragmentToString.JoinType(UnqualifiedJoinType), indent);
             }
-            else
-            {
-                sb.AppendFormat("{0}", TsqlFragmentToString.JoinType(UnqualifiedJoinType));
-            }
-
-            //if (SecondTableRef.OneLine())
-            //{
-            //    sb.Append(SecondTableRef);
-            //}
-            //else
-            {
-                //sb.Append("\r\n");
-                sb.Append(SecondTableRef.ToString(indent));
-            }
+            sb.AppendFormat("{0}", TsqlFragmentToString.JoinType(UnqualifiedJoinType));
+            sb.Append(SecondTableRef.ToString(indent));
 
             return sb.ToString();
         }
@@ -515,12 +504,11 @@ namespace GraphView
 
         internal override string ToString(string indent)
         {
-            //if (OneLine())
-            //{
-            //    return string.Format(CultureInfo.CurrentCulture, "{0}({1})", indent, Table.ToString(""));
-            //}
-            //return string.Format(CultureInfo.CurrentCulture, "{0}(\r\n{1})", indent, Table.ToString(indent + " "));
-            return string.Format(CultureInfo.CurrentCulture, "{0}(\n{1}\n{0})", indent, Table.ToString(indent+"\t"));
+            if (OneLine())
+            {
+                return string.Format(CultureInfo.CurrentCulture, "{0}({1})", indent, Table.ToString(""));
+            }
+            return string.Format(CultureInfo.CurrentCulture, "{0}(\r\n{1})", indent, Table.ToString(indent + "    "));
         }
 
         internal override IList<string> TableAliases()
