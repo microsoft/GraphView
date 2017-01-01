@@ -9,7 +9,60 @@ namespace GraphView
         public DocDbGraphOptimizer(MatchGraph graph) : base(graph)
         { }
 
-        public override List<Tuple<MatchNode, MatchEdge>> GetOptimizedTraversalOrder(ConnectedComponent subGraph, out Dictionary<string, List<MatchEdge>> nodeToMaterializedEdgesDict)
+        public override List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph)
+        {
+            if (subGraph.Nodes.Count == 1)
+                return
+                    new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>
+                    {
+                        new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(
+                            subGraph.Nodes.First().Value, null, null)
+                    };
+
+            // If it exists, pick a node defined in the outer context as the start point
+            var componentStates = subGraph.Nodes.Where(node => node.Value.IsFromOuterContext).
+                                    Select(node => new MatchComponent(node.Value)).Take(1).ToList();
+            // Else, pick a node without incoming edges as the start point
+            if (!componentStates.Any())
+                componentStates = subGraph.Nodes.Where(node => node.Value.ReverseNeighbors.Count == 0).
+                                    Select(node => new MatchComponent(node.Value)).Take(1).ToList();
+            // Otherwise, pick a node randomly as the start point
+            else if (!componentStates.Any())
+                componentStates.Add(new MatchComponent(subGraph.Nodes.First().Value));
+
+            // DP
+            while (componentStates.Any())
+            {
+                var nextCompnentStates = new List<MatchComponent>();
+
+                // Iterate on current components
+                foreach (var curComponent in componentStates)
+                {
+                    var nodeUnits = GetNodeUnits(subGraph, curComponent);
+                    if (nodeUnits == null
+                        && curComponent.ActiveNodeCount == subGraph.ActiveNodeCount
+                        && curComponent.EdgeMaterilizedDict.Count(e => e.Value == true) == subGraph.EdgeCount)
+                    {
+                        curComponent.TraversalChain2.Reverse();
+                        return curComponent.TraversalChain2;
+                    }
+
+                    var candidateUnit = GetCandidateUnits(nodeUnits, curComponent);
+                    // Add it to the current component to generate next states
+                    var newComponent = GetNextState2(curComponent, candidateUnit);
+
+                    if (nextCompnentStates.Count >= MaxStates)
+                        throw new GraphViewException("This graph pattern is not supported yet.");
+
+                    nextCompnentStates.Add(newComponent);
+                }
+                componentStates = nextCompnentStates;
+            }
+
+            return null;
+        }
+
+        public override List<Tuple<MatchNode, MatchEdge>> GetOptimizedTraversalOrder(ConnectedComponent subGraph, out Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> nodeToMaterializedEdgesDict)
         {
             nodeToMaterializedEdgesDict = null;
             if (subGraph.Nodes.Count == 1)
@@ -17,11 +70,15 @@ namespace GraphView
                     new List<Tuple<MatchNode, MatchEdge>>
                     {new Tuple<MatchNode, MatchEdge>(subGraph.Nodes.First().Value, null),};
 
-            // If it exists, pick a node without incoming edges as the start point
-            var componentStates = subGraph.Nodes.Where(node => node.Value.ReverseNeighbors.Count == 0).
+            // If it exists, pick a node defined in the outer context as the start point
+            var componentStates = subGraph.Nodes.Where(node => node.Value.IsFromOuterContext).
+                                    Select(node => new MatchComponent(node.Value)).Take(1).ToList();
+            // Else, pick a node without incoming edges as the start point
+            if (!componentStates.Any())
+                componentStates = subGraph.Nodes.Where(node => node.Value.ReverseNeighbors.Count == 0).
                                     Select(node => new MatchComponent(node.Value)).Take(1).ToList();
             // Otherwise, pick a node randomly as the start point
-            if (!componentStates.Any())
+            else if (!componentStates.Any())
                 componentStates.Add(new MatchComponent(subGraph.Nodes.First().Value));
 
             // DP
@@ -68,6 +125,22 @@ namespace GraphView
         {
             var useOriginalEdge = new List<OneHeightTree>();
             var useRevEdge = new List<OneHeightTree>();
+
+            // Return node deinfed in the outer context preferably
+            foreach (var node in graph.Nodes.Values.Where(n => n.IsFromOuterContext && !component.Nodes.Contains(n)))
+            {
+                var remainingEdges = node.Neighbors.Where(e => !component.EdgeMaterilizedDict.ContainsKey(e)).ToList();
+                if (component.UnmaterializedNodeMapping.ContainsKey(node) ||
+                    remainingEdges.Any(e => component.Nodes.Contains(e.SinkNode)))
+                {
+                    return new OneHeightTree
+                    {
+                        TreeRoot = node,
+                        Edges = remainingEdges
+                    };
+                }
+            }
+
             foreach (var node in graph.Nodes.Values.Where(n => !component.Nodes.Contains(n)))
             {
                 var remainingEdges = node.Neighbors.Where(e => !component.EdgeMaterilizedDict.ContainsKey(e)).ToList();
@@ -100,7 +173,7 @@ namespace GraphView
             var nodeMatEdgesDict = component.NodeToMaterializedEdgesDict;
             var revEdgeDict = Graph.ReversedEdgeDict;
             var root = tree.TreeRoot;
-            nodeMatEdgesDict[root.NodeAlias] = new List<MatchEdge>();
+            nodeMatEdgesDict[root.NodeAlias] = new List<Tuple<MatchEdge, MaterializedEdgeType>>();
 
             List<MatchEdge> inEdges;
             component.UnmaterializedNodeMapping.TryGetValue(root, out inEdges);
@@ -145,10 +218,15 @@ namespace GraphView
                 var postMatOutgoingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.Out)
                                             .Select(entry => entry.Item1).ToList();
 
-                nodeMatEdgesDict[firstEdge.Value.SourceNode.NodeAlias].Add(firstEdge.Value);
-                foreach (var edge in postMatEdges.Select(t => t.Item1))
+                nodeMatEdgesDict[firstEdge.Value.SourceNode.NodeAlias].Add(
+                    new Tuple<MatchEdge, MaterializedEdgeType>(firstEdge.Value, MaterializedEdgeType.TraversalEdge));
+                foreach (var t in postMatEdges)
                 {
-                    nodeMatEdgesDict[edge.SourceNode.NodeAlias].Add(edge);
+                    var edge = t.Item1;
+                    var type = t.Item2 == EdgeDir.In
+                        ? MaterializedEdgeType.RemainingEdge
+                        : MaterializedEdgeType.ReverseCheckEdge;
+                    nodeMatEdgesDict[edge.SourceNode.NodeAlias].Add(new Tuple<MatchEdge, MaterializedEdgeType>(edge, type));
                 }
 
                 return new CandidateJoinUnit
@@ -181,6 +259,20 @@ namespace GraphView
 
             // Construct traversal chain and Update join cost
             ConstructTraversalChainAndUpdateCost(newComponent, candidateTree);
+
+            return newComponent;
+        }
+
+        internal MatchComponent GetNextState2(MatchComponent curComponent, CandidateJoinUnit candidateTree)
+        {
+            // Deep copy the component
+            var newComponent = new MatchComponent(curComponent);
+
+            // Update component
+            UpdateComponent(newComponent, candidateTree);
+
+            // Construct traversal chain and Update join cost
+            ConstructTraversalChainAndUpdateCost2(newComponent, candidateTree);
 
             return newComponent;
         }
@@ -250,6 +342,17 @@ namespace GraphView
             var inPreMatEdges = nodeUnitCandidate.PreMatIncomingEdges;
 
             curComponent.TraversalChain.Add(new Tuple<MatchNode, MatchEdge>(inPreMatEdges[0].SourceNode, inPreMatEdges[0]));
+        }
+
+        private void ConstructTraversalChainAndUpdateCost2(MatchComponent curComponent, CandidateJoinUnit nodeUnitCandidate)
+        {
+            var inPreMatEdges = nodeUnitCandidate.PreMatIncomingEdges;
+            var inPostMatEdges = nodeUnitCandidate.PostMatIncomingEdges;
+            var outPostMatEdges = nodeUnitCandidate.PostMatOutgoingEdges;
+
+            curComponent.TraversalChain2.Add(
+                new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(inPreMatEdges[0].SourceNode,
+                    inPreMatEdges[0], new Tuple<List<MatchEdge>, List<MatchEdge>>(outPostMatEdges, inPostMatEdges)));
         }
     }
 }

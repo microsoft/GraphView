@@ -37,6 +37,7 @@ namespace GraphView
         public string EdgeAlias { get; set; }
         public MatchNode SinkNode { get; set; }
         public bool IsReversed { get; set; }
+        public bool IsFromOuterContext { get; set; }
 
         /// <summary>
         /// Schema Object of the node table/node view which the edge is bound to.
@@ -45,6 +46,7 @@ namespace GraphView
         public WSchemaObjectName BindNodeTableObjName { get; set; }
         public double AverageDegree { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
+        public List<string> Properties { get; set; }
         public Statistics Statistics { get; set; }
         public override int GetHashCode()
         {
@@ -129,13 +131,15 @@ namespace GraphView
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         public DocDbScript AttachedQuerySegment { get; set; }
+        internal JsonQuery AttachedJsonQuery { get; set; }
+        public List<string> Properties { get; set; } 
         // <index of id field, index of adj field>
         public Dictionary<int, int> ReverseCheckList { get; set; }
         // The meta header length of the node, consisting of node's id and node's outgoing edges
         // Every edge will have a field as adjList and a field as single sink id
         // | node id | edge1 | edge1.sink | edge2 | edge2.sink | ...
         public int HeaderLength { get; set; }
-        public string DeleteEdge { get; set; }
+        public bool IsFromOuterContext { get; set; }
 
         /// <summary>
         /// True, if this node alias is defined in one of the parent query contexts;
@@ -172,7 +176,8 @@ namespace GraphView
         public Dictionary<string, MatchEdge> Edges { get; set; }
         public Dictionary<MatchNode, bool> IsTailNode { get; set; }
         public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
-        public Dictionary<string, List<MatchEdge>> NodeToMaterializedEdgesDict { get; set; } 
+        public List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> TraversalChain2 { get; set; }
+        public Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> NodeToMaterializedEdgesDict { get; set; } 
 
         public ConnectedComponent()
         {

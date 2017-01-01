@@ -7,6 +7,8 @@ namespace GraphView
 
     internal enum MaterializedOrder { Pre, Post };
 
+    public enum MaterializedEdgeType { TraversalEdge, ReverseCheckEdge, RemainingEdge}
+
     internal class OneHeightTree
     {
         public MatchNode TreeRoot { get; set; }
@@ -46,6 +48,8 @@ namespace GraphView
 
         public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
 
+        public List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> TraversalChain2 { get; set; }
+
         public int ActiveNodeCount
         {
             get { return MaterializedNodeSplitCount.Count; }
@@ -62,7 +66,7 @@ namespace GraphView
         public Dictionary<MatchNode, Statistics> SinkNodeStatisticsDict { get; set; }
 
         // A collection of nodes and their edges which need to be pulled from the server
-        public Dictionary<string, List<MatchEdge>> NodeToMaterializedEdgesDict { get; set; }
+        public Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> NodeToMaterializedEdgesDict { get; set; }
 
         // Estimated number of rows returned by this component
         public double Cardinality { get; set; }
@@ -75,9 +79,10 @@ namespace GraphView
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
+            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
-            NodeToMaterializedEdgesDict = new Dictionary<string, List<MatchEdge>>();
+            NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();
             Cardinality = 1.0;
             Cost = 0.0;
         }
@@ -87,7 +92,7 @@ namespace GraphView
             Nodes.Add(node);
             MaterializedNodeSplitCount[node] = 0;
             //SinkNodeStatisticsDict[node] = new Statistics ();
-            NodeToMaterializedEdgesDict[node.NodeAlias] = new List<MatchEdge>();
+            NodeToMaterializedEdgesDict[node.NodeAlias] = new List<Tuple<MatchEdge, MaterializedEdgeType>>();
             Cardinality *= node.EstimatedRows;
 
             foreach (var edge in node.Neighbors)
@@ -119,10 +124,17 @@ namespace GraphView
                 TraversalChain.Add(new Tuple<MatchNode, MatchEdge>(chain.Item1, chain.Item2));
             }
 
-            NodeToMaterializedEdgesDict = new Dictionary<string, List<MatchEdge>>();
+            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>();
+            foreach (var chain in component.TraversalChain2)
+            {
+                TraversalChain2.Add(new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(
+                    chain.Item1, chain.Item2, chain.Item3));
+            }
+
+            NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();
             foreach (var nodeMatEdges in component.NodeToMaterializedEdgesDict)
             {
-                NodeToMaterializedEdgesDict[nodeMatEdges.Key] = new List<MatchEdge>(nodeMatEdges.Value);
+                NodeToMaterializedEdgesDict[nodeMatEdges.Key] = new List<Tuple<MatchEdge, MaterializedEdgeType>>(nodeMatEdges.Value);
             }
 
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
