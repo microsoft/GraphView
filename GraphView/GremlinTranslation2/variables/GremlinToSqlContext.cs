@@ -10,22 +10,22 @@ namespace GraphView
     internal class GremlinToSqlContext
     {
         public GremlinVariable2 PivotVariable { get; set; }
-        public Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>> TaggedVariables;
+        public Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>> TaggedVariables { get; set; }
         public List<GremlinVariable2> VariableList { get; private set; }
-
-
         public List<ISqlTable> TableReferences { get; private set; }
-        public List<ISqlScalar> ProjectedVariables { get; private set; }
+        //public List<ISqlScalar> ProjectedVariables { get; private set; }
+        public List<ISqlStatement> SetVariables { get; private set; }
+        public List<GremlinMatchPath> Paths { get; set; }
         public GremlinGroupVariable GroupVariable { get; set; }
         public WBooleanExpression Predicates { get; private set; }
-        public List<GremlinMatchPath> Paths { get; set; }
-        public List<WSqlStatement> Statements { get; set; }
+        public List<WSqlStatement> Statements;
 
         public GremlinToSqlContext()
         {
             TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>();
             TableReferences = new List<ISqlTable>();
-            ProjectedVariables = new List<ISqlScalar>();
+            SetVariables = new List<ISqlStatement>();
+            //ProjectedVariables = new List<ISqlScalar>();
             VariableList = new List<GremlinVariable2>();
             Paths = new List<GremlinMatchPath>();
             Statements = new List<WSqlStatement>();
@@ -39,12 +39,13 @@ namespace GraphView
                 TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<ISqlTable>(this.TableReferences),
-                ProjectedVariables = new List<ISqlScalar>(ProjectedVariables),
+                SetVariables = new List<ISqlStatement>(this.SetVariables),
+                //ProjectedVariables = new List<ISqlScalar>(ProjectedVariables),
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
-                Paths = new List<GremlinMatchPath>(),
-                Predicates = null,
-                Statements =  new List<WSqlStatement>()
-        };
+                Paths = new List<GremlinMatchPath>(this.Paths),
+                Statements = new List<WSqlStatement>(this.Statements),
+                Predicates = this.Predicates
+            };
         }
 
         public void Reset()
@@ -55,7 +56,8 @@ namespace GraphView
             TaggedVariables.Clear();
             VariableList.Clear();
             TableReferences.Clear();
-            ProjectedVariables.Clear();
+            SetVariables.Clear();
+            //ProjectedVariables.Clear();
             Paths.Clear();
             Statements.Clear();
             // More resetting goes here when more properties are added to GremlinToSqlContext
@@ -165,42 +167,34 @@ namespace GraphView
             return batchList;
         }
 
-        public List<WSqlStatement> GetStatements()
+        public void AddStatements(List<WSqlStatement> statements)
         {
-            Statements.Add(ToSqlStatement());
-            List<WSqlStatement> withoutEmptyStatement = new List<WSqlStatement>();
-            foreach (var statement in Statements)
+            foreach (var statement in statements)
             {
-                if (statement != null)
-                    withoutEmptyStatement.Add(statement);
+                Statements.Add(statement);
             }
-            return withoutEmptyStatement;
         }
 
-        public WSqlStatement ToSqlStatement()
+        public List<WSqlStatement> GetStatements()
         {
-            //if (CurrVariable is GremlinAddEVariable && (CurrVariable as GremlinAddEVariable).IsGenerateSql == false)
-            //{
-            //    (CurrVariable as GremlinAddEVariable).IsGenerateSql = true;
-            //    return ToAddESqlQuery(CurrVariable as GremlinAddEVariable);
-            //}
-            //if (CurrVariable is GremlinAddVVariable && (CurrVariable as GremlinAddVVariable).IsGenerateSql == false)
-            //{
-            //    (CurrVariable as GremlinAddVVariable).IsGenerateSql = true;
-            //    return ToAddVSqlQuery(CurrVariable as GremlinAddVVariable);
-            //}
-            //if (CurrVariable is GremlinDerivedVariable)
-            //{
-            //    if ((CurrVariable as GremlinDerivedVariable).Type == GremlinDerivedVariable.DerivedType.UNION)
-            //    {
-            //        WSetVariableStatement statement = GremlinUtil.GetSetVariableStatement(CurrVariable.VariableName, (CurrVariable as GremlinDerivedVariable).Statement);
-            //        return statement;
-            //    }
-            //}
-            //else
-            //{
-                return ToSelectQueryBlock();
-            //}
+            foreach (var variable in SetVariables)
+            {
+                if (variable is GremlinAddEVariable)
+                {
+                    if (!((variable as GremlinAddEVariable).FromVariable is GremlinAddVVariable))
+                    {
+                        Statements.Add((variable as GremlinAddEVariable).FromVariable.ToSetVariableStatement());
+                    }
+                    if (!((variable as GremlinAddEVariable).ToVariable is GremlinAddVVariable))
+                    {
+                        Statements.Add((variable as GremlinAddEVariable).ToVariable.ToSetVariableStatement());
+                    }
+
+                }
+                Statements.Add(variable.ToSetVariableStatement());
+            }
+            Statements.Add(ToSelectQueryBlock());
+            return Statements;
         }
 
         public WSelectQueryBlock ToSelectQueryBlock()

@@ -7,6 +7,10 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    internal interface ISqlStatement
+    {
+        WSetVariableStatement ToSetVariableStatement();
+    }
     internal interface ISqlTable
     {
         WTableReference ToTableReference();
@@ -56,6 +60,19 @@ namespace GraphView
 
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
+            GremlinAddEVariable newVariable = null;
+            if (currentContext.PivotVariable is GremlinAddVVariable)
+            {
+                newVariable = new GremlinAddEVariable(edgeLabel, currentContext.PivotVariable as GremlinAddVVariable);
+            }
+            else
+            {
+                newVariable = new GremlinAddEVariable(edgeLabel, new GremlinVariableReference(currentContext));
+            }
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetVariables.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         //internal virtual void addInE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
@@ -73,7 +90,11 @@ namespace GraphView
 
         internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel)
         {
-            throw new NotImplementedException();
+            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetVariables.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         internal virtual void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey)
@@ -381,6 +402,7 @@ namespace GraphView
             {
                 GremlinInjectVariable injectVar = new GremlinInjectVariable(null, values);
                 currentContext.VariableList.Add(injectVar);
+                currentContext.TableReferences.Add(injectVar);
                 currentContext.PivotVariable = injectVar;
             }
             else
@@ -389,6 +411,7 @@ namespace GraphView
                 currentContext.Reset();
                 GremlinInjectVariable injectVar = new GremlinInjectVariable(priorContext, values);
                 currentContext.VariableList.Add(injectVar);
+                currentContext.TableReferences.Add(injectVar);
                 currentContext.PivotVariable = injectVar;
             }
         }
@@ -541,17 +564,17 @@ namespace GraphView
         //internal virtual void Profile()
         //internal virtual void Profile(string sideEffectKey)
         //internal virtual void Program(VertexProgram<?> vertexProgram)
-        internal virtual void Project(GremlinToSqlContext currentContext, params string[] projectKeys)
+        internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual void Properties(GremlinToSqlContext currentContext, params string[] propertyKeys)
+        internal virtual void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual void Property(GremlinToSqlContext currentContext, params object[] keyValues)
+        internal virtual void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
             throw new NotImplementedException();
         }
@@ -698,7 +721,9 @@ namespace GraphView
         //internal virtual void SideEffect(Consumer<Traverser<E>> consumer)
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GraphTraversal2 sideEffectTraversal)
         {
-            throw new NotImplementedException();
+            GremlinUtil.InheritedContextFromParent(sideEffectTraversal, currentContext);
+            GremlinToSqlContext context = sideEffectTraversal.GetEndOp().GetContext();
+            currentContext.AddStatements(context.GetStatements());
         }
 
         //internal virtual void SimplePath()
@@ -762,9 +787,27 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Union(GremlinToSqlContext currentContext, params GraphTraversal2[] unionTraversals)
+        internal virtual void Union(GremlinToSqlContext currentContext, List<GraphTraversal2> unionTraversals)
         {
-            throw new NotImplementedException();
+            if (unionTraversals.Count == 0)
+            {
+                throw new NotImplementedException();
+            }
+            if (unionTraversals.Count == 1)
+            {
+                throw new NotImplementedException();
+            }
+
+            List<GremlinToSqlContext> unionContextList = new List<GremlinToSqlContext>();
+            foreach (var traversal in unionTraversals)
+            {
+                GremlinUtil.InheritedContextFromParent(traversal, currentContext);
+                unionContextList.Add(traversal.GetEndOp().GetContext());
+            }
+            GremlinUnionVariable newVariable = new GremlinUnionVariable(unionContextList);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         internal virtual void Until(GremlinToSqlContext currentContext, Predicate untilPredicate)

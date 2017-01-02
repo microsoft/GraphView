@@ -21,6 +21,7 @@ namespace GraphView
 
         public override List<WSelectElement> ToSelectElementList()
         {
+            //Can't remove this code
             return null;
         }
 

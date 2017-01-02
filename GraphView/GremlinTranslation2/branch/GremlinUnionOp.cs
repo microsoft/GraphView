@@ -23,7 +23,9 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+            
+            inputContext.PivotVariable.Union(inputContext, UnionTraversals);
+
             return inputContext;
         }
     }

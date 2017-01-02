@@ -36,7 +36,18 @@ namespace GraphView
 
         public WTableReference ToTableReference()
         {
-            throw new NotImplementedException();
+            if (priorContext == null)
+            {
+                return new WQueryDerivedTable()
+                {
+                    QueryExpr = GetInjectStatement(),
+                    Alias = GremlinUtil.GetIdentifier(VariableName)
+                };
+            }
+            else
+            {
+                throw new NotImplementedException();;
+            }
         }
 
         public GremlinScalarVariable DefaultProjection()
@@ -70,6 +81,20 @@ namespace GraphView
         internal override void Inject(GremlinToSqlContext currentContext, params string[] values)
         {
             rows.AddRange(values);
+        }
+
+        private WSelectQueryBlock GetInjectStatement()
+        {
+            var selectBlock = new WSelectQueryBlock()
+            {
+                SelectElements = new List<WSelectElement>() { }
+            };
+            foreach (var row in rows)
+            {
+                var valueExpr = GremlinUtil.GetValueExpression(row);
+                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+            }
+            return selectBlock;
         }
     }
 }

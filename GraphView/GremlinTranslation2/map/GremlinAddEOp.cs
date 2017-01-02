@@ -14,19 +14,22 @@ namespace GraphView
         {
             EdgeLabel = label;
         }
+
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.AddE(inputContext, EdgeLabel);
+
             return inputContext;
         }
     }
 
     internal class GremlinFromOp : GremlinTranslationOperator
     {
-        internal string StepLabel;
-        public GraphTraversal2 FromVertexTraversal;
-        public FromType Type;
+        public FromType Type { get; set; }
+        public string StepLabel { get; set; }
+        public GraphTraversal2 FromVertexTraversal { get; set; }
 
         public GremlinFromOp(string stepLabel)
         {
@@ -44,7 +47,16 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            
+            switch (Type)
+            {
+                case FromType.FromStepLabel:
+                    inputContext.PivotVariable.From(inputContext, StepLabel);
+                    break;
+                case FromType.FromVertexTraversal:
+                    inputContext.PivotVariable.From(inputContext, FromVertexTraversal);
+                    break;
+            }
+
             return inputContext;
         }
 
@@ -57,9 +69,9 @@ namespace GraphView
 
     internal class GremlinToOp : GremlinTranslationOperator
     {
-        public string StepLabel;
-        public GraphTraversal2 ToVertexTraversal;
-        public ToType Type;
+        public string StepLabel { get; set; }
+        public GraphTraversal2 ToVertexTraversal { get; set; }
+        public ToType Type { get; set; }
 
         public GremlinToOp(string stepLabel)
         {
@@ -77,7 +89,16 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            
+            switch (Type)
+            {
+                case ToType.ToStepLabel:
+                    inputContext.PivotVariable.From(inputContext, StepLabel);
+                    break;
+                case ToType.ToVertexTraversal:
+                    inputContext.PivotVariable.From(inputContext, ToVertexTraversal);
+                    break;
+            }
+
             return inputContext;
         }
 

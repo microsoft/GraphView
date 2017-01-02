@@ -15,11 +15,9 @@ namespace GraphView
             return "R_" + _count++;
         }
 
-
-
         public virtual WTableReference ToTableReference()
         {
-            return null;
+            throw new NotImplementedException();
         }
 
         //Dictionary<string, bool> = (_edge, variable+"_"+"_edge")

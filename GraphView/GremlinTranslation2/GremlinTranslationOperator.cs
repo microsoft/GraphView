@@ -76,9 +76,11 @@ namespace GraphView
                     newContext.VariableList.Add(newEdge);
                     newContext.PivotVariable = newEdge;
                 }
-                else
+                else if (InheritedPivotVariable.GetVariableType() == GremlinVariableType.Table) 
                 {
-                    throw new NotImplementedException();
+                    var newEdge = new GremlinContextTableVariable(InheritedPivotVariable);
+                    newContext.VariableList.Add(newEdge);
+                    newContext.PivotVariable = newEdge;
                 }
             } 
             return newContext;
