@@ -33,7 +33,7 @@ namespace GraphView
             return GremlinVariableType.Vertex;
         }
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
             return new GremlinVariableProperty(this, "id");
         }
@@ -44,10 +44,6 @@ namespace GraphView
         }
 
         public WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
-        }
-        public List<WSelectElement> ToSelectElementList()
         {
             throw new NotImplementedException();
         }
@@ -67,10 +63,6 @@ namespace GraphView
         {
             throw new NotImplementedException();
         }
-        public List<WSelectElement> ToSelectElementList()
-        {
-            throw new NotImplementedException();
-        }
     }
 
     internal class GremlinCoalesceTableVariable : GremlinCoalesceVariable, ISqlTable
@@ -87,11 +79,6 @@ namespace GraphView
         {
             throw new NotImplementedException();
         }
-
-        public List<WSelectElement> ToSelectElementList()
-        {
-            throw new NotImplementedException();
-        }
     }
 
     internal class GremlinCoalesceValueVariable : GremlinCoalesceVariable, ISqlTable
@@ -105,11 +92,6 @@ namespace GraphView
         }
 
         public WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
-        }
-
-        public List<WSelectElement> ToSelectElementList()
         {
             throw new NotImplementedException();
         }

@@ -140,17 +140,6 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             StringBuilder sb = new StringBuilder(64);
-            if (EdgeType == WEdgeType.PathE)
-            {
-                if (FirstEdgeAlias == null)
-                {
-                    sb.Append(string.Format("{0}Edge]-[", indent));
-                }
-                else
-                {
-                    sb.Append(string.Format("{0}Edge AS {1}]-[", indent, FirstEdgeAlias));
-                }
-            }
             if (Alias == null || Alias.Length == 0) 
             {
                 sb.Append(string.Format("{0}{1}", indent, MultiPartIdentifier.ToString()));
@@ -167,9 +156,7 @@ namespace GraphView
     {
         InEdge,
         OutEdge,
-        BothEdge,
-        PathE,
-        PathN
+        BothEdge
     }
 
     public enum ColumnGraphType
@@ -648,6 +635,26 @@ namespace GraphView
             if (Parameter != null)
                 Parameter.Accept(visitor);
             base.AcceptChildren(visitor);
+        }
+    }
+
+    public class WRepeatConditionExpression: WPrimaryExpression
+    {
+        public bool IsEmitTrue { get; set; }
+        public bool IsEmitBefore { get; set; }
+        public bool IsEmitAfter { get; set; }
+        public bool IsUntilBefore { get; set; }
+        public bool IsUntilAfter { get; set; }
+        public bool IsTimes { get; set; }
+        public long Times { get; set; }
+
+        public WBooleanExpression ConditionBooleanExpression;
+
+        public WRepeatConditionExpression() { }
+
+        internal override string ToString(string indent)
+        {
+            return "RepeatConditionExpr";
         }
     }
 }

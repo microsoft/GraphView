@@ -312,10 +312,6 @@ namespace GraphView.GremlinTranslation
         {
             WEdgeType edgeType = GetEdgeType(path.EdgeVariable);
             String value = "Edge";
-            if (edgeType == WEdgeType.PathE || edgeType == WEdgeType.PathN)
-            {
-                value = path.EdgeVariable.VariableName;
-            }
 
             WSchemaObjectName sourceName = null;
             if (path.SourceVariable != null)

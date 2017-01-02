@@ -22,7 +22,6 @@ namespace GraphView.OldVersion
             ProjectionList = new List<Projection>();
             NewPathList = new List<GremlinMatchPath>();
             InheritedPathList = new List<GremlinMatchPath>();
-            WithPaths = new Dictionary<string, WRepeatPath> ();
             AliasToGremlinVariableList = new Dictionary<string, List<GremlinVariable>>();
             //GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>();
             //OrderByVariable = new Tuple<GremlinVariable, OrderByRecord>();
@@ -71,7 +70,6 @@ namespace GraphView.OldVersion
 
         public List<GremlinMatchPath> NewPathList { get; set; }
         public List<GremlinMatchPath> InheritedPathList { get; set; }
-        public Dictionary<string, WRepeatPath> WithPaths { get; set; }
         /// <summary>
         /// The Gremlin variable and its property by which the query groups
         /// </summary>
@@ -386,9 +384,6 @@ namespace GraphView.OldVersion
             // Construct the GroupBy Clause
             var newGroupByClause = GetGroupByClause();
 
-            // Construct the WithPath Clause
-            var newWithPathClause = GetWithPathClause();
-
             // Construct the SelectBlock
             return new WSelectQueryBlock()
             {
@@ -397,14 +392,8 @@ namespace GraphView.OldVersion
                 WhereClause = newWhereClause,
                 MatchClause = newMatchClause,
                 OrderByClause = newOrderByClause,
-                GroupByClause = newGroupByClause,
-                WithPathClause2 = newWithPathClause
+                GroupByClause = newGroupByClause
             };
-        }
-
-        public WWithPathClause2 GetWithPathClause()
-        {
-            return new WWithPathClause2(WithPaths); 
         }
 
         public WSqlStatement ToAddESqlQuery(GremlinAddEVariable currVar)

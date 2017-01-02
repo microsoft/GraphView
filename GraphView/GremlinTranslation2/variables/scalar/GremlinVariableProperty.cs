@@ -16,7 +16,7 @@ namespace GraphView
             GremlinVariable = gremlinVariable;
             VariableProperty = variableProperty;
         }
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
             return this;
         }

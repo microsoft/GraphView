@@ -14,7 +14,6 @@ namespace GraphView
     internal class GremlinBoundVertexVariable : GremlinVertexVariable2
     {
         private GremlinVariableProperty vertexId;
-        private List<string> projectedProperties;
 
         public override WTableReference ToTableReference()
         {
@@ -29,20 +28,11 @@ namespace GraphView
         {
             VariableName = GenerateTableAlias();
             this.vertexId = vertexId;
-            projectedProperties = new List<string>();
         }
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
             return new GremlinVariableProperty(this, "id");
-        }
-
-        internal override void Populate(string name)
-        {
-            if (!projectedProperties.Contains(name))
-            {
-                projectedProperties.Add(name);
-            }
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -66,6 +56,7 @@ namespace GraphView
                 var firstExpr = GremlinUtil.GetColumnReferenceExpression(bothEdge.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                bothEdge.Populate("label");
             }
 
             currentContext.PivotVariable = bothVertex;
@@ -87,6 +78,7 @@ namespace GraphView
                 var firstExpr = GremlinUtil.GetColumnReferenceExpression(outEdge.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                outEdge.Populate("label");
             }
 
             currentContext.PivotVariable = outEdge;

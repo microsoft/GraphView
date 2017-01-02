@@ -17,7 +17,7 @@ namespace GraphView
 
         private GremlinVariableProperty adjacencyList;
         // A list of edge properties to project for this edge table
-        private List<string> projectedProperties;
+        //private List<string> projectedProperties;
 
         public override WTableReference ToTableReference()
         {
@@ -33,26 +33,11 @@ namespace GraphView
         {
             VariableName = GenerateTableAlias();
             this.adjacencyList = adjacencyList;
-            projectedProperties = new List<string>();
         }
 
         public override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
-        }
-
-        // To confirm: what is the default projection of edges in Gremlin
-        internal override GremlinScalarVariable DefaultProjection()
-        {
-            return base.DefaultProjection();
-        }
-
-        internal override void Populate(string name)
-        {
-            if (!projectedProperties.Contains(name))
-            {
-                projectedProperties.Add(name);
-            }
         }
 
         internal override void InV(GremlinToSqlContext currentContext)

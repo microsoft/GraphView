@@ -39,11 +39,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public List<WSelectElement> ToSelectElementList()
-        {
-            throw new NotImplementedException();
-        }
-
         public GremlinScalarVariable DefaultProjection()
         {
             // When priorContext is not null, the output table has one column,
@@ -64,11 +59,11 @@ namespace GraphView
             return null;
         }
 
-        internal override void Populate(string name)
+        internal override void Populate(string name, bool isAlias = false)
         {
             if (priorContext != null)
             {
-                priorContext.Populate(name);
+                priorContext.Populate(name, isAlias);
             }
         }
 

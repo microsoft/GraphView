@@ -61,7 +61,7 @@ namespace GraphView
             // More resetting goes here when more properties are added to GremlinToSqlContext
         }
 
-        internal void Populate(string propertyName)
+        internal void Populate(string propertyName, bool isAlias = false)
         {
             // For a query with a GROUP BY clause, the ouptut format is determined
             // by the aggregation functions following GROUP BY and cannot be changed.
@@ -70,7 +70,24 @@ namespace GraphView
                 return;
             }
 
-            PivotVariable.Populate(propertyName);
+            PivotVariable.Populate(propertyName, isAlias);
+        }
+
+        internal GremlinVariable2 SelectVariable(GremlinKeyword.Pop pop, string selectKey)
+        {
+            if (!TaggedVariables.ContainsKey(selectKey))
+            {
+                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
+            }
+            switch (pop)
+            {
+                case GremlinKeyword.Pop.first:
+                    return TaggedVariables[selectKey].First().Item1;
+                case GremlinKeyword.Pop.last:
+                    return TaggedVariables[selectKey].Last().Item1;
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         public void AddPredicate(WBooleanExpression expr)

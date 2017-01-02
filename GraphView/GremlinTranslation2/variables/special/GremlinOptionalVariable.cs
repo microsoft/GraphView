@@ -15,10 +15,6 @@ namespace GraphView
             this.context = context;
             VariableName = GenerateTableAlias();
         }
-        public List<WSelectElement> ToSelectElementList()
-        {
-            return null;
-        }
 
         public WTableReference ToTableReference()
         {
@@ -27,6 +23,51 @@ namespace GraphView
             var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
             secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+        }
+
+        internal override void Populate(string property, bool isAlias = false)
+        {
+            context.PivotVariable.Populate(property, isAlias);
+            base.Populate(property, isAlias);
+        }
+    }
+    internal class GremlinOptionalVertexVariable : GremlinOptionalVariable
+    {
+        public GremlinOptionalVertexVariable(GremlinToSqlContext context): base(context) {}
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Vertex;
+        }
+    }
+
+    internal class GremlinOptionalEdgeVariable : GremlinOptionalVariable
+    {
+        public GremlinOptionalEdgeVariable(GremlinToSqlContext context) : base(context) { }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Edge;
+        }
+    }
+
+    internal class GremlinOptionalTableVariable : GremlinOptionalVariable
+    {
+        public GremlinOptionalTableVariable(GremlinToSqlContext context) : base(context) { }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Table;
+        }
+    }
+
+    internal class GremlinOptionalValueVariable : GremlinOptionalVariable
+    {
+        public GremlinOptionalValueVariable(GremlinToSqlContext context) : base(context) { }
+
+        public override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Scalar;
         }
     }
 }

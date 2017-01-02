@@ -41,11 +41,6 @@ namespace GraphView
             return "UnFold_" + _count++;
         }
 
-        public List<WSelectElement> ToSelectElementList()
-        {
-            return null;
-        }
-
         public WTableReference ToTableReference()
         {
             throw new NotImplementedException();

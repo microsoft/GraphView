@@ -33,6 +33,7 @@ namespace GraphView
     internal abstract class GremlinVariable2
     {
         public string VariableName { get; set; }
+        public List<string> UsedProperties = new List<string>();
         public long Low = Int64.MinValue;
         public long High = Int64.MaxValue;
         public virtual GremlinVariableType GetVariableType()
@@ -40,9 +41,15 @@ namespace GraphView
             return GremlinVariableType.Undefined;
         }
 
-        internal virtual void Populate(string name) { }
+        internal virtual void Populate(string name, bool isAlias = false)
+        {
+            if (!UsedProperties.Contains(name))
+            {
+                UsedProperties.Add(name);
+            }
+        }
 
-        internal virtual GremlinScalarVariable DefaultProjection()
+        internal virtual GremlinVariableProperty DefaultProjection()
         {
             return new GremlinVariableProperty(this, "id");
         }
@@ -481,7 +488,16 @@ namespace GraphView
 
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
-            GremlinOptionalVariable newVariable = new GremlinOptionalVariable(optionalContext);
+            GremlinOptionalVariable newVariable = null;
+            //To do more reasoning
+            if (optionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
+            {
+                newVariable = new GremlinOptionalEdgeVariable(optionalContext);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -556,7 +572,29 @@ namespace GraphView
         {
             GremlinUtil.InheritedVariableFromParent(op.RepeatTraversal, currentContext);
             GremlinToSqlContext context = op.RepeatTraversal.GetEndOp().GetContext();
-            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(currentContext.PivotVariable, context);
+
+            GremlinToSqlContext conditionContext = null;
+            if (op.ConditionTraversal != null)
+            {
+                GremlinUtil.InheritedVariableFromParent(op.ConditionTraversal, context);
+                conditionContext = op.ConditionTraversal.GetEndOp().GetContext();
+            }
+            else if (op.ConditionPredicate != null)
+            {
+                throw new NotImplementedException();
+            }
+            
+            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(currentContext.PivotVariable, context)
+            {
+                     ConditionContext = conditionContext,
+                     IsEmitTrue = op.IsEmitTrue,
+                     IsEmitAfter = op.IsEmitAfter,
+                     IsEmitBefore = op.IsEmitBefore,
+                     IsUntilAfter = op.IsUntilAfter,
+                     IsUntilBefore = op.IsUntilBefore,
+                     IsTimes = op.IsTimes,
+                     Times = op.Times
+            };
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -573,6 +611,7 @@ namespace GraphView
 
         //internal virtual void sample(Scope scope, int amountToSample)
         //internal virtual void Select(Column column)
+
         internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, string selectKey)
         {
             if (!currentContext.TaggedVariables.ContainsKey(selectKey))
@@ -580,7 +619,6 @@ namespace GraphView
                 throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
             }
 
-            var taggedVariableList = currentContext.TaggedVariables[selectKey];
             Tuple<GremlinVariable2, GremlinToSqlContext> pair;
             switch (pop) 
             {
@@ -603,12 +641,18 @@ namespace GraphView
                 if (pair.Item1 is GremlinVertexVariable2)
                 {
                     GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(pair.Item1 as GremlinVertexVariable2);
+                    contextVertex.IsFromSelect = true;
+                    contextVertex.Pop = pop;
+                    contextVertex.SelectKey = selectKey;
                     currentContext.VariableList.Add(contextVertex);
                     currentContext.PivotVariable = contextVertex;
                 }
                 else if (pair.Item1 is GremlinEdgeVariable2)
                 {
                     GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(pair.Item1 as GremlinContextEdgeVariable);
+                    contextEdge.IsFromSelect = true;
+                    contextEdge.Pop = pop;
+                    contextEdge.SelectKey = selectKey;
                     currentContext.VariableList.Add(contextEdge);
                     currentContext.PivotVariable = contextEdge;
                 }
@@ -762,6 +806,7 @@ namespace GraphView
         {
             if (propertyKeys.Count == 1)
             {
+                Populate(propertyKeys.First());
                 GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, propertyKeys.First());
                 currentContext.VariableList.Add(newVariableProperty);
                 currentContext.PivotVariable = newVariableProperty;
