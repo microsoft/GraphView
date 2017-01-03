@@ -451,18 +451,6 @@ namespace GraphView
                 return outputBuffer.Dequeue();
             }
         }
-
-        public override Dictionary<WColumnReferenceExpression, int> PrivateRecordLayout()
-        {
-            if (privateRecordLayout != null)
-            {
-                return privateRecordLayout;
-            }
-
-            privateRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
-
-            return base.PrivateRecordLayout();
-        }
     }
 
     internal abstract class TableValuedScalarFunction
@@ -523,6 +511,90 @@ namespace GraphView
             else
             {
                 throw new NotImplementedException();
+            }
+        }
+    }
+
+    internal class OptionalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        // A list of record fields (identified by field indexes) from the input 
+        // operator are to be returned when the optional traversal produces no results.
+        // When a field index is less than 0, it means that this field value is always null. 
+        private List<int> inputIndexes;
+
+        // The traversal inside the optional function. 
+        // The records returned by this operator should have the same number of fields
+        // as the records drawn from the input operator, i.e., inputIndexes.Count 
+        private GraphViewExecutionOperator optionalTraversal;
+        private ConstantSourceOperator contextOp;
+
+        RawRecord currentRecord = null;
+        private Queue<RawRecord> outputBuffer;
+
+        public OptionalOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputIndexes,
+            GraphViewExecutionOperator optionalTraversal, 
+            ConstantSourceOperator contextOp)
+        {
+            this.inputOp = inputOp;
+            this.inputIndexes = inputIndexes;
+            this.optionalTraversal = optionalTraversal;
+            this.contextOp = contextOp;
+
+            outputBuffer = new Queue<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            if (outputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
+            }
+
+            currentRecord = inputOp.Next();
+            if (currentRecord == null)
+            {
+                Close();
+                return null;
+            }
+
+            contextOp.ConstantSource = currentRecord;
+            RawRecord optionalRec = null;
+            while ((optionalRec = optionalTraversal.Next()) != null)
+            {
+                outputBuffer.Enqueue(optionalRec);
+            }
+
+            if (outputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
+            }
+            else
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                foreach (int index in inputIndexes)
+                {
+                    if (index < 0)
+                    {
+                        r.Append((string)null);
+                    }
+                    else
+                    {
+                        r.Append(currentRecord[index]);
+                    }
+                }
+
+                return r;
             }
         }
     }
