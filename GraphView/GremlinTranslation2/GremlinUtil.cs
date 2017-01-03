@@ -63,18 +63,6 @@ namespace GraphView
             }
         }
 
-        internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression key, object value)
-        {
-            WScalarExpression valueExpression = GetValueExpression(value);
-
-            return new WBooleanComparisonExpression()
-            {
-                ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = key,
-                SecondExpr = valueExpression
-            };
-        }
-
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression firstExpr,
             WScalarExpression secondExpr, BooleanComparisonType type)
         {
@@ -100,15 +88,17 @@ namespace GraphView
                     case PredicateType.within:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr,
-                                new Predicate(PredicateType.eq, value)));
+                            secondExpr = GetValueExpression(value);
+                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
+                                GetComparisonTypeFromPredicateType(PredicateType.eq)));
                         }
                         return ConcatBooleanExprWithOr(booleanExprList);
                     case PredicateType.without:
                         foreach (var value in predicate.Values)
                         {
-                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr,
-                                new Predicate(PredicateType.neq, value)));
+                            secondExpr = GetValueExpression(value);
+                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
+                                GetComparisonTypeFromPredicateType(PredicateType.neq)));
                         }
                         return ConcatBooleanExprWithAnd(booleanExprList);
                     case PredicateType.inside:
@@ -126,13 +116,13 @@ namespace GraphView
             }
             else
             {
-                return new WBooleanComparisonExpression()
-                {
-                    ComparisonType = GetComparisonTypeFromPredicateType(predicate.PredicateType),
-                    FirstExpr = firstExpr,
-                    SecondExpr = secondExpr
-                };
+                return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonTypeFromPredicateType(predicate.PredicateType));
             }
+        }
+
+        internal static WBooleanComparisonExpression GetEqualBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr)
+        {
+            return GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals);
         }
 
         internal static WBooleanBinaryExpression GetAndBooleanBinaryExpr(WBooleanExpression booleanExpr1,
@@ -301,8 +291,6 @@ namespace GraphView
 
         internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(GremlinMatchPath path)
         {
-            String value = "Edge";
-
             WSchemaObjectName sourceName = null;
             if (path.SourceVariable != null)
             {
@@ -312,10 +300,11 @@ namespace GraphView
                 sourceName,
                 new WEdgeColumnReferenceExpression()
                 {
-                    MultiPartIdentifier = GetMultiPartIdentifier(value),
+                    MultiPartIdentifier = GetMultiPartIdentifier("Edge"),
                     Alias = path.EdgeVariable.VariableName,
                     MinLength = 1,
-                    MaxLength = 1
+                    MaxLength = 1,
+                    EdgeType = path.EdgeVariable.EdgeType
                 }
             );
             return pathExpr;
@@ -383,16 +372,6 @@ namespace GraphView
                 FirstTableRef = firstTableRef,
                 SecondTableRef = secondTableRef,
                 UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
-            };
-        }
-
-        internal static WBooleanComparisonExpression GetEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
-        {
-            return new WBooleanComparisonExpression()
-            {
-                ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = firstExpr,
-                SecondExpr = secondExpr
             };
         }
     }

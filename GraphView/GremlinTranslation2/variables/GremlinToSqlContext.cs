@@ -99,10 +99,10 @@ namespace GraphView
 
         public void AddEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
         {
-            AddPredicate(GremlinUtil.GetEqualPredicate(firstExpr, secondExpr));
+            AddPredicate(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
 
-        public GremlinVariable2 GetSourceVertex(GremlinVariable2 edge)
+        public GremlinVertexVariable2 GetSourceVertex(GremlinVariable2 edge)
         {
             foreach (var path in Paths)
             {
@@ -111,7 +111,7 @@ namespace GraphView
             return null;
         }
 
-        public GremlinVariable2 GetSinkVertex(GremlinVariable2 edge)
+        public GremlinVertexVariable2 GetSinkVertex(GremlinVariable2 edge)
         {
             foreach (var path in Paths)
             {

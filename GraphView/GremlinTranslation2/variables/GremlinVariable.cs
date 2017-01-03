@@ -61,13 +61,13 @@ namespace GraphView
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
             GremlinToSqlContext copyContext = currentContext.Duplicate();
-            GremlinVariable2 pivotVariable = currentContext.PivotVariable;
+            //GremlinVariable2 pivotVariable = currentContext.PivotVariable;
             currentContext.Reset();
 
             GremlinAddEVariable newVariable = null;
-            if (pivotVariable is GremlinAddVVariable)
+            if (this is GremlinAddVVariable)
             {
-                newVariable = new GremlinAddEVariable(edgeLabel, pivotVariable as GremlinAddVVariable);
+                newVariable = new GremlinAddEVariable(edgeLabel, this as GremlinAddVVariable);
             }
             else
             {
@@ -316,7 +316,7 @@ namespace GraphView
         }
         internal virtual void Fold(GremlinToSqlContext currentContext)
         {
-            GremlinFoldVariable newVariable  = new GremlinFoldVariable(currentContext.PivotVariable.DefaultProjection());
+            GremlinFoldVariable newVariable  = new GremlinFoldVariable(DefaultProjection());
 
             currentContext.VariableList.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -350,7 +350,7 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Object value)
         {
-            WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(currentContext.PivotVariable.VariableName, propertyKey);
+            WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(VariableName, propertyKey);
             WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
             currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
@@ -390,9 +390,9 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
-                WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(currentContext.PivotVariable.VariableName, GremlinKeyword.Label);
+                WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(VariableName, GremlinKeyword.Label);
                 WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
-                booleanExprList.Add(GremlinUtil.GetEqualPredicate(firstExpr, secondExpr));
+                booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
             WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExprWithOr(booleanExprList);
             currentContext.AddPredicate(concatSql);
@@ -439,24 +439,22 @@ namespace GraphView
 
         internal virtual void Is(GremlinToSqlContext currentContext, object value)
         {
-            WScalarExpression firstExpr = currentContext.PivotVariable.DefaultProjection().ToScalarExpression();
+            WScalarExpression firstExpr = DefaultProjection().ToScalarExpression();
             WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
             currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
 
         internal virtual void Is(GremlinToSqlContext currentContext, Predicate predicate)
         {
-            throw new NotImplementedException();
-
-            //WScalarExpression secondExpr = null;
-            //if (predicate.Label != null)
-            //{
-            //    var compareVar = currentContext.TaggedVariables[predicate.Label].Last().Item1;
-            //    secondExpr = compareVar.DefaultProjection().ToScalarExpression();
-            //}
-            //var firstExpr = DefaultProjection().ToScalarExpression();
-            //var booleanExpr = GremlinUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
-            //currentContext.AddPredicate(booleanExpr);
+            WScalarExpression secondExpr = null;
+            if (predicate.Label != null)
+            {
+                var compareVar = currentContext.TaggedVariables[predicate.Label].Last().Item1;
+                secondExpr = compareVar.DefaultProjection().ToScalarExpression();
+            }
+            var firstExpr = DefaultProjection().ToScalarExpression();
+            var booleanExpr = GremlinUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
+            currentContext.AddPredicate(booleanExpr);
         }
 
         internal virtual void Iterate(GremlinToSqlContext currentContext)
@@ -637,7 +635,7 @@ namespace GraphView
                 throw new NotImplementedException();
             }
             
-            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(currentContext.PivotVariable, context)
+            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(this, context)
             {
                      ConditionContext = conditionContext,
                      IsEmitTrue = op.IsEmitTrue,

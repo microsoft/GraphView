@@ -6,5 +6,8 @@ using System.Threading.Tasks;
 
 namespace GraphView {
 
-    internal abstract class GremlinEdgeVariable2 : GremlinTableVariable { }
+    internal abstract class GremlinEdgeVariable2 : GremlinTableVariable
+    {
+        public WEdgeType EdgeType { get; set; }
+    }
 }

@@ -34,10 +34,11 @@ namespace GraphView
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty adjacencyList)
+        public GremlinBoundEdgeVariable(GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
         {
             VariableName = GenerateTableAlias();
             this.adjacencyList = adjacencyList;
+            EdgeType = edgeType;
         }
 
         public override GremlinVariableType GetVariableType()
@@ -47,15 +48,13 @@ namespace GraphView
 
         internal override void InV(GremlinToSqlContext currentContext)
         {
-            GremlinVariable2 inVertex = currentContext.GetSinkVertex(currentContext.PivotVariable as GremlinBoundEdgeVariable);
+            GremlinVertexVariable2 inVertex = currentContext.GetSinkVertex(this);
             if (inVertex == null)
             {
                 inVertex = new GremlinFreeVertexVariable();
                 currentContext.TableReferences.Add(inVertex as GremlinFreeVertexVariable);
                 currentContext.VariableList.Add(inVertex);
-                currentContext.Paths.Add(new GremlinMatchPath(null,
-                                              currentContext.PivotVariable,
-                                              inVertex));
+                currentContext.Paths.Find(p => p.EdgeVariable == this).SinkVariable = inVertex;
             }
 
             currentContext.PivotVariable = inVertex;
@@ -68,15 +67,13 @@ namespace GraphView
             // the pivot variable if possible, thereby avoiding adding a new vertex variable  
             // and reducing one join.
 
-            GremlinVariable2 outVertex = currentContext.GetSourceVertex(currentContext.PivotVariable as GremlinBoundEdgeVariable);
+            GremlinVertexVariable2 outVertex = currentContext.GetSourceVertex(this);
             if (outVertex == null)
             {
                 outVertex = new GremlinFreeVertexVariable();
                 currentContext.TableReferences.Add(outVertex as GremlinFreeVertexVariable);
                 currentContext.VariableList.Add(outVertex);
-                currentContext.Paths.Add(new GremlinMatchPath(outVertex,
-                                              currentContext.PivotVariable,
-                                              null));
+                currentContext.Paths.Find(p => p.EdgeVariable == this).SinkVariable = outVertex;
             }
 
             currentContext.PivotVariable = outVertex;
