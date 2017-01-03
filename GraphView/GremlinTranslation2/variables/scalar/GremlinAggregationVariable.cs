@@ -6,36 +6,34 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class GremlinAggregationVariable : GremlinScalarVariable, ISqlScalar
+    internal abstract class GremlinAggregationVariable : GremlinScalarVariable
     {
-        protected static int _count = 0;
-        internal virtual string GenerateTableAlias()
-        {
-            return "Agg_" + _count++;
-        }
-
         public GremlinScalarVariable AggregateProjection;
+
+        public GremlinAggregationVariable(GremlinScalarVariable aggregateProjection)
+        {
+            AggregateProjection = aggregateProjection;
+        }
     }
 
     internal class GremlinCountVariable : GremlinAggregationVariable
     {
-        public override GremlinVariableType GetVariableType()
+        public GremlinCountVariable(GremlinScalarVariable aggregateProjection):base(aggregateProjection) {}
+
+        public override WSelectElement ToSelectElement()
         {
-            return GremlinVariableType.Scalar;
+            return new WSelectScalarExpression()
+            {
+                SelectExpr = GremlinUtil.GetFunctionCall("count", GremlinUtil.GetStarColumnReferenceExpression())
+            };
         }
     }
 
     internal class GremlinFoldVariable : GremlinAggregationVariable
     {
-        public GremlinFoldVariable(GremlinScalarVariable aggregateProjection)
-        {
-            VariableName = GenerateTableAlias();
-            AggregateProjection = aggregateProjection;
-        }
+        public GremlinFoldVariable(GremlinScalarVariable aggregateProjection) : base(aggregateProjection) {}
 
-        internal override void Unfold(ref GremlinToSqlContext currentContext)
-        {
-        }
+        internal override void Unfold(ref GremlinToSqlContext currentContext) {}
 
         public override WSelectElement ToSelectElement()
         {
@@ -43,11 +41,6 @@ namespace GraphView
             {
                 SelectExpr = GremlinUtil.GetFunctionCall("fold", AggregateProjection.ToScalarExpression())
             };
-        }
-
-        internal override GremlinScalarVariable DefaultProjection()
-        {
-            return this;
         }
     }
 

@@ -51,7 +51,9 @@ namespace GraphView
             {
                 //where(whereTraversal)
                 //use Exist
-                inputContext.PivotVariable.Where(inputContext, WhereTraversal);
+                GremlinUtil.InheritedVariableFromParent(WhereTraversal, inputContext);
+                GremlinToSqlContext whereContext = WhereTraversal.GetEndOp().GetContext();
+                inputContext.PivotVariable.Where(inputContext, whereContext);
             }
             return inputContext;
         }

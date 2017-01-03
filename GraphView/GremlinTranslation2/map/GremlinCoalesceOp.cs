@@ -22,7 +22,14 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            throw new NotImplementedException();
+            List<GremlinToSqlContext> coalesceContextList = new List<GremlinToSqlContext>();
+            foreach (var traversal in CoalesceTraversals)
+            {
+                GremlinUtil.InheritedVariableFromParent(traversal, inputContext);
+                coalesceContextList.Add(traversal.GetEndOp().GetContext());
+            }
+
+            inputContext.PivotVariable.Coalesce(inputContext, coalesceContextList);
 
             return inputContext;
         }

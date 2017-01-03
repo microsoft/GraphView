@@ -6,29 +6,50 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class GremlinCoalesceVariable : GremlinBinaryVariable
+    internal abstract class GremlinCoalesceVariable : GremlinTableVariable
     {
+        public List<GremlinToSqlContext> CoalesceContextList;
 
-        public GremlinCoalesceVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
-            : base(traversal1, traversal2) { }
+        public GremlinCoalesceVariable(List<GremlinToSqlContext> coalesceContextList)
+        {
+            CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
+            VariableName = GenerateTableAlias();
+        }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
 
-        public WTableReference ToTableReference()
+        public override  WTableReference ToTableReference()
         {
-            throw new NotImplementedException();
+            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
+
+            foreach (var context in CoalesceContextList)
+            {
+                WSelectQueryBlock queryBlock = context.ToSelectQueryBlock();
+                foreach (var projectProperty in projectedProperties)
+                {
+                    queryBlock.SelectElements.Add(new WSelectScalarExpression()
+                    {
+                        SelectExpr =
+                            GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, projectProperty)
+                    });
+                }
+                PropertyKeys.Add(GremlinUtil.GetScalarSubquery(queryBlock));
+            }
+            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("Coalesce", PropertyKeys);
+            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    internal class GremlinCoalesceVertexVariable : GremlinCoalesceVariable, ISqlTable
+    internal class GremlinCoalesceVertexVariable : GremlinCoalesceVariable
     {
-        public GremlinCoalesceVertexVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
-            : base(traversal1, traversal2) { }
+        public GremlinCoalesceVertexVariable(List<GremlinToSqlContext> coalesceContextList)
+            : base(coalesceContextList) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Vertex;
         }
@@ -37,58 +58,38 @@ namespace GraphView
         {
             base.Both(currentContext, edgeLabels);
         }
-
-        public WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
-        }
     }
 
-    internal class GremlinCoalesceEdgeVariable : GremlinCoalesceVariable, ISqlTable
+    internal class GremlinCoalesceEdgeVariable : GremlinCoalesceVariable
     {
-        public GremlinCoalesceEdgeVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
-            : base(traversal1, traversal2) { }
+        public GremlinCoalesceEdgeVariable(List<GremlinToSqlContext> coalesceContextList)
+            : base(coalesceContextList) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
-        }
-
-        public WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
         }
     }
 
     internal class GremlinCoalesceTableVariable : GremlinCoalesceVariable, ISqlTable
     {
-        public GremlinCoalesceTableVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
-            : base(traversal1, traversal2) { }
+        public GremlinCoalesceTableVariable(List<GremlinToSqlContext> coalesceContextList)
+            : base(coalesceContextList) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
-
-        public WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
-        }
     }
 
-    internal class GremlinCoalesceValueVariable : GremlinCoalesceVariable, ISqlTable
+    internal class GremlinCoalesceScalarVariable : GremlinCoalesceVariable
     {
-        public GremlinCoalesceValueVariable(GremlinToSqlContext traversal1, GremlinToSqlContext traversal2)
-            : base(traversal1, traversal2) { }
+        public GremlinCoalesceScalarVariable(List<GremlinToSqlContext> coalesceContextList)
+            : base(coalesceContextList) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Scalar;
-        }
-
-        public WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
         }
     }
 }

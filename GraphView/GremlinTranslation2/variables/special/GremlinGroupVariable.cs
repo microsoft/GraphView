@@ -12,7 +12,7 @@ namespace GraphView
         public GremlinScalarVariable AggregateValue { get; private set; }
 
         // To re-consider
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
