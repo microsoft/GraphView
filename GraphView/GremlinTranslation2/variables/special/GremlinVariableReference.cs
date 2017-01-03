@@ -30,15 +30,20 @@ namespace GraphView
         public virtual List<WSqlStatement> ToSetVariableStatements()
         {
             List<WSqlStatement> statementList = Context.GetSetVariableStatements();
-            statementList[statementList.Count-1] =  new WSetVariableStatement()
+            statementList.Add(new WSetVariableStatement()
             {
                 Expression = new WScalarSubquery()
                 {
                     SubQueryExpr = Context.ToSelectQueryBlock()
                 },
                 Variable = GremlinUtil.GetVariableReference(VariableName)
-            };
+            });
             return statementList;
+        }
+
+        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        {
+            Context.PivotVariable.Property(currentContext, properties);
         }
     }
 }

@@ -33,11 +33,6 @@ namespace GraphView
             return GremlinVariableType.Vertex;
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, "id");
-        }
-
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             base.Both(currentContext, edgeLabels);

@@ -146,6 +146,7 @@
     <Compile Include="GremlinTranslation2\variables\edge\GremlinBoundEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\edge\GremlinContextEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\edge\GremlinEdgeVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\GremlinContextVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinDerivedVariable.cs" />
@@ -162,6 +163,7 @@
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinVariableProperty.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinAggregationVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinCoalesceTableVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinConstantVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinGroupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinOptionalVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinRepeatVariable.cs" />

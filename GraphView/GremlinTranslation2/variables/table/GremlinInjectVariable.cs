@@ -23,10 +23,11 @@ namespace GraphView
         // When priorContext is null, the corresponding table reference only contains injected values. 
         GremlinToSqlContext priorContext;
 
-        public GremlinInjectVariable(GremlinToSqlContext priorContext, params object[] values)
+        public GremlinInjectVariable(GremlinToSqlContext priorContext, List<object> values)
         {
+            VariableName = GenerateTableAlias();
             this.priorContext = priorContext;
-            rows = new List<object>(values);
+            rows = values;
         }
 
         public override GremlinVariableType GetVariableType()
@@ -78,7 +79,7 @@ namespace GraphView
             }
         }
 
-        internal override void Inject(GremlinToSqlContext currentContext, params string[] values)
+        internal override void Inject(GremlinToSqlContext currentContext, List<object> values)
         {
             rows.AddRange(values);
         }

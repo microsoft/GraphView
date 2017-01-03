@@ -6,17 +6,15 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class GremlinAggregationVariable : GremlinVariable2, ISqlScalar
+    internal abstract class GremlinAggregationVariable : GremlinScalarVariable, ISqlScalar
     {
-        public WSelectElement ToSelectElement()
+        protected static int _count = 0;
+        internal virtual string GenerateTableAlias()
         {
-            throw new NotImplementedException();
+            return "Agg_" + _count++;
         }
 
-        public WScalarExpression ToScalarExpression()
-        {
-            throw new NotImplementedException();
-        }
+        public GremlinScalarVariable AggregateProjection;
     }
 
     internal class GremlinCountVariable : GremlinAggregationVariable
@@ -29,7 +27,28 @@ namespace GraphView
 
     internal class GremlinFoldVariable : GremlinAggregationVariable
     {
+        public GremlinFoldVariable(GremlinScalarVariable aggregateProjection)
+        {
+            VariableName = GenerateTableAlias();
+            AggregateProjection = aggregateProjection;
+        }
 
+        internal override void Unfold(ref GremlinToSqlContext currentContext)
+        {
+        }
+
+        public override WSelectElement ToSelectElement()
+        {
+            return new WSelectScalarExpression()
+            {
+                SelectExpr = GremlinUtil.GetFunctionCall("fold", AggregateProjection.ToScalarExpression())
+            };
+        }
+
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return this;
+        }
     }
 
     internal class GremlinUnfoldVariable : GremlinTableVariable, ISqlTable

@@ -58,7 +58,12 @@ namespace GraphView
             newContext.TaggedVariables = InheritedTaggedVariables;
             if (InheritedPivotVariable != null)
             {
-                if (InheritedPivotVariable.GetVariableType() == GremlinVariableType.Vertex)
+                if (InheritedPivotVariable is GremlinContextVariable)
+                {
+                    newContext.VariableList.Add(InheritedPivotVariable);
+                    newContext.PivotVariable = InheritedPivotVariable;
+                }
+                else if (InheritedPivotVariable.GetVariableType() == GremlinVariableType.Vertex)
                 {
                     var newVertex = new GremlinContextVertexVariable(InheritedPivotVariable);
                     newContext.VariableList.Add(newVertex);

@@ -37,8 +37,7 @@ namespace GraphView
                 TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<ISqlTable>(this.TableReferences),
-                SetVariables = new List<ISqlStatement>(this.SetVariables),
-                //ProjectedVariables = new List<ISqlScalar>(ProjectedVariables),
+                //SetVariables = new List<ISqlStatement>(this.SetVariables), //Don't Duplicate for avoiding redundant set-sqlstatment
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
                 Paths = new List<GremlinMatchPath>(this.Paths),
                 Predicates = this.Predicates
@@ -100,13 +99,7 @@ namespace GraphView
 
         public void AddEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
         {
-            WBooleanComparisonExpression equalPredicate = new WBooleanComparisonExpression()
-            {
-                ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = firstExpr,
-                SecondExpr = secondExpr
-            };
-            AddPredicate(equalPredicate);
+            AddPredicate(GremlinUtil.GetEqualPredicate(firstExpr, secondExpr));
         }
 
         public GremlinVariable2 GetSourceVertex(GremlinVariable2 edge)
@@ -168,18 +161,18 @@ namespace GraphView
             List<WSqlStatement> statementList = new List<WSqlStatement>();
             foreach (var variable in SetVariables)
             {
-                if (variable is GremlinAddEVariable)
-                {
-                    if (!((variable as GremlinAddEVariable).FromVariable is GremlinAddVVariable))
-                    {
-                        statementList.AddRange((variable as GremlinAddEVariable).FromVariable.ToSetVariableStatements());
-                    }
-                    if (!((variable as GremlinAddEVariable).ToVariable is GremlinAddVVariable))
-                    {
-                        statementList.AddRange((variable as GremlinAddEVariable).ToVariable.ToSetVariableStatements());
-                    }
+                //if (variable is GremlinAddEVariable)
+                //{
+                //    if (!((variable as GremlinAddEVariable).FromVariable is GremlinAddVVariable))
+                //    {
+                //        statementList.AddRange((variable as GremlinAddEVariable).FromVariable.ToSetVariableStatements());
+                //    }
+                //    if (!((variable as GremlinAddEVariable).ToVariable is GremlinAddVVariable))
+                //    {
+                //        statementList.AddRange((variable as GremlinAddEVariable).ToVariable.ToSetVariableStatements());
+                //    }
 
-                }
+                //}
                 statementList.AddRange(variable.ToSetVariableStatements());
             }
             return statementList;

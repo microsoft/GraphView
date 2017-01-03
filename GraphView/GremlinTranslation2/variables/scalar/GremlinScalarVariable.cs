@@ -8,6 +8,11 @@ namespace GraphView
 {
     internal abstract class GremlinScalarVariable : GremlinVariable2, ISqlScalar
     {
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return this;
+        }
+
         public virtual WSelectElement ToSelectElement()
         {
             throw new NotImplementedException();

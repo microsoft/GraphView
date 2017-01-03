@@ -16,10 +16,6 @@ namespace GraphView
             GremlinVariable = gremlinVariable;
             VariableProperty = variableProperty;
         }
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return this;
-        }
 
         public override WSelectElement ToSelectElement()
         {

@@ -30,11 +30,6 @@ namespace GraphView
             this.vertexId = vertexId;
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, "id");
-        }
-
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             Populate("BothAdjacencyList");

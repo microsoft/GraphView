@@ -92,10 +92,10 @@ namespace GraphView
             switch (Type)
             {
                 case ToType.ToStepLabel:
-                    inputContext.PivotVariable.From(inputContext, StepLabel);
+                    inputContext.PivotVariable.To(inputContext, StepLabel);
                     break;
                 case ToType.ToVertexTraversal:
-                    inputContext.PivotVariable.From(inputContext, ToVertexTraversal);
+                    inputContext.PivotVariable.To(inputContext, ToVertexTraversal);
                     break;
             }
 

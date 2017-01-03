@@ -6,33 +6,13 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextVertexVariable : GremlinVertexVariable2
+    internal class GremlinContextVertexVariable : GremlinContextVariable
     {
-        public GremlinVariable2 ContextVariable;
-
-        public bool IsFromSelect;
-        public GremlinKeyword.Pop Pop;
-        public string SelectKey;
-
-        public GremlinContextVertexVariable(GremlinVariable2 contextVariable)
-        {
-            this.ContextVariable = contextVariable;
-            VariableName = contextVariable.VariableName;
-        }
+        public GremlinContextVertexVariable(GremlinVariable2 contextVariable):base(contextVariable) {}
 
         public override GremlinVariableType GetVariableType()
         {
             return ContextVariable.GetVariableType();
-        }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return ContextVariable.DefaultProjection();
-        }
-
-        internal override void Populate(string name, bool isAlias = false)
-        {
-            ContextVariable.Populate(name, isAlias);
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
