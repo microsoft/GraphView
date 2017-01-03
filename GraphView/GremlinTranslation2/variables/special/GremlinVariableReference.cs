@@ -27,9 +27,10 @@ namespace GraphView
             VariableName = GenerateTableAlias();
         }
 
-        public WSetVariableStatement ToSetVariableStatement()
+        public virtual List<WSqlStatement> ToSetVariableStatements()
         {
-            return new WSetVariableStatement()
+            List<WSqlStatement> statementList = Context.GetSetVariableStatements();
+            statementList[statementList.Count-1] =  new WSetVariableStatement()
             {
                 Expression = new WScalarSubquery()
                 {
@@ -37,6 +38,7 @@ namespace GraphView
                 },
                 Variable = GremlinUtil.GetVariableReference(VariableName)
             };
+            return statementList;
         }
     }
 }

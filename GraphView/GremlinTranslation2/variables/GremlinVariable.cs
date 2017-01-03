@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GremlinTranslation2.variables.special;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
     internal interface ISqlStatement
     {
-        WSetVariableStatement ToSetVariableStatement();
+        List<WSqlStatement> ToSetVariableStatements();
     }
     internal interface ISqlTable
     {
@@ -723,7 +724,9 @@ namespace GraphView
         {
             GremlinUtil.InheritedContextFromParent(sideEffectTraversal, currentContext);
             GremlinToSqlContext context = sideEffectTraversal.GetEndOp().GetContext();
-            currentContext.AddStatements(context.GetStatements());
+            GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(context);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.SetVariables.Add(newVariable);
         }
 
         //internal virtual void SimplePath()
@@ -807,6 +810,7 @@ namespace GraphView
             GremlinUnionVariable newVariable = new GremlinUnionVariable(unionContextList);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
+            currentContext.SetVariables.Add(newVariable);
             currentContext.PivotVariable = newVariable;
         }
 

@@ -27,8 +27,10 @@ namespace GraphView
             };
         }
 
-        public WSetVariableStatement ToSetVariableStatement()
+        public override List<WSqlStatement> ToSetVariableStatements()
         {
+            List<WSqlStatement> statementList = new List<WSqlStatement>();
+
             var columnK = new List<WColumnReferenceExpression>();
             var columnV = new List<WScalarExpression>();
 
@@ -56,7 +58,7 @@ namespace GraphView
 
             var addVStatement = new WInsertNodeSpecification(insertStatement);
 
-            return new WSetVariableStatement()
+            var setStatement = new WSetVariableStatement()
             {
                 Expression = new WScalarSubquery()
                 {
@@ -64,6 +66,9 @@ namespace GraphView
                 },
                 Variable = GremlinUtil.GetVariableReference(VariableName)
             };
+
+            statementList.Add(setStatement);
+            return statementList;
         }
 
         public GremlinAddVVariable(string vertexLabel)

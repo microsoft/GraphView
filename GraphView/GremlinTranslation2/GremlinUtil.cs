@@ -356,7 +356,7 @@ namespace GraphView
             if (rootOp.GetType() == typeof(GremlinParentContextOp))
             {
                 GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
-                rootAsContextOp.SetContext(inputContext);
+                rootAsContextOp.InheritedContext = inputContext.Duplicate();
             }
         }
 

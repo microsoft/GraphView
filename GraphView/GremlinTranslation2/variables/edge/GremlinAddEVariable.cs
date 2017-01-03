@@ -29,8 +29,10 @@ namespace GraphView
             };
         }
 
-        public WSetVariableStatement ToSetVariableStatement()
+        public override List<WSqlStatement> ToSetVariableStatements()
         {
+            List<WSqlStatement> statementList = new List<WSqlStatement>();
+
             var columnK = new List<WColumnReferenceExpression>();
 
             var selectBlock = new WSelectQueryBlock()
@@ -81,7 +83,7 @@ namespace GraphView
                 SelectInsertSource = new WSelectInsertSource() { Select = selectBlock }
             };
 
-            return new WSetVariableStatement()
+            var setStatement = new WSetVariableStatement()
             {
                 Expression = new WScalarSubquery()
                 {
@@ -89,6 +91,9 @@ namespace GraphView
                 },
                 Variable = GremlinUtil.GetVariableReference(VariableName)
             };
+
+            statementList.Add(setStatement);
+            return statementList;
         }
 
         public GremlinAddEVariable(string edgeLabel, GremlinVariableReference currVariable)
@@ -127,6 +132,11 @@ namespace GraphView
             }
         }
 
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.PivotVariable = ToVariable;
+        }
+
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
             foreach (var pair in properties)
@@ -157,6 +167,11 @@ namespace GraphView
                 currentContext.VariableList.Add(newVariableReference);
                 ToVariable = newVariableReference;
             }
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.PivotVariable = FromVariable;
         }
     }
 }

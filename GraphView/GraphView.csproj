@@ -165,8 +165,11 @@
     <Compile Include="GremlinTranslation2\variables\special\GremlinGroupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinOptionalVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinRepeatVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinSideEffectVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinUnionVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinVariableReference.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinBinaryVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\GremlinContextTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinInjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\vertex\GremlinAddVVariable.cs" />

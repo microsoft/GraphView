@@ -30,6 +30,11 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestStep()
         {
+            GraphTraversal2.g()
+                .V()
+                .union(GraphTraversal2.__().Out(), GraphTraversal2.__().outE(), GraphTraversal2.__().In())
+                .next();
+
             GraphTraversal2.g().addV("test").property("name", "jinjin").addE("edge").to(GraphTraversal2.g().addV("test2").property("age", "22")).property("label", "123").next();
 
             GraphTraversal2.g().inject(0).sideEffect(GraphTraversal2.__().union(
