@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class TVFOperator : GraphViewExecutionOperator
+    internal abstract class TableValuedFunction : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator InputOperator;
         protected Queue<RawRecord> InputBuffer;
@@ -15,7 +15,10 @@ namespace GraphView
         protected int OutputBufferSize;
         protected int NewFieldIdx;
 
-        internal TVFOperator(GraphViewExecutionOperator pInputOperator, int pNewFieldIdx, int pInputBufferSize,
+        internal TableValuedFunction(
+            GraphViewExecutionOperator pInputOperator, 
+            int pNewFieldIdx, 
+            int pInputBufferSize,
             int pOutputBufferSize)
         {
             InputOperator = pInputOperator;
@@ -69,7 +72,7 @@ namespace GraphView
         }
     }
 
-    internal class PropertiesOperator : TVFOperator
+    internal class PropertiesOperator : TableValuedFunction
     {
         internal List<Tuple<string, int>> PropertyIdxList;
 
@@ -95,7 +98,7 @@ namespace GraphView
         } 
     }
 
-    internal class ValuesOperator : TVFOperator
+    internal class ValuesOperator : TableValuedFunction
     {
         internal List<int> ValuesIdxList;
 
@@ -119,7 +122,7 @@ namespace GraphView
         }
     }
 
-    internal class ConstantOperator : TVFOperator
+    internal class ConstantOperator : TableValuedFunction
     {
         internal string ConstantValue;
 
@@ -138,7 +141,7 @@ namespace GraphView
         }
     }
 
-    internal class UnfoldOperator : TVFOperator
+    internal class UnfoldOperator : TableValuedFunction
     {
         internal int FoldedFieldIdx;
         internal int FoldedMetaIdx;

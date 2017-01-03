@@ -365,11 +365,6 @@ namespace GraphView
         }
     }
 
-    internal abstract class TableValuedFunction : GraphViewExecutionOperator
-    {
-        public abstract IEnumerable<RawRecord> Apply(RawRecord record);
-    }
-
     internal class AdjacencyListDecoder : TableValuedFunction
     {
         private GraphViewExecutionOperator input;
@@ -390,7 +385,7 @@ namespace GraphView
             this.edgeTableAlias = edgeTableAlias;
         }
 
-        public override IEnumerable<RawRecord> Apply(RawRecord record)
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             string jsonArray = record[adjacencyListIndex];
             List<RawRecord> results = new List<RawRecord>();
@@ -429,7 +424,7 @@ namespace GraphView
                 RawRecord record = input.Next();
                 if (record == null)
                     continue;
-                var results = Apply(record);
+                var results = CrossApply(record);
                 foreach (var edgeRecord in results)
                 {
                     if (!edgePredicate.Evaluate(edgeRecord))
