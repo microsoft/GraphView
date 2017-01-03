@@ -71,11 +71,11 @@ namespace GraphView
             return null;
         }
 
-        internal override void Populate(string name, bool isAlias = false)
+        internal override void Populate(string property)
         {
             if (priorContext != null)
             {
-                priorContext.Populate(name, isAlias);
+                priorContext.Populate(property);
             }
         }
 

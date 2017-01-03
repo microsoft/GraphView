@@ -33,45 +33,25 @@ namespace GremlinTranslationOperator.Tests
             //GraphTraversal2.g().addV("test").property("name", "jinjin").addE("edge").to(GraphTraversal2.g().addV("test2").property("age", "22")).property("label", "123").next();
 
 
-            GraphTraversal2.g().inject(0)
-                .union(GraphTraversal2.__().not(GraphTraversal2.g().V()
-                            .has("_app", "test-app")
-                            .hasLabel("application")
-                            .has("_deleted", false))
-                        .constant("~0"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .hasLabel("application")
-                        .has("_provisioningState", 0)
-                        .constant("~1"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .hasLabel("application")
-                        .has("_provisioningState", 2)
-                        .constant("~2"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "product:soda-machine")
-                        .hasLabel("product-model")
-                        .constant("~3"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "uber-product:soda-machine")
-                        .hasLabel("product-model")
-                        .constant("~4"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "device:ice-machine")
-                        .hasLabel("device-model")
-                        .constant("~5"),
-                    GraphTraversal2.g().V()
-                        .has("_app", "test-app")
-                        .has("_id", "device:soda-mixer")
-                        .hasLabel("device-model")
-                        .constant("~6")
-                        ).fold()
-                        //.Is(Predicate.neq(new List<object>()))
-                        .next();
+            GraphTraversal2.g().V().As("@v")  //n_0 as @v
+                .Out("mdl") //n_0-[edge as e_0]->n_1   n_1
+                .outE("ref") //n_1->[edge as e_1] e_1
+                .repeat(GraphTraversal2.__().As("@e") //e_1 as @e
+                         .inV() //n_2
+                         .As("mdl") //n_2.id as mdl
+                         .select(GremlinKeyword.Pop.last, "@v")  //n_0
+                         .both()  //n_0-[edge as e_2]-n_3
+                         .where(GraphTraversal2.__().Out("mdl").where(Predicate.eq("mdl"))) //n_3-[edge as e_3]->n_4 && n_4.id = n_2.id
+                         .As("@v") // n_3 as @v
+                         .optional(GraphTraversal2.__().select(GremlinKeyword.Pop.last, "@e")  //e_1
+                                .values("_ref")  //e_1._ref
+                                .As("key")  //e_1._ref as key
+                                .select(GremlinKeyword.Pop.last, "@v") //n_3
+                                .Out("mdl") //n_3-[edge as e_4]->n_5
+                                .outE("ref") //n_5->[edge as e_5]
+                                .where(GraphTraversal2.__().values("_key")  // e_5._key
+                                           .where(Predicate.eq("key")))))  //e_1._ref = e_5._key
+                .until(GraphTraversal2.__().As("res").select(GremlinKeyword.Pop.last, "@v").where(Predicate.eq("res"))).next();
         }
     }
 }

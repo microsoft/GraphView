@@ -58,7 +58,7 @@ namespace GraphView
             // More resetting goes here when more properties are added to GremlinToSqlContext
         }
 
-        internal void Populate(string propertyName, bool isAlias = false)
+        internal void Populate(string propertyName)
         {
             // For a query with a GROUP BY clause, the ouptut format is determined
             // by the aggregation functions following GROUP BY and cannot be changed.
@@ -67,7 +67,7 @@ namespace GraphView
                 return;
             }
 
-            PivotVariable.Populate(propertyName, isAlias);
+            PivotVariable.Populate(propertyName);
         }
 
         internal GremlinVariable2 SelectVariable(GremlinKeyword.Pop pop, string selectKey)
@@ -248,18 +248,18 @@ namespace GraphView
         {
             var newSelectElementClause = new List<WSelectElement>();
             newSelectElementClause.Add(PivotVariable.DefaultProjection().ToSelectElement());
-
-            foreach (var tableReferences in TableReferences)
-            {
-                var selectElementList = tableReferences.ToSelectElementList();
-                if (selectElementList != null)
-                {
-                    foreach (var selectElement in selectElementList)
-                    {
-                        newSelectElementClause.Add(selectElement);
-                    }
-                }
-            }
+            //newSelectElementClause.AddRange(PivotVariable.ToSelectElementList());
+            //foreach (var tableReferences in TableReferences)
+            //{
+            //    var selectElementList = tableReferences.ToSelectElementList();
+            //    if (selectElementList != null)
+            //    {
+            //        foreach (var selectElement in selectElementList)
+            //        {
+            //            newSelectElementClause.Add(selectElement);
+            //        }
+            //    }
+            //}
             return newSelectElementClause;
         }
 

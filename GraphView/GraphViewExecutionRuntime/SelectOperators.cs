@@ -377,6 +377,7 @@ namespace GraphView
 
         public AdjacencyListDecoder(GraphViewExecutionOperator input, int adjacencyListIndex,
             BooleanFunction edgePredicate, List<string> projectedFields, string edgeTableAlias, int outputBufferSize = 1000)
+            : base(input, 0, 1000, 1000)
         {
             this.input = input;
             this.adjacencyListIndex = adjacencyListIndex;

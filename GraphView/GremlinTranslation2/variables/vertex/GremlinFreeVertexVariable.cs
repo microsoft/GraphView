@@ -19,12 +19,6 @@ namespace GraphView
             return GremlinUtil.GetNamedTableReference(this);
         }
 
-        public override List<WSelectElement> ToSelectElementList()
-        {
-            //Can't remove this code
-            return null;
-        }
-
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinEdgeVariable2 bothEdgeVar = new GremlinBoundEdgeVariable(new GremlinVariableProperty(this, "BothAdjacencyList"));

@@ -25,9 +25,9 @@ namespace GraphView
             return ContextVariable.DefaultProjection();
         }
 
-        internal override void Populate(string name, bool isAlias = false)
+        internal override void Populate(string property)
         {
-            ContextVariable.Populate(name, isAlias);
+            ContextVariable.Populate(property);
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)

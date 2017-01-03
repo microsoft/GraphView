@@ -15,7 +15,6 @@ namespace GraphView
     internal interface ISqlTable
     {
         WTableReference ToTableReference();
-        List<WSelectElement> ToSelectElementList();
     }
 
     internal interface ISqlScalar
@@ -46,11 +45,11 @@ namespace GraphView
             return GremlinVariableType.Undefined;
         }
 
-        internal virtual void Populate(string name, bool isAlias = false)
+        internal virtual void Populate(string property)
         {
-            if (!UsedProperties.Contains(name))
+            if (!UsedProperties.Contains(property))
             {
-                UsedProperties.Add(name);
+                UsedProperties.Add(property);
             }
         }
 

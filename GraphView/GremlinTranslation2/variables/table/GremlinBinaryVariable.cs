@@ -20,10 +20,10 @@ namespace GraphView
             this.traversal2 = traversal2;
         }
 
-        internal override void Populate(string name, bool isAlias = false)
+        internal override void Populate(string property)
         {
-            traversal1.Populate(name, isAlias);
-            traversal2.Populate(name, isAlias);
+            traversal1.Populate(property);
+            traversal2.Populate(property);
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
