@@ -34,7 +34,6 @@ namespace GraphView
             List<WSqlStatement> statementList = new List<WSqlStatement>();
 
             var columnK = new List<WColumnReferenceExpression>();
-
             var selectBlock = new WSelectQueryBlock()
             {
                 SelectElements = new List<WSelectElement>(),
@@ -117,17 +116,19 @@ namespace GraphView
 
             var context = fromVertexTraversal.GetEndOp().GetContext();
 
-            GremlinVariableReference newVariableReference = null;
+            GremlinVariableReference newVariableReference;
+            var index = currentContext.SetVariables.FindIndex(p => p == this);
+
             if (context.PivotVariable is GremlinAddVVariable)
             {
-                var index = currentContext.SetVariables.FindIndex(p=>p == this);
                 FromVariable = context.PivotVariable as GremlinAddVVariable;
-                currentContext.SetVariables.Insert(index, context.PivotVariable as GremlinAddVVariable);
+                currentContext.SetVariables.InsertRange(index, context.SetVariables);
             }
             else
             {
                 newVariableReference = new GremlinVariableReference(context);
                 currentContext.VariableList.Add(newVariableReference);
+                currentContext.SetVariables.Insert(index, newVariableReference);
                 FromVariable = newVariableReference;
             }
         }
@@ -155,16 +156,18 @@ namespace GraphView
             GremlinUtil.InheritedContextFromParent(toVertexTraversal, currentContext);
 
             var context = toVertexTraversal.GetEndOp().GetContext();
+            var index = currentContext.SetVariables.FindIndex(p => p == this);
+
             if (context.PivotVariable is GremlinAddVVariable)
             {
-                var index = currentContext.SetVariables.FindIndex(p => p == this);
                 ToVariable = context.PivotVariable as GremlinAddVVariable;
-                currentContext.SetVariables.Insert(index, context.PivotVariable as GremlinAddVVariable);
+                currentContext.SetVariables.InsertRange(index, context.SetVariables);
             }
             else
             {
                 GremlinVariableReference newVariableReference = new GremlinVariableReference(context);
                 currentContext.VariableList.Add(newVariableReference);
+                currentContext.SetVariables.Insert(index, newVariableReference);
                 ToVariable = newVariableReference;
             }
         }

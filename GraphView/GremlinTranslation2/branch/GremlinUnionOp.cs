@@ -24,7 +24,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
             
-            inputContext.PivotVariable.Union(inputContext, UnionTraversals);
+            inputContext.PivotVariable.Union(ref inputContext, UnionTraversals);
 
             return inputContext;
         }

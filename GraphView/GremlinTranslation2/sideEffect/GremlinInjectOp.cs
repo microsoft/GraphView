@@ -9,17 +9,28 @@ namespace GraphView
 {
     internal class GremlinInjectOp: GremlinTranslationOperator
     {
-        public object[] Injections { get; set; }
+        public List<object> Injections { get; set; }
 
         public GremlinInjectOp(params object[] injections)
         {
-            Injections = injections;
+            Injections = new List<object>(injections);
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            if (inputContext.VariableList.Count == 0)
+            {
+                GremlinInjectVariable injectVar = new GremlinInjectVariable(null, Injections);
+                inputContext.VariableList.Add(injectVar);
+                inputContext.TableReferences.Add(injectVar);
+                inputContext.PivotVariable = injectVar;
+            }
+            else
+            {
+                inputContext.PivotVariable.Inject(inputContext, Injections);
+            }
             return inputContext;
         }
     }

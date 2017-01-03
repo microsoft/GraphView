@@ -8,6 +8,7 @@ namespace GraphView
 {
     public class Predicate
     {
+        public object obj { get; set; }
         public string Label { get; set; }
         public long Number { get; set; }
         public List<object> Values { get; set; }
@@ -52,6 +53,11 @@ namespace GraphView
         public static Predicate eq(long number)
         {
             return new Predicate(PredicateType.eq, number);
+        }
+
+        public static Predicate neq(object obj)
+        {
+            return new Predicate(PredicateType.neq, obj);
         }
 
         public static Predicate neq(string label)

@@ -10,7 +10,6 @@ namespace GraphView
     {
         private GremlinVariable2 inputVariable;
         private GremlinToSqlContext context;
-        private List<string> projectedProperties;
 
         public GremlinToSqlContext ConditionContext { get; set; }
         public bool IsEmitTrue { get; set; }
@@ -26,13 +25,12 @@ namespace GraphView
             VariableName = GenerateTableAlias();
             this.context = context;
             this.inputVariable = inputVariable;
-            projectedProperties = new List<string>();
         }
 
-        internal override void Populate(string name, bool isAlias = false)
+        internal override void Populate(string property)
         {
-            context.PivotVariable.Populate(name);
-            base.Populate(name);
+            context.Populate(property);
+            base.Populate(property);
         }
 
         public override WTableReference ToTableReference()
@@ -41,13 +39,10 @@ namespace GraphView
 
             foreach (var property in inputVariable.UsedProperties)
             {
-                //context.PivotVariable.Populate(property, true);
-                context.PivotVariable.Populate(property);
+                Populate(property);
             }
 
-            List<Tuple<GremlinVariable2, GremlinVariable2>> aliasList = new List<Tuple<GremlinVariable2, GremlinVariable2>>();
-            aliasList.Add(new Tuple<GremlinVariable2, GremlinVariable2>(context.PivotVariable, inputVariable));
-
+            List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
             foreach (var variable in context.VariableList)
             {
                 if (variable is GremlinContextEdgeVariable)
@@ -61,8 +56,13 @@ namespace GraphView
                             foreach (var property in temp.ContextVariable.UsedProperties)
                             {
                                 selectVar.Populate(property);
+                                outerSelectList.Add(new WSelectScalarExpression()
+                                {
+                                    ColumnName = temp.ContextVariable.VariableName + "." + property,
+                                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(selectVar.VariableName, property)
+                                });
                             }
-                            aliasList.Add(new Tuple<GremlinVariable2, GremlinVariable2>(selectVar, temp.ContextVariable));
+                            
                         }
                     }
                 }
@@ -77,32 +77,48 @@ namespace GraphView
                             foreach (var property in temp.ContextVariable.UsedProperties)
                             {
                                 selectVar.Populate(property);
+                                outerSelectList.Add(new WSelectScalarExpression()
+                                {
+                                    ColumnName = temp.ContextVariable.VariableName + "." + property,
+                                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(selectVar.VariableName, property)
+                                });
                             }
-                            aliasList.Add(new Tuple<GremlinVariable2, GremlinVariable2>(selectVar, temp.ContextVariable));
                         }
                     }
                 }
             }
 
             WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
+            selectQueryBlock.SelectElements.Clear();
 
-            foreach (var selectElement in selectQueryBlock.SelectElements)
+            if (context.PivotVariable.DefaultProjection() is GremlinVariableProperty)
             {
-                if (selectElement is WSelectScalarExpression)
+                var temp = context.PivotVariable.DefaultProjection() as GremlinVariableProperty;
+                selectQueryBlock.SelectElements.Add(new WSelectScalarExpression()
                 {
-                    if ((selectElement as WSelectScalarExpression).SelectExpr is WColumnReferenceExpression)
-                    {
-                        var temp = ((selectElement as WSelectScalarExpression).SelectExpr as WColumnReferenceExpression);
-                        foreach (var pair in aliasList)
-                        {
-                            if (temp.MultiPartIdentifier.Identifiers.First().Value == pair.Item1.VariableName)
-                            {
-                                var property = temp.MultiPartIdentifier.Identifiers[1].Value;
-                                (selectElement as WSelectScalarExpression).ColumnName = pair.Item2.VariableName + "." + property;
-                            }
-                        }
-                    }
-                }
+                    ColumnName = inputVariable.VariableName + "." + temp.VariableProperty,
+                    SelectExpr =
+                        GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, temp.VariableProperty)
+                });
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+
+            foreach (var projectProperty in projectedProperties)
+            {
+                selectQueryBlock.SelectElements.Add(new WSelectScalarExpression()
+                {
+                    ColumnName = inputVariable.VariableName + "." + projectProperty,
+                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, projectProperty)
+                });
+            }
+
+            foreach (var selectElement in outerSelectList)
+            {
+                selectQueryBlock.SelectElements.Add(selectElement);
             }
 
             PropertyKeys.Add(GremlinUtil.GetScalarSubquery(selectQueryBlock));

@@ -19,6 +19,11 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             PropertyKeys.Add(vertexId.ToScalarExpression());
+            PropertyKeys.Add(GremlinUtil.GetValueExpression("id"));
+            foreach (var property in projectedProperties)
+            {
+                PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
+            }
             var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("V", PropertyKeys);
             secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
@@ -28,11 +33,6 @@ namespace GraphView
         {
             VariableName = GenerateTableAlias();
             this.vertexId = vertexId;
-        }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, "id");
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)

@@ -23,7 +23,7 @@ namespace GraphView
     }
     internal class GremlinHasOp: GremlinTranslationOperator
     {
-        public string Key { get; set; }
+        public string PropertyKey { get; set; }
         public object Value { get; set; }
         public List<object> Values { get; set; }
         public string Label { get; set; }
@@ -31,63 +31,99 @@ namespace GraphView
         public GraphTraversal2 Traversal { get; set; }
         public HasOpType OpType { get; set; }
 
-        public GremlinHasOp(string key)
+        public GremlinHasOp(string propertyKey)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             OpType = HasOpType.HasKey;
         }
 
-        public GremlinHasOp(string key, object value)
+        public GremlinHasOp(string propertyKey, object value)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             Value = value;
             OpType = HasOpType.HasKeyValue;
         }
 
-        public GremlinHasOp(string label, string key, object value)
+        public GremlinHasOp(string label, string propertyKey, object value)
         {
             Label = label;
-            Key = key;
+            PropertyKey = propertyKey;
             Value = value;
             OpType = HasOpType.HasLabelKeyValue;
         }
 
-        public GremlinHasOp(string key, Predicate predicate)
+        public GremlinHasOp(string propertyKey, Predicate predicate)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             Predicate = predicate;
             OpType = HasOpType.HasKeyPredicate;
         }
 
 
-        public GremlinHasOp(string key, GraphTraversal2 traversal)
+        public GremlinHasOp(string propertyKey, GraphTraversal2 traversal)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             Traversal = traversal;
             OpType = HasOpType.HasKeyTraversal;
         }
 
         public GremlinHasOp(HasOpType type, params object[] values)
         {
-            Values = new List<object>();
-            foreach (var value in values)
-            {
-                Values.Add(value);
-            }
+            Values = new List<object>(values);
             OpType = type;
         }
 
         public GremlinHasOp(string label, string propertyKey, Predicate predicate)
         {
             Label = label;
-            Key = propertyKey;
+            PropertyKey = propertyKey;
             Predicate = predicate;
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            switch (OpType)
+            {
+                //has(key)
+                case HasOpType.HasKey:
+                    throw new NotImplementedException();
+
+                //has(key, value)
+                case HasOpType.HasKeyValue:
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, Value);
+                    break;
+
+                //has(key, predicate)
+                case HasOpType.HasKeyPredicate:
+                    throw new NotImplementedException();
+
+                //has(label, key, value)
+                case HasOpType.HasLabelKeyValue:
+                    throw new NotImplementedException();
+
+                case HasOpType.HasKeyTraversal:
+                    throw new NotImplementedException();
+
+                case HasOpType.HasId:
+                    throw new NotImplementedException();
+
+                case HasOpType.HasKeys:
+                    throw new NotImplementedException();
+
+                case HasOpType.HasLabel:
+                    inputContext.PivotVariable.HasLabel(inputContext, Values);
+                    break;
+
+                case HasOpType.HasValue:
+                    throw new NotImplementedException();
+
+                case HasOpType.HasLabelKeyPredicate:
+                    throw new NotImplementedException();
+
+            }
+
             return inputContext;
         }
 

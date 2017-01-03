@@ -17,7 +17,7 @@ namespace GraphView.GremlinTranslation2.variables.special
 
         public List<WSqlStatement> ToSetVariableStatements()
         {
-            return Context.GetStatements();
+            return Context.GetSetVariableStatements();
         }
     }
 }

@@ -103,14 +103,14 @@ namespace GraphView
                             booleanExprList.Add(GetBooleanComparisonExpr(firstExpr,
                                 new Predicate(PredicateType.eq, value)));
                         }
-                        return ConcatBooleanExpressionListWithOr(booleanExprList);
+                        return ConcatBooleanExprWithOr(booleanExprList);
                     case PredicateType.without:
                         foreach (var value in predicate.Values)
                         {
                             booleanExprList.Add(GetBooleanComparisonExpr(firstExpr,
                                 new Predicate(PredicateType.neq, value)));
                         }
-                        return ConcatBooleanExpressionListWithAnd(booleanExprList);
+                        return ConcatBooleanExprWithAnd(booleanExprList);
                     case PredicateType.inside:
                         //TODO
                         throw new NotImplementedException();
@@ -166,12 +166,12 @@ namespace GraphView
         }
 
 
-        internal static WBooleanExpression ConcatBooleanExpressionListWithOr(List<WBooleanExpression> booleanExprList)
+        internal static WBooleanExpression ConcatBooleanExprWithOr(List<WBooleanExpression> booleanExprList)
         {
             return ConcatBooleanExpressionList(booleanExprList, BooleanBinaryExpressionType.Or);
         }
 
-        internal static WBooleanExpression ConcatBooleanExpressionListWithAnd(List<WBooleanExpression> booleanExprList)
+        internal static WBooleanExpression ConcatBooleanExprWithAnd(List<WBooleanExpression> booleanExprList)
         {
             return ConcatBooleanExpressionList(booleanExprList, BooleanBinaryExpressionType.And);
         }
@@ -246,12 +246,12 @@ namespace GraphView
             return booleanExpr;
         }
 
-        internal static WFunctionCall GetFunctionCall(string functionName, List<WScalarExpression> parameterList)
+        internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameterList)
         {
             return new WFunctionCall()
             {
                 FunctionName = GetIdentifier(functionName),
-                Parameters = parameterList
+                Parameters = new List<WScalarExpression>(parameterList)
             };
         }
 
@@ -321,16 +321,6 @@ namespace GraphView
             return pathExpr;
         }
 
-        //internal static WEdgeType GetEdgeType(GremlinVariable2 edgeVar)
-        //{
-        //    if (edgeVar is GremlinAddEVariable) return WEdgeType.OutEdge;
-        //    //if (edgeVar is GremlinPathEdgeVariable) return WEdgeType.PathE;
-        //    //if (edgeVar is GremlinPathNodeVariable) return WEdgeType.PathN;
-        //    if (edgeVar is GremlinEdgeVariable) return (edgeVar as GremlinEdgeVariable).EdgeType;
-        //    if (edgeVar is GremlinTVFEdgeVariable) return (edgeVar as GremlinTVFEdgeVariable).EdgeType;
-        //    throw new NotImplementedException();
-        //}
-
         internal static WBooleanParenthesisExpression GetBooleanParenthesisExpression(WBooleanExpression booleanExpr)
         {
             return new WBooleanParenthesisExpression()
@@ -378,98 +368,12 @@ namespace GraphView
             };
         }
 
-        internal static WSetVariableStatement GetSetVariableStatement(GremlinVariable variable, WSqlStatement statement)
-        {
-            return new WSetVariableStatement()
-            {
-                Expression = new WScalarSubquery()
-                {
-                    SubQueryExpr = statement
-                },
-                Variable = GetVariableReference(variable.VariableName)
-            };
-        }
-
-        internal static WSqlStatement GetInjectStatement(params object[] injections)
-        {
-            var selectBlock = new WSelectQueryBlock()
-            {
-                SelectElements = new List<WSelectElement>() {}
-            };
-            foreach (var injection in injections)
-            {
-                var valueExpr = GetValueExpression(injection);
-                selectBlock.SelectElements.Add(GetSelectScalarExpression(valueExpr));
-            }
-            return selectBlock;
-        }
-
         internal static WVariableReference GetVariableReference(string name)
         {
             return new WVariableReference()
             {
                 Name = "@" + name
             };
-        }
-
-        internal static WSelectQueryBlock GetSelectQueryBlockFromVariableStatement(WSetVariableStatement statement)
-        {
-            return null;
-            //WSelectQueryBlock queryBlock = new WSelectQueryBlock()
-            //{
-            //    SelectElements = new List<WSelectElement>(),
-            //    FromClause = new WFromClause() {TableReferences = new List<WTableReference>()}
-            //};
-            //GremlinVariableReference newVariable = new GremlinVariableReference(statement);
-            //WColumnReferenceExpression columnReferenceExpression = GetColumnReferenceExpression(newVariable.VariableName, "id");
-            //queryBlock.SelectElements.Add(GetSelectScalarExpression(columnReferenceExpression));
-            //queryBlock.FromClause.TableReferences.Add(GetTableReferenceFromVariable(newVariable));
-            //return queryBlock;
-        }
-
-        internal static WSelectQueryBlock GetSelectQueryBlockFromVariableReference(GremlinVariableReference variableReference)
-        {
-            return null;
-            //WSelectQueryBlock queryBlock = new WSelectQueryBlock()
-            //{
-            //    SelectElements = new List<WSelectElement>(),
-            //    FromClause = new WFromClause() { TableReferences = new List<WTableReference>() }
-            //};
-            //WColumnReferenceExpression columnReferenceExpression = GetColumnReferenceExpression(variableReference.VariableName, "id");
-            //queryBlock.SelectElements.Add(GetSelectScalarExpression(columnReferenceExpression));
-            //queryBlock.FromClause.TableReferences.Add(GetTableReferenceFromVariable(variableReference));
-            //return queryBlock;
-        }
-
-        internal static string GetCompareString(GremlinVariable variable)
-        {
-            if (variable is GremlinVirtualVertexVariable)
-            {
-                return "_sink";
-            }
-            if (variable is GremlinScalarVariable2)
-            {
-                return (variable as GremlinScalarVariable2).Key;
-            }
-            switch (variable.GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                    return "id";
-                case GremlinVariableType.Vertex:
-                    return "id";
-                case GremlinVariableType.Scalar:
-                    return "_value";
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        internal static void SelectAllNeedProperties(GremlinVariable gremlinVariable, List<string> Properties)
-        {
-            if (gremlinVariable is GremlinTVFVariable)
-            {
-
-            }
         }
 
         internal static WUnqualifiedJoin GetCrossApplyTableReference(WTableReference firstTableRef, WTableReference secondTableRef)
@@ -479,6 +383,16 @@ namespace GraphView
                 FirstTableRef = firstTableRef,
                 SecondTableRef = secondTableRef,
                 UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+            };
+        }
+
+        internal static WBooleanComparisonExpression GetEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
+        {
+            return new WBooleanComparisonExpression()
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = firstExpr,
+                SecondExpr = secondExpr
             };
         }
     }

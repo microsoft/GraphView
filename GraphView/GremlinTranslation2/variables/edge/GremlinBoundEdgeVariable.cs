@@ -24,6 +24,11 @@ namespace GraphView
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             var valueExpr = GremlinUtil.GetValueExpression(adjacencyList.ToScalarExpression());
             PropertyKeys.Add(valueExpr);
+            PropertyKeys.Add(GremlinUtil.GetValueExpression("id"));
+            foreach (var property in projectedProperties)
+            {
+                PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
+            }
             var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("E", PropertyKeys);
             secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);

@@ -15,7 +15,6 @@ namespace GraphView
     internal interface ISqlTable
     {
         WTableReference ToTableReference();
-        List<WSelectElement> ToSelectElementList();
     }
 
     internal interface ISqlScalar
@@ -46,30 +45,38 @@ namespace GraphView
             return GremlinVariableType.Undefined;
         }
 
-        internal virtual void Populate(string name, bool isAlias = false)
+        internal virtual void Populate(string property)
         {
-            if (!UsedProperties.Contains(name))
+            if (!UsedProperties.Contains(property))
             {
-                UsedProperties.Add(name);
+                UsedProperties.Add(property);
             }
         }
 
-        internal virtual GremlinVariableProperty DefaultProjection()
+        internal virtual GremlinScalarVariable DefaultProjection()
         {
             return new GremlinVariableProperty(this, "id");
         }
 
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
+            GremlinToSqlContext copyContext = currentContext.Duplicate();
+            GremlinVariable2 pivotVariable = currentContext.PivotVariable;
+            currentContext.Reset();
+
             GremlinAddEVariable newVariable = null;
-            if (currentContext.PivotVariable is GremlinAddVVariable)
+            if (pivotVariable is GremlinAddVVariable)
             {
-                newVariable = new GremlinAddEVariable(edgeLabel, currentContext.PivotVariable as GremlinAddVVariable);
+                newVariable = new GremlinAddEVariable(edgeLabel, pivotVariable as GremlinAddVVariable);
             }
             else
             {
-                newVariable = new GremlinAddEVariable(edgeLabel, new GremlinVariableReference(currentContext));
+                var variableRef = new GremlinVariableReference(copyContext);
+                currentContext.VariableList.Add(variableRef);
+                currentContext.SetVariables.Add(variableRef);
+                newVariable = new GremlinAddEVariable(edgeLabel, variableRef);
             }
+            
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetVariables.Add(newVariable);
@@ -91,6 +98,8 @@ namespace GraphView
 
         internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel)
         {
+            //TODO
+            currentContext.Reset();
             GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
@@ -255,7 +264,10 @@ namespace GraphView
 
         internal virtual void Constant(GremlinToSqlContext currentContext, object value)
         {
-            throw new NotImplementedException();
+            GremlinConstantVariable newVariable = new GremlinConstantVariable(value);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
         internal virtual void Count(GremlinToSqlContext currentContext)
         {
@@ -304,7 +316,10 @@ namespace GraphView
         }
         internal virtual void Fold(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinFoldVariable newVariable  = new GremlinFoldVariable(currentContext.PivotVariable.DefaultProjection());
+
+            currentContext.VariableList.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         //internal virtual void fold(E2 seed, BiFuntion<E2, E, E2> foldFunction)
@@ -335,7 +350,9 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Object value)
         {
-            throw new NotImplementedException();
+            WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(currentContext.PivotVariable.VariableName, propertyKey);
+            WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
+            currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
 
         internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Object value)
@@ -358,19 +375,27 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void HasId(GremlinToSqlContext currentContext, params object[] values)
+        internal virtual void HasId(GremlinToSqlContext currentContext, List<object> values)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual void HasKey(GremlinToSqlContext currentContext, params object[] values)
+        internal virtual void HasKey(GremlinToSqlContext currentContext, List<object> values)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual void HasLabel(GremlinToSqlContext currentContext, params object[] values)
+        internal virtual void HasLabel(GremlinToSqlContext currentContext, List<object> values)
         {
-            throw new NotImplementedException();
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            foreach (var value in values)
+            {
+                WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(currentContext.PivotVariable.VariableName, GremlinKeyword.Label);
+                WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
+                booleanExprList.Add(GremlinUtil.GetEqualPredicate(firstExpr, secondExpr));
+            }
+            WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExprWithOr(booleanExprList);
+            currentContext.AddPredicate(concatSql);
         }
 
         internal virtual void HasValue(GremlinToSqlContext currentContext, string value, params string[] values)
@@ -397,24 +422,14 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Inject(GremlinToSqlContext currentContext, params string[] values)
+        internal virtual void Inject(GremlinToSqlContext currentContext, List<object> values)
         {
-            if (currentContext.VariableList.Count == 0)
-            {
-                GremlinInjectVariable injectVar = new GremlinInjectVariable(null, values);
-                currentContext.VariableList.Add(injectVar);
-                currentContext.TableReferences.Add(injectVar);
-                currentContext.PivotVariable = injectVar;
-            }
-            else
-            {
-                GremlinToSqlContext priorContext = currentContext.Duplicate();
-                currentContext.Reset();
-                GremlinInjectVariable injectVar = new GremlinInjectVariable(priorContext, values);
-                currentContext.VariableList.Add(injectVar);
-                currentContext.TableReferences.Add(injectVar);
-                currentContext.PivotVariable = injectVar;
-            }
+            GremlinToSqlContext priorContext = currentContext.Duplicate();
+            currentContext.Reset();
+            GremlinInjectVariable injectVar = new GremlinInjectVariable(priorContext, values);
+            currentContext.VariableList.Add(injectVar);
+            currentContext.TableReferences.Add(injectVar);
+            currentContext.PivotVariable = injectVar;
         }
 
         internal virtual void InV(GremlinToSqlContext currentContext)
@@ -424,12 +439,24 @@ namespace GraphView
 
         internal virtual void Is(GremlinToSqlContext currentContext, object value)
         {
-            throw new NotImplementedException();
+            WScalarExpression firstExpr = currentContext.PivotVariable.DefaultProjection().ToScalarExpression();
+            WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
+            currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
 
         internal virtual void Is(GremlinToSqlContext currentContext, Predicate predicate)
         {
             throw new NotImplementedException();
+
+            //WScalarExpression secondExpr = null;
+            //if (predicate.Label != null)
+            //{
+            //    var compareVar = currentContext.TaggedVariables[predicate.Label].Last().Item1;
+            //    secondExpr = compareVar.DefaultProjection().ToScalarExpression();
+            //}
+            //var firstExpr = DefaultProjection().ToScalarExpression();
+            //var booleanExpr = GremlinUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
+            //currentContext.AddPredicate(booleanExpr);
         }
 
         internal virtual void Iterate(GremlinToSqlContext currentContext)
@@ -501,7 +528,9 @@ namespace GraphView
 
         internal virtual void Not(GremlinToSqlContext currentContext, GraphTraversal2 notTraversal)
         {
-            throw new NotImplementedException();
+            GremlinUtil.InheritedVariableFromParent(notTraversal, currentContext);
+            WBooleanExpression booleanExpr = GremlinUtil.GetNotExistPredicate(notTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
+            currentContext.AddPredicate(booleanExpr);
         }
 
         internal virtual void Option(GremlinToSqlContext currentContext, object pickToken, GraphTraversal2 traversalOption)
@@ -785,12 +814,12 @@ namespace GraphView
         }
         //internal virtual void tree(GremlinToSqlContext currentContext, string sideEffectKey)
 
-        internal virtual void Unfold(GremlinToSqlContext currentContext)
+        internal virtual void Unfold(ref GremlinToSqlContext currentContext)
         {
             throw new NotImplementedException();
         }
 
-        internal virtual void Union(GremlinToSqlContext currentContext, List<GraphTraversal2> unionTraversals)
+        internal virtual void Union(ref GremlinToSqlContext currentContext, List<GraphTraversal2> unionTraversals)
         {
             if (unionTraversals.Count == 0)
             {
@@ -798,7 +827,9 @@ namespace GraphView
             }
             if (unionTraversals.Count == 1)
             {
-                throw new NotImplementedException();
+                GremlinUtil.InheritedContextFromParent(unionTraversals.First(), currentContext);
+                currentContext = unionTraversals.First().GetEndOp().GetContext();
+                return;
             }
 
             List<GremlinToSqlContext> unionContextList = new List<GremlinToSqlContext>();
