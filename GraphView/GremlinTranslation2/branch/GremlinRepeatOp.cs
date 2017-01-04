@@ -9,20 +9,22 @@ namespace GraphView
 {
     internal class GremlinRepeatOp: GremlinTranslationOperator
     {
-        public Predicate ConditionPredicate { get; set; }
+        public Predicate TerminationPredicate { get; set; }
+        public Predicate EmitPredicate { get; set; }
+        public GraphTraversal2 TerminationTraversal { get; set; }
+        public GraphTraversal2 EmitTraversal { get; set; }
         public GraphTraversal2 RepeatTraversal { get; set; }
-        public GraphTraversal2 ConditionTraversal { get; set; }
-        public RepeatCondition RepeatCondition { get; set; }
+        public int RepeatTimes { get; set; }
+        public bool StartFromContext { get; set; }
+        public bool IsEmit { get; set; }
 
         public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
         {
             RepeatTraversal = repeatTraversal;
-            RepeatCondition = new RepeatCondition();
         }
 
         public GremlinRepeatOp()
         {
-            RepeatCondition = new RepeatCondition();
         }
 
         public override GremlinToSqlContext GetContext()
@@ -32,37 +34,51 @@ namespace GraphView
             GremlinUtil.InheritedVariableFromParent(RepeatTraversal, inputContext);
             GremlinToSqlContext repeatContext = RepeatTraversal.GetEndOp().GetContext();
 
-            GremlinToSqlContext conditionContext = null;
-            if (ConditionPredicate != null)
+            RepeatCondition repeatCondition = new RepeatCondition();
+            repeatCondition.StartFromContext = StartFromContext;
+            if (IsEmit)
+            {
+                repeatCondition.EmitCondition = GremlinUtil.GetTrueBooleanComparisonExpr();
+            }
+            if (TerminationPredicate != null)
             {
                 throw new NotImplementedException();
             }
-
-            if (ConditionTraversal != null)
+            if (TerminationTraversal != null)
             {
-                GremlinUtil.InheritedVariableFromParent(ConditionTraversal, repeatContext);
-                conditionContext = ConditionTraversal.GetEndOp().GetContext();
-                RepeatCondition.ConditionBooleanExpression = conditionContext.ToSqlBoolean();
+                GremlinUtil.InheritedVariableFromParent(TerminationTraversal, repeatContext);
+                repeatCondition.TerminationCondition = TerminationTraversal.GetEndOp().GetContext().ToSqlBoolean();
+            }
+            if (EmitPredicate != null)
+            {
+                throw new NotImplementedException();
+            }
+            if (EmitTraversal != null)
+            {
+                GremlinUtil.InheritedVariableFromParent(EmitTraversal, repeatContext);
+                repeatCondition.EmitCondition = EmitTraversal.GetEndOp().GetContext().ToSqlBoolean();
             }
 
-            inputContext.PivotVariable.Repeat(inputContext, repeatContext, RepeatCondition);
+            inputContext.PivotVariable.Repeat(inputContext, repeatContext, repeatCondition);
 
             return inputContext;
         }
 
     }
 
-    internal class RepeatCondition
+    public class RepeatCondition
     {
-        public WBooleanExpression ConditionBooleanExpression { get; set; }
-        public bool IsEmitTrue { get; set; }
-        public bool IsEmitBefore { get; set; }
-        public bool IsEmitAfter { get; set; }
-        public bool IsUntilBefore { get; set; }
-        public bool IsUntilAfter { get; set; }
-        public bool IsTimes { get; set; }
-        public long Times { get; set; }
+        internal bool StartFromContext { get; set; }
+        internal int RepeatTimes { get; set; }
+        internal WBooleanExpression EmitCondition { get; set; }
+        internal WBooleanExpression TerminationCondition { get; set; }
 
-        public RepeatCondition() { }
-    }
+        public RepeatCondition()
+        {
+            EmitCondition = GremlinUtil.GetFalseBooleanComparisonExpr();
+            TerminationCondition = GremlinUtil.GetFalseBooleanComparisonExpr();
+            RepeatTimes = -1;
+            StartFromContext = false;
+        }
+    } 
 }

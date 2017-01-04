@@ -640,17 +640,10 @@ namespace GraphView
 
     public class WRepeatConditionExpression: WPrimaryExpression
     {
-        public bool IsEmitBefore { get; set; }
-        public bool IsEmitAfter { get; set; }
-        public bool IsDoWhile { get; set; }
-        public bool IsWhileDo { get; set; }
-        public bool IsTimes { get; set; }
-        public long Times { get; set; }
-
-        public WBooleanExpression EmitBooleanExpression;
-        public WBooleanExpression UntilBooleanExpression;
-
-        public WRepeatConditionExpression() { }
+        internal bool StartFromContext { get; set; }
+        internal int RepeatTimes { get; set; }
+        internal WBooleanExpression EmitCondition { get; set; }
+        internal WBooleanExpression TerminationCondition { get; set; }
 
         internal override string ToString(string indent)
         {
