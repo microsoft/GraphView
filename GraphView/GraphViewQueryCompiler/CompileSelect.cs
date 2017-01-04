@@ -1121,7 +1121,7 @@ namespace GraphView
                     // The first node in a component
                     if (!processedNodes.Contains(sourceNode))
                     {
-                        var fetchNodeOp = new FetchNodeOperator2(connection, sourceNode.AttachedJsonQuery, sourceNode.Properties);
+                        var fetchNodeOp = new FetchNodeOperator2(connection, sourceNode.AttachedJsonQuery);
 
                         // The graph contains more than one component
                         if (!operatorChain.Any())

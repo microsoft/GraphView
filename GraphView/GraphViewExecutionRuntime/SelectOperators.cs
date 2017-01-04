@@ -15,15 +15,13 @@ namespace GraphView
         private int outputBufferSize;
         private JsonQuery vertexQuery;
         private GraphViewConnection connection;
-        private List<string> nodeProperties; 
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, List<string> nodeProperties, int outputBufferSize = 1000)
+        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, int outputBufferSize = 1000)
         {
             Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
             this.outputBufferSize = outputBufferSize;
-            this.nodeProperties = nodeProperties;
         }
 
         public override RawRecord Next()
