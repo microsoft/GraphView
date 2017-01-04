@@ -8,14 +8,14 @@ namespace GraphView
 {
     internal abstract class AggregateOperator : GraphViewExecutionOperator
     {
-        internal GraphViewExecutionOperator InputOperatr;
+        internal GraphViewExecutionOperator InputOperator;
         protected List<int> GroupByFieldsList;
         protected Queue<RawRecord> InputBuffer;
         protected Queue<RawRecord> OutputBuffer;
 
-        internal AggregateOperator(GraphViewExecutionOperator pInPutOperator, List<int> pGroupByFieldsList)
+        internal AggregateOperator(GraphViewExecutionOperator pInputOperator, List<int> pGroupByFieldsList)
         {
-            InputOperatr = pInPutOperator;
+            InputOperator = pInputOperator;
             GroupByFieldsList = pGroupByFieldsList;
             InputBuffer = new Queue<RawRecord>();
             OutputBuffer = new Queue<RawRecord>();
@@ -60,14 +60,15 @@ namespace GraphView
             }
 
             // Fills the input buffer by pulling from the input operator
-            while (InputOperatr.State())
+            while (InputOperator.State())
             {
-                if (InputOperatr != null && InputOperatr.State())
+                if (InputOperator != null && InputOperator.State())
                 {
-                    RawRecord result = InputOperatr.Next();
+                    RawRecord result = InputOperator.Next();
                     if (result == null)
                     {
-                        InputOperatr.Close();
+                        InputOperator.Close();
+                        break;
                     }
                     else
                     {
@@ -96,7 +97,7 @@ namespace GraphView
 
         internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
-            var result = new RawRecord(2);
+            var result = new RawRecord(1);
             result.fieldValues[0] = groupedRawRecords.Count.ToString();
             return result;
         }
@@ -114,7 +115,7 @@ namespace GraphView
 
         internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
-            var result = new RawRecord(3);
+            var result = new RawRecord(2);
             var foldedList = new StringBuilder("[");
             var foldedListMetaInfo = new StringBuilder();
 
@@ -208,7 +209,7 @@ namespace GraphView
                 ConstructTree(ref root, ref path);
             }
 
-            var result = new RawRecord(2);
+            var result = new RawRecord(1);
             result.fieldValues[0] = root.ToString();
             return result;
         }

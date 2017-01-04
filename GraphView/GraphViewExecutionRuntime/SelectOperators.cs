@@ -367,18 +367,15 @@ namespace GraphView
 
     internal class AdjacencyListDecoder : TableValuedFunction
     {
-        private GraphViewExecutionOperator input;
         private int adjacencyListIndex;
         private BooleanFunction edgePredicate;
         private List<string> projectedFields;
         private string edgeTableAlias;
-        private int outputBufferSize;
-        private Queue<RawRecord> outputBuffer;
 
         public AdjacencyListDecoder(GraphViewExecutionOperator input, int adjacencyListIndex,
             BooleanFunction edgePredicate, List<string> projectedFields, string edgeTableAlias, int outputBufferSize = 1000)
+            : base(input, outputBufferSize)
         {
-            this.input = input;
             this.adjacencyListIndex = adjacencyListIndex;
             this.edgePredicate = edgePredicate;
             this.projectedFields = projectedFields;
@@ -416,39 +413,41 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (outputBuffer == null)
-                outputBuffer = new Queue<RawRecord>();
+            if (OutputBuffer == null)
+                OutputBuffer = new Queue<RawRecord>();
 
-            while (outputBuffer.Count < outputBufferSize && input.State())
+            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
             {
-                RawRecord record = input.Next();
-                if (record == null)
-                    continue;
-                var results = CrossApply(record);
+                RawRecord srcRecord = InputOperator.Next();
+                if (srcRecord == null)
+                    break;
+
+                var results = CrossApply(srcRecord);
                 foreach (var edgeRecord in results)
                 {
                     if (!edgePredicate.Evaluate(edgeRecord))
                         continue;
 
-                    record.Append(edgeRecord);
-                    outputBuffer.Enqueue(record);
+                    var resultRecord = new RawRecord(srcRecord);
+                    resultRecord.Append(edgeRecord);
+                    OutputBuffer.Enqueue(resultRecord);
                 }
             }
 
-            if (outputBuffer.Count == 0)
+            if (OutputBuffer.Count == 0)
             {
-                if (!input.State())
+                if (!InputOperator.State())
                     Close();
                 return null;
             }
-            else if (outputBuffer.Count == 1)
+            else if (OutputBuffer.Count == 1)
             {
                 Close();
-                return outputBuffer.Dequeue();
+                return OutputBuffer.Dequeue();
             }
             else
             {
-                return outputBuffer.Dequeue();
+                return OutputBuffer.Dequeue();
             }
         }
 
