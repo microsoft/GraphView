@@ -669,7 +669,17 @@ namespace GraphView
 
         // The termination condition of iterations
         private BooleanFunction terminationCondition;
-        private bool syncMode;
+        // If this variable is true, the iteration starts with the context record. 
+        // This corresponds to the while-do loop semantics. 
+        // Otherwise, the iteration starts with the the output of the first execution of the inner operator,
+        // which corresponds to the do-while loop semantics.
+        private bool startFromContext;
+        // The condition determining whether or not an intermediate state is emitted
+        private BooleanFunction emitCondition;
+        // This variable specifies whether or not the context record is considered 
+        // to be emitted when the iteration does not start with the context record,
+        // i.e., startFromContext is false 
+        private bool emitContext;
 
         private GraphViewExecutionOperator inputOp;
         // A list record fields (identified by field indexes) from the input 
@@ -687,13 +697,19 @@ namespace GraphView
             List<int> inputFieldIndexes,
             GraphViewExecutionOperator innerOp,
             ConstantSourceOperator innerContextOp,
-            int repeatTimes)
+            int repeatTimes,
+            BooleanFunction emitCondition,
+            bool emitContext)
         {
             this.inputOp = inputOp;
             this.inputFieldIndexes = inputFieldIndexes;
             this.innerOp = innerOp;
             this.innerContextOp = innerContextOp;
             this.repeatTimes = repeatTimes;
+            this.emitCondition = emitCondition;
+            this.emitContext = emitContext;
+
+            startFromContext = false;
 
             repeatResultBuffer = new Queue<RawRecord>();
         }
@@ -704,14 +720,18 @@ namespace GraphView
             GraphViewExecutionOperator innerOp,
             ConstantSourceOperator innerContextOp,
             BooleanFunction terminationCondition,
-            bool syncMode)
+            bool startFromContext,
+            BooleanFunction emitCondition,
+            bool emitContext)
         {
             this.inputOp = inputOp;
             this.inputFieldIndexes = inputFieldIndexes;
             this.innerOp = innerOp;
             this.innerContextOp = innerContextOp;
             this.terminationCondition = terminationCondition;
-            this.syncMode = syncMode;
+            this.startFromContext = startFromContext;
+            this.emitCondition = emitCondition;
+            this.emitContext = emitContext;
 
             repeatResultBuffer = new Queue<RawRecord>();
         }
@@ -733,23 +753,49 @@ namespace GraphView
                     initialRec.Append(currentRecord[fieldIndex]);
                 }
 
-                if (repeatTimes > 0)
+                if (repeatTimes >= 0)
                 {
+                    // By current implementation of Gremlin, when repeat time is set to 0,
+                    // it is reset to 1.
+                    repeatTimes = repeatTimes == 0 ? 1 : repeatTimes;
+
                     Queue<RawRecord> priorStates = new Queue<RawRecord>();
                     Queue<RawRecord> newStates = new Queue<RawRecord>();
 
-                    priorStates.Enqueue(initialRec);
-                    for (int i = 0; i < repeatTimes; i++)
+                    if (emitCondition != null && emitContext)
+                    {
+                        if (emitCondition.Evaluate(initialRec))
+                        {
+                            repeatResultBuffer.Enqueue(initialRec);
+                        }
+                    }
+
+                    // Evaluates the loop for the first time
+                    innerContextOp.ConstantSource = initialRec;
+                    innerOp.ResetState();
+                    RawRecord newRec = null;
+                    while ((newRec = innerOp.Next()) != null)
+                    {
+                        priorStates.Enqueue(newRec);
+                    }
+
+                    // Evaluates the remaining number of iterations
+                    for (int i = 0; i < repeatTimes - 1; i++)
                     {
                         while (priorStates.Count > 0)
                         {
                             RawRecord priorRec = priorStates.Dequeue();
                             innerContextOp.ConstantSource = priorRec;
                             innerOp.ResetState();
-                            RawRecord newRec = null;
+                            newRec = null;
                             while ((newRec = innerOp.Next()) != null)
                             {
                                 newStates.Enqueue(newRec);
+
+                                if (emitCondition != null && emitCondition.Evaluate(newRec))
+                                {
+                                    repeatResultBuffer.Enqueue(newRec);
+                                }
                             }
                         }
 
@@ -758,36 +804,64 @@ namespace GraphView
                         newStates = tmpQueue;
                     }
 
-                    repeatResultBuffer = newStates;
+                    foreach (RawRecord resultRec in newStates)
+                    {
+                        repeatResultBuffer.Enqueue(resultRec);
+                    }
                 }
-                else if (!syncMode)
+                else 
                 {
                     Queue<RawRecord> states = new Queue<RawRecord>();
-                    states.Enqueue(initialRec);
+
+                    if (startFromContext)
+                    {
+                        states.Enqueue(initialRec);
+                    }
+                    else
+                    {
+                        if (emitContext && emitCondition != null)
+                        {
+                            if (emitCondition.Evaluate(initialRec))
+                            {
+                                repeatResultBuffer.Enqueue(initialRec);
+                            }
+                        }
+
+                        // Evaluates the loop for the first time
+                        innerContextOp.ConstantSource = initialRec;
+                        innerOp.ResetState();
+                        RawRecord newRec = null;
+                        while ((newRec = innerOp.Next()) != null)
+                        {
+                            states.Enqueue(newRec);
+                        }
+                    }
                     
-                    // Breadth-first search to iterate through the input record
+                    // Evaluates the remaining iterations
                     while (states.Count > 0)
                     {
                         RawRecord stateRec = states.Dequeue();
-                        innerContextOp.ConstantSource = stateRec;
-                        innerOp.ResetState();
-                        RawRecord loopRec = null;
-                        while ((loopRec = innerOp.Next()) != null)
+
+                        if (terminationCondition.Evaluate(stateRec))
                         {
-                            if (terminationCondition.Evaluate(loopRec))
+                            repeatResultBuffer.Enqueue(stateRec);
+                        }
+                        else
+                        {
+                            if (emitCondition != null && emitCondition.Evaluate(stateRec))
                             {
-                                repeatResultBuffer.Enqueue(loopRec);
+                                repeatResultBuffer.Enqueue(stateRec);
                             }
-                            else
+
+                            innerContextOp.ConstantSource = stateRec;
+                            innerOp.ResetState();
+                            RawRecord loopRec = null;
+                            while ((loopRec = innerOp.Next()) != null)
                             {
                                 states.Enqueue(loopRec);
                             }
                         }
                     }
-                }
-                else
-                {
-                    // Sync mode
                 }
             }
 

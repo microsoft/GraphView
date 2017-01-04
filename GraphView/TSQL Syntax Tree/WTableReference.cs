@@ -327,6 +327,33 @@ namespace GraphView
         }
     }
 
+    public partial class WOptionalTableReference : WSchemaObjectFunctionTableReference
+    {
+        public WScalarSubquery OptionalTraversal
+        {
+            get
+            {
+                WScalarSubquery optionalTraversal = Parameters[0] as WScalarSubquery;
+                if (optionalTraversal == null)
+                {
+                    throw new SyntaxErrorException("The input of an optional table reference must be a scalar subquery.");
+                }
+
+                return optionalTraversal;
+            }
+        }
+    }
+
+    public partial class WCoalesceTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WRepeatTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WJoinParenthesisTableReference : WTableReference
     {
         internal WTableReference Join { get; set; }
