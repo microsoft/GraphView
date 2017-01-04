@@ -32,8 +32,9 @@ namespace GraphView
             {
                 if (id is int)
                 {
-                    WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(newVariable.VariableName, "id");
-                    WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, id);
+                    WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(newVariable.VariableName, "id");
+                    WScalarExpression secondExpr = GremlinUtil.GetValueExpression(id);
+                    WBooleanComparisonExpression booleanExpr = GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
                     inputContext.AddPredicate(booleanExpr);
                 }
             }

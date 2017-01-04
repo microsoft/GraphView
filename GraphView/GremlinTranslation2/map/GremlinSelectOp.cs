@@ -13,34 +13,42 @@ namespace GraphView
 
         public GremlinSelectOp(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
-            SelectKeys = new List<string>();
-            foreach (var key in selectKeys)
-            {
-                SelectKeys.Add(key);
-            }
+            SelectKeys = new List<string>(selectKeys);
             Pop = pop;
         }
 
         public GremlinSelectOp(params string[] selectKeys)
         {
-            SelectKeys = new List<string>();
-            foreach (var key in selectKeys)
-            {
-                SelectKeys.Add(key);
-            }
+            SelectKeys = new List<string>(selectKeys);
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            if (Pop != null)
+            if (SelectKeys.Count == 1)
             {
-                inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys.First());
+                switch (Pop)
+                {
+                    case GremlinKeyword.Pop.Default:
+                        inputContext.PivotVariable.Select(inputContext, SelectKeys.First());
+                        break;
+                    default:
+                        inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys.First());
+                        break;
+                }
             }
             else
             {
-                throw new NotImplementedException();
+                switch (Pop)
+                {
+                    case GremlinKeyword.Pop.Default:
+                        inputContext.PivotVariable.Select(inputContext, SelectKeys);
+                        break;
+                    default:
+                        inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys);
+                        break;
+                }
             }
 
             return inputContext;

@@ -10,32 +10,31 @@ namespace GraphView
     {
         public object Value { get; set; }
         public Predicate Predicate { get; set; }
-        public IsType Type { get; set; }
 
         public GremlinIsOp(object value)
         {
             Value = value;
-            Type = IsType.IsValue;
         }
 
         public GremlinIsOp(Predicate predicate)
         {
             Predicate = predicate;
-            Type = IsType.IsPredicate;
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            throw new NotImplementedException();
-            return inputContext;
-        }
+            if (Value != null)
+            {
+                inputContext.PivotVariable.Is(inputContext, Value);
+            }
+            else
+            {
+                inputContext.PivotVariable.Is(inputContext, Predicate);
+            }
 
-        public enum IsType
-        {
-            IsValue,
-            IsPredicate
+            return inputContext;
         }
     }
 }

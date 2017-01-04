@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation2.variables.special
+namespace GraphView
 {
     internal class GremlinSideEffectVariable: GremlinVariable2, ISqlStatement
     {
@@ -17,7 +17,7 @@ namespace GraphView.GremlinTranslation2.variables.special
 
         public List<WSqlStatement> ToSetVariableStatements()
         {
-            return Context.GetStatements();
+            return Context.GetSetVariableStatements();
         }
     }
 }

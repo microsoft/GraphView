@@ -6,33 +6,27 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextEdgeVariable : GremlinEdgeVariable2
+    internal class GremlinContextEdgeVariable : GremlinContextVariable
     {
-        public GremlinVariable2 ContextVariable;
-
         public bool IsFromSelect;
         public GremlinKeyword.Pop Pop;
         public string SelectKey;
 
-        public GremlinContextEdgeVariable(GremlinVariable2 contextEdge)
-        {
-            this.ContextVariable = contextEdge;
-            VariableName = this.ContextVariable.VariableName;
-        }
+        public GremlinContextEdgeVariable(GremlinVariable2 contextEdge):base(contextEdge) {}
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return ContextVariable.GetVariableType();
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinScalarVariable DefaultProjection()
         {
             return ContextVariable.DefaultProjection();
         }
 
-        internal override void Populate(string name, bool isAlias = false)
+        internal override void Populate(string property)
         {
-            ContextVariable.Populate(name, isAlias);
+            ContextVariable.Populate(property);
         }
 
         internal override void InV(GremlinToSqlContext currentContext)
@@ -52,6 +46,11 @@ namespace GraphView
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
             currentContext.PivotVariable = outVertex;
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            ContextVariable.OtherV(currentContext);
         }
     }
 }

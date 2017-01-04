@@ -8,15 +8,12 @@ namespace GraphView
 {
     internal class GremlinOtherVOp: GremlinTranslationOperator
     {
-        public GremlinOtherVOp()
-        {
-            
-        }
-
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.OtherV(inputContext);
+
             return inputContext;
         }
     }

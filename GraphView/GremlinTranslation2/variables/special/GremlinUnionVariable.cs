@@ -19,43 +19,55 @@ namespace GraphView
 
         public override List<WSqlStatement> ToSetVariableStatements()
         {
-            if (UnionContextList.Count <= 1) throw new NotImplementedException();
-
             List<WSqlStatement> statementList = new List<WSqlStatement>();
 
-            foreach (var context in UnionContextList)
+            if (UnionContextList.Count == 0)
             {
-                statementList.AddRange(context.GetSetVariableStatements());
+                throw new NotImplementedException();
             }
-
-            WBinaryQueryExpression binaryQueryExpression = new WBinaryQueryExpression()
+            else if (UnionContextList.Count == 1)
             {
-                FirstQueryExpr = UnionContextList[0].ToSelectQueryBlock(),
-                SecondQueryExpr = UnionContextList[1].ToSelectQueryBlock(),
-                All = true,
-                BinaryQueryExprType = BinaryQueryExpressionType.Union,
-            };
-            for (var i = 2; i < UnionContextList.Count; i++)
+                throw new NotImplementedException();
+            }
+            else
             {
-                binaryQueryExpression = new WBinaryQueryExpression()
+                foreach (var context in UnionContextList)
                 {
-                    FirstQueryExpr = binaryQueryExpression,
-                    SecondQueryExpr = UnionContextList[i].ToSelectQueryBlock(),
+                    statementList.AddRange(context.GetSetVariableStatements());
+                }
+
+                WBinaryQueryExpression binaryQueryExpression = new WBinaryQueryExpression()
+                {
+                    FirstQueryExpr = UnionContextList[0].ToSelectQueryBlock(),
+                    SecondQueryExpr = UnionContextList[1].ToSelectQueryBlock(),
                     All = true,
                     BinaryQueryExprType = BinaryQueryExpressionType.Union,
                 };
-            }
-
-            var setStatement = new WSetVariableStatement()
-            {
-                Expression = new WScalarSubquery()
+                for (var i = 2; i < UnionContextList.Count; i++)
                 {
-                    SubQueryExpr = binaryQueryExpression
-                },
-                Variable = GremlinUtil.GetVariableReference(VariableName)
-            };
+                    binaryQueryExpression = new WBinaryQueryExpression()
+                    {
+                        FirstQueryExpr = binaryQueryExpression,
+                        SecondQueryExpr = UnionContextList[i].ToSelectQueryBlock(),
+                        All = true,
+                        BinaryQueryExprType = BinaryQueryExpressionType.Union,
+                    };
+                }
 
-            statementList.Add(setStatement);
+                //TODO:
+                // ignore set union-all as a variable reference for IoT test
+
+                var setStatement = new WSetVariableStatement()
+                {
+                    Expression = new WScalarSubquery()
+                    {
+                        SubQueryExpr = binaryQueryExpression
+                    },
+                    Variable = GremlinUtil.GetVariableReference(VariableName)
+                };
+
+                statementList.Add(setStatement);
+            }
 
             return statementList;
         }

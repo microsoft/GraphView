@@ -308,6 +308,12 @@ namespace GraphView
                 return outputBuffer.Dequeue();
             }
         }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
     }
 
     internal class CartesianProductOperator2 : GraphViewExecutionOperator
@@ -362,6 +368,12 @@ namespace GraphView
             }
 
             return cartesianRecord;
+        }
+
+        public override void ResetState()
+        {
+            leftInput.ResetState();
+            Open();
         }
     }
 
@@ -451,16 +463,10 @@ namespace GraphView
             }
         }
 
-        public override Dictionary<WColumnReferenceExpression, int> PrivateRecordLayout()
+        public override void ResetState()
         {
-            if (privateRecordLayout != null)
-            {
-                return privateRecordLayout;
-            }
-
-            privateRecordLayout = new Dictionary<WColumnReferenceExpression, int>();
-
-            return base.PrivateRecordLayout();
+            input.ResetState();
+            Open();
         }
     }
 
@@ -523,6 +529,323 @@ namespace GraphView
             {
                 throw new NotImplementedException();
             }
+        }
+    }
+
+    internal class OptionalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        // A list of record fields (identified by field indexes) from the input 
+        // operator are to be returned when the optional traversal produces no results.
+        // When a field index is less than 0, it means that this field value is always null. 
+        private List<int> inputIndexes;
+
+        // The traversal inside the optional function. 
+        // The records returned by this operator should have the same number of fields
+        // as the records drawn from the input operator, i.e., inputIndexes.Count 
+        private GraphViewExecutionOperator optionalTraversal;
+        private ConstantSourceOperator contextOp;
+
+        RawRecord currentRecord = null;
+        private Queue<RawRecord> outputBuffer;
+
+        public OptionalOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputIndexes,
+            GraphViewExecutionOperator optionalTraversal, 
+            ConstantSourceOperator contextOp)
+        {
+            this.inputOp = inputOp;
+            this.inputIndexes = inputIndexes;
+            this.optionalTraversal = optionalTraversal;
+            this.contextOp = contextOp;
+
+            outputBuffer = new Queue<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            if (outputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
+            }
+
+            currentRecord = inputOp.Next();
+            if (currentRecord == null)
+            {
+                Close();
+                return null;
+            }
+
+            contextOp.ConstantSource = currentRecord;
+            optionalTraversal.ResetState();
+            RawRecord optionalRec = null;
+            while ((optionalRec = optionalTraversal.Next()) != null)
+            {
+                outputBuffer.Enqueue(optionalRec);
+            }
+
+            if (outputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
+            }
+            else
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                foreach (int index in inputIndexes)
+                {
+                    if (index < 0)
+                    {
+                        r.Append((string)null);
+                    }
+                    else
+                    {
+                        r.Append(currentRecord[index]);
+                    }
+                }
+
+                return r;
+            }
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class CoalesceOperator2 : GraphViewExecutionOperator
+    {
+        private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>> traversalList;
+        private GraphViewExecutionOperator inputOp;
+
+        private RawRecord currentRecord;
+        private Queue<RawRecord> traversalOutputBuffer;
+
+        public CoalesceOperator2(GraphViewExecutionOperator inputOp)
+        {
+            this.inputOp = inputOp;
+            traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
+            traversalOutputBuffer = new Queue<RawRecord>();
+        }
+
+        public void AddTraversal(ConstantSourceOperator contextOp, GraphViewExecutionOperator traversal)
+        {
+            traversalList.Add(new Tuple<ConstantSourceOperator, GraphViewExecutionOperator>(contextOp, traversal));
+        }
+
+        public override RawRecord Next()
+        {
+            while (traversalOutputBuffer.Count == 0 && inputOp.State())
+            {
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                foreach (var traversalPair in traversalList)
+                {
+                    ConstantSourceOperator traversalContext = traversalPair.Item1;
+                    GraphViewExecutionOperator traversal = traversalPair.Item2;
+                    traversalContext.ConstantSource = currentRecord;
+                    traversal.ResetState();
+
+                    RawRecord traversalRec = null;
+                    while ((traversalRec = traversal.Next()) != null)
+                    {
+                        traversalOutputBuffer.Enqueue(traversalRec);
+                    }
+
+                    if (traversalOutputBuffer.Count > 0)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (traversalOutputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord traversalRec = traversalOutputBuffer.Dequeue();
+                r.Append(traversalRec);
+
+                return r;
+            }
+            else
+            {
+                Close();
+                return null;
+            }
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class RepeatOperator : GraphViewExecutionOperator
+    {
+        // Number of times the inner operator repeats itself.
+        // If this number is less than 0, the termination condition 
+        // is specified by a boolean function. 
+        private int repeatTimes;
+
+        // The termination condition of iterations
+        private BooleanFunction terminationCondition;
+        private bool syncMode;
+
+        private GraphViewExecutionOperator inputOp;
+        // A list record fields (identified by field indexes) from the input 
+        // operator that are fed as the initial input into the inner operator.
+        private List<int> inputFieldIndexes;
+
+        private GraphViewExecutionOperator innerOp;
+        private ConstantSourceOperator innerContextOp;
+
+        Queue<RawRecord> repeatResultBuffer;
+        RawRecord currentRecord;
+
+        public RepeatOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputFieldIndexes,
+            GraphViewExecutionOperator innerOp,
+            ConstantSourceOperator innerContextOp,
+            int repeatTimes)
+        {
+            this.inputOp = inputOp;
+            this.inputFieldIndexes = inputFieldIndexes;
+            this.innerOp = innerOp;
+            this.innerContextOp = innerContextOp;
+            this.repeatTimes = repeatTimes;
+
+            repeatResultBuffer = new Queue<RawRecord>();
+        }
+
+        public RepeatOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputFieldIndexes,
+            GraphViewExecutionOperator innerOp,
+            ConstantSourceOperator innerContextOp,
+            BooleanFunction terminationCondition,
+            bool syncMode)
+        {
+            this.inputOp = inputOp;
+            this.inputFieldIndexes = inputFieldIndexes;
+            this.innerOp = innerOp;
+            this.innerContextOp = innerContextOp;
+            this.terminationCondition = terminationCondition;
+            this.syncMode = syncMode;
+
+            repeatResultBuffer = new Queue<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            while (repeatResultBuffer.Count == 0 && inputOp.State())
+            {
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                RawRecord initialRec = new RawRecord();
+                foreach (int fieldIndex in inputFieldIndexes)
+                {
+                    initialRec.Append(currentRecord[fieldIndex]);
+                }
+
+                if (repeatTimes > 0)
+                {
+                    Queue<RawRecord> priorStates = new Queue<RawRecord>();
+                    Queue<RawRecord> newStates = new Queue<RawRecord>();
+
+                    priorStates.Enqueue(initialRec);
+                    for (int i = 0; i < repeatTimes; i++)
+                    {
+                        while (priorStates.Count > 0)
+                        {
+                            RawRecord priorRec = priorStates.Dequeue();
+                            innerContextOp.ConstantSource = priorRec;
+                            innerOp.ResetState();
+                            RawRecord newRec = null;
+                            while ((newRec = innerOp.Next()) != null)
+                            {
+                                newStates.Enqueue(newRec);
+                            }
+                        }
+
+                        var tmpQueue = priorStates;
+                        priorStates = newStates;
+                        newStates = tmpQueue;
+                    }
+
+                    repeatResultBuffer = newStates;
+                }
+                else if (!syncMode)
+                {
+                    Queue<RawRecord> states = new Queue<RawRecord>();
+                    states.Enqueue(initialRec);
+                    
+                    // Breadth-first search to iterate through the input record
+                    while (states.Count > 0)
+                    {
+                        RawRecord stateRec = states.Dequeue();
+                        innerContextOp.ConstantSource = stateRec;
+                        innerOp.ResetState();
+                        RawRecord loopRec = null;
+                        while ((loopRec = innerOp.Next()) != null)
+                        {
+                            if (terminationCondition.Evaluate(loopRec))
+                            {
+                                repeatResultBuffer.Enqueue(loopRec);
+                            }
+                            else
+                            {
+                                states.Enqueue(loopRec);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Sync mode
+                }
+            }
+
+            if (repeatResultBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord repeatRecord = repeatResultBuffer.Dequeue();
+                r.Append(repeatRecord);
+
+                return r;
+            }
+            else
+            {
+                Close();
+                return null;
+            }
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
         }
     }
 }

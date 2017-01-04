@@ -15,53 +15,34 @@ namespace GraphView
             return "R_" + _count++;
         }
 
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Table;
+        }
+
         public virtual WTableReference ToTableReference()
         {
             throw new NotImplementedException();
         }
 
-        //Dictionary<string, bool> = (_edge, variable+"_"+"_edge")
-        //for example: N_0._edge as N_0__edge
-        protected Dictionary<string, bool> projectedProperties;
+        protected List<string> projectedProperties = new List<string>();
 
-        internal override void Populate(string property, bool isAlias = false)
+        internal override void Populate(string property)
         {
-            if (projectedProperties == null)
+            if (!projectedProperties.Contains(property))
             {
-                //projectedProperties = new List<string>();
-                projectedProperties = new Dictionary<string, bool>();
+                projectedProperties.Add(property);
             }
-            projectedProperties[property] = isAlias;
             if (!UsedProperties.Contains(property))
             {
                 UsedProperties.Add(property);
             }
         }
 
-        public virtual List<WSelectElement> ToSelectElementList()
+        internal override void Range(GremlinToSqlContext currentContext, long low, long high)
         {
-            if (projectedProperties == null) return null;
-            List<WSelectElement> selectElementList = new List<WSelectElement>();
-            foreach (var propertyItem in projectedProperties)
-            {
-                if (propertyItem.Value)
-                {
-                    selectElementList.Add(new WSelectScalarExpression()
-                    {
-                        ColumnName = VariableName + "_" + propertyItem.Key,
-                        SelectExpr = GremlinUtil.GetColumnReferenceExpression(VariableName, propertyItem.Key)
-                    });
-                }
-                else
-                {
-                    selectElementList.Add(new WSelectScalarExpression()
-                    {
-                        SelectExpr = GremlinUtil.GetColumnReferenceExpression(VariableName, propertyItem.Key)
-                    });
-                }
-                
-            }
-            return selectElementList;
+            Low = low;
+            High = high;
         }
     }
 }

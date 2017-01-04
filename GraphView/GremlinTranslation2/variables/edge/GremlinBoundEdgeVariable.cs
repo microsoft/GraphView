@@ -24,36 +24,56 @@ namespace GraphView
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             var valueExpr = GremlinUtil.GetValueExpression(adjacencyList.ToScalarExpression());
             PropertyKeys.Add(valueExpr);
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("E", PropertyKeys);
-            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            PropertyKeys.Add(GremlinUtil.GetValueExpression("id"));
+            foreach (var property in projectedProperties)
+            {
+                PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
+            }
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("E", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty adjacencyList)
+        public GremlinBoundEdgeVariable(GremlinVariable2 sourceVariable, GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
         {
+            SourceVariable = sourceVariable;
             VariableName = GenerateTableAlias();
             this.adjacencyList = adjacencyList;
+            EdgeType = edgeType;
         }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
         }
 
         internal override void InV(GremlinToSqlContext currentContext)
         {
-            GremlinVariable2 inVertex = currentContext.GetSinkVertex(currentContext.PivotVariable as GremlinBoundEdgeVariable);
+            GremlinVariable2 inVertex = currentContext.GetSinkVertex(this);
             if (inVertex == null)
             {
-                inVertex = new GremlinFreeVertexVariable();
-                currentContext.TableReferences.Add(inVertex as GremlinFreeVertexVariable);
-                currentContext.VariableList.Add(inVertex);
-                currentContext.Paths.Add(new GremlinMatchPath(null,
-                                              currentContext.PivotVariable,
-                                              inVertex));
+                var path = currentContext.Paths.Find(p => p.EdgeVariable == this);
+                if (path != null)
+                {
+                    GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
+                    path.SinkVariable = newVertex;
+                    currentContext.TableReferences.Add(newVertex);
+                    currentContext.VariableList.Add(newVertex);
+                    currentContext.PivotVariable = newVertex;
+                }
+                else
+                {
+                    Populate("_sink");
+                    GremlinBoundVertexVariable newVertex =
+                        new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
+                    currentContext.VariableList.Add(newVertex);
+                    currentContext.TableReferences.Add(newVertex);
+                    currentContext.PivotVariable = newVertex;
+                }
             }
-
-            currentContext.PivotVariable = inVertex;
+            else
+            {
+                currentContext.PivotVariable = inVertex;
+            }
         }
 
         internal override void OutV(GremlinToSqlContext currentContext)
@@ -62,19 +82,57 @@ namespace GraphView
             // A better implementation should reason the status of the edge variable and only reset
             // the pivot variable if possible, thereby avoiding adding a new vertex variable  
             // and reducing one join.
-
-            GremlinVariable2 outVertex = currentContext.GetSourceVertex(currentContext.PivotVariable as GremlinBoundEdgeVariable);
+            GremlinVariable2 outVertex = currentContext.GetSourceVertex(this);
             if (outVertex == null)
             {
-                outVertex = new GremlinFreeVertexVariable();
-                currentContext.TableReferences.Add(outVertex as GremlinFreeVertexVariable);
-                currentContext.VariableList.Add(outVertex);
-                currentContext.Paths.Add(new GremlinMatchPath(outVertex,
-                                              currentContext.PivotVariable,
-                                              null));
+                var path = currentContext.Paths.Find(p => p.EdgeVariable == this);
+                if (path != null)
+                {
+                    GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
+                    path.SourceVariable = newVertex;
+                    currentContext.TableReferences.Add(newVertex);
+                    currentContext.VariableList.Add(newVertex);
+                    currentContext.PivotVariable = newVertex;
+                }
+                else
+                {
+                    //The edge in DocDB doesn't have a source_id
+                    throw new NotImplementedException();
+                    //Populate("_sink");
+                    //GremlinBoundVertexVariable newVertex =
+                    //    new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
+                    //currentContext.VariableList.Add(newVertex);
+                    //currentContext.TableReferences.Add(newVertex);
+                    //currentContext.PivotVariable = newVertex;
+                }
+            }
+            else
+            {
+                currentContext.PivotVariable = outVertex;
+            }
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            var path = currentContext.Paths.Find(p => p.EdgeVariable == this);
+
+            if (path == null)
+            {
+                throw new QueryCompilationException("Can't find a path");
             }
 
-            currentContext.PivotVariable = outVertex;
+            if (path.SourceVariable == SourceVariable)
+            {
+                InV(currentContext);
+            }
+            else if (path.SinkVariable == SourceVariable)
+            {
+                OutV(currentContext);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

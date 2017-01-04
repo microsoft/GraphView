@@ -205,10 +205,5 @@ namespace GraphView
                 script, QueryOptions);
             return Result;
         }
-
-        public virtual Dictionary<WColumnReferenceExpression, int> PrivateRecordLayout()
-        {
-            return null;
-        }
     }
 }

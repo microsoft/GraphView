@@ -23,8 +23,15 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+
+            List<GremlinToSqlContext> unionContexts = new List<GremlinToSqlContext>();
+            foreach (var traversal in UnionTraversals)
+            {
+                GremlinUtil.InheritedContextFromParent(traversal, inputContext);
+                unionContexts.Add(traversal.GetEndOp().GetContext());
+            }
             
-            inputContext.PivotVariable.Union(inputContext, UnionTraversals);
+            inputContext.PivotVariable.Union(ref inputContext, unionContexts);
 
             return inputContext;
         }

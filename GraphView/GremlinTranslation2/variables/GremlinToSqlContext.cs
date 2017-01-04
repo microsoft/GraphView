@@ -37,8 +37,7 @@ namespace GraphView
                 TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<ISqlTable>(this.TableReferences),
-                SetVariables = new List<ISqlStatement>(this.SetVariables),
-                //ProjectedVariables = new List<ISqlScalar>(ProjectedVariables),
+                //SetVariables = new List<ISqlStatement>(this.SetVariables), //Don't Duplicate for avoiding redundant set-sqlstatment
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
                 Paths = new List<GremlinMatchPath>(this.Paths),
                 Predicates = this.Predicates
@@ -59,7 +58,7 @@ namespace GraphView
             // More resetting goes here when more properties are added to GremlinToSqlContext
         }
 
-        internal void Populate(string propertyName, bool isAlias = false)
+        internal void Populate(string propertyName)
         {
             // For a query with a GROUP BY clause, the ouptut format is determined
             // by the aggregation functions following GROUP BY and cannot be changed.
@@ -68,10 +67,10 @@ namespace GraphView
                 return;
             }
 
-            PivotVariable.Populate(propertyName, isAlias);
+            PivotVariable.Populate(propertyName);
         }
 
-        internal GremlinVariable2 SelectVariable(GremlinKeyword.Pop pop, string selectKey)
+        internal GremlinVariable2 SelectVariable(string selectKey, GremlinKeyword.Pop pop = GremlinKeyword.Pop.Default)
         {
             if (!TaggedVariables.ContainsKey(selectKey))
             {
@@ -84,7 +83,7 @@ namespace GraphView
                 case GremlinKeyword.Pop.last:
                     return TaggedVariables[selectKey].Last().Item1;
                 default:
-                    throw new NotImplementedException();
+                    return TaggedVariables[selectKey].Last().Item1;
             }
         }
 
@@ -100,16 +99,10 @@ namespace GraphView
 
         public void AddEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
         {
-            WBooleanComparisonExpression equalPredicate = new WBooleanComparisonExpression()
-            {
-                ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = firstExpr,
-                SecondExpr = secondExpr
-            };
-            AddPredicate(equalPredicate);
+            AddPredicate(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
 
-        public GremlinVariable2 GetSourceVertex(GremlinVariable2 edge)
+        public GremlinVertexVariable2 GetSourceVertex(GremlinVariable2 edge)
         {
             foreach (var path in Paths)
             {
@@ -118,7 +111,7 @@ namespace GraphView
             return null;
         }
 
-        public GremlinVariable2 GetSinkVertex(GremlinVariable2 edge)
+        public GremlinVertexVariable2 GetSinkVertex(GremlinVariable2 edge)
         {
             foreach (var path in Paths)
             {
@@ -130,7 +123,7 @@ namespace GraphView
         {
             if (TableReferences.Count == 0)
             {
-                return Predicates;
+                return GremlinUtil.GetBooleanParenthesisExpression(Predicates);
             }
             else
             {
@@ -168,18 +161,18 @@ namespace GraphView
             List<WSqlStatement> statementList = new List<WSqlStatement>();
             foreach (var variable in SetVariables)
             {
-                if (variable is GremlinAddEVariable)
-                {
-                    if (!((variable as GremlinAddEVariable).FromVariable is GremlinAddVVariable))
-                    {
-                        statementList.AddRange((variable as GremlinAddEVariable).FromVariable.ToSetVariableStatements());
-                    }
-                    if (!((variable as GremlinAddEVariable).ToVariable is GremlinAddVVariable))
-                    {
-                        statementList.AddRange((variable as GremlinAddEVariable).ToVariable.ToSetVariableStatements());
-                    }
+                //if (variable is GremlinAddEVariable)
+                //{
+                //    if (!((variable as GremlinAddEVariable).FromVariable is GremlinAddVVariable))
+                //    {
+                //        statementList.AddRange((variable as GremlinAddEVariable).FromVariable.ToSetVariableStatements());
+                //    }
+                //    if (!((variable as GremlinAddEVariable).ToVariable is GremlinAddVVariable))
+                //    {
+                //        statementList.AddRange((variable as GremlinAddEVariable).ToVariable.ToSetVariableStatements());
+                //    }
 
-                }
+                //}
                 statementList.AddRange(variable.ToSetVariableStatements());
             }
             return statementList;
@@ -255,18 +248,18 @@ namespace GraphView
         {
             var newSelectElementClause = new List<WSelectElement>();
             newSelectElementClause.Add(PivotVariable.DefaultProjection().ToSelectElement());
-
-            foreach (var tableReferences in TableReferences)
-            {
-                var selectElementList = tableReferences.ToSelectElementList();
-                if (selectElementList != null)
-                {
-                    foreach (var selectElement in selectElementList)
-                    {
-                        newSelectElementClause.Add(selectElement);
-                    }
-                }
-            }
+            //newSelectElementClause.AddRange(PivotVariable.ToSelectElementList());
+            //foreach (var tableReferences in TableReferences)
+            //{
+            //    var selectElementList = tableReferences.ToSelectElementList();
+            //    if (selectElementList != null)
+            //    {
+            //        foreach (var selectElement in selectElementList)
+            //        {
+            //            newSelectElementClause.Add(selectElement);
+            //        }
+            //    }
+            //}
             return newSelectElementClause;
         }
 

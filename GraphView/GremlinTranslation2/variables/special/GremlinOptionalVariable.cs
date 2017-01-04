@@ -19,23 +19,30 @@ namespace GraphView
         public WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
-            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            WSelectQueryBlock queryBlock = context.ToSelectQueryBlock();
+            foreach (var projectProperty in projectedProperties)
+            {
+                queryBlock.SelectElements.Add(new WSelectScalarExpression()
+                {
+                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, projectProperty)
+                });
+            }
+            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(queryBlock));
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        internal override void Populate(string property, bool isAlias = false)
+        internal override void Populate(string property)
         {
-            context.PivotVariable.Populate(property, isAlias);
-            base.Populate(property, isAlias);
+            context.Populate(property);
+            base.Populate(property);
         }
     }
     internal class GremlinOptionalVertexVariable : GremlinOptionalVariable
     {
         public GremlinOptionalVertexVariable(GremlinToSqlContext context): base(context) {}
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Vertex;
         }
@@ -45,7 +52,7 @@ namespace GraphView
     {
         public GremlinOptionalEdgeVariable(GremlinToSqlContext context) : base(context) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
         }
@@ -55,7 +62,7 @@ namespace GraphView
     {
         public GremlinOptionalTableVariable(GremlinToSqlContext context) : base(context) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
@@ -65,7 +72,7 @@ namespace GraphView
     {
         public GremlinOptionalValueVariable(GremlinToSqlContext context) : base(context) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Scalar;
         }

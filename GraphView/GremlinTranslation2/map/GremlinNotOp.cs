@@ -20,7 +20,11 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            throw new NotImplementedException();
+            GremlinUtil.InheritedVariableFromParent(NotTraversal, inputContext);
+            GremlinToSqlContext notContext = NotTraversal.GetEndOp().GetContext();
+
+            inputContext.PivotVariable.Not(inputContext, notContext);
+
             return inputContext;
         }
     }

@@ -53,7 +53,9 @@ namespace GraphView
                     inputContext.PivotVariable.From(inputContext, StepLabel);
                     break;
                 case FromType.FromVertexTraversal:
-                    inputContext.PivotVariable.From(inputContext, FromVertexTraversal);
+                    GremlinUtil.InheritedContextFromParent(FromVertexTraversal, inputContext);
+                    GremlinToSqlContext fromVertexContext = FromVertexTraversal.GetEndOp().GetContext();
+                    inputContext.PivotVariable.From(inputContext, fromVertexContext);
                     break;
             }
 
@@ -92,10 +94,12 @@ namespace GraphView
             switch (Type)
             {
                 case ToType.ToStepLabel:
-                    inputContext.PivotVariable.From(inputContext, StepLabel);
+                    inputContext.PivotVariable.To(inputContext, StepLabel);
                     break;
                 case ToType.ToVertexTraversal:
-                    inputContext.PivotVariable.From(inputContext, ToVertexTraversal);
+                    GremlinUtil.InheritedContextFromParent(ToVertexTraversal, inputContext);
+                    GremlinToSqlContext toVertexContext = ToVertexTraversal.GetEndOp().GetContext();
+                    inputContext.PivotVariable.To(inputContext, toVertexContext);
                     break;
             }
 

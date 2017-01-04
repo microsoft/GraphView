@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GraphView.GremlinTranslation2;
 
 namespace GraphView
 {
@@ -139,7 +138,7 @@ namespace GraphView
 
         public GraphTraversal2 by()
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy();
+            AddGremlinOperator(new GremlinByOp());
             return this;
         }
 
@@ -149,13 +148,13 @@ namespace GraphView
 
         public GraphTraversal2 by(GremlinKeyword.Order order)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
+            AddGremlinOperator(new GremlinByOp(order));
             return this;
         }
 
         public GraphTraversal2 by(string key)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(key);
+            AddGremlinOperator(new GremlinByOp(key));
             return this;
         }
 
@@ -163,7 +162,7 @@ namespace GraphView
         //public GraphTraversal2 by(T token)
         public GraphTraversal2 by(GraphTraversal2 traversal)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
+            AddGremlinOperator(new GremlinByOp(traversal));
             return this;
         }
         //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
@@ -215,7 +214,8 @@ namespace GraphView
         //public GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
         public GraphTraversal2 dedup(params string[] dedupLabels)
         {
-            AddGremlinOperator(new GremlinDedupOp(dedupLabels));
+            //TODO
+            //AddGremlinOperator(new GremlinDedupOp(dedupLabels));
             return this;
         }
 
@@ -235,14 +235,14 @@ namespace GraphView
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
-                (GetEndOp() as GremlinRepeatOp).IsEmitTrue = true;
-                (GetEndOp() as GremlinRepeatOp).IsEmitAfter = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitTrue = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitAfter = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
-                (GetEndOp() as GremlinRepeatOp).IsEmitTrue = true;
-                (GetEndOp() as GremlinRepeatOp).IsEmitBefore = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitTrue = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitBefore = true;
             }
             return this;
         }
@@ -252,13 +252,13 @@ namespace GraphView
             if (GetEndOp() is GremlinRepeatOp)
             {
                 (GetEndOp() as GremlinRepeatOp).ConditionPredicate = emitPredicate;
-                (GetEndOp() as GremlinRepeatOp).IsEmitAfter = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitAfter = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).ConditionPredicate = emitPredicate;
-                (GetEndOp() as GremlinRepeatOp).IsEmitBefore = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitBefore = true;
             }
             return this;
         }
@@ -268,13 +268,13 @@ namespace GraphView
             if (GetEndOp() is GremlinRepeatOp)
             {
                 (GetEndOp() as GremlinRepeatOp).ConditionTraversal = emitTraversal;
-                (GetEndOp() as GremlinRepeatOp).IsEmitAfter = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitAfter = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).ConditionTraversal = emitTraversal;
-                (GetEndOp() as GremlinRepeatOp).IsEmitBefore = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsEmitBefore = true;
             }
             return this;
         }
@@ -437,6 +437,7 @@ namespace GraphView
 
         public GraphTraversal2 label()
         {
+            AddGremlinOperator(new GremlinValuesOp("label"));
             return this;
         }
 
@@ -544,6 +545,7 @@ namespace GraphView
 
         public GraphTraversal2 otherV()
         {
+            AddGremlinOperator(new GremlinOtherVOp());
             return this;
         }
 
@@ -689,14 +691,14 @@ namespace GraphView
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
-                (GetEndOp() as GremlinRepeatOp).Times = maxLoops;
-                (GetEndOp() as GremlinRepeatOp).IsTimes = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.Times = maxLoops;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsTimes = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
-                (GetEndOp() as GremlinRepeatOp).Times = maxLoops;
-                (GetEndOp() as GremlinRepeatOp).IsTimes = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.Times = maxLoops;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsTimes = true;
             }
             return this;
         }
@@ -741,13 +743,13 @@ namespace GraphView
             if (GetEndOp() is GremlinRepeatOp)
             {
                 (GetEndOp() as GremlinRepeatOp).ConditionPredicate = untilPredicate;
-                (GetEndOp() as GremlinRepeatOp).IsUntilAfter = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsUntilAfter = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).ConditionPredicate = untilPredicate;
-                (GetEndOp() as GremlinRepeatOp).IsUntilBefore = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsUntilBefore = true;
             }
             return this;
         }
@@ -757,13 +759,13 @@ namespace GraphView
             if (GetEndOp() is GremlinRepeatOp)
             {
                 (GetEndOp() as GremlinRepeatOp).ConditionTraversal = untilTraversal;
-                (GetEndOp() as GremlinRepeatOp).IsUntilAfter = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsUntilAfter = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).ConditionTraversal = untilTraversal;
-                (GetEndOp() as GremlinRepeatOp).IsUntilBefore = true;
+                (GetEndOp() as GremlinRepeatOp).RepeatCondition.IsUntilBefore = true;
             }
             return this;
         }
