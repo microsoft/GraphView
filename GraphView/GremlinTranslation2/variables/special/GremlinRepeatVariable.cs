@@ -10,17 +10,20 @@ namespace GraphView
     {
         public GremlinVariable2 InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
-        public GremlinToSqlContext ConditionContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
 
         public GremlinRepeatVariable(GremlinVariable2 inputVariable, GremlinToSqlContext repeatContext,
-                                       GremlinToSqlContext conditionContext, RepeatCondition repeatCondition)
+                                    RepeatCondition repeatCondition)
         {
             VariableName = GenerateTableAlias();
             RepeatContext = repeatContext;
             InputVariable = inputVariable;
             RepeatCondition = repeatCondition;
-            ConditionContext = conditionContext;
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return RepeatContext.PivotVariable.GetVariableType();
         }
 
         internal override void Populate(string property)
@@ -60,54 +63,31 @@ namespace GraphView
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public void SetExtraVariableInSelect(GremlinVariable2 newVar, GremlinVariable2 aliasVar)
-        {
-            foreach (var property in aliasVar.UsedProperties)
-            {
-                newVar.Populate(property);
-            }
-        }
-
         public WRepeatConditionExpression GetRepeatConditionExpression()
         {
             return new WRepeatConditionExpression()
             {
-                ConditionBooleanExpression = ConditionContext.ToSqlBoolean(),
-                IsEmitTrue = RepeatCondition.IsEmitTrue,
-                IsEmitAfter = RepeatCondition.IsEmitAfter,
-                IsEmitBefore = RepeatCondition.IsEmitBefore,
-                IsUntilAfter = RepeatCondition.IsUntilAfter,
-                IsUntilBefore = RepeatCondition.IsUntilBefore,
-                IsTimes = RepeatCondition.IsTimes,
-                Times = RepeatCondition.Times
+                //ConditionBooleanExpression = RepeatCondition.ConditionBooleanExpression,
+                //IsEmitTrue = RepeatCondition.IsEmitTrue,
+                //IsEmitAfter = RepeatCondition.IsEmitAfter,
+                //IsEmitBefore = RepeatCondition.IsEmitBefore,
+                //IsUntilAfter = RepeatCondition.IsUntilAfter,
+                //IsUntilBefore = RepeatCondition.IsUntilBefore,
+                //IsTimes = RepeatCondition.IsTimes,
+                //Times = RepeatCondition.Times
             };
         }
 
         public List<WSelectScalarExpression> GetInputSelectList()
         {
             List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
-            if (RepeatContext.PivotVariable.DefaultProjection() is GremlinVariableProperty)
+            
+            foreach (var projectProperty in ProjectedProperties)
             {
-                var temp = RepeatContext.PivotVariable.DefaultProjection() as GremlinVariableProperty;
-                inputSelectList.Add(new WSelectScalarExpression()
-                {
-                    ColumnName = InputVariable.VariableName + "." + temp.VariableProperty,
-                    SelectExpr =
-                        GremlinUtil.GetColumnReferenceExpression(RepeatContext.PivotVariable.VariableName, temp.VariableProperty)
-                });
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-
-            foreach (var projectProperty in projectedProperties)
-            {
-                inputSelectList.Add(new WSelectScalarExpression()
-                {
-                    ColumnName = InputVariable.VariableName + "." + projectProperty,
-                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(RepeatContext.PivotVariable.VariableName, projectProperty)
-                });
+                var projectValue = GremlinUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
+                    projectProperty);
+                var alias = InputVariable.VariableName + "." + projectProperty;
+                inputSelectList.Add(GremlinUtil.GetSelectScalarExpression(projectValue, alias));
             }
 
             return inputSelectList;
@@ -118,9 +98,9 @@ namespace GraphView
             List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
             foreach (var variable in RepeatContext.VariableList)
             {
-                if (variable is GremlinContextEdgeVariable)
+                if (variable is GremlinContextVariable)
                 {
-                    var temp = (variable as GremlinContextEdgeVariable);
+                    var temp = (variable as GremlinContextVariable);
                     if (temp.IsFromSelect)
                     {
                         var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
@@ -129,33 +109,12 @@ namespace GraphView
                             foreach (var property in temp.ContextVariable.UsedProperties)
                             {
                                 selectVar.Populate(property);
-                                outerSelectList.Add(new WSelectScalarExpression()
-                                {
-                                    ColumnName = temp.ContextVariable.VariableName + "." + property,
-                                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(selectVar.VariableName, property)
-                                });
+                                var alias = temp.ContextVariable.VariableName + "." + property;
+                                var projectValue = GremlinUtil.GetColumnReferenceExpr(selectVar.VariableName,
+                                    property);
+                                outerSelectList.Add(GremlinUtil.GetSelectScalarExpression(projectValue, alias));
                             }
 
-                        }
-                    }
-                }
-                else if (variable is GremlinContextVertexVariable)
-                {
-                    var temp = (variable as GremlinContextVertexVariable);
-                    if (temp.IsFromSelect)
-                    {
-                        var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
-                        if (selectVar != temp.ContextVariable)
-                        {
-                            foreach (var property in temp.ContextVariable.UsedProperties)
-                            {
-                                selectVar.Populate(property);
-                                outerSelectList.Add(new WSelectScalarExpression()
-                                {
-                                    ColumnName = temp.ContextVariable.VariableName + "." + property,
-                                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(selectVar.VariableName, property)
-                                });
-                            }
                         }
                     }
                 }

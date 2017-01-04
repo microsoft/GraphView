@@ -27,16 +27,7 @@ namespace GraphView
 
             foreach (var context in CoalesceContextList)
             {
-                WSelectQueryBlock queryBlock = context.ToSelectQueryBlock();
-                foreach (var projectProperty in projectedProperties)
-                {
-                    queryBlock.SelectElements.Add(new WSelectScalarExpression()
-                    {
-                        SelectExpr =
-                            GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, projectProperty)
-                    });
-                }
-                PropertyKeys.Add(GremlinUtil.GetScalarSubquery(queryBlock));
+                PropertyKeys.Add(GremlinUtil.GetScalarSubquery(context.ToSelectQueryBlock()));
             }
             var secondTableRef = GremlinUtil.GetFunctionTableReference("Coalesce", PropertyKeys, VariableName);
 

@@ -39,6 +39,11 @@ namespace GraphView
     {
         internal IList<WTableReference> TableReferences { get; set; }
 
+        public WFromClause()
+        {
+            TableReferences = new List<WTableReference>();
+        }
+
         internal override bool OneLine()
         {
             return TableReferences.All(tref => tref.OneLine());

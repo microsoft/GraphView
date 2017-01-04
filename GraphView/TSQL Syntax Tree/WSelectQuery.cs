@@ -209,8 +209,7 @@ namespace GraphView
         internal bool OutputPath { get; set; }
         public WSelectQueryBlock()
         {
-            FromClause = new WFromClause();
-            WhereClause = new WWhereClause();
+            SelectElements = new List<WSelectElement>();
         }
 
         internal override bool OneLine()
@@ -282,7 +281,7 @@ namespace GraphView
                 sb.AppendFormat(" INTO {0} ", Into);
             }
 
-            if (FromClause.TableReferences != null)
+            if (FromClause != null)
             {
                 sb.Append("\r\n");
                 sb.Append(FromClause.ToString(indent));

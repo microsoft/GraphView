@@ -9,7 +9,7 @@ namespace GraphView
 {
     public class GremlinUtil
     {
-        internal static WColumnReferenceExpression GetColumnReferenceExpression(params string[] parts)
+        internal static WColumnReferenceExpression GetColumnReferenceExpr(params string[] parts)
         {
             return new WColumnReferenceExpression()
             {
@@ -245,16 +245,20 @@ namespace GraphView
             };
         }
 
-        internal static WSelectScalarExpression GetSelectScalarExpression(WScalarExpression valueExpr)
+        internal static WSelectScalarExpression GetSelectScalarExpression(WScalarExpression valueExpr, string alias = null)
         {
-            return new WSelectScalarExpression() {SelectExpr = valueExpr};
+            return new WSelectScalarExpression()
+            {
+                SelectExpr = valueExpr,
+                ColumnName = alias
+            };
         }
 
         internal static WExpressionWithSortOrder GetExpressionWithSortOrder(string key, GremlinKeyword.Order order)
         {
             return new WExpressionWithSortOrder()
             {
-                ScalarExpr = GetColumnReferenceExpression(key),
+                ScalarExpr = GetColumnReferenceExpr(key),
                 SortOrder = ConvertGremlinOrderToSqlOrder(order)
             };
         }
@@ -271,7 +275,7 @@ namespace GraphView
         {
             return new WExpressionGroupingSpec()
             {
-                Expression = GetColumnReferenceExpression(key)
+                Expression = GetColumnReferenceExpr(key)
             };
         }
 
@@ -373,6 +377,15 @@ namespace GraphView
                 FirstTableRef = firstTableRef,
                 SecondTableRef = secondTableRef,
                 UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
+            };
+        }
+
+        internal static WQueryDerivedTable GetDerivedTable(WSelectQueryBlock selectQueryBlock, string alias)
+        {
+            return new WQueryDerivedTable()
+            {
+                QueryExpr = selectQueryBlock,
+                Alias = GetIdentifier(alias)
             };
         }
     }

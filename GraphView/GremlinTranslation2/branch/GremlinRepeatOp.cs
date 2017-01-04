@@ -42,9 +42,10 @@ namespace GraphView
             {
                 GremlinUtil.InheritedVariableFromParent(ConditionTraversal, repeatContext);
                 conditionContext = ConditionTraversal.GetEndOp().GetContext();
+                RepeatCondition.ConditionBooleanExpression = conditionContext.ToSqlBoolean();
             }
 
-            inputContext.PivotVariable.Repeat(inputContext, repeatContext, conditionContext, RepeatCondition);
+            inputContext.PivotVariable.Repeat(inputContext, repeatContext, RepeatCondition);
 
             return inputContext;
         }
@@ -53,6 +54,7 @@ namespace GraphView
 
     internal class RepeatCondition
     {
+        public WBooleanExpression ConditionBooleanExpression { get; set; }
         public bool IsEmitTrue { get; set; }
         public bool IsEmitBefore { get; set; }
         public bool IsEmitAfter { get; set; }

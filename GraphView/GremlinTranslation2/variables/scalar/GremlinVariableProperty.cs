@@ -21,13 +21,13 @@ namespace GraphView
         {
             return new WSelectScalarExpression()
             {
-                SelectExpr = GremlinUtil.GetColumnReferenceExpression(GremlinVariable.VariableName, VariableProperty)
+                SelectExpr = GremlinUtil.GetColumnReferenceExpr(GremlinVariable.VariableName, VariableProperty)
             };
         }
 
         public override WScalarExpression ToScalarExpression()
         {
-            return GremlinUtil.GetColumnReferenceExpression(GremlinVariable.VariableName, VariableProperty);
+            return GremlinUtil.GetColumnReferenceExpr(GremlinVariable.VariableName, VariableProperty);
         }
     }
 }

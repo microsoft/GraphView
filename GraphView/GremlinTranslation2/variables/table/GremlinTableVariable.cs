@@ -15,6 +15,13 @@ namespace GraphView
             return "R_" + _count++;
         }
 
+        public List<string> ProjectedProperties { get; set; }
+
+        public GremlinTableVariable()
+        {
+            ProjectedProperties = new List<string>();
+        }
+
         internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
@@ -25,13 +32,11 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        protected List<string> projectedProperties = new List<string>();
-
         internal override void Populate(string property)
         {
-            if (!projectedProperties.Contains(property))
+            if (!ProjectedProperties.Contains(property))
             {
-                projectedProperties.Add(property);
+                ProjectedProperties.Add(property);
             }
             if (!UsedProperties.Contains(property))
             {

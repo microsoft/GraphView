@@ -17,18 +17,18 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
-        internal override void By(GremlinToSqlContext currentContext, GremlinToSqlContext byContext)
-        {
-            // The BY step first sets the group-by key, and then sets the aggregation value.
-            if (GroupbyKey == null)
-            {
-                GroupbyKey = new GremlinScalarSubquery(byContext);
-            }
-            else if (AggregateValue != null)
-            {
-                AggregateValue = new GremlinScalarSubquery(byContext);
-            }
-        }
+        //internal override void By(GremlinToSqlContext currentContext, GremlinToSqlContext byContext)
+        //{
+        //    // The BY step first sets the group-by key, and then sets the aggregation value.
+        //    if (GroupbyKey == null)
+        //    {
+        //        GroupbyKey = new GremlinScalarSubquery(byContext);
+        //    }
+        //    else if (AggregateValue != null)
+        //    {
+        //        AggregateValue = new GremlinScalarSubquery(byContext);
+        //    }
+        //}
 
         internal override void By(GremlinToSqlContext currentContext, string name)
         {

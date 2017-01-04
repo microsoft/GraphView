@@ -640,15 +640,15 @@ namespace GraphView
 
     public class WRepeatConditionExpression: WPrimaryExpression
     {
-        public bool IsEmitTrue { get; set; }
         public bool IsEmitBefore { get; set; }
         public bool IsEmitAfter { get; set; }
-        public bool IsUntilBefore { get; set; }
-        public bool IsUntilAfter { get; set; }
+        public bool IsDoWhile { get; set; }
+        public bool IsWhileDo { get; set; }
         public bool IsTimes { get; set; }
         public long Times { get; set; }
 
-        public WBooleanExpression ConditionBooleanExpression;
+        public WBooleanExpression EmitBooleanExpression;
+        public WBooleanExpression UntilBooleanExpression;
 
         public WRepeatConditionExpression() { }
 

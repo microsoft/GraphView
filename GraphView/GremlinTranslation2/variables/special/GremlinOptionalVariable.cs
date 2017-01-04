@@ -8,36 +8,52 @@ namespace GraphView
 {
     internal class GremlinOptionalVariable : GremlinTableVariable, ISqlTable
     {
-        private GremlinToSqlContext context;
+        public GremlinToSqlContext Context { get; set; }
 
         public GremlinOptionalVariable(GremlinToSqlContext context)
         {
-            this.context = context;
+            Context = context;
             VariableName = GenerateTableAlias();
         }
 
-        public WTableReference ToTableReference()
+        public static GremlinOptionalVariable Create(GremlinVariable2 inputVariable, GremlinToSqlContext context)
+        {
+            if (inputVariable.GetVariableType() == context.PivotVariable.GetVariableType())
+            {
+                switch (context.PivotVariable.GetVariableType())
+                {
+                    case GremlinVariableType.Vertex:
+                        return new GremlinOptionalVertexVariable(context);
+                    case GremlinVariableType.Edge:
+                        return new GremlinOptionalEdgeVariable(context);
+                    case GremlinVariableType.Table:
+                        return new GremlinOptionalTableVariable(context);
+                    case GremlinVariableType.Scalar:
+                        return new GremlinOptionalScalarVariable(context);
+                }
+            }
+            else
+            {
+                return new GremlinOptionalTableVariable(context);
+            }
+            throw new NotImplementedException();
+        }
+
+        public override  WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            WSelectQueryBlock queryBlock = context.ToSelectQueryBlock();
-            foreach (var projectProperty in projectedProperties)
-            {
-                queryBlock.SelectElements.Add(new WSelectScalarExpression()
-                {
-                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, projectProperty)
-                });
-            }
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(queryBlock));
+            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(Context.ToSelectQueryBlock()));
             var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         internal override void Populate(string property)
         {
-            context.Populate(property);
+            Context.Populate(property);
             base.Populate(property);
         }
     }
+
     internal class GremlinOptionalVertexVariable : GremlinOptionalVariable
     {
         public GremlinOptionalVertexVariable(GremlinToSqlContext context): base(context) {}
@@ -68,9 +84,9 @@ namespace GraphView
         }
     }
 
-    internal class GremlinOptionalValueVariable : GremlinOptionalVariable
+    internal class GremlinOptionalScalarVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalValueVariable(GremlinToSqlContext context) : base(context) { }
+        public GremlinOptionalScalarVariable(GremlinToSqlContext context) : base(context) { }
 
         internal override GremlinVariableType GetVariableType()
         {

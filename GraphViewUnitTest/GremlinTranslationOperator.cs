@@ -16,7 +16,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"select TVF_1.id from (select n_0.id as [n_0.id] from  node n_0) as D_0 where D_0.n_0.id = 1";
+            const string q2 = @"select (select 1) as number from n_0";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
@@ -31,16 +31,6 @@ namespace GremlinTranslationOperator.Tests
         public void TestStep()
         {
             //GraphTraversal2.g().addV("test").property("name", "jinjin").addE("edge").to(GraphTraversal2.g().addV("test2").property("age", "22")).property("label", "123").next();
-
-            GraphTraversal2.g().V().union(GraphTraversal2.__().dedup()
-                        .emit()
-                        .repeat(GraphTraversal2.__().outE("_val").As("_").inV())
-                        .tree(),
-                    GraphTraversal2.__().project("id", "key", "ref")
-                        .by(GraphTraversal2.__().id())
-                        .by(GraphTraversal2.__().select(GremlinKeyword.Pop.first, "@e").values("_key"))
-                        .by(GraphTraversal2.__().select(GremlinKeyword.Pop.last, "@e").values("_ref"))
-                        .fold()).next();
 
             GraphTraversal2.g().V().As("@v")
                 .flatMap(GraphTraversal2.__().Out("mdl").outE("ref"))

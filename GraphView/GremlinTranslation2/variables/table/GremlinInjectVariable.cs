@@ -35,15 +35,12 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
-        public WTableReference ToTableReference()
+        public override WTableReference ToTableReference()
         {
             if (priorContext == null)
             {
-                return new WQueryDerivedTable()
-                {
-                    QueryExpr = GetInjectStatement(),
-                    Alias = GremlinUtil.GetIdentifier(VariableName)
-                };
+                return GremlinUtil.GetDerivedTable(GetInjectQueryBlock(), VariableName);
+
             }
             else
             {
@@ -84,12 +81,9 @@ namespace GraphView
             rows.AddRange(values);
         }
 
-        private WSelectQueryBlock GetInjectStatement()
+        private WSelectQueryBlock GetInjectQueryBlock()
         {
-            var selectBlock = new WSelectQueryBlock()
-            {
-                SelectElements = new List<WSelectElement>() { }
-            };
+            var selectBlock = new WSelectQueryBlock();
             foreach (var row in rows)
             {
                 var valueExpr = GremlinUtil.GetValueExpression(row);
