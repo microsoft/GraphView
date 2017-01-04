@@ -735,7 +735,7 @@ namespace GraphView
                 Queue<RawRecord> priorStates = new Queue<RawRecord>();
                 Queue<RawRecord> newStates = new Queue<RawRecord>();
 
-                priorStates.Add(initialRec);
+                priorStates.Enqueue(initialRec);
                 for (int i = 0; i < repeatTimes; i++)
                 {
                     while (priorStates.Count > 0)
@@ -745,12 +745,11 @@ namespace GraphView
                         RawRecord newRec = null;
                         while ((newRec = innerOp.Next()) != null)
                         {
-                            newStates.EnqueuenewRec);
+                            newStates.Enqueue(newRec);
                         }
                     }
 
                 }
-
             }
 
             throw new NotImplementedException();
