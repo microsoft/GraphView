@@ -67,14 +67,10 @@ namespace GraphView
         {
             return new WRepeatConditionExpression()
             {
-                //ConditionBooleanExpression = RepeatCondition.ConditionBooleanExpression,
-                //IsEmitTrue = RepeatCondition.IsEmitTrue,
-                //IsEmitAfter = RepeatCondition.IsEmitAfter,
-                //IsEmitBefore = RepeatCondition.IsEmitBefore,
-                //IsUntilAfter = RepeatCondition.IsUntilAfter,
-                //IsUntilBefore = RepeatCondition.IsUntilBefore,
-                //IsTimes = RepeatCondition.IsTimes,
-                //Times = RepeatCondition.Times
+                EmitCondition = RepeatCondition.EmitCondition,
+                TerminationCondition = RepeatCondition.TerminationCondition,
+                RepeatTimes = RepeatCondition.RepeatTimes,
+                StartFromContext = RepeatCondition.StartFromContext
             };
         }
 

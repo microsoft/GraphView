@@ -15,15 +15,13 @@ namespace GraphView
         private int outputBufferSize;
         private JsonQuery vertexQuery;
         private GraphViewConnection connection;
-        private List<string> nodeProperties; 
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, List<string> nodeProperties, int outputBufferSize = 1000)
+        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, int outputBufferSize = 1000)
         {
             Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
             this.outputBufferSize = outputBufferSize;
-            this.nodeProperties = nodeProperties;
         }
 
         public override RawRecord Next()
@@ -37,14 +35,7 @@ namespace GraphView
                 // retrieving all the vertices satisfying the query.
                 using (DbPortal databasePortal = connection.CreateDatabasePortal())
                 {
-                    //foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
-                    //{
-                    //    outputBuffer.Enqueue(rec);
-                    //}
-
-                    var rawVertices = databasePortal.GetRawVertices(vertexQuery);
-                    var decoder = new DocDbDecoder2();
-                    foreach (var rec in decoder.GetVertices(rawVertices, nodeProperties))
+                    foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
                     {
                         outputBuffer.Enqueue(rec);
                     }
@@ -94,10 +85,6 @@ namespace GraphView
         // The index of the adjacency list in the record from which the traversal starts
         private int adjacencyListSinkIndex = -1;
 
-        // The table-valued scalar function that given a record of a source vertex,
-        // returns the references of the sink vertices
-        private TableValuedScalarFunction crossApplySinkReference; 
-
         // The query that describes predicates on the sink vertices and its properties to return.
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
@@ -109,20 +96,12 @@ namespace GraphView
         // to the vertices other than the source vertices in the records by the input operator. 
         private List<Tuple<int, int>> matchingIndexes;
 
-        // List of edges whose predicates are evaluated by server
-        // and will be filtered by matchingIndexes
-        private List<MatchEdge> reverseEdges;
-
-        private List<string> nodeProperties; 
-
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
             GraphViewConnection connection,
             int sinkIndex,
             JsonQuery sinkVertexQuery,
             List<Tuple<int, int>> matchingIndexes,
-            List<MatchEdge> reverseEdges, 
-            List<string> nodeProperties, 
             int outputBufferSize = 1000)
         {
             Open();
@@ -131,8 +110,6 @@ namespace GraphView
             this.adjacencyListSinkIndex = sinkIndex;
             this.sinkVertexQuery = sinkVertexQuery;
             this.matchingIndexes = matchingIndexes;
-            this.reverseEdges = reverseEdges;
-            this.nodeProperties = nodeProperties;
             this.outputBufferSize = outputBufferSize;
         }
 
@@ -230,18 +207,7 @@ namespace GraphView
 
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
-                        //foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
-                        //{
-                        //    if (!sinkVertexCollection.ContainsKey(rec[0]))
-                        //    {
-                        //        sinkVertexCollection.Add(rec[0], new List<RawRecord>());
-                        //    }
-                        //    sinkVertexCollection[rec[0]].Add(rec);
-                        //}
-
-                        var rawVertices = databasePortal.GetRawVertices(toSendQuery);
-                        var decoder = new DocDbDecoder2();
-                        foreach (var rec in decoder.GetVertices(rawVertices, nodeProperties, reverseEdges))
+                        foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
                         {
                             if (!sinkVertexCollection.ContainsKey(rec[0]))
                             {
@@ -379,31 +345,23 @@ namespace GraphView
 
     internal class AdjacencyListDecoder : TableValuedFunction
     {
-        private GraphViewExecutionOperator input;
         private int adjacencyListIndex;
         private BooleanFunction edgePredicate;
         private List<string> projectedFields;
-        private string edgeTableAlias;
-        private int outputBufferSize;
-        private Queue<RawRecord> outputBuffer;
 
         public AdjacencyListDecoder(GraphViewExecutionOperator input, int adjacencyListIndex,
-            BooleanFunction edgePredicate, List<string> projectedFields, string edgeTableAlias, int outputBufferSize = 1000)
-            : base(input, 0, 1000, 1000)
+            BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
+            : base(input, outputBufferSize)
         {
-            this.input = input;
             this.adjacencyListIndex = adjacencyListIndex;
             this.edgePredicate = edgePredicate;
             this.projectedFields = projectedFields;
-            this.edgeTableAlias = edgeTableAlias;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             string jsonArray = record[adjacencyListIndex];
             List<RawRecord> results = new List<RawRecord>();
-            // The first column is for '_sink' by default
-            projectedFields.Insert(0, "_sink");
 
             // Parse the adj list in JSON array
             var adj = JArray.Parse(jsonArray);
@@ -413,10 +371,12 @@ namespace GraphView
                 var result = new RawRecord(projectedFields.Count);
 
                 // Fill the field of selected edge's properties
-                // TODO: support wildcard *
                 for (var i = 0; i < projectedFields.Count; i++)
                 {
-                    var fieldValue = edge[projectedFields[i]];
+                    var projectedField = projectedFields[i];
+                    var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
+                        ? edge
+                        : edge[projectedField];
                     if (fieldValue != null)
                         result.fieldValues[i] = fieldValue.ToString();
                 }
@@ -429,45 +389,47 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (outputBuffer == null)
-                outputBuffer = new Queue<RawRecord>();
+            if (OutputBuffer == null)
+                OutputBuffer = new Queue<RawRecord>();
 
-            while (outputBuffer.Count < outputBufferSize && input.State())
+            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
             {
-                RawRecord record = input.Next();
-                if (record == null)
-                    continue;
-                var results = CrossApply(record);
+                RawRecord srcRecord = InputOperator.Next();
+                if (srcRecord == null)
+                    break;
+
+                var results = CrossApply(srcRecord);
                 foreach (var edgeRecord in results)
                 {
                     if (!edgePredicate.Evaluate(edgeRecord))
                         continue;
 
-                    record.Append(edgeRecord);
-                    outputBuffer.Enqueue(record);
+                    var resultRecord = new RawRecord(srcRecord);
+                    resultRecord.Append(edgeRecord);
+                    OutputBuffer.Enqueue(resultRecord);
                 }
             }
 
-            if (outputBuffer.Count == 0)
+            if (OutputBuffer.Count == 0)
             {
-                if (!input.State())
+                if (!InputOperator.State())
                     Close();
                 return null;
             }
-            else if (outputBuffer.Count == 1)
+            else if (OutputBuffer.Count == 1)
             {
                 Close();
-                return outputBuffer.Dequeue();
+                return OutputBuffer.Dequeue();
             }
             else
             {
-                return outputBuffer.Dequeue();
+                return OutputBuffer.Dequeue();
             }
         }
 
         public override void ResetState()
         {
-            input.ResetState();
+            InputOperator.ResetState();
             Open();
         }
     }
@@ -531,6 +493,55 @@ namespace GraphView
             {
                 throw new NotImplementedException();
             }
+        }
+    }
+
+    internal class ProjectOperator : GraphViewExecutionOperator
+    {
+        private List<Tuple<ScalarFunction, string>> selectScalarList;
+        private GraphViewExecutionOperator inputOp;
+
+        private RawRecord currentRecord;
+        private Queue<RawRecord> outputBuffer;
+
+        public ProjectOperator(GraphViewExecutionOperator inputOp)
+        {
+            this.inputOp = inputOp;
+            selectScalarList = new List<Tuple<ScalarFunction, string>>();
+            outputBuffer = new Queue<RawRecord>();
+        }
+
+        public void AddSelectScalarElement(ScalarFunction scalarFunction, string alias)
+        {
+            selectScalarList.Add(new Tuple<ScalarFunction, string>(scalarFunction, alias));
+        }
+
+        public override RawRecord Next()
+        {
+            while (outputBuffer.Count == 0 && inputOp.State())
+            {
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                RawRecord selectRecord = new RawRecord(selectScalarList.Count);
+                int index = 0;
+                foreach (var selectPair in selectScalarList)
+                {
+                    ScalarFunction scalarFunction = selectPair.Item1;
+                    string result = scalarFunction.Evaluate(currentRecord);
+                    selectRecord.fieldValues[index++] = result ?? "";
+                }
+
+                outputBuffer.Enqueue(selectRecord);
+            }
+
+            if (outputBuffer.Count <= 1) this.Close();
+            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            return null;
         }
     }
 

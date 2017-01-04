@@ -64,7 +64,6 @@
   <ItemGroup>
     <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
-    <Compile Include="GraphViewExecutionRuntime\Decoder2.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScriptOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
     <Compile Include="GraphViewQueryCompiler\AttachWhereClauseVisitor.cs" />

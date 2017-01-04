@@ -9,24 +9,16 @@ namespace GraphView
     internal abstract class TableValuedFunction : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator InputOperator;
-        protected Queue<RawRecord> InputBuffer;
         protected Queue<RawRecord> OutputBuffer;
-        protected int InputBufferSize;
         protected int OutputBufferSize;
-        protected int NewFieldIdx;
 
         internal TableValuedFunction(
             GraphViewExecutionOperator pInputOperator, 
-            int pNewFieldIdx, 
-            int pInputBufferSize,
-            int pOutputBufferSize)
+            int pOutputBufferSize = 1000)
         {
             InputOperator = pInputOperator;
-            NewFieldIdx = pNewFieldIdx;
-            InputBuffer = new Queue<RawRecord>();
-            OutputBuffer = new Queue<RawRecord>();
-            InputBufferSize = pInputBufferSize;
             OutputBufferSize = pOutputBufferSize;
+            OutputBuffer = new Queue<RawRecord>(OutputBufferSize);
             this.Open();
         }
 
@@ -41,31 +33,24 @@ namespace GraphView
                 return OutputBuffer.Dequeue();
             }
 
-            // Fills the input buffer by pulling from the input operator
-            while (InputBuffer.Count() < InputBufferSize && InputOperator.State())
+            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
             {
-                if (InputOperator != null && InputOperator.State())
+                var srcRecord = InputOperator.Next();
+                if (srcRecord == null)
                 {
-                    RawRecord result = InputOperator.Next();
-                    if (result == null)
-                    {
-                        InputOperator.Close();
-                    }
-                    else
-                    {
-                        InputBuffer.Enqueue(result);
-                    }
+                    InputOperator.Close();
+                    break;
+                }
+
+                var results = CrossApply(srcRecord);
+                foreach (var rec in results)
+                {
+                    var resultRecord = new RawRecord(srcRecord);
+                    resultRecord.Append(rec);
+                    OutputBuffer.Enqueue(resultRecord);
                 }
             }
 
-            var results = new List<RawRecord>();
-            foreach (var record in InputBuffer)
-                results.AddRange(CrossApply(record));
-
-            foreach (var record in results)
-                OutputBuffer.Enqueue(record);
-
-            InputBuffer.Clear();
             if (OutputBuffer.Count <= 1) this.Close();
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
@@ -76,8 +61,8 @@ namespace GraphView
     {
         internal List<Tuple<string, int>> PropertyIdxList;
 
-        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, int pNewFieldIdx, List<Tuple<string, int>> pPropertyIdxList, int pInputBufferSize, int pOutputBufferSize)
-            : base(pInputOperatr, pNewFieldIdx, pInputBufferSize, pOutputBufferSize)
+        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, List<Tuple<string, int>> pPropertyIdxList, int pOutputBufferSize = 1000)
+            : base(pInputOperatr, pOutputBufferSize)
         {
             PropertyIdxList = pPropertyIdxList;
         }
@@ -89,8 +74,8 @@ namespace GraphView
             {
                 var propName = pair.Item1;
                 var propIdx = pair.Item2;
-                var result = new RawRecord(record);
-                record.fieldValues[NewFieldIdx] = propName + "->" + record.fieldValues[propIdx];
+                var result = new RawRecord(1);
+                result.fieldValues[0] = propName + "->" + record.fieldValues[propIdx];
                 results.Add(result);
             }
 
@@ -102,8 +87,8 @@ namespace GraphView
     {
         internal List<int> ValuesIdxList;
 
-        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, int pNewFieldIdx, List<int> pValuesIdxList, int pInputBufferSize, int pOutputBufferSize)
-            : base(pInputOperator, pNewFieldIdx, pInputBufferSize, pOutputBufferSize)
+        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pOutputBufferSize = 1000)
+            : base(pInputOperator, pOutputBufferSize)
         {
             ValuesIdxList = pValuesIdxList;
         }
@@ -113,8 +98,8 @@ namespace GraphView
             var results = new List<RawRecord>();
             foreach (var propIdx in ValuesIdxList)
             {
-                var result = new RawRecord(record);
-                record.fieldValues[NewFieldIdx] = record.fieldValues[propIdx];
+                var result = new RawRecord(1);
+                result.fieldValues[0] = record.fieldValues[propIdx];
                 results.Add(result);
             }
 
@@ -126,16 +111,16 @@ namespace GraphView
     {
         internal string ConstantValue;
 
-        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, int pNewFieldIdx, string pConstantValue, int pInputBufferSize, int pOutputBufferSize)
-            : base(pInputOperator, pNewFieldIdx, pInputBufferSize, pOutputBufferSize)
+        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, string pConstantValue, int pOutputBufferSize = 1000)
+            : base(pInputOperator, pOutputBufferSize)
         {
             ConstantValue = pConstantValue;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
-            var result = new RawRecord(record);
-            record.fieldValues[NewFieldIdx] = ConstantValue;
+            var result = new RawRecord(1);
+            result.fieldValues[0] = ConstantValue;
 
             return new List<RawRecord> {result};
         }
@@ -146,8 +131,8 @@ namespace GraphView
         internal int FoldedFieldIdx;
         internal int FoldedMetaIdx;
 
-        internal UnfoldOperator(GraphViewExecutionOperator pInputOperator, int pNewFieldIdx, int pFoldedFieldIdx, int pFoldedMetaIdx, int pInputBufferSize, int pOutputBufferSize)
-            : base(pInputOperator, pNewFieldIdx, pInputBufferSize, pOutputBufferSize)
+        internal UnfoldOperator(GraphViewExecutionOperator pInputOperator, int pFoldedFieldIdx, int pFoldedMetaIdx, int pOutputBufferSize = 1000)
+            : base(pInputOperator, pOutputBufferSize)
         {
             FoldedFieldIdx = pFoldedFieldIdx;
             FoldedMetaIdx = pFoldedMetaIdx;
@@ -163,9 +148,9 @@ namespace GraphView
             foreach (var offsetStr in metaInfo)
             {
                 var offset = int.Parse(offsetStr);
-                var result = new RawRecord(record);
+                var result = new RawRecord(1);
                 start += 1;
-                record.fieldValues[NewFieldIdx] = foldedList.Substring(start, offset);
+                result.fieldValues[0] = foldedList.Substring(start, offset);
                 results.Add(result);
                 start += offset;
             }

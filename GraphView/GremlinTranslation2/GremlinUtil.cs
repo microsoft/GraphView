@@ -388,5 +388,19 @@ namespace GraphView
                 Alias = GetIdentifier(alias)
             };
         }
+
+        internal static WBooleanExpression GetTrueBooleanComparisonExpr()
+        {
+            var firstExpr = GetValueExpression("1");
+            var secondExpr = GetValueExpression("1");
+            return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+        }
+
+        internal static WBooleanExpression GetFalseBooleanComparisonExpr()
+        {
+            var firstExpr = GetValueExpression("1");
+            var secondExpr = GetValueExpression("0");
+            return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+        }
     }
 }

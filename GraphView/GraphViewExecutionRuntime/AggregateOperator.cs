@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class AggregateOperator : GraphViewExecutionOperator
+    internal abstract class AggregateFunction : GraphViewExecutionOperator
     {
-        internal GraphViewExecutionOperator InputOperatr;
+        internal GraphViewExecutionOperator InputOperator;
         protected List<int> GroupByFieldsList;
         protected Queue<RawRecord> InputBuffer;
         protected Queue<RawRecord> OutputBuffer;
 
-        internal AggregateOperator(GraphViewExecutionOperator pInPutOperator, List<int> pGroupByFieldsList)
+        internal AggregateFunction(GraphViewExecutionOperator pInputOperator, List<int> pGroupByFieldsList)
         {
-            InputOperatr = pInPutOperator;
+            InputOperator = pInputOperator;
             GroupByFieldsList = pGroupByFieldsList;
             InputBuffer = new Queue<RawRecord>();
             OutputBuffer = new Queue<RawRecord>();
@@ -60,14 +60,15 @@ namespace GraphView
             }
 
             // Fills the input buffer by pulling from the input operator
-            while (InputOperatr.State())
+            while (InputOperator.State())
             {
-                if (InputOperatr != null && InputOperatr.State())
+                if (InputOperator != null && InputOperator.State())
                 {
-                    RawRecord result = InputOperatr.Next();
+                    RawRecord result = InputOperator.Next();
                     if (result == null)
                     {
-                        InputOperatr.Close();
+                        InputOperator.Close();
+                        break;
                     }
                     else
                     {
@@ -88,7 +89,7 @@ namespace GraphView
         }
     }
 
-    internal class CountOperator : AggregateOperator
+    internal class CountOperator : AggregateFunction
     {
         internal CountOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList) 
             : base(pInputOperatr, pGroupByFieldsList)
@@ -96,13 +97,13 @@ namespace GraphView
 
         internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
-            var result = new RawRecord(2);
+            var result = new RawRecord(1);
             result.fieldValues[0] = groupedRawRecords.Count.ToString();
             return result;
         }
     }
 
-    internal class FoldOperator : AggregateOperator
+    internal class FoldOperator : AggregateFunction
     {
         internal int FoldedFieldIdx;
 
@@ -114,7 +115,7 @@ namespace GraphView
 
         internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
-            var result = new RawRecord(3);
+            var result = new RawRecord(2);
             var foldedList = new StringBuilder("[");
             var foldedListMetaInfo = new StringBuilder();
 
@@ -139,7 +140,7 @@ namespace GraphView
         }
     }
 
-    internal class DeduplicateOperator : AggregateOperator
+    internal class DeduplicateOperator : AggregateFunction
     {
         internal DeduplicateOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList)
             : base(pInputOperatr, pGroupByFieldsList)
@@ -151,7 +152,7 @@ namespace GraphView
         }
     }
 
-    internal class TreeOperator : AggregateOperator
+    internal class TreeOperator : AggregateFunction
     {
         //TODO: tree().by()
         private class TreeNode
@@ -208,7 +209,7 @@ namespace GraphView
                 ConstructTree(ref root, ref path);
             }
 
-            var result = new RawRecord(2);
+            var result = new RawRecord(1);
             result.fieldValues[0] = root.ToString();
             return result;
         }

@@ -227,52 +227,14 @@ namespace GraphView
 
         internal virtual void Coalesce(GremlinToSqlContext currentContext, List<GremlinToSqlContext> coalesceContextList)
         {
-            bool isSameType = true;
-            for (var i = 1; i < coalesceContextList.Count; i++)
+            GremlinCoalesceVariable newVariable = GremlinCoalesceVariable.Create(coalesceContextList);
+            foreach (var context in coalesceContextList)
             {
-                isSameType = coalesceContextList[i - 1].PivotVariable.GetVariableType() ==
-                             coalesceContextList[i].PivotVariable.GetVariableType();
+                currentContext.SetVariables.AddRange(context.SetVariables);
             }
-            
-            if (isSameType)
-            {
-                switch (coalesceContextList.First().PivotVariable.GetVariableType())
-                {
-                    case GremlinVariableType.Vertex:
-                        GremlinCoalesceVertexVariable vertexVariable = new GremlinCoalesceVertexVariable(coalesceContextList);
-                        currentContext.VariableList.Add(vertexVariable);
-                        currentContext.TableReferences.Add(vertexVariable);
-                        currentContext.PivotVariable = vertexVariable;
-                        break;
-                    case GremlinVariableType.Edge:
-                        GremlinCoalesceEdgeVariable edgeVariable = new GremlinCoalesceEdgeVariable(coalesceContextList);
-                        currentContext.VariableList.Add(edgeVariable);
-                        currentContext.TableReferences.Add(edgeVariable);
-                        currentContext.PivotVariable = edgeVariable;
-                        break;
-                    case GremlinVariableType.Table:
-                        GremlinCoalesceTableVariable tableVariable = new GremlinCoalesceTableVariable(coalesceContextList);
-                        currentContext.VariableList.Add(tableVariable);
-                        currentContext.TableReferences.Add(tableVariable);
-                        currentContext.PivotVariable = tableVariable;
-                        break;
-                    case GremlinVariableType.Scalar:
-                        GremlinCoalesceScalarVariable scalarVariable  = new GremlinCoalesceScalarVariable(coalesceContextList);
-                        currentContext.VariableList.Add(scalarVariable);
-                        currentContext.TableReferences.Add(scalarVariable);
-                        currentContext.PivotVariable = scalarVariable;
-                        break;
-                    default:
-                        break;
-                }
-            }
-            else
-            {
-                GremlinCoalesceTableVariable tabledValue = new GremlinCoalesceTableVariable(coalesceContextList);
-                currentContext.VariableList.Add(tabledValue);
-                currentContext.TableReferences.Add(tabledValue);
-                currentContext.PivotVariable = tabledValue;
-            }
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         internal virtual void Coin(GremlinToSqlContext currentContext, double probability)
@@ -557,6 +519,7 @@ namespace GraphView
             GremlinOptionalVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
+            currentContext.SetVariables.AddRange(optionalContext.SetVariables);
             currentContext.PivotVariable = newVariable;
         }
 
@@ -719,6 +682,7 @@ namespace GraphView
         {
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
             currentContext.VariableList.Add(newVariable);
+            currentContext.SetVariables.AddRange(sideEffectContext.SetVariables);
             currentContext.SetVariables.Add(newVariable);
         }
 
@@ -872,6 +836,7 @@ namespace GraphView
         internal virtual void Where(GremlinToSqlContext currentContext, GremlinToSqlContext whereContext)
         {
             WBooleanExpression wherePredicate = whereContext.ToSqlBoolean();
+            currentContext.SetVariables.AddRange(whereContext.SetVariables);
             currentContext.AddPredicate(wherePredicate);
         }
 

@@ -197,11 +197,18 @@ namespace GraphView
             var nodeAlias = node.NodeAlias;
             var selectStrBuilder = new StringBuilder();
             var joinStrBuilder = new StringBuilder();
+            var properties = new List<string>(node.Properties);
             WBooleanExpression searchCondition = null;
 
             selectStrBuilder.Append(nodeAlias).Append('.').Append(node.Properties[0]);
             for (var i = 1; i < node.Properties.Count; i++)
-                selectStrBuilder.Append(", ").Append(nodeAlias).Append('.').Append(node.Properties[i]);
+            {
+                var selectName = nodeAlias;
+                if (!"*".Equals(node.Properties[i], StringComparison.OrdinalIgnoreCase))
+                    selectName += "." + node.Properties[i];
+                selectStrBuilder.Append(", ").Append(selectName);
+            }
+                
 
             if (reverseEdges == null)
                 reverseEdges = new List<MatchEdge>();
@@ -217,12 +224,23 @@ namespace GraphView
                     .Append(node.NodeAlias)
                     .Append(edge.IsReversed ? "._reverse_edge " : "_edge ");
 
-                selectStrBuilder.Append(", {");
-                selectStrBuilder.Append(string.Format("\"{0}\": {1}.{0}", edge.Properties[0], edge.EdgeAlias));
-                for (var i = 1; i < edge.Properties.Count; i++)
-                    selectStrBuilder.Append(", ")
-                        .Append(string.Format("\"{0}\": {1}.{0}", edge.Properties[i], edge.EdgeAlias));
-                selectStrBuilder.Append(string.Format("}} AS {0}_Object", edge.EdgeAlias));
+                foreach (var property in edge.Properties)
+                {
+                    var selectName = edge.EdgeAlias;
+                    var selectAlias = edge.EdgeAlias;
+                    if ("*".Equals(property, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectAlias += "_" + selectName;
+                    }
+                    else
+                    {
+                        selectName += "." + property;
+                        selectAlias += "_" + property;
+                    }
+                        
+                    selectStrBuilder.Append(", ").Append(string.Format("{0} AS {1}", selectName, selectAlias));
+                    properties.Add(selectAlias);
+                }   
 
                 foreach (var predicate in edge.Predicates)
                     searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
@@ -234,6 +252,7 @@ namespace GraphView
                 JoinClause = joinStrBuilder.ToString(),
                 SelectClause = selectStrBuilder.ToString(),
                 WhereSearchCondition = searchCondition != null ? searchCondition.ToString() : null,
+                Properties = properties,
                 // TODO: ProjectedColumns
                 //ProjectedColumns = 
             };
@@ -1120,7 +1139,7 @@ namespace GraphView
                     // The first node in a component
                     if (!processedNodes.Contains(sourceNode))
                     {
-                        var fetchNodeOp = new FetchNodeOperator2(connection, sourceNode.AttachedJsonQuery, sourceNode.Properties);
+                        var fetchNodeOp = new FetchNodeOperator2(connection, sourceNode.AttachedJsonQuery);
 
                         // The graph contains more than one component
                         if (!operatorChain.Any())
@@ -1161,8 +1180,7 @@ namespace GraphView
                                 operatorChain.Last(),
                                 currentEdgeIndex,
                                 traversalEdge.RetrievePredicatesExpression().CompileToFunction(localContext, connection), 
-                                traversalEdge.Properties,
-                                traversalEdge.EdgeAlias));
+                                traversalEdge.Properties));
 
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
@@ -1187,8 +1205,7 @@ namespace GraphView
                             }
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
-                                currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, 
-                                matchingIndexes, reverseEdges, sinkNode.Properties));
+                                currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
 
                             processedNodes.Add(sinkNode);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);
@@ -1208,8 +1225,7 @@ namespace GraphView
                                     operatorChain.Last(),
                                     remainingEdgeIndex,
                                     remainingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
-                                    remainingEdge.Properties,
-                                    remainingEdge.EdgeAlias));
+                                    remainingEdge.Properties));
 
                                 tableReferences.Add(remainingEdge.EdgeAlias, TableGraphType.Edge);
                                 UpdateRawRecordLayout(remainingEdge.EdgeAlias, remainingEdge.Properties, rawRecordLayout);
@@ -1290,40 +1306,69 @@ namespace GraphView
                     }
                 }
 
-                // TODO: Project Operator
+                // TODO: Will Project Operator change the context's layout?
+                // TODO: Handle the condition where aggregateFunction and scalarExpression show up together
+                var projectOperator = new ProjectOperator(operatorChain.Last());
                 foreach (var x in SelectElements)
                 {
-                    var expr = (x as WSelectScalarExpression).SelectExpr;
+                    var scalarExpr = x as WSelectScalarExpression;
+                    var expr = scalarExpr.SelectExpr;
+                    var alias = scalarExpr.ColumnName;
+
+                    // AggregateFunction will be compiled into an independent operator first
                     if (expr is WFunctionCall)
                     {
                         var functionCall = expr as WFunctionCall;
                         var functionName = functionCall.FunctionName.ToString();
+                        ScalarFunction scalarFunction;
+                        WScalarExpression scalarExpression;
+                        QueryCompilationContext newContext;
                         GraphViewNativeAggregateFunctionsEnum functionEnum;
                         if (!Enum.TryParse(functionName, true, out functionEnum))
                             throw new GraphViewException("Aggregate function '" + functionName + "' hasn't been supported.");
                         switch (functionEnum)
                         {
                             case GraphViewNativeAggregateFunctionsEnum.Count:
+                                newContext = new QueryCompilationContext();
+                                newContext.AddField("", alias, ColumnGraphType.Value);
+                                scalarExpression = new WColumnReferenceExpression("", alias);
+                                scalarFunction = scalarExpression.CompileToFunction(newContext, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new CountOperator
                                 break;
                             case GraphViewNativeAggregateFunctionsEnum.Deduplicate:
+                                scalarFunction = functionCall.Parameters[0].CompileToFunction(context, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new Deduplicate Operator
                                 break;
                             case GraphViewNativeAggregateFunctionsEnum.Fold:
+                                newContext = new QueryCompilationContext();
+                                newContext.AddField("", alias, ColumnGraphType.Value);
+                                scalarExpression = new WColumnReferenceExpression("", alias);
+                                scalarFunction = scalarExpression.CompileToFunction(newContext, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new Fold Operator
                                 break;
                             case GraphViewNativeAggregateFunctionsEnum.Tree:
+                                newContext = new QueryCompilationContext();
+                                newContext.AddField("", alias, ColumnGraphType.Value);
+                                scalarExpression = new WColumnReferenceExpression("", alias);
+                                scalarFunction = scalarExpression.CompileToFunction(newContext, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new Tree Operator
                                 break;
                         }
                     }
-                    else if (expr is WScalarSubquery)
+                    else if (expr is WScalarSubquery || expr is WColumnReferenceExpression)
                     {
-                        
-                    }
-                    else if (expr is WColumnReferenceExpression)
-                    {
-                        
+                        var scalarFunction = expr.CompileToFunction(context, connection);
+                        projectOperator.AddSelectScalarElement(scalarFunction, alias);
                     }
                 }
+                operatorChain.Add(projectOperator);
 
                 // TODO: new OrderByOp
+                // TODO: Embed it in the project operator?
                 if (OrderByClause != null && OrderByClause.OrderByElements != null)
                 {
                     //var orderByElements = new List<Tuple<string, SortOrder>>();
