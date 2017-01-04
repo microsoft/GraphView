@@ -15,6 +15,11 @@ namespace GraphView
             return "R_" + _count++;
         }
 
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Table;
+        }
+
         public virtual WTableReference ToTableReference()
         {
             throw new NotImplementedException();
@@ -32,6 +37,12 @@ namespace GraphView
             {
                 UsedProperties.Add(property);
             }
+        }
+
+        internal override void Range(GremlinToSqlContext currentContext, long low, long high)
+        {
+            Low = low;
+            High = high;
         }
     }
 }

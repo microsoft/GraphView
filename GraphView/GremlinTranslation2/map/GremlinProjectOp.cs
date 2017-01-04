@@ -6,42 +6,22 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinProjectOp: GremlinTranslationOperator, IGremlinByModulating
+    internal class GremlinProjectOp: GremlinTranslationOperator
     {
         public List<string> ProjectKeys { get; set; }
-        public List<GraphTraversal2> TraversalList { get; set; }
 
         public GremlinProjectOp(params string[] projectKeys)
         {
-            TraversalList = new List<GraphTraversal2>();
-            ProjectKeys = new List<string>();
-            foreach (var projectKey in projectKeys)
-            {
-                ProjectKeys.Add(projectKey);
-            }
+            ProjectKeys = new List<string>(projectKeys);
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.Project(inputContext, ProjectKeys);
+
             return inputContext;
-        }
-        public void ModulateBy()
-        {
-
-        }
-        public void ModulateBy(GraphTraversal2 traversal)
-        {
-            TraversalList.Add(traversal);
-        }
-
-        public void ModulateBy(string key)
-        {
-        }
-
-        public void ModulateBy(GremlinKeyword.Order order)
-        {
         }
     }
 }

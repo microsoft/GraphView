@@ -339,13 +339,14 @@ namespace GraphView
             }
         }
 
-        internal static WSchemaObjectFunctionTableReference GetSchemaObjectFunctionTableReference(string functionName,
-            List<WScalarExpression> parameterList)
+        internal static WSchemaObjectFunctionTableReference GetFunctionTableReference(string functionName,
+            List<WScalarExpression> parameterList, string alias = null)
         {
             return new WSchemaObjectFunctionTableReference()
             {
                 SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
-                Parameters = parameterList
+                Parameters = parameterList,
+                Alias = GetIdentifier(alias)
             };
         }
 

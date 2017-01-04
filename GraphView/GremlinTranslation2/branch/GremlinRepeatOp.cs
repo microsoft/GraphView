@@ -22,6 +22,7 @@ namespace GraphView
 
         public GremlinRepeatOp()
         {
+            RepeatCondition = new RepeatCondition();
         }
 
         public override GremlinToSqlContext GetContext()
@@ -36,13 +37,14 @@ namespace GraphView
             {
                 throw new NotImplementedException();
             }
-            else
+
+            if (ConditionTraversal != null)
             {
                 GremlinUtil.InheritedVariableFromParent(ConditionTraversal, repeatContext);
                 conditionContext = ConditionTraversal.GetEndOp().GetContext();
-
-                inputContext.PivotVariable.Repeat(inputContext, repeatContext, conditionContext, RepeatCondition);
             }
+
+            inputContext.PivotVariable.Repeat(inputContext, repeatContext, conditionContext, RepeatCondition);
 
             return inputContext;
         }

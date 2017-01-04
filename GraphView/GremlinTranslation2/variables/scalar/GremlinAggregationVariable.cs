@@ -44,6 +44,11 @@ namespace GraphView
         }
     }
 
+    internal class GremlinTreeVariable : GremlinScalarVariable
+    {
+        
+    }
+
     internal class GremlinUnfoldVariable : GremlinTableVariable, ISqlTable
     {
         protected static int _count = 0;
@@ -58,4 +63,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
     }
+
+    
 }
