@@ -30,7 +30,7 @@ namespace GraphView
             rows = values;
         }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
@@ -51,7 +51,7 @@ namespace GraphView
             }
         }
 
-        public GremlinScalarVariable DefaultProjection()
+        internal override  GremlinScalarVariable DefaultProjection()
         {
             // When priorContext is not null, the output table has one column,
             // and the column name is determined by priorContext.

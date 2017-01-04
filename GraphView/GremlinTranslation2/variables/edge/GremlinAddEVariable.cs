@@ -107,26 +107,22 @@ namespace GraphView
 
         internal override void From(GremlinToSqlContext currentContext, string label)
         {
-            throw new NotImplementedException();
+            //FromVariable = currentContext.SelectVariable(label);
         }
 
-        internal override void From(GremlinToSqlContext currentContext, GraphTraversal2 fromVertexTraversal)
+        internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
-            GremlinUtil.InheritedContextFromParent(fromVertexTraversal, currentContext);
-
-            var context = fromVertexTraversal.GetEndOp().GetContext();
-
             GremlinVariableReference newVariableReference;
             var index = currentContext.SetVariables.FindIndex(p => p == this);
 
-            if (context.PivotVariable is GremlinAddVVariable)
+            if (fromVertexContext.PivotVariable is GremlinAddVVariable)
             {
-                FromVariable = context.PivotVariable as GremlinAddVVariable;
-                currentContext.SetVariables.InsertRange(index, context.SetVariables);
+                FromVariable = fromVertexContext.PivotVariable as GremlinAddVVariable;
+                currentContext.SetVariables.InsertRange(index, fromVertexContext.SetVariables);
             }
             else
             {
-                newVariableReference = new GremlinVariableReference(context);
+                newVariableReference = new GremlinVariableReference(fromVertexContext);
                 currentContext.VariableList.Add(newVariableReference);
                 currentContext.SetVariables.Insert(index, newVariableReference);
                 FromVariable = newVariableReference;
@@ -151,21 +147,18 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal override void To(GremlinToSqlContext currentContext, GraphTraversal2 toVertexTraversal)
+        internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
-            GremlinUtil.InheritedContextFromParent(toVertexTraversal, currentContext);
-
-            var context = toVertexTraversal.GetEndOp().GetContext();
             var index = currentContext.SetVariables.FindIndex(p => p == this);
 
-            if (context.PivotVariable is GremlinAddVVariable)
+            if (toVertexContext.PivotVariable is GremlinAddVVariable)
             {
-                ToVariable = context.PivotVariable as GremlinAddVVariable;
-                currentContext.SetVariables.InsertRange(index, context.SetVariables);
+                ToVariable = toVertexContext.PivotVariable as GremlinAddVVariable;
+                currentContext.SetVariables.InsertRange(index, toVertexContext.SetVariables);
             }
             else
             {
-                GremlinVariableReference newVariableReference = new GremlinVariableReference(context);
+                GremlinVariableReference newVariableReference = new GremlinVariableReference(toVertexContext);
                 currentContext.VariableList.Add(newVariableReference);
                 currentContext.SetVariables.Insert(index, newVariableReference);
                 ToVariable = newVariableReference;

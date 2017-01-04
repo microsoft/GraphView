@@ -161,9 +161,10 @@
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarSubquery.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinVariableProperty.cs" />
-    <Compile Include="GremlinTranslation2\variables\special\GremlinAggregationVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\scalar\GremlinAggregationVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinCoalesceTableVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\special\GremlinConstantVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\GremlinConstantVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinFlatMapVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinGroupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinOptionalVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinRepeatVariable.cs" />

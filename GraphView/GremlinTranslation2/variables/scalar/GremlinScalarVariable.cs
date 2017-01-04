@@ -8,6 +8,11 @@ namespace GraphView
 {
     internal abstract class GremlinScalarVariable : GremlinVariable2, ISqlScalar
     {
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Scalar;
+        }
+
         internal override GremlinScalarVariable DefaultProjection()
         {
             return this;

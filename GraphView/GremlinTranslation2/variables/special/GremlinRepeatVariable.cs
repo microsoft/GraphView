@@ -8,28 +8,24 @@ namespace GraphView
 {
     internal class GremlinRepeatVariable : GremlinTableVariable
     {
-        private GremlinVariable2 inputVariable;
-        private GremlinToSqlContext context;
-
+        public GremlinVariable2 InputVariable { get; set; }
+        public GremlinToSqlContext RepeatContext { get; set; }
         public GremlinToSqlContext ConditionContext { get; set; }
-        public bool IsEmitTrue { get; set; }
-        public bool IsEmitBefore { get; set; }
-        public bool IsEmitAfter { get; set; }
-        public bool IsUntilBefore { get; set; }
-        public bool IsUntilAfter { get; set; }
-        public bool IsTimes { get; set; }
-        public long Times { get; set; }
+        public RepeatCondition RepeatCondition { get; set; }
 
-        public GremlinRepeatVariable(GremlinVariable2 inputVariable, GremlinToSqlContext context)
+        public GremlinRepeatVariable(GremlinVariable2 inputVariable, GremlinToSqlContext repeatContext,
+                                       GremlinToSqlContext conditionContext, RepeatCondition repeatCondition)
         {
             VariableName = GenerateTableAlias();
-            this.context = context;
-            this.inputVariable = inputVariable;
+            RepeatContext = repeatContext;
+            InputVariable = inputVariable;
+            RepeatCondition = repeatCondition;
+            ConditionContext = conditionContext;
         }
 
         internal override void Populate(string property)
         {
-            context.Populate(property);
+            RepeatContext.Populate(property);
             base.Populate(property);
         }
 
@@ -37,20 +33,20 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
 
-            foreach (var property in inputVariable.UsedProperties)
+            foreach (var property in InputVariable.UsedProperties)
             {
                 Populate(property);
             }
 
             List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
-            foreach (var variable in context.VariableList)
+            foreach (var variable in RepeatContext.VariableList)
             {
                 if (variable is GremlinContextEdgeVariable)
                 {
                     var temp = (variable as GremlinContextEdgeVariable);
                     if (temp.IsFromSelect)
                     {
-                        var selectVar = context.SelectVariable(temp.Pop, temp.SelectKey);
+                        var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
                         if (selectVar != temp.ContextVariable)
                         {
                             foreach (var property in temp.ContextVariable.UsedProperties)
@@ -71,7 +67,7 @@ namespace GraphView
                     var temp = (variable as GremlinContextVertexVariable);
                     if (temp.IsFromSelect)
                     {
-                        var selectVar = context.SelectVariable(temp.Pop, temp.SelectKey);
+                        var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
                         if (selectVar != temp.ContextVariable)
                         {
                             foreach (var property in temp.ContextVariable.UsedProperties)
@@ -88,17 +84,17 @@ namespace GraphView
                 }
             }
 
-            WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
+            WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
             selectQueryBlock.SelectElements.Clear();
 
-            if (context.PivotVariable.DefaultProjection() is GremlinVariableProperty)
+            if (RepeatContext.PivotVariable.DefaultProjection() is GremlinVariableProperty)
             {
-                var temp = context.PivotVariable.DefaultProjection() as GremlinVariableProperty;
+                var temp = RepeatContext.PivotVariable.DefaultProjection() as GremlinVariableProperty;
                 selectQueryBlock.SelectElements.Add(new WSelectScalarExpression()
                 {
-                    ColumnName = inputVariable.VariableName + "." + temp.VariableProperty,
+                    ColumnName = InputVariable.VariableName + "." + temp.VariableProperty,
                     SelectExpr =
-                        GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, temp.VariableProperty)
+                        GremlinUtil.GetColumnReferenceExpression(RepeatContext.PivotVariable.VariableName, temp.VariableProperty)
                 });
             }
             else
@@ -111,8 +107,8 @@ namespace GraphView
             {
                 selectQueryBlock.SelectElements.Add(new WSelectScalarExpression()
                 {
-                    ColumnName = inputVariable.VariableName + "." + projectProperty,
-                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(context.PivotVariable.VariableName, projectProperty)
+                    ColumnName = InputVariable.VariableName + "." + projectProperty,
+                    SelectExpr = GremlinUtil.GetColumnReferenceExpression(RepeatContext.PivotVariable.VariableName, projectProperty)
                 });
             }
 
@@ -142,13 +138,13 @@ namespace GraphView
             return new WRepeatConditionExpression()
             {
                 ConditionBooleanExpression = ConditionContext.ToSqlBoolean(),
-                IsEmitTrue = IsEmitTrue,
-                IsEmitAfter = IsEmitAfter,
-                IsEmitBefore = IsEmitBefore,
-                IsUntilAfter = IsUntilAfter,
-                IsUntilBefore = IsUntilBefore,
-                IsTimes = IsTimes,
-                Times = Times
+                IsEmitTrue = RepeatCondition.IsEmitTrue,
+                IsEmitAfter = RepeatCondition.IsEmitAfter,
+                IsEmitBefore = RepeatCondition.IsEmitBefore,
+                IsUntilAfter = RepeatCondition.IsUntilAfter,
+                IsUntilBefore = RepeatCondition.IsUntilBefore,
+                IsTimes = RepeatCondition.IsTimes,
+                Times = RepeatCondition.Times
             };
         }
     }

@@ -43,7 +43,7 @@ namespace GraphView
     {
         public GremlinOptionalVertexVariable(GremlinToSqlContext context): base(context) {}
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Vertex;
         }
@@ -53,7 +53,7 @@ namespace GraphView
     {
         public GremlinOptionalEdgeVariable(GremlinToSqlContext context) : base(context) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
         }
@@ -63,7 +63,7 @@ namespace GraphView
     {
         public GremlinOptionalTableVariable(GremlinToSqlContext context) : base(context) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
         }
@@ -73,7 +73,7 @@ namespace GraphView
     {
         public GremlinOptionalValueVariable(GremlinToSqlContext context) : base(context) { }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Scalar;
         }

@@ -70,7 +70,7 @@ namespace GraphView
             PivotVariable.Populate(propertyName);
         }
 
-        internal GremlinVariable2 SelectVariable(GremlinKeyword.Pop pop, string selectKey)
+        internal GremlinVariable2 SelectVariable(string selectKey, GremlinKeyword.Pop pop = GremlinKeyword.Pop.Default)
         {
             if (!TaggedVariables.ContainsKey(selectKey))
             {
@@ -83,7 +83,7 @@ namespace GraphView
                 case GremlinKeyword.Pop.last:
                     return TaggedVariables[selectKey].Last().Item1;
                 default:
-                    throw new NotImplementedException();
+                    return TaggedVariables[selectKey].Last().Item1;
             }
         }
 

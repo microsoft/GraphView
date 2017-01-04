@@ -11,6 +11,7 @@ namespace GraphView
         public static string Label = "label";
         public enum Pop
         {
+            Default,
             first,
             last
         }

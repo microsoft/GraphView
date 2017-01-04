@@ -14,7 +14,7 @@ namespace GraphView
             return "N_" + _count++;
         }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Vertex;
         }

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation2.variables.special
+namespace GraphView
 {
     internal class GremlinSideEffectVariable: GremlinVariable2, ISqlStatement
     {

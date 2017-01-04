@@ -40,7 +40,7 @@ namespace GraphView
             Populate("BothAdjacencyList");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjacencyList, WEdgeType.BothEdge);
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList, WEdgeType.BothEdge);
             bothEdge.Populate("_sink");
             currentContext.VariableList.Add(bothEdge);
 
@@ -51,15 +51,67 @@ namespace GraphView
             currentContext.TableReferences.Add(bothVertex);
 
             //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(bothEdge.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
-                bothEdge.Populate("label");
-            }
+            AddLabelPredicateToEdge(currentContext, bothEdge, edgeLabels);
 
             currentContext.PivotVariable = bothVertex;
+        }
+
+        internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            Populate("_edge");
+
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
+            GremlinEdgeVariable2 inEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            inEdge.Populate("_sink");
+            currentContext.VariableList.Add(inEdge);
+
+            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(inEdge, "_sink"));
+            currentContext.VariableList.Add(outVertex);
+
+            currentContext.TableReferences.Add(inEdge);
+            currentContext.TableReferences.Add(outVertex);
+
+            //add Predicate to edge
+            AddLabelPredicateToEdge(currentContext, inEdge, edgeLabels);
+
+            currentContext.PivotVariable = outVertex;
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            Populate("_reverse_edge");
+
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_reverse_edge");
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            currentContext.VariableList.Add(outEdge);
+
+            currentContext.TableReferences.Add(outEdge);
+
+            //add Predicate to edge
+            AddLabelPredicateToEdge(currentContext, outEdge, edgeLabels);
+
+            currentContext.PivotVariable = outEdge;
+        }
+
+        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            Populate("_edge");
+
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
+            GremlinEdgeVariable2 outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            outEdge.Populate("_sink");
+            currentContext.VariableList.Add(outEdge);
+
+            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(outEdge, "_sink"));
+            currentContext.VariableList.Add(outVertex);
+
+            currentContext.TableReferences.Add(outEdge);
+            currentContext.TableReferences.Add(outVertex);
+
+            //add Predicate to edge
+            AddLabelPredicateToEdge(currentContext, outEdge, edgeLabels);
+
+            currentContext.PivotVariable = outVertex;
         }
 
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -67,19 +119,13 @@ namespace GraphView
             Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(adjacencyList);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             currentContext.VariableList.Add(outEdge);
 
             currentContext.TableReferences.Add(outEdge);
 
             //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(outEdge.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
-                outEdge.Populate("label");
-            }
+            AddLabelPredicateToEdge(currentContext, outEdge, edgeLabels);
 
             currentContext.PivotVariable = outEdge;
         }

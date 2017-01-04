@@ -18,7 +18,11 @@ namespace GraphView
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            GremlinUtil.InheritedVariableFromParent(FlatMapTraversal, inputContext);
+            GremlinToSqlContext flatMapContext = FlatMapTraversal.GetEndOp().GetContext();
+            inputContext.PivotVariable.FlatMap(inputContext, flatMapContext);
+
             return inputContext;
         }
     }

@@ -17,7 +17,6 @@ namespace GraphView
         public GremlinContextVariable(GremlinVariable2 contextVariable)
         {
             ContextVariable = contextVariable;
-            VariableName = contextVariable.VariableName;
         }
 
         internal override GremlinScalarVariable DefaultProjection()

@@ -34,14 +34,15 @@ namespace GraphView
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
+        public GremlinBoundEdgeVariable(GremlinVariable2 sourceVariable, GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
         {
+            SourceVariable = sourceVariable;
             VariableName = GenerateTableAlias();
             this.adjacencyList = adjacencyList;
             EdgeType = edgeType;
         }
 
-        public override GremlinVariableType GetVariableType()
+        internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
         }
@@ -77,6 +78,29 @@ namespace GraphView
             }
 
             currentContext.PivotVariable = outVertex;
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            var path = currentContext.Paths.Find(p => p.EdgeVariable == this);
+
+            if (path == null)
+            {
+                throw new QueryCompilationException("Can't find a path");
+            }
+
+            if (path.SourceVariable == SourceVariable)
+            {
+                InV(currentContext);
+            }
+            else if (path.SinkVariable == SourceVariable)
+            {
+                OutV(currentContext);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
