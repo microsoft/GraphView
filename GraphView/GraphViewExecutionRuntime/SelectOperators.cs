@@ -671,4 +671,89 @@ namespace GraphView
             }
         }
     }
+
+    internal class RepeatOperator : GraphViewExecutionOperator
+    {
+        // Number of times the inner operator repeats itself.
+        // If this number is less than 0, the termination condition 
+        // is specified by a boolean function. 
+        private int repeatTimes;
+
+        private GraphViewExecutionOperator inputOp;
+        // A list record fields (identified by field indexes) from the input 
+        // operator that are fed as the initial input into the inner operator.
+        private List<int> inputFieldIndexes;
+
+        private GraphViewExecutionOperator innerOp;
+        private ConstantSourceOperator innerContextOp;
+
+        Queue<RawRecord> repeatResultBuffer;
+        RawRecord currentRecord;
+
+        public RepeatOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputFieldIndexes,
+            GraphViewExecutionOperator innerOp,
+            ConstantSourceOperator innerContext,
+            int repeatTimes)
+        {
+            this.inputOp = inputOp;
+            this.inputFieldIndexes = inputFieldIndexes;
+            this.innerOp = innerOp;
+            this.innerContextOp = innerContext;
+            this.repeatTimes = repeatTimes;
+
+            repeatResultBuffer = new Queue<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            if (repeatResultBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord repeatRecord = repeatResultBuffer.Dequeue();
+                r.Append(repeatRecord);
+
+                return r;
+            }
+
+            currentRecord = inputOp.Next();
+            if (currentRecord == null)
+            {
+                Close();
+                return null;
+            }
+
+            RawRecord initialRec = new RawRecord();
+            foreach (int fieldIndex in inputFieldIndexes)
+            {
+                initialRec.Append(currentRecord[fieldIndex]);
+            }
+
+            if (repeatTimes > 0)
+            {
+                Queue<RawRecord> priorStates = new Queue<RawRecord>();
+                Queue<RawRecord> newStates = new Queue<RawRecord>();
+
+                priorStates.Add(initialRec);
+                for (int i = 0; i < repeatTimes; i++)
+                {
+                    while (priorStates.Count > 0)
+                    {
+                        RawRecord priorRec = priorStates.Dequeue();
+                        innerContextOp.ConstantSource = priorRec;
+                        RawRecord newRec = null;
+                        while ((newRec = innerOp.Next()) != null)
+                        {
+                            newStates.EnqueuenewRec);
+                        }
+                    }
+
+                }
+
+            }
+
+            throw new NotImplementedException();
+        }
+    }
 }
