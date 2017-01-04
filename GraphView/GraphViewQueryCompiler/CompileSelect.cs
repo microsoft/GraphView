@@ -202,7 +202,13 @@ namespace GraphView
 
             selectStrBuilder.Append(nodeAlias).Append('.').Append(node.Properties[0]);
             for (var i = 1; i < node.Properties.Count; i++)
-                selectStrBuilder.Append(", ").Append(nodeAlias).Append('.').Append(node.Properties[i]);
+            {
+                var selectName = nodeAlias;
+                if (!"*".Equals(node.Properties[i], StringComparison.OrdinalIgnoreCase))
+                    selectName += "." + node.Properties[i];
+                selectStrBuilder.Append(", ").Append(selectName);
+            }
+                
 
             if (reverseEdges == null)
                 reverseEdges = new List<MatchEdge>();
@@ -220,8 +226,20 @@ namespace GraphView
 
                 foreach (var property in edge.Properties)
                 {
-                    selectStrBuilder.Append(", ").Append(string.Format("{0}.{1} AS {0}_{1}", edge.EdgeAlias, property));
-                    properties.Add(property);
+                    var selectName = edge.EdgeAlias;
+                    var selectAlias = edge.EdgeAlias;
+                    if ("*".Equals(property, StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectAlias += "_" + selectName;
+                    }
+                    else
+                    {
+                        selectName += "." + property;
+                        selectAlias += "_" + property;
+                    }
+                        
+                    selectStrBuilder.Append(", ").Append(string.Format("{0} AS {1}", selectName, selectAlias));
+                    properties.Add(selectAlias);
                 }   
 
                 foreach (var predicate in edge.Predicates)

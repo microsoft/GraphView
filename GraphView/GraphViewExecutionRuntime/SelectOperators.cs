@@ -348,24 +348,20 @@ namespace GraphView
         private int adjacencyListIndex;
         private BooleanFunction edgePredicate;
         private List<string> projectedFields;
-        private string edgeTableAlias;
 
         public AdjacencyListDecoder(GraphViewExecutionOperator input, int adjacencyListIndex,
-            BooleanFunction edgePredicate, List<string> projectedFields, string edgeTableAlias, int outputBufferSize = 1000)
+            BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
             : base(input, outputBufferSize)
         {
             this.adjacencyListIndex = adjacencyListIndex;
             this.edgePredicate = edgePredicate;
             this.projectedFields = projectedFields;
-            this.edgeTableAlias = edgeTableAlias;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             string jsonArray = record[adjacencyListIndex];
             List<RawRecord> results = new List<RawRecord>();
-            // The first column is for '_sink' by default
-            projectedFields.Insert(0, "_sink");
 
             // Parse the adj list in JSON array
             var adj = JArray.Parse(jsonArray);
@@ -375,10 +371,12 @@ namespace GraphView
                 var result = new RawRecord(projectedFields.Count);
 
                 // Fill the field of selected edge's properties
-                // TODO: support wildcard *
                 for (var i = 0; i < projectedFields.Count; i++)
                 {
-                    var fieldValue = edge[projectedFields[i]];
+                    var projectedField = projectedFields[i];
+                    var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
+                        ? edge
+                        : edge[projectedField];
                     if (fieldValue != null)
                         result.fieldValues[i] = fieldValue.ToString();
                 }
