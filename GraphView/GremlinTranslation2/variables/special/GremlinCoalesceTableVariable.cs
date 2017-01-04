@@ -10,6 +10,32 @@ namespace GraphView
     {
         public List<GremlinToSqlContext> CoalesceContextList;
 
+        public static GremlinCoalesceVariable Create(List<GremlinToSqlContext> coalesceContextList)
+        {
+            bool isSameType = true;
+            for (var i = 1; i < coalesceContextList.Count; i++)
+            {
+                isSameType = coalesceContextList[i - 1].PivotVariable.GetVariableType() ==
+                             coalesceContextList[i].PivotVariable.GetVariableType();
+            }
+
+            if (isSameType)
+            {
+                switch (coalesceContextList.First().PivotVariable.GetVariableType())
+                {
+                    case GremlinVariableType.Vertex:
+                        return new GremlinCoalesceVertexVariable(coalesceContextList);
+                    case GremlinVariableType.Edge:
+                        return new GremlinCoalesceEdgeVariable(coalesceContextList);
+                    case GremlinVariableType.Table:
+                        return new GremlinCoalesceTableVariable(coalesceContextList);
+                    case GremlinVariableType.Scalar:
+                        return new GremlinCoalesceScalarVariable(coalesceContextList);
+                }
+            }
+            return new GremlinCoalesceTableVariable(coalesceContextList);
+        }
+
         public GremlinCoalesceVariable(List<GremlinToSqlContext> coalesceContextList)
         {
             CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);

@@ -921,6 +921,8 @@ namespace GraphView
                             FirstTokenIndex = qs.FirstTokenIndex,
                             LastTokenIndex = qs.LastTokenIndex,
                             SelectElements = new List<WSelectElement>(qs.SelectElements.Count),
+                            FromClause = new WFromClause(),
+                            WhereClause = new WWhereClause()
                         };
 
                         //

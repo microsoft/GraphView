@@ -24,6 +24,7 @@ namespace GraphView
         {
             GremlinUtil.InheritedVariableFromParent(byTraversal, SubqeryContext);
             GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
+            currentContext.SetVariables.AddRange(byContext.SetVariables);
             ProjectContextList.Add(byContext);
         }
 

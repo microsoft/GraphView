@@ -32,40 +32,6 @@ namespace GremlinTranslationOperator.Tests
         {
             //GraphTraversal2.g().addV("test").property("name", "jinjin").addE("edge").to(GraphTraversal2.g().addV("test2").property("age", "22")).property("label", "123").next();
 
-            GraphTraversal2.g().V().As("@v")
-                .flatMap(GraphTraversal2.__().Out("mdl").outE("ref"))
-                .repeat(GraphTraversal2.__().As("@e")
-                    .flatMap(GraphTraversal2.__().inV()
-                        .As("mdl")
-                        .select(GremlinKeyword.Pop.last, "@v")
-                        .both()
-                        .where(GraphTraversal2.__().Out("mdl")
-                            .where(Predicate.eq("mdl"))))
-                    .As("@v")
-                    .optional(GraphTraversal2.__().flatMap(
-                        GraphTraversal2.__().select(GremlinKeyword.Pop.last, "@e")
-                            .values("_ref")
-                            .As("key")
-                            .select(GremlinKeyword.Pop.last, "@v")
-                            .Out("mdl")
-                            .outE("ref")
-                            .where(GraphTraversal2.__().values("_key")
-                                .where(Predicate.eq("key")))))
-                   )
-                .until(GraphTraversal2.__().flatMap(
-                    GraphTraversal2.__().As("res").select(GremlinKeyword.Pop.last, "@v").where(Predicate.eq("res"))))
-                .union(GraphTraversal2.__().dedup()
-                        .emit()
-                        .repeat(GraphTraversal2.__().outE("_val").As("_").inV())
-                        .tree(),
-                    GraphTraversal2.__().project("id", "key", "ref")
-                        .by(GraphTraversal2.__().id())
-                        .by(GraphTraversal2.__().select(GremlinKeyword.Pop.first, "@e").values("_key"))
-                        .by(GraphTraversal2.__().select(GremlinKeyword.Pop.last, "@e").values("_ref"))
-                        .fold())
-                .fold().next();
-
-
             GraphTraversal2.g().V()
                 .project("vertex", "parents", "references", "model")
                 .by(GraphTraversal2.__().emit().repeat(GraphTraversal2.__().outE("_val").As("_").inV()).tree())
