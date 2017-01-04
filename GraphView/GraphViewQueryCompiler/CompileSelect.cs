@@ -1180,8 +1180,7 @@ namespace GraphView
                                 operatorChain.Last(),
                                 currentEdgeIndex,
                                 traversalEdge.RetrievePredicatesExpression().CompileToFunction(localContext, connection), 
-                                traversalEdge.Properties,
-                                traversalEdge.EdgeAlias));
+                                traversalEdge.Properties));
 
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
@@ -1226,8 +1225,7 @@ namespace GraphView
                                     operatorChain.Last(),
                                     remainingEdgeIndex,
                                     remainingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
-                                    remainingEdge.Properties,
-                                    remainingEdge.EdgeAlias));
+                                    remainingEdge.Properties));
 
                                 tableReferences.Add(remainingEdge.EdgeAlias, TableGraphType.Edge);
                                 UpdateRawRecordLayout(remainingEdge.EdgeAlias, remainingEdge.Properties, rawRecordLayout);
