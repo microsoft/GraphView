@@ -37,14 +37,7 @@ namespace GraphView
                 // retrieving all the vertices satisfying the query.
                 using (DbPortal databasePortal = connection.CreateDatabasePortal())
                 {
-                    //foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
-                    //{
-                    //    outputBuffer.Enqueue(rec);
-                    //}
-
-                    var rawVertices = databasePortal.GetRawVertices(vertexQuery);
-                    var decoder = new DocDbDecoder2();
-                    foreach (var rec in decoder.GetVertices(rawVertices, nodeProperties))
+                    foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
                     {
                         outputBuffer.Enqueue(rec);
                     }
@@ -94,10 +87,6 @@ namespace GraphView
         // The index of the adjacency list in the record from which the traversal starts
         private int adjacencyListSinkIndex = -1;
 
-        // The table-valued scalar function that given a record of a source vertex,
-        // returns the references of the sink vertices
-        private TableValuedScalarFunction crossApplySinkReference; 
-
         // The query that describes predicates on the sink vertices and its properties to return.
         // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
         // are to be returned.  
@@ -109,20 +98,12 @@ namespace GraphView
         // to the vertices other than the source vertices in the records by the input operator. 
         private List<Tuple<int, int>> matchingIndexes;
 
-        // List of edges whose predicates are evaluated by server
-        // and will be filtered by matchingIndexes
-        private List<MatchEdge> reverseEdges;
-
-        private List<string> nodeProperties; 
-
         public TraversalOperator2(
             GraphViewExecutionOperator inputOp,
             GraphViewConnection connection,
             int sinkIndex,
             JsonQuery sinkVertexQuery,
             List<Tuple<int, int>> matchingIndexes,
-            List<MatchEdge> reverseEdges, 
-            List<string> nodeProperties, 
             int outputBufferSize = 1000)
         {
             Open();
@@ -131,8 +112,6 @@ namespace GraphView
             this.adjacencyListSinkIndex = sinkIndex;
             this.sinkVertexQuery = sinkVertexQuery;
             this.matchingIndexes = matchingIndexes;
-            this.reverseEdges = reverseEdges;
-            this.nodeProperties = nodeProperties;
             this.outputBufferSize = outputBufferSize;
         }
 
@@ -230,18 +209,7 @@ namespace GraphView
 
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
-                        //foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
-                        //{
-                        //    if (!sinkVertexCollection.ContainsKey(rec[0]))
-                        //    {
-                        //        sinkVertexCollection.Add(rec[0], new List<RawRecord>());
-                        //    }
-                        //    sinkVertexCollection[rec[0]].Add(rec);
-                        //}
-
-                        var rawVertices = databasePortal.GetRawVertices(toSendQuery);
-                        var decoder = new DocDbDecoder2();
-                        foreach (var rec in decoder.GetVertices(rawVertices, nodeProperties, reverseEdges))
+                        foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
                         {
                             if (!sinkVertexCollection.ContainsKey(rec[0]))
                             {
@@ -465,7 +433,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            input.ResetState();
+            InputOperator.ResetState();
             Open();
         }
     }

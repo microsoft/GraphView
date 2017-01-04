@@ -197,6 +197,7 @@ namespace GraphView
             var nodeAlias = node.NodeAlias;
             var selectStrBuilder = new StringBuilder();
             var joinStrBuilder = new StringBuilder();
+            var properties = new List<string>(node.Properties);
             WBooleanExpression searchCondition = null;
 
             selectStrBuilder.Append(nodeAlias).Append('.').Append(node.Properties[0]);
@@ -217,12 +218,11 @@ namespace GraphView
                     .Append(node.NodeAlias)
                     .Append(edge.IsReversed ? "._reverse_edge " : "_edge ");
 
-                selectStrBuilder.Append(", {");
-                selectStrBuilder.Append(string.Format("\"{0}\": {1}.{0}", edge.Properties[0], edge.EdgeAlias));
-                for (var i = 1; i < edge.Properties.Count; i++)
-                    selectStrBuilder.Append(", ")
-                        .Append(string.Format("\"{0}\": {1}.{0}", edge.Properties[i], edge.EdgeAlias));
-                selectStrBuilder.Append(string.Format("}} AS {0}_Object", edge.EdgeAlias));
+                foreach (var property in edge.Properties)
+                {
+                    selectStrBuilder.Append(", ").Append(string.Format("{0}.{1} AS {0}_{1}", edge.EdgeAlias, property));
+                    properties.Add(property);
+                }   
 
                 foreach (var predicate in edge.Predicates)
                     searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
@@ -234,6 +234,7 @@ namespace GraphView
                 JoinClause = joinStrBuilder.ToString(),
                 SelectClause = selectStrBuilder.ToString(),
                 WhereSearchCondition = searchCondition != null ? searchCondition.ToString() : null,
+                Properties = properties,
                 // TODO: ProjectedColumns
                 //ProjectedColumns = 
             };
@@ -1187,8 +1188,7 @@ namespace GraphView
                             }
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
-                                currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, 
-                                matchingIndexes, reverseEdges, sinkNode.Properties));
+                                currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
 
                             processedNodes.Add(sinkNode);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);

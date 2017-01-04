@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents.Client;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -19,6 +20,7 @@ namespace GraphView
         public string JoinClause { get; set; }
         public string WhereSearchCondition { get; set; }
         public string Alias { get; set; }
+        public List<string> Properties { get; set; } 
 
         public List<ColumnGraphType> ProjectedColumns { get; set; }
 
@@ -45,7 +47,6 @@ namespace GraphView
         public void Dispose() { }
 
         public abstract List<RawRecord> GetVertices(JsonQuery vertexQuery);
-        public abstract List<dynamic> GetRawVertices(JsonQuery vertexQuery);
     }
 
     internal class DocumentDbPortal : DbPortal
@@ -57,16 +58,33 @@ namespace GraphView
 
         public override List<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
-            throw new NotImplementedException();
-        }
-
-        public override List<dynamic> GetRawVertices(JsonQuery vertexQuery)
-        {
             FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
-            IQueryable<dynamic> results = Connection.DocDBclient.CreateDocumentQuery(
+            IQueryable<dynamic> items = Connection.DocDBclient.CreateDocumentQuery(
                 UriFactory.CreateDocumentCollectionUri(Connection.DocDB_DatabaseId, Connection.DocDB_CollectionId),
                 vertexQuery.ToString(DatabaseType.DocumentDB), queryOptions);
-            return results.ToList();
+
+            var properties = vertexQuery.Properties;
+            var newRecordLength = properties.Count;
+            var results = new List<RawRecord>();
+
+            foreach (var dynamicItem in items)
+            {
+                var rawRecord = new RawRecord(newRecordLength);
+                var item = (JObject)dynamicItem;
+                var index = 0;
+
+                foreach (var property in properties)
+                {
+                    var propertyValue = item[property];
+                    if (propertyValue != null)
+                        rawRecord.fieldValues[index] = propertyValue.ToString();
+                    ++index;
+                }
+
+                results.Add(rawRecord);
+            }
+
+            return results;
         }
     }
 }
