@@ -138,7 +138,7 @@ namespace GraphView
 
         public GraphTraversal2 by()
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy();
+            AddGremlinOperator(new GremlinByOp());
             return this;
         }
 
@@ -148,13 +148,13 @@ namespace GraphView
 
         public GraphTraversal2 by(GremlinKeyword.Order order)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
+            AddGremlinOperator(new GremlinByOp(order));
             return this;
         }
 
         public GraphTraversal2 by(string key)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(key);
+            AddGremlinOperator(new GremlinByOp(key));
             return this;
         }
 
@@ -162,7 +162,7 @@ namespace GraphView
         //public GraphTraversal2 by(T token)
         public GraphTraversal2 by(GraphTraversal2 traversal)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
+            AddGremlinOperator(new GremlinByOp(traversal));
             return this;
         }
         //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
@@ -214,7 +214,8 @@ namespace GraphView
         //public GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
         public GraphTraversal2 dedup(params string[] dedupLabels)
         {
-            AddGremlinOperator(new GremlinDedupOp(dedupLabels));
+            //TODO
+            //AddGremlinOperator(new GremlinDedupOp(dedupLabels));
             return this;
         }
 
@@ -436,6 +437,7 @@ namespace GraphView
 
         public GraphTraversal2 label()
         {
+            AddGremlinOperator(new GremlinValuesOp("label"));
             return this;
         }
 

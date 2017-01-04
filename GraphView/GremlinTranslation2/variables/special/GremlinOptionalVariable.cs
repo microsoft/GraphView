@@ -28,8 +28,7 @@ namespace GraphView
                 });
             }
             PropertyKeys.Add(GremlinUtil.GetScalarSubquery(queryBlock));
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("optional", PropertyKeys);
-            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 

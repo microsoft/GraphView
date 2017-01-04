@@ -123,7 +123,7 @@ namespace GraphView
         {
             if (TableReferences.Count == 0)
             {
-                return Predicates;
+                return GremlinUtil.GetBooleanParenthesisExpression(Predicates);
             }
             else
             {

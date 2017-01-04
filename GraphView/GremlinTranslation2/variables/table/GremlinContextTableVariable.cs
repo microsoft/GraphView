@@ -6,13 +6,8 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextTableVariable: GremlinTableVariable
+    internal class GremlinContextTableVariable: GremlinContextVariable
     {
-        public GremlinVariable2 ContextVariable;
-
-        public GremlinContextTableVariable(GremlinVariable2 contextVariable)
-        {
-            ContextVariable = contextVariable;
-        }
+        public GremlinContextTableVariable(GremlinVariable2 contextVariable): base(contextVariable) {}
     }
 }

@@ -102,7 +102,6 @@
     <Compile Include="GremlinTranslation2\GremlinUtil.cs" />
     <Compile Include="GremlinTranslation2\GremlinVariable2.cs" />
     <Compile Include="GremlinTranslation2\GremlinVOp.cs" />
-    <Compile Include="GremlinTranslation2\IGremlinByModulating.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinAddEOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinAddVOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinBothEOp.cs" />
@@ -138,6 +137,7 @@
     <Compile Include="GremlinTranslation2\Predicate.cs" />
     <Compile Include="GremlinTranslation2\Projection.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinAggregateOp.cs" />
+    <Compile Include="GremlinTranslation2\sideEffect\GremlinByOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinInjectOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinSideEffectOp.cs" />
@@ -158,6 +158,8 @@
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinVertexVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinVirtualVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\scalar\GremlinContextScalarVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\scalar\GremlinProjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarSubquery.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinVariableProperty.cs" />

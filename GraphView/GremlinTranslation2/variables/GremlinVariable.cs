@@ -162,6 +162,11 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal virtual void By(GremlinToSqlContext currentContext)
+        {
+            throw new NotImplementedException();
+        }
+
         internal virtual void By(GremlinToSqlContext currentContext, string name)
         {
             throw new NotImplementedException();
@@ -320,9 +325,16 @@ namespace GraphView
         //}
 
         internal virtual void FlatMap(GremlinToSqlContext currentContext, GremlinToSqlContext flatMapContext)
-        {
-            GremlinFlatMapVariable flatMapVariable = new GremlinFlatMapVariable(flatMapContext);
+        { 
+            GremlinFlatMapVariable flatMapVariable = GremlinFlatMapVariable.Create(flatMapContext);
             currentContext.VariableList.Add(flatMapVariable);
+            
+            //It's used for repeat step, we should propagate all the variable to the main context
+            //Then we can check the variableList to know if the sub context used the main context variable when
+            //the variable is GremlinContextVariable and the value of IsFromSelect is True
+            //
+            currentContext.VariableList.AddRange(flatMapContext.VariableList);
+
             currentContext.TableReferences.Add(flatMapVariable);
             currentContext.PivotVariable = flatMapVariable;
         }
@@ -420,11 +432,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Id(GremlinToSqlContext currentContext)
-        {
-            throw new NotImplementedException();
-        }
-
         internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             throw new NotImplementedException();
@@ -476,11 +483,6 @@ namespace GraphView
         }
 
         internal virtual void Key(GremlinToSqlContext currentContext)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void Label(GremlinToSqlContext currentContext)
         {
             throw new NotImplementedException();
         }
@@ -603,7 +605,9 @@ namespace GraphView
         //internal virtual void Program(VertexProgram<?> vertexProgram)
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys)
         {
-            throw new NotImplementedException();
+            GremlinProjectVariable newVariable = new GremlinProjectVariable(projectKeys);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         internal virtual void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
@@ -670,29 +674,33 @@ namespace GraphView
                     throw new NotImplementedException();
             }
 
-            if (pair.Item2 == currentContext)
+            if (pair.Item2 == currentContext || pair.Item1 is GremlinContextVariable)
             {
                 currentContext.PivotVariable = pair.Item1;
             }
-            else
-            {
-                if (pair.Item1 is GremlinVertexVariable2)
+            else {
+                switch (pair.Item1.GetVariableType())
                 {
-                    GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(pair.Item1 as GremlinVertexVariable2);
-                    contextVertex.IsFromSelect = true;
-                    contextVertex.Pop = pop;
-                    contextVertex.SelectKey = selectKey;
-                    currentContext.VariableList.Add(contextVertex);
-                    currentContext.PivotVariable = contextVertex;
-                }
-                else if (pair.Item1 is GremlinEdgeVariable2)
-                {
-                    GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(pair.Item1 as GremlinContextEdgeVariable);
-                    contextEdge.IsFromSelect = true;
-                    contextEdge.Pop = pop;
-                    contextEdge.SelectKey = selectKey;
-                    currentContext.VariableList.Add(contextEdge);
-                    currentContext.PivotVariable = contextEdge;
+                    case GremlinVariableType.Vertex:
+                        GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(pair.Item1);
+                        contextVertex.IsFromSelect = true;
+                        contextVertex.Pop = pop;
+                        contextVertex.SelectKey = selectKey;
+                        currentContext.VariableList.Add(contextVertex);
+                        currentContext.PivotVariable = contextVertex;
+                        break;
+                    case GremlinVariableType.Edge:
+                        GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(pair.Item1);
+                        contextEdge.IsFromSelect = true;
+                        contextEdge.Pop = pop;
+                        contextEdge.SelectKey = selectKey;
+                        currentContext.VariableList.Add(contextEdge);
+                        currentContext.PivotVariable = contextEdge;
+                        break;
+                    case GremlinVariableType.Table:
+                        throw new NotImplementedException();
+                    case GremlinVariableType.Scalar:
+                        throw new NotImplementedException();
                 }
             }
         }
@@ -868,8 +876,8 @@ namespace GraphView
 
         internal virtual void Where(GremlinToSqlContext currentContext, GremlinToSqlContext whereContext)
         {
-            WBooleanExpression existPredicate = whereContext.ToSqlBoolean();
-            currentContext.AddPredicate(existPredicate);
+            WBooleanExpression wherePredicate = whereContext.ToSqlBoolean();
+            currentContext.AddPredicate(wherePredicate);
         }
 
     }

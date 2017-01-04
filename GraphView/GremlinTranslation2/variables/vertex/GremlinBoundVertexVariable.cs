@@ -24,8 +24,8 @@ namespace GraphView
             {
                 PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
             }
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("V", PropertyKeys);
-            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("V", PropertyKeys, VariableName);
+
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 

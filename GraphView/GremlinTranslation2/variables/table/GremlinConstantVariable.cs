@@ -26,8 +26,7 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             PropertyKeys.Add(GremlinUtil.GetValueExpression(Value));
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("constant", PropertyKeys);
-            secondTableRef.Alias = GremlinUtil.GetIdentifier(VariableName);
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("constant", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

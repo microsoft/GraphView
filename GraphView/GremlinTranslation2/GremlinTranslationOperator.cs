@@ -58,29 +58,9 @@ namespace GraphView
             newContext.TaggedVariables = InheritedTaggedVariables;
             if (InheritedPivotVariable != null)
             {
-                if (InheritedPivotVariable is GremlinContextVariable)
-                {
-                    newContext.VariableList.Add(InheritedPivotVariable);
-                    newContext.PivotVariable = InheritedPivotVariable;
-                }
-                else if (InheritedPivotVariable.GetVariableType() == GremlinVariableType.Vertex)
-                {
-                    var newVertex = new GremlinContextVertexVariable(InheritedPivotVariable);
-                    newContext.VariableList.Add(newVertex);
-                    newContext.PivotVariable = newVertex;
-                }
-                else if (InheritedPivotVariable.GetVariableType() == GremlinVariableType.Edge)
-                {
-                    var newEdge = new GremlinContextEdgeVariable(InheritedPivotVariable);
-                    newContext.VariableList.Add(newEdge);
-                    newContext.PivotVariable = newEdge;
-                }
-                else if (InheritedPivotVariable.GetVariableType() == GremlinVariableType.Table) 
-                {
-                    var newEdge = new GremlinContextTableVariable(InheritedPivotVariable);
-                    newContext.VariableList.Add(newEdge);
-                    newContext.PivotVariable = newEdge;
-                }
+                GremlinContextVariable newVariable = GremlinContextVariable.Create(InheritedPivotVariable);
+                newContext.VariableList.Add(newVariable);
+                newContext.PivotVariable = newVariable;
             } 
             return newContext;
         }
