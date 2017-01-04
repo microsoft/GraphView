@@ -110,6 +110,8 @@ namespace GraphView
         /// </summary>
         public Dictionary<WColumnReferenceExpression, int> RawRecordLayout { get; private set; }
 
+        public GraphViewExecutionOperator CurrentExecutionOperator { get; set; }
+
         public ConstantSourceOperator OuterContextOp { get; private set; }
 
         public Dictionary<string, TableGraphType> TableReferences { get; private set; }

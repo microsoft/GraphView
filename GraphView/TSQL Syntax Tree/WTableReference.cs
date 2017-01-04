@@ -329,18 +329,21 @@ namespace GraphView
 
     public partial class WOptionalTableReference : WSchemaObjectFunctionTableReference
     {
-        public WScalarSubquery OptionalTraversal
+        internal void Split(out WSelectQueryBlock contextSelect, out WSelectQueryBlock optionalSelectQuery)
         {
-            get
+            WScalarSubquery optionalInput = Parameters[0] as WScalarSubquery;
+            if (optionalInput == null)
             {
-                WScalarSubquery optionalTraversal = Parameters[0] as WScalarSubquery;
-                if (optionalTraversal == null)
-                {
-                    throw new SyntaxErrorException("The input of an optional table reference must be a scalar subquery.");
-                }
-
-                return optionalTraversal;
+                throw new SyntaxErrorException("The input of an optional table reference must be a scalar subquery.");
             }
+            WBinaryQueryExpression binaryQuery = optionalInput.SubQueryExpr as WBinaryQueryExpression;
+            if (binaryQuery == null || binaryQuery.BinaryQueryExprType != BinaryQueryExpressionType.Union || !binaryQuery.All)
+            {
+                throw new SyntaxErrorException("The input of an optional table reference must be a UNION ALL binary query expression.");
+            }
+
+            contextSelect = binaryQuery.FirstQueryExpr;
+            optionalSelectQuery = binaryQuery.SecondQueryExpr;
         }
     }
 

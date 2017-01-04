@@ -1830,5 +1830,64 @@ namespace GraphView
             return subqueryOp;
         }
     }
+
+    partial class WCoalesceTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            CoalesceOperator2 coalesceOp = new CoalesceOperator2(context.CurrentExecutionOperator);
+
+            foreach (WScalarExpression parameter in Parameters)
+            {
+                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                if (scalarSubquery == null)
+                {
+                    throw new QueryCompilationException("The input of CoalesceTableReference must be a scalar subquery.");
+                }
+
+                QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                coalesceOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+            }
+
+            return coalesceOp;
+        }
+    }
+
+    partial class WOptionalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+
+            WSelectQueryBlock contextSelect, optionalSelect;
+            Split(out contextSelect, out optionalSelect);
+
+            List<int> inputIndexes = new List<int>();
+            foreach (WSelectElement selectElement in contextSelect.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-queries in an optional table reference must be select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-queries in an optional table reference must be column references.");
+                }
+
+                int index = context.LocateColumnReference(columnRef);
+                inputIndexes.Add(index);
+            }
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator optionalOp = optionalSelect.Compile(subcontext, dbConnection);
+
+            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = optionalOp;
+
+            return optionalOp;
+        }
+    }
 }
 
