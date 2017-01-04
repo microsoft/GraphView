@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class AggregateOperator : GraphViewExecutionOperator
+    internal abstract class AggregateFunction : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator InputOperator;
         protected List<int> GroupByFieldsList;
         protected Queue<RawRecord> InputBuffer;
         protected Queue<RawRecord> OutputBuffer;
 
-        internal AggregateOperator(GraphViewExecutionOperator pInputOperator, List<int> pGroupByFieldsList)
+        internal AggregateFunction(GraphViewExecutionOperator pInputOperator, List<int> pGroupByFieldsList)
         {
             InputOperator = pInputOperator;
             GroupByFieldsList = pGroupByFieldsList;
@@ -89,7 +89,7 @@ namespace GraphView
         }
     }
 
-    internal class CountOperator : AggregateOperator
+    internal class CountOperator : AggregateFunction
     {
         internal CountOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList) 
             : base(pInputOperatr, pGroupByFieldsList)
@@ -103,7 +103,7 @@ namespace GraphView
         }
     }
 
-    internal class FoldOperator : AggregateOperator
+    internal class FoldOperator : AggregateFunction
     {
         internal int FoldedFieldIdx;
 
@@ -140,7 +140,7 @@ namespace GraphView
         }
     }
 
-    internal class DeduplicateOperator : AggregateOperator
+    internal class DeduplicateOperator : AggregateFunction
     {
         internal DeduplicateOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList)
             : base(pInputOperatr, pGroupByFieldsList)
@@ -152,7 +152,7 @@ namespace GraphView
         }
     }
 
-    internal class TreeOperator : AggregateOperator
+    internal class TreeOperator : AggregateFunction
     {
         //TODO: tree().by()
         private class TreeNode

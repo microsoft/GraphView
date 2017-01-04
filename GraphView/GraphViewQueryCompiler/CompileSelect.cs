@@ -1306,40 +1306,69 @@ namespace GraphView
                     }
                 }
 
-                // TODO: Project Operator
+                // TODO: Will Project Operator change the context's layout?
+                // TODO: Handle the condition where aggregateFunction and scalarExpression show up together
+                var projectOperator = new ProjectOperator(operatorChain.Last());
                 foreach (var x in SelectElements)
                 {
-                    var expr = (x as WSelectScalarExpression).SelectExpr;
+                    var scalarExpr = x as WSelectScalarExpression;
+                    var expr = scalarExpr.SelectExpr;
+                    var alias = scalarExpr.ColumnName;
+
+                    // AggregateFunction will be compiled into an independent operator first
                     if (expr is WFunctionCall)
                     {
                         var functionCall = expr as WFunctionCall;
                         var functionName = functionCall.FunctionName.ToString();
+                        ScalarFunction scalarFunction;
+                        WScalarExpression scalarExpression;
+                        QueryCompilationContext newContext;
                         GraphViewNativeAggregateFunctionsEnum functionEnum;
                         if (!Enum.TryParse(functionName, true, out functionEnum))
                             throw new GraphViewException("Aggregate function '" + functionName + "' hasn't been supported.");
                         switch (functionEnum)
                         {
                             case GraphViewNativeAggregateFunctionsEnum.Count:
+                                newContext = new QueryCompilationContext();
+                                newContext.AddField("", alias, ColumnGraphType.Value);
+                                scalarExpression = new WColumnReferenceExpression("", alias);
+                                scalarFunction = scalarExpression.CompileToFunction(newContext, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new CountOperator
                                 break;
                             case GraphViewNativeAggregateFunctionsEnum.Deduplicate:
+                                scalarFunction = functionCall.Parameters[0].CompileToFunction(context, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new Deduplicate Operator
                                 break;
                             case GraphViewNativeAggregateFunctionsEnum.Fold:
+                                newContext = new QueryCompilationContext();
+                                newContext.AddField("", alias, ColumnGraphType.Value);
+                                scalarExpression = new WColumnReferenceExpression("", alias);
+                                scalarFunction = scalarExpression.CompileToFunction(newContext, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new Fold Operator
                                 break;
                             case GraphViewNativeAggregateFunctionsEnum.Tree:
+                                newContext = new QueryCompilationContext();
+                                newContext.AddField("", alias, ColumnGraphType.Value);
+                                scalarExpression = new WColumnReferenceExpression("", alias);
+                                scalarFunction = scalarExpression.CompileToFunction(newContext, connection);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                // new Tree Operator
                                 break;
                         }
                     }
-                    else if (expr is WScalarSubquery)
+                    else if (expr is WScalarSubquery || expr is WColumnReferenceExpression)
                     {
-                        
-                    }
-                    else if (expr is WColumnReferenceExpression)
-                    {
-                        
+                        var scalarFunction = expr.CompileToFunction(context, connection);
+                        projectOperator.AddSelectScalarElement(scalarFunction, alias);
                     }
                 }
+                operatorChain.Add(projectOperator);
 
                 // TODO: new OrderByOp
+                // TODO: Embed it in the project operator?
                 if (OrderByClause != null && OrderByClause.OrderByElements != null)
                 {
                     //var orderByElements = new List<Tuple<string, SortOrder>>();

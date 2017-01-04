@@ -496,6 +496,55 @@ namespace GraphView
         }
     }
 
+    internal class ProjectOperator : GraphViewExecutionOperator
+    {
+        private List<Tuple<ScalarFunction, string>> selectScalarList;
+        private GraphViewExecutionOperator inputOp;
+
+        private RawRecord currentRecord;
+        private Queue<RawRecord> outputBuffer;
+
+        public ProjectOperator(GraphViewExecutionOperator inputOp)
+        {
+            this.inputOp = inputOp;
+            selectScalarList = new List<Tuple<ScalarFunction, string>>();
+            outputBuffer = new Queue<RawRecord>();
+        }
+
+        public void AddSelectScalarElement(ScalarFunction scalarFunction, string alias)
+        {
+            selectScalarList.Add(new Tuple<ScalarFunction, string>(scalarFunction, alias));
+        }
+
+        public override RawRecord Next()
+        {
+            while (outputBuffer.Count == 0 && inputOp.State())
+            {
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                RawRecord selectRecord = new RawRecord(selectScalarList.Count);
+                int index = 0;
+                foreach (var selectPair in selectScalarList)
+                {
+                    ScalarFunction scalarFunction = selectPair.Item1;
+                    string result = scalarFunction.Evaluate(currentRecord);
+                    selectRecord.fieldValues[index++] = result ?? "";
+                }
+
+                outputBuffer.Enqueue(selectRecord);
+            }
+
+            if (outputBuffer.Count <= 1) this.Close();
+            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            return null;
+        }
+    }
+
     internal class OptionalOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
