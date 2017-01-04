@@ -308,6 +308,12 @@ namespace GraphView
                 return outputBuffer.Dequeue();
             }
         }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
     }
 
     internal class CartesianProductOperator2 : GraphViewExecutionOperator
@@ -362,6 +368,12 @@ namespace GraphView
             }
 
             return cartesianRecord;
+        }
+
+        public override void ResetState()
+        {
+            leftInput.ResetState();
+            Open();
         }
     }
 
@@ -451,6 +463,12 @@ namespace GraphView
             {
                 return outputBuffer.Dequeue();
             }
+        }
+
+        public override void ResetState()
+        {
+            input.ResetState();
+            Open();
         }
     }
 
@@ -566,6 +584,7 @@ namespace GraphView
             }
 
             contextOp.ConstantSource = currentRecord;
+            optionalTraversal.ResetState();
             RawRecord optionalRec = null;
             while ((optionalRec = optionalTraversal.Next()) != null)
             {
@@ -598,6 +617,12 @@ namespace GraphView
                 return r;
             }
         }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
     }
 
     internal class CoalesceOperator2 : GraphViewExecutionOperator
@@ -622,37 +647,32 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (traversalOutputBuffer.Count > 0)
+            while (traversalOutputBuffer.Count == 0 && inputOp.State())
             {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord traversalRec = traversalOutputBuffer.Dequeue();
-                r.Append(traversalRec);
-
-                return r;
-            }
-
-            currentRecord = inputOp.Next();
-            if (currentRecord == null)
-            {
-                Close();
-                return null;
-            }
-
-            foreach (var traversalPair in traversalList)
-            {
-                ConstantSourceOperator traversalContext = traversalPair.Item1;
-                GraphViewExecutionOperator traversal = traversalPair.Item2;
-                traversalContext.ConstantSource = currentRecord;
-
-                RawRecord traversalRec = null;
-                while ((traversalRec = traversal.Next()) != null)
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
                 {
-                    traversalOutputBuffer.Enqueue(traversalRec);
+                    Close();
+                    return null;
                 }
 
-                if (traversalOutputBuffer.Count > 0)
+                foreach (var traversalPair in traversalList)
                 {
-                    break;
+                    ConstantSourceOperator traversalContext = traversalPair.Item1;
+                    GraphViewExecutionOperator traversal = traversalPair.Item2;
+                    traversalContext.ConstantSource = currentRecord;
+                    traversal.ResetState();
+
+                    RawRecord traversalRec = null;
+                    while ((traversalRec = traversal.Next()) != null)
+                    {
+                        traversalOutputBuffer.Enqueue(traversalRec);
+                    }
+
+                    if (traversalOutputBuffer.Count > 0)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -670,6 +690,12 @@ namespace GraphView
                 return null;
             }
         }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
     }
 
     internal class RepeatOperator : GraphViewExecutionOperator
@@ -678,6 +704,10 @@ namespace GraphView
         // If this number is less than 0, the termination condition 
         // is specified by a boolean function. 
         private int repeatTimes;
+
+        // The termination condition of iterations
+        private BooleanFunction terminationCondition;
+        private bool syncMode;
 
         private GraphViewExecutionOperator inputOp;
         // A list record fields (identified by field indexes) from the input 
@@ -694,20 +724,111 @@ namespace GraphView
             GraphViewExecutionOperator inputOp,
             List<int> inputFieldIndexes,
             GraphViewExecutionOperator innerOp,
-            ConstantSourceOperator innerContext,
+            ConstantSourceOperator innerContextOp,
             int repeatTimes)
         {
             this.inputOp = inputOp;
             this.inputFieldIndexes = inputFieldIndexes;
             this.innerOp = innerOp;
-            this.innerContextOp = innerContext;
+            this.innerContextOp = innerContextOp;
             this.repeatTimes = repeatTimes;
+
+            repeatResultBuffer = new Queue<RawRecord>();
+        }
+
+        public RepeatOperator(
+            GraphViewExecutionOperator inputOp,
+            List<int> inputFieldIndexes,
+            GraphViewExecutionOperator innerOp,
+            ConstantSourceOperator innerContextOp,
+            BooleanFunction terminationCondition,
+            bool syncMode)
+        {
+            this.inputOp = inputOp;
+            this.inputFieldIndexes = inputFieldIndexes;
+            this.innerOp = innerOp;
+            this.innerContextOp = innerContextOp;
+            this.terminationCondition = terminationCondition;
+            this.syncMode = syncMode;
 
             repeatResultBuffer = new Queue<RawRecord>();
         }
 
         public override RawRecord Next()
         {
+            while (repeatResultBuffer.Count == 0 && inputOp.State())
+            {
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                RawRecord initialRec = new RawRecord();
+                foreach (int fieldIndex in inputFieldIndexes)
+                {
+                    initialRec.Append(currentRecord[fieldIndex]);
+                }
+
+                if (repeatTimes > 0)
+                {
+                    Queue<RawRecord> priorStates = new Queue<RawRecord>();
+                    Queue<RawRecord> newStates = new Queue<RawRecord>();
+
+                    priorStates.Enqueue(initialRec);
+                    for (int i = 0; i < repeatTimes; i++)
+                    {
+                        while (priorStates.Count > 0)
+                        {
+                            RawRecord priorRec = priorStates.Dequeue();
+                            innerContextOp.ConstantSource = priorRec;
+                            innerOp.ResetState();
+                            RawRecord newRec = null;
+                            while ((newRec = innerOp.Next()) != null)
+                            {
+                                newStates.Enqueue(newRec);
+                            }
+                        }
+
+                        var tmpQueue = priorStates;
+                        priorStates = newStates;
+                        newStates = tmpQueue;
+                    }
+
+                    repeatResultBuffer = newStates;
+                }
+                else if (!syncMode)
+                {
+                    Queue<RawRecord> states = new Queue<RawRecord>();
+                    states.Enqueue(initialRec);
+                    
+                    // Breadth-first search to iterate through the input record
+                    while (states.Count > 0)
+                    {
+                        RawRecord stateRec = states.Dequeue();
+                        innerContextOp.ConstantSource = stateRec;
+                        innerOp.ResetState();
+                        RawRecord loopRec = null;
+                        while ((loopRec = innerOp.Next()) != null)
+                        {
+                            if (terminationCondition.Evaluate(loopRec))
+                            {
+                                repeatResultBuffer.Enqueue(loopRec);
+                            }
+                            else
+                            {
+                                states.Enqueue(loopRec);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Sync mode
+                }
+            }
+
             if (repeatResultBuffer.Count > 0)
             {
                 RawRecord r = new RawRecord(currentRecord);
@@ -716,43 +837,17 @@ namespace GraphView
 
                 return r;
             }
-
-            currentRecord = inputOp.Next();
-            if (currentRecord == null)
+            else
             {
                 Close();
                 return null;
             }
+        }
 
-            RawRecord initialRec = new RawRecord();
-            foreach (int fieldIndex in inputFieldIndexes)
-            {
-                initialRec.Append(currentRecord[fieldIndex]);
-            }
-
-            if (repeatTimes > 0)
-            {
-                Queue<RawRecord> priorStates = new Queue<RawRecord>();
-                Queue<RawRecord> newStates = new Queue<RawRecord>();
-
-                priorStates.Enqueue(initialRec);
-                for (int i = 0; i < repeatTimes; i++)
-                {
-                    while (priorStates.Count > 0)
-                    {
-                        RawRecord priorRec = priorStates.Dequeue();
-                        innerContextOp.ConstantSource = priorRec;
-                        RawRecord newRec = null;
-                        while ((newRec = innerOp.Next()) != null)
-                        {
-                            newStates.Enqueue(newRec);
-                        }
-                    }
-
-                }
-            }
-
-            throw new NotImplementedException();
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
         }
     }
 }
