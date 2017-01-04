@@ -34,30 +34,24 @@ namespace GraphView
             List<WSqlStatement> statementList = new List<WSqlStatement>();
 
             var columnK = new List<WColumnReferenceExpression>();
-            var selectBlock = new WSelectQueryBlock()
-            {
-                SelectElements = new List<WSelectElement>(),
-                FromClause = new WFromClause()
-                {
-                    TableReferences = new List<WTableReference>()
-                }
-            };
+            var selectBlock = new WSelectQueryBlock();
+
             selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
             selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
 
-            var fromVarExpr = GremlinUtil.GetColumnReferenceExpression(FromVariable.VariableName);
+            var fromVarExpr = GremlinUtil.GetColumnReferenceExpr(FromVariable.VariableName);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(fromVarExpr));
 
-            var toVarExpr = GremlinUtil.GetColumnReferenceExpression(ToVariable.VariableName);
+            var toVarExpr = GremlinUtil.GetColumnReferenceExpr(ToVariable.VariableName);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(toVarExpr));
 
             //Add edge key-value
-            columnK.Add(GremlinUtil.GetColumnReferenceExpression("label"));
+            columnK.Add(GremlinUtil.GetColumnReferenceExpr("label"));
             var valueExpr = GremlinUtil.GetValueExpression(EdgeLabel);
             selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
             foreach (var property in Properties)
             {
-                columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
+                columnK.Add(GremlinUtil.GetColumnReferenceExpr(property.Key));
                 valueExpr = GremlinUtil.GetValueExpression(property.Value.ToString());
                 selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
             }

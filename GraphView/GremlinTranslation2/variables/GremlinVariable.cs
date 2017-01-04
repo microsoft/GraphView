@@ -64,7 +64,7 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(edge.VariableName, "label");
+                var firstExpr = GremlinUtil.GetColumnReferenceExpr(edge.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
@@ -184,8 +184,12 @@ namespace GraphView
 
         //internal virtual void by(GremlinToSqlContext currentContext, string key, Comparator<V> comparator)
         //internal virtual void by(GremlinToSqlContext currentContext, T token)
-        internal virtual void By(GremlinToSqlContext currentContext, GremlinToSqlContext byContext)
+
+        
+        internal virtual void By(GremlinToSqlContext currentContext, GraphTraversal2 byContext)
         {
+            // use GraphTraversal2 instead of GremlinToSqlContext
+            //because it should inherite from last context rather than current Context 
             throw new NotImplementedException();
         }
 
@@ -375,7 +379,7 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Object value)
         {
-            WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(VariableName, propertyKey);
+            WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(VariableName, propertyKey);
             WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
             currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
@@ -415,7 +419,7 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
-                WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpression(VariableName, GremlinKeyword.Label);
+                WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(VariableName, GremlinKeyword.Label);
                 WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
                 booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
@@ -550,16 +554,7 @@ namespace GraphView
 
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
-            GremlinOptionalVariable newVariable = null;
-            //To do more reasoning
-            if (optionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
-            {
-                newVariable = new GremlinOptionalEdgeVariable(optionalContext);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            GremlinOptionalVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -605,8 +600,10 @@ namespace GraphView
         //internal virtual void Program(VertexProgram<?> vertexProgram)
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys)
         {
-            GremlinProjectVariable newVariable = new GremlinProjectVariable(projectKeys);
+            GremlinProjectVariable newVariable = new GremlinProjectVariable(currentContext.Duplicate(), projectKeys);
+            currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
         }
 
@@ -633,11 +630,9 @@ namespace GraphView
         }
 
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
-            GremlinToSqlContext conditionContext, RepeatCondition repeatCondition)
+                                     RepeatCondition repeatCondition)
         {
-            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(this, repeatContext, conditionContext, repeatCondition)
-            {
-            };
+            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(this, repeatContext, repeatCondition);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;

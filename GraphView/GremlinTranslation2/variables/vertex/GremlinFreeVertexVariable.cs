@@ -35,7 +35,7 @@ namespace GraphView
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(bothEdgeVar.VariableName, "label");
+                var firstExpr = GremlinUtil.GetColumnReferenceExpr(bothEdgeVar.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
@@ -57,7 +57,7 @@ namespace GraphView
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(inEdgeVar.VariableName, "label");
+                var firstExpr = GremlinUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
@@ -76,7 +76,7 @@ namespace GraphView
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(inEdgeVar.VariableName, "label");
+                var firstExpr = GremlinUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
@@ -98,7 +98,7 @@ namespace GraphView
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(outEdgeVar.VariableName, "label");
+                var firstExpr = GremlinUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
@@ -116,7 +116,7 @@ namespace GraphView
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpression(outEdgeVar.VariableName, "label");
+                var firstExpr = GremlinUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
                 var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }

@@ -48,9 +48,9 @@ namespace GraphView
                     inputContext.PivotVariable.By(inputContext, ByKey);
                     break;
                 case ByType.ByTraversal:
-                    GremlinUtil.InheritedVariableFromParent(ByTraversal, inputContext);
-                    GremlinToSqlContext byContext = ByTraversal.GetEndOp().GetContext();
-                    inputContext.PivotVariable.By(inputContext, byContext);
+                    //GremlinUtil.InheritedVariableFromParent(ByTraversal, inputContext);
+                    //GremlinToSqlContext byContext = ByTraversal.GetEndOp().GetContext();
+                    inputContext.PivotVariable.By(inputContext, ByTraversal);
                     break;
                 default:
                     inputContext.PivotVariable.By(inputContext);

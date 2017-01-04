@@ -12,7 +12,7 @@ namespace GraphView
 
         public GremlinScalarSubquery(GremlinToSqlContext subqueryContext)
         {
-            SubqueryContext = SubqueryContext;
+            SubqueryContext = subqueryContext;
         }
     }
 }

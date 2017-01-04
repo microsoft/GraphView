@@ -25,7 +25,7 @@ namespace GraphView
             var valueExpr = GremlinUtil.GetValueExpression(adjacencyList.ToScalarExpression());
             PropertyKeys.Add(valueExpr);
             PropertyKeys.Add(GremlinUtil.GetValueExpression("id"));
-            foreach (var property in projectedProperties)
+            foreach (var property in ProjectedProperties)
             {
                 PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
             }

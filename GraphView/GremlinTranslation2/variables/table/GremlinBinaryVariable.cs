@@ -48,7 +48,7 @@ namespace GraphView
             //    }
 
             //    // Since a Gremlin binary variable is translated to a table-valued function in SQL,
-            //    // the following both() is not described in the MATH caluse and the corresponding 
+            //    // the following both() is not described in the MACTH caluse and the corresponding 
             //    // vertex variable is not a free vertex variable, but a bound vertex variable. 
             //    GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
             //    GremlinEdgeVariable2 bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList);

@@ -220,6 +220,8 @@ namespace GraphView
 
         public WFromClause GetFromClause()
         {
+            if (TableReferences.Count == 0) return null;
+
             var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
             foreach (var tableReference in TableReferences)
             {
@@ -236,6 +238,7 @@ namespace GraphView
         public WMatchClause GetMatchClause()
         {
             if (Paths.Count == 0) return null;
+
             var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
             foreach (var path in Paths)
             {
@@ -246,21 +249,21 @@ namespace GraphView
 
         public List<WSelectElement> GetSelectElement()
         {
-            var newSelectElementClause = new List<WSelectElement>();
-            newSelectElementClause.Add(PivotVariable.DefaultProjection().ToSelectElement());
-            //newSelectElementClause.AddRange(PivotVariable.ToSelectElementList());
-            //foreach (var tableReferences in TableReferences)
-            //{
-            //    var selectElementList = tableReferences.ToSelectElementList();
-            //    if (selectElementList != null)
-            //    {
-            //        foreach (var selectElement in selectElementList)
-            //        {
-            //            newSelectElementClause.Add(selectElement);
-            //        }
-            //    }
-            //}
-            return newSelectElementClause;
+            var selectElements = new List<WSelectElement>();
+            if (PivotVariable is GremlinTableVariable)
+            {
+                Populate((PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty);
+                foreach (var projectProperty in (PivotVariable as GremlinTableVariable).ProjectedProperties)
+                {
+                    var valueExpr = GremlinUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
+                    selectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                }
+            }
+            else
+            {
+                selectElements.Add(PivotVariable.DefaultProjection().ToSelectElement());
+            }
+            return selectElements;
         }
 
         public WWhereClause GetWhereClause()

@@ -58,7 +58,7 @@ namespace GraphView
             return "UnFold_" + _count++;
         }
 
-        public WTableReference ToTableReference()
+        public override  WTableReference ToTableReference()
         {
             throw new NotImplementedException();
         }
