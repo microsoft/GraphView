@@ -17,6 +17,6 @@ namespace GraphView
         }
 
         public abstract List<Tuple<MatchNode, MatchEdge>> GetOptimizedTraversalOrder(ConnectedComponent subGraph, out Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> nodeToMaterializedEdgesDict);
-        public abstract List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph);
+        public abstract List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph);
     }
 }

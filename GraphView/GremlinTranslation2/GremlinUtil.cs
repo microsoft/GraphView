@@ -361,13 +361,16 @@ namespace GraphView
                 case "flatMap":
                     funcTableRef = new WFlatMapTableReference();
                     break;
+                case "key":
+                    funcTableRef = new WKeyTableReference();
+                    break;
                 case "local":
                     funcTableRef = new WLocalTableReference();
                     break;
                 case "N":
                     funcTableRef = new WBoundNodeTableReference();
                     break;
-                case "optioanl":
+                case "optional":
                     funcTableRef = new WOptionalTableReference();
                     break;
                 case "properties":
@@ -376,12 +379,17 @@ namespace GraphView
                 case "repeat":
                     funcTableRef = new WRepeatTableReference();
                     break;
+                case "value":
+                    funcTableRef = new WValueTableReference();
+                    break;
                 case "values":
                     funcTableRef = new WValuesTableReference();
                     break;
-                default:
-                    funcTableRef = new WSchemaObjectFunctionTableReference();
+                case "unfold":
+                    funcTableRef = new WUnfoldTableReference();
                     break;
+                default:
+                    throw new NotImplementedException();
             }
             funcTableRef.SchemaObject = new WSchemaObjectName(GetIdentifier(functionName));
             funcTableRef.Parameters = parameterList;
@@ -436,6 +444,14 @@ namespace GraphView
             var firstExpr = GetValueExpression("1");
             var secondExpr = GetValueExpression("0");
             return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+        }
+
+        internal static WSelectScalarExpression GetSelectFunctionCall(string functionName, params WScalarExpression[] parameters)
+        {
+            return new WSelectScalarExpression()
+            {
+                SelectExpr = GetFunctionCall(functionName, parameters)
+            };
         }
     }
 }

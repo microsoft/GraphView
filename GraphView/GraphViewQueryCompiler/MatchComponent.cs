@@ -48,7 +48,7 @@ namespace GraphView
 
         public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
 
-        public List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> TraversalChain2 { get; set; }
+        public List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> TraversalChain2 { get; set; }
 
         public int ActiveNodeCount
         {
@@ -79,7 +79,7 @@ namespace GraphView
             EdgeMaterilizedDict = new Dictionary<MatchEdge, bool>();
             MaterializedNodeSplitCount = new Dictionary<MatchNode, int>();
             TraversalChain = new List<Tuple<MatchNode, MatchEdge>>();
-            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>();
+            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
             UnmaterializedNodeMapping = new Dictionary<MatchNode, List<MatchEdge>>();
             SinkNodeStatisticsDict = new Dictionary<MatchNode, Statistics>();
             NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();
@@ -124,11 +124,11 @@ namespace GraphView
                 TraversalChain.Add(new Tuple<MatchNode, MatchEdge>(chain.Item1, chain.Item2));
             }
 
-            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>();
+            TraversalChain2 = new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>();
             foreach (var chain in component.TraversalChain2)
             {
-                TraversalChain2.Add(new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(
-                    chain.Item1, chain.Item2, chain.Item3));
+                TraversalChain2.Add(new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
+                    chain.Item1, chain.Item2, chain.Item3, chain.Item4, chain.Item5));
             }
 
             NodeToMaterializedEdgesDict = new Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>>();

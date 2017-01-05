@@ -9,14 +9,14 @@ namespace GraphView
         public DocDbGraphOptimizer(MatchGraph graph) : base(graph)
         { }
 
-        public override List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph)
+        public override List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph)
         {
             if (subGraph.Nodes.Count == 1)
                 return
-                    new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>
+                    new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>
                     {
-                        new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(
-                            subGraph.Nodes.First().Value, null, null)
+                        new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
+                            subGraph.Nodes.First().Value, null, null, null, null)
                     };
 
             // If it exists, pick a node defined in the outer context as the start point
@@ -47,7 +47,7 @@ namespace GraphView
                         return curComponent.TraversalChain2;
                     }
 
-                    var candidateUnit = GetCandidateUnits(nodeUnits, curComponent);
+                    var candidateUnit = GetCandidateUnits2(nodeUnits, curComponent);
                     // Add it to the current component to generate next states
                     var newComponent = GetNextState2(curComponent, candidateUnit);
 
@@ -243,6 +243,69 @@ namespace GraphView
                 throw new GraphViewException("This graph pattern is not yet supported.");
         }
 
+        private CandidateJoinUnit GetCandidateUnits2(OneHeightTree tree, MatchComponent component)
+        {
+            var revEdgeDict = Graph.ReversedEdgeDict;
+            var root = tree.TreeRoot;
+
+            List<MatchEdge> inEdges;
+            component.UnmaterializedNodeMapping.TryGetValue(root, out inEdges);
+            var outEdges = new List<MatchEdge>();
+            var unpopEdges = new List<MatchEdge>();
+            foreach (var edge in tree.Edges)
+            {
+                if (component.Nodes.Contains(edge.SinkNode))
+                    outEdges.Add(edge);
+                else
+                    unpopEdges.Add(edge);
+            }
+
+            var rawEdges = new Dictionary<string, Tuple<MatchEdge, EdgeDir>>();
+            var extInEdges = new Dictionary<string, MatchEdge>();
+            if (inEdges != null)
+            {
+                rawEdges = inEdges.ToDictionary(edge => edge.EdgeAlias,
+                    edge => new Tuple<MatchEdge, EdgeDir>(edge, EdgeDir.In));
+                extInEdges = inEdges.ToDictionary(edge => edge.EdgeAlias);
+            }
+            foreach (var edge in outEdges)
+            {
+                var key = edge.EdgeAlias;
+                rawEdges.Add(key, new Tuple<MatchEdge, EdgeDir>(edge, EdgeDir.Out));
+                extInEdges.Add(key, revEdgeDict[key]);
+            }
+
+            if (extInEdges.Any())
+            {
+                var firstEdge = extInEdges.FirstOrDefault(e => e.Value.IsReversed == false);
+                if (firstEdge.Value == null) firstEdge = extInEdges.First();
+                var preMatInEdges = new Dictionary<string, MatchEdge>
+                {
+                    {firstEdge.Key, firstEdge.Value}
+                };
+
+                var postMatEdges = rawEdges.Where(entry => !preMatInEdges.ContainsKey(entry.Key))
+                                    .Select(entry => entry.Value).ToList();
+                // Both edge will be forced to choose the incoming direction type
+                var postMatIncomingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.In || (entry.Item2 == EdgeDir.Out && entry.Item1.EdgeType == WEdgeType.BothEdge))
+                                            .Select(entry => (entry.Item2 == EdgeDir.In ? entry.Item1 : revEdgeDict[entry.Item1.EdgeAlias])).ToList();
+                var postMatOutgoingEdges = postMatEdges.Where(entry => entry.Item2 == EdgeDir.Out && entry.Item1.EdgeType != WEdgeType.BothEdge)
+                                            .Select(entry => entry.Item1).ToList();
+
+                return new CandidateJoinUnit
+                {
+                    TreeRoot = root,
+                    PreMatIncomingEdges = preMatInEdges.Select(entry => entry.Value).ToList(),
+                    PreMatOutgoingEdges = new List<MatchEdge>(),
+                    PostMatIncomingEdges = postMatIncomingEdges,
+                    PostMatOutgoingEdges = postMatOutgoingEdges,
+                    UnmaterializedEdges = unpopEdges,
+                };
+            }
+            else
+                throw new GraphViewException("This graph pattern is not yet supported.");
+        }
+
         /// <summary>
         /// Transit from current component to the new component in the next state given the candidate Unit
         /// </summary>
@@ -351,8 +414,12 @@ namespace GraphView
             var outPostMatEdges = nodeUnitCandidate.PostMatOutgoingEdges;
 
             curComponent.TraversalChain2.Add(
-                new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(inPreMatEdges[0].SourceNode,
-                    inPreMatEdges[0], new Tuple<List<MatchEdge>, List<MatchEdge>>(outPostMatEdges, inPostMatEdges)));
+                new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
+                    inPreMatEdges[0].SourceNode,
+                    inPreMatEdges[0], 
+                    inPreMatEdges[0].SinkNode, 
+                    outPostMatEdges, 
+                    inPostMatEdges));
         }
     }
 }

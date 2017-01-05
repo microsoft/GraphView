@@ -131,12 +131,13 @@ namespace GraphView
         }
     }
 
-    internal enum GraphViewNativeAggregateFunctionsEnum
+    internal enum GraphViewNativeScalarFunctionsEnum
     {
         Count,
         Deduplicate,
         Fold,
         Tree,
+        Path,
     }
 
     internal enum GraphViewNativeTableValueFunctionsEnum

@@ -161,6 +161,8 @@
     <Compile Include="GremlinTranslation2\variables\oldVersion\GremlinVirtualVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinContextScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\special\GremlinLocalVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\GremlinDerivedTableVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\GremlinKeyVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinProjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarSubquery.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarVariable.cs" />
@@ -180,6 +182,7 @@
     <Compile Include="GremlinTranslation2\variables\table\GremlinInjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinPropertiesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinTableVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\GremlinValueVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\vertex\GremlinAddVVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\vertex\GremlinBoundVertexVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\vertex\GremlinContextVertexVariable.cs" />

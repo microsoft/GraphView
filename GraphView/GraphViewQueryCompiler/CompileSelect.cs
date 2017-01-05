@@ -160,7 +160,7 @@ namespace GraphView
             {
                 var processedNodes = new HashSet<MatchNode>();
                 var traversalChain =
-                    new Stack<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>(
+                    new Stack<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>(
                         subGraph.TraversalChain2);
                 while (traversalChain.Count != 0)
                 {
@@ -175,7 +175,7 @@ namespace GraphView
                     if (traversalEdge != null)
                     {
                         var sinkNode = traversalEdge.SinkNode;
-                        ConstructJsonQueryOnNode(sinkNode, currentChain.Item3.Item1);
+                        ConstructJsonQueryOnNode(sinkNode, currentChain.Item4);
                         processedNodes.Add(sinkNode);
                     }
                 }
@@ -524,7 +524,6 @@ namespace GraphView
                 }
             }
 
-            //TODO: Add both edge flag
             // Consturct nodes and edges of a match graph defined by the SelectQueryBlock
             if (MatchClause != null)
             {
@@ -602,6 +601,7 @@ namespace GraphView
                                         new WSchemaObjectName(
                                             ),
                                     IsReversed = false,
+                                    EdgeType = CurrentEdgeColumnRef.EdgeType,
                                     Properties = new List<string> { "_sink", "_ID" },
                                 };
                             }
@@ -621,6 +621,7 @@ namespace GraphView
                                     ReferencePathInfo = false,
                                     AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict,
                                     IsReversed = false,
+                                    EdgeType = CurrentEdgeColumnRef.EdgeType,
                                     Properties = new List<string> { "_sink", "_ID" },
                                 };
                                 pathDictionary[EdgeAlias] = matchPath;
@@ -650,6 +651,7 @@ namespace GraphView
                                             new WSchemaObjectName(
                                             ),
                                         IsReversed = true,
+                                        EdgeType = EdgeToSrcNode.EdgeType,
                                         Properties = new List<string> { "_sink", "_ID" },
                                     };
                                     SrcNode.ReverseNeighbors.Add(reverseEdge);
@@ -708,6 +710,7 @@ namespace GraphView
                                         new WSchemaObjectName(
                                         ),
                                     IsReversed = true,
+                                    EdgeType = EdgeToSrcNode.EdgeType,
                                     Properties = new List<string> { "_sink", "_ID" },
                                 };
                                 DestNode.ReverseNeighbors.Add(reverseEdge);
@@ -897,6 +900,18 @@ namespace GraphView
                 subGraph.TraversalChain2 = graphOptimizer.GetOptimizedTraversalOrder2(subGraph);
             }
         }
+
+        private List<int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
+        {
+            var srcNodeIndex =
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "id"));
+            if (edge.EdgeType == WEdgeType.BothEdge)
+                return new List<int> {srcNodeIndex + 1, srcNodeIndex + 2};
+            else if (edge.IsReversed)
+                return new List<int> { srcNodeIndex + 2 };
+            else
+                return new List<int> { srcNodeIndex + 1 };
+        } 
 
         private QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
         {
@@ -1105,7 +1120,7 @@ namespace GraphView
 
         private GraphViewExecutionOperator ConstructOperator2(GraphViewConnection connection, MatchGraph graphPattern,
             QueryCompilationContext context, List<WTableReferenceWithAlias> nonVertexTableReferences,
-            List<Tuple<WBooleanExpression, HashSet<string>>> crossTablePredicatesAndTheirTableReferences)
+            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
         {
             var operatorChain = new List<GraphViewExecutionOperator>();
             var tableReferences = context.TableReferences;
@@ -1113,10 +1128,10 @@ namespace GraphView
 
             foreach (var subGraph in graphPattern.ConnectedSubGraphs)
             {
-                // For Tuple<List<MatchEdge>, List<MatchEdge>>, edges in item1 will be cross applied when GetVertices
-                // and edges in item2 will be cross applied after the TraversalOp
+                // For List<MatchEdge>, backwardMatchingEdges in item4 will be cross applied when GetVertices
+                // and forwardMatchingEdges in item5 will be cross applied after the TraversalOp
                 var traversalChain =
-                    new Stack<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>(
+                    new Stack<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>(
                         subGraph.TraversalChain2);
                 var processedNodes = new HashSet<MatchNode>();
                 while (traversalChain.Count != 0)
@@ -1124,7 +1139,9 @@ namespace GraphView
                     var currentChain = traversalChain.Pop();
                     var sourceNode = currentChain.Item1;
                     var traversalEdge = currentChain.Item2;
-                    var matchingEdges = currentChain.Item3;
+                    var sinkNode = currentChain.Item3;
+                    var backwardMatchingEdges = currentChain.Item4;
+                    var forwardMatchingEdges = currentChain.Item5;
 
                     // The first node in a component
                     if (!processedNodes.Contains(sourceNode))
@@ -1139,90 +1156,91 @@ namespace GraphView
                         else
                             operatorChain.Add(fetchNodeOp);
 
+                        context.CurrentExecutionOperator = operatorChain.Last();
                         UpdateRawRecordLayout(sourceNode.NodeAlias, sourceNode.Properties, rawRecordLayout);
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
 
                         CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                            new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
+                            new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                             operatorChain);
                     }
 
-                    if (traversalEdge != null)
+                    if (sinkNode != null)
                     {
-                        var sinkNode = traversalEdge.SinkNode;
-                        // reverse edges will be cross applied when GetVertices
-                        var backwardMatchingEdges = matchingEdges != null ? matchingEdges.Item1 : new List<MatchEdge>();
-                        // remainingEdges will be cross applied after the TraversalOp
-                        var forwardMatchingEdges = matchingEdges != null ? matchingEdges.Item2 : new List<MatchEdge>();
-
                         if (WithPathClause2 != null)
                         {
                             
                         }
                         else
                         {
-                            var currentEdgeIndex =
-                                rawRecordLayout[new WColumnReferenceExpression(sourceNode.NodeAlias, "id")] +
-                                (traversalEdge.IsReversed ? 2 : 1);
+                            // Cross apply the traversal edge and update context info
+                            var travsersalEdgeIndex = LocateAdjacencyListIndexes(context, traversalEdge);
                             var localContext = GenerateLocalContextForAdjacentListDecoder(traversalEdge.EdgeAlias, traversalEdge.Properties);
 
                             operatorChain.Add(new AdjacencyListDecoder(
                                 operatorChain.Last(),
-                                currentEdgeIndex,
+                                travsersalEdgeIndex,
                                 traversalEdge.RetrievePredicatesExpression().CompileToFunction(localContext, connection), 
                                 traversalEdge.Properties));
 
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                                new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
+                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
                             var currentEdgeSinkIndex = rawRecordLayout.Count;
                             UpdateRawRecordLayout(traversalEdge.EdgeAlias, traversalEdge.Properties, rawRecordLayout);
-                            UpdateRawRecordLayout(sinkNode.NodeAlias, sinkNode.Properties, rawRecordLayout);
                             tableReferences.Add(traversalEdge.EdgeAlias, TableGraphType.Edge);
 
+                            // Generate matching indexes for backwardMatchingEdges
                             var matchingIndexes = new List<Tuple<int, int>>();
                             var localSinkAdjListSinkIndex = sinkNode.Properties.Count;
-                            foreach (var reverseEdge in backwardMatchingEdges)
+                            foreach (var backwardMatchingEdge in backwardMatchingEdges)
                             {
+                                // backwardEdges.SinkNode.id = backwardEdges.sink
                                 var sourceMatchIndex =
-                                    rawRecordLayout[new WColumnReferenceExpression(reverseEdge.SinkNode.NodeAlias, "id")];
+                                    rawRecordLayout[new WColumnReferenceExpression(backwardMatchingEdge.SinkNode.NodeAlias, "id")];
                                 matchingIndexes.Add(new Tuple<int, int>(sourceMatchIndex, localSinkAdjListSinkIndex));
 
-                                tableReferences.Add(reverseEdge.EdgeAlias, TableGraphType.Edge);
-                                UpdateRawRecordLayout(reverseEdge.EdgeAlias, reverseEdge.Properties, rawRecordLayout);
-                                localSinkAdjListSinkIndex += reverseEdge.Properties.Count;
+                                localSinkAdjListSinkIndex += backwardMatchingEdge.Properties.Count;
                             }
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
                                 currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
 
+                            // Update sinkNode's context info
                             processedNodes.Add(sinkNode);
+                            UpdateRawRecordLayout(sinkNode.NodeAlias, sinkNode.Properties, rawRecordLayout);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);
+                            // Update backwardEdges' context info
+                            foreach (var backwardMatchingEdge in backwardMatchingEdges)
+                            {
+                                tableReferences.Add(backwardMatchingEdge.EdgeAlias, TableGraphType.Edge);
+                                UpdateRawRecordLayout(backwardMatchingEdge.EdgeAlias, backwardMatchingEdge.Properties, rawRecordLayout);
+                            }
+
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                                new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
+                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
+                            // Cross apply forwardMatchingEdges
                             var sinkNodeIdColumnReference = new WColumnReferenceExpression(sinkNode.NodeAlias, "id");
-                            foreach (var remainingEdge in forwardMatchingEdges)
+                            foreach (var forwardMatchingEdge in forwardMatchingEdges)
                             {
-                                var remainingEdgeIndex =
-                                    rawRecordLayout[
-                                        new WColumnReferenceExpression(remainingEdge.SourceNode.NodeAlias, "id")] +
-                                            (remainingEdge.IsReversed ? 2 : 1);
-                                var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(remainingEdge.EdgeAlias, remainingEdge.Properties);
+                                var forwardEdgeIndex = LocateAdjacencyListIndexes(context, forwardMatchingEdge);
+                                var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties);
                                 operatorChain.Add(new AdjacencyListDecoder(
                                     operatorChain.Last(),
-                                    remainingEdgeIndex,
-                                    remainingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
-                                    remainingEdge.Properties));
+                                    forwardEdgeIndex,
+                                    forwardMatchingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
+                                    forwardMatchingEdge.Properties));
 
-                                tableReferences.Add(remainingEdge.EdgeAlias, TableGraphType.Edge);
-                                UpdateRawRecordLayout(remainingEdge.EdgeAlias, remainingEdge.Properties, rawRecordLayout);
+                                // Update forward edge's context info
+                                tableReferences.Add(forwardMatchingEdge.EdgeAlias, TableGraphType.Edge);
+                                UpdateRawRecordLayout(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties, rawRecordLayout);
 
-                                // Add "remainingEdge.sink = sinkNode.id" filter
-                                var edgeSinkColumnReference = new WColumnReferenceExpression(remainingEdge.EdgeAlias, "_sink");
+                                // Add "forwardEdge.sink = sinkNode.id" filter
+                                var edgeSinkColumnReference = new WColumnReferenceExpression(forwardMatchingEdge.EdgeAlias, "_sink");
                                 var edgeJoinPredicate = new WBooleanComparisonExpression
                                 {
                                     ComparisonType = BooleanComparisonType.Equals,
@@ -1234,11 +1252,12 @@ namespace GraphView
 
                                 CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
                                     new HashSet<string>(tableReferences.Keys),
-                                    crossTablePredicatesAndTheirTableReferences,
+                                    predicatesAccessedTableReferences,
                                     operatorChain);
                             }
                         }
                     }
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
 
                 // TODO: layout for each case?
@@ -1314,12 +1333,19 @@ namespace GraphView
                         ScalarFunction scalarFunction;
                         WScalarExpression scalarExpression;
                         QueryCompilationContext newContext;
-                        GraphViewNativeAggregateFunctionsEnum functionEnum;
+                        GraphViewNativeScalarFunctionsEnum functionEnum;
                         if (!Enum.TryParse(functionName, true, out functionEnum))
-                            throw new GraphViewException("Aggregate function '" + functionName + "' hasn't been supported.");
+                            throw new GraphViewException("Scalar function '" + functionName + "' hasn't been supported.");
                         switch (functionEnum)
                         {
-                            case GraphViewNativeAggregateFunctionsEnum.Count:
+                            case GraphViewNativeScalarFunctionsEnum.Path:
+                                var indexList = new List<int>();
+                                foreach (var parameter in functionCall.Parameters)
+                                    indexList.Add(context.LocateColumnReference((parameter as WColumnReferenceExpression)));
+                                scalarFunction = new PathFunction(indexList);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                break;
+                            case GraphViewNativeScalarFunctionsEnum.Count:
                                 newContext = new QueryCompilationContext();
                                 newContext.AddField("", alias, ColumnGraphType.Value);
                                 scalarExpression = new WColumnReferenceExpression("", alias);
@@ -1327,12 +1353,12 @@ namespace GraphView
                                 projectOperator.AddSelectScalarElement(scalarFunction, alias);
                                 // new CountOperator
                                 break;
-                            case GraphViewNativeAggregateFunctionsEnum.Deduplicate:
+                            case GraphViewNativeScalarFunctionsEnum.Deduplicate:
                                 scalarFunction = functionCall.Parameters[0].CompileToFunction(context, connection);
                                 projectOperator.AddSelectScalarElement(scalarFunction, alias);
                                 // new Deduplicate Operator
                                 break;
-                            case GraphViewNativeAggregateFunctionsEnum.Fold:
+                            case GraphViewNativeScalarFunctionsEnum.Fold:
                                 newContext = new QueryCompilationContext();
                                 newContext.AddField("", alias, ColumnGraphType.Value);
                                 scalarExpression = new WColumnReferenceExpression("", alias);
@@ -1340,7 +1366,7 @@ namespace GraphView
                                 projectOperator.AddSelectScalarElement(scalarFunction, alias);
                                 // new Fold Operator
                                 break;
-                            case GraphViewNativeAggregateFunctionsEnum.Tree:
+                            case GraphViewNativeScalarFunctionsEnum.Tree:
                                 newContext = new QueryCompilationContext();
                                 newContext.AddField("", alias, ColumnGraphType.Value);
                                 scalarExpression = new WColumnReferenceExpression("", alias);
@@ -1960,6 +1986,86 @@ namespace GraphView
             }
 
             return optionalOp;
+        }
+    }
+
+    partial class WLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
+            if (localSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a local table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock localSelect = localSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (localSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            foreach (WSelectElement selectElement in localSelect.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be column references.");
+                }
+                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, dbConnection);
+
+            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = localOp;
+
+            return localOp;
+        }
+    }
+
+    partial class WFlatMapTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
+            if (localSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a flatMap table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock flatMapSelect = localSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (flatMapSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            foreach (WSelectElement selectElement in flatMapSelect.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be column references.");
+                }
+                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
+
+            LocalOperator flatMapOp = new LocalOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = flatMapOp;
+
+            return flatMapOp;
         }
     }
 }

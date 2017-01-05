@@ -52,7 +52,7 @@ namespace GraphView
             TaggedVariables.Clear();
             VariableList.Clear();
             TableReferences.Clear();
-            SetVariables.Clear();
+            //SetVariables.Clear();
             //ProjectedVariables.Clear();
             Paths.Clear();
             // More resetting goes here when more properties are added to GremlinToSqlContext
@@ -238,7 +238,7 @@ namespace GraphView
         public List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)
         {
             var selectElements = new List<WSelectElement>();
-            if (ProjectedProperties != null)
+            if (ProjectedProperties != null && ProjectedProperties.Count != 0)
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {

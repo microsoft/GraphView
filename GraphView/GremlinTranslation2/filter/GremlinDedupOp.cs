@@ -13,17 +13,15 @@ namespace GraphView
 
         public GremlinDedupOp(params string[] dedupLabels)
         {
-            DedupLabels = new List<string>();
-            foreach (var dedupLabel in dedupLabels)
-            {
-                DedupLabels.Add(dedupLabel);
-            }
+            DedupLabels = new List<string>(dedupLabels);
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.Dedup(inputContext, DedupLabels);
+
             return inputContext;
         }
     }
