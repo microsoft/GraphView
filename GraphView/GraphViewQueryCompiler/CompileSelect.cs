@@ -1149,7 +1149,7 @@ namespace GraphView
                         var fetchNodeOp = new FetchNodeOperator2(connection, sourceNode.AttachedJsonQuery);
 
                         // The graph contains more than one component
-                        if (!operatorChain.Any())
+                        if (operatorChain.Any())
                             operatorChain.Add(new CartesianProductOperator2(operatorChain.Last(), fetchNodeOp));
                         else if (context.OuterContextOp != null)
                             operatorChain.Add(new CartesianProductOperator2(context.OuterContextOp, fetchNodeOp));
