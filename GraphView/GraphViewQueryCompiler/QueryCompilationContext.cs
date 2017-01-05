@@ -153,6 +153,11 @@ namespace GraphView
             RawRecordLayout[colRef] = index;
         }
 
+        public void ClearField()
+        {
+            RawRecordLayout.Clear();
+        }
+
         public TemporaryTableHeader ToTableHeader()
         {
             TemporaryTableHeader header = new TemporaryTableHeader();

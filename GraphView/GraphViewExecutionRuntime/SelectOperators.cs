@@ -499,6 +499,14 @@ namespace GraphView
         }
     }
 
+    internal interface IAggregateFunction
+    {
+        void Init();
+        void Accumulate(params string[] values);
+
+        string Terminate();
+    }
+
     internal class ProjectOperator : GraphViewExecutionOperator
     {
         private List<Tuple<ScalarFunction, string>> selectScalarList;
@@ -521,30 +529,77 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            while (outputBuffer.Count == 0 && inputOp.State())
+            currentRecord = inputOp.Next();
+            if (currentRecord == null)
             {
-                currentRecord = inputOp.Next();
-                if (currentRecord == null)
-                {
-                    Close();
-                    return null;
-                }
-
-                RawRecord selectRecord = new RawRecord(selectScalarList.Count);
-                int index = 0;
-                foreach (var selectPair in selectScalarList)
-                {
-                    ScalarFunction scalarFunction = selectPair.Item1;
-                    string result = scalarFunction.Evaluate(currentRecord);
-                    selectRecord.fieldValues[index++] = result ?? "";
-                }
-
-                outputBuffer.Enqueue(selectRecord);
+                Close();
+                return null;
             }
 
-            if (outputBuffer.Count <= 1) this.Close();
-            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
-            return null;
+            RawRecord selectRecord = new RawRecord(selectScalarList.Count);
+            int index = 0;
+            foreach (var selectPair in selectScalarList)
+            {
+                ScalarFunction scalarFunction = selectPair.Item1;
+                string result = scalarFunction.Evaluate(currentRecord);
+                selectRecord.fieldValues[index++] = result ?? "";
+            }
+
+            return selectRecord;
+        }
+    }
+
+    internal class ProjectAggregation : GraphViewExecutionOperator
+    {
+        List<Tuple<IAggregateFunction, List<int>>> aggregationSpecs;
+        GraphViewExecutionOperator inputOp;
+
+        public ProjectAggregation(GraphViewExecutionOperator inputOp)
+        {
+            this.inputOp = inputOp;
+            aggregationSpecs = new List<Tuple<IAggregateFunction, List<int>>>();
+        }
+
+        public void AddAggregateSpec(IAggregateFunction aggrFunc, List<int> aggrInputIndexes)
+        {
+            aggregationSpecs.Add(new Tuple<IAggregateFunction, List<int>>(aggrFunc, aggrInputIndexes));
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            foreach (var aggr in aggregationSpecs)
+            {
+                aggr.Item1.Init();
+            }
+
+            RawRecord inputRec = null;
+            while ((inputRec = inputOp.Next()) != null)
+            {
+                foreach (var aggr in aggregationSpecs)
+                {
+                    string[] paraList = new string[aggr.Item2.Count];
+                    for(int i = 0; i < aggr.Item2.Count; i++)
+                    {
+                        paraList[i] = inputRec[aggr.Item2[i]];
+                    }
+
+                    aggr.Item1.Accumulate(paraList);
+                }
+            }
+
+            RawRecord outputRec = new RawRecord();
+            foreach (var aggr in aggregationSpecs)
+            {
+                outputRec.Append(aggr.Item1.Terminate());
+            }
+
+            return outputRec;
         }
     }
 
