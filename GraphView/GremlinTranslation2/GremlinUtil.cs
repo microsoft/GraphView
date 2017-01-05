@@ -356,7 +356,7 @@ namespace GraphView
                     funcTableRef = new WConstantReference();
                     break;
                 case "E":
-                    funcTableRef = new WEdgeTableReference();
+                    funcTableRef = new WBoundEdgeTableReference();
                     break;
                 case "flatMap":
                     funcTableRef = new WFlatMapTableReference();
@@ -365,7 +365,7 @@ namespace GraphView
                     funcTableRef = new WLocalTableReference();
                     break;
                 case "N":
-                    funcTableRef = new WNodeTableReference();
+                    funcTableRef = new WBoundNodeTableReference();
                     break;
                 case "optioanl":
                     funcTableRef = new WOptionalTableReference();

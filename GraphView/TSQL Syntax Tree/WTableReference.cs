@@ -362,7 +362,7 @@ namespace GraphView
 
     }
 
-    public partial class WEdgeTableReference : WSchemaObjectFunctionTableReference
+    public partial class WBoundEdgeTableReference : WSchemaObjectFunctionTableReference
     {
 
     }
@@ -377,7 +377,7 @@ namespace GraphView
 
     }
 
-    public partial class WNodeTableReference : WSchemaObjectFunctionTableReference
+    public partial class WBoundNodeTableReference : WSchemaObjectFunctionTableReference
     {
 
     }
