@@ -161,18 +161,6 @@ namespace GraphView
             List<WSqlStatement> statementList = new List<WSqlStatement>();
             foreach (var variable in SetVariables)
             {
-                //if (variable is GremlinAddEVariable)
-                //{
-                //    if (!((variable as GremlinAddEVariable).FromVariable is GremlinAddVVariable))
-                //    {
-                //        statementList.AddRange((variable as GremlinAddEVariable).FromVariable.ToSetVariableStatements());
-                //    }
-                //    if (!((variable as GremlinAddEVariable).ToVariable is GremlinAddVVariable))
-                //    {
-                //        statementList.AddRange((variable as GremlinAddEVariable).ToVariable.ToSetVariableStatements());
-                //    }
-
-                //}
                 statementList.AddRange(variable.ToSetVariableStatements());
             }
             return statementList;

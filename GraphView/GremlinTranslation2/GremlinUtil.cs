@@ -346,12 +346,47 @@ namespace GraphView
         internal static WSchemaObjectFunctionTableReference GetFunctionTableReference(string functionName,
             List<WScalarExpression> parameterList, string alias = null)
         {
-            return new WSchemaObjectFunctionTableReference()
+            WSchemaObjectFunctionTableReference funcTableRef;
+            switch (functionName)
             {
-                SchemaObject = new WSchemaObjectName(GetIdentifier(functionName)),
-                Parameters = parameterList,
-                Alias = GetIdentifier(alias)
-            };
+                case "coalesce":
+                    funcTableRef = new WCoalesceTableReference();
+                    break;
+                case "constant":
+                    funcTableRef = new WConstantReference();
+                    break;
+                case "E":
+                    funcTableRef = new WEdgeTableReference();
+                    break;
+                case "flatMap":
+                    funcTableRef = new WFlatMapTableReference();
+                    break;
+                case "local":
+                    funcTableRef = new WLocalTableReference();
+                    break;
+                case "N":
+                    funcTableRef = new WNodeTableReference();
+                    break;
+                case "optioanl":
+                    funcTableRef = new WOptionalTableReference();
+                    break;
+                case "properties":
+                    funcTableRef = new WPropertiesTableReference();
+                    break;
+                case "repeat":
+                    funcTableRef = new WRepeatTableReference();
+                    break;
+                case "values":
+                    funcTableRef = new WValuesTableReference();
+                    break;
+                default:
+                    funcTableRef = new WSchemaObjectFunctionTableReference();
+                    break;
+            }
+            funcTableRef.SchemaObject = new WSchemaObjectName(GetIdentifier(functionName));
+            funcTableRef.Parameters = parameterList;
+            funcTableRef.Alias = GetIdentifier(alias);
+            return funcTableRef;
         }
 
         internal static WScalarSubquery GetScalarSubquery(WSelectQueryBlock selectQueryBlock)

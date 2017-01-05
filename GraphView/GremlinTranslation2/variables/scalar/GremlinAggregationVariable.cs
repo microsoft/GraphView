@@ -46,7 +46,13 @@ namespace GraphView
 
     internal class GremlinTreeVariable : GremlinScalarVariable
     {
-        
+        public override WSelectElement ToSelectElement()
+        {
+            return new WSelectScalarExpression()
+            {
+                SelectExpr = GremlinUtil.GetFunctionCall("tree")
+            };
+        }
     }
 
     internal class GremlinUnfoldVariable : GremlinTableVariable, ISqlTable
