@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView.GraphViewExecutionRuntime;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
 
 namespace GraphView
@@ -499,6 +500,65 @@ namespace GraphView
         }
     }
 
+    /// <summary>
+    /// Orderby operator is used for orderby clause. It will takes all the output of its child operator and sort them by a giving key.
+    /// </summary>
+    internal class OrderbyOperator2 : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        private List<RawRecord> results;
+        private Queue<RawRecord> outputBuffer;
+
+        // <index, order>
+        private List<Tuple<int, SortOrder>> orderByElements;
+
+        public OrderbyOperator2(GraphViewExecutionOperator inputOp, List<Tuple<int, SortOrder>> orderByElements)
+        {
+            this.Open();
+            this.inputOp = inputOp;
+            this.orderByElements = orderByElements;
+            this.outputBuffer = new Queue<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            if (results == null)
+            {
+                results = new List<RawRecord>();
+                RawRecord inputRec = null;
+                while ((inputRec = inputOp.Next()) != null)
+                {
+                    results.Add(inputRec);
+                }
+
+                results.Sort((x, y) =>
+                {
+                    var ret = 0;
+                    foreach (var orderByElement in orderByElements)
+                    {
+                        var index = orderByElement.Item1;
+                        var sortOrder = orderByElement.Item2;
+                        if (sortOrder == SortOrder.Ascending || sortOrder == SortOrder.NotSpecified)
+                            ret = string.Compare(x[index], y[index],
+                                StringComparison.OrdinalIgnoreCase);
+                        else if (sortOrder == SortOrder.Descending)
+                            ret = string.Compare(y[index], x[index],
+                                StringComparison.OrdinalIgnoreCase);
+                        if (ret != 0) break;
+                    }
+                    return ret;
+                });
+
+                foreach (var x in results)
+                    outputBuffer.Enqueue(x);
+            }
+
+            if (outputBuffer.Count <= 1) this.Close();
+            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            return null;
+        }
+    }
+
     internal interface IAggregateFunction
     {
         void Init();
@@ -513,13 +573,11 @@ namespace GraphView
         private GraphViewExecutionOperator inputOp;
 
         private RawRecord currentRecord;
-        private Queue<RawRecord> outputBuffer;
 
         public ProjectOperator(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
             selectScalarList = new List<Tuple<ScalarFunction, string>>();
-            outputBuffer = new Queue<RawRecord>();
         }
 
         public void AddSelectScalarElement(ScalarFunction scalarFunction, string alias)

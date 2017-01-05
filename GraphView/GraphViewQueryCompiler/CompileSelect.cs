@@ -1893,6 +1893,30 @@ namespace GraphView
         }
     }
 
+    partial class WOrderByClause
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+
+            var orderByElements = new List<Tuple<int, SortOrder>>();
+            if (OrderByElements != null)
+            {
+                foreach (var element in OrderByElements)
+                {
+                    var expr = element.ScalarExpr as WColumnReferenceExpression;
+                    if (expr == null)
+                        throw new SyntaxErrorException("The order by elements can only be WColumnReferenceExpression.");
+
+                    orderByElements.Add(new Tuple<int, SortOrder>(context.LocateColumnReference(expr), element.SortOrder));
+                }
+            }
+
+            var orderByOp = new OrderbyOperator2(context.CurrentExecutionOperator, orderByElements);
+            context.CurrentExecutionOperator = orderByOp;
+            return orderByOp;
+        }
+    }
+
     partial class WCoalesceTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
