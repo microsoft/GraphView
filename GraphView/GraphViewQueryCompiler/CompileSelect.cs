@@ -1166,7 +1166,7 @@ namespace GraphView
                             operatorChain);
                     }
 
-                    if (traversalEdge != null)
+                    if (sinkNode != null)
                     {
                         if (WithPathClause2 != null)
                         {
@@ -1174,6 +1174,7 @@ namespace GraphView
                         }
                         else
                         {
+                            // Cross apply the traversal edge and update context info
                             var travsersalEdgeIndex = LocateAdjacencyListIndexes(context, traversalEdge);
                             var localContext = GenerateLocalContextForAdjacentListDecoder(traversalEdge.EdgeAlias, traversalEdge.Properties);
 
@@ -1189,47 +1190,57 @@ namespace GraphView
 
                             var currentEdgeSinkIndex = rawRecordLayout.Count;
                             UpdateRawRecordLayout(traversalEdge.EdgeAlias, traversalEdge.Properties, rawRecordLayout);
-                            UpdateRawRecordLayout(sinkNode.NodeAlias, sinkNode.Properties, rawRecordLayout);
                             tableReferences.Add(traversalEdge.EdgeAlias, TableGraphType.Edge);
 
+                            // Generate matching indexes for backwardMatchingEdges
                             var matchingIndexes = new List<Tuple<int, int>>();
                             var localSinkAdjListSinkIndex = sinkNode.Properties.Count;
-                            foreach (var reverseEdge in backwardMatchingEdges)
+                            foreach (var backwardMatchingEdge in backwardMatchingEdges)
                             {
+                                // backwardEdges.SinkNode.id = backwardEdges.sink
                                 var sourceMatchIndex =
-                                    rawRecordLayout[new WColumnReferenceExpression(reverseEdge.SinkNode.NodeAlias, "id")];
+                                    rawRecordLayout[new WColumnReferenceExpression(backwardMatchingEdge.SinkNode.NodeAlias, "id")];
                                 matchingIndexes.Add(new Tuple<int, int>(sourceMatchIndex, localSinkAdjListSinkIndex));
 
-                                tableReferences.Add(reverseEdge.EdgeAlias, TableGraphType.Edge);
-                                UpdateRawRecordLayout(reverseEdge.EdgeAlias, reverseEdge.Properties, rawRecordLayout);
-                                localSinkAdjListSinkIndex += reverseEdge.Properties.Count;
+                                localSinkAdjListSinkIndex += backwardMatchingEdge.Properties.Count;
                             }
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
                                 currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
 
+                            // Update sinkNode's context info
                             processedNodes.Add(sinkNode);
+                            UpdateRawRecordLayout(sinkNode.NodeAlias, sinkNode.Properties, rawRecordLayout);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);
+                            // Update backwardEdges' context info
+                            foreach (var backwardMatchingEdge in backwardMatchingEdges)
+                            {
+                                tableReferences.Add(backwardMatchingEdge.EdgeAlias, TableGraphType.Edge);
+                                UpdateRawRecordLayout(backwardMatchingEdge.EdgeAlias, backwardMatchingEdge.Properties, rawRecordLayout);
+                            }
+
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
+                            // Cross apply forwardMatchingEdges
                             var sinkNodeIdColumnReference = new WColumnReferenceExpression(sinkNode.NodeAlias, "id");
-                            foreach (var remainingEdge in forwardMatchingEdges)
+                            foreach (var forwardMatchingEdge in forwardMatchingEdges)
                             {
-                                var remainingEdgeIndex = LocateAdjacencyListIndexes(context, remainingEdge);
-                                var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(remainingEdge.EdgeAlias, remainingEdge.Properties);
+                                var forwardEdgeIndex = LocateAdjacencyListIndexes(context, forwardMatchingEdge);
+                                var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties);
                                 operatorChain.Add(new AdjacencyListDecoder(
                                     operatorChain.Last(),
-                                    remainingEdgeIndex,
-                                    remainingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
-                                    remainingEdge.Properties));
+                                    forwardEdgeIndex,
+                                    forwardMatchingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
+                                    forwardMatchingEdge.Properties));
 
-                                tableReferences.Add(remainingEdge.EdgeAlias, TableGraphType.Edge);
-                                UpdateRawRecordLayout(remainingEdge.EdgeAlias, remainingEdge.Properties, rawRecordLayout);
+                                // Update forward edge's context info
+                                tableReferences.Add(forwardMatchingEdge.EdgeAlias, TableGraphType.Edge);
+                                UpdateRawRecordLayout(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties, rawRecordLayout);
 
-                                // Add "remainingEdge.sink = sinkNode.id" filter
-                                var edgeSinkColumnReference = new WColumnReferenceExpression(remainingEdge.EdgeAlias, "_sink");
+                                // Add "forwardEdge.sink = sinkNode.id" filter
+                                var edgeSinkColumnReference = new WColumnReferenceExpression(forwardMatchingEdge.EdgeAlias, "_sink");
                                 var edgeJoinPredicate = new WBooleanComparisonExpression
                                 {
                                     ComparisonType = BooleanComparisonType.Equals,
@@ -1246,6 +1257,7 @@ namespace GraphView
                             }
                         }
                     }
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
 
                 // TODO: layout for each case?
