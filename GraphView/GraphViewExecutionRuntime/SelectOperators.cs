@@ -184,7 +184,7 @@ namespace GraphView
                         {
                             sinkReferenceList.Append(", ");
                         }
-                        sinkReferenceList.Append(sinkRef);
+                        sinkReferenceList.AppendFormat("'{0}'", sinkRef);
                     }
 
                     string inClause = string.Format("{0}.id IN ({1})", sinkVertexQuery.Alias, sinkReferenceList.ToString());
@@ -194,8 +194,10 @@ namespace GraphView
                         Alias = sinkVertexQuery.Alias,
                         WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
                         SelectClause = sinkVertexQuery.SelectClause,
-                        ProjectedColumns = sinkVertexQuery.ProjectedColumns
+                        ProjectedColumns = sinkVertexQuery.ProjectedColumns,
+                        Properties = sinkVertexQuery.Properties,
                     };
+
                     if (toSendQuery.WhereSearchCondition == null)
                     {
                         toSendQuery.WhereSearchCondition = inClause;
@@ -405,7 +407,7 @@ namespace GraphView
                 var results = CrossApply(srcRecord);
                 foreach (var edgeRecord in results)
                 {
-                    if (!edgePredicate.Evaluate(edgeRecord))
+                    if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
                         continue;
 
                     var resultRecord = new RawRecord(srcRecord);

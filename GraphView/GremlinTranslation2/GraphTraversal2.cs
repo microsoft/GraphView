@@ -34,10 +34,10 @@ namespace GraphView
 
         internal List<RawRecord> next()
         {
-            //var sqlScript = LastGremlinTranslationOp.ToSqlScript();
-            //var str = sqlScript.ToString();
+            var sqlScript = LastGremlinTranslationOp.ToSqlScript();
+            var str = sqlScript.ToString();
 
-            var op = LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection);
+            var op = sqlScript.Batches[0].Compile(null, Connection);
             var results = new List<RawRecord>();
             RawRecord outputRec = null;
             while ((outputRec = op.Next()) != null)

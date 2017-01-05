@@ -143,13 +143,21 @@ namespace GraphView
                 {
                     if (edge.Properties == null)
                         edge.Properties = new List<string>();
-                    edge.Properties.AddRange(properties);
+                    foreach (var property in properties)
+                    {
+                        if (!edge.Properties.Contains(property))
+                            edge.Properties.Add(property);
+                    }
                 }
                 else if (graphPattern.TryGetNode(tableName, out node))
                 {
                     if (node.Properties == null)
                         node.Properties = new List<string>();
-                    node.Properties.AddRange(properties);
+                    foreach (var property in properties)
+                    {
+                        if (!node.Properties.Contains(property))
+                            node.Properties.Add(property);
+                    }
                 }
             }
         }
@@ -1114,7 +1122,8 @@ namespace GraphView
             foreach (var property in properties)
             {
                 var columnReference = new WColumnReferenceExpression(tableName, property);
-                rawRecordLayout.Add(columnReference, nextLayoutIndex++);
+                if (!rawRecordLayout.ContainsKey(columnReference))
+                    rawRecordLayout.Add(columnReference, nextLayoutIndex++);
             }
         }
 
@@ -1177,11 +1186,11 @@ namespace GraphView
                             // Cross apply the traversal edge and update context info
                             var travsersalEdgeIndex = LocateAdjacencyListIndexes(context, traversalEdge);
                             var localContext = GenerateLocalContextForAdjacentListDecoder(traversalEdge.EdgeAlias, traversalEdge.Properties);
-
+                            var edgePredicates = traversalEdge.RetrievePredicatesExpression();
                             operatorChain.Add(new AdjacencyListDecoder(
                                 operatorChain.Last(),
                                 travsersalEdgeIndex,
-                                traversalEdge.RetrievePredicatesExpression().CompileToFunction(localContext, connection), 
+                                edgePredicates != null ? edgePredicates.CompileToFunction(localContext, connection) : null, 
                                 traversalEdge.Properties));
 
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
@@ -1229,10 +1238,11 @@ namespace GraphView
                             {
                                 var forwardEdgeIndex = LocateAdjacencyListIndexes(context, forwardMatchingEdge);
                                 var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties);
+                                var forwardEdgePredicates = forwardMatchingEdge.RetrievePredicatesExpression();
                                 operatorChain.Add(new AdjacencyListDecoder(
                                     operatorChain.Last(),
                                     forwardEdgeIndex,
-                                    forwardMatchingEdge.RetrievePredicatesExpression().CompileToFunction(localEdgeContext, connection),
+                                    forwardEdgePredicates != null ? forwardEdgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                                     forwardMatchingEdge.Properties));
 
                                 // Update forward edge's context info
