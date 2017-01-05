@@ -1939,6 +1939,7 @@ namespace GraphView
                 context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
+            context.CurrentExecutionOperator = coalesceOp;
             return coalesceOp;
         }
     }
