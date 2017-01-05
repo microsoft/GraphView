@@ -9,6 +9,7 @@ namespace GraphView
     internal abstract class AggregateFunction : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator InputOperator;
+        // TODO: Wrong design, group by should be an independent operator
         protected List<int> GroupByFieldsList;
         protected Queue<RawRecord> InputBuffer;
         protected Queue<RawRecord> OutputBuffer;
