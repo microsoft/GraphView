@@ -87,14 +87,9 @@ namespace GraphView
             }
         }
 
-        public void AddPredicate(WBooleanExpression expr)
+        public void AddPredicate(WBooleanExpression newPredicate)
         {
-            Predicates = Predicates == null ? expr : new WBooleanBinaryExpression()
-            {
-                BooleanExpressionType = BooleanBinaryExpressionType.And,
-                FirstExpr = Predicates,
-                SecondExpr = expr
-            };
+            Predicates = Predicates == null ? newPredicate : GremlinUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
         }
 
         public void AddEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
@@ -123,12 +118,11 @@ namespace GraphView
         {
             if (TableReferences.Count == 0)
             {
-                return GremlinUtil.GetBooleanParenthesisExpression(Predicates);
+                return GremlinUtil.GetBooleanParenthesisExpr(Predicates);
             }
             else
             {
-                WSqlStatement subQueryExpr = ToSelectQueryBlock();
-                return GremlinUtil.GetExistPredicate(subQueryExpr);
+                return GremlinUtil.GetExistPredicate(ToSelectQueryBlock());
             }
         }
 
@@ -243,7 +237,7 @@ namespace GraphView
                 foreach (var projectProperty in ProjectedProperties)
                 {
                     var valueExpr = GremlinUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
-                    selectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                    selectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
                 }
             }
             else

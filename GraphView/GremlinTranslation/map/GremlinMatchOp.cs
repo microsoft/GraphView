@@ -209,8 +209,8 @@ namespace GraphView.GremlinTranslation
                 //    booleanExpr = new WBooleanComparisonExpression()
                 //    {
                 //        ComparisonType = BooleanComparisonType.Equals,
-                //        FirstExpr = GremlinUtil.GetValueExpression((matchVariable as GremlinScalarVariable).ScalarSubquery),
-                //        SecondExpr = GremlinUtil.GetValueExpression((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
+                //        FirstExpr = GremlinUtil.GetValueExpr((matchVariable as GremlinScalarVariable).ScalarSubquery),
+                //        SecondExpr = GremlinUtil.GetValueExpr((inputContext.CurrVariable as GremlinScalarVariable).ScalarSubquery)
                 //    };
                 //}
                 inputContext.AddPredicate(booleanExpr);

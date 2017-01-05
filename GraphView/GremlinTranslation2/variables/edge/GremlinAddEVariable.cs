@@ -40,20 +40,20 @@ namespace GraphView
             selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
 
             var fromVarExpr = GremlinUtil.GetColumnReferenceExpr(FromVariable.VariableName);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(fromVarExpr));
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(fromVarExpr));
 
             var toVarExpr = GremlinUtil.GetColumnReferenceExpr(ToVariable.VariableName);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(toVarExpr));
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(toVarExpr));
 
             //Add edge key-value
             columnK.Add(GremlinUtil.GetColumnReferenceExpr("label"));
-            var valueExpr = GremlinUtil.GetValueExpression(EdgeLabel);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+            var valueExpr = GremlinUtil.GetValueExpr(EdgeLabel);
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
             foreach (var property in Properties)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpr(property.Key));
-                valueExpr = GremlinUtil.GetValueExpression(property.Value.ToString());
-                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                valueExpr = GremlinUtil.GetValueExpr(property.Value.ToString());
+                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
             }
 
             //hack

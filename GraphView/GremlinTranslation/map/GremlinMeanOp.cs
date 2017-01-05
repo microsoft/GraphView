@@ -20,7 +20,7 @@ namespace GraphView.GremlinTranslation
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpression() }; //TODO
+            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() }; //TODO
 
             inputContext.ProcessProjectWithFunctionCall(Labels, "mean", parameterList);
 

@@ -83,7 +83,7 @@ namespace GraphView
                 var projectValue = GremlinUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
                     projectProperty);
                 var alias = InputVariable.VariableName + "." + projectProperty;
-                inputSelectList.Add(GremlinUtil.GetSelectScalarExpression(projectValue, alias));
+                inputSelectList.Add(GremlinUtil.GetSelectScalarExpr(projectValue, alias));
             }
 
             return inputSelectList;
@@ -108,7 +108,7 @@ namespace GraphView
                                 var alias = temp.ContextVariable.VariableName + "." + property;
                                 var projectValue = GremlinUtil.GetColumnReferenceExpr(selectVar.VariableName,
                                     property);
-                                outerSelectList.Add(GremlinUtil.GetSelectScalarExpression(projectValue, alias));
+                                outerSelectList.Add(GremlinUtil.GetSelectScalarExpr(projectValue, alias));
                             }
 
                         }

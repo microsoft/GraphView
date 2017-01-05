@@ -81,7 +81,7 @@ namespace GraphView.GremlinTranslation
                     //create different branch context
                     foreach (var option in OptionDict)
                     {
-                        var valueExpr = GremlinUtil.GetValueExpression(option.Key);
+                        var valueExpr = GremlinUtil.GetValueExpr(option.Key);
                         var optionTraversal = option.Value;
 
                         GremlinUtil.InheritedVariableFromParent(optionTraversal, inputContext);

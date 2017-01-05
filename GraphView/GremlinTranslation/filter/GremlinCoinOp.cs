@@ -24,7 +24,7 @@ namespace GraphView.GremlinTranslation
             List<WScalarExpression> parameterList = new List<WScalarExpression>()
             {
                 //GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName),
-                GremlinUtil.GetValueExpression(Probability)
+                GremlinUtil.GetValueExpr(Probability)
             };
             WFunctionCall functionCall = GremlinUtil.GetFunctionCall("coin", parameterList);
 

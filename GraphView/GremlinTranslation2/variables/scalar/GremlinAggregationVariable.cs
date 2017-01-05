@@ -32,7 +32,7 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(GremlinUtil.GetSelectFunctionCall("count", GremlinUtil.GetStarColumnReferenceExpression()));
+            queryBlock.SelectElements.Add(GremlinUtil.GetSelectFunctionCall("count", GremlinUtil.GetStarColumnReferenceExpr()));
             return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }

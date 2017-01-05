@@ -39,12 +39,12 @@ namespace GraphView
 
                 WSelectQueryExpression firstQueryExpr = UnionContextList[0].ToSelectQueryBlock();
                 WSelectQueryExpression secondQueryExpr = UnionContextList[1].ToSelectQueryBlock();
-                var binaryQueryExpression = GremlinUtil.GetBinaryQueryExpression(firstQueryExpr, secondQueryExpr);
+                var binaryQueryExpression = GremlinUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
                 for (var i = 2; i < UnionContextList.Count; i++)
                 {
                     firstQueryExpr = binaryQueryExpression;
                     secondQueryExpr = UnionContextList[i].ToSelectQueryBlock();
-                    binaryQueryExpression = GremlinUtil.GetBinaryQueryExpression(firstQueryExpr, secondQueryExpr);
+                    binaryQueryExpression = GremlinUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
                 }
 
                 //TODO:

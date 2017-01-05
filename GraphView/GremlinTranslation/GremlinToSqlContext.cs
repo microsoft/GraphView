@@ -423,20 +423,20 @@ namespace GraphView.GremlinTranslation
             selectBlock.FromClause.TableReferences.Add(GremlinUtil.GetTableReferenceFromVariable(currVar.ToVariable));
 
             var fromVarExpr = GremlinUtil.GetColumnReferenceExpression(currVar.FromVariable.VariableName);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(fromVarExpr));
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(fromVarExpr));
 
             var toVarExpr = GremlinUtil.GetColumnReferenceExpression(currVar.ToVariable.VariableName);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(toVarExpr));
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(toVarExpr));
 
             //Add edge key-value
             columnK.Add(GremlinUtil.GetColumnReferenceExpression("label"));
-            var valueExpr = GremlinUtil.GetValueExpression(currVar.EdgeLabel);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+            var valueExpr = GremlinUtil.GetValueExpr(currVar.EdgeLabel);
+            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
             foreach (var property in currVar.Properties)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
-                valueExpr = GremlinUtil.GetValueExpression(property.Value.ToString());
-                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                valueExpr = GremlinUtil.GetValueExpr(property.Value.ToString());
+                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
             }
 
             //hack
@@ -469,13 +469,13 @@ namespace GraphView.GremlinTranslation
             if (currVar.VertexLabel != null)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpression("label"));
-                columnV.Add(GremlinUtil.GetValueExpression(currVar.VertexLabel));
+                columnV.Add(GremlinUtil.GetValueExpr(currVar.VertexLabel));
             }
 
             foreach (var property in currVar.Properties)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpression(property.Key));
-                columnV.Add(GremlinUtil.GetValueExpression(property.Value));
+                columnV.Add(GremlinUtil.GetValueExpr(property.Value));
             }
 
             var row = new List<WRowValue>() {new WRowValue() {ColumnValues = columnV}};

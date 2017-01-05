@@ -86,8 +86,8 @@ namespace GraphView
             var selectBlock = new WSelectQueryBlock();
             foreach (var row in rows)
             {
-                var valueExpr = GremlinUtil.GetValueExpression(row);
-                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));
+                var valueExpr = GremlinUtil.GetValueExpr(row);
+                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
             }
             return selectBlock;
         }

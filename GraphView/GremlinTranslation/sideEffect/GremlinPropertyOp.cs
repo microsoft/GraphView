@@ -112,7 +112,7 @@ namespace GraphView.GremlinTranslation
                     WAssignmentSetClause assignmentSetClause = new WAssignmentSetClause()
                     {
                         Column = GremlinUtil.GetColumnReferenceExpression(property.Key),
-                        NewValue =  GremlinUtil.GetValueExpression(property.Value)
+                        NewValue =  GremlinUtil.GetValueExpr(property.Value)
                     };
                     setClause.Add(assignmentSetClause);
                 }

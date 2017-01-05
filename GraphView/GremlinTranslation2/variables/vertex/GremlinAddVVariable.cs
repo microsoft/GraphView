@@ -37,13 +37,13 @@ namespace GraphView
             if (VertexLabel != null)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpr("label"));
-                columnV.Add(GremlinUtil.GetValueExpression(VertexLabel));
+                columnV.Add(GremlinUtil.GetValueExpr(VertexLabel));
             }
 
             foreach (var property in Properties)
             {
                 columnK.Add(GremlinUtil.GetColumnReferenceExpr(property.Key));
-                columnV.Add(GremlinUtil.GetValueExpression(property.Value));
+                columnV.Add(GremlinUtil.GetValueExpr(property.Value));
             }
 
             var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };

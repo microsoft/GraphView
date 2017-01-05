@@ -36,7 +36,7 @@ namespace GraphView
             foreach (var edgeLabel in edgeLabels)
             {
                 var firstExpr = GremlinUtil.GetColumnReferenceExpr(bothEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
 
@@ -58,7 +58,7 @@ namespace GraphView
             foreach (var edgeLabel in edgeLabels)
             {
                 var firstExpr = GremlinUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
 
@@ -77,7 +77,7 @@ namespace GraphView
             foreach (var edgeLabel in edgeLabels)
             {
                 var firstExpr = GremlinUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
 
@@ -99,7 +99,7 @@ namespace GraphView
             foreach (var edgeLabel in edgeLabels)
             {
                 var firstExpr = GremlinUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
 
@@ -117,7 +117,7 @@ namespace GraphView
             foreach (var edgeLabel in edgeLabels)
             {
                 var firstExpr = GremlinUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
                 currentContext.AddEqualPredicate(firstExpr, secondExpr);
             }
 

@@ -48,8 +48,8 @@ namespace GraphView.GremlinTranslation
                 List<object> PropertyKeys = new List<object>();
                 inputContext.CurrVariable.Properties.Add("_edge");
                 inputContext.CurrVariable.Properties.Add("_reversed_edge");
-                PropertyKeys.Add(GremlinUtil.GetValueExpression(inputContext.CurrVariable.VariableName + "._edge"));
-                PropertyKeys.Add(GremlinUtil.GetValueExpression(inputContext.CurrVariable.VariableName + "._reversed_edge"));
+                PropertyKeys.Add(GremlinUtil.GetValueExpr(inputContext.CurrVariable.VariableName + "._edge"));
+                PropertyKeys.Add(GremlinUtil.GetValueExpr(inputContext.CurrVariable.VariableName + "._reversed_edge"));
                 var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("bothE", PropertyKeys);
                 WUnqualifiedJoin tableReference = new WUnqualifiedJoin()
                 {

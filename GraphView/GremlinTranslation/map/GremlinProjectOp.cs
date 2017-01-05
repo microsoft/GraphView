@@ -39,7 +39,7 @@ namespace GraphView.GremlinTranslation
                     SubQueryExpr = selectQueryBlock
                 };
                 parameterList.Add(scalarExpr);
-                parameterList.Add(GremlinUtil.GetValueExpression(ProjectKeys[i]));
+                parameterList.Add(GremlinUtil.GetValueExpr(ProjectKeys[i]));
             }
             WFunctionCall projectFunctionCall = GremlinUtil.GetFunctionCall("project", parameterList);
 

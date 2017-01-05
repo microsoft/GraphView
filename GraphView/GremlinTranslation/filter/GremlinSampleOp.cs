@@ -23,7 +23,7 @@ namespace GraphView.GremlinTranslation
             List<WScalarExpression> parameterList = new List<WScalarExpression>()
             {
                 //GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName),
-                GremlinUtil.GetValueExpression(AmountToSample)
+                GremlinUtil.GetValueExpr(AmountToSample)
             };
             WFunctionCall functionCall = GremlinUtil.GetFunctionCall("sample", parameterList);
 

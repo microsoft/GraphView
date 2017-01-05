@@ -11,18 +11,12 @@ namespace GraphView
     {
         internal static WColumnReferenceExpression GetColumnReferenceExpr(params string[] parts)
         {
-            return new WColumnReferenceExpression()
-            {
-                MultiPartIdentifier = GetMultiPartIdentifier(parts)
-            };
+            return new WColumnReferenceExpression() { MultiPartIdentifier = GetMultiPartIdentifier(parts) };
         }
 
-        internal static WColumnReferenceExpression GetStarColumnReferenceExpression()
+        internal static WColumnReferenceExpression GetStarColumnReferenceExpr()
         {
-            return new WColumnReferenceExpression()
-            {
-                ColumnType = ColumnType.Wildcard,
-            };
+            return new WColumnReferenceExpression() { ColumnType = ColumnType.Wildcard };
         }
 
         internal static WMultiPartIdentifier GetMultiPartIdentifier(params string[] parts)
@@ -30,17 +24,17 @@ namespace GraphView
             var multiIdentifierList = new List<Identifier>();
             foreach (var part in parts)
             {
-                multiIdentifierList.Add(new Identifier() { Value = part });
+                multiIdentifierList.Add(GetIdentifier(part));
             }
             return new WMultiPartIdentifier() { Identifiers = multiIdentifierList };
         }
 
         internal static Identifier GetIdentifier(string value)
         {
-            return new Identifier() {Value = value};
+            return new Identifier() { Value = value };
         }
 
-        internal static BooleanComparisonType GetComparisonTypeFromPredicateType(PredicateType predicateType)
+        internal static BooleanComparisonType GetComparisonType(PredicateType predicateType)
         {
             if (predicateType == PredicateType.eq) return BooleanComparisonType.Equals;
             if (predicateType == PredicateType.neq) return BooleanComparisonType.NotEqualToExclamation;
@@ -51,19 +45,13 @@ namespace GraphView
             throw new Exception("Error: GetComparisonTypeFromPredicateType");
         }
 
-        internal static WValueExpression GetValueExpression(object value)
+        internal static WValueExpression GetValueExpr(object value)
         {
-            if (value is string)
-            {
-                return new WValueExpression(value as string, true);
-            }
-            else
-            {
-                return new WValueExpression(value.ToString(), false);
-            }
+            return value is string ? new WValueExpression(value as string, true)
+                                   : new WValueExpression(value.ToString(), false);
         }
 
-        internal static WValueExpression GetNullExpression()
+        internal static WValueExpression GetNullExpr()
         {
             return new WValueExpression("null", false);
         }
@@ -81,47 +69,33 @@ namespace GraphView
 
         internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr, Predicate predicate)
         {
-            if (predicate.PredicateType == PredicateType.within ||
-                predicate.PredicateType == PredicateType.without ||
-                predicate.PredicateType == PredicateType.inside ||
-                predicate.PredicateType == PredicateType.outside ||
-                predicate.PredicateType == PredicateType.between)
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();     
+            switch (predicate.PredicateType)
             {
-                List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-                switch (predicate.PredicateType)
-                {
-                    case PredicateType.within:
-                        foreach (var value in predicate.Values)
-                        {
-                            secondExpr = GetValueExpression(value);
-                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
-                                GetComparisonTypeFromPredicateType(PredicateType.eq)));
-                        }
-                        return ConcatBooleanExprWithOr(booleanExprList);
-                    case PredicateType.without:
-                        foreach (var value in predicate.Values)
-                        {
-                            secondExpr = GetValueExpression(value);
-                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
-                                GetComparisonTypeFromPredicateType(PredicateType.neq)));
-                        }
-                        return ConcatBooleanExprWithAnd(booleanExprList);
-                    case PredicateType.inside:
-                        //TODO
-                        throw new NotImplementedException();
-                    case PredicateType.outside:
-                        //TODO
-                        throw new NotImplementedException();
-                    case PredicateType.between:
-                        //TODO
-                        throw new NotImplementedException();
-                    default:
-                        throw new NotImplementedException();
-                }
-            }
-            else
-            {
-                return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonTypeFromPredicateType(predicate.PredicateType));
+                case PredicateType.within:
+                    foreach (var value in predicate.Values)
+                    {
+                        secondExpr = GetValueExpr(value);
+                        booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
+                            GetComparisonType(PredicateType.eq)));
+                    }
+                    return ConcatBooleanExprWithOr(booleanExprList);
+                case PredicateType.without:
+                    foreach (var value in predicate.Values)
+                    {
+                        secondExpr = GetValueExpr(value);
+                        booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
+                            GetComparisonType(PredicateType.neq)));
+                    }
+                    return ConcatBooleanExprWithAnd(booleanExprList);
+                case PredicateType.inside:
+                    throw new NotImplementedException();
+                case PredicateType.outside:
+                    throw new NotImplementedException();
+                case PredicateType.between:
+                    throw new NotImplementedException();
+                default:
+                    return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(predicate.PredicateType));
             }
         }
 
@@ -130,36 +104,32 @@ namespace GraphView
             return GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals);
         }
 
-        internal static WBooleanBinaryExpression GetAndBooleanBinaryExpr(WBooleanExpression booleanExpr1,
-            WBooleanExpression booleanExpr2)
+        internal static WBooleanBinaryExpression GetBooleanBinaryExpr(WBooleanExpression firstExpr,
+            WBooleanExpression secondExpr, BooleanBinaryExpressionType type)
         {
             return new WBooleanBinaryExpression()
             {
-                BooleanExpressionType = BooleanBinaryExpressionType.And,
-                FirstExpr = booleanExpr1,
-                SecondExpr = booleanExpr2
+                BooleanExpressionType = type,
+                FirstExpr = firstExpr,
+                SecondExpr = secondExpr
             };
         }
 
-        internal static WExistsPredicate GetExistPredicate(WSqlStatement subQueryExpr)
+        internal static WBooleanBinaryExpression GetAndBooleanBinaryExpr(WBooleanExpression firstExpr,
+            WBooleanExpression secondExpr)
         {
-            return new WExistsPredicate()
-            {
-                Subquery = new WScalarSubquery
-                {
-                    SubQueryExpr = subQueryExpr as WSelectQueryExpression
-                }
-            };
+            return GetBooleanBinaryExpr(firstExpr, secondExpr, BooleanBinaryExpressionType.And);
         }
 
-        internal static WBooleanNotExpression GetNotExistPredicate(WSqlStatement subQueryExpr)
+        internal static WExistsPredicate GetExistPredicate(WSelectQueryBlock subQueryExpr)
         {
-            return new WBooleanNotExpression()
-            {
-                Expression = GetExistPredicate(subQueryExpr)
-            };
+            return new WExistsPredicate() { Subquery = GetScalarSubquery(subQueryExpr) };
         }
 
+        internal static WBooleanNotExpression GetNotExistPredicate(WSelectQueryBlock subQueryExpr)
+        {
+            return new WBooleanNotExpression() { Expression = GetExistPredicate(subQueryExpr) };
+        }
 
         internal static WBooleanExpression ConcatBooleanExprWithOr(List<WBooleanExpression> booleanExprList)
         {
@@ -178,68 +148,39 @@ namespace GraphView
             WBooleanExpression concatExpr = null;
             foreach (var booleanExpr in booleanExprList)
             {
-                if (booleanExpr != null && concatExpr != null)
-                    concatExpr = new WBooleanBinaryExpression()
-                    {
-                        BooleanExpressionType = type,
-                        FirstExpr = booleanExpr,
-                        SecondExpr = concatExpr
-                    };
-                if (booleanExpr != null && concatExpr == null)
-                    concatExpr = booleanExpr;
+                concatExpr = concatExpr == null ? booleanExpr
+                                                : GetBooleanBinaryExpr(booleanExpr, concatExpr, type);
             }
             return concatExpr;
         }
 
         internal static WSchemaObjectName GetSchemaObjectName(string value)
         {
-            return new WSchemaObjectName()
-            {
-                Identifiers = new List<Identifier>() {new Identifier() {Value = value}}
-            };
+            return new WSchemaObjectName(GetIdentifier(value));
         }
 
         internal static WNamedTableReference GetNamedTableReference(string value)
         {
-            return new WNamedTableReference()
-            {
-                TableObjectName = GetSchemaObjectName(value)
-            };
+            return new WNamedTableReference() { TableObjectName = GetSchemaObjectName(value) };
         }
 
         internal static WNamedTableReference GetNamedTableReference(GremlinVariable2 gremlinVar)
         {
             return new WNamedTableReference()
             {
-                Alias = new Identifier() { Value = gremlinVar.VariableName },
+                Alias = GetIdentifier(gremlinVar.VariableName),
                 TableObjectString = "node",
-                TableObjectName = new WSchemaObjectName(new Identifier() { Value = "node" }),
+                TableObjectName = GetSchemaObjectName("node"),
                 Low = gremlinVar.Low,
                 High = gremlinVar.High
             };
         }
 
-        internal static WBooleanExpression GetHasKeyBooleanExpression(GremlinVariable currVar, string key)
+        internal static WBooleanExpression GetHaskeyBooleanExpr(GremlinVariable currVar, string key)
         {
-            WFunctionCall functionCall = new WFunctionCall()
-            {
-                FunctionName = GetIdentifier("IS_DEFINED"),
-                Parameters = new List<WScalarExpression>()
-                {
-                    new WColumnReferenceExpression()
-                    {
-                        MultiPartIdentifier = GetMultiPartIdentifier(currVar.VariableName, key)
-                    }
-                }
-            };
-            WBooleanExpression booleanExpr = new WBooleanComparisonExpression()
-            {
-                ComparisonType = BooleanComparisonType.Equals,
-                FirstExpr = functionCall,
-                SecondExpr =
-                    new WColumnReferenceExpression() {MultiPartIdentifier = GetMultiPartIdentifier("true")}
-            };
-            return booleanExpr;
+            var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.VariableName, key));
+            var secondExpr = GetValueExpr("true");
+            return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
         }
 
         internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameterList)
@@ -251,7 +192,7 @@ namespace GraphView
             };
         }
 
-        internal static WSelectScalarExpression GetSelectScalarExpression(WScalarExpression valueExpr, string alias = null)
+        internal static WSelectScalarExpression GetSelectScalarExpr(WScalarExpression valueExpr, string alias = null)
         {
             return new WSelectScalarExpression()
             {
@@ -274,78 +215,67 @@ namespace GraphView
             if (GremlinKeyword.Order.Desr == order) return SortOrder.Descending;
             if (GremlinKeyword.Order.Incr == order) return SortOrder.Ascending;
             if (GremlinKeyword.Order.Shuffle == order) return SortOrder.NotSpecified;
-            return SortOrder.Descending;
+            throw new NotImplementedException();
         }
 
         internal static WGroupingSpecification GetGroupingSpecification(string key)
         {
-            return new WExpressionGroupingSpec()
-            {
-                Expression = GetColumnReferenceExpr(key)
-            };
+            return new WExpressionGroupingSpec() { Expression = GetColumnReferenceExpr(key) };
         }
 
         internal static WMatchPath GetMatchPath(GremlinMatchPath path)
         {
-            var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
-            pathEdges.Add(GetPathExpression(path));
-
-            WSchemaObjectName tailNode = null;
-            if (path.SinkVariable != null)
+            return new WMatchPath()
             {
-                tailNode = GetSchemaObjectName(path.SinkVariable.VariableName);
-            }
-
-            return new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
-        }
-
-        internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(GremlinMatchPath path)
-        {
-            WSchemaObjectName sourceName = null;
-            if (path.SourceVariable != null)
-            {
-                sourceName = GetSchemaObjectName(path.SourceVariable.VariableName);
-            }
-            var pathExpr = new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
-                sourceName,
-                new WEdgeColumnReferenceExpression()
-                {
-                    MultiPartIdentifier = GetMultiPartIdentifier("Edge"),
-                    Alias = path.EdgeVariable.VariableName,
-                    MinLength = 1,
-                    MaxLength = 1,
-                    EdgeType = path.EdgeVariable.EdgeType
-                }
-            );
-            return pathExpr;
-        }
-
-        internal static WBooleanParenthesisExpression GetBooleanParenthesisExpression(WBooleanExpression booleanExpr)
-        {
-            return new WBooleanParenthesisExpression()
-            {
-                Expression = booleanExpr
+                PathEdgeList = GetPathEdgeList(path),
+                Tail = path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable.VariableName)
             };
         }
 
-        internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
+        internal static List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> GetPathEdgeList(GremlinMatchPath path)
         {
-            var rootOp = childTraversal.GetStartOp();
-            if (rootOp.GetType() == typeof(GremlinParentContextOp))
+            return new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>()
             {
-                GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
-                rootAsContextOp.InheritedPivotVariable = inputContext.PivotVariable;
-                rootAsContextOp.InheritedTaggedVariables = inputContext.TaggedVariables;
+                new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
+                    path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable.VariableName),
+                    GetEdgeColumnReferenceExpr(path.EdgeVariable)
+                )
+            };
+        }
+
+        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeVariable2 edge)
+        {
+            return new WEdgeColumnReferenceExpression()
+            {
+                MultiPartIdentifier = GetMultiPartIdentifier("Edge"),
+                Alias = edge.VariableName,
+                MinLength = 1,
+                MaxLength = 1,
+                EdgeType = edge.EdgeType
+            };
+        }
+
+        internal static WBooleanParenthesisExpression GetBooleanParenthesisExpr(WBooleanExpression booleanExpr)
+        {
+            return new WBooleanParenthesisExpression() { Expression = booleanExpr };
+        }
+
+        internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext parentContext)
+        {
+            if (childTraversal.GetStartOp() is GremlinParentContextOp)
+            {
+                GremlinParentContextOp rootAsContextOp = childTraversal.GetStartOp() as GremlinParentContextOp;
+                rootAsContextOp.InheritedPivotVariable = parentContext.PivotVariable;
+                rootAsContextOp.InheritedTaggedVariables = parentContext.TaggedVariables;
             }
         }
 
-        internal static void InheritedContextFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext inputContext)
+        internal static void InheritedContextFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext parentContext)
         {
-            GremlinTranslationOperator rootOp = childTraversal.GetStartOp();
-            if (rootOp.GetType() == typeof(GremlinParentContextOp))
+            if (childTraversal.GetStartOp() is GremlinParentContextOp)
             {
-                GremlinParentContextOp rootAsContextOp = rootOp as GremlinParentContextOp;
-                rootAsContextOp.InheritedContext = inputContext.Duplicate();
+                GremlinParentContextOp rootAsContextOp = childTraversal.GetStartOp() as GremlinParentContextOp;
+                rootAsContextOp.InheritedContext = parentContext.Duplicate();
             }
         }
 
@@ -397,7 +327,7 @@ namespace GraphView
                 default:
                     throw new NotImplementedException();
             }
-            funcTableRef.SchemaObject = new WSchemaObjectName(GetIdentifier(functionName));
+            funcTableRef.SchemaObject = GetSchemaObjectName(functionName);
             funcTableRef.Parameters = parameterList;
             funcTableRef.Alias = GetIdentifier(alias);
             return funcTableRef;
@@ -405,18 +335,12 @@ namespace GraphView
 
         internal static WScalarSubquery GetScalarSubquery(WSelectQueryExpression selectQueryBlock)
         {
-            return new WScalarSubquery()
-            {
-                SubQueryExpr = selectQueryBlock
-            };
+            return new WScalarSubquery() { SubQueryExpr = selectQueryBlock };
         }
 
         internal static WVariableReference GetVariableReference(string name)
         {
-            return new WVariableReference()
-            {
-                Name = "@" + name
-            };
+            return new WVariableReference() { Name = "@" + name };
         }
 
         internal static WUnqualifiedJoin GetCrossApplyTableReference(WTableReference firstTableRef, WTableReference secondTableRef)
@@ -440,27 +364,24 @@ namespace GraphView
 
         internal static WBooleanExpression GetTrueBooleanComparisonExpr()
         {
-            var firstExpr = GetValueExpression("1");
-            var secondExpr = GetValueExpression("1");
+            var firstExpr = GetValueExpr("1");
+            var secondExpr = GetValueExpr("1");
             return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
         }
 
         internal static WBooleanExpression GetFalseBooleanComparisonExpr()
         {
-            var firstExpr = GetValueExpression("1");
-            var secondExpr = GetValueExpression("0");
+            var firstExpr = GetValueExpr("1");
+            var secondExpr = GetValueExpr("0");
             return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
         }
 
         internal static WSelectScalarExpression GetSelectFunctionCall(string functionName, params WScalarExpression[] parameters)
         {
-            return new WSelectScalarExpression()
-            {
-                SelectExpr = GetFunctionCall(functionName, parameters)
-            };
+            return new WSelectScalarExpression() { SelectExpr = GetFunctionCall(functionName, parameters) };
         }
 
-        internal static WBinaryQueryExpression GetBinaryQueryExpression(WSelectQueryExpression firstQueryExpr,
+        internal static WBinaryQueryExpression GetBinaryQueryExpr(WSelectQueryExpression firstQueryExpr,
             WSelectQueryExpression secondQueryExpr)
         {
             return new WBinaryQueryExpression()

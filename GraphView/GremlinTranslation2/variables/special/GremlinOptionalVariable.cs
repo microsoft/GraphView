@@ -77,23 +77,23 @@ namespace GraphView
                 {
                     //The column comes from first query, so set the column of second query as null
                     scalarExpr = GremlinUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
-                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
 
-                    scalarExpr = GremlinUtil.GetNullExpression();
-                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+                    scalarExpr = GremlinUtil.GetNullExpr();
+                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
                 }
                 else
                 {
                     //The column comes from second query, so set the column of first query as null
-                    scalarExpr = GremlinUtil.GetNullExpression();
-                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+                    scalarExpr = GremlinUtil.GetNullExpr();
+                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
 
                     scalarExpr = GremlinUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
-                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
                 }
             }
 
-            var WBinaryQueryExpression = GremlinUtil.GetBinaryQueryExpression(firstQueryExpr, secondQueryExpr);
+            var WBinaryQueryExpression = GremlinUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 
             PropertyKeys.Add(GremlinUtil.GetScalarSubquery(WBinaryQueryExpression));
             var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);

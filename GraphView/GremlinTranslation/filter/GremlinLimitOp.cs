@@ -18,7 +18,7 @@ namespace GraphView.GremlinTranslation
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            //WScalarExpression valueExpr = GremlinUtil.GetValueExpression(Limit.ToString());
+            //WScalarExpression valueExpr = GremlinUtil.GetValueExpr(Limit.ToString());
             //inputContext.SetCurrProjection(GremlinUtil.GetFunctionCall("limit", valueExpr));
 
             //GremlinToSqlContext newContext = new GremlinToSqlContext();

@@ -42,7 +42,7 @@ namespace GraphView
             {
                 WSelectQueryBlock projectQueryBlock = ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock();
                 WScalarExpression scalarExpr = GremlinUtil.GetScalarSubquery(projectQueryBlock);
-                WSelectScalarExpression selectScalarExpr = GremlinUtil.GetSelectScalarExpression(scalarExpr, ProjectKeys[i]);
+                WSelectScalarExpression selectScalarExpr = GremlinUtil.GetSelectScalarExpr(scalarExpr, ProjectKeys[i]);
                 selectQueryBlock.SelectElements.Add(selectScalarExpr);
             }
 

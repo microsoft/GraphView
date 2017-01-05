@@ -22,12 +22,12 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            var valueExpr = GremlinUtil.GetValueExpression(adjacencyList.ToScalarExpression());
+            var valueExpr = GremlinUtil.GetValueExpr(adjacencyList.ToScalarExpression());
             PropertyKeys.Add(valueExpr);
             Populate("id");
             foreach (var property in ProjectedProperties)
             {
-                PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
+                PropertyKeys.Add(GremlinUtil.GetValueExpr(property));
             }
             var secondTableRef = GremlinUtil.GetFunctionTableReference("E", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);

@@ -22,9 +22,9 @@ namespace GraphView
             Populate("id");
             foreach (var property in ProjectedProperties)
             {
-                PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
+                PropertyKeys.Add(GremlinUtil.GetValueExpr(property));
             }
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("V", PropertyKeys, VariableName);
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("N", PropertyKeys, VariableName);
 
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

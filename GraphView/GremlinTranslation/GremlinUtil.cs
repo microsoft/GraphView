@@ -17,7 +17,7 @@ namespace GraphView.GremlinTranslation
             };
         }
 
-        internal static WColumnReferenceExpression GetStarColumnReferenceExpression()
+        internal static WColumnReferenceExpression GetStarColumnReferenceExpr()
         {
             return new WColumnReferenceExpression()
             {
@@ -51,7 +51,7 @@ namespace GraphView.GremlinTranslation
             throw new Exception("Error: GetComparisonTypeFromPredicateType");
         }
 
-        internal static WValueExpression GetValueExpression(object value)
+        internal static WValueExpression GetValueExpr(object value)
         {
             if (value is string)
             {
@@ -65,7 +65,7 @@ namespace GraphView.GremlinTranslation
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression key, object value)
         {
-            WScalarExpression valueExpression = GetValueExpression(value);
+            WScalarExpression valueExpression = GetValueExpr(value);
 
             return new WBooleanComparisonExpression()
             {
@@ -133,7 +133,7 @@ namespace GraphView.GremlinTranslation
                 }
                 else
                 {
-                    valueExpression = GetValueExpression(predicate.Value);
+                    valueExpression = GetValueExpr(predicate.Value);
                 }
                 return new WBooleanComparisonExpression()
                 {
@@ -264,7 +264,7 @@ namespace GraphView.GremlinTranslation
             };
         }
 
-        internal static WSelectScalarExpression GetSelectScalarExpression(WScalarExpression valueExpr)
+        internal static WSelectScalarExpression GetSelectScalarExpr(WScalarExpression valueExpr)
         {
             return new WSelectScalarExpression() {SelectExpr = valueExpr};
         }
@@ -297,7 +297,7 @@ namespace GraphView.GremlinTranslation
         internal static WMatchPath GetMatchPath(GremlinMatchPath path)
         {
             var pathEdges = new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>();
-            pathEdges.Add(GetPathExpression(path));
+            pathEdges.Add(GetPathExpr(path));
 
             WSchemaObjectName tailNode = null;
             if (path.SinkVariable != null)
@@ -308,7 +308,7 @@ namespace GraphView.GremlinTranslation
             return new WMatchPath() { PathEdgeList = pathEdges, Tail = tailNode };
         }
 
-        internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpression(GremlinMatchPath path)
+        internal static Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression> GetPathExpr(GremlinMatchPath path)
         {
             WEdgeType edgeType = GetEdgeType(path.EdgeVariable);
             String value = "Edge";
@@ -402,7 +402,7 @@ namespace GraphView.GremlinTranslation
             List<WScalarExpression> parameterExprList = new List<WScalarExpression>();
             foreach (var parameter in parameterList)
             {
-                parameterExprList.Add(GetValueExpression(parameter));
+                parameterExprList.Add(GetValueExpr(parameter));
             }
             return new WSchemaObjectFunctionTableReference()
             {
@@ -431,8 +431,8 @@ namespace GraphView.GremlinTranslation
             };
             foreach (var injection in injections)
             {
-                var valueExpr = GetValueExpression(injection);
-                selectBlock.SelectElements.Add(GetSelectScalarExpression(valueExpr));
+                var valueExpr = GetValueExpr(injection);
+                selectBlock.SelectElements.Add(GetSelectScalarExpr(valueExpr));
             }
             return selectBlock;
         }
@@ -472,7 +472,7 @@ namespace GraphView.GremlinTranslation
             };
             GremlinVariableReference newVariable = new GremlinVariableReference(statement);
             WColumnReferenceExpression columnReferenceExpression = GetColumnReferenceExpression(newVariable.VariableName, "id");
-            queryBlock.SelectElements.Add(GetSelectScalarExpression(columnReferenceExpression));
+            queryBlock.SelectElements.Add(GetSelectScalarExpr(columnReferenceExpression));
             queryBlock.FromClause.TableReferences.Add(GetTableReferenceFromVariable(newVariable));
             return queryBlock;
         }
@@ -485,7 +485,7 @@ namespace GraphView.GremlinTranslation
                 FromClause = new WFromClause() { TableReferences = new List<WTableReference>() }
             };
             WColumnReferenceExpression columnReferenceExpression = GetColumnReferenceExpression(variableReference.VariableName, "id");
-            queryBlock.SelectElements.Add(GetSelectScalarExpression(columnReferenceExpression));
+            queryBlock.SelectElements.Add(GetSelectScalarExpr(columnReferenceExpression));
             queryBlock.FromClause.TableReferences.Add(GetTableReferenceFromVariable(variableReference));
             return queryBlock;
         }

@@ -66,7 +66,7 @@ namespace GraphView
             foreach (var edgeLabel in edgeLabels)
             {
                 var firstExpr = GremlinUtil.GetColumnReferenceExpr(edge.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpression(edgeLabel);
+                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
                 booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
             currentContext.AddPredicate(GremlinUtil.ConcatBooleanExprWithOr(booleanExprList));
@@ -349,7 +349,7 @@ namespace GraphView
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Object value)
         {
             WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(VariableName, propertyKey);
-            WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
+            WScalarExpression secondExpr = GremlinUtil.GetValueExpr(value);
             currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
 
@@ -389,7 +389,7 @@ namespace GraphView
             foreach (var value in values)
             {
                 WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(VariableName, GremlinKeyword.Label);
-                WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
+                WScalarExpression secondExpr = GremlinUtil.GetValueExpr(value);
                 booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
             WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExprWithOr(booleanExprList);
@@ -433,7 +433,7 @@ namespace GraphView
         internal virtual void Is(GremlinToSqlContext currentContext, object value)
         {
             WScalarExpression firstExpr = DefaultProjection().ToScalarExpression();
-            WScalarExpression secondExpr = GremlinUtil.GetValueExpression(value);
+            WScalarExpression secondExpr = GremlinUtil.GetValueExpr(value);
             currentContext.AddEqualPredicate(firstExpr, secondExpr);
         }
 
