@@ -186,10 +186,10 @@ namespace GraphView
             return statementList;
         }
 
-        public WSelectQueryBlock ToSelectQueryBlock()
+        public WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)
         {
             // Construct the new Select Component
-            var newSelectElementClause = GetSelectElement();
+            var newSelectElementClause = GetSelectElement(ProjectedProperties);
 
             //Consturct the new From Cluase;
             var newFromClause = GetFromClause();
@@ -247,13 +247,12 @@ namespace GraphView
             return newMatchClause;
         }
 
-        public List<WSelectElement> GetSelectElement()
+        public List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)
         {
             var selectElements = new List<WSelectElement>();
-            if (PivotVariable is GremlinTableVariable)
+            if (ProjectedProperties != null)
             {
-                Populate((PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty);
-                foreach (var projectProperty in (PivotVariable as GremlinTableVariable).ProjectedProperties)
+                foreach (var projectProperty in ProjectedProperties)
                 {
                     var valueExpr = GremlinUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
                     selectElements.Add(GremlinUtil.GetSelectScalarExpression(valueExpr));

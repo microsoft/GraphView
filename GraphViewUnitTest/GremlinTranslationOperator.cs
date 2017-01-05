@@ -32,6 +32,8 @@ namespace GremlinTranslationOperator.Tests
         {
             //GraphTraversal2.g().addV("test").property("name", "jinjin").addE("edge").to(GraphTraversal2.g().addV("test2").property("age", "22")).property("label", "123").next();
 
+            GraphTraversal2.g().V().flatMap(GraphTraversal2.__().outE()).properties("name", "age").next();
+
             GraphTraversal2.g().V()
                 .project("vertex", "parents", "references", "model")
                 .by(GraphTraversal2.__().emit().repeat(GraphTraversal2.__().outE("_val").As("_").inV()).tree())

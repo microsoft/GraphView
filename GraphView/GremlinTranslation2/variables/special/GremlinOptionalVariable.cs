@@ -42,7 +42,7 @@ namespace GraphView
         public override  WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(Context.ToSelectQueryBlock()));
+            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(Context.ToSelectQueryBlock(ProjectedProperties)));
             var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

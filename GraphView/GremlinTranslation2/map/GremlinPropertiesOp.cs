@@ -9,21 +9,19 @@ namespace GraphView
 {
     internal class GremlinPropertiesOp: GremlinTranslationOperator
     {
-        public List<object> PropertyKeys;
+        public List<string> PropertyKeys;
 
-        public GremlinPropertiesOp(params object[] propertyKeys)
+        public GremlinPropertiesOp(params string[] propertyKeys)
         {
-            PropertyKeys = new List<object>();
-            foreach (var propertyKey in  propertyKeys)
-            {
-                PropertyKeys.Add(propertyKey);
-            }
+            PropertyKeys = new List<string>(propertyKeys);
         }
 
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.Properties(inputContext, PropertyKeys);
+
             return inputContext;
         }
     }

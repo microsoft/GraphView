@@ -20,6 +20,7 @@ namespace GraphView
         public GremlinTableVariable()
         {
             ProjectedProperties = new List<string>();
+            VariableName = GenerateTableAlias();
         }
 
         internal override GremlinVariableType GetVariableType()

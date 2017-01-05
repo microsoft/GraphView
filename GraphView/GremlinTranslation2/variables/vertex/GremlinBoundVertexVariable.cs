@@ -19,7 +19,7 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             PropertyKeys.Add(vertexId.ToScalarExpression());
-            PropertyKeys.Add(GremlinUtil.GetValueExpression("id"));
+            Populate("id");
             foreach (var property in ProjectedProperties)
             {
                 PropertyKeys.Add(GremlinUtil.GetValueExpression(property));
