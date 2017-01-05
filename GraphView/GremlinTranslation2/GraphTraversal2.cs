@@ -730,7 +730,7 @@ namespace GraphView
 
         public GraphTraversal2 tree()
         {
-            //AddGremlinOperator(new GremlinTreeOp()); //TODO
+            AddGremlinOperator(new GremlinTreeOp());
             return this;
         }
         //public GraphTraversal2 tree(string sideEffectKey)

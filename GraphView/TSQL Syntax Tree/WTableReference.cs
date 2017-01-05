@@ -357,7 +357,42 @@ namespace GraphView
 
     }
 
+    public partial class WConstantReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WEdgeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WNodeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WPropertiesTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WRepeatTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WValuesTableReference : WSchemaObjectFunctionTableReference
     {
 
     }

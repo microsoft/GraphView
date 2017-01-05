@@ -31,7 +31,7 @@ namespace GremlinTranslationOperator.Tests
         public void TestStep()
         {
 
-            GraphTraversal2.g().V().local(GraphTraversal2.__().outE()).properties("name", "age").key().next();
+            GraphTraversal2.g().V().local(GraphTraversal2.__().outE()).properties("name", "age").tree().next();
 
             GraphTraversal2.g().V()
                 .project("vertex", "parents", "references", "model")

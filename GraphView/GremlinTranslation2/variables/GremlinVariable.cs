@@ -750,7 +750,10 @@ namespace GraphView
         //internal virtual void ToV(GremlinToSqlContext currentContext, Direction direction)
         internal virtual void Tree(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinTreeVariable newVariable = new GremlinTreeVariable();
+
+            currentContext.VariableList.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
         //internal virtual void tree(GremlinToSqlContext currentContext, string sideEffectKey)
 

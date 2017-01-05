@@ -8,15 +8,12 @@ namespace GraphView
 {
     internal class GremlinTreeOp: GremlinTranslationOperator
     {
-        public GremlinTreeOp()
-        {
-            
-        }
-
         public override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.Tree(inputContext);
+
             return inputContext;
         }
     }
