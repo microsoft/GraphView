@@ -1882,17 +1882,44 @@ namespace GraphView
         {
             CoalesceOperator2 coalesceOp = new CoalesceOperator2(context.CurrentExecutionOperator);
 
+            WSelectQueryBlock firstSelectQuery = null;
             foreach (WScalarExpression parameter in Parameters)
             {
                 WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
                 if (scalarSubquery == null)
                 {
-                    throw new QueryCompilationException("The input of CoalesceTableReference must be a scalar subquery.");
+                    throw new SyntaxErrorException("The input of a coalesce table reference must be one or more scalar subqueries.");
+                }
+
+                if (firstSelectQuery == null)
+                {
+                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    if (firstSelectQuery == null)
+                    {
+                        throw new SyntaxErrorException("The input of a coalesce table reference must be one or more select query blocks.");
+                    }
                 }
 
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
                 coalesceOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+            }
+
+            // Updates the raw record layout. The columns of this table-valued function 
+            // are specified by the select elements of the input subqueries.
+            foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select column epxressions.");
+                }
+                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             return coalesceOp;
@@ -1903,11 +1930,12 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-
             WSelectQueryBlock contextSelect, optionalSelect;
             Split(out contextSelect, out optionalSelect);
 
             List<int> inputIndexes = new List<int>();
+            List<WColumnReferenceExpression> columnList = new List<WColumnReferenceExpression>();
+
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
@@ -1923,6 +1951,8 @@ namespace GraphView
 
                 int index = context.LocateColumnReference(columnRef);
                 inputIndexes.Add(index);
+
+                columnList.Add(columnRef);
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
@@ -1930,6 +1960,13 @@ namespace GraphView
 
             OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
             context.CurrentExecutionOperator = optionalOp;
+
+            // Updates the raw record layout. The columns of this table-valued function 
+            // are specified by the select elements of the input subqueries.
+            foreach (WColumnReferenceExpression columnRef in columnList)
+            {
+                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
 
             return optionalOp;
         }
