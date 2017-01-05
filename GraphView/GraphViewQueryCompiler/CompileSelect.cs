@@ -1926,9 +1926,9 @@ namespace GraphView
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator optionalOp = optionalSelect.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
 
-            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalOp, subcontext.OuterContextOp);
+            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
             context.CurrentExecutionOperator = optionalOp;
 
             return optionalOp;

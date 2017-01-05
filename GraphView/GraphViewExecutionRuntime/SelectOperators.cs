@@ -864,7 +864,17 @@ namespace GraphView
 
                     if (startFromContext)
                     {
-                        states.Enqueue(initialRec);
+                        if (terminationCondition.Evaluate(initialRec))
+                        {
+                            repeatResultBuffer.Enqueue(initialRec);
+                        }
+                        else if (emitContext)
+                        {
+                            if (emitCondition == null || emitCondition.Evaluate(initialRec))
+                            {
+                                repeatResultBuffer.Enqueue(initialRec);
+                            }
+                        }
                     }
                     else
                     {
@@ -875,17 +885,17 @@ namespace GraphView
                                 repeatResultBuffer.Enqueue(initialRec);
                             }
                         }
-
-                        // Evaluates the loop for the first time
-                        innerContextOp.ConstantSource = initialRec;
-                        innerOp.ResetState();
-                        RawRecord newRec = null;
-                        while ((newRec = innerOp.Next()) != null)
-                        {
-                            states.Enqueue(newRec);
-                        }
                     }
-                    
+
+                    // Evaluates the loop for the first time
+                    innerContextOp.ConstantSource = initialRec;
+                    innerOp.ResetState();
+                    RawRecord newRec = null;
+                    while ((newRec = innerOp.Next()) != null)
+                    {
+                        states.Enqueue(newRec);
+                    }
+
                     // Evaluates the remaining iterations
                     while (states.Count > 0)
                     {

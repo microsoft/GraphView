@@ -342,8 +342,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The input of an optional table reference must be a UNION ALL binary query expression.");
             }
 
-            contextSelect = binaryQuery.FirstQueryExpr;
-            optionalSelectQuery = binaryQuery.SecondQueryExpr;
+            contextSelect = binaryQuery.FirstQueryExpr as WSelectQueryBlock;
+            optionalSelectQuery = binaryQuery.SecondQueryExpr as WSelectQueryBlock;
+
+            if (contextSelect == null || optionalSelectQuery == null)
+            {
+                throw new SyntaxErrorException("The input of an optional table reference must be a UNION ALL binary query and the two sub-queries must be a select query block.");
+            }
         }
     }
 
