@@ -251,18 +251,23 @@ namespace GraphView
         }
         internal virtual void Count(GremlinToSqlContext currentContext)
         {
-            GremlinCountVariable newVariable = new GremlinCountVariable(DefaultProjection());
-
+            GremlinCountVariable newVariable = new GremlinCountVariable(currentContext.Duplicate());
+            currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
         }
 
         //internal virtual void count(GremlinToSqlContext currentContext, Scope scope)
         //internal virtual void cyclicPath(GremlinToSqlContext currentContext)
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
-        internal virtual void Dedup(GremlinToSqlContext currentContext, params string[] dedupLabels)
+        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels)
         {
-            throw new NotImplementedException();
+            GremlinDedupVariable newVariable = new GremlinDedupVariable(currentContext.Duplicate(), dedupLabels);
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         internal virtual void Drop(GremlinToSqlContext currentContext)
@@ -307,9 +312,10 @@ namespace GraphView
 
         internal virtual void Fold(GremlinToSqlContext currentContext)
         {
-            GremlinFoldVariable newVariable  = new GremlinFoldVariable(DefaultProjection());
-
+            GremlinFoldVariable newVariable  = new GremlinFoldVariable(currentContext.Duplicate());
+            currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
         }
 
@@ -757,7 +763,7 @@ namespace GraphView
         }
         //internal virtual void tree(GremlinToSqlContext currentContext, string sideEffectKey)
 
-        internal virtual void Unfold(ref GremlinToSqlContext currentContext)
+        internal virtual void Unfold(GremlinToSqlContext currentContext)
         {
             throw new NotImplementedException();
         }

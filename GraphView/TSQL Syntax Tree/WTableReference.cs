@@ -371,6 +371,10 @@ namespace GraphView
     {
 
     }
+    public partial class WKeyTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
 
     public partial class WLocalTableReference : WSchemaObjectFunctionTableReference
     {
@@ -393,6 +397,16 @@ namespace GraphView
     }
 
     public partial class WValuesTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WValueTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WUnfoldTableReference : WSchemaObjectFunctionTableReference
     {
 
     }

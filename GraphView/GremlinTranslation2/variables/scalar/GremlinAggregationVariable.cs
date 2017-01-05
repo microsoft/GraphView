@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GraphView.GremlinTranslation2.variables.table;
 
 namespace GraphView
 {
@@ -16,31 +17,47 @@ namespace GraphView
         }
     }
 
-    internal class GremlinCountVariable : GremlinAggregationVariable
+    internal class GremlinCountVariable : GremlinDerivedTableVariable
     {
-        public GremlinCountVariable(GremlinScalarVariable aggregateProjection):base(aggregateProjection) {}
+        public GremlinCountVariable(GremlinToSqlContext subqueryContext) :base(subqueryContext) {}
 
-        public override WSelectElement ToSelectElement()
+        internal override GremlinScalarVariable DefaultProjection()
         {
-            return new WSelectScalarExpression()
-            {
-                SelectExpr = GremlinUtil.GetFunctionCall("count", GremlinUtil.GetStarColumnReferenceExpression())
-            };
+            return new GremlinVariableProperty(this, "_value");
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(GremlinUtil.GetSelectFunctionCall("count", GremlinUtil.GetStarColumnReferenceExpression()));
+            return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
 
-    internal class GremlinFoldVariable : GremlinAggregationVariable
+    internal class GremlinFoldVariable : GremlinDerivedTableVariable
     {
-        public GremlinFoldVariable(GremlinScalarVariable aggregateProjection) : base(aggregateProjection) {}
+        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
 
-        internal override void Unfold(ref GremlinToSqlContext currentContext) {}
-
-        public override WSelectElement ToSelectElement()
+        internal override GremlinScalarVariable DefaultProjection()
         {
-            return new WSelectScalarExpression()
-            {
-                SelectExpr = GremlinUtil.GetFunctionCall("fold", AggregateProjection.ToScalarExpression())
-            };
+            return new GremlinVariableProperty(this, "_value");
+        }
+
+        internal override void Unfold(GremlinToSqlContext currentContext)
+        {
+            GremlinUnfoldVariable newVariable = new GremlinUnfoldVariable(new GremlinVariableProperty(this, "_value"));
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add( GremlinUtil.GetSelectFunctionCall("fold", SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+            return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
 
@@ -55,20 +72,59 @@ namespace GraphView
         }
     }
 
-    internal class GremlinUnfoldVariable : GremlinTableVariable, ISqlTable
+    internal class GremlinUnfoldVariable : GremlinTableVariable
     {
-        protected static int _count = 0;
+        public GremlinVariableProperty ProjectVariable { get; set; }
 
-        internal override string GenerateTableAlias()
+        public GremlinUnfoldVariable(GremlinVariableProperty propertyVariable)
         {
-            return "UnFold_" + _count++;
+            ProjectVariable = propertyVariable;
         }
 
-        public override  WTableReference ToTableReference()
+        internal override GremlinScalarVariable DefaultProjection()
         {
-            throw new NotImplementedException();
+            return new GremlinVariableProperty(this, "_value");
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(ProjectVariable.ToScalarExpression());
+            var secondTableRef = GremlinUtil.GetFunctionTableReference("unfold", parameters, VariableName);
+            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    
+    internal class GremlinDedupVariable : GremlinDerivedTableVariable
+    {
+        public List<string> DedupLabels { get; set; }
+
+        public GremlinDedupVariable(GremlinToSqlContext subqueryContext, List<string> dedupLabels)
+            : base(subqueryContext)
+        {
+            DedupLabels = new List<string>(dedupLabels);
+        }
+
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return SubqueryContext.PivotVariable.DefaultProjection();
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            GremlinToSqlContext dedupContext = new GremlinToSqlContext();
+            GremlinDerivedTableVariable subqueryVariable = new GremlinDerivedTableVariable(SubqueryContext);
+            dedupContext.VariableList.Add(subqueryVariable);
+            dedupContext.TableReferences.Add(subqueryVariable);
+            dedupContext.PivotVariable = subqueryVariable;
+
+            WSelectQueryBlock queryBlock = dedupContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(GremlinUtil.GetSelectFunctionCall("dedup", SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+
+            return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
+        }
+    }
+
+
 }

@@ -11,6 +11,11 @@ namespace GraphView
         public List<string> PropertyKeys { get; set; }
         public GremlinVariable2 ProjectVariable { get; set; }
 
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return new GremlinVariableProperty(this, "_value");
+        }
+
         public GremlinPropertiesVariable(GremlinVariable2 projectVariable, List<string> propertyKeys)
         {
             ProjectVariable = projectVariable;
@@ -30,16 +35,18 @@ namespace GraphView
 
         internal override void Key(GremlinToSqlContext currentContext)
         {
-            GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, "_key");
-            currentContext.VariableList.Add(newVariableProperty);
-            currentContext.PivotVariable = newVariableProperty;
+            GremlinKeyVariable newVariable = new GremlinKeyVariable(new GremlinVariableProperty(this, "_value"));
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
 
         internal override void Value(GremlinToSqlContext currentContext)
         {
-            GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, "_value");
-            currentContext.VariableList.Add(newVariableProperty);
-            currentContext.PivotVariable = newVariableProperty;
+            GremlinValueVariable newVariable = new GremlinValueVariable(new GremlinVariableProperty(this, "_value"));
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
     }
 }
