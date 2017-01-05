@@ -217,8 +217,7 @@ namespace GraphView
 
         public GraphTraversal2 dedup(params string[] dedupLabels)
         {
-            //TODO
-            //AddGremlinOperator(new GremlinDedupOp(dedupLabels));
+            AddGremlinOperator(new GremlinDedupOp(dedupLabels));
             return this;
         }
 

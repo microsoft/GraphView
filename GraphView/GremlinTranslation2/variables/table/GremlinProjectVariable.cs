@@ -18,6 +18,11 @@ namespace GraphView
             SubqeryContext = subqueryContext;
             ProjectKeys = new List<string>(projectKeys);
             ProjectContextList = new List<GremlinToSqlContext>();
+
+            foreach (var projectKey in projectKeys)
+            {
+                Populate(projectKey);
+            }
         }
 
         internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
