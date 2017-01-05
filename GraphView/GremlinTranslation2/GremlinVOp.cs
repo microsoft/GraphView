@@ -11,11 +11,7 @@ namespace GraphView
         public List<object> VertexIdsOrElements { get; set; }
         public GremlinVOp(params object[] vertexIdsOrElements)
         {
-            VertexIdsOrElements = new List<object>();
-            foreach (var vertexIdsOrElement in vertexIdsOrElements)
-            {
-                VertexIdsOrElements.Add(vertexIdsOrElement);
-            }
+            VertexIdsOrElements = new List<object>(vertexIdsOrElements);
         }
 
         public GremlinVOp(List<object> vertexIdsOrElements)

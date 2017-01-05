@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddEVariable: GremlinVariableReference, ISqlStatement
+    internal class GremlinAddEVariable: GremlinVariableReference
     {
         private static long _count = 0;
 
-        public static string GenerateTableAlias()
+        internal override string GenerateTableAlias()
         {
             return "AddE_" + _count++;
         }

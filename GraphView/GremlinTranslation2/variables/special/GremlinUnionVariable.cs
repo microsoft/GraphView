@@ -36,22 +36,15 @@ namespace GraphView
                     statementList.AddRange(context.GetSetVariableStatements());
                 }
 
-                WBinaryQueryExpression binaryQueryExpression = new WBinaryQueryExpression()
-                {
-                    FirstQueryExpr = UnionContextList[0].ToSelectQueryBlock(),
-                    SecondQueryExpr = UnionContextList[1].ToSelectQueryBlock(),
-                    All = true,
-                    BinaryQueryExprType = BinaryQueryExpressionType.Union,
-                };
+
+                WSelectQueryExpression firstQueryExpr = UnionContextList[0].ToSelectQueryBlock();
+                WSelectQueryExpression secondQueryExpr = UnionContextList[1].ToSelectQueryBlock();
+                var binaryQueryExpression = GremlinUtil.GetBinaryQueryExpression(firstQueryExpr, secondQueryExpr);
                 for (var i = 2; i < UnionContextList.Count; i++)
                 {
-                    binaryQueryExpression = new WBinaryQueryExpression()
-                    {
-                        FirstQueryExpr = binaryQueryExpression,
-                        SecondQueryExpr = UnionContextList[i].ToSelectQueryBlock(),
-                        All = true,
-                        BinaryQueryExprType = BinaryQueryExpressionType.Union,
-                    };
+                    firstQueryExpr = binaryQueryExpression;
+                    secondQueryExpr = UnionContextList[i].ToSelectQueryBlock();
+                    binaryQueryExpression = GremlinUtil.GetBinaryQueryExpression(firstQueryExpr, secondQueryExpr);
                 }
 
                 //TODO:

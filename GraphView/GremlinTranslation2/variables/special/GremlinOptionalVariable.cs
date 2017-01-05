@@ -6,14 +6,16 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinOptionalVariable : GremlinTableVariable, ISqlTable
+    internal class GremlinOptionalVariable : GremlinTableVariable
     {
         public GremlinToSqlContext Context { get; set; }
+        public GremlinVariable2 InputVariable { get; set; }
 
-        public GremlinOptionalVariable(GremlinToSqlContext context)
+        public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable)
         {
             Context = context;
             VariableName = GenerateTableAlias();
+            InputVariable = inputVariable;
         }
 
         public static GremlinOptionalVariable Create(GremlinVariable2 inputVariable, GremlinToSqlContext context)
@@ -23,18 +25,18 @@ namespace GraphView
                 switch (context.PivotVariable.GetVariableType())
                 {
                     case GremlinVariableType.Vertex:
-                        return new GremlinOptionalVertexVariable(context);
+                        return new GremlinOptionalVertexVariable(context, inputVariable);
                     case GremlinVariableType.Edge:
-                        return new GremlinOptionalEdgeVariable(context);
+                        return new GremlinOptionalEdgeVariable(context, inputVariable);
                     case GremlinVariableType.Table:
-                        return new GremlinOptionalTableVariable(context);
+                        return new GremlinOptionalTableVariable(context, inputVariable);
                     case GremlinVariableType.Scalar:
-                        return new GremlinOptionalScalarVariable(context);
+                        return new GremlinOptionalScalarVariable(context, inputVariable);
                 }
             }
             else
             {
-                return new GremlinOptionalTableVariable(context);
+                return new GremlinOptionalTableVariable(context, inputVariable);
             }
             throw new NotImplementedException();
         }
@@ -42,7 +44,58 @@ namespace GraphView
         public override  WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(Context.ToSelectQueryBlock(ProjectedProperties)));
+            Dictionary<string, int> columns = new Dictionary<string, int>();
+            if (InputVariable.DefaultProjection() is GremlinVariableProperty)
+            {
+                columns[(InputVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 0;
+
+            }
+            if (InputVariable is GremlinTableVariable)
+            {
+                var tableVar = InputVariable as GremlinTableVariable;
+                foreach (var projectProperty in tableVar.ProjectedProperties)
+                {
+                    columns[projectProperty] = 0;
+                }
+            }
+            if (Context.PivotVariable.DefaultProjection() is GremlinVariableProperty)
+            {
+                columns[(Context.PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 1;
+            }
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                columns[projectProperty] = 1;
+            }
+            
+            WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
+            WSelectQueryBlock secondQueryExpr = Context.ToSelectQueryBlock();
+            secondQueryExpr.SelectElements.Clear();
+            foreach (var column in columns)
+            {
+                WScalarExpression scalarExpr;
+                if (column.Value == 0)
+                {
+                    //The column comes from first query, so set the column of second query as null
+                    scalarExpr = GremlinUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
+                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+
+                    scalarExpr = GremlinUtil.GetNullExpression();
+                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+                }
+                else
+                {
+                    //The column comes from second query, so set the column of first query as null
+                    scalarExpr = GremlinUtil.GetNullExpression();
+                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+
+                    scalarExpr = GremlinUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
+                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpression(scalarExpr));
+                }
+            }
+
+            var WBinaryQueryExpression = GremlinUtil.GetBinaryQueryExpression(firstQueryExpr, secondQueryExpr);
+
+            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(WBinaryQueryExpression));
             var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -56,7 +109,7 @@ namespace GraphView
 
     internal class GremlinOptionalVertexVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalVertexVariable(GremlinToSqlContext context): base(context) {}
+        public GremlinOptionalVertexVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable): base(context, inputVariable) {}
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -66,7 +119,7 @@ namespace GraphView
 
     internal class GremlinOptionalEdgeVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalEdgeVariable(GremlinToSqlContext context) : base(context) { }
+        public GremlinOptionalEdgeVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable) : base(context, inputVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -76,7 +129,7 @@ namespace GraphView
 
     internal class GremlinOptionalTableVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalTableVariable(GremlinToSqlContext context) : base(context) { }
+        public GremlinOptionalTableVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable) : base(context, inputVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -86,7 +139,7 @@ namespace GraphView
 
     internal class GremlinOptionalScalarVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalScalarVariable(GremlinToSqlContext context) : base(context) { }
+        public GremlinOptionalScalarVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable) : base(context, inputVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {

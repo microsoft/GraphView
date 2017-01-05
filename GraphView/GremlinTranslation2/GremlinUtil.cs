@@ -63,6 +63,11 @@ namespace GraphView
             }
         }
 
+        internal static WValueExpression GetNullExpression()
+        {
+            return new WValueExpression("null", false);
+        }
+
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression firstExpr,
             WScalarExpression secondExpr, BooleanComparisonType type)
         {
@@ -169,6 +174,7 @@ namespace GraphView
         internal static WBooleanExpression ConcatBooleanExpressionList(List<WBooleanExpression> booleanExprList,
             BooleanBinaryExpressionType type)
         {
+            if (booleanExprList.Count == 1) return booleanExprList.First();
             WBooleanExpression concatExpr = null;
             foreach (var booleanExpr in booleanExprList)
             {
@@ -397,7 +403,7 @@ namespace GraphView
             return funcTableRef;
         }
 
-        internal static WScalarSubquery GetScalarSubquery(WSelectQueryBlock selectQueryBlock)
+        internal static WScalarSubquery GetScalarSubquery(WSelectQueryExpression selectQueryBlock)
         {
             return new WScalarSubquery()
             {
@@ -451,6 +457,18 @@ namespace GraphView
             return new WSelectScalarExpression()
             {
                 SelectExpr = GetFunctionCall(functionName, parameters)
+            };
+        }
+
+        internal static WBinaryQueryExpression GetBinaryQueryExpression(WSelectQueryExpression firstQueryExpr,
+            WSelectQueryExpression secondQueryExpr)
+        {
+            return new WBinaryQueryExpression()
+            {
+                FirstQueryExpr = firstQueryExpr,
+                SecondQueryExpr = secondQueryExpr,
+                All = true,
+                BinaryQueryExprType = BinaryQueryExpressionType.Union,
             };
         }
     }

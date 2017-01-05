@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GraphView.GremlinTranslation2.variables.table;
 
 namespace GraphView
 {
@@ -19,7 +18,10 @@ namespace GraphView
 
     internal class GremlinCountVariable : GremlinDerivedTableVariable
     {
-        public GremlinCountVariable(GremlinToSqlContext subqueryContext) :base(subqueryContext) {}
+        public GremlinCountVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext)
+        {
+            VariableName = GenerateTableAlias();
+        }
 
         internal override GremlinScalarVariable DefaultProjection()
         {
@@ -37,7 +39,10 @@ namespace GraphView
 
     internal class GremlinFoldVariable : GremlinDerivedTableVariable
     {
-        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext)
+        {
+            VariableName = GenerateTableAlias();
+        }
 
         internal override GremlinScalarVariable DefaultProjection()
         {
@@ -79,6 +84,7 @@ namespace GraphView
         public GremlinUnfoldVariable(GremlinVariableProperty propertyVariable)
         {
             ProjectVariable = propertyVariable;
+            VariableName = GenerateTableAlias();
         }
 
         internal override GremlinScalarVariable DefaultProjection()

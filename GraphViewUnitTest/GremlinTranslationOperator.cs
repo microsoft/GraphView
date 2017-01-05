@@ -16,7 +16,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void test()
         {
-            const string q2 = @"select (select 1) as number from n_0";
+            const string q2 = @"select null as number from n_0";
 
             var sr = new StringReader(q2);
             var parser = new GraphViewParser();
@@ -32,11 +32,9 @@ namespace GremlinTranslationOperator.Tests
         {
 
             GraphTraversal2.g()
-                .V().Out().dedup().next();
+                .V().Out("jinjin").optional(GraphTraversal2.__().Out("mdl").outE().inV()).next();
 
             GraphTraversal2.g().V().local(GraphTraversal2.__().outE()).properties("name", "age").key().next();
-
-
 
             GraphTraversal2.g().V()
                 .project("vertex", "parents", "references", "model")

@@ -20,6 +20,7 @@ namespace GraphView
         {
             ProjectVariable = projectVariable;
             PropertyKeys = new List<string>(propertyKeys);
+            VariableName = GenerateTableAlias();
         }
 
         public override WTableReference ToTableReference()
