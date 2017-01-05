@@ -37,6 +37,7 @@ namespace GraphView
         public string EdgeAlias { get; set; }
         public MatchNode SinkNode { get; set; }
         public bool IsReversed { get; set; }
+        public WEdgeType EdgeType { get; set; }
         public bool IsFromOuterContext { get; set; }
 
         /// <summary>

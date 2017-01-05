@@ -345,43 +345,46 @@ namespace GraphView
 
     internal class AdjacencyListDecoder : TableValuedFunction
     {
-        private int adjacencyListIndex;
+        private List<int> adjacencyListIndexes;
         private BooleanFunction edgePredicate;
         private List<string> projectedFields;
 
-        public AdjacencyListDecoder(GraphViewExecutionOperator input, int adjacencyListIndex,
+        public AdjacencyListDecoder(GraphViewExecutionOperator input, List<int> adjacencyListIndexes,
             BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
             : base(input, outputBufferSize)
         {
-            this.adjacencyListIndex = adjacencyListIndex;
+            this.adjacencyListIndexes = adjacencyListIndexes;
             this.edgePredicate = edgePredicate;
             this.projectedFields = projectedFields;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
-            string jsonArray = record[adjacencyListIndex];
             List<RawRecord> results = new List<RawRecord>();
 
-            // Parse the adj list in JSON array
-            var adj = JArray.Parse(jsonArray);
-            foreach (var edge in adj.Children<JObject>())
+            foreach (var adjIndex in adjacencyListIndexes)
             {
-                // Construct new record
-                var result = new RawRecord(projectedFields.Count);
-
-                // Fill the field of selected edge's properties
-                for (var i = 0; i < projectedFields.Count; i++)
+                string jsonArray = record[adjIndex];
+                // Parse the adj list in JSON array
+                var adj = JArray.Parse(jsonArray);
+                foreach (var edge in adj.Children<JObject>())
                 {
-                    var projectedField = projectedFields[i];
-                    var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
-                        ? edge
-                        : edge[projectedField];
-                    if (fieldValue != null)
-                        result.fieldValues[i] = fieldValue.ToString();
-                }
+                    // Construct new record
+                    var result = new RawRecord(projectedFields.Count);
 
-                results.Add(result);
+                    // Fill the field of selected edge's properties
+                    for (var i = 0; i < projectedFields.Count; i++)
+                    {
+                        var projectedField = projectedFields[i];
+                        var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
+                            ? edge
+                            : edge[projectedField];
+                        if (fieldValue != null)
+                            result.fieldValues[i] = fieldValue.ToString();
+                    }
+
+                    results.Add(result);
+                }
             }
 
             return results;

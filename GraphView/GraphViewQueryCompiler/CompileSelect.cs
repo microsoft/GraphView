@@ -524,7 +524,6 @@ namespace GraphView
                 }
             }
 
-            //TODO: Add both edge flag
             // Consturct nodes and edges of a match graph defined by the SelectQueryBlock
             if (MatchClause != null)
             {
@@ -602,6 +601,7 @@ namespace GraphView
                                         new WSchemaObjectName(
                                             ),
                                     IsReversed = false,
+                                    EdgeType = CurrentEdgeColumnRef.EdgeType,
                                     Properties = new List<string> { "_sink", "_ID" },
                                 };
                             }
@@ -621,6 +621,7 @@ namespace GraphView
                                     ReferencePathInfo = false,
                                     AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict,
                                     IsReversed = false,
+                                    EdgeType = CurrentEdgeColumnRef.EdgeType,
                                     Properties = new List<string> { "_sink", "_ID" },
                                 };
                                 pathDictionary[EdgeAlias] = matchPath;
@@ -650,6 +651,7 @@ namespace GraphView
                                             new WSchemaObjectName(
                                             ),
                                         IsReversed = true,
+                                        EdgeType = EdgeToSrcNode.EdgeType,
                                         Properties = new List<string> { "_sink", "_ID" },
                                     };
                                     SrcNode.ReverseNeighbors.Add(reverseEdge);
@@ -708,6 +710,7 @@ namespace GraphView
                                         new WSchemaObjectName(
                                         ),
                                     IsReversed = true,
+                                    EdgeType = EdgeToSrcNode.EdgeType,
                                     Properties = new List<string> { "_sink", "_ID" },
                                 };
                                 DestNode.ReverseNeighbors.Add(reverseEdge);
@@ -897,6 +900,18 @@ namespace GraphView
                 subGraph.TraversalChain2 = graphOptimizer.GetOptimizedTraversalOrder2(subGraph);
             }
         }
+
+        private List<int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
+        {
+            var srcNodeIndex =
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "id"));
+            if (edge.EdgeType == WEdgeType.BothEdge)
+                return new List<int> {srcNodeIndex + 1, srcNodeIndex + 2};
+            else if (edge.IsReversed)
+                return new List<int> { srcNodeIndex + 2 };
+            else
+                return new List<int> { srcNodeIndex + 1 };
+        } 
 
         private QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
         {
@@ -1159,14 +1174,12 @@ namespace GraphView
                         }
                         else
                         {
-                            var currentEdgeIndex =
-                                rawRecordLayout[new WColumnReferenceExpression(sourceNode.NodeAlias, "id")] +
-                                (traversalEdge.IsReversed ? 2 : 1);
+                            var travsersalEdgeIndex = LocateAdjacencyListIndexes(context, traversalEdge);
                             var localContext = GenerateLocalContextForAdjacentListDecoder(traversalEdge.EdgeAlias, traversalEdge.Properties);
 
                             operatorChain.Add(new AdjacencyListDecoder(
                                 operatorChain.Last(),
-                                currentEdgeIndex,
+                                travsersalEdgeIndex,
                                 traversalEdge.RetrievePredicatesExpression().CompileToFunction(localContext, connection), 
                                 traversalEdge.Properties));
 
@@ -1204,10 +1217,7 @@ namespace GraphView
                             var sinkNodeIdColumnReference = new WColumnReferenceExpression(sinkNode.NodeAlias, "id");
                             foreach (var remainingEdge in forwardMatchingEdges)
                             {
-                                var remainingEdgeIndex =
-                                    rawRecordLayout[
-                                        new WColumnReferenceExpression(remainingEdge.SourceNode.NodeAlias, "id")] +
-                                            (remainingEdge.IsReversed ? 2 : 1);
+                                var remainingEdgeIndex = LocateAdjacencyListIndexes(context, remainingEdge);
                                 var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(remainingEdge.EdgeAlias, remainingEdge.Properties);
                                 operatorChain.Add(new AdjacencyListDecoder(
                                     operatorChain.Last(),
