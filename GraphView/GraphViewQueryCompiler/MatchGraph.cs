@@ -176,7 +176,7 @@ namespace GraphView
         public Dictionary<string, MatchEdge> Edges { get; set; }
         public Dictionary<MatchNode, bool> IsTailNode { get; set; }
         public List<Tuple<MatchNode, MatchEdge>> TraversalChain { get; set; }
-        public List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> TraversalChain2 { get; set; }
+        public List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> TraversalChain2 { get; set; }
         public Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> NodeToMaterializedEdgesDict { get; set; } 
 
         public ConnectedComponent()

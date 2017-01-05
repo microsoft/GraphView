@@ -9,14 +9,14 @@ namespace GraphView
         public DocDbGraphOptimizer(MatchGraph graph) : base(graph)
         { }
 
-        public override List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph)
+        public override List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>> GetOptimizedTraversalOrder2(ConnectedComponent subGraph)
         {
             if (subGraph.Nodes.Count == 1)
                 return
-                    new List<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>
+                    new List<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>
                     {
-                        new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(
-                            subGraph.Nodes.First().Value, null, null)
+                        new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
+                            subGraph.Nodes.First().Value, null, null, null, null)
                     };
 
             // If it exists, pick a node defined in the outer context as the start point
@@ -351,8 +351,12 @@ namespace GraphView
             var outPostMatEdges = nodeUnitCandidate.PostMatOutgoingEdges;
 
             curComponent.TraversalChain2.Add(
-                new Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>(inPreMatEdges[0].SourceNode,
-                    inPreMatEdges[0], new Tuple<List<MatchEdge>, List<MatchEdge>>(outPostMatEdges, inPostMatEdges)));
+                new Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>(
+                    inPreMatEdges[0].SourceNode,
+                    inPreMatEdges[0], 
+                    inPreMatEdges[0].SinkNode, 
+                    outPostMatEdges, 
+                    inPostMatEdges));
         }
     }
 }

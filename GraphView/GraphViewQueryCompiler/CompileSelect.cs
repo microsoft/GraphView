@@ -160,7 +160,7 @@ namespace GraphView
             {
                 var processedNodes = new HashSet<MatchNode>();
                 var traversalChain =
-                    new Stack<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>(
+                    new Stack<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>(
                         subGraph.TraversalChain2);
                 while (traversalChain.Count != 0)
                 {
@@ -175,7 +175,7 @@ namespace GraphView
                     if (traversalEdge != null)
                     {
                         var sinkNode = traversalEdge.SinkNode;
-                        ConstructJsonQueryOnNode(sinkNode, currentChain.Item3.Item1);
+                        ConstructJsonQueryOnNode(sinkNode, currentChain.Item4);
                         processedNodes.Add(sinkNode);
                     }
                 }
@@ -1105,7 +1105,7 @@ namespace GraphView
 
         private GraphViewExecutionOperator ConstructOperator2(GraphViewConnection connection, MatchGraph graphPattern,
             QueryCompilationContext context, List<WTableReferenceWithAlias> nonVertexTableReferences,
-            List<Tuple<WBooleanExpression, HashSet<string>>> crossTablePredicatesAndTheirTableReferences)
+            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
         {
             var operatorChain = new List<GraphViewExecutionOperator>();
             var tableReferences = context.TableReferences;
@@ -1113,10 +1113,10 @@ namespace GraphView
 
             foreach (var subGraph in graphPattern.ConnectedSubGraphs)
             {
-                // For Tuple<List<MatchEdge>, List<MatchEdge>>, edges in item1 will be cross applied when GetVertices
-                // and edges in item2 will be cross applied after the TraversalOp
+                // For List<MatchEdge>, backwardMatchingEdges in item4 will be cross applied when GetVertices
+                // and forwardMatchingEdges in item5 will be cross applied after the TraversalOp
                 var traversalChain =
-                    new Stack<Tuple<MatchNode, MatchEdge, Tuple<List<MatchEdge>, List<MatchEdge>>>>(
+                    new Stack<Tuple<MatchNode, MatchEdge, MatchNode, List<MatchEdge>, List<MatchEdge>>>(
                         subGraph.TraversalChain2);
                 var processedNodes = new HashSet<MatchNode>();
                 while (traversalChain.Count != 0)
@@ -1124,7 +1124,9 @@ namespace GraphView
                     var currentChain = traversalChain.Pop();
                     var sourceNode = currentChain.Item1;
                     var traversalEdge = currentChain.Item2;
-                    var matchingEdges = currentChain.Item3;
+                    var sinkNode = currentChain.Item3;
+                    var backwardMatchingEdges = currentChain.Item4;
+                    var forwardMatchingEdges = currentChain.Item5;
 
                     // The first node in a component
                     if (!processedNodes.Contains(sourceNode))
@@ -1139,23 +1141,18 @@ namespace GraphView
                         else
                             operatorChain.Add(fetchNodeOp);
 
+                        context.CurrentExecutionOperator = operatorChain.Last();
                         UpdateRawRecordLayout(sourceNode.NodeAlias, sourceNode.Properties, rawRecordLayout);
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
 
                         CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                            new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
+                            new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                             operatorChain);
                     }
 
                     if (traversalEdge != null)
                     {
-                        var sinkNode = traversalEdge.SinkNode;
-                        // reverse edges will be cross applied when GetVertices
-                        var backwardMatchingEdges = matchingEdges != null ? matchingEdges.Item1 : new List<MatchEdge>();
-                        // remainingEdges will be cross applied after the TraversalOp
-                        var forwardMatchingEdges = matchingEdges != null ? matchingEdges.Item2 : new List<MatchEdge>();
-
                         if (WithPathClause2 != null)
                         {
                             
@@ -1174,7 +1171,7 @@ namespace GraphView
                                 traversalEdge.Properties));
 
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                                new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
+                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
                             var currentEdgeSinkIndex = rawRecordLayout.Count;
@@ -1201,7 +1198,7 @@ namespace GraphView
                             processedNodes.Add(sinkNode);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);
                             CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                                new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
+                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
                             var sinkNodeIdColumnReference = new WColumnReferenceExpression(sinkNode.NodeAlias, "id");
@@ -1234,7 +1231,7 @@ namespace GraphView
 
                                 CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
                                     new HashSet<string>(tableReferences.Keys),
-                                    crossTablePredicatesAndTheirTableReferences,
+                                    predicatesAccessedTableReferences,
                                     operatorChain);
                             }
                         }
