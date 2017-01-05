@@ -30,7 +30,7 @@ namespace GraphView
             if (outputBuffer == null)
                 outputBuffer = new Queue<RawRecord>(outputBufferSize);
 
-            if (outputBuffer.Count == 0)
+            if (State() && outputBuffer.Count == 0)
             {
                 // If the output buffer is empty, sends a query to the underlying system 
                 // retrieving all the vertices satisfying the query.

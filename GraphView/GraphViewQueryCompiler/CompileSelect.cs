@@ -1307,15 +1307,24 @@ namespace GraphView
 
                 if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression))
                 {
+                    foreach (var expr in selectScalarExprList)
+                    {
+                        var alias = expr.ColumnName;
+                        var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
+
+                        projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                    }
+
                     context.ClearField();
                     var i = 0;
                     foreach (var expr in selectScalarExprList)
                     {
                         var alias = expr.ColumnName;
-                        var columnReference = new WColumnReferenceExpression("", alias);
-                        var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
-
-                        projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                        WColumnReferenceExpression columnReference;
+                        if (alias == null)
+                            columnReference = expr.SelectExpr as WColumnReferenceExpression;
+                        else
+                            columnReference = new WColumnReferenceExpression("", alias);
                         context.RawRecordLayout.Add(columnReference, i++);
                     }
                 }

@@ -29,7 +29,7 @@ namespace GraphView
             switch (dbType)
             {
                 case DatabaseType.DocumentDB:
-                    return string.Format("{0} FROM Node {1} {2} {3} {4}", SelectClause, Alias, JoinClause,
+                    return string.Format("SELECT {0} FROM Node {1} {2} {3} {4}", SelectClause, Alias, JoinClause,
                         string.IsNullOrEmpty(WhereSearchCondition) ? "" : "WHERE", WhereSearchCondition);
                 case DatabaseType.JsonServer:
                     return string.Format("FOR {0} IN ('Node') {1} {2} {3}", Alias,
