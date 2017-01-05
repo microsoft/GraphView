@@ -99,6 +99,26 @@ namespace GraphView
         }
     }
 
+    internal class PathFunction : ScalarFunction
+    {
+        private List<int> indexList;
+
+        public PathFunction(List<int> indexList)
+        {
+            this.indexList = indexList;
+        }
+
+        public override string Evaluate(RawRecord record)
+        {
+            var pathStringBuilder = new StringBuilder();
+
+            foreach (var i in indexList)
+                pathStringBuilder.Append(record[i]).Append("-->");
+
+            return pathStringBuilder.ToString();
+        }
+    }
+
     internal class BinaryScalarFunction : ScalarFunction
     {
         ScalarFunction f1;

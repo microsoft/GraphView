@@ -1314,12 +1314,19 @@ namespace GraphView
                         ScalarFunction scalarFunction;
                         WScalarExpression scalarExpression;
                         QueryCompilationContext newContext;
-                        GraphViewNativeAggregateFunctionsEnum functionEnum;
+                        GraphViewNativeScalarFunctionsEnum functionEnum;
                         if (!Enum.TryParse(functionName, true, out functionEnum))
-                            throw new GraphViewException("Aggregate function '" + functionName + "' hasn't been supported.");
+                            throw new GraphViewException("Scalar function '" + functionName + "' hasn't been supported.");
                         switch (functionEnum)
                         {
-                            case GraphViewNativeAggregateFunctionsEnum.Count:
+                            case GraphViewNativeScalarFunctionsEnum.Path:
+                                var indexList = new List<int>();
+                                foreach (var parameter in functionCall.Parameters)
+                                    indexList.Add(context.LocateColumnReference((parameter as WColumnReferenceExpression)));
+                                scalarFunction = new PathFunction(indexList);
+                                projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                                break;
+                            case GraphViewNativeScalarFunctionsEnum.Count:
                                 newContext = new QueryCompilationContext();
                                 newContext.AddField("", alias, ColumnGraphType.Value);
                                 scalarExpression = new WColumnReferenceExpression("", alias);
@@ -1327,12 +1334,12 @@ namespace GraphView
                                 projectOperator.AddSelectScalarElement(scalarFunction, alias);
                                 // new CountOperator
                                 break;
-                            case GraphViewNativeAggregateFunctionsEnum.Deduplicate:
+                            case GraphViewNativeScalarFunctionsEnum.Deduplicate:
                                 scalarFunction = functionCall.Parameters[0].CompileToFunction(context, connection);
                                 projectOperator.AddSelectScalarElement(scalarFunction, alias);
                                 // new Deduplicate Operator
                                 break;
-                            case GraphViewNativeAggregateFunctionsEnum.Fold:
+                            case GraphViewNativeScalarFunctionsEnum.Fold:
                                 newContext = new QueryCompilationContext();
                                 newContext.AddField("", alias, ColumnGraphType.Value);
                                 scalarExpression = new WColumnReferenceExpression("", alias);
@@ -1340,7 +1347,7 @@ namespace GraphView
                                 projectOperator.AddSelectScalarElement(scalarFunction, alias);
                                 // new Fold Operator
                                 break;
-                            case GraphViewNativeAggregateFunctionsEnum.Tree:
+                            case GraphViewNativeScalarFunctionsEnum.Tree:
                                 newContext = new QueryCompilationContext();
                                 newContext.AddField("", alias, ColumnGraphType.Value);
                                 scalarExpression = new WColumnReferenceExpression("", alias);

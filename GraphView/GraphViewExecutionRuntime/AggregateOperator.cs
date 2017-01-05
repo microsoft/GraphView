@@ -195,17 +195,20 @@ namespace GraphView
             }
         }
 
-        internal TreeOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList)
+        private int pathIndex;
+
+        internal TreeOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList, int pPathIndex)
             : base(pInputOperatr, pGroupByFieldsList)
-        { }
+        {
+            pathIndex = pPathIndex;
+        }
 
         internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
         {
             var root = new TreeNode("root");
             foreach (RawRecord t in groupedRawRecords)
             {
-                var pathIdx = t.fieldValues.Count - 1;
-                var path = t.fieldValues[pathIdx];
+                var path = t.fieldValues[pathIndex];
                 ConstructTree(ref root, ref path);
             }
 
