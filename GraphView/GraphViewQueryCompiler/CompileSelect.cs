@@ -51,35 +51,25 @@ namespace GraphView
                 booleanNormalize.Invoke(WhereClause.SearchCondition) :
                 new List<WBooleanExpression>();
 
-            // For each predicate, extracts its accessed table and column references
-            List<Tuple<WBooleanExpression, Dictionary<string, HashSet<string>>>>
-                predicatesAndTheirTableColumnReferences = new List<Tuple<WBooleanExpression, Dictionary<string, HashSet<string>>>>(conjunctivePredicates.Count);
-            // Cross-table predicates and their table references
+            // A list of predicates and their accessed table references 
+            // Predicates in this list are those that cannot be assigned to the match graph
             List<Tuple<WBooleanExpression, HashSet<string>>>
-                crossTablePredicatesAndTheirTableReferences = new List<Tuple<WBooleanExpression, HashSet<string>>>();
+                predicatesAccessedTableReferences = new List<Tuple<WBooleanExpression, HashSet<string>>>();
             AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
 
             foreach (WBooleanExpression predicate in conjunctivePredicates)
             {
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate, vertexAndEdgeAliases);
-                predicatesAndTheirTableColumnReferences.Add(new Tuple<WBooleanExpression, Dictionary<string, HashSet<string>>>(predicate, tableColumnReferences));
 
                 if (!TryAttachPredicate(graphPattern, predicate, tableColumnReferences))
                 {
                     // Attach cross-table predicate's referencing properties for later runtime evaluation
                     AttachProperties(graphPattern, tableColumnReferences);
-                    crossTablePredicatesAndTheirTableReferences.Add(
+                    predicatesAccessedTableReferences.Add(
                         new Tuple<WBooleanExpression, HashSet<string>>(predicate,
                             new HashSet<string>(tableColumnReferences.Keys)));
                 }
             }
-
-            Dictionary<string, HashSet<string>> projectionCollection = new Dictionary<string, HashSet<string>>();
-            foreach (string alias in vertexAndEdgeAliases)
-            {
-                projectionCollection.Add(alias, new HashSet<string>());
-            }
-            
 
             foreach (WSelectElement selectElement in SelectElements)
             {
@@ -93,7 +83,7 @@ namespace GraphView
             ConstructJsonQueries(graphPattern);
 
             return ConstructOperator2(dbConnection, graphPattern, context, nonVertexTableReferences,
-                crossTablePredicatesAndTheirTableReferences);
+                predicatesAccessedTableReferences);
         }
 
         /// <summary>
@@ -1134,7 +1124,7 @@ namespace GraphView
                     var currentChain = traversalChain.Pop();
                     var sourceNode = currentChain.Item1;
                     var traversalEdge = currentChain.Item2;
-                    var otherEdges = currentChain.Item3;
+                    var matchingEdges = currentChain.Item3;
 
                     // The first node in a component
                     if (!processedNodes.Contains(sourceNode))
@@ -1157,13 +1147,14 @@ namespace GraphView
                             new HashSet<string>(tableReferences.Keys), crossTablePredicatesAndTheirTableReferences,
                             operatorChain);
                     }
+
                     if (traversalEdge != null)
                     {
                         var sinkNode = traversalEdge.SinkNode;
                         // reverse edges will be cross applied when GetVertices
-                        var reverseEdges = otherEdges != null ? otherEdges.Item1 : new List<MatchEdge>();
+                        var backwardMatchingEdges = matchingEdges != null ? matchingEdges.Item1 : new List<MatchEdge>();
                         // remainingEdges will be cross applied after the TraversalOp
-                        var remainingEdges = otherEdges != null ? otherEdges.Item2 : new List<MatchEdge>();
+                        var forwardMatchingEdges = matchingEdges != null ? matchingEdges.Item2 : new List<MatchEdge>();
 
                         if (WithPathClause2 != null)
                         {
@@ -1193,7 +1184,7 @@ namespace GraphView
 
                             var matchingIndexes = new List<Tuple<int, int>>();
                             var localSinkAdjListSinkIndex = sinkNode.Properties.Count;
-                            foreach (var reverseEdge in reverseEdges)
+                            foreach (var reverseEdge in backwardMatchingEdges)
                             {
                                 var sourceMatchIndex =
                                     rawRecordLayout[new WColumnReferenceExpression(reverseEdge.SinkNode.NodeAlias, "id")];
@@ -1214,7 +1205,7 @@ namespace GraphView
                                 operatorChain);
 
                             var sinkNodeIdColumnReference = new WColumnReferenceExpression(sinkNode.NodeAlias, "id");
-                            foreach (var remainingEdge in remainingEdges)
+                            foreach (var remainingEdge in forwardMatchingEdges)
                             {
                                 var remainingEdgeIndex =
                                     rawRecordLayout[
