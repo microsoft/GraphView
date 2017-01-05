@@ -462,7 +462,12 @@ namespace GraphView
 
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
-            throw new NotImplementedException();
+            GremlinLocalVariable localMapVariable = GremlinLocalVariable.Create(localContext);
+            currentContext.VariableList.Add(localMapVariable);
+            currentContext.VariableList.AddRange(localContext.VariableList);
+
+            currentContext.TableReferences.Add(localMapVariable);
+            currentContext.PivotVariable = localMapVariable;
         }
         //internal virtual void Loops(GremlinToSqlContext currentContext, )
         //internal virtual void MapKeys() //Deprecated
