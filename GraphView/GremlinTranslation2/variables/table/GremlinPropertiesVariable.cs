@@ -30,12 +30,16 @@ namespace GraphView
 
         internal override void Key(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, "_key");
+            currentContext.VariableList.Add(newVariableProperty);
+            currentContext.PivotVariable = newVariableProperty;
         }
 
         internal override void Value(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, "_value");
+            currentContext.VariableList.Add(newVariableProperty);
+            currentContext.PivotVariable = newVariableProperty;
         }
     }
 }

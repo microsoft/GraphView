@@ -442,6 +442,7 @@ namespace GraphView
 
         public GraphTraversal2 key()
         {
+            AddGremlinOperator(new GremlinKeyOp());
             return this;
         }
 
@@ -790,7 +791,7 @@ namespace GraphView
 
         public GraphTraversal2 value()
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinValueOp());
             return this;
         }
 

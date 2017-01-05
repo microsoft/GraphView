@@ -115,6 +115,7 @@
     <Compile Include="GremlinTranslation2\map\GremlinInEOP.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinInOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinInVOP.cs" />
+    <Compile Include="GremlinTranslation2\map\GremlinKeyOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinMatchOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinMaxOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinMeanOp.cs" />
@@ -132,6 +133,7 @@
     <Compile Include="GremlinTranslation2\map\GremlinSumOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinUnfoldOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinValueMapOp.cs" />
+    <Compile Include="GremlinTranslation2\map\GremlinValueOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinValuesOp.cs" />
     <Compile Include="GremlinTranslation2\Predicate.cs" />
     <Compile Include="GremlinTranslation2\Projection.cs" />
