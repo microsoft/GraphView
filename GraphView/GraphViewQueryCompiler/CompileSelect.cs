@@ -2009,5 +2009,45 @@ namespace GraphView
             return localOp;
         }
     }
+
+    partial class WFlatMapTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
+            if (localSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a flatMap table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock flatMapSelect = localSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (flatMapSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            foreach (WSelectElement selectElement in flatMapSelect.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be column references.");
+                }
+                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
+
+            LocalOperator flatMapOp = new LocalOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = flatMapOp;
+
+            return flatMapOp;
+        }
+    }
 }
 

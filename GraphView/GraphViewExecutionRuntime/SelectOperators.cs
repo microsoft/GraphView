@@ -545,6 +545,77 @@ namespace GraphView
         }
     }
 
+    internal class FlatMapOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+
+        // The traversal inside the flatMap function.
+        private GraphViewExecutionOperator flatMapTraversal;
+        private ConstantSourceOperator contextOp;
+
+        private RawRecord currentRecord = null;
+        private Queue<RawRecord> outputBuffer;
+
+        public FlatMapOperator(
+            GraphViewExecutionOperator inputOp,
+            GraphViewExecutionOperator flatMapTraversal,
+            ConstantSourceOperator contextOp)
+        {
+            this.inputOp = inputOp;
+            this.flatMapTraversal = flatMapTraversal;
+            this.contextOp = contextOp;
+
+            outputBuffer = new Queue<RawRecord>();
+        }
+
+        public override RawRecord Next()
+        {
+            if (outputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
+            }
+
+            currentRecord = inputOp.Next();
+            if (currentRecord == null)
+            {
+                Close();
+                return null;
+            }
+
+            contextOp.ConstantSource = currentRecord;
+            flatMapTraversal.ResetState();
+            RawRecord localRec = null;
+            while ((localRec = flatMapTraversal.Next()) != null)
+            {
+                outputBuffer.Enqueue(localRec);
+            }
+
+            if (outputBuffer.Count > 0)
+            {
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
+            }
+            else
+            {
+                Close();
+                return null;
+            }
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
+        }
+    }
+
     internal class LocalOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
