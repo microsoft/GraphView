@@ -60,6 +60,7 @@ namespace GraphView
 
         internal void AddLabelPredicateToEdge(GremlinToSqlContext currentContext, GremlinEdgeVariable2 edge, List<string> edgeLabels)
         {
+            if (edgeLabels.Count == 0) return;
             edge.Populate("label");
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var edgeLabel in edgeLabels)

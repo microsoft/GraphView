@@ -19,7 +19,10 @@ namespace GraphView
             };
         }
 
-        public GremlinVariableReference() { }
+        public GremlinVariableReference()
+        {
+            VariableName = GenerateTableAlias();
+        }
 
         public GremlinVariableReference(GremlinToSqlContext context)
         {

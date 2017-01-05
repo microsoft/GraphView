@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation2.variables.table
+namespace GraphView
 {
     internal class GremlinDerivedTableVariable: GremlinTableVariable
     {
@@ -13,6 +13,7 @@ namespace GraphView.GremlinTranslation2.variables.table
         public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext)
         {
             SubqueryContext = subqueryContext;
+            VariableName = GenerateTableAlias();
         }
 
         public override WTableReference ToTableReference()

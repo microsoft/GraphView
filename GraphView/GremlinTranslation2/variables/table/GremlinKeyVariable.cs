@@ -13,6 +13,7 @@ namespace GraphView
         public GremlinKeyVariable(GremlinVariableProperty projectVariable)
         {
             ProjectVariable = projectVariable;
+            VariableName = GenerateTableAlias();
         }
 
         internal override GremlinScalarVariable DefaultProjection()

@@ -10,7 +10,7 @@ namespace GraphView
     /// Inject variable will be translated to a derived table reference
     /// in the SQL FROM clause, concatenating results from priorContext and injected values. 
     /// </summary>
-    internal class GremlinInjectVariable : GremlinTableVariable, ISqlTable
+    internal class GremlinInjectVariable : GremlinTableVariable
     {
         protected static int _count = 0;
 
