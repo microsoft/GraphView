@@ -8,7 +8,14 @@ namespace GraphView
 {
     public class GraphTraversal2
     {
-        internal List<GremlinTranslationOperator> GremlinTranslationOpList = new List<GremlinTranslationOperator>();
+        public static GraphViewConnection Connection { get; set; }
+
+        public static void SetGraphViewConnection(GraphViewConnection connection)
+        {
+            Connection = connection;
+        }
+
+        internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
         internal GremlinTranslationOperator LastGremlinTranslationOp { set; get; }
 
         public GraphTraversal2() {
@@ -25,16 +32,20 @@ namespace GraphView
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
-        public void next()
+        internal List<RawRecord> next()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelTest");
-            //var sqlFragment = LastGremlinTranslationOp.ToWSqlFragment();
-            var sqlScript = LastGremlinTranslationOp.ToSqlScript();
-            var str = sqlScript.ToString();
+            //var sqlScript = LastGremlinTranslationOp.ToSqlScript();
+            //var str = sqlScript.ToString();
 
-            var sqlQuery = LastGremlinTranslationOp.ToSqlScript().Generate(connection);
+            var op = LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection);
+            var results = new List<RawRecord>();
+            RawRecord outputRec = null;
+            while ((outputRec = op.Next()) != null)
+            {
+                results.Add(outputRec);
+            }
+
+            return results;
         }
 
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
