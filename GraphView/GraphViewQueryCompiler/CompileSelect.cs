@@ -1319,6 +1319,7 @@ namespace GraphView
                         context.RawRecordLayout.Add(columnReference, i++);
                     }
                 }
+                // TODO: distinguish aggregate function and scalar function from WFunctionCall
                 else if (selectScalarExprList.All(e => e.SelectExpr is WFunctionCall))
                 {
                     throw new NotImplementedException();
