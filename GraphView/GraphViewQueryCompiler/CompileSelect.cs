@@ -78,6 +78,13 @@ namespace GraphView
                 AttachProperties(graphPattern, tableColumnReferences);
             }
 
+            foreach (var nonVertexTableReference in nonVertexTableReferences)
+            {
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(nonVertexTableReference, vertexAndEdgeAliases);
+                // Attach referencing properties for later runtime evaluation
+                AttachProperties(graphPattern, tableColumnReferences);
+            }
+
             ConstructTraversalChain2(graphPattern);
 
             ConstructJsonQueries(graphPattern);
