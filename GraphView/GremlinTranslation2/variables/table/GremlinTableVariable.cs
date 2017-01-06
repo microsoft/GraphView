@@ -44,7 +44,7 @@ namespace GraphView
             }
         }
 
-        internal override void Range(GremlinToSqlContext currentContext, long low, long high)
+        internal override void Range(GremlinToSqlContext currentContext, int low, int high)
         {
             Low = low;
             High = high;

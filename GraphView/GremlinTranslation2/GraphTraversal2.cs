@@ -616,7 +616,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 range(long low, long high)
+        public GraphTraversal2 range(int low, int high)
         {
             AddGremlinOperator(new GremlinRangeOp(low, high));
             return this;

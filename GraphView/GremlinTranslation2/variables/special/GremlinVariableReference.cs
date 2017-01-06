@@ -8,15 +8,11 @@ namespace GraphView
 {
     internal class GremlinVariableReference: GremlinTableVariable, ISqlStatement
     {
-        public GremlinToSqlContext Context;
+        public GremlinToSqlContext Context { get; set; }
 
         public override WTableReference ToTableReference()
         {
-            return new WVariableTableReference()
-            {
-                Variable = SqlUtil.GetVariableReference(VariableName),
-                Alias = SqlUtil.GetIdentifier(VariableName)
-            };
+            return SqlUtil.GetVariableTableReference(VariableName);
         }
 
         public GremlinVariableReference()
@@ -33,14 +29,7 @@ namespace GraphView
         public virtual List<WSqlStatement> ToSetVariableStatements()
         {
             List<WSqlStatement> statementList = Context.GetSetVariableStatements();
-            statementList.Add(new WSetVariableStatement()
-            {
-                Expression = new WScalarSubquery()
-                {
-                    SubQueryExpr = Context.ToSelectQueryBlock()
-                },
-                Variable = SqlUtil.GetVariableReference(VariableName)
-            });
+            statementList.Add(SqlUtil.GetSetVariableStatement(VariableName, SqlUtil.GetScalarSubquery(Context.ToSelectQueryBlock())));
             return statementList;
         }
 

@@ -16,8 +16,6 @@ namespace GraphView
         }
 
         private GremlinVariableProperty adjacencyList;
-        // A list of edge properties to project for this edge table
-        //private List<string> projectedProperties;
 
         public override WTableReference ToTableReference()
         {

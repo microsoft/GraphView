@@ -9,17 +9,17 @@ namespace GraphView
 {
     internal class GremlinToSqlContext
     {
-        public GremlinVariable PivotVariable { get; set; }
-        public Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> TaggedVariables { get; set; }
-        public List<GremlinVariable> VariableList { get; private set; }
-        public List<ISqlTable> TableReferences { get; private set; }
+        internal GremlinVariable PivotVariable { get; set; }
+        internal Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> TaggedVariables { get; set; }
+        internal List<GremlinVariable> VariableList { get; private set; }
+        internal List<ISqlTable> TableReferences { get; private set; }
         //public List<ISqlScalar> ProjectedVariables { get; private set; }
-        public List<ISqlStatement> SetVariables { get; private set; }
-        public List<GremlinMatchPath> Paths { get; set; }
-        public GremlinGroupVariable GroupVariable { get; set; }
-        public WBooleanExpression Predicates { get; private set; }
+        internal List<ISqlStatement> SetVariables { get; private set; }
+        internal List<GremlinMatchPath> Paths { get; set; }
+        internal GremlinGroupVariable GroupVariable { get; set; }
+        internal WBooleanExpression Predicates { get; private set; }
 
-        public GremlinToSqlContext()
+        internal GremlinToSqlContext()
         {
             TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();
             TableReferences = new List<ISqlTable>();
@@ -29,7 +29,7 @@ namespace GraphView
             Paths = new List<GremlinMatchPath>();
         }
 
-        public GremlinToSqlContext Duplicate()
+        internal GremlinToSqlContext Duplicate()
         {
             return new GremlinToSqlContext()
             {
@@ -44,7 +44,7 @@ namespace GraphView
             };
         }
 
-        public void Reset()
+        internal void Reset()
         {
             PivotVariable = null;
             GroupVariable = null;
@@ -87,28 +87,41 @@ namespace GraphView
             }
         }
 
-        public void AddPredicate(WBooleanExpression newPredicate)
+        internal void AddPredicate(WBooleanExpression newPredicate)
         {
             Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
         }
 
-        public GremlinVertexVariable GetSourceVertex(GremlinVariable edge)
+        internal void AddLabelPredicateForEdge(GremlinEdgeVariable edge, List<string> edgeLabels)
+        {
+            if (edgeLabels.Count == 0) return;
+            edge.Populate("label");
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            foreach (var edgeLabel in edgeLabels)
+            {
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(edge.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
+            }
+            AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
+        }
+
+        internal GremlinVertexVariable GetSourceVertex(GremlinVariable edge)
         {
             return Paths.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
         }
 
-        public GremlinVertexVariable GetSinkVertex(GremlinVariable edge)
+        internal GremlinVertexVariable GetSinkVertex(GremlinVariable edge)
         {
             return Paths.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
         }
-        public WBooleanExpression ToSqlBoolean()
+        internal WBooleanExpression ToSqlBoolean()
         {
             return TableReferences.Count == 0 ? (WBooleanExpression) SqlUtil.GetBooleanParenthesisExpr(Predicates)
                                               : SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
 
-        //Generate SQL Script
-        public WSqlScript ToSqlScript()
+        internal WSqlScript ToSqlScript()
         {
             return new WSqlScript()
             {
@@ -116,7 +129,7 @@ namespace GraphView
             };
         }
 
-        public List<WSqlBatch> GetBatchList()
+        internal List<WSqlBatch> GetBatchList()
         {
             return new List<WSqlBatch>()
             {
@@ -127,7 +140,7 @@ namespace GraphView
             };
         }
 
-        public List<WSqlStatement> GetSetVariableStatements()
+        internal List<WSqlStatement> GetSetVariableStatements()
         {
             List<WSqlStatement> statementList = new List<WSqlStatement>();
             foreach (var variable in SetVariables)
@@ -137,7 +150,7 @@ namespace GraphView
             return statementList;
         }
 
-        public List<WSqlStatement> GetStatements()
+        internal List<WSqlStatement> GetStatements()
         {
             List<WSqlStatement> statementList = new List<WSqlStatement>();
             statementList.AddRange(GetSetVariableStatements());
@@ -145,7 +158,7 @@ namespace GraphView
             return statementList;
         }
 
-        public WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)
+        internal WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)
         {
             return new WSelectQueryBlock()
             {
@@ -158,7 +171,7 @@ namespace GraphView
             };
         }
 
-        public WFromClause GetFromClause()
+        internal WFromClause GetFromClause()
         {
             if (TableReferences.Count == 0) return null;
 
@@ -170,7 +183,7 @@ namespace GraphView
             return newFromClause;
         }
 
-        public WMatchClause GetMatchClause()
+        internal WMatchClause GetMatchClause()
         {
             if (Paths.Count == 0) return null;
 
@@ -182,7 +195,7 @@ namespace GraphView
             return newMatchClause;
         }
 
-        public List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)
+        internal List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)
         {
             var selectElements = new List<WSelectElement>();
             if (ProjectedProperties != null && ProjectedProperties.Count != 0)
@@ -195,17 +208,17 @@ namespace GraphView
             }
             else
             {
-                selectElements.Add(PivotVariable.DefaultProjection().ToSelectElement());
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
             }
             return selectElements;
         }
 
-        public WWhereClause GetWhereClause()
+        internal WWhereClause GetWhereClause()
         {
             return Predicates == null ? null : SqlUtil.GetWhereClause(Predicates);
         }
 
-        public WOrderByClause GetOrderByClause()
+        internal WOrderByClause GetOrderByClause()
         {
             return null;
             //if (OrderByVariable == null) return null;
@@ -218,7 +231,7 @@ namespace GraphView
             //return newOrderByClause;
         }
 
-        public WGroupByClause GetGroupByClause()
+        internal WGroupByClause GetGroupByClause()
         {
             return null;
             //if (GroupByVariable == null) return null;

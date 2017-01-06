@@ -18,10 +18,7 @@ namespace GraphView
             GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
-
-            //add Predicate to edge
-            AddLabelPredicateToEdge(currentContext, inEdge, edgeLabels);
-
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
             currentContext.PivotVariable = inEdge;
         }
     }

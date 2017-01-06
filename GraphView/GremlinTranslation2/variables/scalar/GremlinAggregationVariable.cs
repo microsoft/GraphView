@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal abstract class GremlinAggregationVariable : GremlinScalarVariable
     {
-        public GremlinScalarVariable AggregateProjection;
+        public GremlinScalarVariable AggregateProjection { get; set; }
 
         public GremlinAggregationVariable(GremlinScalarVariable aggregateProjection)
         {
@@ -68,12 +68,9 @@ namespace GraphView
 
     internal class GremlinTreeVariable : GremlinScalarVariable
     {
-        public override WSelectElement ToSelectElement()
+        public override WScalarExpression ToScalarExpression()
         {
-            return new WSelectScalarExpression()
-            {
-                SelectExpr = SqlUtil.GetFunctionCall("tree")
-            };
+            return SqlUtil.GetFunctionCall("tree");
         }
     }
 

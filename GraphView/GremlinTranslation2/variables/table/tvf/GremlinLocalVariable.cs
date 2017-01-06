@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinLocalVariable : GremlinTableVariable
     {
-        public GremlinToSqlContext LocalContext;
+        public GremlinToSqlContext LocalContext { get; set; }
 
         public static GremlinLocalVariable Create(GremlinToSqlContext localContext)
         {
@@ -67,7 +67,7 @@ namespace GraphView
             currentContext.TableReferences.Add(outVertex);
 
             //add Predicate to edge
-            AddLabelPredicateToEdge(currentContext, outEdge, edgeLabels);
+            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
             currentContext.PivotVariable = outVertex;
         }

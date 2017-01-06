@@ -18,7 +18,6 @@ namespace GraphView
 
     internal interface ISqlScalar
     {
-        WSelectElement ToSelectElement();
         WScalarExpression ToScalarExpression();
     }
 
@@ -36,13 +35,20 @@ namespace GraphView
     internal abstract class GremlinVariable
     {
         public string VariableName { get; set; }
-        public List<string> UsedProperties = new List<string>();
-        public long Low = Int64.MinValue;
-        public long High = Int64.MaxValue;
+        public List<string> UsedProperties { get;set; }
+        public int Low { get; set; }
+        public int High { get; set; }
+
+        public GremlinVariable()
+        {
+            Low = Int32.MinValue;
+            High = Int32.MaxValue;
+            UsedProperties = new List<string>();
+        }
 
         internal virtual GremlinVariableType GetVariableType()
         {
-            return GremlinVariableType.Undefined;
+            throw new NotImplementedException();
         }
 
         internal virtual void Populate(string property)
@@ -55,21 +61,7 @@ namespace GraphView
 
         internal virtual GremlinScalarVariable DefaultProjection()
         {
-            return new GremlinVariableProperty(this, "id");
-        }
-
-        internal void AddLabelPredicateToEdge(GremlinToSqlContext currentContext, GremlinEdgeVariable edge, List<string> edgeLabels)
-        {
-            if (edgeLabels.Count == 0) return;
-            edge.Populate("label");
-            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(edge.VariableName, "label");
-                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
-                booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
-            currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
+            throw new NotImplementedException();
         }
 
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
@@ -606,7 +598,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Range(GremlinToSqlContext currentContext, long low, long high)
+        internal virtual void Range(GremlinToSqlContext currentContext, int low, int high)
         {
             throw new NotImplementedException();
         }

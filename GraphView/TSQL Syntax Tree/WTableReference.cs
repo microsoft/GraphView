@@ -48,6 +48,8 @@ namespace GraphView
     public abstract partial class WTableReferenceWithAlias : WTableReference 
     {
         internal Identifier Alias { set; get; }
+        internal int Low { get; set; }
+        internal int High { get; set; }
     }
 
     public abstract partial class WTableReferenceWithAliasAndColumns : WTableReferenceWithAlias
@@ -109,8 +111,6 @@ namespace GraphView
     public partial class WNamedTableReference : WTableReferenceWithAlias
     {
         internal WSchemaObjectName TableObjectName { set; get; }
-        internal long Low = Int64.MinValue;
-        internal long High = Int64.MaxValue;
 
         internal IList<WTableHint> TableHints { set; get; }
 
@@ -140,12 +140,7 @@ namespace GraphView
             TableObjectString = TableObjectName == null ? TableObjectString : TableObjectName.ToString();
 
             var sb = new StringBuilder();
-            if (Low < 0 && High == 0)
-                sb.AppendFormat("{0}{1}[{2}:]", indent, TableObjectString, Low);
-            else if (Low != Int64.MinValue && High != Int64.MaxValue)
-                sb.AppendFormat("{0}{1}[{2}:{3}]", indent, TableObjectString, Low, High);
-            else
-                sb.AppendFormat("{0}{1}", indent, TableObjectString);
+            sb.AppendFormat("{0}{1}", indent, TableObjectString);
             if (Alias != null)
                 sb.Append(" AS " + string.Format("[{0}]", Alias.Value));
             if (TableHints != null && TableHints.Count > 0)

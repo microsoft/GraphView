@@ -21,79 +21,54 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable bothEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"), WEdgeType.BothEdge);
-            currentContext.VariableList.Add(bothEdgeVar);
+            GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"), WEdgeType.BothEdge);
+            currentContext.VariableList.Add(bothEdge);
+            currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
+
             GremlinFreeVertexVariable bothVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(bothVertex);
 
             // In this case, the both-edge variable is not added to the table-reference list. 
             // Instead, we populate a path this_variable-[bothEdge]->bothVertex in the context
             currentContext.TableReferences.Add(bothVertex);
-            currentContext.Paths.Add(new GremlinMatchPath(this, bothEdgeVar, bothVertex));
-            //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(bothEdgeVar.VariableName, "label");
-                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
-                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
+            currentContext.Paths.Add(new GremlinMatchPath(this, bothEdge, bothVertex));
 
             currentContext.PivotVariable = bothVertex;
         }
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
-            currentContext.VariableList.Add(inEdgeVar);
+            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            currentContext.VariableList.Add(inEdge);
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
+
             GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(inVertex);
-
             currentContext.TableReferences.Add(inVertex);
-            currentContext.Paths.Add(new GremlinMatchPath(inVertex, inEdgeVar, this));
-            //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
-                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
-                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
+            currentContext.Paths.Add(new GremlinMatchPath(inVertex, inEdge, this));
 
             currentContext.PivotVariable = inVertex;
         }
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
-            currentContext.VariableList.Add(inEdgeVar);
-
-            currentContext.Paths.Add(new GremlinMatchPath(null, inEdgeVar, this));
-            //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
-                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
-                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
-
-            currentContext.PivotVariable = inEdgeVar;
+            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            currentContext.VariableList.Add(inEdge);
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
+            currentContext.Paths.Add(new GremlinMatchPath(null, inEdge, this));
+            currentContext.PivotVariable = inEdge;
         }
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
-            currentContext.VariableList.Add(outEdgeVar);
+            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            currentContext.VariableList.Add(outEdge);
+            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
+
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(outVertex);
-
             currentContext.TableReferences.Add(outVertex);
-            currentContext.Paths.Add(new GremlinMatchPath(this, outEdgeVar, outVertex));
-            //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
-                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
-                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
+            currentContext.Paths.Add(new GremlinMatchPath(this, outEdge, outVertex));
 
             currentContext.PivotVariable = outVertex;
         }
@@ -101,16 +76,8 @@ namespace GraphView
         {
             GremlinEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(outEdgeVar);
-
+            currentContext.AddLabelPredicateForEdge(outEdgeVar, edgeLabels);
             currentContext.Paths.Add(new GremlinMatchPath(this, outEdgeVar, null));
-            //add Predicate to edge
-            foreach (var edgeLabel in edgeLabels)
-            {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
-                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
-                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
-
             currentContext.PivotVariable = outEdgeVar;
         }
 

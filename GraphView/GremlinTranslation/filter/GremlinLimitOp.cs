@@ -8,9 +8,9 @@ namespace GraphView.GremlinTranslation
 {
     internal class GremlinLimitOp: GremlinTranslationOperator
     {
-        public long Limit { get; set; }
+        public int Limit { get; set; }
 
-        public GremlinLimitOp(long limit)
+        public GremlinLimitOp(int limit)
         {
             Limit = limit;
         }

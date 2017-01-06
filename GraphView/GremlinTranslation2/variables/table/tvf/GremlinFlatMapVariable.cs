@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinFlatMapVariable: GremlinTableVariable
     {
-        public GremlinToSqlContext FlatMapContext;
+        public GremlinToSqlContext FlatMapContext { get; set; }
 
         public static GremlinFlatMapVariable Create(GremlinToSqlContext flatMapContext)
         {
@@ -59,16 +59,12 @@ namespace GraphView
             GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             outEdge.Populate("_sink");
             currentContext.VariableList.Add(outEdge);
+            currentContext.TableReferences.Add(outEdge);
+            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
             GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(outEdge, "_sink"));
             currentContext.VariableList.Add(outVertex);
-
-            currentContext.TableReferences.Add(outEdge);
             currentContext.TableReferences.Add(outVertex);
-
-            //add Predicate to edge
-            AddLabelPredicateToEdge(currentContext, outEdge, edgeLabels);
-
             currentContext.PivotVariable = outVertex;
         }
     }

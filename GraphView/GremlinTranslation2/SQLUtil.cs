@@ -378,5 +378,23 @@ namespace GraphView
         {
             return new WWhereClause() {SearchCondition = predicate};
         }
+
+        internal static WVariableTableReference GetVariableTableReference(string variableName)
+        {
+            return new WVariableTableReference()
+            {
+                Variable = GetVariableReference(variableName),
+                Alias = GetIdentifier(variableName)
+            };
+        }
+
+        internal static WSetVariableStatement GetSetVariableStatement(string variableName, WScalarExpression scalarExpr)
+        {
+            return new WSetVariableStatement()
+            {
+                Expression = scalarExpr,
+                Variable = GetVariableReference(variableName)
+            };
+        }
     }
 }

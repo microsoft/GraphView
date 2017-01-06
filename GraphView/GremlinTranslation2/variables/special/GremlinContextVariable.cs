@@ -8,11 +8,10 @@ namespace GraphView
 {
     internal class GremlinContextVariable: GremlinVariable
     {
-        public GremlinVariable ContextVariable;
-
-        public bool IsFromSelect;
-        public GremlinKeyword.Pop Pop;
-        public string SelectKey;
+        public GremlinVariable ContextVariable { get; set; }
+        public bool IsFromSelect { get; set; }
+        public GremlinKeyword.Pop Pop { get; set; }
+        public string SelectKey { get; set; }
 
         public static GremlinContextVariable Create(GremlinVariable contextVariable)
         {

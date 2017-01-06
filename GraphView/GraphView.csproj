@@ -144,9 +144,9 @@
     <Compile Include="GremlinTranslation2\variables\edge\GremlinBoundEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\edge\GremlinContextEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\edge\GremlinEdgeVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\GremlinContextVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\GremlinMatchPath.cs" />
-    <Compile Include="GremlinTranslation2\variables\GremlinToSqlContext.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinContextVariable.cs" />
+    <Compile Include="GremlinTranslation2\GremlinMatchPath.cs" />
+    <Compile Include="GremlinTranslation2\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinContextScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\GremlinLocalVariable.cs" />

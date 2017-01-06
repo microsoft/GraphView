@@ -8,10 +8,6 @@ namespace GraphView
 {
     internal class GremlinContextEdgeVariable : GremlinContextVariable
     {
-        public bool IsFromSelect;
-        public GremlinKeyword.Pop Pop;
-        public string SelectKey;
-
         public GremlinContextEdgeVariable(GremlinVariable contextEdge):base(contextEdge) {}
 
         internal override GremlinVariableType GetVariableType()

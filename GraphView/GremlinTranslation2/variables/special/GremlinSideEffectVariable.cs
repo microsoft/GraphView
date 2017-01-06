@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinSideEffectVariable: GremlinVariable, ISqlStatement
     {
-        public GremlinToSqlContext Context;
+        public GremlinToSqlContext Context { get; set; }
 
         public GremlinSideEffectVariable(GremlinToSqlContext context)
         {

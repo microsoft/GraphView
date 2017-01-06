@@ -8,21 +8,13 @@ namespace GraphView
 {
     internal class GremlinVariableProperty : GremlinScalarVariable
     {
-        public GremlinVariable GremlinVariable { get; private set; }
-        public string VariableProperty { get; private set; }
+        public GremlinVariable GremlinVariable { get; set; }
+        public string VariableProperty { get; set; }
 
         public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty)
         {
             GremlinVariable = gremlinVariable;
             VariableProperty = variableProperty;
-        }
-
-        public override WSelectElement ToSelectElement()
-        {
-            return new WSelectScalarExpression()
-            {
-                SelectExpr = SqlUtil.GetColumnReferenceExpr(GremlinVariable.VariableName, VariableProperty)
-            };
         }
 
         public override WScalarExpression ToScalarExpression()

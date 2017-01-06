@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinDerivedTableVariable: GremlinTableVariable
     {
-        public GremlinToSqlContext SubqueryContext;
+        public GremlinToSqlContext SubqueryContext { get; set; }
 
         public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext)
         {

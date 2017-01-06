@@ -21,8 +21,8 @@ namespace GraphView.GremlinTranslation
         public string VariableName { get; set; }
         public List<string> Properties = new List<string>();
         public string SetVariableName { get; set; }
-        public long Low = Int64.MinValue;
-        public long High = Int64.MaxValue;
+        public int Low = Int32.MinValue;
+        public int High = Int32.MaxValue;
 
         public virtual GremlinVariableType GetVariableType()
         {

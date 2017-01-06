@@ -8,9 +8,9 @@ namespace GraphView
 {
     internal class GremlinRangeOp: GremlinTranslationOperator
     {
-        public long Low { get; set; }
-        public long High { get; set; }
-        public GremlinRangeOp(long low, long high)
+        public int Low { get; set; }
+        public int High { get; set; }
+        public GremlinRangeOp(int low, int high)
         {
             Low = low;
             High = high;

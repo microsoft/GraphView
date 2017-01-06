@@ -444,7 +444,7 @@ namespace GraphView.GremlinTranslation
             return this;
         }
 
-        public GraphTraversal2 limit(long limit)
+        public GraphTraversal2 limit(int limit)
         {
             AddGremlinOperator(new GremlinLimitOp(limit));
             return this;
@@ -601,7 +601,7 @@ namespace GraphView.GremlinTranslation
             return this;
         }
 
-        public GraphTraversal2 range(long low, long high)
+        public GraphTraversal2 range(int low, int high)
         {
             AddGremlinOperator(new GremlinRangeOp(low, high));
             return this;
@@ -672,7 +672,7 @@ namespace GraphView.GremlinTranslation
             return this;
         }
 
-        public GraphTraversal2 tail(long limit)
+        public GraphTraversal2 tail(int limit)
         {
             AddGremlinOperator(new GremlinTailOp(limit));
             return this;

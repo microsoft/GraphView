@@ -8,14 +8,14 @@ namespace GraphView.GremlinTranslation
 {
     internal class GremlinTailOp: GremlinTranslationOperator
     {
-        public long Limit { get; set; }
+        public int Limit { get; set; }
 
         public GremlinTailOp()
         {
             Limit = 1;
         }
 
-        public GremlinTailOp(long limit)
+        public GremlinTailOp(int limit)
         {
             Limit = limit;
         }

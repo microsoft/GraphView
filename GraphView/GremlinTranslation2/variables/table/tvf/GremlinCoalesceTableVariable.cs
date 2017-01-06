@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal abstract class GremlinCoalesceVariable : GremlinTableVariable
     {
-        public List<GremlinToSqlContext> CoalesceContextList;
+        public List<GremlinToSqlContext> CoalesceContextList { get; set; }
 
         public static GremlinCoalesceVariable Create(List<GremlinToSqlContext> coalesceContextList)
         {

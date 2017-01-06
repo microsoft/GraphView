@@ -18,11 +18,6 @@ namespace GraphView
             return this;
         }
 
-        public virtual WSelectElement ToSelectElement()
-        {
-            throw new NotImplementedException();
-        }
-
         public virtual WScalarExpression ToScalarExpression()
         {
             throw new NotImplementedException();
