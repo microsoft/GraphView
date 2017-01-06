@@ -61,7 +61,7 @@ namespace GraphView
 
         internal virtual GremlinScalarVariable DefaultProjection()
         {
-            throw new NotImplementedException();
+            return new GremlinVariableProperty(this, "id");
         }
 
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)

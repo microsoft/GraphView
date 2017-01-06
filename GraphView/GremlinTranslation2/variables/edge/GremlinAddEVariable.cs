@@ -34,7 +34,10 @@ namespace GraphView
             List<WSqlStatement> statementList = new List<WSqlStatement>();
 
             var columnK = new List<WColumnReferenceExpression>();
-            var selectBlock = new WSelectQueryBlock();
+            var selectBlock = new WSelectQueryBlock()
+            {
+                FromClause = new WFromClause()
+            };
 
             selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
             selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
