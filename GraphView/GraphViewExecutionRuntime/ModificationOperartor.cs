@@ -268,7 +268,7 @@ namespace GraphView
                 
                 int edgeId = InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
 
-                var record = new RawRecord(4)
+                var record = new RawRecord(3)
                 {
                     fieldValues =
                     {
@@ -391,6 +391,104 @@ namespace GraphView
         }
     }
 
+    internal class InsertEdgeOperator2 : ModificationBaseOpertaor
+    {
+        private GraphViewExecutionOperator srcOp;
+        private GraphViewExecutionOperator sinkOp;
+        private string edgeBaseString;
+        private Queue<RawRecord> outputBuffer;
+
+        private string RetrieveDocumentById(string id)
+        {
+            var script = string.Format("SELECT * FROM Node WHERE Node.id = '{0}'", id);
+            FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
+            List<dynamic> result = dbConnection.DocDBclient.CreateDocumentQuery(
+                UriFactory.CreateDocumentCollectionUri(dbConnection.DocDB_DatabaseId, dbConnection.DocDB_CollectionId),
+                script, queryOptions).ToList();
+
+            if (result.Count == 0)
+                return null;
+            return ((JObject)result[0]).ToString();
+        }
+
+        public InsertEdgeOperator2(GraphViewConnection dbConnection, GraphViewExecutionOperator pSrcOp, GraphViewExecutionOperator pSinkOp, string edgeBaseString)
+        {
+            this.dbConnection = dbConnection;
+            this.srcOp = pSrcOp;
+            this.sinkOp = pSinkOp;
+            this.edgeBaseString = edgeBaseString;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            if (outputBuffer == null)
+                outputBuffer = new Queue<RawRecord>();
+            if (outputBuffer.Count != 0)
+            {
+                if (outputBuffer.Count == 1)
+                    this.Close();
+                return outputBuffer.Dequeue();
+            }
+
+            map = new Dictionary<string, string>();
+
+            RawRecord srcRecord = null;
+            RawRecord sinkRecord = null;
+
+            List<RawRecord> srcRecords = new List<RawRecord>();
+            List<RawRecord> sinkRecords = new List<RawRecord>();
+
+            while (srcOp.State() && (srcRecord = srcOp.Next()) != null)
+                srcRecords.Add(srcRecord);
+            while (sinkOp.State() && (sinkRecord = sinkOp.Next()) != null)
+                sinkRecords.Add(sinkRecord);
+
+            foreach (var x in srcRecords)
+            {
+                foreach (var y in sinkRecords)
+                {
+                    string sourceid = x[0];
+                    string sinkid = y[0];
+                    string sourceJsonStr = !map.ContainsKey(sourceid) ? RetrieveDocumentById(sourceid) : map[sourceid];
+                    string sinkJsonStr = !map.ContainsKey(sinkid) ? RetrieveDocumentById(sinkid) : map[sinkid];
+
+                    int edgeId = InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
+
+                    var record = new RawRecord(3)
+                    {
+                        fieldValues =
+                        {
+                            [0] = sourceid,
+                            [1] = sinkid,
+                            [2] = edgeId.ToString()
+                        }
+                    };
+                    outputBuffer.Enqueue(record);
+                }
+            }
+
+            Upload();
+
+            Close();
+
+            if (outputBuffer.Count <= 1) Close();
+            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            return null;
+        }
+
+        internal int InsertEdgeInMap(string sourceid, string sinkid, string source_doc, string sink_doc)
+        {
+            if (!map.ContainsKey(sourceid))
+                map[sourceid] = source_doc;
+
+            if (!map.ContainsKey(sinkid))
+                map[sinkid] = sink_doc;
+
+            return DataModificationUtils.InsertEdge(map, edgeBaseString, sourceid, sinkid);
+        }
+    }
+
     internal class DeleteEdgeOperator : ModificationBaseOpertaor
     {
         public GraphViewExecutionOperator SelectInput;
@@ -480,7 +578,7 @@ namespace GraphView
 
             Close();
             
-            var result = new RawRecord(3);
+            var result = new RawRecord(2);
             result.fieldValues[0] = _createdDocument.Id;
             result.fieldValues[1] = _createdDocument.ToString();
             return result;

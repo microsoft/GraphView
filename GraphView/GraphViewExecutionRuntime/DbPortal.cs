@@ -59,9 +59,9 @@ namespace GraphView
         public override List<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
             FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
-            IQueryable<dynamic> items = Connection.DocDBclient.CreateDocumentQuery(
+            List<dynamic> items = Connection.DocDBclient.CreateDocumentQuery(
                 UriFactory.CreateDocumentCollectionUri(Connection.DocDB_DatabaseId, Connection.DocDB_CollectionId),
-                vertexQuery.ToString(DatabaseType.DocumentDB), queryOptions);
+                vertexQuery.ToString(DatabaseType.DocumentDB), queryOptions).ToList();
 
             var properties = vertexQuery.Properties;
             var newRecordLength = properties.Count;

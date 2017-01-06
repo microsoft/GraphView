@@ -23,6 +23,17 @@ namespace GraphView
 
             return InsertOp;
         }
+
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            string Json_str = ConstructNode();
+
+            InsertNodeOperator InsertOp = new InsertNodeOperator(dbConnection, Json_str);
+
+            context.AddField("", "id", ColumnGraphType.VertexId);
+
+            return InsertOp;
+        }
     }
 
     partial class WInsertEdgeSpecification
@@ -120,6 +131,33 @@ namespace GraphView
             InsertEdgeOperator InsertOp = new InsertEdgeOperator(dbConnection, input, Edge, n1.ToString(), n2.ToString());
 
             return InsertOp;
+        }
+
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
+            var srcTableVariable = SelectQueryBlock.FromClause.TableReferences[0] as WVariableTableReference;
+            var sinkTableVariable = SelectQueryBlock.FromClause.TableReferences[1] as WVariableTableReference;
+
+            if (srcTableVariable == null || sinkTableVariable == null)
+                throw new SyntaxErrorException("Both table references in the InsertEdgeSpecification can only be a table variable");
+
+            Tuple<TemporaryTableHeader, GraphViewExecutionOperator> srcTableTuple, sinkTableTuple;
+            if (!context.TemporaryTableCollection.TryGetValue(srcTableVariable.Variable.Name, out srcTableTuple))
+                throw new SyntaxErrorException("Table variable " + srcTableVariable.Variable.Name + " doesn't exist in the context.");
+            if (!context.TemporaryTableCollection.TryGetValue(sinkTableVariable.Variable.Name, out sinkTableTuple))
+                throw new SyntaxErrorException("Table variable " + sinkTableVariable.Variable.Name + " doesn't exist in the context.");
+
+            string edgeBaseString = ConstructEdge();
+
+            InsertEdgeOperator2 insertEdgeOp = new InsertEdgeOperator2(dbConnection, srcTableTuple.Item2,
+                sinkTableTuple.Item2, edgeBaseString);
+
+            context.AddField("", "sourceId", ColumnGraphType.VertexId);
+            context.AddField("", "sinkId", ColumnGraphType.VertexId);
+            context.AddField("", "edgeOffset", ColumnGraphType.EdgeOffset);
+
+            return insertEdgeOp;
         }
     }
 

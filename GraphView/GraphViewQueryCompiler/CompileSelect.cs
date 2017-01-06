@@ -111,6 +111,8 @@ namespace GraphView
                     if (edge.Predicates == null)
                         edge.Predicates = new List<WBooleanExpression>();
                     edge.Predicates.Add(predicate);
+                    // Attach edge's propeties for later runtime evaluation
+                    AttachProperties(graphPattern, new Dictionary<string, HashSet<string>> {{tableName, properties}});
                 }
                 else if (graphPattern.TryGetNode(tableName, out node))
                 {
@@ -190,7 +192,7 @@ namespace GraphView
             }
         }
 
-        private void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> reverseEdges = null)
+        private void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         {
             var nodeAlias = node.NodeAlias;
             var selectStrBuilder = new StringBuilder();
@@ -208,13 +210,13 @@ namespace GraphView
             }
                 
 
-            if (reverseEdges == null)
-                reverseEdges = new List<MatchEdge>();
+            if (backwardMatchingEdges == null)
+                backwardMatchingEdges = new List<MatchEdge>();
 
             foreach (var predicate in node.Predicates)
                 searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
 
-            foreach (var edge in reverseEdges)
+            foreach (var edge in backwardMatchingEdges)
             {
                 joinStrBuilder.Append(" Join ")
                     .Append(edge.EdgeAlias)
@@ -1339,6 +1341,7 @@ namespace GraphView
                     projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
+                // Rebuild the context's layout
                 context.ClearField();
                 var i = 0;
                 foreach (var expr in selectScalarExprList)

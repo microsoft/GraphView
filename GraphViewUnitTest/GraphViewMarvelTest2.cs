@@ -167,11 +167,11 @@ namespace GraphViewUnitTest
             GraphTraversal2.SetGraphViewConnection(connection);
             GraphTraversal2.g().V().addV().property("character", "VENUS II").property("weapon", "shield").next();
             GraphTraversal2.g().V().addV().property("comicbook", "AVF 4").next();
-            GraphTraversal2.g().V().has("character", "VENUS II").addE().property("type", "appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
+            GraphTraversal2.g().V().has("character", "VENUS II").addE("appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
             GraphTraversal2.g().V().addV().property("character", "HAWK").property("weapon", "claws").next();
-            GraphTraversal2.g().V().As("v").has("character", "HAWK").addE().property("type", "appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
+            GraphTraversal2.g().V().As("v").has("character", "HAWK").addE("appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
             GraphTraversal2.g().V().addV().property("character", "WOODGOD").property("weapon", "lasso").next();
-            GraphTraversal2.g().V().As("v").has("character", "WOODGOD").addE().property("type", "appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
+            GraphTraversal2.g().V().As("v").has("character", "WOODGOD").addE("appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
         }
     }
 }

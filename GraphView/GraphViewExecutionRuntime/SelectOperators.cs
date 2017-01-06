@@ -45,6 +45,7 @@ namespace GraphView
 
             if (outputBuffer.Count == 0)
             {
+                Close();
                 return null;
             }
             else if (outputBuffer.Count == 1)
@@ -578,6 +579,7 @@ namespace GraphView
 
         public ProjectOperator(GraphViewExecutionOperator inputOp)
         {
+            this.Open();
             this.inputOp = inputOp;
             selectScalarList = new List<ScalarFunction>();
         }
