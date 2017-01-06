@@ -12,7 +12,7 @@ namespace GraphView
         public GremlinKeyword.Pop Pop;
         public string SelectKey;
 
-        public GremlinContextEdgeVariable(GremlinVariable2 contextEdge):base(contextEdge) {}
+        public GremlinContextEdgeVariable(GremlinVariable contextEdge):base(contextEdge) {}
 
         internal override GremlinVariableType GetVariableType()
         {

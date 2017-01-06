@@ -9,9 +9,9 @@ namespace GraphView
 {
     internal class GremlinToSqlContext
     {
-        public GremlinVariable2 PivotVariable { get; set; }
-        public Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>> TaggedVariables { get; set; }
-        public List<GremlinVariable2> VariableList { get; private set; }
+        public GremlinVariable PivotVariable { get; set; }
+        public Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> TaggedVariables { get; set; }
+        public List<GremlinVariable> VariableList { get; private set; }
         public List<ISqlTable> TableReferences { get; private set; }
         //public List<ISqlScalar> ProjectedVariables { get; private set; }
         public List<ISqlStatement> SetVariables { get; private set; }
@@ -21,11 +21,11 @@ namespace GraphView
 
         public GremlinToSqlContext()
         {
-            TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>();
+            TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();
             TableReferences = new List<ISqlTable>();
             SetVariables = new List<ISqlStatement>();
             //ProjectedVariables = new List<ISqlScalar>();
-            VariableList = new List<GremlinVariable2>();
+            VariableList = new List<GremlinVariable>();
             Paths = new List<GremlinMatchPath>();
         }
 
@@ -33,8 +33,8 @@ namespace GraphView
         {
             return new GremlinToSqlContext()
             {
-                VariableList = new List<GremlinVariable2>(this.VariableList),
-                TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable2, GremlinToSqlContext>>>(TaggedVariables),
+                VariableList = new List<GremlinVariable>(this.VariableList),
+                TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<ISqlTable>(this.TableReferences),
                 //SetVariables = new List<ISqlStatement>(this.SetVariables), //Don't Duplicate for avoiding redundant set-sqlstatment
@@ -70,7 +70,7 @@ namespace GraphView
             PivotVariable.Populate(propertyName);
         }
 
-        internal GremlinVariable2 SelectVariable(string selectKey, GremlinKeyword.Pop pop = GremlinKeyword.Pop.Default)
+        internal GremlinVariable SelectVariable(string selectKey, GremlinKeyword.Pop pop = GremlinKeyword.Pop.Default)
         {
             if (!TaggedVariables.ContainsKey(selectKey))
             {
@@ -97,7 +97,7 @@ namespace GraphView
             AddPredicate(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
 
-        public GremlinVertexVariable2 GetSourceVertex(GremlinVariable2 edge)
+        public GremlinVertexVariable GetSourceVertex(GremlinVariable edge)
         {
             foreach (var path in Paths)
             {
@@ -106,7 +106,7 @@ namespace GraphView
             return null;
         }
 
-        public GremlinVertexVariable2 GetSinkVertex(GremlinVariable2 edge)
+        public GremlinVertexVariable GetSinkVertex(GremlinVariable edge)
         {
             foreach (var path in Paths)
             {

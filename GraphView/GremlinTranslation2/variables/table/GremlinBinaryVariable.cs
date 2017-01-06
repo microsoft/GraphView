@@ -51,7 +51,7 @@ namespace GraphView
             //    // the following both() is not described in the MACTH caluse and the corresponding 
             //    // vertex variable is not a free vertex variable, but a bound vertex variable. 
             //    GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-            //    GremlinEdgeVariable2 bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            //    GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             //    bothEdge.Populate("_sink");
             //    currentContext.VariableList.Add(bothEdge);
 

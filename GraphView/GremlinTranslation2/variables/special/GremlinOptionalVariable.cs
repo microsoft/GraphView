@@ -9,16 +9,16 @@ namespace GraphView
     internal class GremlinOptionalVariable : GremlinTableVariable
     {
         public GremlinToSqlContext Context { get; set; }
-        public GremlinVariable2 InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
-        public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable)
+        public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
         {
             Context = context;
             VariableName = GenerateTableAlias();
             InputVariable = inputVariable;
         }
 
-        public static GremlinOptionalVariable Create(GremlinVariable2 inputVariable, GremlinToSqlContext context)
+        public static GremlinOptionalVariable Create(GremlinVariable inputVariable, GremlinToSqlContext context)
         {
             if (inputVariable.GetVariableType() == context.PivotVariable.GetVariableType())
             {
@@ -109,7 +109,7 @@ namespace GraphView
 
     internal class GremlinOptionalVertexVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalVertexVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable): base(context, inputVariable) {}
+        public GremlinOptionalVertexVariable(GremlinToSqlContext context, GremlinVariable inputVariable): base(context, inputVariable) {}
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -119,7 +119,7 @@ namespace GraphView
 
     internal class GremlinOptionalEdgeVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalEdgeVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable) : base(context, inputVariable) { }
+        public GremlinOptionalEdgeVariable(GremlinToSqlContext context, GremlinVariable inputVariable) : base(context, inputVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -129,7 +129,7 @@ namespace GraphView
 
     internal class GremlinOptionalTableVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalTableVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable) : base(context, inputVariable) { }
+        public GremlinOptionalTableVariable(GremlinToSqlContext context, GremlinVariable inputVariable) : base(context, inputVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -139,7 +139,7 @@ namespace GraphView
 
     internal class GremlinOptionalScalarVariable : GremlinOptionalVariable
     {
-        public GremlinOptionalScalarVariable(GremlinToSqlContext context, GremlinVariable2 inputVariable) : base(context, inputVariable) { }
+        public GremlinOptionalScalarVariable(GremlinToSqlContext context, GremlinVariable inputVariable) : base(context, inputVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {

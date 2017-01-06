@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextVariable: GremlinVariable2
+    internal class GremlinContextVariable: GremlinVariable
     {
-        public GremlinVariable2 ContextVariable;
+        public GremlinVariable ContextVariable;
 
         public bool IsFromSelect;
         public GremlinKeyword.Pop Pop;
         public string SelectKey;
 
-        public static GremlinContextVariable Create(GremlinVariable2 contextVariable)
+        public static GremlinContextVariable Create(GremlinVariable contextVariable)
         {
             if (contextVariable is GremlinContextVariable)
             {
@@ -35,7 +35,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public GremlinContextVariable(GremlinVariable2 contextVariable)
+        public GremlinContextVariable(GremlinVariable contextVariable)
         {
             ContextVariable = contextVariable;
             VariableName = contextVariable.VariableName;

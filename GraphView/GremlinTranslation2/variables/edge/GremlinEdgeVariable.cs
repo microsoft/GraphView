@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView {
 
-    internal abstract class GremlinEdgeVariable2 : GremlinTableVariable
+    internal abstract class GremlinEdgeVariable : GremlinTableVariable
     {
         public WEdgeType EdgeType { get; set; }
 
@@ -16,6 +16,6 @@ namespace GraphView {
         // g.V() generate n_0
         // then we have a match clause n_0-[edge as e_0]->n_1
         // we user calls otherV(), we will know the n_0 is the source vertex, and then n_1 will be the otherV
-        public GremlinVariable2 SourceVariable { get; set; }
+        public GremlinVariable SourceVariable { get; set; }
     }
 }

@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinContextScalarVariable : GremlinContextVariable
     {
-        public GremlinContextScalarVariable(GremlinVariable2 contextVariable) : base(contextVariable) { }
+        public GremlinContextScalarVariable(GremlinVariable contextVariable) : base(contextVariable) { }
 
         internal override GremlinVariableType GetVariableType()
         {

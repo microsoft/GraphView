@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinContextVertexVariable : GremlinContextVariable
     {
-        public GremlinContextVertexVariable(GremlinVariable2 contextVariable):base(contextVariable) {}
+        public GremlinContextVertexVariable(GremlinVariable contextVariable):base(contextVariable) {}
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -20,7 +20,7 @@ namespace GraphView
             ContextVariable.Populate("BothAdjacencyList");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "BothAdjacencyList");
-            GremlinEdgeVariable2 bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList, WEdgeType.BothEdge);
+            GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList, WEdgeType.BothEdge);
             bothEdge.Populate("_sink");
             currentContext.VariableList.Add(bothEdge);
 
@@ -41,7 +41,7 @@ namespace GraphView
             ContextVariable.Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
-            GremlinEdgeVariable2 outEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
+            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
             outEdge.Populate("_sink");
             currentContext.VariableList.Add(outEdge);
 
@@ -77,7 +77,7 @@ namespace GraphView
             ContextVariable.Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
-            GremlinEdgeVariable2 inEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
+            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);
 

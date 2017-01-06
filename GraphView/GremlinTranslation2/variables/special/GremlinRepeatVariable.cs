@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinRepeatVariable : GremlinTableVariable
     {
-        public GremlinVariable2 InputVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
 
-        public GremlinRepeatVariable(GremlinVariable2 inputVariable, GremlinToSqlContext repeatContext,
+        public GremlinRepeatVariable(GremlinVariable inputVariable, GremlinToSqlContext repeatContext,
                                     RepeatCondition repeatCondition)
         {
             VariableName = GenerateTableAlias();

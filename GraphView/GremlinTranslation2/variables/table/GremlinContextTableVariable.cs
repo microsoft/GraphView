@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinContextTableVariable: GremlinContextVariable
     {
-        public GremlinContextTableVariable(GremlinVariable2 contextVariable): base(contextVariable) {}
+        public GremlinContextTableVariable(GremlinVariable contextVariable): base(contextVariable) {}
 
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {

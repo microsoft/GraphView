@@ -47,8 +47,8 @@ namespace GraphView
 
         internal static WValueExpression GetValueExpr(object value)
         {
-            return value is string ? new WValueExpression(value as string, true)
-                                   : new WValueExpression(value.ToString(), false);
+            return !(value is string) ? new WValueExpression(value.ToString(), false)
+                                      : new WValueExpression(value.ToString(), true);
         }
 
         internal static WValueExpression GetNullExpr()
@@ -164,7 +164,7 @@ namespace GraphView
             return new WNamedTableReference() { TableObjectName = GetSchemaObjectName(value) };
         }
 
-        internal static WNamedTableReference GetNamedTableReference(GremlinVariable2 gremlinVar)
+        internal static WNamedTableReference GetNamedTableReference(GremlinVariable gremlinVar)
         {
             return new WNamedTableReference()
             {
@@ -243,7 +243,7 @@ namespace GraphView
             };
         }
 
-        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeVariable2 edge)
+        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeVariable edge)
         {
             return new WEdgeColumnReferenceExpression()
             {

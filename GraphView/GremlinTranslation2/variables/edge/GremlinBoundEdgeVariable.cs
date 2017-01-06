@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinBoundEdgeVariable : GremlinEdgeVariable2
+    internal class GremlinBoundEdgeVariable : GremlinEdgeVariable
     {
         protected static int _count = 0;
 
@@ -33,7 +33,7 @@ namespace GraphView
             return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariable2 sourceVariable, GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
+        public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
         {
             SourceVariable = sourceVariable;
             VariableName = GenerateTableAlias();
@@ -48,7 +48,7 @@ namespace GraphView
 
         internal override void InV(GremlinToSqlContext currentContext)
         {
-            GremlinVariable2 inVertex = currentContext.GetSinkVertex(this);
+            GremlinVariable inVertex = currentContext.GetSinkVertex(this);
             if (inVertex == null)
             {
                 var path = currentContext.Paths.Find(p => p.EdgeVariable == this);
@@ -82,7 +82,7 @@ namespace GraphView
             // A better implementation should reason the status of the edge variable and only reset
             // the pivot variable if possible, thereby avoiding adding a new vertex variable  
             // and reducing one join.
-            GremlinVariable2 outVertex = currentContext.GetSourceVertex(this);
+            GremlinVariable outVertex = currentContext.GetSourceVertex(this);
             if (outVertex == null)
             {
                 var path = currentContext.Paths.Find(p => p.EdgeVariable == this);

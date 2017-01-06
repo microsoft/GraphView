@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinFreeVertexVariable : GremlinVertexVariable2
+    internal class GremlinFreeVertexVariable : GremlinVertexVariable
     {
         public GremlinFreeVertexVariable()
         {
@@ -21,7 +21,7 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable2 bothEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"), WEdgeType.BothEdge);
+            GremlinEdgeVariable bothEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"), WEdgeType.BothEdge);
             currentContext.VariableList.Add(bothEdgeVar);
             GremlinFreeVertexVariable bothVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(bothVertex);
@@ -45,7 +45,7 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable2 inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinEdgeVariable inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(inEdgeVar);
             GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(inVertex);
@@ -67,7 +67,7 @@ namespace GraphView
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable2 inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinEdgeVariable inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(inEdgeVar);
 
             currentContext.Paths.Add(new GremlinMatchPath(null,
@@ -86,7 +86,7 @@ namespace GraphView
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable2 outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(outEdgeVar);
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(outVertex);
@@ -107,7 +107,7 @@ namespace GraphView
         }
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable2 outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(outEdgeVar);
 
             currentContext.Paths.Add(new GremlinMatchPath(this,

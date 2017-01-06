@@ -8,10 +8,10 @@ namespace GraphView
 {
     internal class GremlinVariableProperty : GremlinScalarVariable
     {
-        public GremlinVariable2 GremlinVariable { get; private set; }
+        public GremlinVariable GremlinVariable { get; private set; }
         public string VariableProperty { get; private set; }
 
-        public GremlinVariableProperty(GremlinVariable2 gremlinVariable, string variableProperty)
+        public GremlinVariableProperty(GremlinVariable gremlinVariable, string variableProperty)
         {
             GremlinVariable = gremlinVariable;
             VariableProperty = variableProperty;

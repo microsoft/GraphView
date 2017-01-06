@@ -33,7 +33,7 @@ namespace GraphView
         Undefined
     }
      
-    internal abstract class GremlinVariable2
+    internal abstract class GremlinVariable
     {
         public string VariableName { get; set; }
         public List<string> UsedProperties = new List<string>();
@@ -58,7 +58,7 @@ namespace GraphView
             return new GremlinVariableProperty(this, "id");
         }
 
-        internal void AddLabelPredicateToEdge(GremlinToSqlContext currentContext, GremlinEdgeVariable2 edge, List<string> edgeLabels)
+        internal void AddLabelPredicateToEdge(GremlinToSqlContext currentContext, GremlinEdgeVariable edge, List<string> edgeLabels)
         {
             if (edgeLabels.Count == 0) return;
             edge.Populate("label");
@@ -75,7 +75,7 @@ namespace GraphView
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
             GremlinToSqlContext copyContext = currentContext.Duplicate();
-            //GremlinVariable2 pivotVariable = currentContext.PivotVariable;
+            //GremlinVariable pivotVariable = currentContext.PivotVariable;
             currentContext.Reset();
 
             GremlinAddEVariable newVariable = null;
@@ -139,9 +139,9 @@ namespace GraphView
             {
                 if (!currentContext.TaggedVariables.ContainsKey(label))
                 {
-                    currentContext.TaggedVariables[label] = new List<Tuple<GremlinVariable2, GremlinToSqlContext>>();
+                    currentContext.TaggedVariables[label] = new List<Tuple<GremlinVariable, GremlinToSqlContext>>();
                 }
-                currentContext.TaggedVariables[label].Add(new Tuple<GremlinVariable2, GremlinToSqlContext>(this, currentContext));
+                currentContext.TaggedVariables[label].Add(new Tuple<GremlinVariable, GremlinToSqlContext>(this, currentContext));
             }
         }
         //internal virtual void barrier()
@@ -206,7 +206,7 @@ namespace GraphView
             //        throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", key));
             //    }
 
-            //    GremlinVariable2 var = currentContext.TaggedVariables[key].Item1;
+            //    GremlinVariable var = currentContext.TaggedVariables[key].Item1;
             //    currentContext.ProjectedVariables.Add(var.DefaultProjection());
             //}
         }
@@ -638,7 +638,7 @@ namespace GraphView
                 throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
             }
 
-            Tuple<GremlinVariable2, GremlinToSqlContext> pair;
+            Tuple<GremlinVariable, GremlinToSqlContext> pair;
             switch (pop) 
             {
                 case GremlinKeyword.Pop.first:

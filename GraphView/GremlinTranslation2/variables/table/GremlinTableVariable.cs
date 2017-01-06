@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class GremlinTableVariable : GremlinVariable2, ISqlTable
+    internal abstract class GremlinTableVariable : GremlinVariable, ISqlTable
     {
         protected static int _count = 0;
 

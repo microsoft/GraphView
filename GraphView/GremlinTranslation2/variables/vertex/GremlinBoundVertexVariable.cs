@@ -11,7 +11,7 @@ namespace GraphView
     /// the FROM clause, whereas a bound vertex variable is translated into
     /// a table-valued function following a prior table-valued function producing vertex references. 
     /// </summary>
-    internal class GremlinBoundVertexVariable : GremlinVertexVariable2
+    internal class GremlinBoundVertexVariable : GremlinVertexVariable
     {
         private GremlinVariableProperty vertexId;
 
@@ -61,7 +61,7 @@ namespace GraphView
             Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinEdgeVariable2 inEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);
 
@@ -98,7 +98,7 @@ namespace GraphView
             Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinEdgeVariable2 outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             outEdge.Populate("_sink");
             currentContext.VariableList.Add(outEdge);
 
