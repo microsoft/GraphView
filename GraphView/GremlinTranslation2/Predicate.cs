@@ -8,7 +8,6 @@ namespace GraphView
 {
     public class Predicate
     {
-        public object obj { get; set; }
         public string Label { get; set; }
         public long Number { get; set; }
         public List<object> Values { get; set; }

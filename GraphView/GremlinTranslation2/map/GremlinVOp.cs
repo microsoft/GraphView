@@ -18,7 +18,7 @@ namespace GraphView
         {
             VertexIdsOrElements = vertexIdsOrElements;
         }
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
@@ -28,9 +28,9 @@ namespace GraphView
             {
                 if (id is int)
                 {
-                    WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(newVariable.VariableName, "id");
-                    WScalarExpression secondExpr = GremlinUtil.GetValueExpr(id);
-                    WBooleanComparisonExpression booleanExpr = GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+                    WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(newVariable.VariableName, "id");
+                    WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);
+                    WBooleanComparisonExpression booleanExpr = SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
                     inputContext.AddPredicate(booleanExpr);
                 }
             }

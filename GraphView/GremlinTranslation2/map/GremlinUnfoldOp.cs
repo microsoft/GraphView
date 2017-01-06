@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinUnfoldOp() { }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 

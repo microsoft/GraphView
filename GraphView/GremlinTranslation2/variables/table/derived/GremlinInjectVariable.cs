@@ -39,7 +39,7 @@ namespace GraphView
         {
             if (priorContext == null)
             {
-                return GremlinUtil.GetDerivedTable(GetInjectQueryBlock(), VariableName);
+                return SqlUtil.GetDerivedTable(GetInjectQueryBlock(), VariableName);
 
             }
             else
@@ -86,8 +86,8 @@ namespace GraphView
             var selectBlock = new WSelectQueryBlock();
             foreach (var row in rows)
             {
-                var valueExpr = GremlinUtil.GetValueExpr(row);
-                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
+                var valueExpr = SqlUtil.GetValueExpr(row);
+                selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
             }
             return selectBlock;
         }

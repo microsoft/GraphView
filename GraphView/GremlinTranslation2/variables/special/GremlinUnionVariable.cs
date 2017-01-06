@@ -39,12 +39,12 @@ namespace GraphView
 
                 WSelectQueryExpression firstQueryExpr = UnionContextList[0].ToSelectQueryBlock();
                 WSelectQueryExpression secondQueryExpr = UnionContextList[1].ToSelectQueryBlock();
-                var binaryQueryExpression = GremlinUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
+                var binaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
                 for (var i = 2; i < UnionContextList.Count; i++)
                 {
                     firstQueryExpr = binaryQueryExpression;
                     secondQueryExpr = UnionContextList[i].ToSelectQueryBlock();
-                    binaryQueryExpression = GremlinUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
+                    binaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
                 }
 
                 //TODO:
@@ -56,7 +56,7 @@ namespace GraphView
                     {
                         SubQueryExpr = binaryQueryExpression
                     },
-                    Variable = GremlinUtil.GetVariableReference(VariableName)
+                    Variable = SqlUtil.GetVariableReference(VariableName)
                 };
 
                 statementList.Add(setStatement);

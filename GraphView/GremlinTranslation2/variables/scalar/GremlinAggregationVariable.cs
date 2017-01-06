@@ -32,8 +32,8 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(GremlinUtil.GetSelectFunctionCall("count", GremlinUtil.GetStarColumnReferenceExpr()));
-            return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall("count", SqlUtil.GetStarColumnReferenceExpr()));
+            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
 
@@ -61,8 +61,8 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add( GremlinUtil.GetSelectFunctionCall("fold", SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
-            return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
+            queryBlock.SelectElements.Add( SqlUtil.GetSelectFunctionCall("fold", SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
 
@@ -72,7 +72,7 @@ namespace GraphView
         {
             return new WSelectScalarExpression()
             {
-                SelectExpr = GremlinUtil.GetFunctionCall("tree")
+                SelectExpr = SqlUtil.GetFunctionCall("tree")
             };
         }
     }
@@ -96,8 +96,8 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(ProjectVariable.ToScalarExpression());
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("unfold", parameters, VariableName);
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("unfold", parameters, VariableName);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
@@ -126,9 +126,9 @@ namespace GraphView
 
             WSelectQueryBlock queryBlock = dedupContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(GremlinUtil.GetSelectFunctionCall("dedup", SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall("dedup", SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
 
-            return GremlinUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
 

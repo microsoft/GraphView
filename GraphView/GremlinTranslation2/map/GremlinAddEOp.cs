@@ -15,7 +15,7 @@ namespace GraphView
             EdgeLabel = label;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
@@ -43,7 +43,7 @@ namespace GraphView
             Type = FromType.FromVertexTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
@@ -53,7 +53,7 @@ namespace GraphView
                     inputContext.PivotVariable.From(inputContext, StepLabel);
                     break;
                 case FromType.FromVertexTraversal:
-                    GremlinUtil.InheritedContextFromParent(FromVertexTraversal, inputContext);
+                    FromVertexTraversal.GetStartOp().InheritedContextFromParent(inputContext);
                     GremlinToSqlContext fromVertexContext = FromVertexTraversal.GetEndOp().GetContext();
                     inputContext.PivotVariable.From(inputContext, fromVertexContext);
                     break;
@@ -87,7 +87,7 @@ namespace GraphView
             Type = ToType.ToVertexTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
@@ -97,7 +97,7 @@ namespace GraphView
                     inputContext.PivotVariable.To(inputContext, StepLabel);
                     break;
                 case ToType.ToVertexTraversal:
-                    GremlinUtil.InheritedContextFromParent(ToVertexTraversal, inputContext);
+                    ToVertexTraversal.GetStartOp().InheritedContextFromParent(inputContext);
                     GremlinToSqlContext toVertexContext = ToVertexTraversal.GetEndOp().GetContext();
                     inputContext.PivotVariable.To(inputContext, toVertexContext);
                     break;

@@ -15,11 +15,11 @@ namespace GraphView
             FlatMapTraversal = flatMapTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedVariableFromParent(FlatMapTraversal, inputContext);
+            FlatMapTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext flatMapContext = FlatMapTraversal.GetEndOp().GetContext();
             inputContext.PivotVariable.FlatMap(inputContext, flatMapContext);
 

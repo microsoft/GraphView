@@ -20,7 +20,7 @@ namespace GraphView
             Limit = limit;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
             throw new NotImplementedException();

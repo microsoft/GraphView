@@ -26,7 +26,7 @@ namespace GraphView
             VertexLabel = vertexLabel;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 

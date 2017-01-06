@@ -18,7 +18,7 @@ namespace GraphView
             }
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
             inputContext.PivotVariable.As(inputContext, Labels);

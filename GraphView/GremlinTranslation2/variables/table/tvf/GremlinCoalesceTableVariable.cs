@@ -54,11 +54,11 @@ namespace GraphView
             foreach (var context in CoalesceContextList)
             {
                 //TODO about ProjectedProperties
-                PropertyKeys.Add(GremlinUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
+                PropertyKeys.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
             }
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("Coalesce", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("Coalesce", PropertyKeys, VariableName);
 
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 

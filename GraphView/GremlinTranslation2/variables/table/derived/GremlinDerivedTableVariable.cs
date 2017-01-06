@@ -18,7 +18,7 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            return GremlinUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), VariableName);
+            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), VariableName);
         }
     }
 }

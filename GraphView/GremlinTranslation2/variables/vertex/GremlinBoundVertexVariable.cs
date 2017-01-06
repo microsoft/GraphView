@@ -22,11 +22,11 @@ namespace GraphView
             Populate("id");
             foreach (var property in ProjectedProperties)
             {
-                PropertyKeys.Add(GremlinUtil.GetValueExpr(property));
+                PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("N", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("N", PropertyKeys, VariableName);
 
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         public GremlinBoundVertexVariable(GremlinVariableProperty vertexId)

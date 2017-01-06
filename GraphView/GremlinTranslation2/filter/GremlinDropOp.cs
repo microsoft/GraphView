@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinDropOp() { }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetContext();
             throw new NotImplementedException();

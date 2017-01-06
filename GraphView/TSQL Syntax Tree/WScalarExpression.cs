@@ -640,6 +640,7 @@ namespace GraphView
 
     public class WRepeatConditionExpression: WPrimaryExpression
     {
+        internal bool EmitContext { get; set; }
         internal bool StartFromContext { get; set; }
         internal int RepeatTimes { get; set; }
         internal WBooleanExpression EmitCondition { get; set; }

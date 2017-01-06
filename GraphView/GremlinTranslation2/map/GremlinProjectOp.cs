@@ -15,7 +15,7 @@ namespace GraphView
             ProjectKeys = new List<string>(projectKeys);
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 

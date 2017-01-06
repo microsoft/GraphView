@@ -15,11 +15,11 @@ namespace GraphView
             SideEffectTraversal = sideEffectTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedContextFromParent(SideEffectTraversal, inputContext);
+            SideEffectTraversal.GetStartOp().InheritedContextFromParent(inputContext);
             GremlinToSqlContext sideEffectContext = SideEffectTraversal.GetEndOp().GetContext();
             inputContext.PivotVariable.SideEffect(inputContext, sideEffectContext);
 

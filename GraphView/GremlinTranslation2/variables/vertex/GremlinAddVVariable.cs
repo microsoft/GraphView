@@ -22,8 +22,8 @@ namespace GraphView
         {
             return new WVariableTableReference()
             {
-                Variable = GremlinUtil.GetVariableReference(VariableName),
-                Alias = GremlinUtil.GetIdentifier(VariableName)
+                Variable = SqlUtil.GetVariableReference(VariableName),
+                Alias = SqlUtil.GetIdentifier(VariableName)
             };
         }
 
@@ -36,14 +36,14 @@ namespace GraphView
 
             if (VertexLabel != null)
             {
-                columnK.Add(GremlinUtil.GetColumnReferenceExpr("label"));
-                columnV.Add(GremlinUtil.GetValueExpr(VertexLabel));
+                columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
+                columnV.Add(SqlUtil.GetValueExpr(VertexLabel));
             }
 
             foreach (var property in Properties)
             {
-                columnK.Add(GremlinUtil.GetColumnReferenceExpr(property.Key));
-                columnV.Add(GremlinUtil.GetValueExpr(property.Value));
+                columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
+                columnV.Add(SqlUtil.GetValueExpr(property.Value));
             }
 
             var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
@@ -53,7 +53,7 @@ namespace GraphView
             {
                 Columns = columnK,
                 InsertSource = source,
-                Target = GremlinUtil.GetNamedTableReference("Node")
+                Target = SqlUtil.GetNamedTableReference("Node")
             };
 
             var addVStatement = new WInsertNodeSpecification(insertStatement);
@@ -64,7 +64,7 @@ namespace GraphView
                 {
                     SubQueryExpr = addVStatement
                 },
-                Variable = GremlinUtil.GetVariableReference(VariableName)
+                Variable = SqlUtil.GetVariableReference(VariableName)
             };
 
             statementList.Add(setStatement);

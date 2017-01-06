@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    public class GremlinUtil
+    internal class SqlUtil
     {
         internal static WColumnReferenceExpression GetColumnReferenceExpr(params string[] parts)
         {
@@ -260,25 +260,6 @@ namespace GraphView
             return new WBooleanParenthesisExpression() { Expression = booleanExpr };
         }
 
-        internal static void InheritedVariableFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext parentContext)
-        {
-            if (childTraversal.GetStartOp() is GremlinParentContextOp)
-            {
-                GremlinParentContextOp rootAsContextOp = childTraversal.GetStartOp() as GremlinParentContextOp;
-                rootAsContextOp.InheritedPivotVariable = parentContext.PivotVariable;
-                rootAsContextOp.InheritedTaggedVariables = parentContext.TaggedVariables;
-            }
-        }
-
-        internal static void InheritedContextFromParent(GraphTraversal2 childTraversal, GremlinToSqlContext parentContext)
-        {
-            if (childTraversal.GetStartOp() is GremlinParentContextOp)
-            {
-                GremlinParentContextOp rootAsContextOp = childTraversal.GetStartOp() as GremlinParentContextOp;
-                rootAsContextOp.InheritedContext = parentContext.Duplicate();
-            }
-        }
-
         internal static WSchemaObjectFunctionTableReference GetFunctionTableReference(string functionName,
             List<WScalarExpression> parameterList, string alias = null)
         {
@@ -391,6 +372,11 @@ namespace GraphView
                 All = true,
                 BinaryQueryExprType = BinaryQueryExpressionType.Union,
             };
+        }
+
+        internal static WWhereClause GetWhereClause(WBooleanExpression predicate)
+        {
+            return new WWhereClause() {SearchCondition = predicate};
         }
     }
 }

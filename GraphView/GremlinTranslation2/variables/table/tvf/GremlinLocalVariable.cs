@@ -6,18 +6,18 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinFlatMapVariable: GremlinTableVariable
+    internal class GremlinLocalVariable : GremlinTableVariable
     {
-        public GremlinToSqlContext FlatMapContext;
+        public GremlinToSqlContext LocalContext;
 
-        public static GremlinFlatMapVariable Create(GremlinToSqlContext flatMapContext)
+        public static GremlinLocalVariable Create(GremlinToSqlContext localContext)
         {
-            switch (flatMapContext.PivotVariable.GetVariableType())
+            switch (localContext.PivotVariable.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    return new GremlinFlatMapVertexVariable(flatMapContext);
+                    return new GremlinLocalVertexVariable(localContext);
                 case GremlinVariableType.Edge:
-                    return new GremlinFlatMapEdgeVariable(flatMapContext);
+                    return new GremlinLocalEdgeVariable(localContext);
                 case GremlinVariableType.Scalar:
                     throw new NotImplementedException();
                 case GremlinVariableType.Table:
@@ -26,25 +26,25 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext)
+        public GremlinLocalVariable(GremlinToSqlContext localContext)
         {
-            FlatMapContext = flatMapContext;
+            LocalContext = localContext;
             VariableName = GenerateTableAlias();
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(ProjectedProperties)));
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("flatMap", PropertyKeys, VariableName);
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(ProjectedProperties)));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("local", PropertyKeys, VariableName);
 
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    internal class GremlinFlatMapVertexVariable : GremlinFlatMapVariable
+    internal class GremlinLocalVertexVariable : GremlinLocalVariable
     {
-        public GremlinFlatMapVertexVariable(GremlinToSqlContext flatMapContext) : base(flatMapContext) { }
+        public GremlinLocalVertexVariable(GremlinToSqlContext localContext) : base(localContext) { }
 
         internal override GremlinVariableType GetVariableType()
         {
@@ -73,9 +73,9 @@ namespace GraphView
         }
     }
 
-    internal class GremlinFlatMapEdgeVariable : GremlinFlatMapVariable
+    internal class GremlinLocalEdgeVariable : GremlinLocalVariable
     {
-        public GremlinFlatMapEdgeVariable(GremlinToSqlContext flatMapContext): base(flatMapContext) { }
+        public GremlinLocalEdgeVariable(GremlinToSqlContext localContext) : base(localContext) { }
 
         internal override GremlinVariableType GetVariableType()
         {

@@ -76,28 +76,28 @@ namespace GraphView
                 if (column.Value == 0)
                 {
                     //The column comes from first query, so set the column of second query as null
-                    scalarExpr = GremlinUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
-                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
+                    scalarExpr = SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
 
-                    scalarExpr = GremlinUtil.GetNullExpr();
-                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
+                    scalarExpr = SqlUtil.GetNullExpr();
+                    secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
                 }
                 else
                 {
                     //The column comes from second query, so set the column of first query as null
-                    scalarExpr = GremlinUtil.GetNullExpr();
-                    firstQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
+                    scalarExpr = SqlUtil.GetNullExpr();
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
 
-                    scalarExpr = GremlinUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
-                    secondQueryExpr.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(scalarExpr));
+                    scalarExpr = SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
+                    secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
                 }
             }
 
-            var WBinaryQueryExpression = GremlinUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
+            var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(WBinaryQueryExpression));
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("optional", PropertyKeys, VariableName);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         internal override void Populate(string property)

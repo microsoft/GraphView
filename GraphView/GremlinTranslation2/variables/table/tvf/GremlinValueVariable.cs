@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinKeyVariable : GremlinTableVariable
+    internal class GremlinValueVariable : GremlinTableVariable
     {
         public GremlinVariableProperty ProjectVariable { get; set; }
 
-        public GremlinKeyVariable(GremlinVariableProperty projectVariable)
+        public GremlinValueVariable(GremlinVariableProperty projectVariable)
         {
             ProjectVariable = projectVariable;
             VariableName = GenerateTableAlias();
@@ -25,8 +25,8 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(ProjectVariable.ToScalarExpression());
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("key", parameters, VariableName);
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("value", parameters, VariableName);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 }

@@ -24,8 +24,8 @@ namespace GraphView
         {
             return new WVariableTableReference()
             {
-                Variable = GremlinUtil.GetVariableReference(VariableName),
-                Alias = GremlinUtil.GetIdentifier(VariableName)
+                Variable = SqlUtil.GetVariableReference(VariableName),
+                Alias = SqlUtil.GetIdentifier(VariableName)
             };
         }
 
@@ -39,21 +39,21 @@ namespace GraphView
             selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
             selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
 
-            var fromVarExpr = GremlinUtil.GetColumnReferenceExpr(FromVariable.VariableName);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(fromVarExpr));
+            var fromVarExpr = SqlUtil.GetColumnReferenceExpr(FromVariable.VariableName);
+            selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(fromVarExpr));
 
-            var toVarExpr = GremlinUtil.GetColumnReferenceExpr(ToVariable.VariableName);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(toVarExpr));
+            var toVarExpr = SqlUtil.GetColumnReferenceExpr(ToVariable.VariableName);
+            selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(toVarExpr));
 
             //Add edge key-value
-            columnK.Add(GremlinUtil.GetColumnReferenceExpr("label"));
-            var valueExpr = GremlinUtil.GetValueExpr(EdgeLabel);
-            selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
+            columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
+            var valueExpr = SqlUtil.GetValueExpr(EdgeLabel);
+            selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
             foreach (var property in Properties)
             {
-                columnK.Add(GremlinUtil.GetColumnReferenceExpr(property.Key));
-                valueExpr = GremlinUtil.GetValueExpr(property.Value.ToString());
-                selectBlock.SelectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
+                columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
+                valueExpr = SqlUtil.GetValueExpr(property.Value.ToString());
+                selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
             }
 
             //hack
@@ -68,7 +68,7 @@ namespace GraphView
             {
                 Columns = columnK,
                 InsertSource = new WSelectInsertSource() { Select = selectBlock },
-                Target = GremlinUtil.GetNamedTableReference("Edge")
+                Target = SqlUtil.GetNamedTableReference("Edge")
             };
 
             var addEStatement = new WInsertEdgeSpecification(insertStatement)
@@ -82,7 +82,7 @@ namespace GraphView
                 {
                     SubQueryExpr = addEStatement
                 },
-                Variable = GremlinUtil.GetVariableReference(VariableName)
+                Variable = SqlUtil.GetVariableReference(VariableName)
             };
 
             statementList.Add(setStatement);

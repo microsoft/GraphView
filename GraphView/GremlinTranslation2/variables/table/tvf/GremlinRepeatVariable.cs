@@ -56,11 +56,11 @@ namespace GraphView
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
 
-            PropertyKeys.Add(GremlinUtil.GetScalarSubquery(selectQueryBlock));
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             PropertyKeys.Add(GetRepeatConditionExpression());
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("repeat", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("repeat", PropertyKeys, VariableName);
 
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         public WRepeatConditionExpression GetRepeatConditionExpression()
@@ -80,10 +80,10 @@ namespace GraphView
             
             foreach (var projectProperty in ProjectedProperties)
             {
-                var projectValue = GremlinUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
+                var projectValue = SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
                     projectProperty);
                 var alias = InputVariable.VariableName + "." + projectProperty;
-                inputSelectList.Add(GremlinUtil.GetSelectScalarExpr(projectValue, alias));
+                inputSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
             }
 
             return inputSelectList;
@@ -106,9 +106,9 @@ namespace GraphView
                             {
                                 selectVar.Populate(property);
                                 var alias = temp.ContextVariable.VariableName + "." + property;
-                                var projectValue = GremlinUtil.GetColumnReferenceExpr(selectVar.VariableName,
+                                var projectValue = SqlUtil.GetColumnReferenceExpr(selectVar.VariableName,
                                     property);
-                                outerSelectList.Add(GremlinUtil.GetSelectScalarExpr(projectValue, alias));
+                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
                             }
 
                         }

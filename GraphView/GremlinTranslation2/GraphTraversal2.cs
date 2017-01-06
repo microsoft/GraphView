@@ -62,11 +62,6 @@ namespace GraphView
             }
         }
 
-        internal void InsertAfterOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
-        {
-            GremlinTranslationOpList.Insert(index + 1, newGremlinTranslationOp);
-        }
-
         internal GremlinTranslationOperator GetStartOp()
         {
             return GremlinTranslationOpList.Count == 0 ? null : GremlinTranslationOpList.First();
@@ -94,7 +89,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 addV(params Object[] propertyKeyValues)
+        public GraphTraversal2 addV(params object[] propertyKeyValues)
         {
             AddGremlinOperator(new GremlinAddVOp(propertyKeyValues));
             return this;
@@ -254,7 +249,7 @@ namespace GraphView
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).IsEmit = true;
-                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
+                (GetEndOp() as GremlinRepeatOp).EmitContext = true;
             }
             return this;
         }
@@ -271,7 +266,7 @@ namespace GraphView
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).IsEmit = true;
                 (GetEndOp() as GremlinRepeatOp).EmitPredicate = emitPredicate;
-                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
+                (GetEndOp() as GremlinRepeatOp).EmitContext = true;
             }
             return this;
         }
@@ -288,7 +283,7 @@ namespace GraphView
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).IsEmit = true;
                 (GetEndOp() as GremlinRepeatOp).EmitTraversal = emitTraversal;
-                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
+                (GetEndOp() as GremlinRepeatOp).EmitContext = true;
             }
             return this;
         }

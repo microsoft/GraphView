@@ -16,6 +16,7 @@ namespace GraphView
         public GraphTraversal2 RepeatTraversal { get; set; }
         public int RepeatTimes { get; set; }
         public bool StartFromContext { get; set; }
+        public bool EmitContext { get; set; }
         public bool IsEmit { get; set; }
 
         public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
@@ -27,18 +28,19 @@ namespace GraphView
         {
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedVariableFromParent(RepeatTraversal, inputContext);
+            RepeatTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext repeatContext = RepeatTraversal.GetEndOp().GetContext();
 
             RepeatCondition repeatCondition = new RepeatCondition();
             repeatCondition.StartFromContext = StartFromContext;
+            repeatCondition.EmitContext = EmitContext;
             if (IsEmit)
             {
-                repeatCondition.EmitCondition = GremlinUtil.GetTrueBooleanComparisonExpr();
+                repeatCondition.EmitCondition = SqlUtil.GetTrueBooleanComparisonExpr();
             }
             if (TerminationPredicate != null)
             {
@@ -46,7 +48,7 @@ namespace GraphView
             }
             if (TerminationTraversal != null)
             {
-                GremlinUtil.InheritedVariableFromParent(TerminationTraversal, repeatContext);
+                TerminationTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
                 repeatCondition.TerminationCondition = TerminationTraversal.GetEndOp().GetContext().ToSqlBoolean();
             }
             if (EmitPredicate != null)
@@ -55,7 +57,7 @@ namespace GraphView
             }
             if (EmitTraversal != null)
             {
-                GremlinUtil.InheritedVariableFromParent(EmitTraversal, repeatContext);
+                EmitTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
                 repeatCondition.EmitCondition = EmitTraversal.GetEndOp().GetContext().ToSqlBoolean();
             }
 
@@ -69,16 +71,16 @@ namespace GraphView
     public class RepeatCondition
     {
         internal bool StartFromContext { get; set; }
+        internal bool EmitContext { get; set; }
         internal int RepeatTimes { get; set; }
         internal WBooleanExpression EmitCondition { get; set; }
         internal WBooleanExpression TerminationCondition { get; set; }
 
         public RepeatCondition()
         {
-            EmitCondition = GremlinUtil.GetFalseBooleanComparisonExpr();
-            TerminationCondition = GremlinUtil.GetFalseBooleanComparisonExpr();
             RepeatTimes = -1;
             StartFromContext = false;
+            EmitContext = false;
         }
     } 
 }

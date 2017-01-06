@@ -80,7 +80,7 @@ namespace GraphView
             Predicate = predicate;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 

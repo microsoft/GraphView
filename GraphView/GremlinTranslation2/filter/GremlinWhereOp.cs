@@ -27,7 +27,7 @@ namespace GraphView
             WhereTraversal = whereTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
@@ -51,7 +51,7 @@ namespace GraphView
             {
                 //where(whereTraversal)
                 //use Exist
-                GremlinUtil.InheritedVariableFromParent(WhereTraversal, inputContext);
+                WhereTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
                 GremlinToSqlContext whereContext = WhereTraversal.GetEndOp().GetContext();
                 inputContext.PivotVariable.Where(inputContext, whereContext);
             }

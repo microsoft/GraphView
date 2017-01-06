@@ -6,36 +6,39 @@ namespace GraphView
 {
     internal abstract class GremlinTranslationOperator
     {
-        public List<string> Labels { get; set; }
         public GremlinTranslationOperator InputOperator { get; set; }
 
-        public virtual GremlinToSqlContext GetContext()
+        internal virtual GremlinToSqlContext GetContext()
         {
             return null;
         }
 
-        public GremlinToSqlContext GetInputContext()
-        {
-            if (InputOperator != null) {
-                GremlinToSqlContext context = InputOperator.GetContext();
-                return context;
-            } else {
-                return new GremlinToSqlContext();
-            }
-        }
-
-        public virtual WSqlScript ToSqlScript() {
+        internal virtual WSqlScript ToSqlScript() {
             return GetContext().ToSqlScript();
         }
 
-        public List<string> GetLabels()
+        internal virtual void InheritedVariableFromParent(GremlinToSqlContext parentContext)
         {
-            return Labels;
+            if (this is GremlinParentContextOp)
+            {
+                GremlinParentContextOp rootAsContextOp = this as GremlinParentContextOp;
+                rootAsContextOp.InheritedPivotVariable = parentContext.PivotVariable;
+                rootAsContextOp.InheritedTaggedVariables = parentContext.TaggedVariables;
+            }
         }
 
-        public void ClearLabels()
+        internal virtual void InheritedContextFromParent(GremlinToSqlContext parentContext)
         {
-            Labels.Clear();
+            if (this is GremlinParentContextOp)
+            {
+                GremlinParentContextOp rootAsContextOp = this as GremlinParentContextOp;
+                rootAsContextOp.InheritedContext = parentContext.Duplicate();
+            }
+        }
+
+        internal GremlinToSqlContext GetInputContext()
+        {
+            return InputOperator != null ? InputOperator.GetContext() : new GremlinToSqlContext();
         }
     }
     
@@ -51,7 +54,7 @@ namespace GraphView
             InheritedTaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();   
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             if (InheritedContext != null) return InheritedContext;
             GremlinToSqlContext newContext = new GremlinToSqlContext();

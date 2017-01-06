@@ -18,14 +18,14 @@ namespace GraphView
             }
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
             List<GremlinToSqlContext> coalesceContextList = new List<GremlinToSqlContext>();
             foreach (var traversal in CoalesceTraversals)
             {
-                GremlinUtil.InheritedVariableFromParent(traversal, inputContext);
+                traversal.GetStartOp().InheritedVariableFromParent(inputContext);
                 coalesceContextList.Add(traversal.GetEndOp().GetContext());
             }
 

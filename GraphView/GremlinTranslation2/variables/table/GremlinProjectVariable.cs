@@ -27,7 +27,7 @@ namespace GraphView
 
         internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
         {
-            GremlinUtil.InheritedVariableFromParent(byTraversal, SubqeryContext);
+            byTraversal.GetStartOp().InheritedVariableFromParent(SubqeryContext);
             GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
             currentContext.SetVariables.AddRange(byContext.SetVariables);
             ProjectContextList.Add(byContext);
@@ -41,12 +41,12 @@ namespace GraphView
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
                 WSelectQueryBlock projectQueryBlock = ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock();
-                WScalarExpression scalarExpr = GremlinUtil.GetScalarSubquery(projectQueryBlock);
-                WSelectScalarExpression selectScalarExpr = GremlinUtil.GetSelectScalarExpr(scalarExpr, ProjectKeys[i]);
+                WScalarExpression scalarExpr = SqlUtil.GetScalarSubquery(projectQueryBlock);
+                WSelectScalarExpression selectScalarExpr = SqlUtil.GetSelectScalarExpr(scalarExpr, ProjectKeys[i]);
                 selectQueryBlock.SelectElements.Add(selectScalarExpr);
             }
 
-            return GremlinUtil.GetDerivedTable(selectQueryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(selectQueryBlock, VariableName);
         }
     }
 }

@@ -28,10 +28,10 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             foreach (var property in PropertyKeys)
             {
-                parameters.Add(GremlinUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
+                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
             }
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("properties", parameters, VariableName);
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("properties", parameters, VariableName);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         internal override void Key(GremlinToSqlContext currentContext)

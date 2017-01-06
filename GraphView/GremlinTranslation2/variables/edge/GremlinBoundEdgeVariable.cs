@@ -22,15 +22,15 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            var valueExpr = GremlinUtil.GetValueExpr(adjacencyList.ToScalarExpression());
+            var valueExpr = SqlUtil.GetValueExpr(adjacencyList.ToScalarExpression());
             PropertyKeys.Add(valueExpr);
             Populate("id");
             foreach (var property in ProjectedProperties)
             {
-                PropertyKeys.Add(GremlinUtil.GetValueExpr(property));
+                PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = GremlinUtil.GetFunctionTableReference("E", PropertyKeys, VariableName);
-            return GremlinUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("E", PropertyKeys, VariableName);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)

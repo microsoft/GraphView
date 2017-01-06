@@ -43,7 +43,7 @@ namespace GraphView
             OptionDict = new Dictionary<object, GraphTraversal2>();
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
             throw new NotImplementedException();

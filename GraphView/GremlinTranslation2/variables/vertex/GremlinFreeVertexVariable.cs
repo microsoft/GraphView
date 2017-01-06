@@ -16,7 +16,7 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            return GremlinUtil.GetNamedTableReference(this);
+            return SqlUtil.GetNamedTableReference(this);
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -29,15 +29,13 @@ namespace GraphView
             // In this case, the both-edge variable is not added to the table-reference list. 
             // Instead, we populate a path this_variable-[bothEdge]->bothVertex in the context
             currentContext.TableReferences.Add(bothVertex);
-            currentContext.Paths.Add(new GremlinMatchPath(this,
-                                                          bothEdgeVar,
-                                                          bothVertex));
+            currentContext.Paths.Add(new GremlinMatchPath(this, bothEdgeVar, bothVertex));
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpr(bothEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(bothEdgeVar.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
 
             currentContext.PivotVariable = bothVertex;
@@ -51,15 +49,13 @@ namespace GraphView
             currentContext.VariableList.Add(inVertex);
 
             currentContext.TableReferences.Add(inVertex);
-            currentContext.Paths.Add(new GremlinMatchPath(inVertex,
-                                                          inEdgeVar,
-                                                          this));
+            currentContext.Paths.Add(new GremlinMatchPath(inVertex, inEdgeVar, this));
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
 
             currentContext.PivotVariable = inVertex;
@@ -70,15 +66,13 @@ namespace GraphView
             GremlinEdgeVariable inEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(inEdgeVar);
 
-            currentContext.Paths.Add(new GremlinMatchPath(null,
-                                                          inEdgeVar,
-                                                          this));
+            currentContext.Paths.Add(new GremlinMatchPath(null, inEdgeVar, this));
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(inEdgeVar.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
 
             currentContext.PivotVariable = inEdgeVar;
@@ -92,15 +86,13 @@ namespace GraphView
             currentContext.VariableList.Add(outVertex);
 
             currentContext.TableReferences.Add(outVertex);
-            currentContext.Paths.Add(new GremlinMatchPath(this,
-                                                          outEdgeVar,
-                                                          outVertex));
+            currentContext.Paths.Add(new GremlinMatchPath(this, outEdgeVar, outVertex));
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
 
             currentContext.PivotVariable = outVertex;
@@ -110,15 +102,13 @@ namespace GraphView
             GremlinEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(outEdgeVar);
 
-            currentContext.Paths.Add(new GremlinMatchPath(this,
-                                                          outEdgeVar,
-                                                          null));
+            currentContext.Paths.Add(new GremlinMatchPath(this, outEdgeVar, null));
             //add Predicate to edge
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
-                currentContext.AddEqualPredicate(firstExpr, secondExpr);
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(outEdgeVar.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
 
             currentContext.PivotVariable = outEdgeVar;
@@ -126,8 +116,8 @@ namespace GraphView
 
         //internal override void Where(GremlinToSqlContext currentContext, Predicate predicate)
         //{
-        //    WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(VariableName, "id");
-        //    WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, predicate);
+        //    WScalarExpression key = SqlUtil.GetColumnReferenceExpression(VariableName, "id");
+        //    WBooleanExpression booleanExpr = SqlUtil.GetBooleanComparisonExpr(key, predicate);
         //    currentContext.AddPredicate(booleanExpr);
         //}
     }

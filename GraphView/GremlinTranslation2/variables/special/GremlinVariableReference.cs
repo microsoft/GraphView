@@ -14,8 +14,8 @@ namespace GraphView
         {
             return new WVariableTableReference()
             {
-                Variable = GremlinUtil.GetVariableReference(VariableName),
-                Alias = GremlinUtil.GetIdentifier(VariableName)
+                Variable = SqlUtil.GetVariableReference(VariableName),
+                Alias = SqlUtil.GetIdentifier(VariableName)
             };
         }
 
@@ -39,7 +39,7 @@ namespace GraphView
                 {
                     SubQueryExpr = Context.ToSelectQueryBlock()
                 },
-                Variable = GremlinUtil.GetVariableReference(VariableName)
+                Variable = SqlUtil.GetVariableReference(VariableName)
             });
             return statementList;
         }

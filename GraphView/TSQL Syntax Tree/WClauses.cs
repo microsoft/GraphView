@@ -523,6 +523,11 @@ namespace GraphView
     {
         internal IList<WMatchPath> Paths { get; set; }
 
+        public WMatchClause()
+        {
+            Paths = new List<WMatchPath>();
+        }
+
         public override void Accept(WSqlFragmentVisitor visitor)
         {
             if (visitor != null)

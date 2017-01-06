@@ -16,11 +16,11 @@ namespace GraphView
             TraversalOption = traversalOption;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedVariableFromParent(TraversalOption, inputContext);
+            TraversalOption.GetStartOp().InheritedVariableFromParent(inputContext);
             inputContext.PivotVariable.Optional(inputContext, TraversalOption.GetEndOp().GetContext());
 
             return inputContext;

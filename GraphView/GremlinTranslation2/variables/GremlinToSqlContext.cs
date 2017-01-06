@@ -89,65 +89,42 @@ namespace GraphView
 
         public void AddPredicate(WBooleanExpression newPredicate)
         {
-            Predicates = Predicates == null ? newPredicate : GremlinUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
-        }
-
-        public void AddEqualPredicate(WScalarExpression firstExpr, WScalarExpression secondExpr)
-        {
-            AddPredicate(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
+            Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
         }
 
         public GremlinVertexVariable GetSourceVertex(GremlinVariable edge)
         {
-            foreach (var path in Paths)
-            {
-                if (path.EdgeVariable.VariableName == edge.VariableName) return path.SourceVariable;
-            }
-            return null;
+            return Paths.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
         }
 
         public GremlinVertexVariable GetSinkVertex(GremlinVariable edge)
         {
-            foreach (var path in Paths)
-            {
-                if (path.EdgeVariable.VariableName == edge.VariableName) return path.SinkVariable;
-            }
-            return null;
+            return Paths.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
         }
         public WBooleanExpression ToSqlBoolean()
         {
-            if (TableReferences.Count == 0)
-            {
-                return GremlinUtil.GetBooleanParenthesisExpr(Predicates);
-            }
-            else
-            {
-                return GremlinUtil.GetExistPredicate(ToSelectQueryBlock());
-            }
+            return TableReferences.Count == 0 ? (WBooleanExpression) SqlUtil.GetBooleanParenthesisExpr(Predicates)
+                                              : SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
 
         //Generate SQL Script
         public WSqlScript ToSqlScript()
         {
-            WSqlScript script = new WSqlScript()
+            return new WSqlScript()
             {
-                Batches = new List<WSqlBatch>()
+                Batches = GetBatchList()
             };
-            List<WSqlBatch> batchList = GetBatchList();
-            script.Batches = batchList;
-            return script;
         }
 
         public List<WSqlBatch> GetBatchList()
         {
-            List<WSqlBatch> batchList = new List<WSqlBatch>();
-            WSqlBatch batch = new WSqlBatch()
+            return new List<WSqlBatch>()
             {
-                Statements = new List<WSqlStatement>()
+                new WSqlBatch()
+                {
+                    Statements = GetStatements()
+                }
             };
-            batch.Statements = GetStatements();
-            batchList.Add(batch);
-            return batchList;
         }
 
         public List<WSqlStatement> GetSetVariableStatements()
@@ -170,33 +147,14 @@ namespace GraphView
 
         public WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)
         {
-            // Construct the new Select Component
-            var newSelectElementClause = GetSelectElement(ProjectedProperties);
-
-            //Consturct the new From Cluase;
-            var newFromClause = GetFromClause();
-
-            // Construct the new Match Cluase
-            var newMatchClause = GetMatchClause();
-
-            // Construct the Where Clause
-            var newWhereClause = GetWhereClause();
-
-            // Construct the OrderBy Clause
-            var newOrderByClause = GetOrderByClause();
-
-            // Construct the GroupBy Clause
-            var newGroupByClause = GetGroupByClause();
-
-            // Construct the SelectBlock
             return new WSelectQueryBlock()
             {
-                FromClause = newFromClause,
-                SelectElements = newSelectElementClause,
-                WhereClause = newWhereClause,
-                MatchClause = newMatchClause,
-                OrderByClause = newOrderByClause,
-                GroupByClause = newGroupByClause
+                SelectElements = GetSelectElement(ProjectedProperties),
+                FromClause = GetFromClause(),
+                MatchClause = GetMatchClause(),
+                WhereClause = GetWhereClause(),
+                OrderByClause = GetOrderByClause(),
+                GroupByClause = GetGroupByClause()
             };
         }
 
@@ -204,14 +162,9 @@ namespace GraphView
         {
             if (TableReferences.Count == 0) return null;
 
-            var newFromClause = new WFromClause() { TableReferences = new List<WTableReference>() };
+            var newFromClause = new WFromClause();
             foreach (var tableReference in TableReferences)
             {
-                WTableReference tr = tableReference.ToTableReference();
-                if (tr == null)
-                {
-                    throw new NotImplementedException();
-                }
                 newFromClause.TableReferences.Add(tableReference.ToTableReference());
             }
             return newFromClause;
@@ -221,10 +174,10 @@ namespace GraphView
         {
             if (Paths.Count == 0) return null;
 
-            var newMatchClause = new WMatchClause() { Paths = new List<WMatchPath>() };
+            var newMatchClause = new WMatchClause();
             foreach (var path in Paths)
             {
-                newMatchClause.Paths.Add(GremlinUtil.GetMatchPath(path));
+                newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
             }
             return newMatchClause;
         }
@@ -236,8 +189,8 @@ namespace GraphView
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    var valueExpr = GremlinUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
-                    selectElements.Add(GremlinUtil.GetSelectScalarExpr(valueExpr));
+                    var valueExpr = SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
                 }
             }
             else
@@ -249,8 +202,7 @@ namespace GraphView
 
         public WWhereClause GetWhereClause()
         {
-            if (Predicates == null) return null;
-            return new WWhereClause() { SearchCondition = Predicates };
+            return Predicates == null ? null : SqlUtil.GetWhereClause(Predicates);
         }
 
         public WOrderByClause GetOrderByClause()

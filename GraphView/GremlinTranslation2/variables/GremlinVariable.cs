@@ -65,11 +65,11 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = GremlinUtil.GetColumnReferenceExpr(edge.VariableName, "label");
-                var secondExpr = GremlinUtil.GetValueExpr(edgeLabel);
-                booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(edge.VariableName, "label");
+                var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
+                booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
-            currentContext.AddPredicate(GremlinUtil.ConcatBooleanExprWithOr(booleanExprList));
+            currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
@@ -348,9 +348,9 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Object value)
         {
-            WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(VariableName, propertyKey);
-            WScalarExpression secondExpr = GremlinUtil.GetValueExpr(value);
-            currentContext.AddEqualPredicate(firstExpr, secondExpr);
+            WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(VariableName, propertyKey);
+            WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
+            currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
 
         internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Object value)
@@ -388,11 +388,11 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
-                WScalarExpression firstExpr = GremlinUtil.GetColumnReferenceExpr(VariableName, GremlinKeyword.Label);
-                WScalarExpression secondExpr = GremlinUtil.GetValueExpr(value);
-                booleanExprList.Add(GremlinUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
+                WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(VariableName, GremlinKeyword.Label);
+                WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
+                booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
-            WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExprWithOr(booleanExprList);
+            WBooleanExpression concatSql = SqlUtil.ConcatBooleanExprWithOr(booleanExprList);
             currentContext.AddPredicate(concatSql);
         }
 
@@ -433,8 +433,8 @@ namespace GraphView
         internal virtual void Is(GremlinToSqlContext currentContext, object value)
         {
             WScalarExpression firstExpr = DefaultProjection().ToScalarExpression();
-            WScalarExpression secondExpr = GremlinUtil.GetValueExpr(value);
-            currentContext.AddEqualPredicate(firstExpr, secondExpr);
+            WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
+            currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
 
         internal virtual void Is(GremlinToSqlContext currentContext, Predicate predicate)
@@ -446,7 +446,7 @@ namespace GraphView
                 secondExpr = compareVar.DefaultProjection().ToScalarExpression();
             }
             var firstExpr = DefaultProjection().ToScalarExpression();
-            var booleanExpr = GremlinUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
+            var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
 
@@ -517,7 +517,7 @@ namespace GraphView
 
         internal virtual void Not(GremlinToSqlContext currentContext, GremlinToSqlContext notContext)
         {
-            WBooleanExpression booleanExpr = GremlinUtil.GetNotExistPredicate(notContext.ToSelectQueryBlock());
+            WBooleanExpression booleanExpr = SqlUtil.GetNotExistPredicate(notContext.ToSelectQueryBlock());
             currentContext.AddPredicate(booleanExpr);
         }
 
@@ -846,7 +846,7 @@ namespace GraphView
                 secondExpr = compareVar.DefaultProjection().ToScalarExpression();
             }
             var firstExpr = DefaultProjection().ToScalarExpression();
-            var booleanExpr = GremlinUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
+            var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
 
