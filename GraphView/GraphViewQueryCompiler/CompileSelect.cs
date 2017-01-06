@@ -514,7 +514,6 @@ namespace GraphView
         {
             nonVertexTableReferences = new List<WTableReferenceWithAlias>();
 
-            Dictionary<string, List<string>> edgeColumnToAliasesDict = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, MatchPath> pathDictionary = new Dictionary<string, MatchPath>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, MatchEdge> reversedEdgeDict = new Dictionary<string, MatchEdge>();
 
@@ -559,7 +558,6 @@ namespace GraphView
                             var nextNodeTableRef = index != count - 1
                                 ? path.PathEdgeList[index + 1].Item1
                                 : path.Tail;
-                            var nextNodeExposedName = nextNodeTableRef.BaseIdentifier.Value;
                             MatchNode SrcNode = vertexTableCollection.GetOrCreate(CurrentNodeExposedName);
 
                             // Check whether the vertex is defined in outer context
@@ -575,6 +573,7 @@ namespace GraphView
                                 SrcNode.NodeAlias = CurrentNodeExposedName;
                                 SrcNode.Neighbors = new List<MatchEdge>();
                                 SrcNode.ReverseNeighbors = new List<MatchEdge>();
+                                SrcNode.DanglingEdges = new List<MatchEdge>();
                                 SrcNode.External = false;
                                 SrcNode.Predicates = new List<WBooleanExpression>();
                                 SrcNode.ReverseCheckList = new Dictionary<int, int>();
@@ -584,26 +583,12 @@ namespace GraphView
 
                             // Consturct the edge of a path in MatchClause.Paths
                             string EdgeAlias = CurrentEdgeColumnRef.Alias;
-                            if (EdgeAlias == null)
-                            {
-                                bool isReversed = path.IsReversed;
-                                var CurrentEdgeName = CurrentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
-                                string originalEdgeName = null;
-
-                                EdgeAlias = string.Format("{0}_{1}_{2}", CurrentNodeExposedName, CurrentEdgeName,
-                                    nextNodeExposedName);
-
-                                // when current edge is a reversed edge, the key should still be the original edge name
-                                var edgeNameKey = isReversed ? originalEdgeName : CurrentEdgeName;
-                                if (edgeColumnToAliasesDict.ContainsKey(edgeNameKey))
-                                {
-                                    edgeColumnToAliasesDict[edgeNameKey].Add(EdgeAlias);
-                                }
-                                else
-                                {
-                                    edgeColumnToAliasesDict.Add(edgeNameKey, new List<string> { EdgeAlias });
-                                }
-                            }
+                            //if (EdgeAlias == null)
+                            //{
+                            //    var CurrentEdgeName = CurrentEdgeColumnRef.MultiPartIdentifier.Identifiers.Last().Value;
+                            //    EdgeAlias = string.Format("{0}_{1}_{2}", CurrentNodeExposedName, CurrentEdgeName,
+                            //        nextNodeExposedName);
+                            //}
 
                             MatchEdge EdgeFromSrcNode;
                             if (CurrentEdgeColumnRef.MinLength == 1 && CurrentEdgeColumnRef.MaxLength == 1)
@@ -680,15 +665,25 @@ namespace GraphView
 
                             if (!parent.ContainsKey(CurrentNodeExposedName))
                                 parent[CurrentNodeExposedName] = CurrentNodeExposedName;
-                            if (!parent.ContainsKey(nextNodeExposedName))
-                                parent[nextNodeExposedName] = nextNodeExposedName;
 
-                            unionFind.Union(CurrentNodeExposedName, nextNodeExposedName);
+                            var nextNodeExposedName = nextNodeTableRef != null ? nextNodeTableRef.BaseIdentifier.Value : null;
+                            if (nextNodeExposedName != null)
+                            {
+                                if (!parent.ContainsKey(nextNodeExposedName))
+                                    parent[nextNodeExposedName] = nextNodeExposedName;
 
-                            SrcNode.Neighbors.Add(EdgeFromSrcNode);
+                                unionFind.Union(CurrentNodeExposedName, nextNodeExposedName);
 
+                                SrcNode.Neighbors.Add(EdgeFromSrcNode);
 
+                            }
+                            // Dangling edge without SinkNode
+                            else
+                            {
+                                SrcNode.DanglingEdges.Add(EdgeFromSrcNode);
+                            }
                         }
+                        if (path.Tail == null) continue;
                         // Consturct destination node of a path in MatchClause.Paths
                         var tailExposedName = path.Tail.BaseIdentifier.Value;
                         MatchNode DestNode;
@@ -705,6 +700,7 @@ namespace GraphView
                             DestNode.NodeAlias = tailExposedName;
                             DestNode.Neighbors = new List<MatchEdge>();
                             DestNode.ReverseNeighbors = new List<MatchEdge>();
+                            DestNode.DanglingEdges = new List<MatchEdge>();
                             DestNode.Predicates = new List<WBooleanExpression>();
                             DestNode.ReverseCheckList = new Dictionary<int, int>();
                             DestNode.HeaderLength = 0;
@@ -765,6 +761,10 @@ namespace GraphView
                     {
                         subGraph.Edges[edge.EdgeAlias] = edge;
                     }
+                    foreach (var edge in node.Value.DanglingEdges)
+                    {
+                        subGraph.Edges[edge.EdgeAlias] = edge;
+                    }
                     subGraphMap[root] = subGraph;
                     connectedSubGraphs.Add(subGraph);
                     subGraph.IsTailNode[node.Value] = false;
@@ -774,6 +774,10 @@ namespace GraphView
                     var subGraph = subGraphMap[root];
                     subGraph.Nodes[node.Key] = node.Value;
                     foreach (var edge in node.Value.Neighbors)
+                    {
+                        subGraph.Edges[edge.EdgeAlias] = edge;
+                    }
+                    foreach (var edge in node.Value.DanglingEdges)
                     {
                         subGraph.Edges[edge.EdgeAlias] = edge;
                     }
@@ -1118,6 +1122,50 @@ namespace GraphView
             }
         }
 
+        private void CrossApplyEdges(GraphViewConnection connection, QueryCompilationContext context, 
+            List<GraphViewExecutionOperator> operatorChain, IList<MatchEdge> edges, 
+            List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
+            bool isForwardingEdges = false)
+        {
+            var tableReferences = context.TableReferences;
+            var rawRecordLayout = context.RawRecordLayout;
+            foreach (var edge in edges)
+            {
+                var edgeIndex = LocateAdjacencyListIndexes(context, edge);
+                var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(edge.EdgeAlias, edge.Properties);
+                var edgePredicates = edge.RetrievePredicatesExpression();
+                operatorChain.Add(new AdjacencyListDecoder(
+                    operatorChain.Last(),
+                    edgeIndex,
+                    edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
+                    edge.Properties));
+
+                // Update edge's context info
+                tableReferences.Add(edge.EdgeAlias, TableGraphType.Edge);
+                UpdateRawRecordLayout(edge.EdgeAlias, edge.Properties, rawRecordLayout);
+
+                if (isForwardingEdges)
+                {
+                    var sinkNodeIdColumnReference = new WColumnReferenceExpression(edge.SinkNode.NodeAlias, "id");
+                    // Add "forwardEdge.sink = sinkNode.id" filter
+                    var edgeSinkColumnReference = new WColumnReferenceExpression(edge.EdgeAlias, "_sink");
+                    var edgeJoinPredicate = new WBooleanComparisonExpression
+                    {
+                        ComparisonType = BooleanComparisonType.Equals,
+                        FirstExpr = edgeSinkColumnReference,
+                        SecondExpr = sinkNodeIdColumnReference
+                    };
+                    operatorChain.Add(new FilterOperator(operatorChain.Last(),
+                        edgeJoinPredicate.CompileToFunction(context, connection)));
+                }
+
+                CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
+                    new HashSet<string>(tableReferences.Keys),
+                    predicatesAccessedTableReferences,
+                    operatorChain);
+            }
+        }
+
         /// <summary>
         /// Update the raw record layout when new properties are added
         /// </summary>
@@ -1182,6 +1230,10 @@ namespace GraphView
                         CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
                             new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                             operatorChain);
+
+                        // Cross apply dangling Edges
+                        CrossApplyEdges(connection, context, operatorChain, sourceNode.DanglingEdges,
+                            predicatesAccessedTableReferences);
                     }
 
                     if (sinkNode != null)
@@ -1193,23 +1245,10 @@ namespace GraphView
                         else
                         {
                             // Cross apply the traversal edge and update context info
-                            var travsersalEdgeIndex = LocateAdjacencyListIndexes(context, traversalEdge);
-                            var localContext = GenerateLocalContextForAdjacentListDecoder(traversalEdge.EdgeAlias, traversalEdge.Properties);
-                            var edgePredicates = traversalEdge.RetrievePredicatesExpression();
-                            operatorChain.Add(new AdjacencyListDecoder(
-                                operatorChain.Last(),
-                                travsersalEdgeIndex,
-                                edgePredicates != null ? edgePredicates.CompileToFunction(localContext, connection) : null, 
-                                traversalEdge.Properties));
+                            CrossApplyEdges(connection, context, operatorChain, new List<MatchEdge> {traversalEdge},
+                                predicatesAccessedTableReferences);
 
-                            CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
-                                operatorChain);
-
-                            var currentEdgeSinkIndex = rawRecordLayout.Count;
-                            UpdateRawRecordLayout(traversalEdge.EdgeAlias, traversalEdge.Properties, rawRecordLayout);
-                            tableReferences.Add(traversalEdge.EdgeAlias, TableGraphType.Edge);
-
+                            var currentEdgeSinkIndex = rawRecordLayout.Count - traversalEdge.Properties.Count;
                             // Generate matching indexes for backwardMatchingEdges
                             var matchingIndexes = new List<Tuple<int, int>>();
                             var localSinkAdjListSinkIndex = sinkNode.Properties.Count;
@@ -1230,6 +1269,7 @@ namespace GraphView
                             processedNodes.Add(sinkNode);
                             UpdateRawRecordLayout(sinkNode.NodeAlias, sinkNode.Properties, rawRecordLayout);
                             tableReferences.Add(sinkNode.NodeAlias, TableGraphType.Vertex);
+
                             // Update backwardEdges' context info
                             foreach (var backwardMatchingEdge in backwardMatchingEdges)
                             {
@@ -1242,38 +1282,12 @@ namespace GraphView
                                 operatorChain);
 
                             // Cross apply forwardMatchingEdges
-                            var sinkNodeIdColumnReference = new WColumnReferenceExpression(sinkNode.NodeAlias, "id");
-                            foreach (var forwardMatchingEdge in forwardMatchingEdges)
-                            {
-                                var forwardEdgeIndex = LocateAdjacencyListIndexes(context, forwardMatchingEdge);
-                                var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties);
-                                var forwardEdgePredicates = forwardMatchingEdge.RetrievePredicatesExpression();
-                                operatorChain.Add(new AdjacencyListDecoder(
-                                    operatorChain.Last(),
-                                    forwardEdgeIndex,
-                                    forwardEdgePredicates != null ? forwardEdgePredicates.CompileToFunction(localEdgeContext, connection) : null,
-                                    forwardMatchingEdge.Properties));
+                            CrossApplyEdges(connection, context, operatorChain, forwardMatchingEdges,
+                                predicatesAccessedTableReferences, true);
 
-                                // Update forward edge's context info
-                                tableReferences.Add(forwardMatchingEdge.EdgeAlias, TableGraphType.Edge);
-                                UpdateRawRecordLayout(forwardMatchingEdge.EdgeAlias, forwardMatchingEdge.Properties, rawRecordLayout);
-
-                                // Add "forwardEdge.sink = sinkNode.id" filter
-                                var edgeSinkColumnReference = new WColumnReferenceExpression(forwardMatchingEdge.EdgeAlias, "_sink");
-                                var edgeJoinPredicate = new WBooleanComparisonExpression
-                                {
-                                    ComparisonType = BooleanComparisonType.Equals,
-                                    FirstExpr = edgeSinkColumnReference,
-                                    SecondExpr = sinkNodeIdColumnReference
-                                };
-                                operatorChain.Add(new FilterOperator(operatorChain.Last(),
-                                    edgeJoinPredicate.CompileToFunction(context, connection)));
-
-                                CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
-                                    new HashSet<string>(tableReferences.Keys),
-                                    predicatesAccessedTableReferences,
-                                    operatorChain);
-                            }
+                            // Cross apply dangling edges
+                            CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
+                                predicatesAccessedTableReferences);
                         }
                     }
                     context.CurrentExecutionOperator = operatorChain.Last();

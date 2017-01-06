@@ -129,11 +129,12 @@ namespace GraphView
         public WSchemaObjectName NodeTableObjectName { get; set; }
         public IList<MatchEdge> Neighbors { get; set; }
         public IList<MatchEdge> ReverseNeighbors { get; set; }
+        public IList<MatchEdge> DanglingEdges { get; set; } 
         public double EstimatedRows { get; set; }
         public int TableRowCount { get; set; }
         public DocDbScript AttachedQuerySegment { get; set; }
         internal JsonQuery AttachedJsonQuery { get; set; }
-        public List<string> Properties { get; set; } 
+        public List<string> Properties { get; set; }
         // <index of id field, index of adj field>
         public Dictionary<int, int> ReverseCheckList { get; set; }
         // The meta header length of the node, consisting of node's id and node's outgoing edges
