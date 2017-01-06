@@ -8,12 +8,7 @@ namespace GraphView
 {
     public class GraphTraversal2
     {
-        public static GraphViewConnection Connection { get; set; }
-
-        public static void SetGraphViewConnection(GraphViewConnection connection)
-        {
-            Connection = connection;
-        }
+        public GraphViewConnection Connection { get; set; }
 
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
         internal GremlinTranslationOperator LastGremlinTranslationOp { set; get; }
@@ -30,6 +25,7 @@ namespace GraphView
         public GraphTraversal2(GraphViewConnection pConnection)
         {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
+            Connection = pConnection;
         }
 
         public List<string> next()
@@ -860,9 +856,9 @@ namespace GraphView
             return newGraphTraversal;
         }
 
-        public static GraphTraversal2 g()
+        public GraphTraversal2 g()
         {
-            return new GraphTraversal2(); ;
+            return new GraphTraversal2(Connection); ;
         }
 
         public List<object> toList()
