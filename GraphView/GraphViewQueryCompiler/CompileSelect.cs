@@ -1269,88 +1269,101 @@ namespace GraphView
                     }
                     context.CurrentExecutionOperator = operatorChain.Last();
                 }
+            }
 
-                // TODO: layout for each case?
-                foreach (var tableReference in nonVertexTableReferences)
+            foreach (var tableReference in nonVertexTableReferences)
+            {
+                if (tableReference is WQueryDerivedTable)
                 {
-                    if (tableReference is WQueryDerivedTable)
-                    {
-                        var derivedQueryExpr = (tableReference as WQueryDerivedTable).QueryExpr;
-                        var derivedQueryContext = new QueryCompilationContext(context);
-                        var derivedQueryOp = derivedQueryExpr.Compile(derivedQueryContext, connection);
-                        operatorChain.Add(new CartesianProductOperator2(operatorChain.Last(), derivedQueryOp));
-                    }
-                    else if (tableReference is WVariableTableReference)
-                    {
-                        var variableTable = tableReference as WVariableTableReference;
-                        var tableName = variableTable.Alias.ToString();
-
-                        Tuple<TemporaryTableHeader, GraphViewExecutionOperator> temporaryTableTuple;
-                        if (!context.TemporaryTableCollection.TryGetValue(tableName, out temporaryTableTuple))
-                            throw new GraphViewException("Table variable " + tableName + " doesn't exist in the context.");
-                        var tableHeader = temporaryTableTuple.Item1;
-                        var tableOperator = temporaryTableTuple.Item2;
-                        operatorChain.Add(new CartesianProductOperator2(operatorChain.Last(), tableOperator));
-                    }
-                    else if (tableReference is WSchemaObjectFunctionTableReference)
-                    {
-                        var functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
-                        var tableOp = functionTableReference.Compile(context, connection);
-                        operatorChain.Add(tableOp);
-                    }
-                    else
-                    {
-                        
-                    }
+                    var derivedQueryExpr = (tableReference as WQueryDerivedTable).QueryExpr;
+                    var derivedQueryContext = new QueryCompilationContext(context);
+                    var derivedQueryOp = derivedQueryExpr.Compile(derivedQueryContext, connection);
+                    operatorChain.Add(operatorChain.Any()
+                        ? new CartesianProductOperator2(operatorChain.Last(), derivedQueryOp)
+                        : derivedQueryOp);
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
-                
-                // TODO: groupBy operator
-
-                if (OrderByClause != null && OrderByClause.OrderByElements != null)
+                else if (tableReference is WVariableTableReference)
                 {
-                    var orderByOp = OrderByClause.Compile(context, connection);
-                    operatorChain.Add(orderByOp);
-                }
+                    var variableTable = tableReference as WVariableTableReference;
+                    var tableName = variableTable.Variable.Name;
+                    var tableAlias = variableTable.Alias.Value;
+                    Tuple<TemporaryTableHeader, GraphViewExecutionOperator> temporaryTableTuple;
+                    if (!context.TemporaryTableCollection.TryGetValue(tableName, out temporaryTableTuple))
+                        throw new GraphViewException("Table variable " + tableName + " doesn't exist in the context.");
 
-                var projectOperator = new ProjectOperator(operatorChain.Last());
-                var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
+                    var tableHeader = temporaryTableTuple.Item1;
+                    var tableOperator = temporaryTableTuple.Item2;
+                    operatorChain.Add(operatorChain.Any()
+                        ? new CartesianProductOperator2(operatorChain.Last(), tableOperator)
+                        : tableOperator);
 
-                if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression))
-                {
-                    foreach (var expr in selectScalarExprList)
+                    // Merge temporary table's header into current context
+                    foreach (var pair in tableHeader.columnSet.OrderBy(e => e.Value.Item1))
                     {
-                        var alias = expr.ColumnName;
-                        var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
+                        var columnName = pair.Key;
+                        var columnGraphType = pair.Value.Item2;
 
-                        projectOperator.AddSelectScalarElement(scalarFunction, alias);
+                        context.AddField(tableAlias, columnName, columnGraphType);
                     }
-
-                    context.ClearField();
-                    var i = 0;
-                    foreach (var expr in selectScalarExprList)
-                    {
-                        var alias = expr.ColumnName;
-                        WColumnReferenceExpression columnReference;
-                        if (alias == null)
-                            columnReference = expr.SelectExpr as WColumnReferenceExpression;
-                        else
-                            columnReference = new WColumnReferenceExpression("", alias);
-                        context.RawRecordLayout.Add(columnReference, i++);
-                    }
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
-                // TODO: distinguish aggregate function and scalar function from WFunctionCall
-                else if (selectScalarExprList.All(e => e.SelectExpr is WFunctionCall))
+                else if (tableReference is WSchemaObjectFunctionTableReference)
                 {
-                    throw new NotImplementedException();
+                    var functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
+                    var tableOp = functionTableReference.Compile(context, connection);
+                    operatorChain.Add(tableOp);
                 }
                 else
                 {
-                    throw new NotImplementedException();
+
+                }
+            }
+
+            // TODO: groupBy operator
+
+            if (OrderByClause != null && OrderByClause.OrderByElements != null)
+            {
+                var orderByOp = OrderByClause.Compile(context, connection);
+                operatorChain.Add(orderByOp);
+            }
+
+            var projectOperator = new ProjectOperator(operatorChain.Last());
+            var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
+
+            if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression))
+            {
+                foreach (var expr in selectScalarExprList)
+                {
+                    var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
+                    projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
-                operatorChain.Add(projectOperator);
-                context.CurrentExecutionOperator = projectOperator;
+                context.ClearField();
+                var i = 0;
+                foreach (var expr in selectScalarExprList)
+                {
+                    var alias = expr.ColumnName;
+                    WColumnReferenceExpression columnReference;
+                    if (alias == null)
+                        columnReference = expr.SelectExpr as WColumnReferenceExpression;
+                    else
+                        columnReference = new WColumnReferenceExpression("", alias);
+                    context.RawRecordLayout.Add(columnReference, i++);
+                }
             }
+            // TODO: distinguish aggregate function and scalar function from WFunctionCall
+            else if (selectScalarExprList.All(e => e.SelectExpr is WFunctionCall))
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+
+            operatorChain.Add(projectOperator);
+            context.CurrentExecutionOperator = projectOperator;
 
             return operatorChain.Last();
         }

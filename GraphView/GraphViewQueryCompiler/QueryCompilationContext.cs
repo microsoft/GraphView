@@ -53,7 +53,7 @@ namespace GraphView
     internal class TemporaryTableHeader
     {
         // A map from column names to their offsets in raw records and their types
-        Dictionary<string, Tuple<int, ColumnGraphType>> columnSet;
+        public Dictionary<string, Tuple<int, ColumnGraphType>> columnSet { get; private set; }
 
         public TemporaryTableHeader()
         {

@@ -571,7 +571,7 @@ namespace GraphView
 
     internal class ProjectOperator : GraphViewExecutionOperator
     {
-        private List<Tuple<ScalarFunction, string>> selectScalarList;
+        private List<ScalarFunction> selectScalarList;
         private GraphViewExecutionOperator inputOp;
 
         private RawRecord currentRecord;
@@ -579,12 +579,12 @@ namespace GraphView
         public ProjectOperator(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
-            selectScalarList = new List<Tuple<ScalarFunction, string>>();
+            selectScalarList = new List<ScalarFunction>();
         }
 
-        public void AddSelectScalarElement(ScalarFunction scalarFunction, string alias)
+        public void AddSelectScalarElement(ScalarFunction scalarFunction)
         {
-            selectScalarList.Add(new Tuple<ScalarFunction, string>(scalarFunction, alias));
+            selectScalarList.Add(scalarFunction);
         }
 
         public override RawRecord Next()
@@ -598,9 +598,8 @@ namespace GraphView
 
             RawRecord selectRecord = new RawRecord(selectScalarList.Count);
             int index = 0;
-            foreach (var selectPair in selectScalarList)
+            foreach (var scalarFunction in selectScalarList)
             {
-                ScalarFunction scalarFunction = selectPair.Item1;
                 string result = scalarFunction.Evaluate(currentRecord);
                 selectRecord.fieldValues[index++] = result ?? "";
             }
