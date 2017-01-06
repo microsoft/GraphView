@@ -6,15 +6,10 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinPropertiesVariable: GremlinTableVariable
+    internal class GremlinPropertiesVariable: GremlinScalarTableVariable
     {
         public List<string> PropertyKeys { get; set; }
         public GremlinVariable ProjectVariable { get; set; }
-
-        internal override GremlinScalarVariable DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, "_value");
-        }
 
         public GremlinPropertiesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
         {

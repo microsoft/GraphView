@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinValueVariable : GremlinTableVariable
+    internal class GremlinValueVariable : GremlinScalarTableVariable
     {
         public GremlinVariableProperty ProjectVariable { get; set; }
 
@@ -14,11 +14,6 @@ namespace GraphView
         {
             ProjectVariable = projectVariable;
             VariableName = GenerateTableAlias();
-        }
-
-        internal override GremlinScalarVariable DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, "_value");
         }
 
         public override WTableReference ToTableReference()

@@ -220,7 +220,7 @@ namespace GraphView
 
         internal virtual void Coalesce(GremlinToSqlContext currentContext, List<GremlinToSqlContext> coalesceContextList)
         {
-            GremlinCoalesceVariable newVariable = GremlinCoalesceVariable.Create(coalesceContextList);
+            GremlinTableVariable newVariable = GremlinCoalesceVariable.Create(coalesceContextList);
             foreach (var context in coalesceContextList)
             {
                 currentContext.SetVariables.AddRange(context.SetVariables);
@@ -290,7 +290,7 @@ namespace GraphView
 
         internal virtual void FlatMap(GremlinToSqlContext currentContext, GremlinToSqlContext flatMapContext)
         { 
-            GremlinFlatMapVariable flatMapVariable = GremlinFlatMapVariable.Create(flatMapContext);
+            GremlinTableVariable flatMapVariable = GremlinFlatMapVariable.Create(flatMapContext);
             currentContext.VariableList.Add(flatMapVariable);
             
             //It's used for repeat step, we should propagate all the variable to the main context
@@ -352,7 +352,8 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
         {
-            throw new NotImplementedException();
+            WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(VariableName, propertyKey);
+            currentContext.AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, null, predicate));
         }
 
         internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
@@ -461,7 +462,7 @@ namespace GraphView
 
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
-            GremlinLocalVariable localMapVariable = GremlinLocalVariable.Create(localContext);
+            GremlinTableVariable localMapVariable = GremlinLocalVariable.Create(localContext);
             currentContext.VariableList.Add(localMapVariable);
             currentContext.VariableList.AddRange(localContext.VariableList);
 
@@ -680,7 +681,8 @@ namespace GraphView
 
         internal virtual void Select(GremlinToSqlContext currentContext, List<string> selectKeys)
         {
-            throw new NotImplementedException();
+            //TODO: select all the variable as a map
+            Select(currentContext, GremlinKeyword.Pop.last, selectKeys);
         }
 
         internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, List<string> selectKeys)

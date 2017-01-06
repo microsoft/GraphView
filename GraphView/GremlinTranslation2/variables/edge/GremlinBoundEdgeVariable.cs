@@ -20,8 +20,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            var valueExpr = SqlUtil.GetValueExpr(adjacencyList.ToScalarExpression());
-            PropertyKeys.Add(valueExpr);
+            PropertyKeys.Add(SqlUtil.GetValueExpr(adjacencyList.ToScalarExpression()));
             Populate("id");
             foreach (var property in ProjectedProperties)
             {

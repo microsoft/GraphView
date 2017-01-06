@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinToSqlContext LocalContext { get; set; }
 
-        public static GremlinLocalVariable Create(GremlinToSqlContext localContext)
+        public static GremlinTableVariable Create(GremlinToSqlContext localContext)
         {
             switch (localContext.PivotVariable.GetVariableType())
             {
@@ -42,45 +42,19 @@ namespace GraphView
         }
     }
 
-    internal class GremlinLocalVertexVariable : GremlinLocalVariable
+    internal class GremlinLocalVertexVariable : GremlinVertexTableVariable
     {
-        public GremlinLocalVertexVariable(GremlinToSqlContext localContext) : base(localContext) { }
-
-        internal override GremlinVariableType GetVariableType()
+        public GremlinLocalVertexVariable(GremlinToSqlContext localContext)
         {
-            return GremlinVariableType.Vertex;
-        }
-
-        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
-        {
-            Populate("_edge");
-
-            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
-            outEdge.Populate("_sink");
-            currentContext.VariableList.Add(outEdge);
-
-            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(outEdge, "_sink"));
-            currentContext.VariableList.Add(outVertex);
-
-            currentContext.TableReferences.Add(outEdge);
-            currentContext.TableReferences.Add(outVertex);
-
-            //add Predicate to edge
-            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
-
-            currentContext.PivotVariable = outVertex;
+            InnerVariable = new GremlinLocalVariable(localContext);
         }
     }
 
-    internal class GremlinLocalEdgeVariable : GremlinLocalVariable
+    internal class GremlinLocalEdgeVariable : GremlinEdgeTableVariable
     {
-        public GremlinLocalEdgeVariable(GremlinToSqlContext localContext) : base(localContext) { }
-
-        internal override GremlinVariableType GetVariableType()
+        public GremlinLocalEdgeVariable(GremlinToSqlContext localContext)
         {
-            return GremlinVariableType.Edge;
+            InnerVariable = new GremlinLocalVariable(localContext);
         }
-
     }
 }

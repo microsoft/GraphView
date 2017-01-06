@@ -59,6 +59,7 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestStep()
         {
+
             GraphTraversal2.g()
                 .V().Out("jinjin").optional(GraphTraversal2.__().Out("mdl").outE().inV()).next();
 

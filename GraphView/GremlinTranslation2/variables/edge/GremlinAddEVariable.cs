@@ -42,16 +42,22 @@ namespace GraphView
             selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
             selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
 
-            var fromVarExpr = SqlUtil.GetColumnReferenceExpr(FromVariable.VariableName);
+            var fromVarExpr = SqlUtil.GetColumnReferenceExpr(FromVariable.VariableName, "id");
             selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(fromVarExpr));
 
-            var toVarExpr = SqlUtil.GetColumnReferenceExpr(ToVariable.VariableName);
+            var toVarExpr = SqlUtil.GetColumnReferenceExpr(ToVariable.VariableName, "id");
             selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(toVarExpr));
 
+
             //Add edge key-value
-            columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
-            var valueExpr = SqlUtil.GetValueExpr(EdgeLabel);
-            selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
+            WScalarExpression valueExpr;
+            if (EdgeLabel != null)
+            {
+                columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
+                valueExpr = SqlUtil.GetValueExpr(EdgeLabel);
+                selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
+
+            }
             foreach (var property in Properties)
             {
                 columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));

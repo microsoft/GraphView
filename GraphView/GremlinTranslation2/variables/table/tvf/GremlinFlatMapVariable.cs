@@ -10,7 +10,7 @@ namespace GraphView
     {
         public GremlinToSqlContext FlatMapContext { get; set; }
 
-        public static GremlinFlatMapVariable Create(GremlinToSqlContext flatMapContext)
+        public static GremlinTableVariable Create(GremlinToSqlContext flatMapContext)
         {
             switch (flatMapContext.PivotVariable.GetVariableType())
             {
@@ -28,8 +28,8 @@ namespace GraphView
 
         public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext)
         {
-            FlatMapContext = flatMapContext;
             VariableName = GenerateTableAlias();
+            FlatMapContext = flatMapContext;
         }
 
         public override WTableReference ToTableReference()
@@ -42,41 +42,19 @@ namespace GraphView
         }
     }
 
-    internal class GremlinFlatMapVertexVariable : GremlinFlatMapVariable
+    internal class GremlinFlatMapVertexVariable : GremlinVertexTableVariable
     {
-        public GremlinFlatMapVertexVariable(GremlinToSqlContext flatMapContext) : base(flatMapContext) { }
-
-        internal override GremlinVariableType GetVariableType()
+        public GremlinFlatMapVertexVariable(GremlinToSqlContext flatMapContext)
         {
-            return GremlinVariableType.Vertex;
-        }
-
-        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
-        {
-            Populate("_edge");
-
-            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
-            outEdge.Populate("_sink");
-            currentContext.VariableList.Add(outEdge);
-            currentContext.TableReferences.Add(outEdge);
-            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
-
-            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(new GremlinVariableProperty(outEdge, "_sink"));
-            currentContext.VariableList.Add(outVertex);
-            currentContext.TableReferences.Add(outVertex);
-            currentContext.PivotVariable = outVertex;
+            InnerVariable = new GremlinFlatMapVariable(flatMapContext);
         }
     }
 
-    internal class GremlinFlatMapEdgeVariable : GremlinFlatMapVariable
+    internal class GremlinFlatMapEdgeVariable : GremlinEdgeTableVariable
     {
-        public GremlinFlatMapEdgeVariable(GremlinToSqlContext flatMapContext): base(flatMapContext) { }
-
-        internal override GremlinVariableType GetVariableType()
+        public GremlinFlatMapEdgeVariable(GremlinToSqlContext flatMapContext)
         {
-            return GremlinVariableType.Edge;
+            InnerVariable = new GremlinFlatMapVariable(flatMapContext);
         }
-
     }
 }

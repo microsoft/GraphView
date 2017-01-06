@@ -10,6 +10,8 @@ namespace GraphView
     {
         internal string EdgeLabel { get; set; }
 
+        public GremlinAddEOp() {}
+
         public GremlinAddEOp(string label)
         {
             EdgeLabel = label;

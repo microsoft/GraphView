@@ -74,6 +74,12 @@ namespace GraphView
 
         //public GraphTraversal addE(Direction direction, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
 
+        public GraphTraversal2 addE()
+        {
+            AddGremlinOperator(new GremlinAddEOp());
+            return this;
+        }
+
         public GraphTraversal2 addE(string edgeLabel)
         {
             AddGremlinOperator(new GremlinAddEOp(edgeLabel));

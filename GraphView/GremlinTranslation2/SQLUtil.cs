@@ -79,7 +79,7 @@ namespace GraphView
                         booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
                             GetComparisonType(PredicateType.eq)));
                     }
-                    return ConcatBooleanExprWithOr(booleanExprList);
+                    return GetBooleanParenthesisExpr(ConcatBooleanExprWithOr(booleanExprList));
                 case PredicateType.without:
                     foreach (var value in predicate.Values)
                     {
@@ -87,7 +87,7 @@ namespace GraphView
                         booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
                             GetComparisonType(PredicateType.neq)));
                     }
-                    return ConcatBooleanExprWithAnd(booleanExprList);
+                    return GetBooleanParenthesisExpr(ConcatBooleanExprWithAnd(booleanExprList));
                 case PredicateType.inside:
                     throw new NotImplementedException();
                 case PredicateType.outside:

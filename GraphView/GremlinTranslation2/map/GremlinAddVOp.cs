@@ -11,10 +11,7 @@ namespace GraphView
         public Dictionary<string, object> Properties { get; set; }
         public string VertexLabel { get; set; }
 
-        public GremlinAddVOp()
-        {
-            throw new NotImplementedException();
-        }
+        public GremlinAddVOp() {}
 
         public GremlinAddVOp(params Object[] propertyKeyValues)
         {

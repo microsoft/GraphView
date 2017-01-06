@@ -97,7 +97,8 @@ namespace GraphView
 
                 //has(key, predicate)
                 case HasOpType.HasKeyPredicate:
-                    throw new NotImplementedException();
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, Predicate);
+                    break;
 
                 //has(label, key, value)
                 case HasOpType.HasLabelKeyValue:
