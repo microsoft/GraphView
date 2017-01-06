@@ -16,15 +16,11 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphTraversal2.SetGraphViewConnection(connection);
 
-            var results = GraphTraversal2.g().V().has("weapon", "shield").As("character").Out("appeared").As("comicbook").select("character").next();
+            var results = GraphTraversal2.g().V().Has("weapon", "shield").As("character").Out("appeared").As("comicbook").Select("character").next();
 
-            foreach (var record in results)
+            foreach (var result in results)
             {
-                foreach (var fieldValue in record.fieldValues)
-                {
-                    Console.Write(fieldValue + "  ");
-                }
-                Console.WriteLine();
+                Console.WriteLine(result);
             }
         }
 
@@ -39,20 +35,16 @@ namespace GraphViewUnitTest
             var results =
                 GraphTraversal2.g()
                     .V()
-                    .has("weapon", "lasso")
+                    .Has("weapon", "lasso")
                     .As("character")
                     .Out("appeared")
                     .As("comicbook")
-                    .select("comicbook")
+                    .Select("comicbook")
                     .next();
 
-            foreach (var record in results)
+            foreach (var result in results)
             {
-                foreach (var fieldValue in record.fieldValues)
-                {
-                    Console.Write(fieldValue + "  ");
-                }
-                Console.WriteLine();
+                Console.WriteLine(result);
             }
         }
 
@@ -64,15 +56,11 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphTraversal2.SetGraphViewConnection(connection);
 
-            var results = GraphTraversal2.g().V().has("comicbook", "AVF 4").In("appeared").values("character").next();
+            var results = GraphTraversal2.g().V().Has("comicbook", "AVF 4").In("appeared").Values("character").next();
 
-            foreach (var record in results)
+            foreach (var result in results)
             {
-                foreach (var fieldValue in record.fieldValues)
-                {
-                    Console.Write(fieldValue + "  ");
-                }
-                Console.WriteLine();
+                Console.WriteLine(result);
             }
         }
 
@@ -84,15 +72,11 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphTraversal2.SetGraphViewConnection(connection);
 
-            var results = GraphTraversal2.g().V().has("comicbook", "AVF 4").In("appeared").has("weapon", "shield").values("character").next();
+            var results = GraphTraversal2.g().V().Has("comicbook", "AVF 4").In("appeared").Has("weapon", "shield").Values("character").next();
 
-            foreach (var record in results)
+            foreach (var result in results)
             {
-                foreach (var fieldValue in record.fieldValues)
-                {
-                    Console.Write(fieldValue + "  ");
-                }
-                Console.WriteLine();
+                Console.WriteLine(result);
             }
         }
 
@@ -110,19 +94,15 @@ namespace GraphViewUnitTest
             var results =
                 GraphTraversal2.g().V()
                     .As("character")
-                    .has("weapon", Predicate.within("shield", "claws"))
+                    .Has("weapon", Predicate.within("shield", "claws"))
                     .Out("appeared")
                     .As("comicbook")
-                    .select("character")
+                    .Select("character")
                     .next();
 
-            foreach (var record in results)
+            foreach (var result in results)
             {
-                foreach (var fieldValue in record.fieldValues)
-                {
-                    Console.Write(fieldValue + "  ");
-                }
-                Console.WriteLine();
+                Console.WriteLine(result);
             }
         }
 
@@ -137,23 +117,19 @@ namespace GraphViewUnitTest
             var results =
                 GraphTraversal2.g().V()
                     .As("CharacterNode")
-                    .values("character")
+                    .Values("character")
                     .As("character")
-                    .@select("CharacterNode")
-                    .has("weapon", Predicate.without("shield", "claws"))
+                    .Select("CharacterNode")
+                    .Has("weapon", Predicate.without("shield", "claws"))
                     .Out("appeared")
-                    .values("comicbook")
+                    .Values("comicbook")
                     .As("comicbook")
-                    .select("comicbook")
+                    .Select("comicbook")
                     .next();
 
-            foreach (var record in results)
+            foreach (var result in results)
             {
-                foreach (var fieldValue in record.fieldValues)
-                {
-                    Console.Write(fieldValue + "  ");
-                }
-                Console.WriteLine();
+                Console.WriteLine(result);
             }
         }
 
@@ -165,13 +141,13 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             //connection.ResetCollection();
             GraphTraversal2.SetGraphViewConnection(connection);
-            GraphTraversal2.g().V().addV().property("character", "VENUS II").property("weapon", "shield").next();
-            GraphTraversal2.g().V().addV().property("comicbook", "AVF 4").next();
-            GraphTraversal2.g().V().has("character", "VENUS II").addE("appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
-            GraphTraversal2.g().V().addV().property("character", "HAWK").property("weapon", "claws").next();
-            GraphTraversal2.g().V().As("v").has("character", "HAWK").addE("appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
-            GraphTraversal2.g().V().addV().property("character", "WOODGOD").property("weapon", "lasso").next();
-            GraphTraversal2.g().V().As("v").has("character", "WOODGOD").addE("appeared").to(GraphTraversal2.g().V().has("comicbook", "AVF 4")).next();
+            GraphTraversal2.g().V().AddV().Property("character", "VENUS II").Property("weapon", "shield").next();
+            GraphTraversal2.g().V().AddV().Property("comicbook", "AVF 4").next();
+            GraphTraversal2.g().V().Has("character", "VENUS II").AddE("appeared").To(GraphTraversal2.g().V().Has("comicbook", "AVF 4")).next();
+            GraphTraversal2.g().V().AddV().Property("character", "HAWK").Property("weapon", "claws").next();
+            GraphTraversal2.g().V().As("v").Has("character", "HAWK").AddE("appeared").To(GraphTraversal2.g().V().Has("comicbook", "AVF 4")).next();
+            GraphTraversal2.g().V().AddV().Property("character", "WOODGOD").Property("weapon", "lasso").next();
+            GraphTraversal2.g().V().As("v").Has("character", "WOODGOD").AddE("appeared").To(GraphTraversal2.g().V().Has("comicbook", "AVF 4")).next();
         }
     }
 }

@@ -32,17 +32,26 @@ namespace GraphView
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
-        internal List<RawRecord> next()
+        public List<string> next()
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
             var str = sqlScript.ToString();
 
             var op = sqlScript.Batches[0].Compile(null, Connection);
-            var results = new List<RawRecord>();
+            var rawRecordResults = new List<RawRecord>();
             RawRecord outputRec = null;
             while ((outputRec = op.Next()) != null)
             {
-                results.Add(outputRec);
+                rawRecordResults.Add(outputRec);
+            }
+
+            List<string> results = new List<string>();
+            foreach (var record in rawRecordResults)
+            {
+                foreach (var fieldValue in record.fieldValues)
+                {
+                    results.Add(fieldValue + "  ");
+                }
             }
 
             return results;
@@ -74,13 +83,13 @@ namespace GraphView
 
         //public GraphTraversal addE(Direction direction, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
 
-        public GraphTraversal2 addE()
+        public GraphTraversal2 AddE()
         {
             AddGremlinOperator(new GremlinAddEOp());
             return this;
         }
 
-        public GraphTraversal2 addE(string edgeLabel)
+        public GraphTraversal2 AddE(string edgeLabel)
         {
             AddGremlinOperator(new GremlinAddEOp(edgeLabel));
             return this;
@@ -89,30 +98,31 @@ namespace GraphView
         //public GraphTraversal2 addInE(string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
         //public GraphTraversal2 addOutE(string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
 
-        public GraphTraversal2 addV()
+        public GraphTraversal2 AddV()
         {
             AddGremlinOperator(new GremlinAddVOp());
             return this;
         }
 
-        public GraphTraversal2 addV(params object[] propertyKeyValues)
+        public GraphTraversal2 AddV(params object[] propertyKeyValues)
         {
             AddGremlinOperator(new GremlinAddVOp(propertyKeyValues));
             return this;
         }
 
-        public GraphTraversal2 addV(string vertexLabel)
+        public GraphTraversal2 AddV(string vertexLabel)
         {
             AddGremlinOperator(new GremlinAddVOp(vertexLabel));
             return this;
         }
 
-        public GraphTraversal2 aggregate(string sideEffectKey)
+        public GraphTraversal2 Aggregate(string sideEffectKey)
         {
+            throw new NotImplementedException();
             return this;
         }
 
-        public GraphTraversal2 and(params GraphTraversal2[] andTraversals)
+        public GraphTraversal2 And(params GraphTraversal2[] andTraversals)
         {
             AddGremlinOperator(new GremlinAndOp(andTraversals));
             return this;
@@ -123,24 +133,24 @@ namespace GraphView
             return this;    
         }
 
-        public GraphTraversal2 barrier()
+        public GraphTraversal2 Barrier()
         {
             return this;
         }
 
-        public GraphTraversal2 both(params string[] edgeLabels)
+        public GraphTraversal2 Both(params string[] edgeLabels)
         {
             AddGremlinOperator(new GremlinBothOp(edgeLabels));
             return this;
         }
 
-        public GraphTraversal2 bothE(params string[] edgeLabels)
+        public GraphTraversal2 BothE(params string[] edgeLabels)
         {
             AddGremlinOperator(new GremlinBothEOp(edgeLabels));
             return this;
         }
 
-        public GraphTraversal2 bothV()
+        public GraphTraversal2 BothV()
         {
             AddGremlinOperator(new GremlinBothVOp());
             return this;
@@ -149,7 +159,7 @@ namespace GraphView
         //public GraphTraversal2 branch(Function<Traversal<E>, M> function)
         //public GraphTraversal2 branch(Traversal<?, M> branchTraversal)
 
-        public GraphTraversal2 by()
+        public GraphTraversal2 By()
         {
             AddGremlinOperator(new GremlinByOp());
             return this;
@@ -159,13 +169,13 @@ namespace GraphView
         //public GraphTraversal2 by(Function<U, Object> function, Comparator comparator)
         //public GraphTraversal2 by(Function<V, Object> function)
 
-        public GraphTraversal2 by(GremlinKeyword.Order order)
+        public GraphTraversal2 By(GremlinKeyword.Order order)
         {
             AddGremlinOperator(new GremlinByOp(order));
             return this;
         }
 
-        public GraphTraversal2 by(string key)
+        public GraphTraversal2 By(string key)
         {
             AddGremlinOperator(new GremlinByOp(key));
             return this;
@@ -173,7 +183,7 @@ namespace GraphView
 
         //public GraphTraversal2 by(string key, Comparator<V> comparator)
         //public GraphTraversal2 by(T token)
-        public GraphTraversal2 by(GraphTraversal2 traversal)
+        public GraphTraversal2 By(GraphTraversal2 traversal)
         {
             AddGremlinOperator(new GremlinByOp(traversal));
             return this;
@@ -182,42 +192,42 @@ namespace GraphView
         //public GraphTraversal2 cap(string sideEffectKey, params string[] sideEffectKeys)
         //public GraphTraversal2 choose(Function<E, M> choiceFunction)
 
-        public GraphTraversal2 choose(Predicate choosePredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
+        public GraphTraversal2 Choose(Predicate choosePredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
         {
             AddGremlinOperator(new GremlinChooseOp(choosePredicate, trueChoice, falseChoice));
             return this;
         }
 
-        public GraphTraversal2 choose(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
+        public GraphTraversal2 Choose(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
         {
             AddGremlinOperator(new GremlinChooseOp(traversalPredicate, trueChoice, falseChoice));
             return this;
         }
 
-        public GraphTraversal2 choose(GraphTraversal2 choiceTraversal)
+        public GraphTraversal2 Choose(GraphTraversal2 choiceTraversal)
         {
             AddGremlinOperator(new GremlinChooseOp(choiceTraversal));
             return this;
         }
 
-        public GraphTraversal2 coalesce(params GraphTraversal2[] coalesceTraversals)
+        public GraphTraversal2 Coalesce(params GraphTraversal2[] coalesceTraversals)
         {
             AddGremlinOperator(new GremlinCoalesceOp(coalesceTraversals));
             return this;
         }
 
-        public GraphTraversal2 coin(double probability)
+        public GraphTraversal2 Coin(double probability)
         {
             AddGremlinOperator(new GremlinCoinOp(probability));
             return this;
         }
 
-        public GraphTraversal2 constant(object value)
+        public GraphTraversal2 Constant(object value)
         {
             AddGremlinOperator(new GremlinConstantOp(value));
             return this;
         }
-        public GraphTraversal2 count()
+        public GraphTraversal2 Count()
         {
             AddGremlinOperator(new GremlinCountOp());
             return this;
@@ -227,13 +237,13 @@ namespace GraphView
         //public GraphTraversal2 cyclicPath()
         //public GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
 
-        public GraphTraversal2 dedup(params string[] dedupLabels)
+        public GraphTraversal2 Dedup(params string[] dedupLabels)
         {
             AddGremlinOperator(new GremlinDedupOp(dedupLabels));
             return this;
         }
 
-        public GraphTraversal2 drop()
+        public GraphTraversal2 Drop()
         {
             AddGremlinOperator(new GremlinDropOp());
             return this;
@@ -245,7 +255,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 emit()
+        public GraphTraversal2 Emit()
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -260,7 +270,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 emit(Predicate emitPredicate)
+        public GraphTraversal2 Emit(Predicate emitPredicate)
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -277,7 +287,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 emit(GraphTraversal2 emitTraversal)
+        public GraphTraversal2 Emit(GraphTraversal2 emitTraversal)
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -298,13 +308,13 @@ namespace GraphView
         //public GraphTraversal2 filter(Traversal<?, ?> filterTraversal)
         //public GraphTraversal2 flatMap(Funtion<Traversal<E>, Iterator<E>> funtion)
 
-        public GraphTraversal2 flatMap(GraphTraversal2 flatMapTraversal)
+        public GraphTraversal2 FlatMap(GraphTraversal2 flatMapTraversal)
         {
             AddGremlinOperator(new GremlinFlatMapOp(flatMapTraversal));
             return this;
         }
 
-        public GraphTraversal2 fold()
+        public GraphTraversal2 Fold()
         {
             AddGremlinOperator(new GremlinFoldOp());
             return this;
@@ -312,25 +322,25 @@ namespace GraphView
 
         //public GraphTraversal2 fold(E2 seed, BiFuntion<E2, E, E2> foldFunction)
 
-        public GraphTraversal2 from(string fromGremlinTranslationOperatorLabel)
+        public GraphTraversal2 From(string fromGremlinTranslationOperatorLabel)
         {
             AddGremlinOperator(new GremlinFromOp(fromGremlinTranslationOperatorLabel));
             return this;
         }
 
-        public GraphTraversal2 from(GraphTraversal2 fromVertexTraversal)
+        public GraphTraversal2 From(GraphTraversal2 fromVertexTraversal)
         {
             AddGremlinOperator(new GremlinFromOp(fromVertexTraversal));
             return this;
         }
 
-        public GraphTraversal2 group()
+        public GraphTraversal2 Group()
         {
             AddGremlinOperator(new GremlinGroupOp());
             return this;
         }
 
-        public GraphTraversal2 group(string sideEffectKey)
+        public GraphTraversal2 Group(string sideEffectKey)
         {
             AddGremlinOperator(new GremlinGroupOp(sideEffectKey));
             return this;
@@ -339,72 +349,72 @@ namespace GraphView
         //public GraphTraversal2 groupCount()
         //public GraphTraversal2 groupCount(string sideEffectKey)
 
-        public GraphTraversal2 has(string propertyKey)
+        public GraphTraversal2 Has(string propertyKey)
         {
             AddGremlinOperator(new GremlinHasOp(propertyKey));
             return this;
         }
 
-        public GraphTraversal2 has(string propertyKey, Object value)
+        public GraphTraversal2 Has(string propertyKey, Object value)
         {
             AddGremlinOperator(new GremlinHasOp(propertyKey, value));
             return this;
         }
 
-        public GraphTraversal2 has(string label, string propertyKey, Object value)
+        public GraphTraversal2 Has(string label, string propertyKey, Object value)
         {
             AddGremlinOperator(new GremlinHasOp(label, propertyKey, value));
             return this;
         }
 
-        public GraphTraversal2 has(string propertyKey, Predicate predicate)
+        public GraphTraversal2 Has(string propertyKey, Predicate predicate)
         {
             AddGremlinOperator(new GremlinHasOp(propertyKey, predicate));
             return this;
         }
 
-        public GraphTraversal2 has(string label, string propertyKey, Predicate predicate)
+        public GraphTraversal2 Has(string label, string propertyKey, Predicate predicate)
         {
             AddGremlinOperator(new GremlinHasOp(label, propertyKey, predicate));
             return this;
         }
 
-        public GraphTraversal2 has(string propertyKey, GraphTraversal2 propertyTraversal)
+        public GraphTraversal2 Has(string propertyKey, GraphTraversal2 propertyTraversal)
         {
             AddGremlinOperator(new GremlinHasOp(propertyKey, propertyTraversal));
             return this;
         }
         
-        public GraphTraversal2 hasId(params object[] values)
+        public GraphTraversal2 HasId(params object[] values)
         {
             AddGremlinOperator(new GremlinHasOp(HasOpType.HasId, values));
             return this;
         }
 
-        public GraphTraversal2 hasKey(params object[] values)
+        public GraphTraversal2 HasKey(params object[] values)
         {
             AddGremlinOperator(new GremlinHasOp(HasOpType.HasKeys, values));
             return this;
         }
 
-        public GraphTraversal2 hasLabel(params object[] values)
+        public GraphTraversal2 HasLabel(params object[] values)
         {
             AddGremlinOperator(new GremlinHasOp(HasOpType.HasLabel, values));
             return this;
         }
 
-        public GraphTraversal2 hasValue(string value, params string[] values)
+        public GraphTraversal2 HasValue(string value, params string[] values)
         {
             AddGremlinOperator(new GremlinHasOp(HasOpType.HasValue, values));
             return this;
         }
 
-        public GraphTraversal2 hasNot(string propertyKey)
+        public GraphTraversal2 HasNot(string propertyKey)
         {
             return this;
         }
 
-        public GraphTraversal2 id()
+        public GraphTraversal2 Id()
         {
             AddGremlinOperator(new GremlinValuesOp("id"));
             return this;
@@ -416,19 +426,19 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 inE(params string[] edgeLabels)
+        public GraphTraversal2 InE(params string[] edgeLabels)
         {
             AddGremlinOperator(new GremlinInEOp(edgeLabels));
             return this;
         }
 
-        public GraphTraversal2 inject(params object[] injections)
+        public GraphTraversal2 Inject(params object[] injections)
         {
             AddGremlinOperator(new GremlinInjectOp(injections));
             return this;
         }
 
-        public GraphTraversal2 inV()
+        public GraphTraversal2 InV()
         {
             AddGremlinOperator(new GremlinInVOp());
             return this;
@@ -451,19 +461,19 @@ namespace GraphView
         //    return this;
         //}
 
-        public GraphTraversal2 key()
+        public GraphTraversal2 Key()
         {
             AddGremlinOperator(new GremlinKeyOp());
             return this;
         }
 
-        public GraphTraversal2 label()
+        public GraphTraversal2 Label()
         {
             AddGremlinOperator(new GremlinValuesOp("label"));
             return this;
         }
 
-        public GraphTraversal2 limit(long limit)
+        public GraphTraversal2 Limit(long limit)
         {
             AddGremlinOperator(new GremlinLimitOp(limit));
             return this;
@@ -471,7 +481,7 @@ namespace GraphView
 
         //public GraphTraversal2 limit(Scope scope, long limit)
 
-        public GraphTraversal2 local(GraphTraversal2 localTraversal)
+        public GraphTraversal2 Local(GraphTraversal2 localTraversal)
         {
             AddGremlinOperator(new GremlinLocalOp(localTraversal));
             return this;
@@ -483,55 +493,55 @@ namespace GraphView
         //public GraphTraversal2 mapKeys() //Deprecated
         //public GraphTraversal2 mapvalues() //Deprecated
 
-        public GraphTraversal2 match(params GraphTraversal2[] matchTraversals)
+        public GraphTraversal2 Match(params GraphTraversal2[] matchTraversals)
         {
             AddGremlinOperator(new GremlinMatchOp(matchTraversals));
             return this;
         }
 
-        public GraphTraversal2 max()
+        public GraphTraversal2 Max()
         {
             AddGremlinOperator(new GremlinMaxOp());
             return this;
         }
 
-        public GraphTraversal2 max(GremlinKeyword.Scope scope)
+        public GraphTraversal2 Max(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinMaxOp(scope));
             return this;
         }
 
-        public GraphTraversal2 mean()
+        public GraphTraversal2 Mean()
         {
             AddGremlinOperator(new GremlinMeanOp());
             return this;
         }
 
-        public GraphTraversal2 mean(GremlinKeyword.Scope scope)
+        public GraphTraversal2 Mean(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinMeanOp(scope));
             return this;
         }
 
-        public GraphTraversal2 min()
+        public GraphTraversal2 Min()
         {
             AddGremlinOperator(new GremlinMinOp());
             return this;
         }
 
-        public GraphTraversal2 min(GremlinKeyword.Scope scope)
+        public GraphTraversal2 Min(GremlinKeyword.Scope scope)
         {
             AddGremlinOperator(new GremlinMinOp(scope));
             return this;
         }
 
 
-        public GraphTraversal2 not(GraphTraversal2 notTraversal)
+        public GraphTraversal2 Not(GraphTraversal2 notTraversal)
         {
            AddGremlinOperator(new GremlinNotOp(notTraversal));
             return this;
         }
-        public GraphTraversal2 option(object pickToken, GraphTraversal2 traversalOption)
+        public GraphTraversal2 Option(object pickToken, GraphTraversal2 traversalOption)
         {
             if (LastGremlinTranslationOp is GremlinChooseOp)
             {
@@ -545,7 +555,7 @@ namespace GraphView
         }
         //public GraphTraversal2 option(Traversal<E, E2 tarversalOption>
 
-        public GraphTraversal2 optional(GraphTraversal2 traversalOption)
+        public GraphTraversal2 Optional(GraphTraversal2 traversalOption)
         {
             AddGremlinOperator(new GremlinOptionalOp(traversalOption));
             return this;
@@ -557,7 +567,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 order()
+        public GraphTraversal2 Order()
         {
             AddGremlinOperator(new GremlinOrderOp());
             return this;
@@ -565,7 +575,7 @@ namespace GraphView
 
         //public GraphTraversal2 order(Scope scope)
 
-        public GraphTraversal2 otherV()
+        public GraphTraversal2 OtherV()
         {
             AddGremlinOperator(new GremlinOtherVOp());
             return this;
@@ -577,13 +587,13 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 outE(params string[] edgeLabels)
+        public GraphTraversal2 OutE(params string[] edgeLabels)
         {
             AddGremlinOperator(new GremlinOutEOp(edgeLabels));
             return this;
         }
 
-        public GraphTraversal2 outV()
+        public GraphTraversal2 OutV()
         {
             AddGremlinOperator(new GremlinOutVOp());
             return this;
@@ -597,19 +607,19 @@ namespace GraphView
         //public GraphTraversal2 profile(string sideEffectKey)
         //public GraphTraversal2 program(VertexProgram<?> vertexProgram)
 
-        public GraphTraversal2 project(params string[] projectKeys)
+        public GraphTraversal2 Project(params string[] projectKeys)
         {
             AddGremlinOperator(new GremlinProjectOp(projectKeys));
             return this;
         }
 
-        public GraphTraversal2 properties(params string[] propertyKeys)
+        public GraphTraversal2 Properties(params string[] propertyKeys)
         {
             AddGremlinOperator(new GremlinPropertiesOp(propertyKeys));
             return this;
         }
 
-        public GraphTraversal2 property(params object[] keyValues)
+        public GraphTraversal2 Property(params object[] keyValues)
         {
             AddGremlinOperator(new GremlinPropertyOp(keyValues));
             return this;
@@ -617,18 +627,19 @@ namespace GraphView
 
         //public GraphTraversal2 property(VertexProperty.Cardinality cardinality, string key, string value, params string[] keyValues)
 
-        public GraphTraversal2 propertyMap(params string[] propertyKeys)
+        public GraphTraversal2 PropertyMap(params string[] propertyKeys)
         {
+            throw new NotImplementedException();
             return this;
         }
 
-        public GraphTraversal2 range(int low, int high)
+        public GraphTraversal2 Range(int low, int high)
         {
             AddGremlinOperator(new GremlinRangeOp(low, high));
             return this;
         }
 
-        public GraphTraversal2 repeat(GraphTraversal2 repeatTraversal)
+        public GraphTraversal2 Repeat(GraphTraversal2 repeatTraversal)
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -641,27 +652,27 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 sack() //Deprecated
-        //public GraphTraversal2 sack(BiFunction<V, U, V>) sackOperator) //Deprecated
-        //public GraphTraversal2 sack(BiFunction<V, U, V>) sackOperator, string, elementPropertyKey) //Deprecated
+        //public GraphTraversal2 Sack() //Deprecated
+        //public GraphTraversal2 Sack(BiFunction<V, U, V>) sackOperator) //Deprecated
+        //public GraphTraversal2 Sack(BiFunction<V, U, V>) sackOperator, string, elementPropertyKey) //Deprecated
 
-        public GraphTraversal2 sample(int amountToSample)
+        public GraphTraversal2 Sample(int amountToSample)
         {
             AddGremlinOperator(new GremlinSampleOp(amountToSample));
             return this;
         }
 
-        //public GraphTraversal2 sample(Scope scope, int amountToSample)
-        //public GraphTraversal2 select(Column column)
-        //public GraphTraversal2 select(Pop pop, string selectKey)
+        //public GraphTraversal2 Sample(Scope scope, int amountToSample)
+        //public GraphTraversal2 Select(Column column)
+        //public GraphTraversal2 Select(Pop pop, string selectKey)
 
-        public GraphTraversal2 select(GremlinKeyword.Pop pop, params string[] selectKeys)
+        public GraphTraversal2 Select(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
             AddGremlinOperator(new GremlinSelectOp(pop, selectKeys));
             return this;
         }
-        //public GraphTraversal2 select(string selectKey)
-        public GraphTraversal2 select(params string[] selectKeys)
+        //public GraphTraversal2 Select(string selectKey)
+        public GraphTraversal2 Select(params string[] selectKeys)
         {
             AddGremlinOperator(new GremlinSelectOp(selectKeys));
             return this;
@@ -669,7 +680,7 @@ namespace GraphView
 
         //public GraphTraversal2 sideEffect(Consumer<Traverser<E>> consumer)
 
-        public GraphTraversal2 sideEffect(GraphTraversal2 sideEffectTraversal)
+        public GraphTraversal2 SideEffect(GraphTraversal2 sideEffectTraversal)
         {
             AddGremlinOperator(new GremlinSideEffectOp(sideEffectTraversal));
             return this;    
@@ -679,7 +690,7 @@ namespace GraphView
         //public GraphTraversal2 store(string sideEffectKey)
         //public GraphTraversal2 subgraph(string sideEffectKey)
 
-        public GraphTraversal2 sum()
+        public GraphTraversal2 Sum()
         {
             AddGremlinOperator(new GremlinSumOp());
             return this;
@@ -687,13 +698,13 @@ namespace GraphView
 
         //public GraphTraversal2 sum(Scope scope)
 
-        public GraphTraversal2 tail()
+        public GraphTraversal2 Tail()
         {
             AddGremlinOperator(new GremlinTailOp());
             return this;
         }
 
-        public GraphTraversal2 tail(long limit)
+        public GraphTraversal2 Tail(long limit)
         {
             AddGremlinOperator(new GremlinTailOp(limit));
             return this;
@@ -702,13 +713,13 @@ namespace GraphView
         //public GraphTraversal2 tail(Scope scope)
         //public GraphTraversal2 tail(Scope scope, long limit)
 
-        public GraphTraversal2 timeLimit(long timeLimit)
+        public GraphTraversal2 TimeLimit(long timeLimit)
         {
             throw new NotImplementedException();
             return this;
         }
 
-        public GraphTraversal2 times(int maxLoops)
+        public GraphTraversal2 Times(int maxLoops)
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -722,15 +733,15 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 to(Direction direction, params string[] edgeLabels)
+        //public GraphTraversal2 To(Direction direction, params string[] edgeLabels)
 
-        public GraphTraversal2 to(string toGremlinTranslationOperatorLabel)
+        public GraphTraversal2 To(string toGremlinTranslationOperatorLabel)
         {
             AddGremlinOperator(new GremlinToOp(toGremlinTranslationOperatorLabel));
             return this;
         }
 
-        public GraphTraversal2 to(GraphTraversal2 toVertex)
+        public GraphTraversal2 To(GraphTraversal2 toVertex)
         {
             AddGremlinOperator(new GremlinToOp(toVertex));
             return this;
@@ -739,26 +750,26 @@ namespace GraphView
         //public GraphTraversal2 toE(Direction direction, params string[] edgeLabels)
         //public GraphTraversal2 toV(Direction direction)
 
-        public GraphTraversal2 tree()
+        public GraphTraversal2 Tree()
         {
             AddGremlinOperator(new GremlinTreeOp());
             return this;
         }
         //public GraphTraversal2 tree(string sideEffectKey)
 
-        public GraphTraversal2 unfold()
+        public GraphTraversal2 Unfold()
         {
             AddGremlinOperator(new GremlinUnfoldOp());
             return this;
         }
 
-        public GraphTraversal2 union(params GraphTraversal2[] unionTraversals)
+        public GraphTraversal2 Union(params GraphTraversal2[] unionTraversals)
         {
             AddGremlinOperator(new GremlinUnionOp(unionTraversals));
             return this;
         }
 
-        public GraphTraversal2 until(Predicate untilPredicate)
+        public GraphTraversal2 Until(Predicate untilPredicate)
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -773,7 +784,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 until(GraphTraversal2 untilTraversal)
+        public GraphTraversal2 Until(GraphTraversal2 untilTraversal)
         {
             if (GetEndOp() is GremlinRepeatOp)
             {
@@ -800,43 +811,43 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 value()
+        public GraphTraversal2 Value()
         {
             AddGremlinOperator(new GremlinValueOp());
             return this;
         }
 
-        public GraphTraversal2 valueMap(Boolean includeTokens, params string[] propertyKeys)
+        public GraphTraversal2 ValueMap(Boolean includeTokens, params string[] propertyKeys)
         {
             throw new NotImplementedException();
             return this;
         }
 
-        public GraphTraversal2 valueMap(params string[] propertyKeys)
+        public GraphTraversal2 ValueMap(params string[] propertyKeys)
         {
             throw new NotImplementedException();
             return this;
         }
 
-        public GraphTraversal2 values(params string[] propertyKeys)
+        public GraphTraversal2 Values(params string[] propertyKeys)
         {
             AddGremlinOperator(new GremlinValuesOp(propertyKeys));
             return this;
         }
 
-        public GraphTraversal2 where(Predicate predicate)
+        public GraphTraversal2 Where(Predicate predicate)
         {
             AddGremlinOperator(new GremlinWhereOp(predicate));
             return this;
         }
 
-        public GraphTraversal2 where(string startKey, Predicate predicate)
+        public GraphTraversal2 Where(string startKey, Predicate predicate)
         {
             AddGremlinOperator(new GremlinWhereOp(startKey, predicate));
             return this;
         }
 
-        public GraphTraversal2 where(GraphTraversal2 whereTraversal)
+        public GraphTraversal2 Where(GraphTraversal2 whereTraversal)
         {
             AddGremlinOperator(new GremlinWhereOp(whereTraversal));
             return this;
