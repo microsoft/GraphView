@@ -208,7 +208,16 @@ namespace GraphView
             }
             else
             {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
+                if (PivotVariable is GremlinAddEVariable)
+                {
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sourceId")));
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sinkId")));
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "edgeOffset")));
+                }
+                else
+                {
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
+                }
             }
             return selectElements;
         }

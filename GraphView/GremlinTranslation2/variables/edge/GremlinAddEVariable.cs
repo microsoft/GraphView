@@ -20,15 +20,6 @@ namespace GraphView
         public Dictionary<string, object> Properties { get; set; }
         public string EdgeLabel { get; set; }
 
-        public override WTableReference ToTableReference()
-        {
-            return new WVariableTableReference()
-            {
-                Variable = SqlUtil.GetVariableReference(VariableName),
-                Alias = SqlUtil.GetIdentifier(VariableName)
-            };
-        }
-
         public override List<WSqlStatement> ToSetVariableStatements()
         {
             List<WSqlStatement> statementList = new List<WSqlStatement>();
