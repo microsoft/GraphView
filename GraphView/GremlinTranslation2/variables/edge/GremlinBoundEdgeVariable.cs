@@ -21,7 +21,7 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             PropertyKeys.Add(SqlUtil.GetValueExpr(adjacencyList.ToScalarExpression()));
-            Populate("id");
+            Populate(GremlinKeyword.EdgeID);
             foreach (var property in ProjectedProperties)
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));

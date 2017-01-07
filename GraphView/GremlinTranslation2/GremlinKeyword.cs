@@ -9,6 +9,7 @@ namespace GraphView
     public class GremlinKeyword
     {
         public static string Label = "label";
+        public static string EdgeID = "_ID";
         public enum Pop
         {
             Default,
