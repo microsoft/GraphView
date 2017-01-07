@@ -41,7 +41,7 @@ namespace GraphView
             }
             foreach (var nonVertexTableReference in nonVertexTableReferences)
             {
-                vertexAndEdgeAliases.Add(nonVertexTableReference.Alias.ToString());
+                vertexAndEdgeAliases.Add(nonVertexTableReference.Alias.Value);
             }
 
             // Normalizes the search condition into conjunctive predicates
@@ -59,9 +59,11 @@ namespace GraphView
 
             foreach (WBooleanExpression predicate in conjunctivePredicates)
             {
-                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate, vertexAndEdgeAliases);
+                bool isOnlyTargetTableReferenced;
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
+                    vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
 
-                if (!TryAttachPredicate(graphPattern, predicate, tableColumnReferences))
+                if (!isOnlyTargetTableReferenced || !TryAttachPredicate(graphPattern, predicate, tableColumnReferences))
                 {
                     // Attach cross-table predicate's referencing properties for later runtime evaluation
                     AttachProperties(graphPattern, tableColumnReferences);
@@ -73,14 +75,18 @@ namespace GraphView
 
             foreach (WSelectElement selectElement in SelectElements)
             {
-                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement, vertexAndEdgeAliases);
+                bool isOnlyTargetTableReferenced;
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(selectElement,
+                    vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
                 // Attach referencing properties for later runtime evaluation or selection
                 AttachProperties(graphPattern, tableColumnReferences);
             }
 
             foreach (var nonVertexTableReference in nonVertexTableReferences)
             {
-                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(nonVertexTableReference, vertexAndEdgeAliases);
+                bool isOnlyTargetTableReferenced;
+                Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(
+                    nonVertexTableReference, vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
                 // Attach referencing properties for later runtime evaluation
                 AttachProperties(graphPattern, tableColumnReferences);
             }
@@ -107,6 +113,7 @@ namespace GraphView
                 return false;
             MatchEdge edge;
             MatchNode node;
+            bool attachFlag = false;
 
             foreach (var tableColumnReference in tableColumnReferences)
             {
@@ -120,16 +127,18 @@ namespace GraphView
                     edge.Predicates.Add(predicate);
                     // Attach edge's propeties for later runtime evaluation
                     AttachProperties(graphPattern, new Dictionary<string, HashSet<string>> {{tableName, properties}});
+                    attachFlag = true;
                 }
                 else if (graphPattern.TryGetNode(tableName, out node))
                 {
                     if (node.Predicates == null)
                         node.Predicates = new List<WBooleanExpression>();
                     node.Predicates.Add(predicate);
+                    attachFlag = true;
                 }
             }
 
-            return true;
+            return attachFlag;
         }
 
         /// <summary>
@@ -171,7 +180,7 @@ namespace GraphView
             }
         }
 
-        private void ConstructJsonQueries(MatchGraph graphPattern)
+        internal static void ConstructJsonQueries(MatchGraph graphPattern)
         {
             foreach (var subGraph in graphPattern.ConnectedSubGraphs)
             {
@@ -199,7 +208,7 @@ namespace GraphView
             }
         }
 
-        private void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
+        internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         {
             var nodeAlias = node.NodeAlias;
             var selectStrBuilder = new StringBuilder();
@@ -752,6 +761,7 @@ namespace GraphView
                     patternNode.DanglingEdges = new List<MatchEdge>();
                     patternNode.External = false;
                     patternNode.Predicates = new List<WBooleanExpression>();
+                    patternNode.Properties = new List<string> { "id", "_edge", "_reverse_edge" };
                 }
 
                 if (!subGraphMap.ContainsKey(root))
@@ -925,17 +935,19 @@ namespace GraphView
 
         private List<int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
         {
-            var srcNodeIndex =
-                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "id"));
+            var edgeIndex =
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_edge"));
+            var reverseEdgeIndex =
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_reverse_edge"));
             if (edge.EdgeType == WEdgeType.BothEdge)
-                return new List<int> {srcNodeIndex + 1, srcNodeIndex + 2};
+                return new List<int> { edgeIndex, reverseEdgeIndex };
             else if (edge.IsReversed)
-                return new List<int> { srcNodeIndex + 2 };
+                return new List<int> { reverseEdgeIndex };
             else
-                return new List<int> { srcNodeIndex + 1 };
+                return new List<int> { edgeIndex };
         } 
 
-        private QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
+        internal QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
         {
             var localContext = new QueryCompilationContext();
 
@@ -1102,23 +1114,23 @@ namespace GraphView
         /// <param name="context"></param>
         /// <param name="connection"></param>
         /// <param name="tableReferences"></param>
-        /// <param name="crossTablePredicatesAndTheirTableReferences"></param>
+        /// <param name="remainingPredicatesAndTheirTableReferences"></param>
         /// <param name="childrenProcessor"></param>
-        private void CheckCrossTablePredicatesAndAppendFilterOp(QueryCompilationContext context, GraphViewConnection connection,
+        private void CheckRemainingPredicatesAndAppendFilterOp(QueryCompilationContext context, GraphViewConnection connection,
             HashSet<string> tableReferences,
-            List<Tuple<WBooleanExpression, HashSet<string>>> crossTablePredicatesAndTheirTableReferences,
+            List<Tuple<WBooleanExpression, HashSet<string>>> remainingPredicatesAndTheirTableReferences,
             List<GraphViewExecutionOperator> childrenProcessor)
         {
-            for (var i = crossTablePredicatesAndTheirTableReferences.Count - 1; i >= 0; i--)
+            for (var i = remainingPredicatesAndTheirTableReferences.Count - 1; i >= 0; i--)
             {
-                var predicate = crossTablePredicatesAndTheirTableReferences[i].Item1;
-                var tableRefs = crossTablePredicatesAndTheirTableReferences[i].Item2;
+                var predicate = remainingPredicatesAndTheirTableReferences[i].Item1;
+                var tableRefs = remainingPredicatesAndTheirTableReferences[i].Item2;
 
                 if (tableReferences.IsSupersetOf(tableRefs))
                 {
                     childrenProcessor.Add(new FilterOperator(childrenProcessor.Last(),
                         predicate.CompileToFunction(context, connection)));
-                    crossTablePredicatesAndTheirTableReferences.RemoveAt(i);
+                    remainingPredicatesAndTheirTableReferences.RemoveAt(i);
                 }
             }
         }
@@ -1160,7 +1172,7 @@ namespace GraphView
                         edgeJoinPredicate.CompileToFunction(context, connection)));
                 }
 
-                CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
+                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys),
                     predicatesAccessedTableReferences,
                     operatorChain);
@@ -1192,6 +1204,9 @@ namespace GraphView
             var operatorChain = new List<GraphViewExecutionOperator>();
             var tableReferences = context.TableReferences;
             var rawRecordLayout = context.RawRecordLayout;
+
+            if (context.OuterContextOp != null)
+                context.CurrentExecutionOperator = context.OuterContextOp;
 
             foreach (var subGraph in graphPattern.ConnectedSubGraphs)
             {
@@ -1228,7 +1243,7 @@ namespace GraphView
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
 
-                        CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
+                        CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                             new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                             operatorChain);
 
@@ -1278,7 +1293,7 @@ namespace GraphView
                                 UpdateRawRecordLayout(backwardMatchingEdge.EdgeAlias, backwardMatchingEdge.Properties, rawRecordLayout);
                             }
 
-                            CheckCrossTablePredicatesAndAppendFilterOp(context, connection,
+                            CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
 
@@ -1305,6 +1320,17 @@ namespace GraphView
                     operatorChain.Add(operatorChain.Any()
                         ? new CartesianProductOperator2(operatorChain.Last(), derivedQueryOp)
                         : derivedQueryOp);
+
+                    foreach (var pair in derivedQueryContext.RawRecordLayout.OrderBy(e => e.Value))
+                    {
+                        var columnReference = pair.Key;
+                        var tableAlias = columnReference.TableReference;
+                        var columnName = columnReference.ColumnName;
+                        if (string.IsNullOrEmpty(tableAlias))
+                            tableAlias = tableReference.Alias.Value;
+                        // TODO: Change to correct ColumnGraphType
+                        context.AddField(tableAlias, columnName, ColumnGraphType.Value);
+                    }
                     context.CurrentExecutionOperator = operatorChain.Last();
                 }
                 else if (tableReference is WVariableTableReference)
@@ -1335,13 +1361,28 @@ namespace GraphView
                 else if (tableReference is WSchemaObjectFunctionTableReference)
                 {
                     var functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
+                    var functionName = functionTableReference.SchemaObject.Identifiers.ToString();
                     var tableOp = functionTableReference.Compile(context, connection);
+
+                    GraphViewEdgeTableReferenceEnum edgeTypeEnum;
+                    GraphViewVertexTableReferenceEnum vertexTypeEnum;
+                    if (Enum.TryParse(functionName, true, out edgeTypeEnum))
+                        tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Edge);
+                    else if (Enum.TryParse(functionName, true, out vertexTypeEnum))
+                        tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Vertex);
+                    else
+                        tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Value);
+
                     operatorChain.Add(tableOp);
                 }
                 else
                 {
 
                 }
+
+                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                    new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                    operatorChain);
             }
 
             // TODO: groupBy operator
@@ -2070,6 +2111,125 @@ namespace GraphView
             context.CurrentExecutionOperator = flatMapOp;
 
             return flatMapOp;
+        }
+    }
+
+    partial class WBoundOutNodeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var sinkParameter = Parameters[0] as WColumnReferenceExpression;
+            var sinkIndex = context.LocateColumnReference(sinkParameter);
+            var nodeAlias = Alias.Value;
+            var isSendQueryRequired = !(Parameters.Count == 2 && (Parameters[1] as WValueExpression).Value.Equals("id"));
+            var matchNode = new MatchNode
+            {
+                AttachedJsonQuery = null,
+                NodeAlias = nodeAlias,
+                Predicates = new List<WBooleanExpression>(),
+                Properties = new List<string>{ "id", "_edge", "_reverse_edge" },
+            };
+
+            if (isSendQueryRequired)
+            {
+                for (int i = 1; i < Parameters.Count; i++)
+                {
+                    var property = (Parameters[i] as WValueExpression).Value;
+                    if (!matchNode.Properties.Contains(property))
+                        matchNode.Properties.Add(property);
+                }
+                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
+
+                // TODO: Change to correct ColumnGraphType
+                foreach (var property in matchNode.Properties)
+                    context.AddField(nodeAlias, property, ColumnGraphType.Value);
+            }
+            else
+            {
+                context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
+            }
+
+            var traversalOp = new TraversalOperator2(context.CurrentExecutionOperator, dbConnection, sinkIndex,
+                matchNode.AttachedJsonQuery, null);
+            context.CurrentExecutionOperator = traversalOp;
+
+            return traversalOp;
+        }
+    }
+
+    partial class WBoundOutEdgeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context,
+            GraphViewConnection dbConnection)
+        {
+            var adjListParameter = Parameters[0] as WColumnReferenceExpression;
+            var adjListIndex = context.LocateColumnReference(adjListParameter);
+            var edgeAlias = Alias.Value;
+            var projectFields = new List<string> { "_sink" };
+
+            for (int i = 1; i < Parameters.Count; i++)
+            {
+                var field = (Parameters[i] as WValueExpression).Value;
+                if (!projectFields.Contains(field))
+                    projectFields.Add(field);
+            }
+
+            foreach (var projectField in projectFields)
+            {
+                // TODO: Change to correct ColumnGraphType
+                context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
+            }
+
+            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, new List<int> {adjListIndex},
+                null, projectFields);
+            context.CurrentExecutionOperator = adjListDecoder;
+
+            return adjListDecoder;
+        }
+    }
+
+    partial class WValuesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            List<int> valuesIdxList = new List<int>();
+
+            foreach (var expression in Parameters)
+            {
+                var columnReference = expression as WColumnReferenceExpression;
+                if (columnReference == null)
+                    throw new SyntaxErrorException("Parameters of Values function can only be WColumnReference.");
+                valuesIdxList.Add(context.LocateColumnReference(columnReference));
+            }
+
+            GraphViewExecutionOperator valuesOperator = new ValuesOperator(context.CurrentExecutionOperator, valuesIdxList);
+            context.CurrentExecutionOperator = valuesOperator;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            
+            return valuesOperator;
+        }
+    }
+
+    partial class WPropertiesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            List<Tuple<string, int>> propertiesList = new List<Tuple<string, int>>();
+
+            foreach (var expression in Parameters)
+            {
+                var columnReference = expression as WColumnReferenceExpression;
+                if (columnReference == null)
+                    throw new SyntaxErrorException("Parameters of Values function can only be WColumnReference.");
+                propertiesList.Add(new Tuple<string, int>(columnReference.ColumnName,
+                    context.LocateColumnReference(columnReference)));
+            }
+
+            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, propertiesList);
+            context.CurrentExecutionOperator = propertiesOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return propertiesOp;
         }
     }
 }

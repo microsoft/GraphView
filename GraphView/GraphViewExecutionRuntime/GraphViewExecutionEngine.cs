@@ -152,6 +152,20 @@ namespace GraphView
         Choose,
     }
 
+    internal enum GraphViewEdgeTableReferenceEnum
+    {
+        BothE,
+        OutE,
+        InE
+    }
+
+    internal enum GraphViewVertexTableReferenceEnum
+    {
+        Both,
+        OutV,
+        InV
+    }
+
     /// <summary>
     /// The interface of query execution operators.
     /// An operator is in one of the states: open or closed. 

@@ -66,9 +66,11 @@ namespace GraphView
         // A collection of table aliases and their columns
         // accessed in the query block
         Dictionary<string, HashSet<string>> accessedColumns;
+        private bool _isOnlyTargetTableReferenced;
 
-        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> targetTableReferences)
+        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> targetTableReferences, out bool isOnlyTargetTableReferecend)
         {
+            _isOnlyTargetTableReferenced = true;
             accessedColumns = new Dictionary<string, HashSet<string>>(targetTableReferences.Count);
             foreach (string tabAlias in targetTableReferences)
             {
@@ -85,6 +87,7 @@ namespace GraphView
                 }
             }
 
+            isOnlyTargetTableReferecend = _isOnlyTargetTableReferenced;
             return accessedColumns;
         }
 
@@ -101,6 +104,10 @@ namespace GraphView
             if (accessedColumns.ContainsKey(tableAlias))
             {
                 accessedColumns[tableAlias].Add(columnName);
+            }
+            else
+            {
+                _isOnlyTargetTableReferenced = false;
             }
         }
 
