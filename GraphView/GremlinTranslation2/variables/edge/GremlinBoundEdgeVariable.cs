@@ -25,7 +25,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(SqlUtil.GetValueExpr(adjacencyList.ToScalarExpression()));
+            PropertyKeys.Add(adjacencyList.ToScalarExpression());
             Populate(GremlinKeyword.EdgeID);
             foreach (var property in ProjectedProperties)
             {
