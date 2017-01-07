@@ -10,6 +10,7 @@ namespace GraphView
     {
         public static string Label = "label";
         public static string EdgeID = "_ID";
+        public static string NodeID = "id";
         public enum Pop
         {
             Default,

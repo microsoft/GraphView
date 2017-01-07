@@ -137,6 +137,8 @@ namespace GremlinTranslationOperator.Tests
 
             GraphTraversal2 graph = new GraphTraversal2(connection);
 
+            graph.g().V().next();
+
             //Insert character
             //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");
             //foreach (string line in characterLines)

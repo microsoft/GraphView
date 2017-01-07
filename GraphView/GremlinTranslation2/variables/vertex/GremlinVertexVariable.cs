@@ -18,5 +18,10 @@ namespace GraphView
         {
             return GremlinVariableType.Vertex;
         }
+
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.NodeID);
+        }
     }
 }
