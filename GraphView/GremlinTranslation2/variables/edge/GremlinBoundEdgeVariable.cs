@@ -17,6 +17,11 @@ namespace GraphView
 
         private GremlinVariableProperty adjacencyList;
 
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
