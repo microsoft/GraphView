@@ -61,6 +61,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            outputBuffer?.Clear();
             Open();
         }
     }
@@ -146,7 +147,7 @@ namespace GraphView
                 {
                     foreach (Tuple<RawRecord, string> pair in inputSequence)
                     {
-                        RawRecord resultRecord = new RawRecord(pair.Item1.Length);
+                        RawRecord resultRecord = new RawRecord { fieldValues = new List<string>() };
                         resultRecord.Append(pair.Item1);
                         resultRecord.Append(pair.Item2);
                         outputBuffer.Enqueue(resultRecord);
@@ -282,6 +283,10 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            outputBuffer?.Clear();
+            Open();
+        }
+    }
 
     internal class FilterOperator : GraphViewExecutionOperator
     {
@@ -466,9 +471,12 @@ namespace GraphView
         public override void ResetState()
         {
             InputOperator.ResetState();
+            OutputBuffer?.Clear();
             Open();
         }
     }
+
+
 
     internal abstract class TableValuedScalarFunction
     {
@@ -589,6 +597,13 @@ namespace GraphView
             if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
             return null;
         }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            outputBuffer?.Clear();
+            results?.Clear();
+        }
     }
 
     internal interface IAggregateFunction
@@ -636,6 +651,12 @@ namespace GraphView
             }
 
             return selectRecord;
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            Open();
         }
     }
 
@@ -760,6 +781,9 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            contextOp.ResetState();
+            flatMapTraversal.ResetState();
+            outputBuffer?.Clear();
             Open();
         }
     }
@@ -831,6 +855,9 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            contextOp.ResetState();
+            localTraversal.ResetState();
+            outputBuffer?.Clear();
             Open();
         }
     }
@@ -922,6 +949,9 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            contextOp.ResetState();
+            optionalTraversal.ResetState();
+            outputBuffer?.Clear();
             Open();
         }
     }
@@ -995,6 +1025,7 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            traversalOutputBuffer?.Clear();
             Open();
         }
     }
@@ -1232,6 +1263,9 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            innerOp.ResetState();
+            innerContextOp.ResetState();
+            repeatResultBuffer?.Clear();
             Open();
         }
     }

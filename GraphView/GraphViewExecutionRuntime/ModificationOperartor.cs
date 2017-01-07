@@ -487,6 +487,15 @@ namespace GraphView
 
             return DataModificationUtils.InsertEdge(map, edgeBaseString, sourceid, sinkid);
         }
+
+        public override void ResetState()
+        {
+            srcOp.ResetState();
+            sinkOp.ResetState();
+            outputBuffer.Clear();
+            map.Clear();
+            this.Open();
+        }
     }
 
     internal class DeleteEdgeOperator : ModificationBaseOpertaor

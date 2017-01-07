@@ -54,7 +54,7 @@ namespace GraphView
         public override string Evaluate(RawRecord record)
         {
             constantSourceOp.ConstantSource = record;
-            subqueryOp.Open();
+            subqueryOp.ResetState();
             RawRecord firstResult = subqueryOp.Next();
             subqueryOp.Close();
 

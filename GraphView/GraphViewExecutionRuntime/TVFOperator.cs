@@ -55,22 +55,29 @@ namespace GraphView
             if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
             return null;
         }
+
+        public override void ResetState()
+        {
+            InputOperator.ResetState();
+            OutputBuffer.Clear();
+            this.Open();
+        }
     }
 
     internal class PropertiesOperator : TableValuedFunction
     {
-        internal List<Tuple<string, int>> PropertyIdxList;
+        internal List<Tuple<string, int>> PropertiesList;
 
-        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, List<Tuple<string, int>> pPropertyIdxList, int pOutputBufferSize = 1000)
+        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, List<Tuple<string, int>> pPropertiesList, int pOutputBufferSize = 1000)
             : base(pInputOperatr, pOutputBufferSize)
         {
-            PropertyIdxList = pPropertyIdxList;
+            PropertiesList = pPropertiesList;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
-            foreach (var pair in PropertyIdxList)
+            foreach (var pair in PropertiesList)
             {
                 var propName = pair.Item1;
                 var propIdx = pair.Item2;
