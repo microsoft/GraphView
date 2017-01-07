@@ -282,6 +282,35 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+
+    internal class FilterOperator : GraphViewExecutionOperator
+    {
+        public GraphViewExecutionOperator Input { get; private set; }
+        public BooleanFunction Func { get; private set; }
+
+        public FilterOperator(GraphViewExecutionOperator input, BooleanFunction func)
+        {
+            Input = input;
+            Func = func;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord rec;
+            while (Input.State() && (rec = Input.Next()) != null)
+            {
+                if (Func.Evaluate(rec))
+                {
+                    return rec;
+                }
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            Input.ResetState();
             Open();
         }
     }
