@@ -214,7 +214,14 @@ namespace GraphView
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sinkId")));
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "edgeOffset")));
                 }
-                else
+                else if (PivotVariable is GremlinProjectVariable)
+                {
+                    foreach (var project in (PivotVariable as GremlinProjectVariable).ProjectKeys)
+                    {
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, project)));
+                    }
+                }
+                else 
                 {
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
                 }
