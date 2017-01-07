@@ -44,10 +44,12 @@ namespace GraphView
             List<string> results = new List<string>();
             foreach (var record in rawRecordResults)
             {
+                var recordString = "";
                 foreach (var fieldValue in record.fieldValues)
                 {
-                    results.Add(fieldValue + "  ");
+                    recordString += fieldValue + "  ";
                 }
+                results.Add(recordString);
             }
 
             return results;

@@ -125,6 +125,7 @@ namespace GraphView
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
         {
+            CurrentExecutionOperator = parentContext.CurrentExecutionOperator;
             TemporaryTableCollection = parentContext.TemporaryTableCollection;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
                 new WColumnReferenceExpressionComparer());
