@@ -357,7 +357,12 @@ namespace GraphView
 
     }
 
-    public partial class WBoundEdgeTableReference : WSchemaObjectFunctionTableReference
+    public partial class WBoundBothEdgeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WBoundOutEdgeTableReference : WSchemaObjectFunctionTableReference
     {
 
     }
@@ -376,7 +381,12 @@ namespace GraphView
 
     }
 
-    public partial class WBoundNodeTableReference : WSchemaObjectFunctionTableReference
+    public partial class WBoundBothNodeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WBoundOutNodeTableReference : WSchemaObjectFunctionTableReference
     {
 
     }

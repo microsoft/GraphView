@@ -31,6 +31,7 @@ namespace GremlinTranslationOperator.Tests
         public void TestModernGraph()
         {
             GraphViewConnection connection = null;
+            
             //GraphTraversal2.SetGraphViewConnection(connection);
             //GraphTraversal2.g().addV("person").property("age", "27").property("name", "vadas").next();
             //GraphTraversal2.g().addV("person").property("age", "29").property("name", "marko").next();
@@ -124,6 +125,62 @@ namespace GremlinTranslationOperator.Tests
 
 
             
+        }
+
+
+        [TestMethod]
+        public void InsertMarvelData()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelUniverse");
+
+            GraphTraversal2 graph = new GraphTraversal2(connection);
+
+            //Insert character
+            //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");
+            //foreach (string line in characterLines)
+            //{
+            //    var arr = line.Split('\"');
+            //    var id = arr[0].Substring(0, arr[0].Length - 1);
+            //    var name = arr[1];
+            //    graph.g().AddV("character").Property("id", id).Property("name", name).next();
+            //}
+
+            //Insert comicbook
+            //string[] comicbookLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\comicbook.txt");
+            //foreach (string line in comicbookLines)
+            //{
+            //    var arr = line.Split('\"');
+            //    var id = arr[0].Substring(0, arr[0].Length - 1);
+            //    var name = arr[1];
+            //    graph.g().AddV("comicbook").Property("id", id).Property("name", name).next();
+            //}
+
+            //Insert Edge
+            string[] edgeLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\edge.txt");
+            foreach (string line in edgeLines)
+            {
+                var arr = line.Split(' ');
+                var sourceId = arr[0];
+                for (var i = 1; i < arr.Length; i++)
+                {
+                    var sinkId = arr[i];
+                    graph.g().V().Has("id", sourceId).AddE("appeared").To(graph.g().V().Has("id", sinkId)).next();
+                }
+            }
+        }
+
+        [TestMethod]
+        public void testMarvel()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelUniverse");
+            GraphTraversal2 graph = new GraphTraversal2(connection);
+            var results = graph.g().V().next();
+
+
         }
     }
 }

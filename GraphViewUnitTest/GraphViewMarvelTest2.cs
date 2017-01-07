@@ -138,7 +138,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             //connection.ResetCollection();
             GraphTraversal2 graph = new GraphTraversal2(connection);
-
+            
             graph.g().V().AddV("character").Property("name", "VENUS II").Property("weapon", "shield").next();
             graph.g().V().AddV("comicbook").Property("name", "AVF 4").next();
             graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();

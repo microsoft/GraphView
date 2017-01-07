@@ -26,7 +26,7 @@ namespace GraphView
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("E", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("OutE", PropertyKeys, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
