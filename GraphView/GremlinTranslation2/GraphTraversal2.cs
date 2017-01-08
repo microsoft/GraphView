@@ -851,7 +851,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 __()
+        public static GraphTraversal2 __()
         {
             GraphTraversal2 newGraphTraversal = new GraphTraversal2();
             newGraphTraversal.AddGremlinOperator(new GremlinParentContextOp());

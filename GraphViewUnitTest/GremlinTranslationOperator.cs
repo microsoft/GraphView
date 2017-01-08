@@ -65,7 +65,7 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
             GraphTraversal2 graph = new GraphTraversal2(connection);
 
-            graph.g().V().Has("name", "ripple").Coalesce(graph.g().__().InE("created"), graph.g().__().InE("un")).OutV().next();
+            graph.g().V().Has("name", "ripple").Coalesce(GraphTraversal2.__().InE("created"), GraphTraversal2.__().InE("un")).OutV().next();
             //GraphTraversal2.g()
             //    .V().Out("jinjin").Optional(GraphTraversal2.__().Out("mdl").OutE().InV()).next();
 
@@ -142,7 +142,7 @@ namespace GremlinTranslationOperator.Tests
 
             GraphTraversal2 graph = new GraphTraversal2(connection);
 
-            graph.g().V().Has("name", "ripple").Project("both", "lang").By(graph.g().__().Both()).By(graph.g().__().Properties("lang")).next();
+            graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
 
             //Insert character
             //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");

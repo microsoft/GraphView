@@ -110,9 +110,7 @@ namespace GraphView
         public GremlinOptionalVertexVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
         {
             SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
-            VariableName = GenerateTableAlias();
         }
-
     }
 
     internal class GremlinOptionalEdgeVariable : GremlinEdgeTableVariable
@@ -120,7 +118,6 @@ namespace GraphView
         public GremlinOptionalEdgeVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
         {
             SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -129,7 +126,6 @@ namespace GraphView
         public GremlinOptionalTableVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
         {
             SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -138,7 +134,6 @@ namespace GraphView
         public GremlinOptionalScalarVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
         {
             SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
-            VariableName = GenerateTableAlias();
         }
     }
 }
