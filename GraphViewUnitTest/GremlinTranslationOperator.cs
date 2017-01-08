@@ -65,7 +65,7 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            graph.g().V().AddE().To(graph.g().V()).next();
+            graph.g().AddV().next();
 
             graph.g().V()
                 .Project("vertex", "parents", "references", "model")

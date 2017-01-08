@@ -29,7 +29,7 @@ namespace GraphView
 
             if (inputContext.PivotVariable == null)
             {
-                GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel);
+                GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel, true);
                 inputContext.VariableList.Add(newVariable);
                 inputContext.TableReferences.Add(newVariable);
                 inputContext.PivotVariable = newVariable;

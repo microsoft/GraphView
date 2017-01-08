@@ -430,5 +430,12 @@ namespace GraphView
             }
             return queryBlock;
         }
+
+        internal static WSelectQueryBlock GetSimpleSelectQueryBlock(string value)
+        {
+            var queryBlock = new WSelectQueryBlock();
+            queryBlock.SelectElements.Add(GetSelectScalarExpr(GetValueExpr(value)));
+            return queryBlock;
+        }
     }
 }

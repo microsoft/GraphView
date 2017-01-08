@@ -10,6 +10,7 @@ namespace GraphView
     {
         public Dictionary<string, object> Properties { get; set; }
         public string VertexLabel { get; set; }
+        public bool IsFirstTableReference { get; set; }
 
         //public override List<WSqlStatement> ToSetVariableStatements()
         //{
@@ -68,15 +69,17 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
+            var firstTableRef = IsFirstTableReference ? SqlUtil.GetDerivedTable(SqlUtil.GetSimpleSelectQueryBlock("1"), "hack") : null;
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddV, parameters, VariableName);
 
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(firstTableRef, secondTableRef);
         }
 
-        public GremlinAddVVariable(string vertexLabel)
+        public GremlinAddVVariable(string vertexLabel, bool isFirstTableReference = false)
         {
             Properties = new Dictionary<string, object>();
             VertexLabel = vertexLabel;
+            IsFirstTableReference = isFirstTableReference;
         }
 
         public GremlinAddVVariable()
