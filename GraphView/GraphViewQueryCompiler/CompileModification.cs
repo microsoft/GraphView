@@ -7,6 +7,55 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    partial class WAddVTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            List<string> projectedField;
+            var nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
+
+            GraphViewExecutionOperator insertNodeOp = new InsertNodeOperator2(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
+            context.CurrentExecutionOperator = insertNodeOp;
+
+            foreach (var columnName in projectedField)
+            {
+                // TODO: Change to correct ColumnGraphType
+                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+            }
+
+            return insertNodeOp;
+        }
+    }
+
+    partial class WAddETableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            List<string> projectedField;
+            var edgeJsonDocument = ConstructEdgeJsonDocument(out projectedField);
+
+            var srcSubQuery = Parameters[0] as WScalarSubquery;
+            var sinkSubQuery = Parameters[1] as WScalarSubquery;
+            if (srcSubQuery == null || sinkSubQuery == null)
+                throw new SyntaxErrorException("The first and second parameters of AddE can only be WScalarSubquery.");
+
+            var srcSubQueryFunction = srcSubQuery.CompileToFunction(context, dbConnection);
+            var sinkSubQueryFunction = sinkSubQuery.CompileToFunction(context, dbConnection);
+
+            GraphViewExecutionOperator insertEdgeOp = new InsertEdgeOperator2(context.CurrentExecutionOperator,
+                dbConnection, srcSubQueryFunction, sinkSubQueryFunction, edgeJsonDocument, projectedField);
+            context.CurrentExecutionOperator = insertEdgeOp;
+
+            foreach (var columnName in projectedField)
+            {
+                // TODO: Change to correct ColumnGraphType
+                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+            }
+
+            return insertEdgeOp;
+        }
+    }
+
     partial class WInsertNodeSpecification
     {
         /// <summary>
@@ -133,32 +182,32 @@ namespace GraphView
             return InsertOp;
         }
 
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
-            var srcTableVariable = SelectQueryBlock.FromClause.TableReferences[0] as WVariableTableReference;
-            var sinkTableVariable = SelectQueryBlock.FromClause.TableReferences[1] as WVariableTableReference;
+        //internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        //{
+        //    var SelectQueryBlock = SelectInsertSource.Select as WSelectQueryBlock;
+        //    var srcTableVariable = SelectQueryBlock.FromClause.TableReferences[0] as WVariableTableReference;
+        //    var sinkTableVariable = SelectQueryBlock.FromClause.TableReferences[1] as WVariableTableReference;
 
-            if (srcTableVariable == null || sinkTableVariable == null)
-                throw new SyntaxErrorException("Both table references in the InsertEdgeSpecification can only be a table variable");
+        //    if (srcTableVariable == null || sinkTableVariable == null)
+        //        throw new SyntaxErrorException("Both table references in the InsertEdgeSpecification can only be a table variable");
 
-            Tuple<TemporaryTableHeader, GraphViewExecutionOperator> srcTableTuple, sinkTableTuple;
-            if (!context.TemporaryTableCollection.TryGetValue(srcTableVariable.Variable.Name, out srcTableTuple))
-                throw new SyntaxErrorException("Table variable " + srcTableVariable.Variable.Name + " doesn't exist in the context.");
-            if (!context.TemporaryTableCollection.TryGetValue(sinkTableVariable.Variable.Name, out sinkTableTuple))
-                throw new SyntaxErrorException("Table variable " + sinkTableVariable.Variable.Name + " doesn't exist in the context.");
+        //    Tuple<TemporaryTableHeader, GraphViewExecutionOperator> srcTableTuple, sinkTableTuple;
+        //    if (!context.TemporaryTableCollection.TryGetValue(srcTableVariable.Variable.Name, out srcTableTuple))
+        //        throw new SyntaxErrorException("Table variable " + srcTableVariable.Variable.Name + " doesn't exist in the context.");
+        //    if (!context.TemporaryTableCollection.TryGetValue(sinkTableVariable.Variable.Name, out sinkTableTuple))
+        //        throw new SyntaxErrorException("Table variable " + sinkTableVariable.Variable.Name + " doesn't exist in the context.");
 
-            string edgeBaseString = ConstructEdge();
+        //    string edgeBaseString = ConstructEdge();
 
-            InsertEdgeOperator2 insertEdgeOp = new InsertEdgeOperator2(dbConnection, srcTableTuple.Item2,
-                sinkTableTuple.Item2, edgeBaseString);
+        //    InsertEdgeOperator2 insertEdgeOp = new InsertEdgeOperator2(dbConnection, srcTableTuple.Item2,
+        //        sinkTableTuple.Item2, edgeBaseString);
 
-            context.AddField("", "sourceId", ColumnGraphType.VertexId);
-            context.AddField("", "sinkId", ColumnGraphType.VertexId);
-            context.AddField("", "edgeOffset", ColumnGraphType.EdgeOffset);
+        //    context.AddField("", "sourceId", ColumnGraphType.VertexId);
+        //    context.AddField("", "sinkId", ColumnGraphType.VertexId);
+        //    context.AddField("", "edgeOffset", ColumnGraphType.EdgeOffset);
 
-            return insertEdgeOp;
-        }
+        //    return insertEdgeOp;
+        //}
     }
 
     partial class WInsertEdgeFromTwoSourceSpecification

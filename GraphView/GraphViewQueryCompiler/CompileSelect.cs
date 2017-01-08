@@ -1392,10 +1392,10 @@ namespace GraphView
                 operatorChain.Add(orderByOp);
             }
 
-            var projectOperator = new ProjectOperator(operatorChain.Last());
+            var projectOperator = new ProjectOperator(operatorChain.Any() ? operatorChain.Last() : context.OuterContextOp);
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
-            if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression))
+            if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression || e.SelectExpr is WValueExpression))
             {
                 foreach (var expr in selectScalarExprList)
                 {
@@ -1411,7 +1411,14 @@ namespace GraphView
                     var alias = expr.ColumnName;
                     WColumnReferenceExpression columnReference;
                     if (alias == null)
+                    {
                         columnReference = expr.SelectExpr as WColumnReferenceExpression;
+                        if (columnReference == null)
+                        {
+                            var value = expr.SelectExpr as WValueExpression;
+                            columnReference = new WColumnReferenceExpression("", value.Value);
+                        }
+                    }
                     else
                         columnReference = new WColumnReferenceExpression("", alias);
                     context.RawRecordLayout.Add(columnReference, i++);

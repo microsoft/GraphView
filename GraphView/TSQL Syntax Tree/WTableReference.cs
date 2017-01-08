@@ -428,12 +428,51 @@ namespace GraphView
 
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
+        public string ConstructEdgeJsonDocument(out List<string> projectedFieldList)
+        {
+            string edgeJsonDocument = "{}";
+            projectedFieldList = new List<string> { "_sink", "_ID" };
+            edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_ID").ToString();
+            edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_reverse_ID").ToString();
+            edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_sink").ToString();
 
+
+            for (var i = 2; i < Parameters.Count; i += 2)
+            {
+                var key = (Parameters[i] as WValueExpression).Value;
+                var value = (Parameters[i + 1] as WValueExpression).ToString();
+                edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, value, key).ToString();
+
+                if (!projectedFieldList.Contains(key))
+                    projectedFieldList.Add(key);
+            }
+
+            return edgeJsonDocument;
+        }
     }
 
     public partial class WAddVTableReference : WSchemaObjectFunctionTableReference
     {
+        public string ConstructNodeJsonDocument(out List<string> projectedFieldList)
+        {
+            string nodeJsonDocument = "{}";
+            projectedFieldList = new List<string> { "id", "_edge", "_reverse_edge" };
 
+            for (var i = 0; i < Parameters.Count; i += 2)
+            {
+                var key = (Parameters[i] as WValueExpression).Value;
+                var value = (Parameters[i + 1] as WValueExpression).ToString();
+                nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, value, key).ToString();
+
+                if (!projectedFieldList.Contains(key))
+                    projectedFieldList.Add(key);
+            }
+
+            nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
+            nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
+
+            return nodeJsonDocument;
+        }
     }
 
     public partial class WSideEffectTableReference : WSchemaObjectFunctionTableReference
