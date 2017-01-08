@@ -317,6 +317,12 @@ namespace GraphView
                 case "project":
                     funcTableRef = new WProjectTableReference();
                     break;
+                case "addV":
+                    funcTableRef = new WAddVTableReference();
+                    break;
+                case "addE":
+                    funcTableRef = new WAddETableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

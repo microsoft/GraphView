@@ -15,8 +15,8 @@ namespace GraphView
             return "AddE_" + _count++;
         }
 
-        public GremlinVariableReference FromVariable { get; set; }
-        public GremlinVariableReference ToVariable { get; set; }
+        public GremlinVertexTableVariable FromVariable { get; set; }
+        public GremlinVertexTableVariable ToVariable { get; set; }
         public Dictionary<string, object> Properties { get; set; }
         public string EdgeLabel { get; set; }
 
@@ -56,14 +56,6 @@ namespace GraphView
                 selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
             }
 
-            //hack
-            string temp = "\"label\", \"" + EdgeLabel + "\"";
-            foreach (var property in Properties)
-            {
-                temp += ", \"" + property.Key + "\", \"" + property.Value + "\"";
-            }
-            //=====
-
             var insertStatement = new WInsertSpecification()
             {
                 Columns = columnK,
@@ -89,7 +81,7 @@ namespace GraphView
             return statementList;
         }
 
-        public GremlinAddEVariable(string edgeLabel, GremlinVariableReference currVariable)
+        public GremlinAddEVariable(string edgeLabel, GremlinVertexTableVariable currVariable)
         {
             Properties = new Dictionary<string, object>();
 
@@ -109,18 +101,18 @@ namespace GraphView
             GremlinVariableReference newVariableReference;
             var index = currentContext.SetVariables.FindIndex(p => p == this);
 
-            if (fromVertexContext.PivotVariable is GremlinAddVVariable)
-            {
-                FromVariable = fromVertexContext.PivotVariable as GremlinAddVVariable;
-                currentContext.SetVariables.InsertRange(index, fromVertexContext.SetVariables);
-            }
-            else
-            {
-                newVariableReference = new GremlinVariableReference(fromVertexContext);
-                currentContext.VariableList.Add(newVariableReference);
-                currentContext.SetVariables.Insert(index, newVariableReference);
-                FromVariable = newVariableReference;
-            }
+            //if (fromVertexContext.PivotVariable is GremlinAddVVariable)
+            //{
+            //    FromVariable = fromVertexContext.PivotVariable as GremlinAddVVariable;
+            //    currentContext.SetVariables.InsertRange(index, fromVertexContext.SetVariables);
+            //}
+            //else
+            //{
+            //    newVariableReference = new GremlinVariableReference(fromVertexContext);
+            //    currentContext.VariableList.Add(newVariableReference);
+            //    currentContext.SetVariables.Insert(index, newVariableReference);
+            //    FromVariable = newVariableReference;
+            //}
         }
 
         internal override void InV(GremlinToSqlContext currentContext)
@@ -145,18 +137,18 @@ namespace GraphView
         {
             var index = currentContext.SetVariables.FindIndex(p => p == this);
 
-            if (toVertexContext.PivotVariable is GremlinAddVVariable)
-            {
-                ToVariable = toVertexContext.PivotVariable as GremlinAddVVariable;
-                currentContext.SetVariables.InsertRange(index, toVertexContext.SetVariables);
-            }
-            else
-            {
-                GremlinVariableReference newVariableReference = new GremlinVariableReference(toVertexContext);
-                currentContext.VariableList.Add(newVariableReference);
-                currentContext.SetVariables.Insert(index, newVariableReference);
-                ToVariable = newVariableReference;
-            }
+            //if (toVertexContext.PivotVariable is GremlinAddVVariable)
+            //{
+            //    ToVariable = toVertexContext.PivotVariable as GremlinAddVVariable;
+            //    currentContext.SetVariables.InsertRange(index, toVertexContext.SetVariables);
+            //}
+            //else
+            //{
+            //    GremlinVariableReference newVariableReference = new GremlinVariableReference(toVertexContext);
+            //    currentContext.VariableList.Add(newVariableReference);
+            //    currentContext.SetVariables.Insert(index, newVariableReference);
+            //    ToVariable = newVariableReference;
+            //}
         }
 
         internal override void OutV(GremlinToSqlContext currentContext)

@@ -12,25 +12,26 @@ namespace GraphView
                                                   GremlinToSqlContext repeatContext,
                                                   RepeatCondition repeatCondition)
         {
+            var contextVariable = GremlinContextVariable.Create(inputVariable);
             switch (repeatContext.PivotVariable.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    return new GremlinRepeatVertexVariable(inputVariable, repeatContext, repeatCondition);
+                    return new GremlinRepeatVertexVariable(contextVariable, repeatContext, repeatCondition);
                 case GremlinVariableType.Edge:
-                    return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
+                    return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
                 case GremlinVariableType.Scalar:
-                    return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
+                    return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
                 case GremlinVariableType.Table:
-                    return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
+                    return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
             }
             throw new NotImplementedException();
         }
 
-        public GremlinVariable InputVariable { get; set; }
+        public GremlinContextVariable InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
 
-        public GremlinRepeatVariable(GremlinVariable inputVariable, GremlinToSqlContext repeatContext,
+        public GremlinRepeatVariable(GremlinContextVariable inputVariable, GremlinToSqlContext repeatContext,
                                     RepeatCondition repeatCondition)
         {
             RepeatContext = repeatContext;
@@ -114,7 +115,7 @@ namespace GraphView
                         var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
                         if (selectVar != temp.ContextVariable)
                         {
-                            foreach (var property in temp.ContextVariable.UsedProperties)
+                            foreach (var property in temp.UsedProperties)
                             {
                                 selectVar.Populate(property);
                                 var alias = temp.ContextVariable.VariableName + "." + property;
@@ -132,7 +133,7 @@ namespace GraphView
 
     internal class GremlinRepeatVertexVariable : GremlinVertexTableVariable
     {
-        public GremlinRepeatVertexVariable(GremlinVariable inputVariable,
+        public GremlinRepeatVertexVariable(GremlinContextVariable inputVariable,
                                            GremlinToSqlContext repeatContext,
                                            RepeatCondition repeatCondition)
         {
@@ -142,7 +143,7 @@ namespace GraphView
 
     internal class GremlinRepeatEdgeVariable : GremlinEdgeTableVariable
     {
-        public GremlinRepeatEdgeVariable(GremlinVariable inputVariable,
+        public GremlinRepeatEdgeVariable(GremlinContextVariable inputVariable,
                                            GremlinToSqlContext repeatContext,
                                            RepeatCondition repeatCondition)
         {
@@ -152,7 +153,7 @@ namespace GraphView
 
     internal class GremlinRepeatScalarVariable : GremlinScalarTableVariable
     {
-        public GremlinRepeatScalarVariable(GremlinVariable inputVariable,
+        public GremlinRepeatScalarVariable(GremlinContextVariable inputVariable,
                                            GremlinToSqlContext repeatContext,
                                            RepeatCondition repeatCondition)
         {
@@ -162,7 +163,7 @@ namespace GraphView
 
     internal class GremlinRepeatTableVariable : GremlinTableVariable
     {
-        public GremlinRepeatTableVariable(GremlinVariable inputVariable,
+        public GremlinRepeatTableVariable(GremlinContextVariable inputVariable,
                                            GremlinToSqlContext repeatContext,
                                            RepeatCondition repeatCondition)
         {

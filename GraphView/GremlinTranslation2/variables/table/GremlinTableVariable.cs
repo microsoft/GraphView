@@ -48,10 +48,6 @@ namespace GraphView
             {
                 ProjectedProperties.Add(property);
             }
-            if (!UsedProperties.Contains(property))
-            {
-                UsedProperties.Add(property);
-            }
             SqlTableVariable?.Populate(property);
         }
 

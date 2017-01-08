@@ -64,23 +64,23 @@ namespace GraphView
             //GremlinVariable pivotVariable = currentContext.PivotVariable;
             currentContext.Reset();
 
-            GremlinAddEVariable newVariable = null;
-            if (this is GremlinAddVVariable)
-            {
-                newVariable = new GremlinAddEVariable(edgeLabel, this as GremlinAddVVariable);
-            }
-            else
-            {
-                var variableRef = new GremlinVariableReference(copyContext);
-                currentContext.VariableList.Add(variableRef);
-                currentContext.SetVariables.Add(variableRef);
-                newVariable = new GremlinAddEVariable(edgeLabel, variableRef);
-            }
+            //GremlinAddEVariable newVariable = null;
+            //if (this is GremlinAddVVariable)
+            //{
+            //    newVariable = new GremlinAddEVariable(edgeLabel, this as GremlinAddVVariable);
+            //}
+            //else
+            //{
+            //    var variableRef = new GremlinVariableReference(copyContext);
+            //    currentContext.VariableList.Add(variableRef);
+            //    currentContext.SetVariables.Add(variableRef);
+            //    newVariable = new GremlinAddEVariable(edgeLabel, variableRef);
+            //}
             
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetVariables.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
+            //currentContext.VariableList.Add(newVariable);
+            //currentContext.TableReferences.Add(newVariable);
+            //currentContext.SetVariables.Add(newVariable);
+            //currentContext.PivotVariable = newVariable;
         }
 
         //internal virtual void addInE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)

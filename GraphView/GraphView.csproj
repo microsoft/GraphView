@@ -148,7 +148,7 @@
     <Compile Include="GremlinTranslation2\GremlinMatchPath.cs" />
     <Compile Include="GremlinTranslation2\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\scalar\GremlinContextScalarVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\context\GremlinContextScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinSqlTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinLocalVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\derived\GremlinDerivedTableVariable.cs" />
