@@ -296,6 +296,7 @@ namespace GraphView
         {
             Input = input;
             Func = func;
+            Open();
         }
 
         public override RawRecord Next()
@@ -668,6 +669,7 @@ namespace GraphView
         {
             this.inputOp = inputOp;
             aggregationSpecs = new List<Tuple<IAggregateFunction, List<int>>>();
+            Open();
         }
 
         public void AddAggregateSpec(IAggregateFunction aggrFunc, List<int> aggrInputIndexes)
@@ -732,8 +734,9 @@ namespace GraphView
             this.inputOp = inputOp;
             this.flatMapTraversal = flatMapTraversal;
             this.contextOp = contextOp;
-
+            
             outputBuffer = new Queue<RawRecord>();
+            Open();
         }
 
         public override RawRecord Next()
@@ -808,6 +811,7 @@ namespace GraphView
             this.contextOp = contextOp;
 
             outputBuffer = new Queue<RawRecord>();
+            Open();
         }
 
         public override RawRecord Next()
@@ -890,6 +894,7 @@ namespace GraphView
             this.contextOp = contextOp;
 
             outputBuffer = new Queue<RawRecord>();
+            Open();
         }
 
         public override RawRecord Next()
@@ -968,6 +973,7 @@ namespace GraphView
             this.inputOp = inputOp;
             traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
             traversalOutputBuffer = new Queue<RawRecord>();
+            Open();
         }
 
         public void AddTraversal(ConstantSourceOperator contextOp, GraphViewExecutionOperator traversal)
@@ -1081,6 +1087,7 @@ namespace GraphView
             startFromContext = false;
 
             repeatResultBuffer = new Queue<RawRecord>();
+            Open();
         }
 
         public RepeatOperator(

@@ -1979,7 +1979,7 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select column epxressions.");
                 }
-                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             context.CurrentExecutionOperator = coalesceOp;
@@ -2026,7 +2026,7 @@ namespace GraphView
             // are specified by the select elements of the input subqueries.
             foreach (WColumnReferenceExpression columnRef in columnList)
             {
-                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             return optionalOp;
@@ -2060,7 +2060,7 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be column references.");
                 }
-                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
@@ -2100,7 +2100,7 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be column references.");
                 }
-                context.AddField(Alias.ToString(), columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
