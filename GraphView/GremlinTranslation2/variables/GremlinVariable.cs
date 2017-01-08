@@ -13,7 +13,7 @@ namespace GraphView
     }
     internal interface ISqlTable
     {
-        WTableReference ToTableReference();
+        WTableReference ToTableReference(List<string> projectProperties, string tableName);
     }
 
     internal interface ISqlScalar
@@ -35,7 +35,7 @@ namespace GraphView
     internal abstract class GremlinVariable
     {
         public string VariableName { get; set; }
-        public List<string> UsedProperties { get;set; }
+        public List<string> UsedProperties { get; set; }
         public int Low { get; set; }
         public int High { get; set; }
 
@@ -521,7 +521,7 @@ namespace GraphView
 
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
-            GremlinOptionalVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
+            GremlinTableVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetVariables.AddRange(optionalContext.SetVariables);

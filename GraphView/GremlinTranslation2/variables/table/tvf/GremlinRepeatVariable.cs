@@ -15,7 +15,6 @@ namespace GraphView
         public GremlinRepeatVariable(GremlinVariable inputVariable, GremlinToSqlContext repeatContext,
                                     RepeatCondition repeatCondition)
         {
-            VariableName = GenerateTableAlias();
             RepeatContext = repeatContext;
             InputVariable = inputVariable;
             RepeatCondition = repeatCondition;
@@ -110,7 +109,6 @@ namespace GraphView
                                     property);
                                 outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
                             }
-
                         }
                     }
                 }

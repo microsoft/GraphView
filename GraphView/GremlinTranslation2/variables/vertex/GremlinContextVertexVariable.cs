@@ -17,10 +17,12 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            ContextVariable.Populate("BothAdjacencyList");
+            ContextVariable.Populate("_reverse_edge");
+            ContextVariable.Populate("_edge");
 
-            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "BothAdjacencyList");
-            GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList, WEdgeType.BothEdge);
+            GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
+            GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjEdge, adjReverseEdge, WEdgeType.BothEdge);
             bothEdge.Populate("_sink");
             currentContext.VariableList.Add(bothEdge);
             currentContext.TableReferences.Add(bothEdge);
@@ -30,6 +32,21 @@ namespace GraphView
             currentContext.VariableList.Add(bothVertex);
             currentContext.TableReferences.Add(bothVertex);
             currentContext.PivotVariable = bothVertex;
+        }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            ContextVariable.Populate("_reverse_edge");
+            ContextVariable.Populate("_edge");
+
+            GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
+            GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjEdge, adjReverseEdge, WEdgeType.BothEdge);
+            bothEdge.Populate("_sink");
+            currentContext.VariableList.Add(bothEdge);
+            currentContext.TableReferences.Add(bothEdge);
+            currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
+            currentContext.PivotVariable = bothEdge;
         }
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)

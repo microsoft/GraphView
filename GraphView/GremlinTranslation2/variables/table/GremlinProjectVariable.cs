@@ -25,6 +25,15 @@ namespace GraphView
             }
         }
 
+        internal override void Populate(string property)
+        {
+            SubqeryContext.Populate(property);
+            foreach (var context in ProjectContextList)
+            {
+                context.Populate(property);
+            }
+        }
+
         internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
         {
             byTraversal.GetStartOp().InheritedVariableFromParent(SubqeryContext);

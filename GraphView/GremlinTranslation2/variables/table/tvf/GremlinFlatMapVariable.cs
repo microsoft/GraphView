@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinFlatMapVariable: GremlinTableVariable
+    internal class GremlinFlatMapVariable: GremlinSqlTableVariable
     {
         public GremlinToSqlContext FlatMapContext { get; set; }
 
@@ -28,15 +28,19 @@ namespace GraphView
 
         public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext)
         {
-            VariableName = GenerateTableAlias();
             FlatMapContext = flatMapContext;
         }
 
-        public override WTableReference ToTableReference()
+        internal override void Populate(string property)
+        {
+            FlatMapContext.Populate(property);
+        }
+
+        public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(ProjectedProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("flatMap", PropertyKeys, VariableName);
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(projectProperties)));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("flatMap", PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -46,7 +50,7 @@ namespace GraphView
     {
         public GremlinFlatMapVertexVariable(GremlinToSqlContext flatMapContext)
         {
-            InnerVariable = new GremlinFlatMapVariable(flatMapContext);
+            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
         }
     }
 
@@ -54,7 +58,23 @@ namespace GraphView
     {
         public GremlinFlatMapEdgeVariable(GremlinToSqlContext flatMapContext)
         {
-            InnerVariable = new GremlinFlatMapVariable(flatMapContext);
+            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
+        }
+    }
+
+    internal class GremlinFlatMapScalarVariable : GremlinEdgeTableVariable
+    {
+        public GremlinFlatMapScalarVariable(GremlinToSqlContext flatMapContext)
+        {
+            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
+        }
+    }
+
+    internal class GremlinFlatMapTableVariable : GremlinEdgeTableVariable
+    {
+        public GremlinFlatMapTableVariable(GremlinToSqlContext flatMapContext)
+        {
+            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
         }
     }
 }
