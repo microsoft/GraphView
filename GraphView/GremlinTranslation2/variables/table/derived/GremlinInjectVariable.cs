@@ -12,27 +12,14 @@ namespace GraphView
     /// </summary>
     internal class GremlinInjectVariable : GremlinTableVariable
     {
-        protected static int _count = 0;
-
-        internal override string GenerateTableAlias()
-        {
-            return "Inject_" + _count++;
-        }
-
         List<object> rows;
         // When priorContext is null, the corresponding table reference only contains injected values. 
         GremlinToSqlContext priorContext;
 
         public GremlinInjectVariable(GremlinToSqlContext priorContext, List<object> values)
         {
-            VariableName = GenerateTableAlias();
             this.priorContext = priorContext;
             rows = values;
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return GremlinVariableType.Table;
         }
 
         public override WTableReference ToTableReference()
@@ -61,11 +48,6 @@ namespace GraphView
                 VariableName = GenerateTableAlias();
                 return new GremlinVariableProperty(this, "_value");
             }
-        }
-
-        public List<WSelectElement> ToPopulateProjection()
-        {
-            return null;
         }
 
         internal override void Populate(string property)

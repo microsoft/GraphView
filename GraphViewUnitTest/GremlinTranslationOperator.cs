@@ -63,7 +63,7 @@ namespace GremlinTranslationOperator.Tests
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelUniverse");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().V().Has("name", "ripple").Coalesce(GraphTraversal2.__().InE("created"), GraphTraversal2.__().InE("un")).OutV().next();
             //GraphTraversal2.g()
@@ -140,9 +140,9 @@ namespace GremlinTranslationOperator.Tests
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelUniverse");
 
-            GraphTraversal2 graph = new GraphTraversal2(connection);
-            var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().OutE().Properties("label")).next();
-            //graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
+            GraphViewCommand graph = new GraphViewCommand(connection); 
+            //var results = graph.g().V().Has("type", "University").Union(GraphTraversal2.__().Properties("label", "type"), GraphTraversal2.__().OutE().Properties("label")).next();
+            graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
 
             //Insert character
             //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");
@@ -184,7 +184,7 @@ namespace GremlinTranslationOperator.Tests
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelUniverse");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().next();
 
 

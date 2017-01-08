@@ -858,11 +858,6 @@ namespace GraphView
             return newGraphTraversal;
         }
 
-        public GraphTraversal2 g()
-        {
-            return new GraphTraversal2(Connection); ;
-        }
-
         public List<object> toList()
         {
             //TODO

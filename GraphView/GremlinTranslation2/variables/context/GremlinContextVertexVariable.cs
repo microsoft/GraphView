@@ -54,7 +54,7 @@ namespace GraphView
             ContextVariable.Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
-            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
@@ -83,7 +83,7 @@ namespace GraphView
             ContextVariable.Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
-            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
             outEdge.Populate("_sink");
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);

@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinProjectVariable: GremlinTableVariable
+    internal class GremlinProjectVariable: GremlinScalarTableVariable
     {
-        public GremlinToSqlContext SubqeryContext { get; set; }
+        public GremlinToSqlContext ParentContext { get; set; }
         public List<string> ProjectKeys { get; set; }
         public List<GremlinToSqlContext> ProjectContextList { get; set; }
 
-        public GremlinProjectVariable(GremlinToSqlContext subqueryContext, List<string> projectKeys)
+        public GremlinProjectVariable(GremlinToSqlContext parentContext, List<string> projectKeys)
         {
-            VariableName = GenerateTableAlias();
-            SubqeryContext = subqueryContext;
+            ParentContext = parentContext;
+
             ProjectKeys = new List<string>(projectKeys);
             ProjectContextList = new List<GremlinToSqlContext>();
 
@@ -27,7 +27,6 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            SubqeryContext.Populate(property);
             foreach (var context in ProjectContextList)
             {
                 context.Populate(property);
@@ -36,26 +35,23 @@ namespace GraphView
 
         internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
         {
-            byTraversal.GetStartOp().InheritedVariableFromParent(SubqeryContext);
+            byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
             GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-            currentContext.SetVariables.AddRange(byContext.SetVariables);
             ProjectContextList.Add(byContext);
         }
 
         public override WTableReference ToTableReference()
         {
-            WSelectQueryBlock selectQueryBlock = SubqeryContext.ToSelectQueryBlock();
-            selectQueryBlock.SelectElements.Clear();
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
 
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
-                WSelectQueryBlock projectQueryBlock = ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock();
-                WScalarExpression scalarExpr = SqlUtil.GetScalarSubquery(projectQueryBlock);
-                WSelectScalarExpression selectScalarExpr = SqlUtil.GetSelectScalarExpr(scalarExpr, ProjectKeys[i]);
-                selectQueryBlock.SelectElements.Add(selectScalarExpr);
+                parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
+                parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }
+            var secondTableRef = SqlUtil.GetFunctionTableReference("project", parameters, VariableName);
 
-            return SqlUtil.GetDerivedTable(selectQueryBlock, VariableName);
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 }

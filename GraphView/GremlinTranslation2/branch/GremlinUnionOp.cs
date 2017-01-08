@@ -27,7 +27,7 @@ namespace GraphView
             List<GremlinToSqlContext> unionContexts = new List<GremlinToSqlContext>();
             foreach (var traversal in UnionTraversals)
             {
-                traversal.GetStartOp().InheritedContextFromParent(inputContext);
+                traversal.GetStartOp().InheritedVariableFromParent(inputContext);
                 unionContexts.Add(traversal.GetEndOp().GetContext());
             }
             

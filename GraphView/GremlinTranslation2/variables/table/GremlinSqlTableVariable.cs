@@ -10,7 +10,7 @@ namespace GraphView {
     {
         internal virtual void Populate(string property)
         {
-            
+            throw new NotImplementedException();
         }
 
         public virtual WTableReference ToTableReference(List<string> projectProperties, string tableName)

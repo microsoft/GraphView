@@ -11,7 +11,7 @@ namespace GraphView
     /// the FROM clause, whereas a bound vertex variable is translated into
     /// a table-valued function following a prior table-valued function producing vertex references. 
     /// </summary>
-    internal class GremlinBoundVertexVariable : GremlinVertexVariable
+    internal class GremlinBoundVertexVariable : GremlinVertexTableVariable
     {
         private GremlinVariableProperty vertexId;
 
@@ -31,7 +31,6 @@ namespace GraphView
 
         public GremlinBoundVertexVariable(GremlinVariableProperty vertexId)
         {
-            VariableName = GenerateTableAlias();
             this.vertexId = vertexId;
         }
     }

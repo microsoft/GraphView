@@ -243,7 +243,7 @@ namespace GraphView
             };
         }
 
-        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeVariable edge)
+        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeTableVariable edge)
         {
             return new WEdgeColumnReferenceExpression()
             {
@@ -310,6 +310,12 @@ namespace GraphView
                     break;
                 case "unfold":
                     funcTableRef = new WUnfoldTableReference();
+                    break;
+                case "union":
+                    funcTableRef = new WUnionTableReference();
+                    break;
+                case "project":
+                    funcTableRef = new WProjectTableReference();
                     break;
                 default:
                     throw new NotImplementedException();

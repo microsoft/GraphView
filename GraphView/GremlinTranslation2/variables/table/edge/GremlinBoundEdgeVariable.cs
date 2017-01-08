@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinBoundEdgeVariable : GremlinEdgeVariable
+    internal class GremlinBoundEdgeVariable : GremlinEdgeTableVariable
     {
         protected static int _count = 0;
 
@@ -16,11 +16,6 @@ namespace GraphView
         }
 
         private List<GremlinVariableProperty> variablePropertyList;
-
-        internal override GremlinScalarVariable DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
-        }
 
         public override WTableReference ToTableReference()
         {
@@ -42,7 +37,6 @@ namespace GraphView
         public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjEdge, WEdgeType edgeType = WEdgeType.OutEdge)
         {
             SourceVariable = sourceVariable;
-            VariableName = GenerateTableAlias();
             variablePropertyList = new List<GremlinVariableProperty>();
             variablePropertyList.Add(adjEdge);
             EdgeType = edgeType;
@@ -50,16 +44,10 @@ namespace GraphView
         public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType = WEdgeType.BothEdge)
         {
             SourceVariable = sourceVariable;
-            VariableName = GenerateTableAlias();
             variablePropertyList = new List<GremlinVariableProperty>();
             variablePropertyList.Add(adjEdge);
             variablePropertyList.Add(adjReverseEdge);
             EdgeType = edgeType;
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return GremlinVariableType.Edge;
         }
 
         internal override void InV(GremlinToSqlContext currentContext)

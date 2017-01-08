@@ -38,9 +38,9 @@ namespace GraphView
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
-            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(projectProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("local", PropertyKeys, tableName);
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(projectProperties)));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("local", parameters, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

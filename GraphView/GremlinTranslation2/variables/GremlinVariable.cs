@@ -569,7 +569,6 @@ namespace GraphView
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys)
         {
             GremlinProjectVariable newVariable = new GremlinProjectVariable(currentContext.Duplicate(), projectKeys);
-            currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -607,7 +606,7 @@ namespace GraphView
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
                                      RepeatCondition repeatCondition)
         {
-            GremlinRepeatVariable newVariable = new GremlinRepeatVariable(this, repeatContext, repeatCondition);
+            GremlinTableVariable newVariable = GremlinRepeatVariable.Create(this, repeatContext, repeatCondition);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -765,19 +764,9 @@ namespace GraphView
 
         internal virtual void Union(ref GremlinToSqlContext currentContext, List<GremlinToSqlContext> unionContexts)
         {
-            if (unionContexts.Count == 0)
-            {
-                throw new NotImplementedException();
-            }
-            if (unionContexts.Count == 1)
-            {
-                currentContext = unionContexts.First();
-                return;
-            }
-            GremlinUnionVariable newVariable = new GremlinUnionVariable(unionContexts);
+            GremlinTableVariable newVariable = GremlinUnionVariable.Create(unionContexts);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
-            currentContext.SetVariables.Add(newVariable);
             currentContext.PivotVariable = newVariable;
         }
 

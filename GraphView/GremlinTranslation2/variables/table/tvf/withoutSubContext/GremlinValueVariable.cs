@@ -13,7 +13,6 @@ namespace GraphView
         public GremlinValueVariable(GremlinVariableProperty projectVariable)
         {
             ProjectVariable = projectVariable;
-            VariableName = GenerateTableAlias();
         }
 
         public override WTableReference ToTableReference()

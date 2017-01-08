@@ -248,5 +248,10 @@ namespace GraphView
         {
             Command.Dispose();
         }
+
+        public GraphTraversal2 g()
+        {
+            return new GraphTraversal2(GraphViewConnection);
+        }
     }
 }

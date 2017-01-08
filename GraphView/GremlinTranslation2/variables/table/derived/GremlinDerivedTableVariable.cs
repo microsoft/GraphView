@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Deployment.Internal;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,7 +14,11 @@ namespace GraphView
         public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext)
         {
             SubqueryContext = subqueryContext;
-            VariableName = GenerateTableAlias();
+        }
+
+        internal override void Populate(string property)
+        {
+            SubqueryContext.Populate(property);
         }
 
         public override WTableReference ToTableReference()

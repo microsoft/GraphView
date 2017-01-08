@@ -32,7 +32,14 @@ namespace GraphView
 
         public virtual WTableReference ToTableReference()
         {
-            return SqlTableVariable?.ToTableReference(ProjectedProperties, VariableName);
+            if (SqlTableVariable != null)
+            {
+                return SqlTableVariable.ToTableReference(ProjectedProperties, VariableName);
+            }
+            else
+            {
+                throw  new NotImplementedException();
+            }
         }
 
         internal override void Populate(string property)
@@ -94,7 +101,7 @@ namespace GraphView
             Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
@@ -153,7 +160,7 @@ namespace GraphView
             Populate("_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
-            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             outEdge.Populate("_sink");
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);
@@ -217,7 +224,7 @@ namespace GraphView
     {
         internal override GremlinScalarVariable DefaultProjection()
         {
-            return new GremlinVariableProperty(this, "id");
+            return new GremlinVariableProperty(this, GremlinKeyword.NodeID);
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -228,9 +235,18 @@ namespace GraphView
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
     {
+        public WEdgeType EdgeType { get; set; }
+        // SourceVariable is used for saving the variable which the edge come from
+        // It's used for otherV step
+        // For example: g.V().outE().otherV()
+        // g.V() generate n_0
+        // then we have a match clause n_0-[edge as e_0]->n_1
+        // we user calls otherV(), we will know the n_0 is the source vertex, and then n_1 will be the otherV
+        public GremlinVariable SourceVariable { get; set; }
+
         internal override GremlinScalarVariable DefaultProjection()
         {
-            return new GremlinVariableProperty(this, "id");
+            return new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
         }
 
         internal override GremlinVariableType GetVariableType()

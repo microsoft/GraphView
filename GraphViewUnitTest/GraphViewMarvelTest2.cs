@@ -15,7 +15,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
 
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().Has("weapon", "shield").As("character").Out("appeared").As("comicbook").Select("character").next();
 
             foreach (var result in results)
@@ -30,7 +30,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
 
             var results =
                 graph.g()
@@ -54,8 +54,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
-
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().Has("name", "AVF 4").In("appeared").Values("name").next();
 
             foreach (var result in results)
@@ -70,7 +69,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().Has("name", "AVF 4").In("appeared").Has("weapon", "shield").Values("name").next();
 
             foreach (var result in results)
@@ -88,7 +87,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var results =
                 graph.g().V()
                     .As("character")
@@ -110,7 +109,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            GraphTraversal2 graph = new GraphTraversal2(connection);
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var results =
                 graph.g().V()
                     .As("CharacterNode")
@@ -137,8 +136,8 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             //connection.ResetCollection();
-            GraphTraversal2 graph = new GraphTraversal2(connection);
-            
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
             graph.g().V().AddV("character").Property("name", "VENUS II").Property("weapon", "shield").next();
             graph.g().V().AddV("comicbook").Property("name", "AVF 4").next();
             graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();

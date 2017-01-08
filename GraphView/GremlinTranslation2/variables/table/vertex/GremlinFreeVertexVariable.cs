@@ -7,13 +7,8 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinFreeVertexVariable : GremlinVertexVariable
+    internal class GremlinFreeVertexVariable : GremlinVertexTableVariable
     {
-        public GremlinFreeVertexVariable()
-        {
-            VariableName = GenerateTableAlias();
-        }
-
         public override WTableReference ToTableReference()
         {
             return SqlUtil.GetNamedTableReference(this);
@@ -21,7 +16,7 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"), WEdgeType.BothEdge);
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"), WEdgeType.BothEdge);
             currentContext.VariableList.Add(bothEdge);
             currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
 
@@ -38,7 +33,7 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
 
@@ -52,7 +47,7 @@ namespace GraphView
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
             currentContext.Paths.Add(new GremlinMatchPath(null, inEdge, this));
@@ -61,7 +56,7 @@ namespace GraphView
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
@@ -74,18 +69,11 @@ namespace GraphView
         }
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            GremlinEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
+            GremlinBoundEdgeVariable outEdgeVar = new GremlinBoundEdgeVariable(this, new GremlinVariableProperty(this, "BothAdjacencyList"));
             currentContext.VariableList.Add(outEdgeVar);
             currentContext.AddLabelPredicateForEdge(outEdgeVar, edgeLabels);
             currentContext.Paths.Add(new GremlinMatchPath(this, outEdgeVar, null));
             currentContext.PivotVariable = outEdgeVar;
         }
-
-        //internal override void Where(GremlinToSqlContext currentContext, Predicate predicate)
-        //{
-        //    WScalarExpression key = SqlUtil.GetColumnReferenceExpression(VariableName, "id");
-        //    WBooleanExpression booleanExpr = SqlUtil.GetBooleanComparisonExpr(key, predicate);
-        //    currentContext.AddPredicate(booleanExpr);
-        //}
     }
 }

@@ -18,9 +18,9 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(SqlUtil.GetValueExpr(Value));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("constant", PropertyKeys, VariableName);
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetValueExpr(Value));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("constant", parameters, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

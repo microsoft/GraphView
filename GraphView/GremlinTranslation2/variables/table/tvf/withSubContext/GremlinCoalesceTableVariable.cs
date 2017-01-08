@@ -12,14 +12,7 @@ namespace GraphView
 
         public static GremlinTableVariable Create(List<GremlinToSqlContext> coalesceContextList)
         {
-            bool isSameType = true;
-            for (var i = 1; i < coalesceContextList.Count; i++)
-            {
-                isSameType = coalesceContextList[i - 1].PivotVariable.GetVariableType() ==
-                             coalesceContextList[i].PivotVariable.GetVariableType();
-            }
-
-            if (isSameType)
+            if (GremlinUtil.IsTheSameOutputType(coalesceContextList))
             {
                 switch (coalesceContextList.First().PivotVariable.GetVariableType())
                 {
@@ -33,7 +26,7 @@ namespace GraphView
                         return new GremlinCoalesceScalarVariable(coalesceContextList);
                 }
             }
-            throw new NotImplementedException();
+            return new GremlinCoalesceTableVariable(coalesceContextList);
         }
 
         public GremlinCoalesceVariable(List<GremlinToSqlContext> coalesceContextList)
@@ -47,18 +40,18 @@ namespace GraphView
             {
                 context.Populate(property);
             }
+            
         }
 
         public override  WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
-            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
 
             foreach (var context in CoalesceContextList)
             {
-                //TODO about ProjectedProperties
-                PropertyKeys.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));
+                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("coalesce", PropertyKeys, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("coalesce", parameters, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

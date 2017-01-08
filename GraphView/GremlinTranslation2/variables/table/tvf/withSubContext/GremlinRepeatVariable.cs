@@ -6,8 +6,26 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinRepeatVariable : GremlinTableVariable
+    internal class GremlinRepeatVariable : GremlinSqlTableVariable
     {
+        public static GremlinTableVariable Create(GremlinVariable inputVariable,
+                                                  GremlinToSqlContext repeatContext,
+                                                  RepeatCondition repeatCondition)
+        {
+            switch (repeatContext.PivotVariable.GetVariableType())
+            {
+                case GremlinVariableType.Vertex:
+                    return new GremlinRepeatVertexVariable(inputVariable, repeatContext, repeatCondition);
+                case GremlinVariableType.Edge:
+                    return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
+                case GremlinVariableType.Scalar:
+                    return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
+                case GremlinVariableType.Table:
+                    return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
+            }
+            throw new NotImplementedException();
+        }
+
         public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
@@ -20,18 +38,13 @@ namespace GraphView
             RepeatCondition = repeatCondition;
         }
 
-        internal override GremlinVariableType GetVariableType()
-        {
-            return RepeatContext.PivotVariable.GetVariableType();
-        }
-
         internal override void Populate(string property)
         {
             RepeatContext.Populate(property);
             base.Populate(property);
         }
 
-        public override WTableReference ToTableReference()
+        public override WTableReference ToTableReference(List<string> projectProperties, string tableName )
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
 
@@ -44,7 +57,7 @@ namespace GraphView
 
             //Set the select Elements
             selectQueryBlock.SelectElements.Clear();
-            List<WSelectScalarExpression> inputSelectList = GetInputSelectList();
+            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(projectProperties);
             foreach (var selectElement in inputSelectList)
             {
                 selectQueryBlock.SelectElements.Add(selectElement);
@@ -57,7 +70,7 @@ namespace GraphView
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             PropertyKeys.Add(GetRepeatConditionExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference("repeat", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("repeat", PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -73,11 +86,11 @@ namespace GraphView
             };
         }
 
-        public List<WSelectScalarExpression> GetInputSelectList()
+        public List<WSelectScalarExpression> GetInputSelectList(List<string> projectProperties)
         {
             List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
             
-            foreach (var projectProperty in ProjectedProperties)
+            foreach (var projectProperty in projectProperties)
             {
                 var projectValue = SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
                     projectProperty);
@@ -114,6 +127,46 @@ namespace GraphView
                 }
             }
             return outerSelectList;
+        }
+    }
+
+    internal class GremlinRepeatVertexVariable : GremlinVertexTableVariable
+    {
+        public GremlinRepeatVertexVariable(GremlinVariable inputVariable,
+                                           GremlinToSqlContext repeatContext,
+                                           RepeatCondition repeatCondition)
+        {
+            SqlTableVariable = new GremlinRepeatVariable(inputVariable, repeatContext, repeatCondition);
+        }
+    }
+
+    internal class GremlinRepeatEdgeVariable : GremlinEdgeTableVariable
+    {
+        public GremlinRepeatEdgeVariable(GremlinVariable inputVariable,
+                                           GremlinToSqlContext repeatContext,
+                                           RepeatCondition repeatCondition)
+        {
+            SqlTableVariable = new GremlinRepeatVariable(inputVariable, repeatContext, repeatCondition);
+        }
+    }
+
+    internal class GremlinRepeatScalarVariable : GremlinScalarTableVariable
+    {
+        public GremlinRepeatScalarVariable(GremlinVariable inputVariable,
+                                           GremlinToSqlContext repeatContext,
+                                           RepeatCondition repeatCondition)
+        {
+            SqlTableVariable = new GremlinRepeatVariable(inputVariable, repeatContext, repeatCondition);
+        }
+    }
+
+    internal class GremlinRepeatTableVariable : GremlinTableVariable
+    {
+        public GremlinRepeatTableVariable(GremlinVariable inputVariable,
+                                           GremlinToSqlContext repeatContext,
+                                           RepeatCondition repeatCondition)
+        {
+            SqlTableVariable = new GremlinRepeatVariable(inputVariable, repeatContext, repeatCondition);
         }
     }
 }

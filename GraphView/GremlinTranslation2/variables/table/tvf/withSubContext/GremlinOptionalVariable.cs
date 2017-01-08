@@ -47,7 +47,6 @@ namespace GraphView
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
-            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             Dictionary<string, int> columns = new Dictionary<string, int>();
             if (InputVariable.DefaultProjection() is GremlinVariableProperty)
             {
@@ -99,8 +98,9 @@ namespace GraphView
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("optional", PropertyKeys, tableName);
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("optional", parameters, tableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

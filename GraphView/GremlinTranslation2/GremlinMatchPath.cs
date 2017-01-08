@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 namespace GraphView
 {
     internal class GremlinMatchPath
-    { 
-        public GremlinVertexVariable SourceVariable { get; set; } 
-        public GremlinEdgeVariable EdgeVariable { get; set; } 
-        public GremlinVertexVariable SinkVariable { get; set; } 
+    {
+        public GremlinVertexTableVariable SourceVariable { get; set; } 
+        public GremlinEdgeTableVariable EdgeVariable { get; set; } 
+        public GremlinVertexTableVariable SinkVariable { get; set; } 
  
-        public GremlinMatchPath(GremlinVertexVariable sourceVariable, GremlinEdgeVariable edgeVariable, GremlinVertexVariable sinkVariable)
+        public GremlinMatchPath(GremlinVertexTableVariable sourceVariable, GremlinEdgeTableVariable edgeVariable, GremlinVertexTableVariable sinkVariable)
         { 
             SourceVariable = sourceVariable; 
             EdgeVariable = edgeVariable; 

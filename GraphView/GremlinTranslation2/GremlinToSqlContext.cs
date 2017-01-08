@@ -92,7 +92,7 @@ namespace GraphView
             Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
         }
 
-        internal void AddLabelPredicateForEdge(GremlinEdgeVariable edge, List<string> edgeLabels)
+        internal void AddLabelPredicateForEdge(GremlinEdgeTableVariable edge, List<string> edgeLabels)
         {
             if (edgeLabels.Count == 0) return;
             edge.Populate("label");
@@ -106,12 +106,12 @@ namespace GraphView
             AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal GremlinVertexVariable GetSourceVertex(GremlinVariable edge)
+        internal GremlinVertexTableVariable GetSourceVertex(GremlinVariable edge)
         {
             return Paths.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
         }
 
-        internal GremlinVertexVariable GetSinkVertex(GremlinVariable edge)
+        internal GremlinVertexTableVariable GetSinkVertex(GremlinVariable edge)
         {
             return Paths.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
         }
@@ -213,13 +213,6 @@ namespace GraphView
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sourceId")));
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sinkId")));
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "edgeOffset")));
-                }
-                else if (PivotVariable is GremlinProjectVariable)
-                {
-                    foreach (var project in (PivotVariable as GremlinProjectVariable).ProjectKeys)
-                    {
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, project)));
-                    }
                 }
                 else 
                 {
