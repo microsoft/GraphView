@@ -139,7 +139,6 @@ namespace GraphView
                     inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex]));
                 }
 
-                // TODO: Figure out whether this condition will have an influence on RawRecordLayout 
                 // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
                 // As a result, there is no need to send queries the underlying system to retrieve 
                 // the sink vertices.  

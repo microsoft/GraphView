@@ -740,7 +740,11 @@ namespace GraphView
 
     internal class ConstantSourceOperator : GraphViewExecutionOperator
     {
-        public RawRecord ConstantSource { get; set; }
+        public RawRecord ConstantSource
+        {
+            get { return this.ConstantSource; }
+            set { this.ConstantSource = value; this.Open(); }
+        }
 
         public ConstantSourceOperator(RawRecord pConstant)
         {

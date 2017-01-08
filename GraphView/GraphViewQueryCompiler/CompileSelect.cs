@@ -1316,6 +1316,8 @@ namespace GraphView
                 {
                     var derivedQueryExpr = (tableReference as WQueryDerivedTable).QueryExpr;
                     var derivedQueryContext = new QueryCompilationContext(context);
+                    // TODO: Sync
+                    derivedQueryContext.ClearOuterContext();
                     var derivedQueryOp = derivedQueryExpr.Compile(derivedQueryContext, connection);
                     operatorChain.Add(operatorChain.Any()
                         ? new CartesianProductOperator2(operatorChain.Last(), derivedQueryOp)
@@ -1343,10 +1345,10 @@ namespace GraphView
                         throw new GraphViewException("Table variable " + tableName + " doesn't exist in the context.");
 
                     var tableHeader = temporaryTableTuple.Item1;
-                    var tableOperator = temporaryTableTuple.Item2;
+                    var tableOp = temporaryTableTuple.Item2;
                     operatorChain.Add(operatorChain.Any()
-                        ? new CartesianProductOperator2(operatorChain.Last(), tableOperator)
-                        : tableOperator);
+                        ? new CartesianProductOperator2(operatorChain.Last(), tableOp)
+                        : tableOp);
 
                     // Merge temporary table's header into current context
                     foreach (var pair in tableHeader.columnSet.OrderBy(e => e.Value.Item1))

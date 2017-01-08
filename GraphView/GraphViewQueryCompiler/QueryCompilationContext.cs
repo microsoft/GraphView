@@ -159,6 +159,11 @@ namespace GraphView
             RawRecordLayout.Clear();
         }
 
+        public void ClearOuterContext()
+        {
+            OuterContextOp = null;
+        }
+
         public TemporaryTableHeader ToTableHeader()
         {
             TemporaryTableHeader header = new TemporaryTableHeader();
