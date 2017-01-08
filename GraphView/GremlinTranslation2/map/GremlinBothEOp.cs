@@ -23,7 +23,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            throw new NotImplementedException();
+            inputContext.PivotVariable.BothE(inputContext, EdgeLabels);
 
             return inputContext;
         }

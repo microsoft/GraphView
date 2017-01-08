@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinCoalesceVariable : GremlinTableVariable
+    internal class GremlinCoalesceVariable : GremlinSqlTableVariable
     {
         public List<GremlinToSqlContext> CoalesceContextList { get; set; }
 
@@ -39,19 +39,18 @@ namespace GraphView
         public GremlinCoalesceVariable(List<GremlinToSqlContext> coalesceContextList)
         {
             CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
-            VariableName = GenerateTableAlias();
         }
 
-        public override  WTableReference ToTableReference()
+        public override  WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
 
             foreach (var context in CoalesceContextList)
             {
                 //TODO about ProjectedProperties
-                PropertyKeys.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
+                PropertyKeys.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("Coalesce", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference("coalesce", PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -61,7 +60,8 @@ namespace GraphView
     {
         public GremlinCoalesceVertexVariable(List<GremlinToSqlContext> coalesceContextList)
         {
-            InnerVariable = new GremlinCoalesceVariable(coalesceContextList);
+            SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
+            VariableName = GenerateTableAlias();
         }
     }
 
@@ -69,7 +69,8 @@ namespace GraphView
     {
         public GremlinCoalesceEdgeVariable(List<GremlinToSqlContext> coalesceContextList)
         {
-            InnerVariable = new GremlinCoalesceVariable(coalesceContextList);
+            SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
+            VariableName = GenerateTableAlias();
         }
     }
 
@@ -77,7 +78,8 @@ namespace GraphView
     {
         public GremlinCoalesceScalarVariable(List<GremlinToSqlContext> coalesceContextList)
         {
-            InnerVariable = new GremlinCoalesceVariable(coalesceContextList);
+            SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
+            VariableName = GenerateTableAlias();
         }
     }
 
@@ -85,7 +87,8 @@ namespace GraphView
     {
         public GremlinCoalesceTableVariable(List<GremlinToSqlContext> coalesceContextList)
         {
-            InnerVariable = new GremlinCoalesceVariable(coalesceContextList);
+            SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
+            VariableName = GenerateTableAlias();
         }
     }
 }

@@ -12,7 +12,7 @@ namespace GraphView
         internal GremlinVariable PivotVariable { get; set; }
         internal Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> TaggedVariables { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
-        internal List<ISqlTable> TableReferences { get; private set; }
+        internal List<GremlinTableVariable> TableReferences { get; private set; }
         //public List<ISqlScalar> ProjectedVariables { get; private set; }
         internal List<ISqlStatement> SetVariables { get; private set; }
         internal List<GremlinMatchPath> Paths { get; set; }
@@ -22,7 +22,7 @@ namespace GraphView
         internal GremlinToSqlContext()
         {
             TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();
-            TableReferences = new List<ISqlTable>();
+            TableReferences = new List<GremlinTableVariable>();
             SetVariables = new List<ISqlStatement>();
             //ProjectedVariables = new List<ISqlScalar>();
             VariableList = new List<GremlinVariable>();
@@ -36,7 +36,7 @@ namespace GraphView
                 VariableList = new List<GremlinVariable>(this.VariableList),
                 TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
-                TableReferences = new List<ISqlTable>(this.TableReferences),
+                TableReferences = new List<GremlinTableVariable>(this.TableReferences),
                 //SetVariables = new List<ISqlStatement>(this.SetVariables), //Don't Duplicate for avoiding redundant set-sqlstatment
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
                 Paths = new List<GremlinMatchPath>(this.Paths),

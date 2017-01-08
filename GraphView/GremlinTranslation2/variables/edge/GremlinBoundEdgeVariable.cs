@@ -15,7 +15,7 @@ namespace GraphView
             return "E_" + _count++;
         }
 
-        private GremlinVariableProperty adjacencyList;
+        private List<GremlinVariableProperty> variablePropertyList;
 
         internal override GremlinScalarVariable DefaultProjection()
         {
@@ -25,21 +25,35 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(adjacencyList.ToScalarExpression());
+            foreach (var variableProperty in variablePropertyList)
+            {
+                PropertyKeys.Add(variableProperty.ToScalarExpression());
+            }
             Populate(GremlinKeyword.EdgeID);
             foreach (var property in ProjectedProperties)
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("OutE", PropertyKeys, VariableName);
+            var secondTableRef = EdgeType == WEdgeType.BothEdge ? SqlUtil.GetFunctionTableReference("BothE", PropertyKeys, VariableName)
+                                                                : SqlUtil.GetFunctionTableReference("OutE", PropertyKeys, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjacencyList, WEdgeType edgeType = WEdgeType.OutEdge)
+        public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjEdge, WEdgeType edgeType = WEdgeType.OutEdge)
         {
             SourceVariable = sourceVariable;
             VariableName = GenerateTableAlias();
-            this.adjacencyList = adjacencyList;
+            variablePropertyList = new List<GremlinVariableProperty>();
+            variablePropertyList.Add(adjEdge);
+            EdgeType = edgeType;
+        }
+        public GremlinBoundEdgeVariable(GremlinVariable sourceVariable, GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType = WEdgeType.BothEdge)
+        {
+            SourceVariable = sourceVariable;
+            VariableName = GenerateTableAlias();
+            variablePropertyList = new List<GremlinVariableProperty>();
+            variablePropertyList.Add(adjEdge);
+            variablePropertyList.Add(adjReverseEdge);
             EdgeType = edgeType;
         }
 

@@ -36,10 +36,10 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
 
-            foreach (var property in InputVariable.UsedProperties)
-            {
-                Populate(property);
-            }
+            //foreach (var property in InputVariable.UsedProperties)
+            //{
+            //    Populate(property);
+            //}
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
 
@@ -102,14 +102,14 @@ namespace GraphView
                         var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
                         if (selectVar != temp.ContextVariable)
                         {
-                            foreach (var property in temp.ContextVariable.UsedProperties)
-                            {
-                                selectVar.Populate(property);
-                                var alias = temp.ContextVariable.VariableName + "." + property;
-                                var projectValue = SqlUtil.GetColumnReferenceExpr(selectVar.VariableName,
-                                    property);
-                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
-                            }
+                            //foreach (var property in temp.ContextVariable.UsedProperties)
+                            //{
+                            //    selectVar.Populate(property);
+                            //    var alias = temp.ContextVariable.VariableName + "." + property;
+                            //    var projectValue = SqlUtil.GetColumnReferenceExpr(selectVar.VariableName,
+                            //        property);
+                            //    outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
+                            //}
 
                         }
                     }

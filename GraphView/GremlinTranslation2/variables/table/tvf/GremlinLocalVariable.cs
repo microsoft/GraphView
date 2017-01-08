@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinLocalVariable : GremlinTableVariable
+    internal class GremlinLocalVariable : GremlinSqlTableVariable
     {
         public GremlinToSqlContext LocalContext { get; set; }
 
@@ -19,9 +19,9 @@ namespace GraphView
                 case GremlinVariableType.Edge:
                     return new GremlinLocalEdgeVariable(localContext);
                 case GremlinVariableType.Scalar:
-                    throw new NotImplementedException();
+                    return new GremlinLocalEdgeScalarVariable(localContext);
                 case GremlinVariableType.Table:
-                    throw new NotImplementedException();
+                    return new GremlinLocalTableVariable(localContext);
             }
             throw new NotImplementedException();
         }
@@ -29,14 +29,13 @@ namespace GraphView
         public GremlinLocalVariable(GremlinToSqlContext localContext)
         {
             LocalContext = localContext;
-            VariableName = GenerateTableAlias();
         }
 
-        public override WTableReference ToTableReference()
+        public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(ProjectedProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("local", PropertyKeys, VariableName);
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(projectProperties)));
+            var secondTableRef = SqlUtil.GetFunctionTableReference("local", PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -46,7 +45,8 @@ namespace GraphView
     {
         public GremlinLocalVertexVariable(GremlinToSqlContext localContext)
         {
-            InnerVariable = new GremlinLocalVariable(localContext);
+            SqlTableVariable = new GremlinLocalVariable(localContext);
+            VariableName = GenerateTableAlias();
         }
     }
 
@@ -54,7 +54,26 @@ namespace GraphView
     {
         public GremlinLocalEdgeVariable(GremlinToSqlContext localContext)
         {
-            InnerVariable = new GremlinLocalVariable(localContext);
+            SqlTableVariable = new GremlinLocalVariable(localContext);
+            VariableName = GenerateTableAlias();
+        }
+    }
+
+    internal class GremlinLocalEdgeScalarVariable : GremlinScalarTableVariable
+    {
+        public GremlinLocalEdgeScalarVariable(GremlinToSqlContext localContext)
+        {
+            SqlTableVariable = new GremlinLocalVariable(localContext);
+            VariableName = GenerateTableAlias();
+        }
+    }
+
+    internal class GremlinLocalTableVariable : GremlinTableVariable
+    {
+        public GremlinLocalTableVariable(GremlinToSqlContext localContext)
+        {
+            SqlTableVariable = new GremlinLocalVariable(localContext);
+            VariableName = GenerateTableAlias();
         }
     }
 }

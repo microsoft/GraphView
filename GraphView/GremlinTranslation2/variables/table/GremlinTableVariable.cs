@@ -7,7 +7,7 @@ using GraphView.GremlinTranslation.DEMO;
 
 namespace GraphView
 {
-    internal abstract class GremlinTableVariable : GremlinVariable, ISqlTable
+    internal abstract class GremlinTableVariable : GremlinVariable
     {
         protected static int _count = 0;
 
@@ -16,9 +16,8 @@ namespace GraphView
             return "R_" + _count++;
         }
 
-        protected GremlinTableVariable InnerVariable;
-
         public List<string> ProjectedProperties { get; set; }
+        public GremlinSqlTableVariable SqlTableVariable { get; set; }
 
         public GremlinTableVariable()
         {
@@ -32,19 +31,16 @@ namespace GraphView
 
         public virtual WTableReference ToTableReference()
         {
-            return InnerVariable?.ToTableReference();
+            return SqlTableVariable?.ToTableReference(ProjectedProperties, VariableName);
         }
 
-        internal override void Populate(string property)
+        internal virtual void Populate(string property)
         {
             if (!ProjectedProperties.Contains(property))
             {
                 ProjectedProperties.Add(property);
             }
-            if (!UsedProperties.Contains(property))
-            {
-                UsedProperties.Add(property);
-            }
+            SqlTableVariable?.Populate(property);
         }
 
         internal override void Range(GremlinToSqlContext currentContext, int low, int high)
@@ -55,10 +51,12 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            Populate("BothAdjacencyList");
+            Populate("_reverse_edge");
+            Populate("_edge");
 
-            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "BothAdjacencyList");
-            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjacencyList, WEdgeType.BothEdge);
+            GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(this, "_reverse_edge");
+            GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjEdge, adjReverseEdge, WEdgeType.BothEdge);
             bothEdge.Populate("_sink");
             currentContext.VariableList.Add(bothEdge);
             currentContext.TableReferences.Add(bothEdge);
@@ -69,6 +67,22 @@ namespace GraphView
             currentContext.TableReferences.Add(bothVertex);
             currentContext.PivotVariable = bothVertex;
         }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            Populate("_reverse_edge");
+            Populate("_edge");
+
+            GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(this, "_reverse_edge");
+            GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(this, adjEdge, adjReverseEdge, WEdgeType.BothEdge);
+            bothEdge.Populate("_sink");
+            currentContext.VariableList.Add(bothEdge);
+            currentContext.TableReferences.Add(bothEdge);
+            currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
+            currentContext.PivotVariable = bothEdge;
+        }
+
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
@@ -99,6 +113,36 @@ namespace GraphView
             currentContext.PivotVariable = outEdge;
         }
 
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            GremlinVariable inVertex = currentContext.GetSinkVertex(this);
+            if (inVertex == null)
+            {
+                //var path = currentContext.Paths.Find(p => p.EdgeVariable == this);
+                //if (path != null)
+                //{
+                //    GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
+                //    path.SinkVariable = newVertex;
+                //    currentContext.TableReferences.Add(newVertex);
+                //    currentContext.VariableList.Add(newVertex);
+                //    currentContext.PivotVariable = newVertex;
+                //}
+                //else
+                //{
+                    Populate("_sink");
+                    GremlinBoundVertexVariable newVertex =
+                        new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
+                    currentContext.VariableList.Add(newVertex);
+                    currentContext.TableReferences.Add(newVertex);
+                    currentContext.PivotVariable = newVertex;
+                //}
+            }
+            else
+            {
+                currentContext.PivotVariable = inVertex;
+            }
+        }
+
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             Populate("_edge");
@@ -126,6 +170,28 @@ namespace GraphView
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
             currentContext.PivotVariable = outEdge;
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            // A naive implementation would be: add a new bound/free vertex to the variable list. 
+            // A better implementation should reason the status of the edge variable and only reset
+            // the pivot variable if possible, thereby avoiding adding a new vertex variable  
+            // and reducing one join.
+            GremlinVariable outVertex = currentContext.GetSourceVertex(this);
+            if (outVertex == null)
+            {
+                Populate("_sink");
+                GremlinBoundVertexVariable newVertex =
+                    new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
+                currentContext.VariableList.Add(newVertex);
+                currentContext.TableReferences.Add(newVertex);
+                currentContext.PivotVariable = newVertex;
+            }
+            else
+            {
+                currentContext.PivotVariable = outVertex;
+            }
         }
     }
 
