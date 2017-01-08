@@ -165,4 +165,59 @@ namespace GraphView
             return results;
         }
     }
+
+    internal class DeduplicateOperator : TableValuedFunction
+    {
+        private HashSet<string> _fieldValueSet;
+        private int _targetFieldIndex;
+
+        internal DeduplicateOperator(GraphViewExecutionOperator pInputOperatr, int pTargetFieldIndex,
+            int pOutputBuffersize = 1000)
+            : base(pInputOperatr, pOutputBuffersize)
+        {
+            _targetFieldIndex = pTargetFieldIndex;
+            _fieldValueSet = new HashSet<string>();
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            // If the output buffer is not empty, returns a result.
+            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (InputOperator != null && !InputOperator.State())))
+            {
+                if (OutputBuffer.Count == 1) this.Close();
+                return OutputBuffer.Dequeue();
+            }
+
+            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
+            {
+                var srcRecord = InputOperator.Next();
+                if (srcRecord == null)
+                {
+                    InputOperator.Close();
+                    break;
+                }
+
+                if (_fieldValueSet.Contains(srcRecord[_targetFieldIndex])) continue;
+
+                _fieldValueSet.Add(srcRecord[_targetFieldIndex]);
+                OutputBuffer.Enqueue(srcRecord);
+            } 
+
+            if (OutputBuffer.Count <= 1) this.Close();
+            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
+            return null;
+        }
+
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void ResetState()
+        {
+            _fieldValueSet?.Clear();
+            base.ResetState();
+        }
+    }
 }

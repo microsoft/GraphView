@@ -587,9 +587,9 @@ namespace GraphView
 
             Close();
             
-            var result = new RawRecord(2);
+            var result = new RawRecord(1);
             result.fieldValues[0] = _createdDocument.Id;
-            result.fieldValues[1] = _createdDocument.ToString();
+
             return result;
         }
 

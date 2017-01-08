@@ -131,27 +131,6 @@ namespace GraphView
         }
     }
 
-    internal enum GraphViewNativeScalarFunctionsEnum
-    {
-        Count,
-        Deduplicate,
-        Fold,
-        Tree,
-        Path,
-    }
-
-    internal enum GraphViewNativeTableValueFunctionsEnum
-    {
-        Unfold,
-        Values,
-        Properties,
-        Constant,
-        Repeat,
-        Coalesce,
-        Optional,
-        Choose,
-    }
-
     internal enum GraphViewEdgeTableReferenceEnum
     {
         BothE,

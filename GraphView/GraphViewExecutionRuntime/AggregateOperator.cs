@@ -141,18 +141,6 @@ namespace GraphView
         }
     }
 
-    internal class DeduplicateOperator : AggregateFunction
-    {
-        internal DeduplicateOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList)
-            : base(pInputOperatr, pGroupByFieldsList)
-        { }
-
-        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
-        {
-            return groupedRawRecords.First();
-        }
-    }
-
     internal class TreeOperator : AggregateFunction
     {
         //TODO: tree().by()
