@@ -6,118 +6,125 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddEVariable: GremlinVariableReference
+    internal class GremlinAddEVariable: GremlinEdgeTableVariable
     {
-        private static long _count = 0;
-
-        internal override string GenerateTableAlias()
-        {
-            return "AddE_" + _count++;
-        }
-
-        public GremlinVertexTableVariable FromVariable { get; set; }
-        public GremlinVertexTableVariable ToVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
+        public GremlinToSqlContext FromVertexContext { get; set; }
+        public GremlinToSqlContext ToVertexContext { get; set; }
         public Dictionary<string, object> Properties { get; set; }
         public string EdgeLabel { get; set; }
 
-        public override List<WSqlStatement> ToSetVariableStatements()
+        //public override List<WSqlStatement> ToSetVariableStatements()
+        //{
+        //    List<WSqlStatement> statementList = new List<WSqlStatement>();
+
+        //    var columnK = new List<WColumnReferenceExpression>();
+        //    var selectBlock = new WSelectQueryBlock()
+        //    {
+        //        FromClause = new WFromClause()
+        //    };
+
+        //    selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
+        //    selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
+
+        //    var fromVarExpr = SqlUtil.GetColumnReferenceExpr(FromVariable.VariableName, "id");
+        //    selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(fromVarExpr));
+
+        //    var toVarExpr = SqlUtil.GetColumnReferenceExpr(ToVariable.VariableName, "id");
+        //    selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(toVarExpr));
+
+
+        //    //Add edge key-value
+        //    WScalarExpression valueExpr;
+        //    if (EdgeLabel != null)
+        //    {
+        //        columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
+        //        valueExpr = SqlUtil.GetValueExpr(EdgeLabel);
+        //        selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
+
+        //    }
+        //    foreach (var property in Properties)
+        //    {
+        //        columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
+        //        valueExpr = SqlUtil.GetValueExpr(property.Value.ToString());
+        //        selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
+        //    }
+
+        //    var insertStatement = new WInsertSpecification()
+        //    {
+        //        Columns = columnK,
+        //        InsertSource = new WSelectInsertSource() { Select = selectBlock },
+        //        Target = SqlUtil.GetNamedTableReference("Edge")
+        //    };
+
+        //    var addEStatement = new WInsertEdgeSpecification(insertStatement)
+        //    {
+        //        SelectInsertSource = new WSelectInsertSource() { Select = selectBlock }
+        //    };
+
+        //    var setStatement = new WSetVariableStatement()
+        //    {
+        //        Expression = new WScalarSubquery()
+        //        {
+        //            SubQueryExpr = addEStatement
+        //        },
+        //        Variable = SqlUtil.GetVariableReference(VariableName)
+        //    };
+
+        //    statementList.Add(setStatement);
+        //    return statementList;
+        //}
+
+        public GremlinAddEVariable(GremlinVariable inputVariable, string edgeLabel)
         {
-            List<WSqlStatement> statementList = new List<WSqlStatement>();
+            Properties = new Dictionary<string, object>();
+            EdgeLabel = edgeLabel;
+            InputVariable = inputVariable;
+        }
 
-            var columnK = new List<WColumnReferenceExpression>();
-            var selectBlock = new WSelectQueryBlock()
-            {
-                FromClause = new WFromClause()
-            };
-
-            selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
-            selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
-
-            var fromVarExpr = SqlUtil.GetColumnReferenceExpr(FromVariable.VariableName, "id");
-            selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(fromVarExpr));
-
-            var toVarExpr = SqlUtil.GetColumnReferenceExpr(ToVariable.VariableName, "id");
-            selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(toVarExpr));
-
-
-            //Add edge key-value
-            WScalarExpression valueExpr;
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetScalarSubquery(GetSelectQueryBlock(FromVertexContext)));
+            parameters.Add(SqlUtil.GetScalarSubquery(GetSelectQueryBlock(ToVertexContext)));
             if (EdgeLabel != null)
             {
-                columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
-                valueExpr = SqlUtil.GetValueExpr(EdgeLabel);
-                selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
-
+                parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
+                parameters.Add(SqlUtil.GetValueExpr(EdgeLabel));
             }
             foreach (var property in Properties)
             {
-                columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
-                valueExpr = SqlUtil.GetValueExpr(property.Value.ToString());
-                selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
+                parameters.Add(SqlUtil.GetValueExpr(property.Key));
+                parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, VariableName);
 
-            var insertStatement = new WInsertSpecification()
-            {
-                Columns = columnK,
-                InsertSource = new WSelectInsertSource() { Select = selectBlock },
-                Target = SqlUtil.GetNamedTableReference("Edge")
-            };
-
-            var addEStatement = new WInsertEdgeSpecification(insertStatement)
-            {
-                SelectInsertSource = new WSelectInsertSource() { Select = selectBlock }
-            };
-
-            var setStatement = new WSetVariableStatement()
-            {
-                Expression = new WScalarSubquery()
-                {
-                    SubQueryExpr = addEStatement
-                },
-                Variable = SqlUtil.GetVariableReference(VariableName)
-            };
-
-            statementList.Add(setStatement);
-            return statementList;
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinAddEVariable(string edgeLabel, GremlinVertexTableVariable currVariable)
+        private WSelectQueryBlock GetSelectQueryBlock(GremlinToSqlContext context)
         {
-            Properties = new Dictionary<string, object>();
-
-            VariableName = GenerateTableAlias();
-            FromVariable = currVariable;
-            ToVariable = currVariable;
-            EdgeLabel = edgeLabel;
+            if (context == null)
+            {
+                var queryBlock = new WSelectQueryBlock();
+                queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, GremlinKeyword.NodeID)));
+                return queryBlock;
+            }
+            else
+            {
+                return context.ToSelectQueryBlock();
+            } 
         }
+
 
         internal override void From(GremlinToSqlContext currentContext, string label)
         {
-            //FromVariable = currentContext.SelectVariable(label);
+            throw new NotImplementedException();
         }
 
         internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
-            GremlinVariableReference newVariableReference;
-            var index = currentContext.SetVariables.FindIndex(p => p == this);
-
-            //if (fromVertexContext.PivotVariable is GremlinAddVVariable)
-            //{
-            //    FromVariable = fromVertexContext.PivotVariable as GremlinAddVVariable;
-            //    currentContext.SetVariables.InsertRange(index, fromVertexContext.SetVariables);
-            //}
-            //else
-            //{
-            //    newVariableReference = new GremlinVariableReference(fromVertexContext);
-            //    currentContext.VariableList.Add(newVariableReference);
-            //    currentContext.SetVariables.Insert(index, newVariableReference);
-            //    FromVariable = newVariableReference;
-            //}
-        }
-
-        internal override void InV(GremlinToSqlContext currentContext)
-        {
-            currentContext.PivotVariable = ToVariable;
+            FromVertexContext = fromVertexContext;
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
@@ -135,25 +142,7 @@ namespace GraphView
 
         internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
-            var index = currentContext.SetVariables.FindIndex(p => p == this);
-
-            //if (toVertexContext.PivotVariable is GremlinAddVVariable)
-            //{
-            //    ToVariable = toVertexContext.PivotVariable as GremlinAddVVariable;
-            //    currentContext.SetVariables.InsertRange(index, toVertexContext.SetVariables);
-            //}
-            //else
-            //{
-            //    GremlinVariableReference newVariableReference = new GremlinVariableReference(toVertexContext);
-            //    currentContext.VariableList.Add(newVariableReference);
-            //    currentContext.SetVariables.Insert(index, newVariableReference);
-            //    ToVariable = newVariableReference;
-            //}
-        }
-
-        internal override void OutV(GremlinToSqlContext currentContext)
-        {
-            currentContext.PivotVariable = FromVariable;
+            ToVertexContext = toVertexContext;
         }
     }
 }

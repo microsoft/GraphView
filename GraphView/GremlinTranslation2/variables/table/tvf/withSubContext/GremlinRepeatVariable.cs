@@ -71,7 +71,7 @@ namespace GraphView
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             PropertyKeys.Add(GetRepeatConditionExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference("repeat", PropertyKeys, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

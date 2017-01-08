@@ -231,6 +231,13 @@ namespace GraphView
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
     {
+        protected static int _count = 0;
+
+        internal override string GenerateTableAlias()
+        {
+            return "E_" + _count++;
+        }
+
         public WEdgeType EdgeType { get; set; }
         // SourceVariable is used for saving the variable which the edge come from
         // It's used for otherV step

@@ -100,7 +100,7 @@ namespace GraphView
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("optional", parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, tableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

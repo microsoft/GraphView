@@ -40,7 +40,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(projectProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("local", parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Local, parameters, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

@@ -24,7 +24,7 @@ namespace GraphView
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("OutV", PropertyKeys, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, VariableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

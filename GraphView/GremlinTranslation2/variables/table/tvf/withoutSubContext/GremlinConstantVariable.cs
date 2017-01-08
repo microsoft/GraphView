@@ -20,7 +20,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(Value));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("constant", parameters, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Constant, parameters, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

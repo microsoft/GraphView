@@ -266,61 +266,61 @@ namespace GraphView
             WSchemaObjectFunctionTableReference funcTableRef;
             switch (functionName)
             {
-                case "coalesce":
+                case GremlinKeyword.func.Coalesce:
                     funcTableRef = new WCoalesceTableReference();
                     break;
-                case "constant":
+                case GremlinKeyword.func.Constant:
                     funcTableRef = new WConstantReference();
                     break;
-                case "OutE":
+                case GremlinKeyword.func.OutE:
                     funcTableRef = new WBoundOutEdgeTableReference();
                     break;
-                case "BothE":
+                case GremlinKeyword.func.BothE:
                     funcTableRef = new WBoundBothEdgeTableReference();
                     break;
-                case "flatMap":
+                case GremlinKeyword.func.FlatMap:
                     funcTableRef = new WFlatMapTableReference();
                     break;
-                case "key":
+                case GremlinKeyword.func.Key:
                     funcTableRef = new WKeyTableReference();
                     break;
-                case "local":
+                case GremlinKeyword.func.Local:
                     funcTableRef = new WLocalTableReference();
                     break;
-                case "OutV":
+                case GremlinKeyword.func.OutV:
                     funcTableRef = new WBoundOutNodeTableReference();
                     break;
-                case "BothV":
+                case GremlinKeyword.func.BothV:
                     funcTableRef = new WBoundBothNodeTableReference();
                     break;
-                case "optional":
+                case GremlinKeyword.func.Optional:
                     funcTableRef = new WOptionalTableReference();
                     break;
-                case "properties":
+                case GremlinKeyword.func.Properties:
                     funcTableRef = new WPropertiesTableReference();
                     break;
-                case "repeat":
+                case GremlinKeyword.func.Repeat:
                     funcTableRef = new WRepeatTableReference();
                     break;
-                case "value":
+                case GremlinKeyword.func.Value:
                     funcTableRef = new WValueTableReference();
                     break;
-                case "values":
+                case GremlinKeyword.func.Values:
                     funcTableRef = new WValuesTableReference();
                     break;
-                case "unfold":
+                case GremlinKeyword.func.Unfold:
                     funcTableRef = new WUnfoldTableReference();
                     break;
-                case "union":
+                case GremlinKeyword.func.Union:
                     funcTableRef = new WUnionTableReference();
                     break;
-                case "project":
+                case GremlinKeyword.func.Project:
                     funcTableRef = new WProjectTableReference();
                     break;
-                case "addV":
+                case GremlinKeyword.func.AddV:
                     funcTableRef = new WAddVTableReference();
                     break;
-                case "addE":
+                case GremlinKeyword.func.AddE:
                     funcTableRef = new WAddETableReference();
                     break;
                 default:

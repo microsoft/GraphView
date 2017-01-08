@@ -13,7 +13,7 @@ namespace GraphView
 
         public GremlinAddVOp() {}
 
-        public GremlinAddVOp(params Object[] propertyKeyValues)
+        public GremlinAddVOp(params object[] propertyKeyValues)
         {
             throw new NotImplementedException();
         }
@@ -32,7 +32,6 @@ namespace GraphView
                 GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel);
                 inputContext.VariableList.Add(newVariable);
                 inputContext.TableReferences.Add(newVariable);
-                inputContext.SetVariables.Add(newVariable);
                 inputContext.PivotVariable = newVariable;
             }
             else

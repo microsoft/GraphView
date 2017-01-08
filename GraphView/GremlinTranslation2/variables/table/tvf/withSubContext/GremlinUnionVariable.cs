@@ -51,7 +51,7 @@ namespace GraphView
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("union", parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Union, parameters, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

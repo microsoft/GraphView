@@ -49,7 +49,7 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
                 parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference("project", parameters, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, VariableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

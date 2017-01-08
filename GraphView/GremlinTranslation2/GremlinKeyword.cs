@@ -8,9 +8,32 @@ namespace GraphView
 {
     public class GremlinKeyword
     {
-        public static string Label = "label";
-        public static string EdgeID = "_ID";
-        public static string NodeID = "id";
+        public const string Label = "label";
+        public const string EdgeID = "_ID";
+        public const string NodeID = "id";
+
+        public static class func
+        {
+            public const string Coalesce = "Coalesce";
+            public const string Constant = "Constant";
+            public const string OutE = "OutE";
+            public const string BothE = "BothE";
+            public const string FlatMap = "FlatMap";
+            public const string Key = "Key";
+            public const string Local = "Local";
+            public const string OutV = "OutV";
+            public const string BothV = "BothV";
+            public const string Optional = "Optional";
+            public const string Properties = "Properties";
+            public const string Repeat = "Repeat";
+            public const string Value = "Value";
+            public const string Values = "Values";
+            public const string Unfold = "Unfold";
+            public const string Union = "Union";
+            public const string Project = "Project";
+            public const string AddV = "AddV";
+            public const string AddE = "AddE";
+        }
         public enum Pop
         {
             Default,

@@ -6,67 +6,82 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddVVariable: GremlinVariableReference
+    internal class GremlinAddVVariable: GremlinVertexTableVariable
     {
-        private static long _count = 0;
-
-        internal override string GenerateTableAlias()
-        {
-            return "AddV_" + _count++;
-        }
-
         public Dictionary<string, object> Properties { get; set; }
         public string VertexLabel { get; set; }
 
-        public override List<WSqlStatement> ToSetVariableStatements()
+        //public override List<WSqlStatement> ToSetVariableStatements()
+        //{
+        //    List<WSqlStatement> statementList = new List<WSqlStatement>();
+
+        //    var columnK = new List<WColumnReferenceExpression>();
+        //    var columnV = new List<WScalarExpression>();
+
+        //    if (VertexLabel != null)
+        //    {
+        //        columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
+        //        columnV.Add(SqlUtil.GetValueExpr(VertexLabel));
+        //    }
+
+        //    foreach (var property in Properties)
+        //    {
+        //        columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
+        //        columnV.Add(SqlUtil.GetValueExpr(property.Value));
+        //    }
+
+        //    var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
+        //    var source = new WValuesInsertSource() { RowValues = row };
+
+        //    var insertStatement = new WInsertSpecification()
+        //    {
+        //        Columns = columnK,
+        //        InsertSource = source,
+        //        Target = SqlUtil.GetNamedTableReference("Node")
+        //    };
+
+        //    var addVStatement = new WInsertNodeSpecification(insertStatement);
+
+        //    var setStatement = new WSetVariableStatement()
+        //    {
+        //        Expression = new WScalarSubquery()
+        //        {
+        //            SubQueryExpr = addVStatement
+        //        },
+        //        Variable = SqlUtil.GetVariableReference(VariableName)
+        //    };
+
+        //    statementList.Add(setStatement);
+        //    return statementList;
+        //}
+
+        public override WTableReference ToTableReference()
         {
-            List<WSqlStatement> statementList = new List<WSqlStatement>();
-
-            var columnK = new List<WColumnReferenceExpression>();
-            var columnV = new List<WScalarExpression>();
-
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (VertexLabel != null)
             {
-                columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
-                columnV.Add(SqlUtil.GetValueExpr(VertexLabel));
+                parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
+                parameters.Add(SqlUtil.GetValueExpr(VertexLabel));
             }
-
             foreach (var property in Properties)
             {
-                columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
-                columnV.Add(SqlUtil.GetValueExpr(property.Value));
+                parameters.Add(SqlUtil.GetValueExpr(property.Key));
+                parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddV, parameters, VariableName);
 
-            var row = new List<WRowValue>() { new WRowValue() { ColumnValues = columnV } };
-            var source = new WValuesInsertSource() { RowValues = row };
-
-            var insertStatement = new WInsertSpecification()
-            {
-                Columns = columnK,
-                InsertSource = source,
-                Target = SqlUtil.GetNamedTableReference("Node")
-            };
-
-            var addVStatement = new WInsertNodeSpecification(insertStatement);
-
-            var setStatement = new WSetVariableStatement()
-            {
-                Expression = new WScalarSubquery()
-                {
-                    SubQueryExpr = addVStatement
-                },
-                Variable = SqlUtil.GetVariableReference(VariableName)
-            };
-
-            statementList.Add(setStatement);
-            return statementList;
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         public GremlinAddVVariable(string vertexLabel)
         {
-            VariableName = GenerateTableAlias();
             Properties = new Dictionary<string, object>();
             VertexLabel = vertexLabel;
+        }
+
+        public GremlinAddVVariable()
+        {
+            Properties = new Dictionary<string, object>();
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)

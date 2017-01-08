@@ -40,7 +40,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(projectProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference("flatMap", parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.FlatMap, parameters, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
