@@ -42,58 +42,60 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            InputVariable.Populate(property);
             OptionalContext.Populate(property);
         }
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             Dictionary<string, int> columns = new Dictionary<string, int>();
-            if (InputVariable.DefaultProjection() is GremlinVariableProperty)
-            {
-                columns[(InputVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 0;
+            //if (InputVariable.DefaultProjection() is GremlinVariableProperty)
+            //{
+            //    columns[(InputVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 0;
 
-            }
-            if (InputVariable is GremlinTableVariable)
-            {
-                var tableVar = InputVariable as GremlinTableVariable;
-                foreach (var projectProperty in tableVar.ProjectedProperties)
-                {
-                    columns[projectProperty] = 0;
-                }
-            }
-            if (OptionalContext.PivotVariable.DefaultProjection() is GremlinVariableProperty)
-            {
-                columns[(OptionalContext.PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 1;
-            }
-            foreach (var projectProperty in projectProperties)
-            {
-                columns[projectProperty] = 1;
-            }
-            
-            WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
-            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
-            secondQueryExpr.SelectElements.Clear();
-            foreach (var column in columns)
-            {
-                WScalarExpression scalarExpr;
-                if (column.Value == 0)
-                {
-                    //The column comes from first query, so set the column of second query as null
-                    scalarExpr = SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
+            //}
+            //if (InputVariable is GremlinTableVariable)
+            //{
+            //    var tableVar = InputVariable as GremlinTableVariable;
+            //    foreach (var projectProperty in tableVar.ProjectedProperties)
+            //    {
+            //        columns[projectProperty] = 0;
+            //    }
+            //}
+            //if (OptionalContext.PivotVariable.DefaultProjection() is GremlinVariableProperty)
+            //{
+            //    columns[(OptionalContext.PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 1;
+            //}
+            //foreach (var projectProperty in projectProperties)
+            //{
+            //    columns[projectProperty] = 1;
+            //}
 
-                    scalarExpr = SqlUtil.GetNullExpr();
-                    secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
-                }
-                else
-                {
-                    //The column comes from second query, so set the column of first query as null
-                    scalarExpr = SqlUtil.GetNullExpr();
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
+            //WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
+            WSelectQueryBlock firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, projectProperties);
+            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(projectProperties);
+            //secondQueryExpr.SelectElements.Clear();
+            //foreach (var column in columns)
+            //{
+            //    WScalarExpression scalarExpr;
+            //    if (column.Value == 0)
+            //    {
+            //        //The column comes from first query, so set the column of second query as null
+            //        scalarExpr = SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
+            //        firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
 
-                    scalarExpr = SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
-                    secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
-                }
-            }
+            //        scalarExpr = SqlUtil.GetNullExpr();
+            //        secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
+            //    }
+            //    else
+            //    {
+            //        //The column comes from second query, so set the column of first query as null
+            //        scalarExpr = SqlUtil.GetNullExpr();
+            //        firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
+
+            //        scalarExpr = SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, column.Key);
+            //        secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(scalarExpr));
+            //    }
+            //}
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 

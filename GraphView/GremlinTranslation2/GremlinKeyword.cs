@@ -11,6 +11,7 @@ namespace GraphView
         public const string Label = "label";
         public const string EdgeID = "_ID";
         public const string NodeID = "id";
+        public const string TableValue = "_value";
 
         public static class func
         {
@@ -35,6 +36,8 @@ namespace GraphView
             public const string AddE = "AddE";
             public const string SideEffect = "SideEffect";
             public const string Dedup = "Dedup";
+            public const string Fold = "fold";
+            public const string Count = "count";
         }
         public enum Pop
         {

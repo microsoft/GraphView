@@ -42,7 +42,6 @@ namespace GraphView
         internal override void Populate(string property)
         {
             RepeatContext.Populate(property);
-            base.Populate(property);
         }
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName )

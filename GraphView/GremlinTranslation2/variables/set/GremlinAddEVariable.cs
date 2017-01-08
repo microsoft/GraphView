@@ -106,9 +106,7 @@ namespace GraphView
         {
             if (context == null)
             {
-                var queryBlock = new WSelectQueryBlock();
-                queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, GremlinKeyword.NodeID)));
-                return queryBlock;
+                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, new List<string>() { GremlinKeyword.NodeID }); ;
             }
             else
             {

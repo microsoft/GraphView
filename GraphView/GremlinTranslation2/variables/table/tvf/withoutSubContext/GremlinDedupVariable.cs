@@ -33,16 +33,22 @@ namespace GraphView
             DedupLabels = new List<string>(dedupLabels);
         }
 
+        internal override void Populate(string property)
+        {
+            
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
             foreach (var dedupLabel in DedupLabels)
             {
                 //TODO:
                 throw new NotImplementedException();
                 parameters.Add(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, dedupLabel));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Constant, parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Dedup, parameters, tableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

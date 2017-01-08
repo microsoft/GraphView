@@ -46,7 +46,7 @@ namespace GraphView
             else
             {
                 VariableName = GenerateTableAlias();
-                return new GremlinVariableProperty(this, "_value");
+                return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
             }
         }
 

@@ -42,6 +42,11 @@ namespace GraphView
             UsedProperties = new List<string>();
         }
 
+        internal override GremlinVariableType GetVariableType()
+        {
+            return ContextVariable.GetVariableType();
+        }
+
         internal override GremlinScalarVariable DefaultProjection()
         {
             return ContextVariable.DefaultProjection();
@@ -75,5 +80,20 @@ namespace GraphView
                 throw new NotImplementedException();
             }
         }
+    }
+
+    internal class GremlinContextScalarVariable : GremlinContextVariable
+    {
+        public GremlinContextScalarVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+    }
+
+    internal class GremlinContextVertexVariable : GremlinContextTableVariable
+    {
+        public GremlinContextVertexVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+    }
+
+    internal class GremlinContextEdgeVariable : GremlinContextTableVariable
+    {
+        public GremlinContextEdgeVariable(GremlinVariable contextEdge) : base(contextEdge) { }
     }
 }

@@ -326,6 +326,9 @@ namespace GraphView
                 case GremlinKeyword.func.SideEffect:
                     funcTableRef = new WSideEffectTableReference();
                     break;
+                case GremlinKeyword.func.Dedup:
+                    funcTableRef = new WDedupTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }
@@ -416,6 +419,16 @@ namespace GraphView
                 Expression = scalarExpr,
                 Variable = GetVariableReference(variableName)
             };
+        }
+
+        internal static WSelectQueryBlock GetSimpleSelectQueryBlock(string variableName, List<string> projectProperties)
+        {
+            var queryBlock = new WSelectQueryBlock();
+            foreach (var property in projectProperties)
+            {
+                queryBlock.SelectElements.Add(GetSelectScalarExpr(GetColumnReferenceExpr(variableName, property)));
+            }
+            return queryBlock;
         }
     }
 }

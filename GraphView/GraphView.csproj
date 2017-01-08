@@ -143,15 +143,14 @@
     <Compile Include="GremlinTranslation2\sideEffect\GremlinTreeOp.cs" />
     <Compile Include="GremlinTranslation2\variables\set\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\edge\GremlinBoundEdgeVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\context\GremlinContextEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinContextVariable.cs" />
     <Compile Include="GremlinTranslation2\GremlinMatchPath.cs" />
     <Compile Include="GremlinTranslation2\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\context\GremlinContextScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\edge\GremlinFreeEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinSqlTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinDedupVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinUnfoldVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinLocalVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\derived\GremlinDerivedTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinKeyVariable.cs" />
@@ -177,7 +176,6 @@
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinValueVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\set\GremlinAddVVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\vertex\GremlinBoundVertexVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\context\GremlinContextVertexVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinChooseOp.cs" />
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />

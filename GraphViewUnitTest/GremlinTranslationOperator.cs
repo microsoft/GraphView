@@ -65,48 +65,44 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            graph.g().V().Has("name", "ripple").Coalesce(GraphTraversal2.__().InE("created"), GraphTraversal2.__().InE("un")).OutV().next();
-            //GraphTraversal2.g()
-            //    .V().Out("jinjin").Optional(GraphTraversal2.__().Out("mdl").OutE().InV()).next();
+            graph.g().V().AddE().To(graph.g().V()).next();
 
-            //GraphTraversal2.g().V().Local(GraphTraversal2.__().OutE()).Properties("name", "age").Key().next();
-
-            //GraphTraversal2.g().V()
-            //    .Project("vertex", "parents", "references", "model")
-            //    .By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As("_").InV()).Tree())
-            //    .By(GraphTraversal2.__().OutE().Label().Dedup().Fold())
-            //    .By(GraphTraversal2.__().As("@v")
-            //        .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
-            //        .Repeat(GraphTraversal2.__().As("@e")
-            //            .FlatMap(GraphTraversal2.__().InV()
-            //                .As("mdl")
-            //                .Select(GremlinKeyword.Pop.last, "@v")
-            //                .Both()
-            //                .Where(GraphTraversal2.__().Out("mdl")
-            //                    .Where(Predicate.eq("mdl"))))
-            //            .As("@v")
-            //            .Optional(GraphTraversal2.__().FlatMap(
-            //                GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e")
-            //                    .Values("_ref")
-            //                    .As("key")
-            //                    .Select(GremlinKeyword.Pop.last, "@v")
-            //                    .Out("mdl")
-            //                    .OutE("ref")
-            //                    .Where(GraphTraversal2.__().Values("_key")
-            //                        .Where(Predicate.eq("key"))))))
-            //        .Until(GraphTraversal2.__().FlatMap(
-            //            GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
-            //        .Union(GraphTraversal2.__().Dedup()
-            //                .Emit()
-            //                .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
-            //                .Tree(),
-            //            GraphTraversal2.__().Project("id", "key", "ref")
-            //                .By(GraphTraversal2.__().Id())
-            //                .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.first, "@e").Values("_key"))
-            //                .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e").Values("_ref"))
-            //                .Fold())
-            //        .Fold())
-            //    .By(GraphTraversal2.__().Out("mdl").Project("vertex").By(GraphTraversal2.__().Tree())).next();
+            graph.g().V()
+                .Project("vertex", "parents", "references", "model")
+                .By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As("_").InV()).Tree())
+                .By(GraphTraversal2.__().OutE().Label().Dedup().Fold())
+                .By(GraphTraversal2.__().As("@v")
+                    .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
+                    .Repeat(GraphTraversal2.__().As("@e")
+                        .FlatMap(GraphTraversal2.__().InV()
+                            .As("mdl")
+                            .Select(GremlinKeyword.Pop.last, "@v")
+                            .Both()
+                            .Where(GraphTraversal2.__().Out("mdl")
+                                .Where(Predicate.eq("mdl"))))
+                        .As("@v")
+                        .Optional(GraphTraversal2.__().FlatMap(
+                            GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e")
+                                .Values("_ref")
+                                .As("key")
+                                .Select(GremlinKeyword.Pop.last, "@v")
+                                .Out("mdl")
+                                .OutE("ref")
+                                .Where(GraphTraversal2.__().Values("_key")
+                                    .Where(Predicate.eq("key"))))))
+                    .Until(GraphTraversal2.__().FlatMap(
+                        GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
+                    .Union(GraphTraversal2.__().Dedup()
+                            .Emit()
+                            .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+                            .Tree(),
+                        GraphTraversal2.__().Project("id", "key", "ref")
+                            .By(GraphTraversal2.__().Id())
+                            .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.first, "@e").Values("_key"))
+                            .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e").Values("_ref"))
+                            .Fold())
+                    .Fold())
+                .By(GraphTraversal2.__().Out("mdl").Project("vertex").By(GraphTraversal2.__().Tree())).next();
 
 
             //GraphTraversal2.g().V()
@@ -127,9 +123,6 @@ namespace GremlinTranslationOperator.Tests
             //    )
             //    .count()
             //    .next();
-
-
-
         }
 
 
@@ -142,8 +135,6 @@ namespace GremlinTranslationOperator.Tests
 
             GraphViewCommand graph = new GraphViewCommand(connection);
             //var results = graph.g().V().Has("type", "University").Union(GraphTraversal2.__().Properties("label", "type"), GraphTraversal2.__().OutE().Properties("label")).next();
-            graph.g().V().Out().SideEffect(GraphTraversal2.__().OutE().InV().InE()).InV().next();
-            graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
 
             //Insert character
             //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");
@@ -166,29 +157,17 @@ namespace GremlinTranslationOperator.Tests
             //}
 
             //Insert Edge
-            string[] edgeLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\edge.txt");
-            foreach (string line in edgeLines)
-            {
-                var arr = line.Split(' ');
-                var sourceId = arr[0];
-                for (var i = 1; i < arr.Length; i++)
-                {
-                    var sinkId = arr[i];
-                    graph.g().V().Has("id", sourceId).AddE("appeared").To(graph.g().V().Has("id", sinkId)).next();
-                }
-            }
-        }
-
-        [TestMethod]
-        public void testMarvel()
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelUniverse");
-            GraphViewCommand graph = new GraphViewCommand(connection);
-            var results = graph.g().V().next();
-
-
+            //string[] edgeLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\edge.txt");
+            //foreach (string line in edgeLines)
+            //{
+            //    var arr = line.Split(' ');
+            //    var sourceId = arr[0];
+            //    for (var i = 1; i < arr.Length; i++)
+            //    {
+            //        var sinkId = arr[i];
+            //        graph.g().V().Has("id", sourceId).AddE("appeared").To(graph.g().V().Has("id", sinkId)).next();
+            //    }
+            //}
         }
     }
 }

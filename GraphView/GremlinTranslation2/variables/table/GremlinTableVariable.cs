@@ -25,6 +25,12 @@ namespace GraphView
             VariableName = GenerateTableAlias();
         }
 
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            //TODO
+            return new GremlinVariableProperty(this, "id");
+        }
+
         internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Table;
@@ -207,7 +213,7 @@ namespace GraphView
     {
         internal override GremlinScalarVariable DefaultProjection()
         {
-            return new GremlinVariableProperty(this, "_value");
+            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
 
         internal override GremlinVariableType GetVariableType()
