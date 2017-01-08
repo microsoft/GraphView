@@ -141,8 +141,8 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
 
             GraphTraversal2 graph = new GraphTraversal2(connection);
-
-            graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
+            var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().OutE().Properties("label")).next();
+            //graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
 
             //Insert character
             //string[] characterLines = File.ReadAllLines(@"C:\Users\v-jinjl\Desktop\GraphView-Development\GraphView\data\character.txt");

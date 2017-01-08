@@ -14,7 +14,6 @@ namespace GraphView
         public GremlinConstantVariable(object value)
         {
             Value = value;
-            VariableName = GenerateTableAlias();
         }
 
         public override WTableReference ToTableReference()

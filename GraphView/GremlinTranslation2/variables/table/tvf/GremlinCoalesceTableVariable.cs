@@ -41,6 +41,14 @@ namespace GraphView
             CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
         }
 
+        internal override void Populate(string property)
+        {
+            foreach (var context in CoalesceContextList)
+            {
+                context.Populate(property);
+            }
+        }
+
         public override  WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
@@ -61,7 +69,6 @@ namespace GraphView
         public GremlinCoalesceVertexVariable(List<GremlinToSqlContext> coalesceContextList)
         {
             SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -70,7 +77,6 @@ namespace GraphView
         public GremlinCoalesceEdgeVariable(List<GremlinToSqlContext> coalesceContextList)
         {
             SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -79,7 +85,6 @@ namespace GraphView
         public GremlinCoalesceScalarVariable(List<GremlinToSqlContext> coalesceContextList)
         {
             SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -88,7 +93,6 @@ namespace GraphView
         public GremlinCoalesceTableVariable(List<GremlinToSqlContext> coalesceContextList)
         {
             SqlTableVariable = new GremlinCoalesceVariable(coalesceContextList);
-            VariableName = GenerateTableAlias();
         }
     }
 }

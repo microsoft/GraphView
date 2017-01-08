@@ -20,11 +20,6 @@ namespace GraphView
             return ContextVariable.DefaultProjection();
         }
 
-        internal override void Populate(string property)
-        {
-            ContextVariable.Populate(property);
-        }
-
         internal override void InV(GremlinToSqlContext currentContext)
         {
             ContextVariable.Populate("_sink");

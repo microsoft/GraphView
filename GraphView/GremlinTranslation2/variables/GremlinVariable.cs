@@ -35,6 +35,7 @@ namespace GraphView
     internal abstract class GremlinVariable
     {
         public string VariableName { get; set; }
+        public List<string> UsedProperties { get; set; }
         public int Low { get; set; }
         public int High { get; set; }
 
@@ -42,6 +43,7 @@ namespace GraphView
         {
             Low = Int32.MinValue;
             High = Int32.MaxValue;
+            UsedProperties = new List<string>();
         }
 
         internal virtual GremlinVariableType GetVariableType()
@@ -51,6 +53,10 @@ namespace GraphView
 
         internal virtual void Populate(string property)
         {
+            if (!UsedProperties.Contains(property))
+            {
+                UsedProperties.Add(property);
+            }
         }
 
         internal virtual GremlinScalarVariable DefaultProjection()

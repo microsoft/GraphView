@@ -31,6 +31,11 @@ namespace GraphView
             FlatMapContext = flatMapContext;
         }
 
+        internal override void Populate(string property)
+        {
+            FlatMapContext.Populate(property);
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
@@ -46,7 +51,6 @@ namespace GraphView
         public GremlinFlatMapVertexVariable(GremlinToSqlContext flatMapContext)
         {
             SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -55,7 +59,6 @@ namespace GraphView
         public GremlinFlatMapEdgeVariable(GremlinToSqlContext flatMapContext)
         {
             SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -64,7 +67,6 @@ namespace GraphView
         public GremlinFlatMapScalarVariable(GremlinToSqlContext flatMapContext)
         {
             SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -73,7 +75,6 @@ namespace GraphView
         public GremlinFlatMapTableVariable(GremlinToSqlContext flatMapContext)
         {
             SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
-            VariableName = GenerateTableAlias();
         }
     }
 }

@@ -8,13 +8,18 @@ namespace GraphView
 {
     internal class GremlinOptionalVariable : GremlinSqlTableVariable
     {
-        public GremlinToSqlContext Context { get; set; }
+        public GremlinToSqlContext OptionalContext { get; set; }
         public GremlinVariable InputVariable { get; set; }
 
         public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
         {
-            Context = context;
+            OptionalContext = context;
             InputVariable = inputVariable;
+        }
+
+        internal override void Populate(string property)
+        {
+            OptionalContext.Populate(property);
         }
 
         public static GremlinTableVariable Create(GremlinVariable inputVariable, GremlinToSqlContext context)
@@ -57,9 +62,9 @@ namespace GraphView
                     columns[projectProperty] = 0;
                 }
             }
-            if (Context.PivotVariable.DefaultProjection() is GremlinVariableProperty)
+            if (OptionalContext.PivotVariable.DefaultProjection() is GremlinVariableProperty)
             {
-                columns[(Context.PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 1;
+                columns[(OptionalContext.PivotVariable.DefaultProjection() as GremlinVariableProperty).VariableProperty] = 1;
             }
             foreach (var projectProperty in projectProperties)
             {
@@ -67,7 +72,7 @@ namespace GraphView
             }
             
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
-            WSelectQueryBlock secondQueryExpr = Context.ToSelectQueryBlock();
+            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
             secondQueryExpr.SelectElements.Clear();
             foreach (var column in columns)
             {
@@ -97,11 +102,6 @@ namespace GraphView
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
             var secondTableRef = SqlUtil.GetFunctionTableReference("optional", PropertyKeys, tableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
-        }
-
-        internal void Populate(string property)
-        {
-            Context.Populate(property);
         }
     }
 

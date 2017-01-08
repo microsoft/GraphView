@@ -31,6 +31,11 @@ namespace GraphView
             LocalContext = localContext;
         }
 
+        internal override void Populate(string property)
+        {
+            LocalContext.Populate(property);
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
@@ -46,7 +51,6 @@ namespace GraphView
         public GremlinLocalVertexVariable(GremlinToSqlContext localContext)
         {
             SqlTableVariable = new GremlinLocalVariable(localContext);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -55,7 +59,6 @@ namespace GraphView
         public GremlinLocalEdgeVariable(GremlinToSqlContext localContext)
         {
             SqlTableVariable = new GremlinLocalVariable(localContext);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -64,7 +67,6 @@ namespace GraphView
         public GremlinLocalEdgeScalarVariable(GremlinToSqlContext localContext)
         {
             SqlTableVariable = new GremlinLocalVariable(localContext);
-            VariableName = GenerateTableAlias();
         }
     }
 
@@ -73,7 +75,6 @@ namespace GraphView
         public GremlinLocalTableVariable(GremlinToSqlContext localContext)
         {
             SqlTableVariable = new GremlinLocalVariable(localContext);
-            VariableName = GenerateTableAlias();
         }
     }
 }
