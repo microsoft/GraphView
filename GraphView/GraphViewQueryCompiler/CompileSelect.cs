@@ -1315,21 +1315,17 @@ namespace GraphView
                 if (tableReference is WQueryDerivedTable)
                 {
                     var derivedQueryExpr = (tableReference as WQueryDerivedTable).QueryExpr;
-                    var derivedQueryContext = new QueryCompilationContext(context);
-                    // TODO: Sync
-                    derivedQueryContext.ClearOuterContext();
+                    var derivedQueryContext = new QueryCompilationContext(context.TemporaryTableCollection);
                     var derivedQueryOp = derivedQueryExpr.Compile(derivedQueryContext, connection);
+
                     operatorChain.Add(operatorChain.Any()
                         ? new CartesianProductOperator2(operatorChain.Last(), derivedQueryOp)
                         : derivedQueryOp);
 
                     foreach (var pair in derivedQueryContext.RawRecordLayout.OrderBy(e => e.Value))
                     {
-                        var columnReference = pair.Key;
-                        var tableAlias = columnReference.TableReference;
-                        var columnName = columnReference.ColumnName;
-                        if (string.IsNullOrEmpty(tableAlias))
-                            tableAlias = tableReference.Alias.Value;
+                        var tableAlias = tableReference.Alias.Value;
+                        var columnName = pair.Key.ColumnName;
                         // TODO: Change to correct ColumnGraphType
                         context.AddField(tableAlias, columnName, ColumnGraphType.Value);
                     }
@@ -1372,6 +1368,7 @@ namespace GraphView
                         tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Edge);
                     else if (Enum.TryParse(functionName, true, out vertexTypeEnum))
                         tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Vertex);
+                    // TODO: Change to correct ColumnGraphType
                     else
                         tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Value);
 
