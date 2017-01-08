@@ -30,22 +30,25 @@ namespace GremlinTranslationOperator.Tests
         [TestMethod]
         public void TestModernGraph()
         {
-            GraphViewConnection connection = null;
-            
-            //GraphTraversal2.SetGraphViewConnection(connection);
-            //GraphTraversal2.g().addV("person").property("age", "27").property("name", "vadas").next();
-            //GraphTraversal2.g().addV("person").property("age", "29").property("name", "marko").next();
-            //GraphTraversal2.g().addV("person").property("age", "35").property("name", "peter").next();
-            //GraphTraversal2.g().addV("person").property("age", "32").property("name", "josh").next();
-            //GraphTraversal2.g().addV("software").property("lang", "java").property("name", "lop").next();
-            //GraphTraversal2.g().addV("software").property("lang", "java").property("name", "ripple").next();
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "Modern");
+            //connection.ResetCollection();
 
-            //GraphTraversal2.g().V().Has("name", "marko").AddE("knows").To(GraphTraversal2.g().V().Has("name", "vadas")).next();
-            //GraphTraversal2.g().V().has("name", "marko").addE("knows").to(GraphTraversal2.g().V().has("name", "josh")).next();
-            //GraphTraversal2.g().V().has("name", "marko").addE("knows").to(GraphTraversal2.g().V().has("name", "lop")).next();
-            //GraphTraversal2.g().V().has("name", "peter").addE("created").to(GraphTraversal2.g().V().has("name", "lop")).next();
-            //GraphTraversal2.g().V().has("name", "josh").addE("created").to(GraphTraversal2.g().V().has("name", "lop")).next();
-            //GraphTraversal2.g().V().has("name", "josh").addE("created").to(GraphTraversal2.g().V().has("name", "ripple")).next();
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            graph.g().AddV("person").Property("age", "27").Property("name", "vadas").next();
+            graph.g().AddV("person").Property("age", "29").Property("name", "marko").next();
+            graph.g().AddV("person").Property("age", "35").Property("name", "peter").next();
+            graph.g().AddV("person").Property("age", "32").Property("name", "josh").next();
+            graph.g().AddV("software").Property("lang", "java").Property("name", "lop").next();
+            graph.g().AddV("software").Property("lang", "java").Property("name", "ripple").next();
+
+            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "vadas")).next();
+            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "josh")).next();
+            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "lop")).next();
+            graph.g().V().Has("name", "peter").AddE("created").To(graph.g().V().Has("name", "lop")).next();
+            graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "lop")).next();
+            graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "ripple")).next();
 
             // v("lop")
             // v("lop")
@@ -53,7 +56,7 @@ namespace GremlinTranslationOperator.Tests
             // v("vadas")
             // v("josh")
             // v("ripple")
-            //GraphTraversal2.g().V().Out().next();
+            //graph.g().V().Out().next();
 
         }
 
