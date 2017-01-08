@@ -97,39 +97,4 @@ namespace GraphView
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
-
-    internal class GremlinDedupVariable : GremlinDerivedTableVariable
-    {
-        public List<string> DedupLabels { get; set; }
-
-        public GremlinDedupVariable(GremlinToSqlContext subqueryContext, List<string> dedupLabels)
-            : base(subqueryContext)
-        {
-            DedupLabels = new List<string>(dedupLabels);
-        }
-
-        internal override GremlinScalarVariable DefaultProjection()
-        {
-            return SubqueryContext.PivotVariable.DefaultProjection();
-        }
-
-        public override WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
-            //TODO
-            //GremlinToSqlContext dedupContext = new GremlinToSqlContext();
-            //GremlinDerivedTableVariable subqueryVariable = new GremlinDerivedTableVariable(SubqueryContext);
-            //dedupContext.VariableList.Add(subqueryVariable);
-            //dedupContext.TableReferences.Add(subqueryVariable);
-            //dedupContext.PivotVariable = subqueryVariable;
-
-            //WSelectQueryBlock queryBlock = dedupContext.ToSelectQueryBlock();
-            //queryBlock.SelectElements.Clear();
-            //queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func., SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
-
-            //return SqlUtil.GetDerivedTable(queryBlock, VariableName);
-        }
-    }
-
-
 }

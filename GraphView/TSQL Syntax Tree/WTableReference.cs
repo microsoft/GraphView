@@ -436,6 +436,16 @@ namespace GraphView
 
     }
 
+    public partial class WSideEffectTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WDedupTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WJoinParenthesisTableReference : WTableReference
     {
         internal WTableReference Join { get; set; }

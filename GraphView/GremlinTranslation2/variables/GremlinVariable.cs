@@ -231,8 +231,7 @@ namespace GraphView
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
         internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels)
         {
-            GremlinDedupVariable newVariable = new GremlinDedupVariable(currentContext.Duplicate(), dedupLabels);
-            currentContext.Reset();
+            GremlinTableVariable newVariable = GremlinDedupVariable.Create(this, dedupLabels);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
@@ -666,9 +665,9 @@ namespace GraphView
         //internal virtual void SideEffect(Consumer<Traverser<E>> consumer)
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
-            throw new NotImplementedException();
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
             currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         //internal virtual void SimplePath()

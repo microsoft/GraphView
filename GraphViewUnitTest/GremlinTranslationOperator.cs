@@ -142,7 +142,7 @@ namespace GremlinTranslationOperator.Tests
 
             GraphViewCommand graph = new GraphViewCommand(connection);
             //var results = graph.g().V().Has("type", "University").Union(GraphTraversal2.__().Properties("label", "type"), GraphTraversal2.__().OutE().Properties("label")).next();
-            graph.g().V().Out().In().OutE().InV().InE().InV().next();
+            graph.g().V().Out().SideEffect(GraphTraversal2.__().OutE().InV().InE()).InV().next();
             graph.g().V().Has("name", "ripple").Project("both", "lang").By(GraphTraversal2.__().Both()).By(GraphTraversal2.__().Properties("lang")).next();
 
             //Insert character

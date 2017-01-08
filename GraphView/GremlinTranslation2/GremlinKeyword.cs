@@ -33,6 +33,8 @@ namespace GraphView
             public const string Project = "Project";
             public const string AddV = "AddV";
             public const string AddE = "AddE";
+            public const string SideEffect = "SideEffect";
+            public const string Dedup = "Dedup";
         }
         public enum Pop
         {

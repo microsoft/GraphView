@@ -8,8 +8,6 @@ namespace GraphView
 {
     internal class GremlinCoalesceVariable : GremlinSqlTableVariable
     {
-        public List<GremlinToSqlContext> CoalesceContextList { get; set; }
-
         public static GremlinTableVariable Create(List<GremlinToSqlContext> coalesceContextList)
         {
             if (GremlinUtil.IsTheSameOutputType(coalesceContextList))
@@ -28,6 +26,8 @@ namespace GraphView
             }
             return new GremlinCoalesceTableVariable(coalesceContextList);
         }
+
+        public List<GremlinToSqlContext> CoalesceContextList { get; set; }
 
         public GremlinCoalesceVariable(List<GremlinToSqlContext> coalesceContextList)
         {

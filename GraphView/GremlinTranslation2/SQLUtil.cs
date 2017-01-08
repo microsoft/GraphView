@@ -323,6 +323,9 @@ namespace GraphView
                 case GremlinKeyword.func.AddE:
                     funcTableRef = new WAddETableReference();
                     break;
+                case GremlinKeyword.func.SideEffect:
+                    funcTableRef = new WSideEffectTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

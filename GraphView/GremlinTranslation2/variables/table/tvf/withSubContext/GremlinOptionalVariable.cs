@@ -8,20 +8,6 @@ namespace GraphView
 {
     internal class GremlinOptionalVariable : GremlinSqlTableVariable
     {
-        public GremlinToSqlContext OptionalContext { get; set; }
-        public GremlinVariable InputVariable { get; set; }
-
-        public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
-        {
-            OptionalContext = context;
-            InputVariable = inputVariable;
-        }
-
-        internal override void Populate(string property)
-        {
-            OptionalContext.Populate(property);
-        }
-
         public static GremlinTableVariable Create(GremlinVariable inputVariable, GremlinToSqlContext context)
         {
             if (inputVariable.GetVariableType() == context.PivotVariable.GetVariableType())
@@ -42,9 +28,22 @@ namespace GraphView
             {
                 return new GremlinOptionalTableVariable(context, inputVariable);
             }
-            throw new NotImplementedException();
+            throw new QueryCompilationException();
         }
 
+        public GremlinToSqlContext OptionalContext { get; set; }
+        public GremlinVariable InputVariable { get; set; }
+
+        public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
+        {
+            OptionalContext = context;
+            InputVariable = inputVariable;
+        }
+
+        internal override void Populate(string property)
+        {
+            OptionalContext.Populate(property);
+        }
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
             Dictionary<string, int> columns = new Dictionary<string, int>();

@@ -19,11 +19,11 @@ namespace GraphView
                 case GremlinVariableType.Edge:
                     return new GremlinFlatMapEdgeVariable(flatMapContext);
                 case GremlinVariableType.Scalar:
-                    throw new NotImplementedException();
+                    return new GremlinFlatMapScalarVariable(flatMapContext);
                 case GremlinVariableType.Table:
-                    throw new NotImplementedException();
+                    return new GremlinFlatMapTableVariable(flatMapContext);
             }
-            throw new NotImplementedException();
+            throw new QueryCompilationException();
         }
 
         public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext)

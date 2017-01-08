@@ -23,7 +23,7 @@ namespace GraphView
                 case GremlinVariableType.Table:
                     return new GremlinLocalTableVariable(localContext);
             }
-            throw new NotImplementedException();
+            throw new QueryCompilationException();
         }
 
         public GremlinLocalVariable(GremlinToSqlContext localContext)

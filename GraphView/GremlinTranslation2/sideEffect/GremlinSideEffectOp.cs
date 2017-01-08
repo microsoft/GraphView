@@ -19,7 +19,7 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            SideEffectTraversal.GetStartOp().InheritedContextFromParent(inputContext);
+            SideEffectTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             GremlinToSqlContext sideEffectContext = SideEffectTraversal.GetEndOp().GetContext();
             inputContext.PivotVariable.SideEffect(inputContext, sideEffectContext);
 
