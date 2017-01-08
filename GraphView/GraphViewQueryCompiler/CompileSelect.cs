@@ -1396,6 +1396,7 @@ namespace GraphView
                 new ProjectOperator(operatorChain.Any()
                     ? operatorChain.Last()
                     : (context.OuterContextOp ?? new ConstantSourceOperator(new RawRecord())));
+
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
             if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression || e.SelectExpr is WValueExpression))

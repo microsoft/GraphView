@@ -14,8 +14,8 @@ namespace GraphView
             List<string> projectedField;
             var nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
 
-            GraphViewExecutionOperator insertNodeOp = new InsertNodeOperator2(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
-            context.CurrentExecutionOperator = insertNodeOp;
+            GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
+            context.CurrentExecutionOperator = addVOp;
 
             foreach (var columnName in projectedField)
             {
@@ -23,7 +23,7 @@ namespace GraphView
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
             }
 
-            return insertNodeOp;
+            return addVOp;
         }
     }
 
@@ -42,9 +42,9 @@ namespace GraphView
             var srcSubQueryFunction = srcSubQuery.CompileToFunction(context, dbConnection);
             var sinkSubQueryFunction = sinkSubQuery.CompileToFunction(context, dbConnection);
 
-            GraphViewExecutionOperator insertEdgeOp = new InsertEdgeOperator2(context.CurrentExecutionOperator,
+            GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator,
                 dbConnection, srcSubQueryFunction, sinkSubQueryFunction, edgeJsonDocument, projectedField);
-            context.CurrentExecutionOperator = insertEdgeOp;
+            context.CurrentExecutionOperator = addEOp;
 
             foreach (var columnName in projectedField)
             {
@@ -52,7 +52,7 @@ namespace GraphView
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
             }
 
-            return insertEdgeOp;
+            return addEOp;
         }
     }
 
