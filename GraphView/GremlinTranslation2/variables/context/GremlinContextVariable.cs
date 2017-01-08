@@ -12,6 +12,7 @@ namespace GraphView
         public bool IsFromSelect { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
         public string SelectKey { get; set; }
+        public List<string> UsedProperties { get; set; }
 
         public static GremlinContextVariable Create(GremlinVariable contextVariable)
         {
@@ -38,6 +39,7 @@ namespace GraphView
         {
             ContextVariable = contextVariable;
             VariableName = contextVariable.VariableName;
+            UsedProperties = new List<string>();
         }
 
         internal override GremlinScalarVariable DefaultProjection()
@@ -48,6 +50,10 @@ namespace GraphView
         internal override void Populate(string property)
         {
             ContextVariable.Populate(property);
+            if (!UsedProperties.Contains(property))
+            {
+                UsedProperties.Add(property);
+            }
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
