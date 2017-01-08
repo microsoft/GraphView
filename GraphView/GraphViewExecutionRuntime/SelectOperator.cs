@@ -740,30 +740,31 @@ namespace GraphView
 
     internal class ConstantSourceOperator : GraphViewExecutionOperator
     {
+        private RawRecord _constantSource;
+
         public RawRecord ConstantSource
         {
-            get { return this.ConstantSource; }
-            set { this.ConstantSource = value; this.Open(); }
+            get { return _constantSource; }
+            set { _constantSource = value; this.Open(); }
         }
 
         public ConstantSourceOperator(RawRecord pConstant)
         {
-            ConstantSource = pConstant;
+            _constantSource = pConstant;
             this.Open();
         }
 
         public void SetRef(RawRecord pConstant)
         {
-            ConstantSource = pConstant;
+            _constantSource = pConstant;
             this.Open();
         }
 
-        override public RawRecord Next()
+        public override RawRecord Next()
         {
             this.Close();
-            return ConstantSource;
+            return _constantSource;
         }
-
     }
 
     public class GraphViewDataReader : IDataReader
