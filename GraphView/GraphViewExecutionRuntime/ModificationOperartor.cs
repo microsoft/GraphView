@@ -398,6 +398,13 @@ namespace GraphView
         private string edgeBaseString;
         private Queue<RawRecord> outputBuffer;
 
+        // The SELECT query selecting a collection of edges to be inserted. 
+        // The first two columns of the returned results specify the source vertex ID and 
+        // and the sink vertex ID of the edge to be inserted. The remaining columns specify
+        // edge properties, whose names are given by edgeProperties.
+        GraphViewExecutionOperator selectOp;
+        List<string> edgeProperties;
+
         private string RetrieveDocumentById(string id)
         {
             var script = string.Format("SELECT * FROM Node WHERE Node.id = '{0}'", id);
@@ -500,19 +507,21 @@ namespace GraphView
 
     internal class DeleteEdgeOperator : ModificationBaseOpertaor
     {
-        public GraphViewExecutionOperator SelectInput;
+        // The SELECT query that returns the edges to be deleted.
+        // The query returns three columns: edge's source, edge's sink and edge's offset in the adjacency list
+        GraphViewExecutionOperator edgeInput;
 
-        public string EdgeID_str;
-        public string EdgeReverseID_str;
+        string edgeSourceId;
+        string edgeSinkId;
 
         public DeleteEdgeOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator SelectInput,  string source, string sink, string EdgeID_str, string EdgeReverseID_str)
         {
             this.dbConnection = dbConnection;
-            this.SelectInput = SelectInput;
+            this.edgeInput = SelectInput;
             this.source = source;
             this.sink = sink;
-            this.EdgeID_str = EdgeID_str;
-            this.EdgeReverseID_str = EdgeReverseID_str;
+            this.edgeSourceId = EdgeID_str;
+            this.edgeSinkId = EdgeReverseID_str;
             Open();
         }
 
@@ -521,17 +530,17 @@ namespace GraphView
             if (!State()) return null;
             map = new Dictionary<string, string>();
 
-            while (SelectInput.State())
+            while (edgeInput.State())
             {
                 //get source and sink's id from SelectQueryBlock's TraversalProcessor 
-                RawRecord rec = SelectInput.Next();
+                RawRecord rec = edgeInput.Next();
                 if (rec == null) break;
-                List<string> header = (SelectInput as OutputOperator).SelectedElement;
+                List<string> header = (edgeInput as OutputOperator).SelectedElement;
                 string sourceid = rec.RetriveData(header, source);
                 string sinkid = rec.RetriveData(header, sink);
                 //The "e" in the Record is "Reverse_e" in fact
-                string EdgeReverseID = rec.RetriveData(header, EdgeID_str);
-                string EdgeID = rec.RetriveData(header, EdgeReverseID_str);
+                string EdgeReverseID = rec.RetriveData(header, edgeSourceId);
+                string EdgeID = rec.RetriveData(header, edgeSinkId);
 
                 //get source.doc and sink.doc
                 string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
@@ -568,8 +577,8 @@ namespace GraphView
 
     internal class InsertNodeOperator : ModificationBaseOpertaor
     {
-        public string Json_str;
-        private Document _createdDocument;
+        string Json_str;
+        Document _createdDocument;
 
         public InsertNodeOperator(GraphViewConnection dbConnection, string Json_str)
         {
@@ -608,6 +617,9 @@ namespace GraphView
     internal class DeleteNodeOperator : ModificationBaseOpertaor
     {
         public string Selectstr;
+
+        // The SELECT query that returns the IDs of the vertices to be deleted.
+        GraphViewExecutionOperator selectVertexOp;
 
         public DeleteNodeOperator(GraphViewConnection dbConnection, string Selectstr)
         {
@@ -655,15 +667,15 @@ namespace GraphView
 
     internal class UpdateNodePropertiesOperator : ModificationBaseOpertaor
     {
-        public GraphViewExecutionOperator SelectInput;
-        public List<Tuple<string, string>> PropertiesList;
-        public Queue<RawRecord> OutputBuffer;
+        GraphViewExecutionOperator vertexInput;
+        List<Tuple<string, string>> propertiesToBeUpdated;
+        Queue<RawRecord> OutputBuffer;
 
         public UpdateNodePropertiesOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator selectInput, string source, List<Tuple<string, string>> propertiesList)
         {
             this.dbConnection = dbConnection;
-            this.SelectInput = selectInput;
-            this.PropertiesList = propertiesList;
+            this.vertexInput = selectInput;
+            this.propertiesToBeUpdated = propertiesList;
             this.source = source;
             Open();
         }
@@ -681,12 +693,12 @@ namespace GraphView
 
             map = new Dictionary<string, string>();
 
-            while (SelectInput.State())
+            while (vertexInput.State())
             {
                 //get target node id and document
-                RawRecord rec = SelectInput.Next();
+                RawRecord rec = vertexInput.Next();
                 if (rec == null) break;
-                List<string> header = (SelectInput as OutputOperator).SelectedElement;
+                List<string> header = (vertexInput as OutputOperator).SelectedElement;
 
                 string sourceid = rec.RetriveData(header, source);
                 string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
@@ -709,23 +721,23 @@ namespace GraphView
         {
             if (!map.ContainsKey(id))
                 map[id] = document;
-            DataModificationUtils.UpdateNodeProperties(map, PropertiesList, id);
+            DataModificationUtils.UpdateNodeProperties(map, propertiesToBeUpdated, id);
         }
     }
 
     internal class UpdateEdgePropertiesOperator : ModificationBaseOpertaor
     {
-        public GraphViewExecutionOperator SelectInput;
-        public List<Tuple<string, string>> PropertiesList;
-        public string EdgeIdStr;
-        public string RevEdgeIdStr;
-        public Queue<RawRecord> OutputBuffer; 
+        GraphViewExecutionOperator edgeInput;
+        List<Tuple<string, string>> propertiesTobeUpdated;
+        string EdgeIdStr;
+        string RevEdgeIdStr;
+        Queue<RawRecord> OutputBuffer; 
 
         public UpdateEdgePropertiesOperator(GraphViewConnection dbConnection, GraphViewExecutionOperator selectInput, string source, string edgeIdStr, string revEdgeIdStr, List<Tuple<string, string>> propertiesList)
         {
             this.dbConnection = dbConnection;
-            this.SelectInput = selectInput;
-            this.PropertiesList = propertiesList;
+            this.edgeInput = selectInput;
+            this.propertiesTobeUpdated = propertiesList;
             this.source = source;
             this.EdgeIdStr = edgeIdStr;
             this.RevEdgeIdStr = revEdgeIdStr;
@@ -746,12 +758,12 @@ namespace GraphView
             map = new Dictionary<string, string>();
             var revEdgeSyncDict = new Dictionary<string, List<string>>();
 
-            while (SelectInput.State())
+            while (edgeInput.State())
             {
                 //get target node id and document
-                RawRecord rec = SelectInput.Next();
+                RawRecord rec = edgeInput.Next();
                 if (rec == null) break;
-                List<string> header = (SelectInput as OutputOperator).SelectedElement;
+                List<string> header = (edgeInput as OutputOperator).SelectedElement;
 
                 string sourceid = rec.RetriveData(header, source);
                 string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
@@ -778,7 +790,7 @@ namespace GraphView
         {
             if (!map.ContainsKey(id))
                 map[id] = document;
-            DataModificationUtils.UpdateEdgeProperties(map, PropertiesList, id, edgeIdStr, ref revEdgeSyncDict);
+            DataModificationUtils.UpdateEdgeProperties(map, propertiesTobeUpdated, id, edgeIdStr, ref revEdgeSyncDict);
         }
 
         internal void UpdatePropertiesofRevEdges(Dictionary<string, List<string>> revEdgeSyncDict)
@@ -793,7 +805,7 @@ namespace GraphView
                         ((JObject) GraphViewExecutionOperator.SendQuery(string.Format(script, id), dbConnection).First())
                             .ToString();
                 foreach (var edgeIdStr in pair.Value)
-                    DataModificationUtils.UpdateRevEdgeProperties(map, PropertiesList, id, edgeIdStr);
+                    DataModificationUtils.UpdateRevEdgeProperties(map, propertiesTobeUpdated, id, edgeIdStr);
             }
         }
     }
