@@ -2156,6 +2156,54 @@ namespace GraphView
         }
     }
 
+    partial class WBoundBothNodeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var firstSinkParameter = Parameters[0] as WColumnReferenceExpression;
+            var secondSinkParameter = Parameters[1] as WColumnReferenceExpression;
+            var sinkIndexes = new List<int>
+            {
+                context.LocateColumnReference(firstSinkParameter),
+                context.LocateColumnReference(secondSinkParameter)
+            };
+            var nodeAlias = Alias.Value;
+            var isSendQueryRequired = !(Parameters.Count == 3 && (Parameters[2] as WValueExpression).Value.Equals("id"));
+            var matchNode = new MatchNode
+            {
+                AttachedJsonQuery = null,
+                NodeAlias = nodeAlias,
+                Predicates = new List<WBooleanExpression>(),
+                Properties = new List<string> { "id", "_edge", "_reverse_edge" },
+            };
+
+            if (isSendQueryRequired)
+            {
+                for (int i = 2; i < Parameters.Count; i++)
+                {
+                    var property = (Parameters[i] as WValueExpression).Value;
+                    if (!matchNode.Properties.Contains(property))
+                        matchNode.Properties.Add(property);
+                }
+                WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
+
+                // TODO: Change to correct ColumnGraphType
+                foreach (var property in matchNode.Properties)
+                    context.AddField(nodeAlias, property, ColumnGraphType.Value);
+            }
+            else
+            {
+                context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
+            }
+
+            var bothVOp = new BothVOperator(context.CurrentExecutionOperator, dbConnection, sinkIndexes,
+                matchNode.AttachedJsonQuery);
+            context.CurrentExecutionOperator = bothVOp;
+
+            return bothVOp;
+        }
+    }
+
     partial class WBoundOutEdgeTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context,
@@ -2180,6 +2228,41 @@ namespace GraphView
             }
 
             var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, new List<int> {adjListIndex},
+                null, projectFields);
+            context.CurrentExecutionOperator = adjListDecoder;
+
+            return adjListDecoder;
+        }
+    }
+
+    partial class WBoundBothEdgeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var firstAdjListParameter = Parameters[0] as WColumnReferenceExpression;
+            var secondAdjListParameter = Parameters[1] as WColumnReferenceExpression;
+            var adjListIndexes = new List<int>
+            {
+                context.LocateColumnReference(firstAdjListParameter),
+                context.LocateColumnReference(secondAdjListParameter)
+            };
+            var edgeAlias = Alias.Value;
+            var projectFields = new List<string> { "_sink" };
+
+            for (int i = 2; i < Parameters.Count; i++)
+            {
+                var field = (Parameters[i] as WValueExpression).Value;
+                if (!projectFields.Contains(field))
+                    projectFields.Add(field);
+            }
+
+            foreach (var projectField in projectFields)
+            {
+                // TODO: Change to correct ColumnGraphType
+                context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
+            }
+
+            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, adjListIndexes,
                 null, projectFields);
             context.CurrentExecutionOperator = adjListDecoder;
 

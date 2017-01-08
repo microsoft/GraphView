@@ -287,6 +287,192 @@ namespace GraphView
         }
     }
 
+    internal class BothVOperator : GraphViewExecutionOperator
+    {
+        private int outputBufferSize;
+        private int batchSize = 100;
+        private int inClauseLimit = 200;
+        private Queue<RawRecord> outputBuffer;
+        private GraphViewConnection connection;
+        private GraphViewExecutionOperator inputOp;
+
+
+        private List<int> adjacencyListSinkIndexes;
+
+        // The query that describes predicates on the sink vertices and its properties to return.
+        // It is null if the sink vertex has no predicates and no properties other than sink vertex ID
+        // are to be returned.  
+        private JsonQuery sinkVertexQuery;
+
+        public BothVOperator(
+            GraphViewExecutionOperator inputOp,
+            GraphViewConnection connection,
+            List<int> sinkIndexes,
+            JsonQuery sinkVertexQuery,
+            int outputBufferSize = 1000)
+        {
+            Open();
+            this.inputOp = inputOp;
+            this.connection = connection;
+            this.adjacencyListSinkIndexes = sinkIndexes;
+            this.sinkVertexQuery = sinkVertexQuery;
+            this.outputBufferSize = outputBufferSize;
+        }
+
+        public override RawRecord Next()
+        {
+            if (outputBuffer == null)
+            {
+                outputBuffer = new Queue<RawRecord>(outputBufferSize);
+            }
+
+            while (outputBuffer.Count < outputBufferSize && inputOp.State())
+            {
+                List<Tuple<RawRecord, string>> inputSequence = new List<Tuple<RawRecord, string>>(batchSize);
+
+                // Loads a batch of source records
+                for (int i = 0; i < batchSize && inputOp.State(); i++)
+                {
+                    RawRecord record = inputOp.Next();
+                    if (record == null)
+                    {
+                        break;
+                    }
+
+                    foreach (var adjacencyListSinkIndex in adjacencyListSinkIndexes)
+                    {
+                        inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex]));
+                    }
+                }
+
+                // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
+                // As a result, there is no need to send queries the underlying system to retrieve 
+                // the sink vertices.  
+                if (sinkVertexQuery == null)
+                {
+                    foreach (Tuple<RawRecord, string> pair in inputSequence)
+                    {
+                        RawRecord resultRecord = new RawRecord { fieldValues = new List<string>() };
+                        resultRecord.Append(pair.Item1);
+                        resultRecord.Append(pair.Item2);
+                        outputBuffer.Enqueue(resultRecord);
+                    }
+
+                    continue;
+                }
+
+                // Groups records returned by sinkVertexQuery by sink vertices' references
+                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(inClauseLimit);
+
+                HashSet<string> sinkReferenceSet = new HashSet<string>();
+                StringBuilder sinkReferenceList = new StringBuilder();
+                // Given a list of sink references, sends queries to the underlying system
+                // to retrieve the sink vertices. To reduce the number of queries to send,
+                // we pack multiple sink references in one query using the IN clause, i.e., 
+                // IN (ref1, ref2, ...). Since the total number of references to locate may exceed
+                // the limit that is allowed in the IN clause, we may need to send more than one 
+                // query to retrieve all sink vertices. 
+                int j = 0;
+                while (j < inputSequence.Count)
+                {
+                    sinkReferenceSet.Clear();
+
+                    //TODO: Verify whether DocumentDB still has inClauseLimit
+                    while (sinkReferenceSet.Count < inClauseLimit && j < inputSequence.Count)
+                    {
+                        sinkReferenceSet.Add(inputSequence[j].Item2);
+                        j++;
+                    }
+
+                    sinkReferenceList.Clear();
+                    foreach (string sinkRef in sinkReferenceSet)
+                    {
+                        if (sinkReferenceList.Length > 0)
+                        {
+                            sinkReferenceList.Append(", ");
+                        }
+                        sinkReferenceList.AppendFormat("'{0}'", sinkRef);
+                    }
+
+                    string inClause = string.Format("{0}.id IN ({1})", sinkVertexQuery.Alias, sinkReferenceList.ToString());
+
+                    JsonQuery toSendQuery = new JsonQuery()
+                    {
+                        Alias = sinkVertexQuery.Alias,
+                        WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
+                        SelectClause = sinkVertexQuery.SelectClause,
+                        ProjectedColumns = sinkVertexQuery.ProjectedColumns,
+                        Properties = sinkVertexQuery.Properties,
+                    };
+
+                    if (toSendQuery.WhereSearchCondition == null)
+                    {
+                        toSendQuery.WhereSearchCondition = inClause;
+                    }
+                    else
+                    {
+                        toSendQuery.WhereSearchCondition =
+                            string.Format("({0}) AND {1}", sinkVertexQuery.WhereSearchCondition, inClause);
+                    }
+
+                    using (DbPortal databasePortal = connection.CreateDatabasePortal())
+                    {
+                        foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
+                        {
+                            if (!sinkVertexCollection.ContainsKey(rec[0]))
+                            {
+                                sinkVertexCollection.Add(rec[0], new List<RawRecord>());
+                            }
+                            sinkVertexCollection[rec[0]].Add(rec);
+                        }
+                    }
+                }
+
+                foreach (Tuple<RawRecord, string> pair in inputSequence)
+                {
+                    if (!sinkVertexCollection.ContainsKey(pair.Item2))
+                    {
+                        continue;
+                    }
+
+                    RawRecord sourceRec = pair.Item1;
+                    List<RawRecord> sinkRecList = sinkVertexCollection[pair.Item2];
+
+                    foreach (RawRecord sinkRec in sinkRecList)
+                    {
+                        RawRecord resultRec = new RawRecord(sourceRec);
+                        resultRec.Append(sinkRec);
+
+                        outputBuffer.Enqueue(resultRec);
+                    }
+                }
+            }
+
+            if (outputBuffer.Count == 0)
+            {
+                if (!inputOp.State())
+                    Close();
+                return null;
+            }
+            else if (outputBuffer.Count == 1)
+            {
+                Close();
+                return outputBuffer.Dequeue();
+            }
+            else
+            {
+                return outputBuffer.Dequeue();
+            }
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            outputBuffer?.Clear();
+            Open();
+        }
+    }
+
     internal class FilterOperator : GraphViewExecutionOperator
     {
         public GraphViewExecutionOperator Input { get; private set; }
