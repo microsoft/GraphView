@@ -821,7 +821,7 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            currentRecord = inputOp.Next();
+            currentRecord = inputOp.State() ? inputOp.Next() : null;
             if (currentRecord == null)
             {
                 Close();

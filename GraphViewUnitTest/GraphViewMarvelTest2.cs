@@ -142,7 +142,7 @@ namespace GraphViewUnitTest
             graph.g().AddV("comicbook").Property("name", "AVF 4").next();
             graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
             graph.g().AddV("character").Property("name", "HAWK").Property("weapon", "claws").next();
-            graph.g().V().As("v").Has("character", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
+            graph.g().V().As("v").Has("name", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
             graph.g().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").next();
             graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
         }
