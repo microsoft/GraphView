@@ -44,21 +44,4 @@ namespace GraphView
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
-
-    internal class GremlinDropPropertiesVariable: GremlinTableVariable
-    {
-
-        public GremlinDropPropertiesVariable(GremlinVariable inputVariable)
-        {
-        }
-
-        public override WTableReference ToTableReference()
-        {
-            throw new NotImplementedException();
-            //List<WScalarExpression> parameters = new List<WScalarExpression>();
-            //parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            //var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropEdge, parameters, VariableName);
-            //return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
-        }
-    }
 }

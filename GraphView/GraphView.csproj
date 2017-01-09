@@ -142,7 +142,7 @@
     <Compile Include="GremlinTranslation2\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinTreeOp.cs" />
-    <Compile Include="GremlinTranslation2\variables\set\GremlinAddEVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\edge\GremlinBoundEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinContextVariable.cs" />
     <Compile Include="GremlinTranslation2\GremlinMatchPath.cs" />
@@ -170,14 +170,14 @@
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinRepeatVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinSideEffectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinUnionVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\set\GremlinVariableReference.cs" />
+    <Compile Include="GremlinTranslation2\variables\special\GremlinVariableReference.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinBinaryVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinContextTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\derived\GremlinInjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinPropertiesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinValueVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\set\GremlinAddVVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinAddVVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\vertex\GremlinBoundVertexVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinChooseOp.cs" />

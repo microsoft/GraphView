@@ -549,14 +549,7 @@ namespace GraphView
 
         internal virtual void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
-            foreach (var property in propertyKeys)
-            {
-                Populate(property);
-            }
-            GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(this, propertyKeys);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
+            throw new QueryCompilationException("The OutV() step can only be applied to edges or vertex.");
         }
 
         internal virtual void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)

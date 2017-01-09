@@ -69,7 +69,7 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
-            var firstTableRef = IsFirstTableReference ? SqlUtil.GetDerivedTable(SqlUtil.GetSimpleSelectQueryBlock("1"), "hack") : null;
+            var firstTableRef = IsFirstTableReference ? SqlUtil.GetDerivedTable(SqlUtil.GetSimpleSelectQueryBlock("1"), "_") : null;
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddV, parameters, VariableName);
 
             return SqlUtil.GetCrossApplyTableReference(firstTableRef, secondTableRef);

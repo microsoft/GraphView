@@ -46,9 +46,9 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            ContextVariable.Populate("_edge");
+            ContextVariable.Populate("_reverse_edge");
 
-            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
             GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(ContextVariable, adjacencyList);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);

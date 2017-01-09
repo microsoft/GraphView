@@ -41,7 +41,8 @@ namespace GraphView
             public const string DropNode = "DropNode";
             public const string DropEdge = "DropEdge";
             public const string DropProperties = "DropProperties";
-            public const string UpdateProperties = "UpdateProperties";
+            public const string UpdateNodeProperties = "UpdateNodeProperties";
+            public const string UpdateEdgeProperties = "UpdateEdgeProperties";
         }
         public enum Pop
         {

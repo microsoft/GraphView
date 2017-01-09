@@ -93,10 +93,12 @@ namespace GraphView
 
         internal override void Drop(GremlinToSqlContext currentContext)
         {
-            GremlinDropVertexVariable newVariable = new GremlinDropVertexVariable(ContextVariable as GremlinVertexTableVariable);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
+            ContextVariable.Drop(currentContext);
+        }
+
+        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        {
+            ContextVariable.Property(currentContext, properties);
         }
     }
 
@@ -104,12 +106,9 @@ namespace GraphView
     {
         public GremlinContextEdgeVariable(GremlinVariable contextEdge) : base(contextEdge) { }
 
-        internal override void Drop(GremlinToSqlContext currentContext)
+        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
-            GremlinDropEdgeVariable newVariable = new GremlinDropEdgeVariable(currentContext.GetSourceVertex(ContextVariable), ContextVariable as GremlinEdgeTableVariable);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
+            ContextVariable.Property(currentContext, properties);
         }
     }
 }

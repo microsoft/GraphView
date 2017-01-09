@@ -9,6 +9,8 @@ namespace GraphView
 {
     internal abstract class GremlinTableVariable : GremlinVariable
     {
+        public GremlinUpdatePropertiesVariable UpdateVariable { get; set; }
+
         protected static int _count = 0;
 
         internal virtual string GenerateTableAlias()
@@ -100,9 +102,9 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            Populate("_edge");
+            Populate("_reverse_edge");
 
-            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_edge");
+            GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_reverse_edge");
             GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(this, adjacencyList);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);
@@ -207,6 +209,18 @@ namespace GraphView
                 currentContext.PivotVariable = outVertex;
             }
         }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            foreach (var property in propertyKeys)
+            {
+                Populate(property);
+            }
+            GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(this, propertyKeys);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
+        }
     }
 
     internal abstract class GremlinScalarTableVariable : GremlinTableVariable
@@ -220,10 +234,22 @@ namespace GraphView
         {
             return GremlinVariableType.Scalar;
         }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            throw new QueryCompilationException("The OutV() step can only be applied to edges or vertex.");
+        }
     }
 
     internal abstract class GremlinVertexTableVariable : GremlinTableVariable
     {
+        protected static int _count = 0;
+
+        internal override string GenerateTableAlias()
+        {
+            return "N_" + _count++;
+        }
+
         internal override GremlinScalarVariable DefaultProjection()
         {
             return new GremlinVariableProperty(this, GremlinKeyword.NodeID);
@@ -240,6 +266,20 @@ namespace GraphView
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
+        }
+
+        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        {
+            if (UpdateVariable == null)
+            {
+                UpdateVariable = new GremlinUpdateNodePropertiesVariable(this, properties);
+                currentContext.VariableList.Add(UpdateVariable);
+                currentContext.TableReferences.Add(UpdateVariable);
+            }
+            else
+            {
+                UpdateVariable.Property(currentContext, properties);
+            }
         }
     }
 
@@ -277,6 +317,20 @@ namespace GraphView
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
+        }
+
+        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        {
+            if (UpdateVariable == null)
+            {
+                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(currentContext.GetSourceVertex(this), this, properties);
+                currentContext.VariableList.Add(UpdateVariable);
+                currentContext.TableReferences.Add(UpdateVariable);
+            }
+            else
+            {
+                UpdateVariable.Property(currentContext, properties);
+            }
         }
     }
 }

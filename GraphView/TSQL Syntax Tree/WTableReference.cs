@@ -500,7 +500,12 @@ namespace GraphView
 
     }
 
-    public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference
+    public partial class WUpdateNodePropertiesTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference
     {
 
     }

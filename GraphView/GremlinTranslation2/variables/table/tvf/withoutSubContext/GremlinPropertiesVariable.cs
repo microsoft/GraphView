@@ -9,9 +9,9 @@ namespace GraphView
     internal class GremlinPropertiesVariable: GremlinScalarTableVariable
     {
         public List<string> PropertyKeys { get; set; }
-        public GremlinVariable ProjectVariable { get; set; }
+        public GremlinTableVariable ProjectVariable { get; set; }
 
-        public GremlinPropertiesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
+        public GremlinPropertiesVariable(GremlinTableVariable projectVariable, List<string> propertyKeys)
         {
             ProjectVariable = projectVariable;
             PropertyKeys = new List<string>(propertyKeys);
@@ -42,6 +42,32 @@ namespace GraphView
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.PivotVariable = newVariable;
+        }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            Dictionary<string, object> properties = new Dictionary<string, object>();
+            foreach (var propertyKey in PropertyKeys)
+            {
+                properties[propertyKey] = null;
+            }
+            if (ProjectVariable is GremlinVertexTableVariable)
+            {
+                UpdateVariable = new GremlinUpdateNodePropertiesVariable(ProjectVariable as GremlinVertexTableVariable, properties);
+                currentContext.VariableList.Add(UpdateVariable);
+                currentContext.TableReferences.Add(UpdateVariable);
+            }
+            else if (ProjectVariable is GremlinEdgeTableVariable)
+            {
+                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(currentContext.GetSourceVertex(ProjectVariable),
+                                    ProjectVariable as GremlinEdgeTableVariable, properties);
+                currentContext.VariableList.Add(UpdateVariable);
+                currentContext.TableReferences.Add(UpdateVariable);
+            }
+            else
+            {
+                throw new QueryCompilationException();
+            }
         }
     }
 }

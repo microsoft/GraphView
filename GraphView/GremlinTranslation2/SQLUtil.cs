@@ -47,13 +47,9 @@ namespace GraphView
 
         internal static WValueExpression GetValueExpr(object value)
         {
+            if (value == null) return new WValueExpression("null", false);
             return !(value is string) ? new WValueExpression(value.ToString(), false)
                                       : new WValueExpression(value.ToString(), true);
-        }
-
-        internal static WValueExpression GetNullExpr()
-        {
-            return new WValueExpression("null", false);
         }
 
         internal static WBooleanComparisonExpression GetBooleanComparisonExpr(WScalarExpression firstExpr,
@@ -338,8 +334,11 @@ namespace GraphView
                 case GremlinKeyword.func.DropProperties:
                     funcTableRef = new WDropPropertiesTableReference();
                     break;
-                case GremlinKeyword.func.UpdateProperties:
-                    funcTableRef = new WUpdatePropertiesTableReference();
+                case GremlinKeyword.func.UpdateNodeProperties:
+                    funcTableRef = new WUpdateNodePropertiesTableReference();
+                    break;
+                case GremlinKeyword.func.UpdateEdgeProperties:
+                    funcTableRef = new WUpdateEdgePropertiesTableReference();
                     break;
                 default:
                     throw new NotImplementedException();
@@ -438,7 +437,14 @@ namespace GraphView
             var queryBlock = new WSelectQueryBlock();
             foreach (var property in projectProperties)
             {
-                queryBlock.SelectElements.Add(GetSelectScalarExpr(GetColumnReferenceExpr(variableName, property)));
+                if (property == null)
+                {
+                    queryBlock.SelectElements.Add(GetSelectScalarExpr(GetValueExpr(null)));
+                }
+                else
+                {
+                    queryBlock.SelectElements.Add(GetSelectScalarExpr(GetColumnReferenceExpr(variableName, property)));
+                }
             }
             return queryBlock;
         }
