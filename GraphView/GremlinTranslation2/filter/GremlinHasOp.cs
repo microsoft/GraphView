@@ -88,7 +88,8 @@ namespace GraphView
             {
                 //has(key)
                 case HasOpType.HasKey:
-                    throw new NotImplementedException();
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey);
+                    break;
 
                 //has(key, value)
                 case HasOpType.HasKeyValue:

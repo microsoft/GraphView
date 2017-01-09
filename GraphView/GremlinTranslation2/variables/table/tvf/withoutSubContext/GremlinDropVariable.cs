@@ -15,6 +15,11 @@ namespace GraphView
             VertexVariable = vertexVariable;
         }
 
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return VertexVariable.DefaultProjection();
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -28,6 +33,11 @@ namespace GraphView
     {
         public GremlinTableVariable SourceVariable;
         public GremlinTableVariable EdgeVariable;
+
+        internal override GremlinScalarVariable DefaultProjection()
+        {
+            return EdgeVariable.DefaultProjection();
+        }
 
         public GremlinDropEdgeVariable(GremlinTableVariable sourceVariable, GremlinTableVariable edgeVariable)
         {

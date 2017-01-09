@@ -69,7 +69,7 @@ namespace GremlinTranslationOperator.Tests
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             //graph.g().V().Out().Optional(GraphTraversal2.__().Out().In()).Values("name").Next();
-            graph.g().V().Values("name", "age").Next();
+            graph.g().V().OutE().Drop().Next();
             graph.g().V().FlatMap(GraphTraversal2.__().InE().InV()).Next();
 
             graph.g().V()
