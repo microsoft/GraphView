@@ -76,8 +76,7 @@ namespace GraphView
                 foreach (var property in properties)
                 {
                     var propertyValue = item[property];
-                    if (propertyValue != null)
-                        rawRecord.fieldValues[index] = propertyValue.ToString();
+                    rawRecord.fieldValues[index] = propertyValue?.ToString();
                     ++index;
                 }
 

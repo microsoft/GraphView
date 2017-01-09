@@ -37,7 +37,7 @@ namespace GraphView
             var srcSubQuery = Parameters[0] as WScalarSubquery;
             var sinkSubQuery = Parameters[1] as WScalarSubquery;
             if (srcSubQuery == null || sinkSubQuery == null)
-                throw new SyntaxErrorException("The first and second parameters of AddE can only be WScalarSubquery.");
+                throw new SyntaxErrorException("The first two parameters of AddE can only be WScalarSubquery.");
 
             var srcSubQueryFunction = srcSubQuery.CompileToFunction(context, dbConnection);
             var sinkSubQueryFunction = sinkSubQuery.CompileToFunction(context, dbConnection);
@@ -53,6 +53,98 @@ namespace GraphView
             }
 
             return addEOp;
+        }
+    }
+
+    partial class WDropNodeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
+
+            var dropNodeOp = new DropVOperator(context.CurrentExecutionOperator, dbConnection, nodeIdIndex);
+            context.CurrentExecutionOperator = dropNodeOp;
+
+            return dropNodeOp;
+        }
+    }
+
+    partial class WDropEdgeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var srcIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var edgeOffsetParameter = Parameters[1] as WColumnReferenceExpression;
+            var srcIdIndex = context.LocateColumnReference(srcIdParameter);
+            var edgeOffsetIndex = context.LocateColumnReference(edgeOffsetParameter);
+
+            var dropEdgeOp = new DropEOperator(context.CurrentExecutionOperator, dbConnection, srcIdIndex, edgeOffsetIndex);
+            context.CurrentExecutionOperator = dropEdgeOp;
+
+            return dropEdgeOp;
+        }
+    }
+
+    partial class WUpdateNodePropertiesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
+            var nodeAlias = nodeIdParameter.TableReference;
+            var propertiesList = new List<Tuple<string, string, int>>();
+
+            for (var i = 1; i < Parameters.Count; i += 2)
+            {
+                var key = (Parameters[i] as WValueExpression).Value;
+                var value = (Parameters[i+1] as WValueExpression).Value;
+                if (value.Equals("null")) value = null;
+
+                int propertyIndex;
+                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(nodeAlias, key), out propertyIndex))
+                    propertyIndex = -1;
+
+                propertiesList.Add(new Tuple<string, string, int>(key, value, propertyIndex));
+            }
+
+            var updateNodePropertiesOp = new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection,
+                nodeIdIndex, propertiesList);
+            context.CurrentExecutionOperator = updateNodePropertiesOp;
+
+            return updateNodePropertiesOp;
+        }
+    }
+
+    partial class WUpdateEdgePropertiesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var srcIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var edgeOffsetParameter = Parameters[1] as WColumnReferenceExpression;
+            var srcIdIndex = context.LocateColumnReference(srcIdParameter);
+            var edgeOffsetIndex = context.LocateColumnReference(edgeOffsetParameter);
+            var edgeAlias = edgeOffsetParameter.TableReference;
+            var propertiesList = new List<Tuple<string, string, int>>();
+
+            for (var i = 2; i < Parameters.Count; i += 2)
+            {
+                var key = (Parameters[i] as WValueExpression).Value;
+                var value = (Parameters[i + 1] as WValueExpression).Value;
+                if (value.Equals("null")) value = null;
+
+                int propertyIndex;
+                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(edgeAlias, key), out propertyIndex))
+                    propertyIndex = -1;
+
+                propertiesList.Add(new Tuple<string, string, int>(key, value, propertyIndex));
+            }
+
+            var updateEdgePropertiesOp = new UpdateEdgePropertiesOperator(context.CurrentExecutionOperator, dbConnection,
+                srcIdIndex, edgeOffsetIndex, propertiesList);
+            context.CurrentExecutionOperator = updateEdgePropertiesOp;
+
+            return updateEdgePropertiesOp;
         }
     }
 

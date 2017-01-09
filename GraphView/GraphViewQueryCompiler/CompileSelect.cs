@@ -2223,7 +2223,7 @@ namespace GraphView
             var adjListParameter = Parameters[0] as WColumnReferenceExpression;
             var adjListIndex = context.LocateColumnReference(adjListParameter);
             var edgeAlias = Alias.Value;
-            var projectFields = new List<string> { "_sink" };
+            var projectFields = new List<string> { "_sink", "_ID" };
 
             for (int i = 1; i < Parameters.Count; i++)
             {
@@ -2258,7 +2258,7 @@ namespace GraphView
                 context.LocateColumnReference(secondAdjListParameter)
             };
             var edgeAlias = Alias.Value;
-            var projectFields = new List<string> { "_sink" };
+            var projectFields = new List<string> { "_sink", "_ID" };
 
             for (int i = 2; i < Parameters.Count; i++)
             {
@@ -2313,7 +2313,7 @@ namespace GraphView
             {
                 var columnReference = expression as WColumnReferenceExpression;
                 if (columnReference == null)
-                    throw new SyntaxErrorException("Parameters of Values function can only be WColumnReference.");
+                    throw new SyntaxErrorException("Parameters of Properties function can only be WColumnReference.");
                 propertiesList.Add(new Tuple<string, int>(columnReference.ColumnName,
                     context.LocateColumnReference(columnReference)));
             }

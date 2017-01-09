@@ -58,6 +58,16 @@ namespace GremlinTranslationOperator.Tests
             // v("ripple")
             //graph.g().V().Out().next();
 
+
+        [TestMethod]
+        public void temp()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "NewTest1");
+            var graph = new GraphViewCommand(connection);
+
+            var results = graph.g().V().Has("name", "B").Out().Next();
         }
 
         [TestMethod]

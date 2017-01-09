@@ -9,14 +9,42 @@ using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
-    internal abstract class ModificationBaseOpertaor2 : TableValuedFunction
+    internal abstract class ModificationBaseOpertaor2 : GraphViewExecutionOperator
     {
         protected GraphViewConnection Connection;
+        protected GraphViewExecutionOperator InputOperator;
 
         protected ModificationBaseOpertaor2(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection)
-            : base(pInputOp)
         {
+            InputOperator = pInputOp;
             Connection = pConnection;
+            Open();
+        }
+
+        internal abstract RawRecord DataModify(RawRecord record);
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (InputOperator.State() && (srcRecord = InputOperator.Next()) != null)
+            {
+                var result = DataModify(srcRecord);
+                if (result == null) continue;;
+
+                var resultRecord = new RawRecord(srcRecord);
+                resultRecord.Append(result);
+
+                return resultRecord;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            InputOperator.ResetState();
             Open();
         }
 
@@ -44,6 +72,26 @@ namespace GraphView
                 await DataModificationUtils.ReplaceDocument(Connection, pair.Key, pair.Value)
                     .ConfigureAwait(continueOnCapturedContext: false);
         }
+
+        /// <summary>
+        /// Given a edge's source node document and its offset, return the edge's sink id and reverse edge's offset
+        /// </summary>
+        /// <param name="jsonString"></param>
+        /// <param name="edgeOffset"></param>
+        /// <returns></returns>
+        protected List<string> GetSinkIdAndReverseEdgeOffset(string jsonString, string edgeOffset)
+        {
+            var document = JObject.Parse(jsonString);
+            var adjList = (JArray)document["_edge"];
+
+            foreach (var edge in adjList.Children<JObject>())
+            {
+                if (edge["_ID"].ToString().Equals(edgeOffset))
+                    return new List<string> { edge["_sink"].ToString(), edge["_reverse_ID"].ToString() };
+            }
+
+            return null;
+        }
     }
 
     internal class AddVOperator : ModificationBaseOpertaor2
@@ -59,7 +107,7 @@ namespace GraphView
             _projectedFieldList = pProjectedFieldList;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override RawRecord DataModify(RawRecord record)
         {
             var obj = JObject.Parse(_jsonDocument);
 
@@ -74,7 +122,7 @@ namespace GraphView
                 result.Append(fieldValue?.ToString() ?? "");
             }
 
-            return new List<RawRecord> { result };
+            return result;
         }
 
         private void Upload(JObject obj)
@@ -91,24 +139,21 @@ namespace GraphView
 
     internal class DropVOperator : ModificationBaseOpertaor2
     {
-        // The scalar subquery function select the vertex ID of deleted node
-        private ScalarFunction _nodeFunction;
+        private int _nodeIdIndex;
 
-        public DropVOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, ScalarFunction pNodeFunction)
+        public DropVOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, int pNodeIdIndex)
             : base(pInputOp, pConnection)
         {
-            _nodeFunction = pNodeFunction;
+            _nodeIdIndex = pNodeIdIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override RawRecord DataModify(RawRecord record)
         {
-            var targetId = _nodeFunction.Evaluate(record);
-
-            if (targetId == null) return new List<RawRecord>();
+            var targetId = record[_nodeIdIndex];
 
             DeleteNode(targetId);
 
-            return new List<RawRecord>();
+            return null;
         }
 
         /// <summary>
@@ -119,7 +164,7 @@ namespace GraphView
             var collectionLink = "dbs/" + Connection.DocDB_DatabaseId + "/colls/" + Connection.DocDB_CollectionId;
             var checkIsolatedScript =
                 string.Format(
-                    "SELECT * FROM Node WHERE Node.id = {0} AND ARRAY_LENGTH(Node._edge) = 0 AND ARRAY_LENGTH(Node._reverse_edge) = 0",
+                    "SELECT * FROM Node WHERE Node.id = '{0}' AND ARRAY_LENGTH(Node._edge) = 0 AND ARRAY_LENGTH(Node._reverse_edge) = 0",
                     targetId);
             var toBeDeletedNodes = SendQuery(checkIsolatedScript, Connection);
 
@@ -136,23 +181,11 @@ namespace GraphView
         }
     }
 
-    internal abstract class EdgeModificationBaseOperator : ModificationBaseOpertaor2
+    internal class AddEOperator : ModificationBaseOpertaor2
     {
         // The scalar subquery function select the vertex ID of source and sink of the edge to be added or deleted
-        protected ScalarFunction SrcFunction;
-        protected ScalarFunction SinkFunction;
-
-        public EdgeModificationBaseOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,
-            ScalarFunction pSrcFunction, ScalarFunction pSinkFunction)
-            : base(pInputOp, pConnection)
-        {
-            SrcFunction = pSrcFunction;
-            SinkFunction = pSinkFunction;
-        }
-    }
-
-    internal class AddEOperator : EdgeModificationBaseOperator
-    {
+        private ScalarFunction _srcFunction;
+        private ScalarFunction _sinkFunction;
         // The initial json object string of to-be-inserted edge, waiting to update the edgeOffset field
         private string _edgeJsonDocument;
         private List<string> _edgeProperties;
@@ -160,18 +193,20 @@ namespace GraphView
         public AddEOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, 
             ScalarFunction pSrcFunction, ScalarFunction pSinkFunction, 
             string pEdgeJsonDocument, List<string> pProjectedFieldList)
-            : base(pInputOp, pConnection, pSrcFunction, pSinkFunction)
+            : base(pInputOp, pConnection)
         {
+            _srcFunction = pSrcFunction;
+            _sinkFunction = pSinkFunction;
             _edgeJsonDocument = pEdgeJsonDocument;
             _edgeProperties = pProjectedFieldList;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = SrcFunction.Evaluate(record);
-            var sinkId = SinkFunction.Evaluate(record);
+            var srcId = _srcFunction.Evaluate(record);
+            var sinkId = _sinkFunction.Evaluate(record);
 
-            if (srcId == null || sinkId == null) return new List<RawRecord>();
+            if (srcId == null || sinkId == null) return null;
 
             var srcJsonDocument = RetrieveDocumentById(srcId);
             var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
@@ -190,7 +225,7 @@ namespace GraphView
                 result.Append(fieldValue?.ToString() ?? "");
             }
 
-            return new List<RawRecord> { result };
+            return result;
         }
 
         private Dictionary<string, string> InsertEdge(string srcJsonDocument, string sinkJsonDocument, string edgeJsonDocument, 
@@ -218,49 +253,36 @@ namespace GraphView
         }
     }
 
-    internal class DropEOperator : EdgeModificationBaseOperator
+    internal class DropEOperator : ModificationBaseOpertaor2
     {
-        // The scalar subquery function select the to-be-deleted edge's offset
-        private ScalarFunction _edgeOffsetFunction;
+        private int _srcIdIndex;
+        private int _edgeOffsetIndex;
 
-        public DropEOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,
-            ScalarFunction pSrcFunction, ScalarFunction pSinkFunction, ScalarFunction pEdgeOffsetFunction)
-            : base(pInputOp, pConnection, pSrcFunction, pSinkFunction)
+        public DropEOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, int pSrcIdIndex, int pEdgeOffsetIndex)
+            : base(pInputOp, pConnection)
         {
-            _edgeOffsetFunction = pEdgeOffsetFunction;
+            _srcIdIndex = pSrcIdIndex;
+            _edgeOffsetIndex = pEdgeOffsetIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = SrcFunction.Evaluate(record);
-            var sinkId = SinkFunction.Evaluate(record);
-            var edgeOffset = _edgeOffsetFunction.Evaluate(record);
-
-            if (srcId == null || sinkId == null || edgeOffset == null) return new List<RawRecord>();
+            var srcId = record[_srcIdIndex];
+            var edgeOffset = record[_edgeOffsetIndex];
 
             var srcJsonDocument = RetrieveDocumentById(srcId);
-            var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
+            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
 
-            var revEdgeOffset = GetReverseEdgeOffset(srcJsonDocument, edgeOffset);
-            if (revEdgeOffset == null) return new List<RawRecord>();
+            if (sinkIdAndReverseEdgeOffset == null) return null;
+
+            var sinkId = sinkIdAndReverseEdgeOffset[0];
+            var revEdgeOffset = sinkIdAndReverseEdgeOffset[1];
+
+            var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
 
             var results = DeleteEdge(srcId, sinkId, edgeOffset, revEdgeOffset, srcJsonDocument, sinkJsonDocument);
 
             Upload(results);
-
-            return new List<RawRecord>();
-        }
-
-        private string GetReverseEdgeOffset(string jsonString, string edgeOffset)
-        {
-            var document = JObject.Parse(jsonString);
-            var adjList = (JArray)document["_edge"];
-
-            foreach (var edge in adjList.Children<JObject>())
-            {
-                if (edge["_ID"].ToString().Equals(edgeOffset))
-                    return edge["_reverse_ID"].ToString();
-            }
 
             return null;
         }
@@ -288,47 +310,76 @@ namespace GraphView
         };
 
         protected UpdatePropertyMode Mode;
-        protected List<Tuple<string, string>> propertiesToBeUpdated;
+        /// <summary>
+        /// Item1 is property key.
+        /// Item2 is property value. If it is null, then delete the property
+        /// Item3 is property's index in the input record. If it is -1, then the input record doesn't contain this property.
+        /// </summary>
+        protected List<Tuple<string, string, int>> PropertiesToBeUpdated;
 
         protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,
-            List<Tuple<string, string>> pPropertiesToBeUpdated, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
+            List<Tuple<string, string, int>> pPropertiesToBeUpdated, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
             : base(pInputOp, pConnection)
         {
-            propertiesToBeUpdated = pPropertiesToBeUpdated;
+            PropertiesToBeUpdated = pPropertiesToBeUpdated;
             Mode = pMode;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (InputOperator.State() && (srcRecord = InputOperator.Next()) != null)
+            {
+                var result = DataModify(srcRecord);
+                if (result == null) continue;
+
+                foreach (var tuple in PropertiesToBeUpdated)
+                {
+                    var propertyIndex = tuple.Item3;
+                    var propertyNewValue = tuple.Item2;
+                    if (propertyIndex == -1) continue;
+
+                    result.fieldValues[propertyIndex] = propertyNewValue;
+                }
+
+                return result;
+            }
+
+            Close();
+            return null;
         }
     }
 
     internal class UpdateNodePropertiesOperator : UpdatePropertiesBaseOperator
     {
-        // The scalar subquery function select the vertex ID of target node
-        private ScalarFunction _nodeFunction;
+        private int _nodeIdIndex;
 
         public UpdateNodePropertiesOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,
-            ScalarFunction pNodeFunction, List<Tuple<string, string>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
+            int pNodeIndex, List<Tuple<string, string, int>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
             : base(pInputOp, pConnection, pPropertiesList, pMode)
         {
-            _nodeFunction = pNodeFunction;
+            _nodeIdIndex = pNodeIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override RawRecord DataModify(RawRecord record)
         {
-            var targetId = _nodeFunction.Evaluate(record);
-
-            if (targetId == null) return new List<RawRecord>();
+            var targetId = record[_nodeIdIndex];
 
             var targetJsonDocument = RetrieveDocumentById(targetId);
-            var results = UpdateNodeProperties(targetId, targetJsonDocument, propertiesToBeUpdated, Mode);
+            var results = UpdateNodeProperties(targetId, targetJsonDocument, PropertiesToBeUpdated, Mode);
 
             Upload(results);
 
-            // TODO: Update property value in the original record
-            return new List<RawRecord> {record};
+            // Drop step, return null
+            if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
+            return record;
         }
 
-        private Dictionary<string, string> UpdateNodeProperties(string targetId, string documentString, List<Tuple<string, string>> propList, UpdatePropertyMode mode)
+        private Dictionary<string, string> UpdateNodeProperties(string targetId, string documentString, 
+            List<Tuple<string, string, int>> propList, UpdatePropertyMode mode)
         {
-            var document = JObject.FromObject(documentString);
+            var document = JObject.Parse(documentString);
 
             foreach (var t in propList)
             {
@@ -337,8 +388,8 @@ namespace GraphView
 
                 var property = document.Property(key);
                 // Delete property
-                if (value == null && property != null)
-                    property.Remove();
+                if (value == null)
+                    property?.Remove();
                 // Insert property
                 else if (property == null)
                     document.Add(key, value);
@@ -358,29 +409,27 @@ namespace GraphView
 
     internal class UpdateEdgePropertiesOperator : UpdatePropertiesBaseOperator
     {
-        private ScalarFunction _srcFunction;
-        private ScalarFunction _edgeOffsetFunction;
+        private int _srcIdIndex;
+        private int _edgeOffsetIndex;
 
         public UpdateEdgePropertiesOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, 
-            ScalarFunction pSrcFunction, ScalarFunction pEdgeOffsetFunction, 
-            List<Tuple<string, string>> propertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
+            int pSrcIdIndex, int pEdgeOffsetIndex, 
+            List<Tuple<string, string, int>> propertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
             : base(pInputOp, pConnection, propertiesList, pMode)
         {
-            _srcFunction = pSrcFunction;
-            _edgeOffsetFunction = pEdgeOffsetFunction;
+            _srcIdIndex = pSrcIdIndex;
+            _edgeOffsetIndex = pEdgeOffsetIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = _srcFunction.Evaluate(record);
-            var edgeOffset = _edgeOffsetFunction.Evaluate(record);
-
-            if (srcId == null || edgeOffset == null) return new List<RawRecord>();
+            var srcId = record[_srcIdIndex];
+            var edgeOffset = record[_edgeOffsetIndex];
 
             var srcJsonDocument = RetrieveDocumentById(srcId);
 
             var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
-            if (sinkIdAndReverseEdgeOffset == null) return new List<RawRecord>();
+            if (sinkIdAndReverseEdgeOffset == null) return record;
 
             var sinkId = sinkIdAndReverseEdgeOffset[0];
             var reverseEdgeOffset = sinkIdAndReverseEdgeOffset[1];
@@ -392,22 +441,9 @@ namespace GraphView
 
             Upload(results);
 
-            // TODO: Update property value in the original record
-            return new List<RawRecord> {record};
-        }
-
-        private List<string> GetSinkIdAndReverseEdgeOffset(string jsonString, string edgeOffset)
-        {
-            var document = JObject.Parse(jsonString);
-            var adjList = (JArray)document["_edge"];
-
-            foreach (var edge in adjList.Children<JObject>())
-            {
-                if (edge["_ID"].ToString().Equals(edgeOffset))
-                    return new List<string> {edge["_sink"].ToString(), edge["_reverse_ID"].ToString()};
-            }
-
-            return null;
+            // Drop step, return null
+            if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
+            return record;
         }
 
         private Dictionary<string, string> UpdateEdgeAndReverseEdgeProperties(string srcId, string edgeOffset,
@@ -417,23 +453,22 @@ namespace GraphView
             documentsMap.Add(srcId, srcJsonDocument);
             if (!documentsMap.ContainsKey(sinkId)) documentsMap.Add(sinkId, sinkJsonDocument);
 
-            UpdateEdgeProperties(documentsMap, propertiesToBeUpdated, srcId, edgeOffset, false, mode);
-            UpdateEdgeProperties(documentsMap, propertiesToBeUpdated, sinkId, revEdgeOffset, true, mode);
+            UpdateEdgeProperties(documentsMap, PropertiesToBeUpdated, srcId, edgeOffset, false, mode);
+            UpdateEdgeProperties(documentsMap, PropertiesToBeUpdated, sinkId, revEdgeOffset, true, mode);
 
             return documentsMap;
         }
 
-        private void UpdateEdgeProperties(Dictionary<string, string> documentsMap, List<Tuple<string, string>> propList, string id, string edgeOffset, 
-            bool isReverseEdge, UpdatePropertyMode mode)
+        private void UpdateEdgeProperties(Dictionary<string, string> documentsMap, List<Tuple<string, string, int>> propList, 
+            string id, string edgeOffset, bool isReverseEdge, UpdatePropertyMode mode)
         {
-            var document = JObject.FromObject(documentsMap[id]);
+            var document = JObject.Parse(documentsMap[id]);
             var adj = isReverseEdge ? (JArray)document["_reverse_edge"] : (JArray)document["_edge"];
-            var offsetFieldName = isReverseEdge ? "_reverse_ID" : "_ID";
             var edgeId = int.Parse(edgeOffset);
 
             foreach (var edge in adj.Children<JObject>())
             {
-                if (int.Parse(edge[offsetFieldName].ToString()) != edgeId) continue;
+                if (int.Parse(edge["_ID"].ToString()) != edgeId) continue;
 
                 foreach (var t in propList)
                 {
@@ -442,8 +477,8 @@ namespace GraphView
 
                     var property = edge.Property(key);
                     // Delete property
-                    if (value == null && property != null)
-                        property.Remove();
+                    if (value == null)
+                        property?.Remove();
                     // Insert property
                     else if (property == null)
                         edge.Add(key, value);

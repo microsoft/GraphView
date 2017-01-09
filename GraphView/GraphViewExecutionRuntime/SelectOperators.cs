@@ -603,8 +603,8 @@ namespace GraphView
                         var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
                             ? edge
                             : edge[projectedField];
-                        if (fieldValue != null)
-                            result.fieldValues[i] = fieldValue.ToString();
+
+                        result.fieldValues[i] = fieldValue?.ToString();
                     }
 
                     results.Add(result);
@@ -1458,6 +1458,43 @@ namespace GraphView
             innerOp.ResetState();
             innerContextOp.ResetState();
             repeatResultBuffer?.Clear();
+            Open();
+        }
+    }
+
+    internal class DeduplicateOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private HashSet<string> _fieldValueSet;
+        private int _targetFieldIndex;
+
+        internal DeduplicateOperator(GraphViewExecutionOperator pInputOperator, int pTargetFieldIndex)
+        {
+            _inputOp = pInputOperator;
+            _targetFieldIndex = pTargetFieldIndex;
+            _fieldValueSet = new HashSet<string>();
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (_inputOp.State() && (srcRecord = _inputOp.Next()) != null)
+            {
+                if (_fieldValueSet.Contains(srcRecord[_targetFieldIndex])) continue;
+
+                _fieldValueSet.Add(srcRecord[_targetFieldIndex]);
+                return srcRecord;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            _fieldValueSet?.Clear();
             Open();
         }
     }

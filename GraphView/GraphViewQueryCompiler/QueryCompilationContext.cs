@@ -208,5 +208,10 @@ namespace GraphView
                     columnReference.ToString("")));
             }
         }
+
+        public bool TryLocateColumnReference(WColumnReferenceExpression columnReference, out int columnIndex)
+        {
+            return RawRecordLayout.TryGetValue(columnReference, out columnIndex);
+        }
     }
 }
