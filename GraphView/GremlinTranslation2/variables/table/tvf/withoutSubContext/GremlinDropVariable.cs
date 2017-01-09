@@ -8,9 +8,9 @@ namespace GraphView
 {
     internal class GremlinDropVertexVariable : GremlinTableVariable
     {
-        public GremlinVertexTableVariable VertexVariable { get; set; }
+        public GremlinTableVariable VertexVariable { get; set; }
 
-        public GremlinDropVertexVariable(GremlinVertexTableVariable vertexVariable)
+        public GremlinDropVertexVariable(GremlinTableVariable vertexVariable)
         {
             VertexVariable = vertexVariable;
         }
@@ -26,10 +26,10 @@ namespace GraphView
 
     internal class GremlinDropEdgeVariable : GremlinTableVariable
     {
-        public GremlinVertexTableVariable SourceVariable;
-        public GremlinEdgeTableVariable EdgeVariable;
+        public GremlinTableVariable SourceVariable;
+        public GremlinTableVariable EdgeVariable;
 
-        public GremlinDropEdgeVariable(GremlinVertexTableVariable sourceVariable, GremlinEdgeTableVariable edgeVariable)
+        public GremlinDropEdgeVariable(GremlinTableVariable sourceVariable, GremlinTableVariable edgeVariable)
         {
             SourceVariable = sourceVariable;
             EdgeVariable = edgeVariable;

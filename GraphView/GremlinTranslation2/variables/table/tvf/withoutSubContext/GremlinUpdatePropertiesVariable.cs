@@ -26,9 +26,9 @@ namespace GraphView {
 
     internal class GremlinUpdateNodePropertiesVariable : GremlinUpdatePropertiesVariable
     {
-        public GremlinVertexTableVariable VertexVariable { get; set; }
+        public GremlinTableVariable VertexVariable { get; set; }
 
-        public GremlinUpdateNodePropertiesVariable(GremlinVertexTableVariable vertexVariable,
+        public GremlinUpdateNodePropertiesVariable(GremlinTableVariable vertexVariable,
             Dictionary<string, object> properties) : base(properties)
         {
             VertexVariable = vertexVariable;
@@ -50,11 +50,11 @@ namespace GraphView {
 
     internal class GremlinUpdateEdgePropertiesVariable: GremlinUpdatePropertiesVariable
     {
-        public GremlinVertexTableVariable SourceVariable { get; set; }
-        public GremlinEdgeTableVariable EdgeVariable { get; set; }
+        public GremlinTableVariable SourceVariable { get; set; }
+        public GremlinTableVariable EdgeVariable { get; set; }
 
-        public GremlinUpdateEdgePropertiesVariable(GremlinVertexTableVariable sourceVariable,
-            GremlinEdgeTableVariable edgeVariable,
+        public GremlinUpdateEdgePropertiesVariable(GremlinTableVariable sourceVariable,
+            GremlinTableVariable edgeVariable,
             Dictionary<string, object> properties) : base(properties)
         {
             SourceVariable = sourceVariable;

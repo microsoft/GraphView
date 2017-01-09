@@ -234,7 +234,7 @@ namespace GraphView
             {
                 new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
                     path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable.VariableName),
-                    GetEdgeColumnReferenceExpr(path.EdgeVariable)
+                    GetEdgeColumnReferenceExpr(path.EdgeVariable as GremlinEdgeTableVariable)
                 )
             };
         }

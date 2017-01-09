@@ -106,12 +106,12 @@ namespace GraphView
             AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal GremlinVertexTableVariable GetSourceVertex(GremlinVariable edge)
+        internal GremlinTableVariable GetSourceVertex(GremlinVariable edge)
         {
             return Paths.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
         }
 
-        internal GremlinVertexTableVariable GetSinkVertex(GremlinVariable edge)
+        internal GremlinTableVariable GetSinkVertex(GremlinVariable edge)
         {
             return Paths.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
         }
@@ -185,8 +185,6 @@ namespace GraphView
 
         internal WMatchClause GetMatchClause()
         {
-            if (Paths.Count == 0) return null;
-
             var newMatchClause = new WMatchClause();
             foreach (var path in Paths)
             {
@@ -195,7 +193,7 @@ namespace GraphView
                     newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
                 }
             }
-            return newMatchClause;
+            return newMatchClause.Paths.Count == 0 ? null : newMatchClause;
         }
 
         internal List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)

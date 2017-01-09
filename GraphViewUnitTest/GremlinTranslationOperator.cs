@@ -68,9 +68,9 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            graph.g().V().Properties("name", "age").Drop().Next();
             //graph.g().V().Out().Optional(GraphTraversal2.__().Out().In()).Values("name").Next();
-            //graph.g().V().Out().In().OutE().InV().InE().OutV().Next();
+            graph.g().V().Values("name", "age").Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().InE().InV()).Next();
 
             graph.g().V()
                 .Project("vertex", "parents", "references", "model")

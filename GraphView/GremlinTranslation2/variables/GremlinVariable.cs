@@ -312,22 +312,19 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Object value)
+        internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
         {
-            WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(VariableName, propertyKey);
-            WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
-            currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
+            throw new QueryCompilationException("The Has(key,value) step only applies to vertices and edges.");
         }
 
-        internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Object value)
+        internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
         {
-            throw new NotImplementedException();
+            throw new QueryCompilationException("The Has(label, key,value) step only applies to vertices and edges.");
         }
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
         {
-            WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(VariableName, propertyKey);
-            currentContext.AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, null, predicate));
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
         }
 
         internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
@@ -775,17 +772,7 @@ namespace GraphView
 
         internal virtual void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
-            if (propertyKeys.Count == 1)
-            {
-                Populate(propertyKeys.First());
-                GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, propertyKeys.First());
-                currentContext.VariableList.Add(newVariableProperty);
-                currentContext.PivotVariable = newVariableProperty;
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            throw new QueryCompilationException("The Values() step can only be applied to edges or vertex.");
         }
 
         internal virtual void Where(GremlinToSqlContext currentContext, Predicate predicate)

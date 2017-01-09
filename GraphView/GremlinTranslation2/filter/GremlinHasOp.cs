@@ -102,7 +102,8 @@ namespace GraphView
 
                 //has(label, key, value)
                 case HasOpType.HasLabelKeyValue:
-                    throw new NotImplementedException();
+                    inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Value);
+                    break;
 
                 case HasOpType.HasKeyTraversal:
                     throw new NotImplementedException();
