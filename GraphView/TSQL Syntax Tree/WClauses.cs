@@ -500,13 +500,29 @@ namespace GraphView
             sb.Append(indent);
             for (int i = 0; i < PathEdgeList.Count; i++)
             {
-                string arrowSink = PathEdgeList[i].Item2.EdgeType == WEdgeType.BothEdge ? "-" : "->";
-                string arrowSource = Tail != null ? "-" : "->";
-                if (PathEdgeList[i].Item1 != null)
+                string arrowSource;
+                string arrowSink;
+                switch (PathEdgeList[i].Item2.EdgeType)
                 {
-                    sb.AppendFormat("{0}{1}", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource);
+                    case WEdgeType.BothEdge:
+                        arrowSource = "-";
+                        arrowSink = "-";
+                        break;
+                    case WEdgeType.InEdge:
+                        arrowSource = "<-";
+                        arrowSink = "-";
+                        break;
+                    case WEdgeType.OutEdge:
+                        arrowSource = "-";
+                        arrowSink = "->";
+                        break;
+                    default:
+                        arrowSource = "-";
+                        arrowSink = "->";
+                        break;
                 }
-                sb.AppendFormat("[{0}]", PathEdgeList[i].Item2.ToString());
+                sb.AppendFormat("{0}{1}", PathEdgeList[i].Item1.BaseIdentifier.Value, arrowSource);
+                sb.AppendFormat("[{0}]", PathEdgeList[i].Item2);
                 if (Tail != null)
                 {
                     sb.Append(arrowSink);

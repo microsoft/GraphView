@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using GraphView;
@@ -26,9 +27,9 @@ namespace GraphView {
 
     internal class GremlinUpdateNodePropertiesVariable : GremlinUpdatePropertiesVariable
     {
-        public GremlinTableVariable VertexVariable { get; set; }
+        public GremlinVariableProperty VertexVariable { get; set; }
 
-        public GremlinUpdateNodePropertiesVariable(GremlinTableVariable vertexVariable,
+        public GremlinUpdateNodePropertiesVariable(GremlinVariableProperty vertexVariable,
             Dictionary<string, object> properties) : base(properties)
         {
             VertexVariable = vertexVariable;
@@ -50,11 +51,11 @@ namespace GraphView {
 
     internal class GremlinUpdateEdgePropertiesVariable: GremlinUpdatePropertiesVariable
     {
-        public GremlinTableVariable SourceVariable { get; set; }
-        public GremlinTableVariable EdgeVariable { get; set; }
+        public GremlinVariableProperty SourceVariable { get; set; }
+        public GremlinVariableProperty EdgeVariable { get; set; }
 
-        public GremlinUpdateEdgePropertiesVariable(GremlinTableVariable sourceVariable,
-            GremlinTableVariable edgeVariable,
+        public GremlinUpdateEdgePropertiesVariable(GremlinVariableProperty sourceVariable,
+            GremlinVariableProperty edgeVariable,
             Dictionary<string, object> properties) : base(properties)
         {
             SourceVariable = sourceVariable;

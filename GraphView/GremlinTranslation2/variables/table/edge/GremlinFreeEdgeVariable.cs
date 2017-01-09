@@ -8,9 +8,8 @@ namespace GraphView
 {
     internal class GremlinFreeEdgeVariable : GremlinEdgeTableVariable
     {
-        public GremlinFreeEdgeVariable(GremlinVariable sourceVariable, WEdgeType edgeType = WEdgeType.OutEdge)
+        public GremlinFreeEdgeVariable(WEdgeType edgeType)
         {
-            SourceVariable = sourceVariable;
             EdgeType = edgeType;
         }
 
@@ -20,12 +19,8 @@ namespace GraphView
             if (inVertex == null)
             {
                 var path = currentContext.GetPathWithEdge(this);
-                if (path == null)
-                {
-                    throw new QueryCompilationException();
-                }
                 GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
-                path.SinkVariable = newVertex;
+                path.SetSinkVariable(newVertex);
                 currentContext.TableReferences.Add(newVertex);
                 currentContext.VariableList.Add(newVertex);
                 currentContext.PivotVariable = newVertex;
@@ -46,12 +41,8 @@ namespace GraphView
             if (outVertex == null)
             {
                 var path = currentContext.GetPathWithEdge(this);
-                if (path == null)
-                {
-                    throw new QueryCompilationException();
-                }
                 GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
-                path.SourceVariable = newVertex;
+                path.SetSourceVariable(newVertex);
                 currentContext.TableReferences.Add(newVertex);
                 currentContext.VariableList.Add(newVertex);
                 currentContext.PivotVariable = newVertex;
@@ -71,13 +62,17 @@ namespace GraphView
                 throw new QueryCompilationException("Can't find a path");
             }
 
-            if (path.SourceVariable == SourceVariable)
+            if (EdgeType == WEdgeType.InEdge)
+            {
+                OutV(currentContext);
+            }
+            else if (EdgeType == WEdgeType.OutEdge)
             {
                 InV(currentContext);
             }
-            else if (path.SinkVariable == SourceVariable)
+            else if (EdgeType == WEdgeType.BothEdge)
             {
-                OutV(currentContext);
+                throw new QueryCompilationException();
             }
             else
             {

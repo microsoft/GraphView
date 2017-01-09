@@ -11,6 +11,7 @@ namespace GraphView
         public const string Label = "label";
         public const string EdgeID = "_ID";
         public const string NodeID = "id";
+        public const string EdgeReverseID = "_reverse_ID";
         public const string TableValue = "_value";
 
         public static class func

@@ -35,7 +35,7 @@ namespace GraphView
     {
         public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
             return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
@@ -53,7 +53,7 @@ namespace GraphView
     {
         public GremlinCountVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
             return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }

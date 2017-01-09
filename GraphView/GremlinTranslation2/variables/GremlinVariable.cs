@@ -53,7 +53,7 @@ namespace GraphView
         {
         }
 
-        internal virtual GremlinScalarVariable DefaultProjection()
+        internal virtual GremlinVariableProperty DefaultProjection()
         {
             throw new NotImplementedException();
         }

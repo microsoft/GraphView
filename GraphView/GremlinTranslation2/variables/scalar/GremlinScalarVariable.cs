@@ -13,9 +13,9 @@ namespace GraphView
             return GremlinVariableType.Scalar;
         }
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
-            return this;
+            throw new NotImplementedException();
         }
 
         public virtual WScalarExpression ToScalarExpression()

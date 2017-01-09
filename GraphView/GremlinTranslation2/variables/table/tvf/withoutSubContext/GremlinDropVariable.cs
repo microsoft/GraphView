@@ -8,22 +8,22 @@ namespace GraphView
 {
     internal class GremlinDropVertexVariable : GremlinTableVariable
     {
-        public GremlinTableVariable VertexVariable { get; set; }
+        public GremlinVariableProperty DropVetexVariable { get; set; }
 
-        public GremlinDropVertexVariable(GremlinTableVariable vertexVariable)
+        public GremlinDropVertexVariable(GremlinVariableProperty dropVetexVariable)
         {
-            VertexVariable = vertexVariable;
+            DropVetexVariable = dropVetexVariable;
         }
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
-            return VertexVariable.DefaultProjection();
+            return DropVetexVariable;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(VertexVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(DropVetexVariable.ToScalarExpression());
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropNode, parameters, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -31,15 +31,15 @@ namespace GraphView
 
     internal class GremlinDropEdgeVariable : GremlinTableVariable
     {
-        public GremlinTableVariable SourceVariable;
-        public GremlinTableVariable EdgeVariable;
+        public GremlinVariableProperty SourceVariable;
+        public GremlinVariableProperty EdgeVariable;
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
-            return EdgeVariable.DefaultProjection();
+            return EdgeVariable;
         }
 
-        public GremlinDropEdgeVariable(GremlinTableVariable sourceVariable, GremlinTableVariable edgeVariable)
+        public GremlinDropEdgeVariable(GremlinVariableProperty sourceVariable, GremlinVariableProperty edgeVariable)
         {
             SourceVariable = sourceVariable;
             EdgeVariable = edgeVariable;
@@ -48,8 +48,8 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SourceVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(EdgeVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SourceVariable.ToScalarExpression());
+            parameters.Add(EdgeVariable.ToScalarExpression());
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropEdge, parameters, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

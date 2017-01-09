@@ -126,13 +126,72 @@ namespace GraphView
 
         internal GremlinTableVariable GetSourceVertex(GremlinVariable edge)
         {
-            return PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
+            var existPath = PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName);
+            if (existPath != null)
+            {
+                if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
+                {
+                    return existPath.SinkVariable;
+                }
+                else if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
+                {
+                    return existPath.SourceVariable;
+                }
+            }
+            return null;
         }
 
         internal GremlinTableVariable GetSinkVertex(GremlinVariable edge)
         {
-            return PathList.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
+            var existPath = PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName);
+            if (existPath != null)
+            {
+                if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
+                {
+                    return existPath.SourceVariable;
+                }
+                else if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
+                {
+                    return existPath.SinkVariable;
+                }
+                else
+                {
+                    throw new QueryCompilationException();
+                }
+            }
+            return null;
         }
+
+        internal GremlinVariableProperty GetSourceVariableProperty(GremlinVariable edge)
+        {
+            var sourceVariable = GetSourceVertex(edge);
+            if (sourceVariable == null)
+            {
+                return new GremlinVariableProperty(edge, "_sink");
+            }
+            else
+            {
+                return sourceVariable.DefaultProjection();
+            }
+        }
+
+        internal GremlinVariableProperty GetEdgeVariableProperty(GremlinVariable edge)
+        {
+            if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
+            {
+                return new GremlinVariableProperty(edge, GremlinKeyword.EdgeReverseID);
+            }
+            else if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
+            {
+                return new GremlinVariableProperty(edge, GremlinKeyword.EdgeID);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+
         internal WBooleanExpression ToSqlBoolean()
         {
             return TableReferences.Count == 0 ? (WBooleanExpression) SqlUtil.GetBooleanParenthesisExpr(Predicates)

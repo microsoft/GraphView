@@ -47,7 +47,7 @@ namespace GraphView
             return ContextVariable.GetVariableType();
         }
 
-        internal override GremlinScalarVariable DefaultProjection()
+        internal override GremlinVariableProperty DefaultProjection()
         {
             return ContextVariable.DefaultProjection();
         }
