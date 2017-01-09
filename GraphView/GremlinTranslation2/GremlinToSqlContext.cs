@@ -12,10 +12,11 @@ namespace GraphView
         internal GremlinVariable PivotVariable { get; set; }
         internal Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> TaggedVariables { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
+        internal List<GremlinMatchPath> PathList { get; set; }
+        internal List<GremlinMatchPath> MatchList { get; set; }
         internal List<GremlinTableVariable> TableReferences { get; private set; }
         //public List<ISqlScalar> ProjectedVariables { get; private set; }
         internal List<ISqlStatement> SetVariables { get; private set; }
-        internal List<GremlinMatchPath> Paths { get; set; }
         internal GremlinGroupVariable GroupVariable { get; set; }
         internal WBooleanExpression Predicates { get; private set; }
 
@@ -26,7 +27,8 @@ namespace GraphView
             SetVariables = new List<ISqlStatement>();
             //ProjectedVariables = new List<ISqlScalar>();
             VariableList = new List<GremlinVariable>();
-            Paths = new List<GremlinMatchPath>();
+            PathList = new List<GremlinMatchPath>();
+            MatchList = new List<GremlinMatchPath>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -39,7 +41,8 @@ namespace GraphView
                 TableReferences = new List<GremlinTableVariable>(this.TableReferences),
                 //SetVariables = new List<ISqlStatement>(this.SetVariables), //Don't Duplicate for avoiding redundant set-sqlstatment
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
-                Paths = new List<GremlinMatchPath>(this.Paths),
+                PathList = new List<GremlinMatchPath>(this.PathList),
+                MatchList = new List<GremlinMatchPath>(this.MatchList),
                 Predicates = this.Predicates
             };
         }
@@ -52,9 +55,8 @@ namespace GraphView
             TaggedVariables.Clear();
             VariableList.Clear();
             TableReferences.Clear();
-            //SetVariables.Clear();
-            //ProjectedVariables.Clear();
-            Paths.Clear();
+            PathList.Clear();
+            MatchList.Clear();
             // More resetting goes here when more properties are added to GremlinToSqlContext
         }
 
@@ -87,6 +89,22 @@ namespace GraphView
             }
         }
 
+        internal void AddPath(GremlinMatchPath path)
+        {
+            PathList.Add(path);
+            MatchList.Add(path.Copy());
+        }
+
+        internal bool IsVariableInCurrentContext(GremlinTableVariable variable)
+        {
+            return TableReferences.Contains(variable);
+        }
+
+        internal GremlinMatchPath GetPathWithEdge(GremlinTableVariable edge)
+        {
+            return PathList.Find(p => p.EdgeVariable.VariableName == edge.VariableName);
+        }
+
         internal void AddPredicate(WBooleanExpression newPredicate)
         {
             Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
@@ -108,12 +126,12 @@ namespace GraphView
 
         internal GremlinTableVariable GetSourceVertex(GremlinVariable edge)
         {
-            return Paths.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
+            return PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
         }
 
         internal GremlinTableVariable GetSinkVertex(GremlinVariable edge)
         {
-            return Paths.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
+            return PathList.Find(path=> path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
         }
         internal WBooleanExpression ToSqlBoolean()
         {
@@ -186,7 +204,7 @@ namespace GraphView
         internal WMatchClause GetMatchClause()
         {
             var newMatchClause = new WMatchClause();
-            foreach (var path in Paths)
+            foreach (var path in MatchList)
             {
                 if (path.EdgeVariable is GremlinFreeEdgeVariable)
                 {

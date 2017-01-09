@@ -27,7 +27,7 @@ namespace GraphView
             currentContext.VariableList.Add(bothVertex);
             currentContext.TableReferences.Add(bothVertex);
 
-            currentContext.Paths.Add(new GremlinMatchPath(ContextVariable as GremlinTableVariable, bothEdge, bothVertex));
+            currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, bothEdge, bothVertex));
 
             currentContext.PivotVariable = bothVertex;
         }
@@ -45,7 +45,7 @@ namespace GraphView
             currentContext.TableReferences.Add(bothEdge);
             currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
 
-            currentContext.Paths.Add(new GremlinMatchPath(ContextVariable as GremlinTableVariable, bothEdge, null));
+            currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, bothEdge, null));
 
             currentContext.PivotVariable = bothEdge;
         }
@@ -65,7 +65,7 @@ namespace GraphView
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
 
-            currentContext.Paths.Add(new GremlinMatchPath(outVertex, inEdge, ContextVariable as GremlinTableVariable));
+            currentContext.AddPath(new GremlinMatchPath(outVertex, inEdge, ContextVariable as GremlinTableVariable));
 
             currentContext.PivotVariable = outVertex;
         }
@@ -80,7 +80,7 @@ namespace GraphView
             currentContext.TableReferences.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
 
-            currentContext.Paths.Add(new GremlinMatchPath(null, inEdge, ContextVariable as GremlinTableVariable));
+            currentContext.AddPath(new GremlinMatchPath(null, inEdge, ContextVariable as GremlinTableVariable));
 
             currentContext.PivotVariable = inEdge;
         }
@@ -91,7 +91,7 @@ namespace GraphView
             if (inVertex == null)
             {
                 Populate("_sink");
-                var path = currentContext.Paths.Find(p => p.EdgeVariable == ContextVariable);
+                var path = currentContext.GetPathWithEdge(ContextVariable as GremlinTableVariable);
                 if (path == null)
                 {
                     throw new QueryCompilationException();
@@ -126,7 +126,7 @@ namespace GraphView
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
 
-            currentContext.Paths.Add(new GremlinMatchPath(ContextVariable as GremlinTableVariable, outEdge, outVertex));
+            currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, outEdge, outVertex));
 
             currentContext.PivotVariable = outVertex;
         }
@@ -141,7 +141,7 @@ namespace GraphView
             currentContext.TableReferences.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
 
-            currentContext.Paths.Add(new GremlinMatchPath(ContextVariable as GremlinTableVariable, inEdge, null));
+            currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, inEdge, null));
 
             currentContext.PivotVariable = inEdge;
         }
@@ -151,7 +151,7 @@ namespace GraphView
             GremlinVariable outVertex = currentContext.GetSourceVertex(ContextVariable);
             if (outVertex == null)
             {
-                var path = currentContext.Paths.Find(p => p.EdgeVariable == ContextVariable);
+                var path = currentContext.GetPathWithEdge(ContextVariable as GremlinTableVariable);
                 if (path == null)
                 {
                     throw new QueryCompilationException();
@@ -174,7 +174,25 @@ namespace GraphView
 
         internal override void OtherV(GremlinToSqlContext currentContext)
         {
-            ContextVariable.OtherV(currentContext);
+            var path = currentContext.GetPathWithEdge(ContextVariable as GremlinTableVariable);
+
+            if (path == null)
+            {
+                throw new QueryCompilationException("Can't find a path");
+            }
+
+            if (path.SourceVariable.VariableName == (ContextVariable as GremlinEdgeTableVariable).SourceVariable.VariableName)
+            {
+                InV(currentContext);
+            }
+            else if (path.SinkVariable.VariableName == (ContextVariable as GremlinEdgeTableVariable).SourceVariable.VariableName)
+            {
+                OutV(currentContext);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

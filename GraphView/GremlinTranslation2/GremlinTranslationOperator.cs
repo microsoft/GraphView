@@ -23,7 +23,8 @@ namespace GraphView
             {
                 GremlinParentContextOp rootAsContextOp = this as GremlinParentContextOp;
                 rootAsContextOp.InheritedPivotVariable = parentContext.PivotVariable;
-                rootAsContextOp.InheritedTaggedVariables = parentContext.TaggedVariables;
+                rootAsContextOp.InheritedTaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>(parentContext.TaggedVariables);
+                rootAsContextOp.InheritedPathList = new List<GremlinMatchPath>(parentContext.PathList);
             }
         }
 
@@ -48,6 +49,7 @@ namespace GraphView
         public GremlinToSqlContext InheritedContext { get; set; }
         public Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> InheritedTaggedVariables { get;
             set; }
+        public List<GremlinMatchPath> InheritedPathList { get; set; }
 
         public GremlinParentContextOp()
         {
@@ -59,6 +61,7 @@ namespace GraphView
             if (InheritedContext != null) return InheritedContext;
             GremlinToSqlContext newContext = new GremlinToSqlContext();
             newContext.TaggedVariables = InheritedTaggedVariables;
+            newContext.PathList = InheritedPathList;
             if (InheritedPivotVariable != null)
             {
                 GremlinContextVariable newVariable = GremlinContextVariable.Create(InheritedPivotVariable);
