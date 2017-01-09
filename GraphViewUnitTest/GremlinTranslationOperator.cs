@@ -36,19 +36,19 @@ namespace GremlinTranslationOperator.Tests
             //connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
-            graph.g().AddV("person").Property("age", "27").Property("name", "vadas").next();
-            graph.g().AddV("person").Property("age", "29").Property("name", "marko").next();
-            graph.g().AddV("person").Property("age", "35").Property("name", "peter").next();
-            graph.g().AddV("person").Property("age", "32").Property("name", "josh").next();
-            graph.g().AddV("software").Property("lang", "java").Property("name", "lop").next();
-            graph.g().AddV("software").Property("lang", "java").Property("name", "ripple").next();
+            graph.g().AddV("person").Property("age", "27").Property("name", "vadas").Next();
+            graph.g().AddV("person").Property("age", "29").Property("name", "marko").Next();
+            graph.g().AddV("person").Property("age", "35").Property("name", "peter").Next();
+            graph.g().AddV("person").Property("age", "32").Property("name", "josh").Next();
+            graph.g().AddV("software").Property("lang", "java").Property("name", "lop").Next();
+            graph.g().AddV("software").Property("lang", "java").Property("name", "ripple").Next();
 
-            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "vadas")).next();
-            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "josh")).next();
-            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "lop")).next();
-            graph.g().V().Has("name", "peter").AddE("created").To(graph.g().V().Has("name", "lop")).next();
-            graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "lop")).next();
-            graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "ripple")).next();
+            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "vadas")).Next();
+            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "josh")).Next();
+            graph.g().V().Has("name", "marko").AddE("knows").To(graph.g().V().Has("name", "lop")).Next();
+            graph.g().V().Has("name", "peter").AddE("created").To(graph.g().V().Has("name", "lop")).Next();
+            graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "lop")).Next();
+            graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "ripple")).Next();
 
             // v("lop")
             // v("lop")
@@ -68,7 +68,7 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            graph.g().AddV().next();
+            graph.g().V().Out().In().OutE().InV().InE().OutV().Next();
 
             graph.g().V()
                 .Project("vertex", "parents", "references", "model")
@@ -105,7 +105,7 @@ namespace GremlinTranslationOperator.Tests
                             .By(GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e").Values("_ref"))
                             .Fold())
                     .Fold())
-                .By(GraphTraversal2.__().Out("mdl").Project("vertex").By(GraphTraversal2.__().Tree())).next();
+                .By(GraphTraversal2.__().Out("mdl").Project("vertex").By(GraphTraversal2.__().Tree())).Next();
 
 
             //GraphTraversal2.g().V()
@@ -137,6 +137,13 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
 
             GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results = graph.g().V();
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+
             //var results = graph.g().V().Has("type", "University").Union(GraphTraversal2.__().Properties("label", "type"), GraphTraversal2.__().OutE().Properties("label")).next();
 
             //Insert character

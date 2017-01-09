@@ -485,6 +485,26 @@ namespace GraphView
 
     }
 
+    public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WJoinParenthesisTableReference : WTableReference
     {
         internal WTableReference Join { get; set; }

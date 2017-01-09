@@ -190,16 +190,10 @@ namespace GraphView
             var newMatchClause = new WMatchClause();
             foreach (var path in Paths)
             {
-                //if ((path.SourceVariable is GremlinFreeVertexVariable
-                //    && path.SinkVariable is GremlinFreeVertexVariable
-                //    && path.SinkVariable is GremlinBoundEdgeVariable)
-                //    || (path.SourceVariable == null
-                //    && path.SinkVariable is GremlinFreeVertexVariable
-                //    && path.SinkVariable is GremlinBoundEdgeVariable)
-                //    || (path.SourceVariable is GremlinFreeVertexVariable
-                //    && path.SinkVariable is GremlinFreeVertexVariable
-                //    && path.SinkVariable == null))
-                newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
+                if (path.EdgeVariable is GremlinFreeEdgeVariable)
+                {
+                    newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
+                }
             }
             return newMatchClause;
         }

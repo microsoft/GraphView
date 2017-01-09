@@ -38,6 +38,10 @@ namespace GraphView
             public const string Dedup = "Dedup";
             public const string Fold = "fold";
             public const string Count = "count";
+            public const string DropNode = "DropNode";
+            public const string DropEdge = "DropEdge";
+            public const string DropProperties = "DropProperties";
+            public const string UpdateProperties = "UpdateProperties";
         }
         public enum Pop
         {

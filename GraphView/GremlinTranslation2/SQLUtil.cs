@@ -329,6 +329,18 @@ namespace GraphView
                 case GremlinKeyword.func.Dedup:
                     funcTableRef = new WDedupTableReference();
                     break;
+                case GremlinKeyword.func.DropNode:
+                    funcTableRef = new WDropNodeTableReference();
+                    break;
+                case GremlinKeyword.func.DropEdge:
+                    funcTableRef = new WDropEdgeTableReference();
+                    break;
+                case GremlinKeyword.func.DropProperties:
+                    funcTableRef = new WDropPropertiesTableReference();
+                    break;
+                case GremlinKeyword.func.UpdateProperties:
+                    funcTableRef = new WUpdatePropertiesTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

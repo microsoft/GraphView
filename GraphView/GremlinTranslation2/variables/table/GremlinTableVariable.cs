@@ -233,6 +233,14 @@ namespace GraphView
         {
             return GremlinVariableType.Vertex;
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            GremlinDropVertexVariable newVariable = new GremlinDropVertexVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
+        }
     }
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
@@ -261,6 +269,14 @@ namespace GraphView
         internal override GremlinVariableType GetVariableType()
         {
             return GremlinVariableType.Edge;
+        }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            GremlinDropEdgeVariable newVariable = new GremlinDropEdgeVariable(currentContext.GetSourceVertex(this), this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
     }
 }

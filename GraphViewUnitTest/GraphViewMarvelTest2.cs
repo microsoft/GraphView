@@ -16,7 +16,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
 
             GraphViewCommand graph = new GraphViewCommand(connection);
-            var results = graph.g().V().Has("weapon", "shield").As("character").Out("appeared").As("comicbook").Select("character").next();
+            var results = graph.g().V().Has("weapon", "shield").As("character").Out("appeared").As("comicbook").Select("character").Next();
 
             foreach (var result in results)
             {
@@ -40,7 +40,7 @@ namespace GraphViewUnitTest
                     .Out("appeared")
                     .As("comicbook")
                     .Select("comicbook")
-                    .next();
+                    .Next();
 
             foreach (var result in results)
             {
@@ -55,7 +55,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             GraphViewCommand graph = new GraphViewCommand(connection);
-            var results = graph.g().V().Has("name", "AVF 4").In("appeared").Values("name").next();
+            var results = graph.g().V().Has("name", "AVF 4").In("appeared").Values("name").Next();
 
             foreach (var result in results)
             {
@@ -70,7 +70,7 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
             GraphViewCommand graph = new GraphViewCommand(connection);
-            var results = graph.g().V().Has("name", "AVF 4").In("appeared").Has("weapon", "shield").Values("name").next();
+            var results = graph.g().V().Has("name", "AVF 4").In("appeared").Has("weapon", "shield").Values("name").Next();
 
             foreach (var result in results)
             {
@@ -94,8 +94,7 @@ namespace GraphViewUnitTest
                     .Has("weapon", Predicate.within("shield", "claws"))
                     .Out("appeared")
                     .As("comicbook")
-                    .Select("character")
-                    .next();
+                    .Select("character");
 
             foreach (var result in results)
             {
@@ -121,7 +120,7 @@ namespace GraphViewUnitTest
                     .Values("name")
                     .As("comicbook")
                     .Select("comicbook")
-                    .next();
+                    .Next();
 
             foreach (var result in results)
             {
@@ -138,13 +137,13 @@ namespace GraphViewUnitTest
             //connection.ResetCollection();
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            graph.g().AddV("character").Property("name", "VENUS II").Property("weapon", "shield").next();
-            graph.g().AddV("comicbook").Property("name", "AVF 4").next();
-            graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
-            graph.g().AddV("character").Property("name", "HAWK").Property("weapon", "claws").next();
-            graph.g().V().As("v").Has("name", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
-            graph.g().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").next();
-            graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).next();
+            graph.g().V().AddV("character").Property("name", "VENUS II").Property("weapon", "shield").Next();
+            graph.g().V().AddV("comicbook").Property("name", "AVF 4").Next();
+            graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
+            graph.g().V().AddV("character").Property("name", "HAWK").Property("weapon", "claws").Next();
+            graph.g().V().As("v").Has("character", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
+            graph.g().V().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").Next();
+            graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
         }
     }
 }

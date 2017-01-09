@@ -8,14 +8,13 @@ namespace GraphView
 {
     internal class GremlinDropOp: GremlinTranslationOperator
     {
-        public GremlinDropOp() { }
-
         internal override GremlinToSqlContext GetContext()
         {
-            GremlinToSqlContext inputContext = GetContext();
-            throw new NotImplementedException();
-            //remove element and properties from the graph
-            return new GremlinToSqlContext();
+            GremlinToSqlContext inputContext = GetInputContext();
+
+            inputContext.PivotVariable.Drop(inputContext);
+
+            return inputContext;
         }
     }
 }

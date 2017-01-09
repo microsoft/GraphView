@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,10 +7,77 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    public class GraphTraversal2
+    public class GraphTraversal2 : IEnumerable<string>
     {
-        public GraphViewConnection Connection { get; set; }
+        public class GraphTraversalIterator : IEnumerator<string>
+        {
+            private string CurrentRecord;
+            private GraphViewExecutionOperator CurrentOperator;
 
+            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator)
+            {
+                CurrentOperator = pCurrentOperator;
+            }
+
+            public bool MoveNext()
+            {
+                if (CurrentOperator == null) Reset();
+
+                RawRecord outputRec = null;
+                if ((outputRec = CurrentOperator.Next()) != null)
+                {
+                    var recordString = "";
+                    foreach (var fieldValue in outputRec.fieldValues)
+                    {
+                        recordString += fieldValue + "  ";
+                    }
+                    CurrentRecord = recordString;
+                    if (CurrentRecord != null)
+                        return true;
+                    else return false;
+                }
+                else return false;
+            }
+
+            public void Reset()
+            {
+            }
+
+            object IEnumerator.Current
+            {
+                get
+                {
+                    return CurrentRecord;
+                }
+            }
+
+            public string Current
+            {
+                get
+                {
+                    return CurrentRecord;
+                }
+            }
+
+            public void Dispose()
+            {
+
+            }
+        }
+
+        public IEnumerator<string> GetEnumerator()
+        {
+            it = new GraphTraversalIterator(LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection));
+            return it;
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        private GraphTraversalIterator it;
+        public GraphViewConnection Connection { get; set; }
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
         internal GremlinTranslationOperator LastGremlinTranslationOp { set; get; }
 
@@ -28,7 +96,7 @@ namespace GraphView
             Connection = pConnection;
         }
 
-        public List<string> next()
+        public List<string> Next()
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
             var str = sqlScript.ToString();
@@ -858,10 +926,10 @@ namespace GraphView
             return newGraphTraversal;
         }
 
-        public List<object> toList()
+        public List<object> ToList()
         {
             //TODO
-            var Params = LastGremlinTranslationOp.ToSqlScript().ToString();
+            var str = LastGremlinTranslationOp.ToSqlScript().ToString();
             return new List<object>() {1};
         }
     }
