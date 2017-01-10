@@ -231,10 +231,10 @@ namespace GraphView
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
         internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels)
         {
-            GremlinTableVariable newVariable = GremlinDedupVariable.Create(this, dedupLabels);
+            //GremlinTableVariable newVariable = GremlinDedupVariable.Create(this, dedupLabels);
+            GremlinDedupVariable newVariable = new GremlinDedupVariable(this, dedupLabels);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
         }
 
         internal virtual void Drop(GremlinToSqlContext currentContext)

@@ -145,10 +145,10 @@ namespace GraphView
                 {
                     //It's a forward edge
                     Populate("_sink");
-                    var path = currentContext.GetPathFromPathList(ContextVariable as GremlinTableVariable);
                     GremlinBoundVertexVariable newVertex =
                         new GremlinBoundVertexVariable(new GremlinVariableProperty(ContextVariable, "_sink"));
-                    path.SetSinkVariable(newVertex);
+                    var path = currentContext.GetPathFromPathList(ContextVariable as GremlinTableVariable);
+                    if (path != null) path.SetSinkVariable(newVertex);
                     currentContext.VariableList.Add(newVertex);
                     currentContext.TableReferences.Add(newVertex);
                     currentContext.PivotVariable = newVertex;
@@ -183,11 +183,14 @@ namespace GraphView
                 GremlinVariable outVertex = currentContext.GetSourceVertex(ContextVariable);
                 if (outVertex == null)
                 {
-                    var path = currentContext.GetPathFromPathList(ContextVariable as GremlinTableVariable);
+                    
                     Populate("_sink");
                     GremlinBoundVertexVariable newVertex =
                         new GremlinBoundVertexVariable(new GremlinVariableProperty(ContextVariable, "_sink"));
-                    path.SetSourceVariable(newVertex);
+
+                    var path = currentContext.GetPathFromPathList(ContextVariable as GremlinTableVariable);
+                    if (path != null) path.SetSourceVariable(newVertex);
+
                     currentContext.VariableList.Add(newVertex);
                     currentContext.TableReferences.Add(newVertex);
                     currentContext.PivotVariable = newVertex;

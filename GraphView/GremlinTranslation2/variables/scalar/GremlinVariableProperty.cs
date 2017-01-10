@@ -17,6 +17,11 @@ namespace GraphView
             VariableProperty = variableProperty;
         }
 
+        internal override GremlinVariableProperty DefaultProjection()
+        {
+            return this;
+        }
+
         public override WScalarExpression ToScalarExpression()
         {
             return SqlUtil.GetColumnReferenceExpr(GremlinVariable.VariableName, VariableProperty);

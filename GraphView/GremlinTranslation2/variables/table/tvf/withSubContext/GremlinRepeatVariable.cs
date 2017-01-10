@@ -53,16 +53,16 @@ namespace GraphView
                 Populate(property);
             }
 
-            WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
-
             //Set the select Elements
-            selectQueryBlock.SelectElements.Clear();
             List<WSelectScalarExpression> inputSelectList = GetInputSelectList(projectProperties);
+            List<WSelectScalarExpression> outerSelectList = GetOuterSelectList();
+
+            WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
+            selectQueryBlock.SelectElements.Clear();
             foreach (var selectElement in inputSelectList)
             {
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
-            List<WSelectScalarExpression> outerSelectList = GetOuterSelectList();
             foreach (var selectElement in outerSelectList)
             {
                 selectQueryBlock.SelectElements.Add(selectElement);
