@@ -1003,34 +1003,35 @@ namespace GraphView
                 return r;
             }
 
-            currentRecord = inputOp.Next();
-            if (currentRecord == null)
+            while (inputOp.State())
             {
-                Close();
-                return null;
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                contextOp.ConstantSource = currentRecord;
+                flatMapTraversal.ResetState();
+                RawRecord flatMapRec = null;
+                while ((flatMapRec = flatMapTraversal.Next()) != null)
+                {
+                    outputBuffer.Enqueue(flatMapRec);
+                }
+
+                if (outputBuffer.Count > 0)
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    RawRecord toAppend = outputBuffer.Dequeue();
+                    r.Append(toAppend);
+
+                    return r;
+                }
             }
 
-            contextOp.ConstantSource = currentRecord;
-            flatMapTraversal.ResetState();
-            RawRecord localRec = null;
-            while ((localRec = flatMapTraversal.Next()) != null)
-            {
-                outputBuffer.Enqueue(localRec);
-            }
-
-            if (outputBuffer.Count > 0)
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord toAppend = outputBuffer.Dequeue();
-                r.Append(toAppend);
-
-                return r;
-            }
-            else
-            {
-                Close();
-                return null;
-            }
+            Close();
+            return null;
         }
 
         public override void ResetState()

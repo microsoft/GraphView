@@ -2092,12 +2092,12 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
-            if (localSubquery == null)
+            WScalarSubquery flatMapSubquery = Parameters[0] as WScalarSubquery;
+            if (flatMapSubquery == null)
             {
                 throw new SyntaxErrorException("The input of a flatMap table reference must be a scalar subquery.");
             }
-            WSelectQueryBlock flatMapSelect = localSubquery.SubQueryExpr as WSelectQueryBlock;
+            WSelectQueryBlock flatMapSelect = flatMapSubquery.SubQueryExpr as WSelectQueryBlock;
             if (flatMapSelect == null)
             {
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
