@@ -16,18 +16,32 @@ namespace GraphView
         internal override void InV(GremlinToSqlContext currentContext)
         {
             GremlinVariable inVertex = currentContext.GetSinkVertex(this);
-            if (inVertex == null)
+            if (EdgeType == WEdgeType.BothEdge)
             {
-                var path = currentContext.GetPathFromPathList(this);
-                GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
-                path.SetSinkVariable(newVertex);
-                currentContext.TableReferences.Add(newVertex);
-                currentContext.VariableList.Add(newVertex);
-                currentContext.PivotVariable = newVertex;
+                Populate("_sink");
+
+                GremlinBoundVertexVariable outVertex =
+                    new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
+                currentContext.VariableList.Add(outVertex);
+                currentContext.TableReferences.Add(outVertex);
+
+                currentContext.PivotVariable = outVertex;
             }
             else
             {
-                currentContext.PivotVariable = inVertex;
+                if (inVertex == null)
+                {
+                    var path = currentContext.GetPathFromPathList(this);
+                    GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
+                    path.SetSinkVariable(newVertex);
+                    currentContext.TableReferences.Add(newVertex);
+                    currentContext.VariableList.Add(newVertex);
+                    currentContext.PivotVariable = newVertex;
+                }
+                else
+                {
+                    currentContext.PivotVariable = inVertex;
+                }
             }
         }
 
@@ -37,46 +51,74 @@ namespace GraphView
             // A better implementation should reason the status of the edge variable and only reset
             // the pivot variable if possible, thereby avoiding adding a new vertex variable  
             // and reducing one join.
-            GremlinVariable outVertex = currentContext.GetSourceVertex(this);
-            if (outVertex == null)
+            if (EdgeType == WEdgeType.BothEdge)
             {
-                var path = currentContext.GetPathFromPathList(this);
-                GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
-                path.SetSourceVariable(newVertex);
-                currentContext.TableReferences.Add(newVertex);
-                currentContext.VariableList.Add(newVertex);
-                currentContext.PivotVariable = newVertex;
+                Populate("_source");
+
+                GremlinBoundVertexVariable outVertex =
+                    new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_source"));
+                currentContext.VariableList.Add(outVertex);
+                currentContext.TableReferences.Add(outVertex);
+
+                currentContext.PivotVariable = outVertex;
             }
             else
             {
-                currentContext.PivotVariable = outVertex;
+                GremlinVariable outVertex = currentContext.GetSourceVertex(this);
+                if (outVertex == null)
+                {
+                    var path = currentContext.GetPathFromPathList(this);
+                    GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
+                    path.SetSourceVariable(newVertex);
+                    currentContext.TableReferences.Add(newVertex);
+                    currentContext.VariableList.Add(newVertex);
+                    currentContext.PivotVariable = newVertex;
+                }
+                else
+                {
+                    currentContext.PivotVariable = outVertex;
+                }
             }
         }
 
         internal override void OtherV(GremlinToSqlContext currentContext)
         {
-            var path = currentContext.GetPathFromPathList(this);
+            if (EdgeType == WEdgeType.BothEdge)
+            {
+                Populate("_other");
 
-            if (path == null)
-            {
-                throw new QueryCompilationException("Can't find a path");
-            }
+                GremlinBoundVertexVariable outVertex =
+                    new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_other"));
+                currentContext.VariableList.Add(outVertex);
+                currentContext.TableReferences.Add(outVertex);
 
-            if (EdgeType == WEdgeType.InEdge)
-            {
-                OutV(currentContext);
-            }
-            else if (EdgeType == WEdgeType.OutEdge)
-            {
-                InV(currentContext);
-            }
-            else if (EdgeType == WEdgeType.BothEdge)
-            {
-                throw new QueryCompilationException();
+                currentContext.PivotVariable = outVertex;
             }
             else
             {
-                throw new NotImplementedException();
+                var path = currentContext.GetPathFromPathList(this);
+
+                if (path == null)
+                {
+                    throw new QueryCompilationException("Can't find a path");
+                }
+
+                if (EdgeType == WEdgeType.InEdge)
+                {
+                    OutV(currentContext);
+                }
+                else if (EdgeType == WEdgeType.OutEdge)
+                {
+                    InV(currentContext);
+                }
+                else if (EdgeType == WEdgeType.BothEdge)
+                {
+                    throw new QueryCompilationException();
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
             }
         }
     }

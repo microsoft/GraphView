@@ -782,9 +782,11 @@ namespace GraphView
             if (predicate.Label != null)
             {
                 var compareVar = currentContext.TaggedVariables[predicate.Label].Last().Item1;
+                Populate(compareVar.DefaultProjection().VariableProperty);
                 secondExpr = compareVar.DefaultProjection().ToScalarExpression();
             }
             var firstExpr = DefaultProjection().ToScalarExpression();
+            Populate(DefaultProjection().VariableProperty);
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }

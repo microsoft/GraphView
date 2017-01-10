@@ -277,6 +277,9 @@ namespace GraphView
                 case GremlinKeyword.func.BothE:
                     funcTableRef = new WBoundBothEdgeTableReference();
                     break;
+                case GremlinKeyword.func.BothForwardE:
+                    funcTableRef = new WBoundBothForwardEdgeTableReference();
+                    break;
                 case GremlinKeyword.func.FlatMap:
                     funcTableRef = new WFlatMapTableReference();
                     break;

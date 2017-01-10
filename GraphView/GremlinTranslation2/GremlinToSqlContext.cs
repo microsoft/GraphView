@@ -169,14 +169,21 @@ namespace GraphView
 
         internal GremlinVariableProperty GetSourceVariableProperty(GremlinVariable edge)
         {
-            var sourceVariable = GetSourceVertex(edge);
-            if (sourceVariable == null)
+            if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
             {
-                return new GremlinVariableProperty(edge, "_sink");
+                return new GremlinVariableProperty(edge, "_source");
             }
             else
             {
-                return sourceVariable.DefaultProjection();
+                var sourceVariable = GetSourceVertex(edge);
+                if (sourceVariable == null)
+                {
+                    return new GremlinVariableProperty(edge, "_sink");
+                }
+                else
+                {
+                    return sourceVariable.DefaultProjection();
+                }
             }
         }
 
@@ -186,13 +193,10 @@ namespace GraphView
             {
                 return new GremlinVariableProperty(edge, GremlinKeyword.EdgeReverseID);
             }
-            else if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
-            {
-                return new GremlinVariableProperty(edge, GremlinKeyword.EdgeID);
-            }
             else
             {
-                throw new NotImplementedException();
+                return new GremlinVariableProperty(edge, GremlinKeyword.EdgeID);
+
             }
         }
 

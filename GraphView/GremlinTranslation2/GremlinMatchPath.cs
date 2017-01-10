@@ -35,7 +35,7 @@ namespace GraphView
         {
             if ((EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
             {
-                SinkVariable = SinkVariable;
+                SinkVariable = sourceVariable;
             }
             if ((EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
             {

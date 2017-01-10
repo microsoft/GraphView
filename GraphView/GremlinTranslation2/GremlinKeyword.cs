@@ -21,6 +21,7 @@ namespace GraphView
             public const string OutE = "OutE";
             public const string InE = "InE";
             public const string BothE = "BothE";
+            public const string BothForwardE = "BothForwardE";
             public const string FlatMap = "FlatMap";
             public const string Key = "Key";
             public const string Local = "Local";

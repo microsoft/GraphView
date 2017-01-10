@@ -67,6 +67,24 @@ namespace GremlinTranslationOperator.Tests
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
+
+            //graph.g().V().In().Out().Next();
+            //graph.g().V().Out().In().Next();
+            //graph.g().V().InE().InV().Next();
+            //graph.g().V().InE().OutV().Next();
+            //graph.g().V().OutE().OutV().Next();
+            //graph.g().V().OutE().InV().Next();
+            //graph.g().V().BothE().InV().Next();
+            //graph.g().V().BothE().OutV().Next();
+            //graph.g().V().BothE().OtherV().Next();
+            //graph.g().V().Both().InE().Next();
+
+            //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().Drop()).Next();
+            //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();
+            //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().InV()).Next();
+            //graph.g().V().BothE().Drop().Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().Both().In()).Next();
+
             graph.g().V().HasLabel("person").Optional(GraphTraversal2.__().Out()).Next();
             graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();
             graph.g().V().HasLabel("test").OutE().InV().HasLabel("test1").Next();
