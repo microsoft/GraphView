@@ -70,15 +70,28 @@ namespace GremlinTranslationOperator.Tests
 
             graph.g().V().Emit().Repeat(GraphTraversal2.__().OutE("_val").InV()).Next();
 
-            graph.g().AddV().Property("name", "a").Next();
+            graph.g().AddV().Property("name", "a").Property("type", "start").Next();
             graph.g().AddV().Property("name", "b").Next();
             graph.g().AddV().Property("name", "c").Next();
             graph.g().AddV().Property("name", "d").Next();
             graph.g().AddV().Property("name", "e").Next();
             graph.g().AddV().Property("name", "f").Next();
-            graph.g().AddV().Property("name", "g").Next();
+            graph.g().AddV().Property("name", "g").Property("type", "start").Next();
             graph.g().AddV().Property("name", "h").Next();
             graph.g().AddV().Property("name", "i").Next();
+
+            graph.g().V().Has("name", "a").AddE("val").To(graph.g().V().Has("name", "b")).Next();
+            graph.g().V().Has("name", "a").AddE("val").To(graph.g().V().Has("name", "d")).Next();
+            graph.g().V().Has("name", "b").AddE("fail").To(graph.g().V().Has("name", "c")).Next();
+            graph.g().V().Has("name", "d").AddE("val").To(graph.g().V().Has("name", "e")).Next();
+            graph.g().V().Has("name", "d").AddE("fail").To(graph.g().V().Has("name", "f")).Next();
+            graph.g().V().Has("name", "g").AddE("val").To(graph.g().V().Has("name", "h")).Next();
+            graph.g().V().Has("name", "g").AddE("fail").To(graph.g().V().Has("name", "i")).Next();
+
+            graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal2.__().OutE("_val").InV()).Next();
+
+            //a, g, b, d, e, h
+
 
             //graph.g().V().In().Out().Next();
             //graph.g().V().Out().In().Next();

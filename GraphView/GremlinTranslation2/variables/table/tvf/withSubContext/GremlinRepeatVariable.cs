@@ -58,11 +58,7 @@ namespace GraphView
             InputVariable = RepeatContext.VariableList.First() as GremlinContextVariable;
             foreach (var property in InputVariable.UsedProperties)
             {
-                //Populate(property);
-                //if (!projectProperties.Contains(property))
-                //{
-                //    projectProperties.Add(property);
-                //}
+                Populate(property);
                 useProperties.Add(property);
             }
 
