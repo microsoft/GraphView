@@ -13,7 +13,7 @@ namespace GraphView
     }
     internal interface ISqlTable
     {
-        WTableReference ToTableReference(List<string> projectProperties, string tableName);
+        WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable);
     }
 
     internal interface ISqlScalar

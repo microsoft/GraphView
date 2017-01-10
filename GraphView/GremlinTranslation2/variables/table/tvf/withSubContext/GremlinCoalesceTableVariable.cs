@@ -43,7 +43,7 @@ namespace GraphView
             
         }
 
-        public override  WTableReference ToTableReference(List<string> projectProperties, string tableName)
+        public override  WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
@@ -51,7 +51,7 @@ namespace GraphView
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, gremlinVariable, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

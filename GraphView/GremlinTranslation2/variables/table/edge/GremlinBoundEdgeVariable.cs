@@ -30,19 +30,19 @@ namespace GraphView
             WTableReference secondTableRef = null;
             if (isBothForward)
             {
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothForwardE, PropertyKeys, VariableName);
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothForwardE, PropertyKeys, this, VariableName);
             }
             else {
                 switch (EdgeType)
                 {
                     case WEdgeType.BothEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, VariableName);
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, this, VariableName);
                         break;
                     case WEdgeType.InEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, VariableName);
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, this, VariableName);
                         break;
                     case WEdgeType.OutEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, VariableName);
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, this, VariableName);
                         break;
                 }
             }

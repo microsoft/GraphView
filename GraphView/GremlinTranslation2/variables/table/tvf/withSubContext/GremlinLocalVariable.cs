@@ -36,11 +36,11 @@ namespace GraphView
             LocalContext.Populate(property);
         }
 
-        public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
+        public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(projectProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Local, parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Local, parameters, gremlinVariable, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

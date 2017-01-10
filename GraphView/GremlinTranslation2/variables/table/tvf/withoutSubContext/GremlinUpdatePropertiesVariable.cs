@@ -44,7 +44,7 @@ namespace GraphView {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateNodeProperties, parameters, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateNodeProperties, parameters, this, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
@@ -72,7 +72,7 @@ namespace GraphView {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateEdgeProperties, parameters, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateEdgeProperties, parameters, this, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

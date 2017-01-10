@@ -68,6 +68,8 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
+            graph.g().V().Range(0, 10).Properties("name").Range(10, 11).Next();
+
             graph.g().V().Emit().Repeat(GraphTraversal2.__().OutE("_val").InV()).Next();
 
             graph.g().AddV().Property("name", "a").Property("type", "start").Next();

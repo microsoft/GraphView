@@ -46,7 +46,7 @@ namespace GraphView
                 //{
                 //    Populate(DefaultProjection().VariableProperty);
                 //}
-                return SqlTableVariable.ToTableReference(ProjectedProperties, VariableName);
+                return SqlTableVariable.ToTableReference(ProjectedProperties, VariableName, this);
             }
             else
             {

@@ -13,7 +13,7 @@ namespace GraphView {
             throw new NotImplementedException();
         }
 
-        public virtual WTableReference ToTableReference(List<string> projectProperties, string tableName)
+        public virtual WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             throw new NotImplementedException();
         }

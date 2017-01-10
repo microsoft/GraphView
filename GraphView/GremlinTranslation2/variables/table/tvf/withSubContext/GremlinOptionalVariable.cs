@@ -46,7 +46,7 @@ namespace GraphView
             OptionalContext.Populate(property);
         }
 
-        public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
+        public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<string> firstProjectProperties = new List<string>();
             List<string> secondProjectProperties = new List<string>();
@@ -106,7 +106,7 @@ namespace GraphView
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, gremlinVariable, tableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

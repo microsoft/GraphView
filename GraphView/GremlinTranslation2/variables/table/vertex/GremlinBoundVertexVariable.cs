@@ -32,7 +32,7 @@ namespace GraphView
             WTableReference secondTableRef = null;
             if (isBothV)
             {
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, VariableName);
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, this, VariableName);
             }
             else
             {
@@ -40,17 +40,16 @@ namespace GraphView
                 {
                     if ((variablePropertyList.First().GremlinVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
                     {
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys,
-                            VariableName);
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
                     }
                     else
                     {
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, VariableName);
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, VariableName);
                     }
                 }
                 else
                 {
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, VariableName);
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
                 }
             }
            

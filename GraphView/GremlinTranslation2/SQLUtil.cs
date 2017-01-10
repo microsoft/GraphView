@@ -257,7 +257,7 @@ namespace GraphView
         }
 
         internal static WSchemaObjectFunctionTableReference GetFunctionTableReference(string functionName,
-            List<WScalarExpression> parameterList, string alias = null)
+            List<WScalarExpression> parameterList, GremlinVariable gremlinvariable, string alias = null)
         {
             WSchemaObjectFunctionTableReference funcTableRef;
             switch (functionName)
@@ -355,6 +355,8 @@ namespace GraphView
             funcTableRef.SchemaObject = GetSchemaObjectName(functionName);
             funcTableRef.Parameters = parameterList;
             funcTableRef.Alias = GetIdentifier(alias);
+            funcTableRef.Low = gremlinvariable.Low;
+            funcTableRef.High = gremlinvariable.High;
             return funcTableRef;
         }
 

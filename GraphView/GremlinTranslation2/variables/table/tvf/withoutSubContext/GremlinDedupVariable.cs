@@ -27,7 +27,7 @@ namespace GraphView
                 throw new NotImplementedException();
                 parameters.Add(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, dedupLabel));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Dedup, parameters, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Dedup, parameters, this, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

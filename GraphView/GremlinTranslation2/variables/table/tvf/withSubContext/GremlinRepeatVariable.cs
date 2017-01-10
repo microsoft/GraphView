@@ -44,7 +44,7 @@ namespace GraphView
             RepeatContext.Populate(property);
         }
 
-        public override WTableReference ToTableReference(List<string> projectProperties, string tableName )
+        public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             if (projectProperties.Count == 0)
             {
@@ -96,7 +96,7 @@ namespace GraphView
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
             PropertyKeys.Add(GetRepeatConditionExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, gremlinVariable, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
