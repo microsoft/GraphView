@@ -74,6 +74,7 @@ namespace GraphView
             Populate("_reverse_edge");
             Populate("_edge");
 
+            GremlinVariableProperty sourceNode = new GremlinVariableProperty(this, GremlinKeyword.NodeID);
             GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(this, "_reverse_edge");
             GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
             GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjEdge, adjReverseEdge, WEdgeType.BothEdge);
