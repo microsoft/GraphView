@@ -24,7 +24,24 @@ namespace GraphView
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, VariableName);
+
+            WTableReference secondTableRef = null;
+            if (vertexId.GremlinVariable is GremlinEdgeTableVariable)
+            {
+                if ((vertexId.GremlinVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
+                {
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys,
+                        VariableName);
+                }
+                else
+                {
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, VariableName);
+                }
+            }
+            else
+            {
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, VariableName);
+            }
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

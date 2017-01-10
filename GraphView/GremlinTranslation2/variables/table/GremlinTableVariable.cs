@@ -42,6 +42,10 @@ namespace GraphView
         {
             if (SqlTableVariable != null)
             {
+                if (ProjectedProperties.Count == 0)
+                {
+                    Populate(DefaultProjection().VariableProperty);
+                }
                 return SqlTableVariable.ToTableReference(ProjectedProperties, VariableName);
             }
             else
