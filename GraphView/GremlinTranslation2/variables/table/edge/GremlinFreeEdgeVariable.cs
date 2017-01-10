@@ -18,7 +18,7 @@ namespace GraphView
             GremlinVariable inVertex = currentContext.GetSinkVertex(this);
             if (inVertex == null)
             {
-                var path = currentContext.GetPathWithEdge(this);
+                var path = currentContext.GetPathFromPathList(this);
                 GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
                 path.SetSinkVariable(newVertex);
                 currentContext.TableReferences.Add(newVertex);
@@ -40,7 +40,7 @@ namespace GraphView
             GremlinVariable outVertex = currentContext.GetSourceVertex(this);
             if (outVertex == null)
             {
-                var path = currentContext.GetPathWithEdge(this);
+                var path = currentContext.GetPathFromPathList(this);
                 GremlinFreeVertexVariable newVertex = new GremlinFreeVertexVariable();
                 path.SetSourceVariable(newVertex);
                 currentContext.TableReferences.Add(newVertex);
@@ -55,7 +55,7 @@ namespace GraphView
 
         internal override void OtherV(GremlinToSqlContext currentContext)
         {
-            var path = currentContext.GetPathWithEdge(this);
+            var path = currentContext.GetPathFromPathList(this);
 
             if (path == null)
             {

@@ -203,7 +203,7 @@ namespace GraphView
                 //It's a forward edge, so the _sink points to the sink vertex
                 // n_0->[edge as e_0]
                 Populate("_sink");
-                var path = currentContext.GetPathWithEdge(this);
+                var path = currentContext.GetPathFromPathList(this);
                 GremlinBoundVertexVariable newVertex =
                     new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
                 path.SetSinkVariable(newVertex);
@@ -238,7 +238,7 @@ namespace GraphView
             {
                 //It's a reversed edge, so the _sink points to the source vertex
                 // n_1<-[edge as e_0]
-                var path = currentContext.GetPathWithEdge(this);
+                var path = currentContext.GetPathFromPathList(this);
                 Populate("_sink");
                 GremlinBoundVertexVariable newVertex =
                     new GremlinBoundVertexVariable(new GremlinVariableProperty(this, "_sink"));
@@ -266,7 +266,7 @@ namespace GraphView
 
         internal override void OtherV(GremlinToSqlContext currentContext)
         {
-            var path = currentContext.GetPathWithEdge(this);
+            var path = currentContext.GetPathFromPathList(this);
             var edge = (path.EdgeVariable as GremlinEdgeTableVariable).EdgeType;
 
             if (path == null)

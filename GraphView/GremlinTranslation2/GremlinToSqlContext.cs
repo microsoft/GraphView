@@ -92,7 +92,7 @@ namespace GraphView
         internal void AddPath(GremlinMatchPath path)
         {
             PathList.Add(path);
-            MatchList.Add(path.Copy());
+            MatchList.Add(path);
         }
 
         internal bool IsVariableInCurrentContext(GremlinTableVariable variable)
@@ -100,9 +100,14 @@ namespace GraphView
             return TableReferences.Contains(variable);
         }
 
-        internal GremlinMatchPath GetPathWithEdge(GremlinTableVariable edge)
+        internal GremlinMatchPath GetPathFromPathList(GremlinTableVariable edge)
         {
             return PathList.Find(p => p.EdgeVariable.VariableName == edge.VariableName);
+        }
+
+        internal GremlinMatchPath GetPathFromMatchList(GremlinTableVariable edge)
+        {
+            return MatchList.Find(p => p.EdgeVariable.VariableName == edge.VariableName);
         }
 
         internal void AddPredicate(WBooleanExpression newPredicate)
@@ -267,6 +272,10 @@ namespace GraphView
             {
                 if (path.EdgeVariable is GremlinFreeEdgeVariable)
                 {
+                    if (!(path.SinkVariable is GremlinFreeVertexVariable))
+                    {
+                        path.SinkVariable = null;
+                    }
                     newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
                 }
             }
