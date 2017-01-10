@@ -1672,11 +1672,18 @@ namespace GraphView
             while (_inputOp.State() && (srcRecord = _inputOp.Next()) != null)
             {
                 if (_count < _startCount)
+                {
+                    _count++;
                     continue;
-                else if (_endCount == -1 || _count++ < _endCount)
+                }
+                if (_endCount != -1 && _count >= _endCount)
+                {
+                    _count++;
                     break;
-                else
-                    return srcRecord;
+                }
+                    
+                _count++;
+                return srcRecord;
             }
 
             Close();

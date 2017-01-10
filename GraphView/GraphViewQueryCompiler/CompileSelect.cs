@@ -1268,7 +1268,7 @@ namespace GraphView
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
 
-                        //CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
+                        CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
 
                         CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                             new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -1332,7 +1332,7 @@ namespace GraphView
                             CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
                                 predicatesAccessedTableReferences);
 
-                            //CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
+                            CheckAndAppendRangeFilter(context, operatorChain, sinkNode.Low, sinkNode.High);
 
                             CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -1413,7 +1413,7 @@ namespace GraphView
 
                 }
 
-                //CheckAndAppendRangeFilter(context, operatorChain, tableReference.Low, tableReference.High);
+                CheckAndAppendRangeFilter(context, operatorChain, tableReference.Low, tableReference.High);
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -2539,7 +2539,9 @@ namespace GraphView
                 }
                 if (rColumnName == null) rColumnName = columnRef.ColumnName;
 
-                int index = context.LocateColumnReference(columnRef);
+                int index;
+                if (!context.TryLocateColumnReference(columnRef, out index))
+                    index = -1;
                 inputIndexes.Add(index);
                 rContext.AddField("R", rColumnName, columnRef.ColumnGraphType);
                 columnList.Add(new WColumnReferenceExpression(Alias.Value, rColumnName, columnRef.ColumnGraphType));
