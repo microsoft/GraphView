@@ -26,6 +26,7 @@ namespace GraphView
         public string PropertyKey { get; set; }
         public object Value { get; set; }
         public List<object> Values { get; set; }
+        public List<string> Keys { get; set; }
         public string Label { get; set; }
         public Predicate Predicate { get; set; }
         public GraphTraversal2 Traversal { get; set; }
@@ -73,6 +74,12 @@ namespace GraphView
             OpType = type;
         }
 
+        public GremlinHasOp(HasOpType type, params string[] keys)
+        {
+            Keys = new List<string>(keys);
+            OpType = type;
+        }
+
         public GremlinHasOp(string label, string propertyKey, Predicate predicate)
         {
             Label = label;
@@ -106,24 +113,33 @@ namespace GraphView
                     inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Value);
                     break;
 
+                //has(label, key, predicate)
+                case HasOpType.HasLabelKeyPredicate:
+                    inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Predicate);
+                    break;
+
                 case HasOpType.HasKeyTraversal:
                     throw new NotImplementedException();
 
+                //hasId(values)
                 case HasOpType.HasId:
-                    throw new NotImplementedException();
+                    inputContext.PivotVariable.HasId(inputContext, Values);
+                    break;
 
+                //hasKey(values)
                 case HasOpType.HasKeys:
-                    throw new NotImplementedException();
+                    inputContext.PivotVariable.HasKey(inputContext, Keys);
+                    break;
 
+                //hasLabel(values)
                 case HasOpType.HasLabel:
                     inputContext.PivotVariable.HasLabel(inputContext, Values);
                     break;
 
+                //hasValue(values)
                 case HasOpType.HasValue:
-                    throw new NotImplementedException();
-
-                case HasOpType.HasLabelKeyPredicate:
-                    throw new NotImplementedException();
+                    inputContext.PivotVariable.HasValue(inputContext, Values);
+                    break;
 
             }
 

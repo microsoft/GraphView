@@ -70,5 +70,23 @@ namespace GraphView
                 throw new QueryCompilationException();
             }
         }
+
+        internal override void HasKey(GremlinToSqlContext currentContext, List<string> values)
+        {
+            throw new NotImplementedException();
+            //foreach (var value in values)
+            //{
+            //    Has(currentContext, "_value", value);
+            //}
+        }
+
+        internal override void HasValue(GremlinToSqlContext currentContext, List<object> values)
+        {
+            throw new NotImplementedException();
+            //foreach (var value in values)
+            //{
+            //    Has(currentContext, "_value", value);
+            //}
+        }
     }
 }

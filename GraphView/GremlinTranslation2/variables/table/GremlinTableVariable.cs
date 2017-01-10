@@ -124,6 +124,11 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, null, predicate));
         }
 
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            Has(currentContext, GremlinKeyword.Label, label);
+            Has(currentContext, propertyKey, predicate);
+        }
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
@@ -150,7 +155,7 @@ namespace GraphView
             Populate("_reverse_edge");
 
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(this, "_reverse_edge");
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(adjacencyList, adjacencyList, WEdgeType.InEdge);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(adjacencyList, WEdgeType.InEdge);
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
@@ -387,6 +392,13 @@ namespace GraphView
                 UpdateVariable.Property(currentContext, properties);
             }
         }
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            foreach (var value in values)
+            {
+                Has(currentContext, GremlinKeyword.NodeID, value);
+            }
+        }
     }
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
@@ -433,6 +445,14 @@ namespace GraphView
             else
             {
                 UpdateVariable.Property(currentContext, properties);
+            }
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            foreach (var value in values)
+            {
+                Has(currentContext, GremlinKeyword.EdgeID, value);
             }
         }
     }

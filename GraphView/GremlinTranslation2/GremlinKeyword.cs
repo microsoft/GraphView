@@ -19,6 +19,7 @@ namespace GraphView
             public const string Coalesce = "Coalesce";
             public const string Constant = "Constant";
             public const string OutE = "OutE";
+            public const string InE = "InE";
             public const string BothE = "BothE";
             public const string FlatMap = "FlatMap";
             public const string Key = "Key";

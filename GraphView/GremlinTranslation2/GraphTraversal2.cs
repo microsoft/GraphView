@@ -457,7 +457,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 HasKey(params object[] values)
+        public GraphTraversal2 HasKey(params string[] values)
         {
             AddGremlinOperator(new GremlinHasOp(HasOpType.HasKeys, values));
             return this;
@@ -469,7 +469,7 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 HasValue(string value, params string[] values)
+        public GraphTraversal2 HasValue(string value, params object[] values)
         {
             AddGremlinOperator(new GremlinHasOp(HasOpType.HasValue, values));
             return this;

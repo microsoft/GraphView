@@ -271,6 +271,9 @@ namespace GraphView
                 case GremlinKeyword.func.OutE:
                     funcTableRef = new WBoundOutEdgeTableReference();
                     break;
+                case GremlinKeyword.func.InE:
+                    funcTableRef = new WBoundOutEdgeTableReference();
+                    break;
                 case GremlinKeyword.func.BothE:
                     funcTableRef = new WBoundBothEdgeTableReference();
                     break;

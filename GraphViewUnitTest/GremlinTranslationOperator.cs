@@ -67,7 +67,7 @@ namespace GremlinTranslationOperator.Tests
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelUniverse");
             GraphViewCommand graph = new GraphViewCommand(connection);
-            graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV()).Next();
+            graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().OutE().InV().InE()).Next();
             graph.g().V().HasLabel("test").OutE().InV().HasLabel("test1").Next();
             var results = graph.g().V().Out().Has("type", "University").InE("between").Drop().Next();
             //graph.g().V().Out().Optional(GraphTraversal2.__().Out().In()).Values("name").Next();

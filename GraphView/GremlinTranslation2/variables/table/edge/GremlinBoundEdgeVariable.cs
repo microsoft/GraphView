@@ -22,8 +22,19 @@ namespace GraphView
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
-            var secondTableRef = EdgeType == WEdgeType.BothEdge ? SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, VariableName)
-                                                                : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, VariableName);
+            WTableReference secondTableRef = null;
+            switch (EdgeType)
+            {
+                case WEdgeType.BothEdge:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, VariableName);
+                    break;
+                case WEdgeType.InEdge:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, VariableName);
+                    break;
+                case WEdgeType.OutEdge:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, VariableName);
+                    break;
+            }
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
