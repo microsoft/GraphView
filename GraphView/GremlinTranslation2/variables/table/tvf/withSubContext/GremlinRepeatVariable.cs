@@ -50,21 +50,26 @@ namespace GraphView
             {
                 projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
             }
+
+            var projectQueryBlock = SqlUtil.GetSimpleSelectQueryBlock(RepeatContext.PivotVariable.VariableName,  projectProperties);
+
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
+            var useProperties = new List<string>();
             InputVariable = RepeatContext.VariableList.First() as GremlinContextVariable;
             foreach (var property in InputVariable.UsedProperties)
             {
-                Populate(property);
-                if (!projectProperties.Contains(property))
-                {
-                    projectProperties.Add(property);
-                }
+                //Populate(property);
+                //if (!projectProperties.Contains(property))
+                //{
+                //    projectProperties.Add(property);
+                //}
+                useProperties.Add(property);
             }
 
             //Set the select Elements
             Dictionary<Tuple<string, string>, Tuple<string, string>> map = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
 
-            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(projectProperties, ref map);
+            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(useProperties, ref map);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
@@ -91,6 +96,7 @@ namespace GraphView
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
             PropertyKeys.Add(GetRepeatConditionExpression());
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(projectQueryBlock));
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
