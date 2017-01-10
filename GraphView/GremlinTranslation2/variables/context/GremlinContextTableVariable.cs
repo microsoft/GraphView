@@ -245,5 +245,39 @@ namespace GraphView
                 }
             }
         }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            foreach (var property in propertyKeys)
+            {
+                Populate(property);
+            }
+            GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(ContextVariable as GremlinTableVariable, propertyKeys);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            if (propertyKeys.Count == 1)
+            {
+                Populate(propertyKeys.First());
+                GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(ContextVariable as GremlinTableVariable, propertyKeys.First());
+                currentContext.VariableList.Add(newVariableProperty);
+                currentContext.PivotVariable = newVariableProperty;
+            }
+            else
+            {
+                foreach (var property in propertyKeys)
+                {
+                    Populate(property);
+                }
+                GremlinValuesVariable newVariable = new GremlinValuesVariable(ContextVariable as GremlinTableVariable, propertyKeys);
+                currentContext.VariableList.Add(newVariable);
+                currentContext.TableReferences.Add(newVariable);
+                currentContext.PivotVariable = newVariable;
+            }
+        }
     }
 }
