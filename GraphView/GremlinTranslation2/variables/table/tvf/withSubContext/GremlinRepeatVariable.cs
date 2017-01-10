@@ -51,8 +51,6 @@ namespace GraphView
                 projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
             }
 
-            var projectQueryBlock = SqlUtil.GetSimpleSelectQueryBlock(RepeatContext.PivotVariable.VariableName,  projectProperties);
-
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             var useProperties = new List<string>();
             InputVariable = RepeatContext.VariableList.First() as GremlinContextVariable;
@@ -87,12 +85,17 @@ namespace GraphView
             {
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(item.Key.Item1, item.Key.Item2), item.Value.Item2));
             }
+            foreach (var temp in projectProperties)
+            {
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
+                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
+            }
+
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
             PropertyKeys.Add(GetRepeatConditionExpression());
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(projectQueryBlock));
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
