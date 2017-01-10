@@ -78,6 +78,11 @@ namespace GremlinTranslationOperator.Tests
             //graph.g().V().BothE().OutV().Next();
             //graph.g().V().BothE().OtherV().Next();
             //graph.g().V().Both().InE().Next();
+            //graph.g().V().OutE().BothV().Next();
+            //graph.g().V().InE().BothV().Next();
+            //graph.g().V().BothE().BothV().Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV()).Next();
+            graph.g().V().OutE().FlatMap(GraphTraversal2.__().BothV()).Next();
 
             //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().Drop()).Next();
             //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();

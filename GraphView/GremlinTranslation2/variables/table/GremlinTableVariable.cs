@@ -117,6 +117,37 @@ namespace GraphView
             currentContext.PivotVariable = bothEdge;
         }
 
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+            if ((this as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
+            {
+                Populate("_sink");
+                Populate("_source");
+                GremlinVariableProperty sinkProperty = new GremlinVariableProperty(this, "_sink");
+                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, "_source");
+                currentContext.VariableProperties.Add(sinkProperty);
+                GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sinkProperty, sourceProperty);
+                currentContext.VariableList.Add(bothVertex);
+                currentContext.TableReferences.Add(bothVertex);
+
+                currentContext.PivotVariable = bothVertex;
+            }
+            else
+            {
+                Populate("_sink");
+                var path = currentContext.GetPathFromPathList(this);
+
+                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, "_sink");
+                GremlinVariableProperty sinkProperty = new GremlinVariableProperty(path.SourceVariable, "id");
+                currentContext.VariableProperties.Add(sinkProperty);
+                GremlinBoundVertexVariable newVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
+
+                currentContext.VariableList.Add(newVertex);
+                currentContext.TableReferences.Add(newVertex);
+                currentContext.PivotVariable = newVertex;
+            }
+        }
+
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
         {
             Populate(propertyKey);

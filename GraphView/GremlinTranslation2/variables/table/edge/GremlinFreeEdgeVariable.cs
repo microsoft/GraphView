@@ -13,6 +13,33 @@ namespace GraphView
             EdgeType = edgeType;
         }
 
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+            if (EdgeType == WEdgeType.BothEdge)
+            {
+                Populate("_sink");
+                Populate("_source");
+                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, "_source");
+                GremlinVariableProperty sinkProperty = new GremlinVariableProperty(this, "_sink");
+                currentContext.VariableProperties.Add(sinkProperty);
+                GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
+                currentContext.VariableList.Add(bothVertex);
+                currentContext.TableReferences.Add(bothVertex);
+
+                currentContext.PivotVariable = bothVertex;
+            }
+            else
+            {
+                var path = currentContext.GetPathFromPathList(this);
+                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(path.SourceVariable, "id");
+                GremlinVariableProperty sinkProperty = new GremlinVariableProperty(this, "_sink");
+                GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
+                currentContext.TableReferences.Add(bothVertex);
+                currentContext.VariableList.Add(bothVertex);
+                currentContext.PivotVariable = bothVertex;
+            }
+        }
+
         internal override void InV(GremlinToSqlContext currentContext)
         {
             GremlinVariable inVertex = currentContext.GetSinkVertex(this);

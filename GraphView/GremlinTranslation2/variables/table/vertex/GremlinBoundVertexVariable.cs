@@ -13,12 +13,16 @@ namespace GraphView
     /// </summary>
     internal class GremlinBoundVertexVariable : GremlinVertexTableVariable
     {
-        private GremlinVariableProperty vertexId;
+        private List<GremlinVariableProperty> variablePropertyList;
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            PropertyKeys.Add(vertexId.ToScalarExpression());
+            bool isBothV = variablePropertyList.Count == 2;
+            foreach (var variableProperty in variablePropertyList)
+            {
+                PropertyKeys.Add(variableProperty.ToScalarExpression());
+            }
             Populate(GremlinKeyword.NodeID);
             foreach (var property in ProjectedProperties)
             {
@@ -26,29 +30,45 @@ namespace GraphView
             }
 
             WTableReference secondTableRef = null;
-            if (vertexId.GremlinVariable is GremlinEdgeTableVariable)
+            if (isBothV)
             {
-                if ((vertexId.GremlinVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-                {
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys,
-                        VariableName);
-                }
-                else
-                {
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, VariableName);
-                }
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, VariableName);
             }
             else
             {
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, VariableName);
+                if (variablePropertyList.First().GremlinVariable is GremlinEdgeTableVariable)
+                {
+                    if ((variablePropertyList.First().GremlinVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
+                    {
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys,
+                            VariableName);
+                    }
+                    else
+                    {
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, VariableName);
+                    }
+                }
+                else
+                {
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, VariableName);
+                }
             }
+           
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
         public GremlinBoundVertexVariable(GremlinVariableProperty vertexId)
         {
-            this.vertexId = vertexId;
+            variablePropertyList = new List<GremlinVariableProperty>();
+            variablePropertyList.Add(vertexId);
+        }
+
+        public GremlinBoundVertexVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty sinkProperty)
+        {
+            variablePropertyList = new List<GremlinVariableProperty>();
+            variablePropertyList.Add(sourceProperty);
+            variablePropertyList.Add(sinkProperty);
         }
     }
 }
