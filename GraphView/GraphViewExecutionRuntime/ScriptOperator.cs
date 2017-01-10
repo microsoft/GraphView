@@ -52,6 +52,12 @@ namespace GraphView
             return true;
         }
 
+        public void ResetState()
+        {
+            offset = -1;
+            containerOp.ResetState();
+        }
+
         public void Reset()
         {
             offset = -1;
@@ -92,6 +98,12 @@ namespace GraphView
         public ContainerEnumerator GetEnumerator()
         {
             return new ContainerEnumerator(tableCache, this);
+        }
+
+        public override void ResetState()
+        {
+            tableCache.Clear();
+            TableInput.ResetState();
         }
     }
 

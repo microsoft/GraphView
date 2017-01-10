@@ -563,30 +563,31 @@ namespace GraphView
         public override void ResetState()
         {
             leftInput.ResetState();
+            rightInputEnumerator.ResetState();
             Open();
         }
     }
 
     internal class AdjacencyListDecoder : TableValuedFunction
     {
-        private List<int> adjacencyListIndexes;
-        private BooleanFunction edgePredicate;
-        private List<string> projectedFields;
+        protected List<int> AdjacencyListIndexes;
+        protected BooleanFunction EdgePredicate;
+        protected List<string> ProjectedFields;
 
         public AdjacencyListDecoder(GraphViewExecutionOperator input, List<int> adjacencyListIndexes,
             BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
             : base(input, outputBufferSize)
         {
-            this.adjacencyListIndexes = adjacencyListIndexes;
-            this.edgePredicate = edgePredicate;
-            this.projectedFields = projectedFields;
+            this.AdjacencyListIndexes = adjacencyListIndexes;
+            this.EdgePredicate = edgePredicate;
+            this.ProjectedFields = projectedFields;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            foreach (var adjIndex in adjacencyListIndexes)
+            foreach (var adjIndex in AdjacencyListIndexes)
             {
                 string jsonArray = record[adjIndex];
                 // Parse the adj list in JSON array
@@ -594,12 +595,12 @@ namespace GraphView
                 foreach (var edge in adj.Children<JObject>())
                 {
                     // Construct new record
-                    var result = new RawRecord(projectedFields.Count);
+                    var result = new RawRecord(ProjectedFields.Count);
 
                     // Fill the field of selected edge's properties
-                    for (var i = 0; i < projectedFields.Count; i++)
+                    for (var i = 0; i < ProjectedFields.Count; i++)
                     {
-                        var projectedField = projectedFields[i];
+                        var projectedField = ProjectedFields[i];
                         var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
                             ? edge
                             : edge[projectedField];
@@ -628,7 +629,7 @@ namespace GraphView
                 var results = CrossApply(srcRecord);
                 foreach (var edgeRecord in results)
                 {
-                    if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
+                    if (EdgePredicate != null && !EdgePredicate.Evaluate(edgeRecord))
                         continue;
 
                     var resultRecord = new RawRecord(srcRecord);
@@ -659,6 +660,72 @@ namespace GraphView
             InputOperator.ResetState();
             OutputBuffer?.Clear();
             Open();
+        }
+    }
+
+    internal class BothForwardAdjacencyListDecoder : AdjacencyListDecoder
+    {
+        private int _srcIdIndex;
+
+        public BothForwardAdjacencyListDecoder(GraphViewExecutionOperator input, int pSrcIdIndex, List<int> adjacencyListIndexes, 
+            BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000) : 
+            base(input, adjacencyListIndexes, edgePredicate, projectedFields, outputBufferSize)
+        {
+            _srcIdIndex = pSrcIdIndex;
+        }
+
+        private void FillMetaField(RawRecord record, JObject edge, string srcId, bool isReversedEdge)
+        {
+            var sourceValue = isReversedEdge ? edge["_sink"].ToString() : srcId;
+            var sinkValue = isReversedEdge ? srcId : edge["_sink"].ToString();
+            var otherValue = edge["_sink"].ToString();
+            var edgeIdValue = isReversedEdge ? edge["_reverse_ID"].ToString() : edge["_ID"].ToString();
+
+            record.fieldValues[0] = sourceValue;
+            record.fieldValues[1] = sinkValue;
+            record.fieldValues[2] = otherValue;
+            record.fieldValues[3] = edgeIdValue;
+        }
+
+        private List<RawRecord> CrossApply(RawRecord record, bool isReversedEdge)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+            int reservedMetaFieldCount = 4;
+
+            string jsonArray = record[AdjacencyListIndexes[isReversedEdge ? 1 : 0]];
+            // Parse the adj list in JSON array
+            var adj = JArray.Parse(jsonArray);
+            foreach (var edge in adj.Children<JObject>())
+            {
+                // Construct new record
+                var result = new RawRecord(ProjectedFields.Count);
+
+                FillMetaField(result, edge, record[_srcIdIndex], isReversedEdge);
+                // Fill the field of selected edge's properties
+                for (var i = reservedMetaFieldCount; i < ProjectedFields.Count; i++)
+                {
+                    var projectedField = ProjectedFields[i];
+                    var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
+                        ? edge
+                        : edge[projectedField];
+
+                    result.fieldValues[i] = fieldValue?.ToString();
+                }
+
+                results.Add(result);
+            }
+
+            return results;
+        }
+
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+            
+            results.AddRange(CrossApply(record, false));
+            results.AddRange(CrossApply(record, true));
+
+            return results;
         }
     }
 
@@ -1011,34 +1078,35 @@ namespace GraphView
                 return r;
             }
 
-            currentRecord = inputOp.Next();
-            if (currentRecord == null)
+            while (inputOp.State())
             {
-                Close();
-                return null;
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                contextOp.ConstantSource = currentRecord;
+                localTraversal.ResetState();
+                RawRecord localRec = null;
+                while ((localRec = localTraversal.Next()) != null)
+                {
+                    outputBuffer.Enqueue(localRec);
+                }
+
+                if (outputBuffer.Count > 0)
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    RawRecord toAppend = outputBuffer.Dequeue();
+                    r.Append(toAppend);
+
+                    return r;
+                }
             }
 
-            contextOp.ConstantSource = currentRecord;
-            localTraversal.ResetState();
-            RawRecord localRec = null;
-            while ((localRec = localTraversal.Next()) != null)
-            {
-                outputBuffer.Enqueue(localRec);
-            }
-
-            if (outputBuffer.Count > 0)
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord toAppend = outputBuffer.Dequeue();
-                r.Append(toAppend);
-
-                return r;
-            }
-            else
-            {
-                Close();
-                return null;
-            }
+            Close();
+            return null;
         }
 
         public override void ResetState()

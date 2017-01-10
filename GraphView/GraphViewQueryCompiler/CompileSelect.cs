@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using GraphView;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
@@ -941,7 +942,8 @@ namespace GraphView
                 context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_reverse_edge"));
             if (edge.EdgeType == WEdgeType.BothEdge)
                 return new List<int> { edgeIndex, reverseEdgeIndex };
-            else if (edge.IsReversed)
+            else if ((edge.EdgeType == WEdgeType.OutEdge && edge.IsReversed)
+                    || edge.EdgeType == WEdgeType.InEdge && !edge.IsReversed)
                 return new List<int> { reverseEdgeIndex };
             else
                 return new List<int> { edgeIndex };
@@ -1131,6 +1133,7 @@ namespace GraphView
                     childrenProcessor.Add(new FilterOperator(childrenProcessor.Last(),
                         predicate.CompileToFunction(context, connection)));
                     remainingPredicatesAndTheirTableReferences.RemoveAt(i);
+                    context.CurrentExecutionOperator = childrenProcessor.Last();
                 }
             }
         }
@@ -1373,6 +1376,7 @@ namespace GraphView
                         tableReferences.Add(functionTableReference.Alias.Value, TableGraphType.Value);
 
                     operatorChain.Add(tableOp);
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
                 else
                 {
@@ -2059,6 +2063,12 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, dbConnection);
+
+            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = localOp;
+
             foreach (WSelectElement selectElement in localSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
@@ -2073,12 +2083,6 @@ namespace GraphView
                 }
                 context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
             }
-
-            QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator localTraversalOp = localSelect.Compile(subcontext, dbConnection);
-
-            LocalOperator localOp = new LocalOperator(context.CurrentExecutionOperator, localTraversalOp, subcontext.OuterContextOp);
-            context.CurrentExecutionOperator = localOp;
 
             return localOp;
         }
@@ -2099,6 +2103,12 @@ namespace GraphView
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
             }
 
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
+
+            FlatMapOperator flatMapOp = new FlatMapOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = flatMapOp;
+
             foreach (WSelectElement selectElement in flatMapSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
@@ -2113,12 +2123,6 @@ namespace GraphView
                 }
                 context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
             }
-
-            QueryCompilationContext subcontext = new QueryCompilationContext(context);
-            GraphViewExecutionOperator flatMapTraversalOp = flatMapSelect.Compile(subcontext, dbConnection);
-
-            LocalOperator flatMapOp = new LocalOperator(context.CurrentExecutionOperator, flatMapTraversalOp, subcontext.OuterContextOp);
-            context.CurrentExecutionOperator = flatMapOp;
 
             return flatMapOp;
         }
@@ -2267,17 +2271,55 @@ namespace GraphView
                     projectFields.Add(field);
             }
 
+            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, adjListIndexes,
+                null, projectFields);
+            context.CurrentExecutionOperator = adjListDecoder;
+
             foreach (var projectField in projectFields)
             {
                 // TODO: Change to correct ColumnGraphType
                 context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, adjListIndexes,
-                null, projectFields);
-            context.CurrentExecutionOperator = adjListDecoder;
-
             return adjListDecoder;
+        }
+    }
+
+    partial class WBoundBothForwardEdgeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var srcNodeIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var firstAdjListParameter = Parameters[1] as WColumnReferenceExpression;
+            var secondAdjListParameter = Parameters[2] as WColumnReferenceExpression;
+
+            var srcNodeIdIndex = context.LocateColumnReference(srcNodeIdParameter);
+            var adjListIndexes = new List<int>
+            {
+                context.LocateColumnReference(firstAdjListParameter),
+                context.LocateColumnReference(secondAdjListParameter)
+            };
+            var edgeAlias = Alias.Value;
+            var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
+
+            for (int i = 3; i < Parameters.Count; i++)
+            {
+                var field = (Parameters[i] as WValueExpression).Value;
+                if (!projectFields.Contains(field))
+                    projectFields.Add(field);
+            }
+
+            var bothForwardAdjDecoder = new BothForwardAdjacencyListDecoder(context.CurrentExecutionOperator, 
+                srcNodeIdIndex, adjListIndexes, null, projectFields);
+            context.CurrentExecutionOperator = bothForwardAdjDecoder;
+
+            foreach (var projectField in projectFields)
+            {
+                // TODO: Change to correct ColumnGraphType
+                context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
+            }
+
+            return bothForwardAdjDecoder;
         }
     }
 
