@@ -27,10 +27,42 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
+//using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    public enum BinaryExpressionType
+    {
+        Add,
+        BitwiseAnd,
+        BitwiseOr,
+        BitwiseXor,
+        StringConcatenate,
+        Divide,
+        Modulo,
+        Multiply,
+        Subtract
+    }
+
+    public enum UnaryExpressionType
+    {
+        BitwiseNot,
+        Negative,
+        Positive
+    }
+
+    public enum ColumnType
+    {
+        IdentityCol,
+        PseudoColumnAction,
+        PseudoColumnCuid,
+        PseudoColumnIdentity,
+        PseudoColumnRowGuid,
+        Regular,
+        RowGuidCol,
+        Wildcard
+    }
+
     public abstract partial class WScalarExpression : WSqlFragment 
     {
     }
@@ -272,7 +304,11 @@ namespace GraphView
                         return string.Format(CultureInfo.CurrentCulture, "{0}*", indent);
                     }
                 default:
-                    throw new GraphViewException("Undefined column type");
+                    // throw new GraphViewException("Undefined column type");
+                    return MultiPartIdentifier != null
+                        ? string.Format(CultureInfo.CurrentCulture, "{0}{1}", indent,
+                            MultiPartIdentifier)
+                        : "";
             }
         }
 
@@ -649,6 +685,38 @@ namespace GraphView
         internal override string ToString(string indent)
         {
             return "RepeatConditionExpr";
+        }
+    }
+
+    public enum QuoteType
+    {
+        NotQuoted = 0,
+        DoubleQuote, 
+        SquareBracket
+    }
+
+    public class Identifier : WSqlFragment
+    {
+        public string Value { get; set; }
+
+        public QuoteType QuoteType { get; set; }
+
+        internal override bool OneLine()
+        {
+            return true;
+        }
+
+        internal override string ToString(string indent)
+        {
+            switch(QuoteType)
+            {
+                case QuoteType.DoubleQuote:
+                    return string.Format("{0}\"{1}\"", indent, Value);
+                case QuoteType.SquareBracket:
+                    return string.Format("{0}[{1}]", indent, Value);
+                default:
+                    return indent + Value;
+            }
         }
     }
 }

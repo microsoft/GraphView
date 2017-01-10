@@ -68,12 +68,27 @@ namespace GraphView
         {
             var currentToken = nextToken;
             var identifierName = "";
-            QuoteType quoteType;
+            Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType qt;
             if (!ReadToken(tokens, TSqlTokenType.Identifier, ref identifierName, ref currentToken, ref farestError) &&
                 !ReadToken(tokens, TSqlTokenType.QuotedIdentifier, ref identifierName, ref currentToken, ref farestError) &&
                 !ReadToken(tokens, TSqlTokenType.AsciiStringOrQuotedIdentifier, ref identifierName, ref currentToken, ref farestError))
                 return false;
-            var decodedIdentifierName = Identifier.DecodeIdentifier(identifierName, out quoteType);
+            var decodedIdentifierName = Microsoft.SqlServer.TransactSql.ScriptDom.Identifier.DecodeIdentifier(identifierName, out qt);
+
+            QuoteType quoteType = QuoteType.NotQuoted;
+            switch (qt)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType.DoubleQuote:
+                    quoteType = QuoteType.DoubleQuote;
+                    break;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType.SquareBracket:
+                    quoteType = QuoteType.SquareBracket;
+                    break;
+                default:
+                    quoteType = QuoteType.NotQuoted;
+                    break;
+            }
+
             result = new Identifier
             {
                 Value = decodedIdentifierName,

@@ -31,6 +31,34 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    public enum BooleanBinaryExpressionType
+    {
+        And,
+        Or
+    }
+
+    public enum BooleanComparisonType
+    {
+        Equals,
+        GreaterThan,
+        GreaterThanOrEqualTo,
+        LeftOuterJoin,
+        LessThan,
+        LessThanOrEqualTo,
+        NotEqualToBrackets,
+        NotEqualToExclamation,
+        NotGreaterThan,
+        NotLessThan,
+        RightOuterJoin
+    }
+
+    public enum SubqueryComparisonPredicateType
+    {
+        All,
+        Any,
+        None
+    }
+
     public abstract partial class WBooleanExpression : WSqlFragment { }
 
     public partial class WBooleanBinaryExpression : WBooleanExpression

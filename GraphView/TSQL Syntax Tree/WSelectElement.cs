@@ -28,6 +28,19 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    public enum AssignmentKind
+    {
+        AddEquals,
+        BitwiseAndEquals,
+        BitwiseOrEquals,
+        BitwiseXorEquals,
+        DivideEquals,
+        Equals,
+        ModEquals,
+        MultiplyEquals,
+        SubtractEquals
+    }
+
     /// <summary>
     /// Three types of elements in the SELECT clause:
     /// 1) scalar expressions.

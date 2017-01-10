@@ -52,9 +52,12 @@ namespace GraphView
         {
             if (Identifier != null)
             {
-                return Identifier.EncodeIdentifier(Identifier.Value, Identifier.QuoteType);
+                return Identifier.ToString(indent);
             }
-            return ValueExpression == null ? null : ValueExpression.ToString(indent);
+            else
+            {
+                return ValueExpression == null ? null : ValueExpression.ToString(indent);
+            }
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)
