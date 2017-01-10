@@ -1951,6 +1951,57 @@ namespace GraphView
         }
     }
 
+    partial class WUnionTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
+
+            WSelectQueryBlock firstSelectQuery = null;
+            foreach (WScalarExpression parameter in Parameters)
+            {
+                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                if (scalarSubquery == null)
+                {
+                    throw new SyntaxErrorException("The input of a union table reference must be one or more scalar subqueries.");
+                }
+
+                if (firstSelectQuery == null)
+                {
+                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    if (firstSelectQuery == null)
+                    {
+                        throw new SyntaxErrorException("The input of a union table reference must be one or more select query blocks.");
+                    }
+                }
+
+                QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+            }
+
+            // Updates the raw record layout. The columns of this table-valued function 
+            // are specified by the select elements of the input subqueries.
+            foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The input subquery of a union table reference can only select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
+                }
+                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            context.CurrentExecutionOperator = unionOp;
+            return unionOp;
+        }
+    }
+
     partial class WCoalesceTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
@@ -2092,12 +2143,12 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WScalarSubquery localSubquery = Parameters[0] as WScalarSubquery;
-            if (localSubquery == null)
+            WScalarSubquery flatMapSubquery = Parameters[0] as WScalarSubquery;
+            if (flatMapSubquery == null)
             {
                 throw new SyntaxErrorException("The input of a flatMap table reference must be a scalar subquery.");
             }
-            WSelectQueryBlock flatMapSelect = localSubquery.SubQueryExpr as WSelectQueryBlock;
+            WSelectQueryBlock flatMapSelect = flatMapSubquery.SubQueryExpr as WSelectQueryBlock;
             if (flatMapSelect == null)
             {
                 throw new SyntaxErrorException("The sub-query must be a select query block.");
@@ -2365,6 +2416,66 @@ namespace GraphView
             context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
             return propertiesOp;
+        }
+    }
+
+    partial class WDedupTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var targetField = Parameters[0] as WColumnReferenceExpression;
+            if (targetField == null)
+                throw new SyntaxErrorException("The parameter of Dedup function can only be a WColumnReference");
+
+            var targetFieldIndex = context.LocateColumnReference(targetField);
+            var dedupOp = new DeduplicateOperator(context.CurrentExecutionOperator, targetFieldIndex);
+            context.CurrentExecutionOperator = dedupOp;
+
+            return dedupOp;
+        }
+    }
+
+    partial class WConstantReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var targetField = Parameters[0] as WValueExpression;
+            if (targetField == null)
+                throw new SyntaxErrorException("The parameter of Constant function can only be a WValueExpression");
+
+            var constantOp = new ConstantOperator(context.CurrentExecutionOperator, targetField.Value);
+            context.CurrentExecutionOperator = constantOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return constantOp;
+        }
+    }
+
+    partial class WProjectTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var projectList = new List<Tuple<ScalarFunction, string>>();
+            for (var i = 0; i < Parameters.Count; i += 2)
+            {
+                var scalarSubquery = Parameters[i] as WScalarSubquery;
+                if (scalarSubquery == null)
+                    throw new SyntaxErrorException("The parameter of ProjectTableReference at an odd position has to be a WScalarSubquery.");
+
+                var projectName = Parameters[i + 1] as WValueExpression;
+                if (projectName == null)
+                    throw new SyntaxErrorException("The parameter of ProjectTableReference at an even position has to be a WValueExpression.");
+
+                projectList.Add(
+                    new Tuple<ScalarFunction, string>(scalarSubquery.CompileToFunction(context, dbConnection),
+                        projectName.Value));
+            }
+
+            var projectByOp = new ProjectByOperator(context.CurrentExecutionOperator, projectList);
+            context.CurrentExecutionOperator = projectByOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return projectByOp;
         }
     }
 }

@@ -94,14 +94,17 @@ namespace GremlinTranslationOperator.Tests
 
             //graph.g().V().Dedup().Next();
 
-            var results = graph.g().V().Has("type", "University")
-                .Project("info", "edge_label")
-                .By(GraphTraversal2.__().Properties("label", "type"))
-                .By(GraphTraversal2.__().OutE().Properties("label")).Next();
+            //var results = graph.g().V().Has("type", "University")
+            //    .Project("info", "edge_label")
+            //    .By(GraphTraversal2.__().Properties("label", "type"))
+            //    .By(GraphTraversal2.__().OutE().Properties("label")).Next();
 
-            graph.g().V().As("@v")
-                .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
-                .Repeat(GraphTraversal2.__().Values("name")).Next();
+            //var results =
+            //    graph.g()
+            //        .V()
+            //        .HasLabel("Stanford")
+            //        .Union(graph.g().V().OutE(), GraphTraversal2.__().V().In())
+            //        .Next();
 
             graph.g().V().As("@v")
                 .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))

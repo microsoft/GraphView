@@ -26,10 +26,8 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (InputOperator != null && !InputOperator.State())))
+            if (OutputBuffer.Count != 0)
             {
-                if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
 
@@ -37,10 +35,7 @@ namespace GraphView
             {
                 var srcRecord = InputOperator.Next();
                 if (srcRecord == null)
-                {
-                    InputOperator.Close();
                     break;
-                }
 
                 var results = CrossApply(srcRecord);
                 foreach (var rec in results)
@@ -169,6 +164,45 @@ namespace GraphView
             }
 
             return results;
+        }
+    }
+
+    internal class ProjectByOperator : TableValuedFunction
+    {
+        internal List<Tuple<ScalarFunction, string>> ProjectList;
+
+        internal ProjectByOperator(GraphViewExecutionOperator pInputOperatr, List<Tuple<ScalarFunction, string>> pPropertiesList, 
+            int pOutputBufferSize = 1000)
+            : base(pInputOperatr, pOutputBufferSize)
+        {
+            ProjectList = pPropertiesList;
+        }
+
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        {
+            var projectString = new StringBuilder("[");
+
+            var scalarFunction = ProjectList[0].Item1;
+            var projectName = ProjectList[0].Item2;
+            var projectValue = scalarFunction.Evaluate(record);
+
+            projectString.Append(projectName).Append(':').Append(projectValue ?? "null");
+
+
+            for (var i = 1; i < ProjectList.Count; i++)
+            {
+                scalarFunction = ProjectList[i].Item1;
+                projectName = ProjectList[i].Item2;
+                projectValue = scalarFunction.Evaluate(record);
+
+                projectString.Append(',').Append(projectName).Append(':').Append(projectValue ?? "null");
+            }
+
+            projectString.Append(']');
+            var result = new RawRecord(1);
+            result.fieldValues[0] = projectString.ToString();
+
+            return new List<RawRecord> { result };
         }
     }
 }

@@ -48,8 +48,59 @@ namespace GraphView
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
         {
-            WSelectQueryBlock firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, projectProperties);
-            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(projectProperties);
+            List<string> firstProjectProperties = new List<string>();
+            List<string> secondProjectProperties = new List<string>();
+
+            foreach (var projectProperty in projectProperties)
+            {
+                if ((InputVariable.GetVariableType() == GremlinVariableType.Vertex
+                     || InputVariable.GetVariableType() == GremlinVariableType.Scalar)
+                    && (projectProperty == "_sink"
+                        || projectProperty == "_ID"
+                        || projectProperty == "_reverse_ID"
+                        || projectProperty == "_other"
+                        || projectProperty == "_source"
+                    ))
+                {
+                    firstProjectProperties.Add(null);
+                }
+                else if (InputVariable.GetVariableType() == GremlinVariableType.Edge
+                         && (projectProperty == "id"
+                             || projectProperty == "_edge"
+                             || projectProperty == "_reverse_edge"))
+                {
+                    firstProjectProperties.Add(null);
+                }
+                else
+                {
+                    firstProjectProperties.Add(projectProperty);
+                }
+
+                if ((OptionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex
+                     || OptionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Scalar)
+                    && (projectProperty == "_sink"
+                        || projectProperty == "_ID"
+                        || projectProperty == "_reverse_ID"
+                        || projectProperty == "_other"
+                        || projectProperty == "_source"
+                    ))
+                {
+                    secondProjectProperties.Add(null);
+                }
+                else if (OptionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge
+                         && (projectProperty == "id"
+                             || projectProperty == "_edge"
+                             || projectProperty == "_reverse_edge"))
+                {
+                    secondProjectProperties.Add(null);
+                }
+                else
+                {
+                    secondProjectProperties.Add(projectProperty);
+                }
+            }
+            WSelectQueryBlock firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
+            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(secondProjectProperties);
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 

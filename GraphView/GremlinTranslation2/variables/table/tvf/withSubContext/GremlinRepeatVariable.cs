@@ -46,16 +46,26 @@ namespace GraphView
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName )
         {
+            if (projectProperties.Count == 0)
+            {
+                projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
+            }
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-
+            InputVariable = RepeatContext.VariableList.First() as GremlinContextVariable;
             foreach (var property in InputVariable.UsedProperties)
             {
                 Populate(property);
+                if (!projectProperties.Contains(property))
+                {
+                    projectProperties.Add(property);
+                }
             }
 
             //Set the select Elements
-            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(projectProperties);
-            List<WSelectScalarExpression> outerSelectList = GetOuterSelectList();
+            Dictionary<Tuple<string, string>, Tuple<string, string>> map = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
+
+            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(projectProperties, ref map);
+            List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
             selectQueryBlock.SelectElements.Clear();
@@ -68,7 +78,18 @@ namespace GraphView
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
 
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
+            ModifyColumnNameVisitor newVisitor = new ModifyColumnNameVisitor();
+            newVisitor.Invoke(selectQueryBlock, map);
+
+            WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
+            foreach (var item in map)
+            {
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(item.Key.Item1, item.Key.Item2), item.Value.Item2));
+            }
+
+            var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
+
+            PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
             PropertyKeys.Add(GetRepeatConditionExpression());
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, tableName);
 
@@ -86,22 +107,23 @@ namespace GraphView
             };
         }
 
-        public List<WSelectScalarExpression> GetInputSelectList(List<string> projectProperties)
+        public List<WSelectScalarExpression> GetInputSelectList(List<string> projectProperties, ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
         {
             List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
-            
             foreach (var projectProperty in projectProperties)
             {
                 var projectValue = SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
                     projectProperty);
-                var alias = InputVariable.VariableName + "." + projectProperty;
-                inputSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
+                //var alias = InputVariable.VariableName + "." + projectProperty;
+                var tuple = GetMapTuple();
+                inputSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, tuple.Item2));
+                map[new Tuple<string, string>(InputVariable.VariableName, projectProperty)] = tuple;
             }
 
             return inputSelectList;
         }
 
-        public List<WSelectScalarExpression> GetOuterSelectList()
+        public List<WSelectScalarExpression> GetOuterSelectList(ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
         {
             List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
             foreach (var variable in RepeatContext.VariableList)
@@ -117,10 +139,11 @@ namespace GraphView
                             foreach (var property in temp.UsedProperties)
                             {
                                 selectVar.Populate(property);
-                                var alias = temp.ContextVariable.VariableName + "." + property;
-                                var projectValue = SqlUtil.GetColumnReferenceExpr(selectVar.VariableName,
-                                    property);
-                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, alias));
+                                //var alias = temp.ContextVariable.VariableName + "." + property;
+                                var projectValue = SqlUtil.GetColumnReferenceExpr(selectVar.VariableName, property);
+                                var tuple = GetMapTuple();
+                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, tuple.Item2));
+                                map[new Tuple<string, string>(temp.ContextVariable.VariableName, property)] = tuple;
                             }
                         }
                     }
@@ -128,6 +151,15 @@ namespace GraphView
             }
             return outerSelectList;
         }
+
+        public Tuple<string, string> GetMapTuple()
+        {
+            var tuple = new Tuple<string, string>("R", "key_" + count.ToString());
+            count++;
+            return tuple;
+        }
+
+        private int count;
     }
 
     internal class GremlinRepeatVertexVariable : GremlinVertexTableVariable
@@ -167,6 +199,31 @@ namespace GraphView
                                            RepeatCondition repeatCondition)
         {
             SqlTableVariable = new GremlinRepeatVariable(inputVariable, repeatContext, repeatCondition);
+        }
+    }
+
+    internal class ModifyColumnNameVisitor : WSqlFragmentVisitor
+    {
+        private Dictionary<Tuple<string, string>, Tuple<string, string>> _map;
+
+        public void Invoke(WSqlFragment queryBlock, Dictionary<Tuple<string, string>, Tuple<string, string>> map)
+        {
+            _map = map;
+            queryBlock.Accept(this);
+        }
+
+        public override void Visit(WColumnReferenceExpression columnReference)
+        {
+            var key = columnReference.MultiPartIdentifier.Identifiers[0].Value;
+            var value = columnReference.MultiPartIdentifier.Identifiers[1].Value;
+            foreach (var item in _map)
+            {
+                if (item.Key.Item1.Equals(key) && item.Key.Item2.Equals(value))
+                {
+                    columnReference.MultiPartIdentifier.Identifiers[0].Value = item.Value.Item1;
+                    columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value.Item2;
+                }
+            }
         }
     }
 }
