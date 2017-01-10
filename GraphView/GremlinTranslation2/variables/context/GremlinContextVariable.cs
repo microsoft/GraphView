@@ -63,7 +63,7 @@ namespace GraphView
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
-            ContextVariable.Property(currentContext, properties);
+            Property(currentContext, properties);
         }
 
         internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)

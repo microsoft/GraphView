@@ -47,15 +47,30 @@ namespace GraphView
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName )
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-
+            InputVariable = RepeatContext.VariableList.First() as GremlinContextVariable;
             foreach (var property in InputVariable.UsedProperties)
             {
                 Populate(property);
+                if (!projectProperties.Contains(property))
+                {
+                    projectProperties.Add(property);
+                }
             }
 
             //Set the select Elements
             List<WSelectScalarExpression> inputSelectList = GetInputSelectList(projectProperties);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList();
+
+            int count = 0;
+            string key = "key_";
+
+            foreach (var variable in RepeatContext.VariableList)
+            {
+                if (variable is GremlinContextVariable)
+                {
+                    
+                }
+            } 
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
             selectQueryBlock.SelectElements.Clear();

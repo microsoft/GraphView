@@ -19,6 +19,7 @@ namespace GraphView
         internal List<ISqlStatement> SetVariables { get; private set; }
         internal GremlinGroupVariable GroupVariable { get; set; }
         internal WBooleanExpression Predicates { get; private set; }
+        internal List<GremlinVariableProperty> VariableProperties { get; set; }
 
         internal GremlinToSqlContext()
         {
@@ -29,6 +30,8 @@ namespace GraphView
             VariableList = new List<GremlinVariable>();
             PathList = new List<GremlinMatchPath>();
             MatchList = new List<GremlinMatchPath>();
+
+            VariableProperties = new List<GremlinVariableProperty>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -43,7 +46,8 @@ namespace GraphView
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
                 PathList = new List<GremlinMatchPath>(this.PathList),
                 MatchList = new List<GremlinMatchPath>(this.MatchList),
-                Predicates = this.Predicates
+                Predicates = this.Predicates,
+                VariableProperties = new List<GremlinVariableProperty>(this.VariableProperties)
             };
         }
 
@@ -57,6 +61,7 @@ namespace GraphView
             TableReferences.Clear();
             PathList.Clear();
             MatchList.Clear();
+            VariableProperties.Clear();
             // More resetting goes here when more properties are added to GremlinToSqlContext
         }
 

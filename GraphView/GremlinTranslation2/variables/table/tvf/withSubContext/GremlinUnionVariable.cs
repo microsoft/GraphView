@@ -47,6 +47,10 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
+            if (projectProperties.Count == 0)
+            {
+                Populate(UnionContextList.First().PivotVariable.DefaultProjection().VariableProperty);
+            }
             foreach (var context in UnionContextList)
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));
@@ -86,6 +90,15 @@ namespace GraphView
         public GremlinUnionTableVariable(List<GremlinToSqlContext> unionContextList)
         {
             SqlTableVariable = new GremlinUnionVariable(unionContextList);
+        }
+
+        internal override GremlinVariableProperty DefaultProjection()
+        {
+            string key =
+                (SqlTableVariable as GremlinUnionVariable).UnionContextList.First()
+                    .PivotVariable.DefaultProjection()
+                    .VariableProperty;
+            return new GremlinVariableProperty(this, key);
         }
     }
 }
