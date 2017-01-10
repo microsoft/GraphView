@@ -2367,5 +2367,65 @@ namespace GraphView
             return propertiesOp;
         }
     }
+
+    partial class WDedupTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var targetField = Parameters[0] as WColumnReferenceExpression;
+            if (targetField == null)
+                throw new SyntaxErrorException("The parameter of Dedup function can only be a WColumnReference");
+
+            var targetFieldIndex = context.LocateColumnReference(targetField);
+            var dedupOp = new DeduplicateOperator(context.CurrentExecutionOperator, targetFieldIndex);
+            context.CurrentExecutionOperator = dedupOp;
+
+            return dedupOp;
+        }
+    }
+
+    partial class WConstantReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var targetField = Parameters[0] as WValueExpression;
+            if (targetField == null)
+                throw new SyntaxErrorException("The parameter of Constant function can only be a WValueExpression");
+
+            var constantOp = new ConstantOperator(context.CurrentExecutionOperator, targetField.Value);
+            context.CurrentExecutionOperator = constantOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return constantOp;
+        }
+    }
+
+    partial class WProjectTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var projectList = new List<Tuple<ScalarFunction, string>>();
+            for (var i = 0; i < Parameters.Count; i += 2)
+            {
+                var scalarSubquery = Parameters[i] as WScalarSubquery;
+                if (scalarSubquery == null)
+                    throw new SyntaxErrorException("The parameter of ProjectTableReference at an odd position has to be a WScalarSubquery.");
+
+                var projectName = Parameters[i + 1] as WValueExpression;
+                if (projectName == null)
+                    throw new SyntaxErrorException("The parameter of ProjectTableReference at an even position has to be a WValueExpression.");
+
+                projectList.Add(
+                    new Tuple<ScalarFunction, string>(scalarSubquery.CompileToFunction(context, dbConnection),
+                        projectName.Value));
+            }
+
+            var projectByOp = new ProjectByOperator(context.CurrentExecutionOperator, projectList);
+            context.CurrentExecutionOperator = projectByOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return projectByOp;
+        }
+    }
 }
 
