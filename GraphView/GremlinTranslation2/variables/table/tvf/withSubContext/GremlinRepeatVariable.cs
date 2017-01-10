@@ -105,7 +105,8 @@ namespace GraphView
                 EmitCondition = RepeatCondition.EmitCondition,
                 TerminationCondition = RepeatCondition.TerminationCondition,
                 RepeatTimes = RepeatCondition.RepeatTimes,
-                StartFromContext = RepeatCondition.StartFromContext
+                StartFromContext = RepeatCondition.StartFromContext,
+                EmitContext = RepeatCondition.EmitContext
             };
         }
 
