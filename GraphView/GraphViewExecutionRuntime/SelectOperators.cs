@@ -496,6 +496,7 @@ namespace GraphView
                 }
             }
 
+            Close();
             return null;
         }
 
@@ -1440,8 +1441,10 @@ namespace GraphView
             this.startFromContext = startFromContext;
             this.emitCondition = emitCondition;
             this.emitContext = emitContext;
+            this.repeatTimes = -1;
 
             repeatResultBuffer = new Queue<RawRecord>();
+            Open();
         }
 
         public override RawRecord Next()
@@ -1455,10 +1458,10 @@ namespace GraphView
                     return null;
                 }
 
-                RawRecord initialRec = new RawRecord();
+                RawRecord initialRec = new RawRecord {fieldValues = new List<string>()};
                 foreach (int fieldIndex in inputFieldIndexes)
                 {
-                    initialRec.Append(currentRecord[fieldIndex]);
+                    initialRec.Append(fieldIndex != -1 ? currentRecord[fieldIndex] : "");
                 }
 
                 if (repeatTimes >= 0)
@@ -1512,7 +1515,7 @@ namespace GraphView
                         newStates = tmpQueue;
                     }
 
-                    foreach (RawRecord resultRec in newStates)
+                    foreach (RawRecord resultRec in priorStates)
                     {
                         repeatResultBuffer.Enqueue(resultRec);
                     }
@@ -1523,7 +1526,7 @@ namespace GraphView
 
                     if (startFromContext)
                     {
-                        if (terminationCondition.Evaluate(initialRec))
+                        if (terminationCondition != null && terminationCondition.Evaluate(initialRec))
                         {
                             repeatResultBuffer.Enqueue(initialRec);
                         }
@@ -1560,7 +1563,7 @@ namespace GraphView
                     {
                         RawRecord stateRec = states.Dequeue();
 
-                        if (terminationCondition.Evaluate(stateRec))
+                        if (terminationCondition != null && terminationCondition.Evaluate(stateRec))
                         {
                             repeatResultBuffer.Enqueue(stateRec);
                         }
@@ -1634,6 +1637,7 @@ namespace GraphView
                 return srcRecord;
             }
 
+            Close();
             return null;
         }
 
@@ -1641,6 +1645,102 @@ namespace GraphView
         {
             _inputOp.ResetState();
             _fieldValueSet?.Clear();
+            Open();
+        }
+    }
+
+    internal class RangeOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _startCount;
+        private int _endCount;
+        private int _count;
+
+        internal RangeOperator(GraphViewExecutionOperator pInputOperator, int pStartCount, int pEndCount)
+        {
+            _inputOp = pInputOperator;
+            _startCount = pStartCount;
+            _endCount = pEndCount;
+            _count = 0;
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (_inputOp.State() && (srcRecord = _inputOp.Next()) != null)
+            {
+                if (_count < _startCount)
+                    continue;
+                else if (_endCount == -1 || _count++ < _endCount)
+                    break;
+                else
+                    return srcRecord;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            _count = 0;
+            Open();
+        }
+    }
+
+    internal class SideEffectOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+
+        private GraphViewExecutionOperator sideEffectTraversal;
+        private ConstantSourceOperator contextOp;
+
+        public SideEffectOperator(
+            GraphViewExecutionOperator inputOp,
+            GraphViewExecutionOperator sideEffectTraversal,
+            ConstantSourceOperator contextOp)
+        {
+            this.inputOp = inputOp;
+            this.sideEffectTraversal = sideEffectTraversal;
+            this.contextOp = contextOp;
+
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            while (inputOp.State())
+            {
+                RawRecord currentRecord = inputOp.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                contextOp.ConstantSource = currentRecord;
+                sideEffectTraversal.ResetState();
+
+                while (sideEffectTraversal.State())
+                {
+                    sideEffectTraversal.Next();
+                }
+
+                return currentRecord;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            contextOp.ResetState();
+            sideEffectTraversal.ResetState();
             Open();
         }
     }

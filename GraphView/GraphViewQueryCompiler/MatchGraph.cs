@@ -48,6 +48,8 @@ namespace GraphView
         public double AverageDegree { get; set; }
         public IList<WBooleanExpression> Predicates { get; set; }
         public List<string> Properties { get; set; }
+        public int Low { get; set; }
+        public int High { get; set; }
         public Statistics Statistics { get; set; }
         public override int GetHashCode()
         {
@@ -135,6 +137,8 @@ namespace GraphView
         public DocDbScript AttachedQuerySegment { get; set; }
         internal JsonQuery AttachedJsonQuery { get; set; }
         public List<string> Properties { get; set; }
+        public int Low { get; set; }
+        public int High { get; set; }
         // <index of id field, index of adj field>
         public Dictionary<int, int> ReverseCheckList { get; set; }
         // The meta header length of the node, consisting of node's id and node's outgoing edges

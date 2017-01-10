@@ -425,7 +425,27 @@ namespace GraphView
 
     public partial class WRepeatTableReference : WSchemaObjectFunctionTableReference
     {
+        internal void Split(out WSelectQueryBlock contextSelect, out WSelectQueryBlock repeatSelectQuery)
+        {
+            WScalarSubquery repeatInput = Parameters[0] as WScalarSubquery;
+            if (repeatInput == null)
+            {
+                throw new SyntaxErrorException("The input of a repeat table reference must be a scalar subquery.");
+            }
+            WBinaryQueryExpression binaryQuery = repeatInput.SubQueryExpr as WBinaryQueryExpression;
+            if (binaryQuery == null || binaryQuery.BinaryQueryExprType != BinaryQueryExpressionType.Union || !binaryQuery.All)
+            {
+                throw new SyntaxErrorException("The input of a repeat table reference must be a UNION ALL binary query expression.");
+            }
 
+            contextSelect = binaryQuery.FirstQueryExpr as WSelectQueryBlock;
+            repeatSelectQuery = binaryQuery.SecondQueryExpr as WSelectQueryBlock;
+
+            if (contextSelect == null || repeatSelectQuery == null)
+            {
+                throw new SyntaxErrorException("The input of a repeat table reference must be a UNION ALL binary query and the two sub-queries must be a select query block.");
+            }
+        }
     }
 
     public partial class WValuesTableReference : WSchemaObjectFunctionTableReference

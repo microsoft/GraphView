@@ -529,6 +529,7 @@ namespace GraphView
 
             UnionFind unionFind = new UnionFind();
             Dictionary<string, MatchNode> vertexTableCollection = new Dictionary<string, MatchNode>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, WNamedTableReference> vertexTableReferencesDict = new Dictionary<string, WNamedTableReference>();
             List<ConnectedComponent> connectedSubGraphs = new List<ConnectedComponent>();
             Dictionary<string, ConnectedComponent> subGraphMap = new Dictionary<string, ConnectedComponent>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> parent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -545,6 +546,7 @@ namespace GraphView
                 foreach (WNamedTableReference vertexTableRef in vertexTableList)
                 {
                     vertexTableCollection.GetOrCreate(vertexTableRef.Alias.Value);
+                    vertexTableReferencesDict[vertexTableRef.Alias.Value] = vertexTableRef;
                     if (!parent.ContainsKey(vertexTableRef.Alias.Value))
                         parent[vertexTableRef.Alias.Value] = vertexTableRef.Alias.Value;
                 }
@@ -569,6 +571,8 @@ namespace GraphView
                                 ? path.PathEdgeList[index + 1].Item1
                                 : path.Tail;
                             MatchNode SrcNode = vertexTableCollection.GetOrCreate(CurrentNodeExposedName);
+                            WNamedTableReference SrcNodeTableReference =
+                                vertexTableReferencesDict[CurrentNodeExposedName];
 
                             // Check whether the vertex is defined in outer context
                             if (!vertexTableCollection.TryGetValue(CurrentNodeExposedName, out SrcNode))
@@ -589,6 +593,8 @@ namespace GraphView
                                 SrcNode.ReverseCheckList = new Dictionary<int, int>();
                                 SrcNode.HeaderLength = 0;
                                 SrcNode.Properties = new List<string> {"id", "_edge", "_reverse_edge"};
+                                SrcNode.Low = SrcNodeTableReference.Low;
+                                SrcNode.High = SrcNodeTableReference.High;
                             }
 
                             // Consturct the edge of a path in MatchClause.Paths
@@ -697,6 +703,8 @@ namespace GraphView
                         // Consturct destination node of a path in MatchClause.Paths
                         var tailExposedName = path.Tail.BaseIdentifier.Value;
                         MatchNode DestNode;
+                        WNamedTableReference DestNodeTableReference =
+                                vertexTableReferencesDict[tailExposedName];
                         // Check whether the vertex is defined in outer context
                         if (!vertexTableCollection.TryGetValue(tailExposedName, out DestNode))
                         {
@@ -715,6 +723,8 @@ namespace GraphView
                             DestNode.ReverseCheckList = new Dictionary<int, int>();
                             DestNode.HeaderLength = 0;
                             DestNode.Properties = new List<string> { "id", "_edge", "_reverse_edge" };
+                            DestNode.Low = DestNodeTableReference.Low;
+                            DestNode.High = DestNodeTableReference.High;
                         }
                         if (EdgeToSrcNode != null)
                         {
@@ -756,6 +766,8 @@ namespace GraphView
 
                 if (patternNode.NodeAlias == null)
                 {
+                    WNamedTableReference patternNodeTableReference =
+                        vertexTableReferencesDict[node.Key];
                     patternNode.NodeAlias = node.Key;
                     patternNode.Neighbors = new List<MatchEdge>();
                     patternNode.ReverseNeighbors = new List<MatchEdge>();
@@ -763,6 +775,8 @@ namespace GraphView
                     patternNode.External = false;
                     patternNode.Predicates = new List<WBooleanExpression>();
                     patternNode.Properties = new List<string> { "id", "_edge", "_reverse_edge" };
+                    patternNode.Low = patternNodeTableReference.Low;
+                    patternNode.High = patternNodeTableReference.High;
                 }
 
                 if (!subGraphMap.ContainsKey(root))
@@ -1200,6 +1214,14 @@ namespace GraphView
             }
         }
 
+        private void CheckAndAppendRangeFilter(QueryCompilationContext context, List<GraphViewExecutionOperator> operatorChain,
+            int low, int high)
+        {
+            if (low == Int32.MinValue && high == Int32.MaxValue) return;
+            operatorChain.Add(new RangeOperator(context.CurrentExecutionOperator, low, high));
+            context.CurrentExecutionOperator = operatorChain.Last();
+        }
+
         private GraphViewExecutionOperator ConstructOperator2(GraphViewConnection connection, MatchGraph graphPattern,
             QueryCompilationContext context, List<WTableReferenceWithAlias> nonVertexTableReferences,
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
@@ -1245,6 +1267,8 @@ namespace GraphView
                         UpdateRawRecordLayout(sourceNode.NodeAlias, sourceNode.Properties, rawRecordLayout);
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
+
+                        //CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
 
                         CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                             new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -1307,6 +1331,12 @@ namespace GraphView
                             // Cross apply dangling edges
                             CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
                                 predicatesAccessedTableReferences);
+
+                            //CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
+
+                            CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                                new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                                operatorChain);
                         }
                     }
                     context.CurrentExecutionOperator = operatorChain.Last();
@@ -1382,6 +1412,8 @@ namespace GraphView
                 {
 
                 }
+
+                //CheckAndAppendRangeFilter(context, operatorChain, tableReference.Low, tableReference.High);
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -2476,6 +2508,102 @@ namespace GraphView
             context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
             return projectByOp;
+        }
+    }
+
+    partial class WRepeatTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WSelectQueryBlock contextSelect, repeatSelect;
+            Split(out contextSelect, out repeatSelect);
+
+            List<int> inputIndexes = new List<int>();
+            QueryCompilationContext rContext = new QueryCompilationContext(context);
+            rContext.ClearField();
+
+            List<WColumnReferenceExpression> columnList = new List<WColumnReferenceExpression>();
+            foreach (WSelectElement selectElement in contextSelect.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be select scalar elements.");
+                }
+
+                string rColumnName = selectScalar.ColumnName;
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be column references.");
+                }
+                if (rColumnName == null) rColumnName = columnRef.ColumnName;
+
+                int index = context.LocateColumnReference(columnRef);
+                inputIndexes.Add(index);
+                rContext.AddField("R", rColumnName, columnRef.ColumnGraphType);
+                columnList.Add(new WColumnReferenceExpression(Alias.Value, rColumnName, columnRef.ColumnGraphType));
+            }
+
+            //WScalarSubquery repeatOutput = Parameters[2] as WScalarSubquery;
+            //if (repeatOutput == null)
+            //    throw new SyntaxErrorException("The third parameter of a repeat table reference must be a scalar subquery.");
+
+            //WSelectQueryBlock repeatOutputSelect = repeatOutput.SubQueryExpr as WSelectQueryBlock; ;
+            //if (repeatOutputSelect == null)
+            //    throw new SyntaxErrorException("The third parameter of a repeat table reference must be a select query block.");
+
+
+            //foreach (WSelectElement selectElement in repeatOutputSelect.SelectElements)
+            //{
+            //    repeatSelect.SelectElements.Add(selectElement);
+
+            //    WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+            //    if (selectScalar == null)
+            //    {
+            //        throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be select scalar elements.");
+            //    }
+            //    WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+            //    if (columnRef == null)
+            //    {
+            //        throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be column references.");
+            //    }
+
+            //    columnList.Add(columnRef);
+            //}
+
+            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rContext, dbConnection);
+
+            WRepeatConditionExpression repeatCondition = Parameters[1] as WRepeatConditionExpression;
+            if (repeatCondition == null)
+                throw new SyntaxErrorException("The second parameter of a repeat table reference must be WRepeatConditionExpression");
+
+            int repeatTimes = repeatCondition.RepeatTimes;
+            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToFunction(rContext, dbConnection);
+            bool startFromContext = repeatCondition.StartFromContext;
+            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToFunction(rContext, dbConnection);
+            bool emitContext = repeatCondition.EmitContext;
+
+
+            RepeatOperator repeatOp;
+            if (repeatTimes == -1)
+                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, inputIndexes, innerOp,
+                    rContext.OuterContextOp, terminationCondition, startFromContext, emitCondition, emitContext);
+            else
+                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, inputIndexes, innerOp,
+                    rContext.OuterContextOp, repeatTimes, emitCondition, emitContext);
+
+            context.CurrentExecutionOperator = repeatOp;
+
+
+            // Updates the raw record layout. The columns of this table-valued function 
+            // are specified by the select elements of the thrid parameter.
+            foreach (WColumnReferenceExpression columnRef in columnList)
+            {
+                context.AddField(columnRef.TableReference, columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            return repeatOp;
         }
     }
 }
