@@ -26,10 +26,8 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            // If the output buffer is not empty, returns a result.
-            if (OutputBuffer.Count != 0 && (OutputBuffer.Count > OutputBufferSize || (InputOperator != null && !InputOperator.State())))
+            if (OutputBuffer.Count != 0)
             {
-                if (OutputBuffer.Count == 1) this.Close();
                 return OutputBuffer.Dequeue();
             }
 
@@ -37,10 +35,7 @@ namespace GraphView
             {
                 var srcRecord = InputOperator.Next();
                 if (srcRecord == null)
-                {
-                    InputOperator.Close();
                     break;
-                }
 
                 var results = CrossApply(srcRecord);
                 foreach (var rec in results)
