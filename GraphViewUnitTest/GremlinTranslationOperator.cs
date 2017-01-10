@@ -99,12 +99,12 @@ namespace GremlinTranslationOperator.Tests
             //    .By(GraphTraversal2.__().Properties("label", "type"))
             //    .By(GraphTraversal2.__().OutE().Properties("label")).Next();
 
-            var results =
-                graph.g()
-                    .V()
-                    .HasLabel("Stanford")
-                    .Union(graph.g().V().OutE(), GraphTraversal2.__().V().In())
-                    .Next();
+            //var results =
+            //    graph.g()
+            //        .V()
+            //        .HasLabel("Stanford")
+            //        .Union(graph.g().V().OutE(), GraphTraversal2.__().V().In())
+            //        .Next();
 
             graph.g().V().As("@v")
                 .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))

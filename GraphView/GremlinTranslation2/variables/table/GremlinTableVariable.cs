@@ -29,6 +29,7 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
+            //TODO
             return new GremlinVariableProperty(this, "id");
         }
 

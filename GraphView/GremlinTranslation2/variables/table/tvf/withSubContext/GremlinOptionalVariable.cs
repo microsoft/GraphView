@@ -50,6 +50,7 @@ namespace GraphView
         {
             List<string> firstProjectProperties = new List<string>();
             List<string> secondProjectProperties = new List<string>();
+
             foreach (var projectProperty in projectProperties)
             {
                 if ((InputVariable.GetVariableType() == GremlinVariableType.Vertex
