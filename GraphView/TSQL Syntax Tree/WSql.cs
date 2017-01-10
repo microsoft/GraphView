@@ -277,7 +277,7 @@ namespace GraphView
                 var toh = hint as TableHintsOptimizerHint;
                 sb.Append("TABLE HINT ");
                 sb.Append("(");
-                sb.Append(TsqlFragmentToString.SchemaObjectName(toh.ObjectName));
+                // sb.Append(TsqlFragmentToString.WSchemaObjectName(toh.ObjectName));
                 for (int i = 0; i < toh.TableHints.Count; i++)
                 {
                     if (i > 0)

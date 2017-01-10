@@ -32,7 +32,7 @@ namespace GraphView
 {
     public static class TsqlFragmentToString
     {
-        public static string SchemaObjectName(SchemaObjectName sobj)
+        public static string WSchemaObjectName(WSchemaObjectName sobj)
         {
             var sb = new StringBuilder(128);
             var empty = true;
@@ -65,7 +65,7 @@ namespace GraphView
             return sb.ToString();
         }
 
-        public static string MultipartIdentifier(MultiPartIdentifier multiIdent)
+        public static string WMultipartIdentifier(WMultiPartIdentifier multiIdent)
         {
             var sb = new StringBuilder(128);
 
@@ -85,11 +85,11 @@ namespace GraphView
         {
             switch (etype)
             {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Union:
+                case GraphView.BinaryQueryExpressionType.Union:
                     return "UNION";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Intersect:
+                case GraphView.BinaryQueryExpressionType.Intersect:
                     return "INTERSECT";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Except:
+                case GraphView.BinaryQueryExpressionType.Except:
                     return "EXCEPT ";
                 default:
                     throw new GraphViewException("Invalid type of binary query expression");
@@ -158,21 +158,21 @@ namespace GraphView
         {
             switch (btype)
             {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Add:
+                case GraphView.BinaryExpressionType.Add:
                     return "+";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.BitwiseAnd:
+                case GraphView.BinaryExpressionType.BitwiseAnd:
                     return "&";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.BitwiseOr:
+                case GraphView.BinaryExpressionType.BitwiseOr:
                     return "|";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.BitwiseXor:
+                case GraphView.BinaryExpressionType.BitwiseXor:
                     return "^";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Divide:
+                case GraphView.BinaryExpressionType.Divide:
                     return "/";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Modulo:
+                case GraphView.BinaryExpressionType.Modulo:
                     return "%";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Multiply:
+                case GraphView.BinaryExpressionType.Multiply:
                     return "*";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Subtract:
+                case GraphView.BinaryExpressionType.Subtract:
                     return "-";
                 default:
                     throw new GraphViewException("Invalid binary expression type");
@@ -183,9 +183,9 @@ namespace GraphView
         {
             switch (btype)
             {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanBinaryExpressionType.And:
+                case BooleanBinaryExpressionType.And:
                     return "AND";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanBinaryExpressionType.Or:
+                case BooleanBinaryExpressionType.Or:
                     return "OR";
                 default:
                     throw new GraphViewException("Invalid boolean expression type");
@@ -196,23 +196,23 @@ namespace GraphView
         {
             switch (ctype)
             {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.Equals:
+                case GraphView.BooleanComparisonType.Equals:
                     return "=";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.GreaterThan:
+                case GraphView.BooleanComparisonType.GreaterThan:
                     return ">";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.GreaterThanOrEqualTo:
+                case GraphView.BooleanComparisonType.GreaterThanOrEqualTo:
                     return ">=";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.LessThan:
+                case GraphView.BooleanComparisonType.LessThan:
                     return "<";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.LessThanOrEqualTo:
+                case GraphView.BooleanComparisonType.LessThanOrEqualTo:
                     return "<=";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotEqualToBrackets:
+                case GraphView.BooleanComparisonType.NotEqualToBrackets:
                     return "<>";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotEqualToExclamation:
+                case GraphView.BooleanComparisonType.NotEqualToExclamation:
                     return "!=";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotGreaterThan:
+                case GraphView.BooleanComparisonType.NotGreaterThan:
                     return "!>";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotLessThan:
+                case GraphView.BooleanComparisonType.NotLessThan:
                     return "!<";
                 default:
                     throw new GraphViewException("Invalid boolean expression type");
@@ -223,26 +223,26 @@ namespace GraphView
         {
             switch (order)
             {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.SortOrder.Ascending:
+                case GraphView.SortOrder.Ascending:
                     return "ASC";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.SortOrder.Descending:
+                case GraphView.SortOrder.Descending:
                     return "DESC";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.SortOrder.NotSpecified:
+                case GraphView.SortOrder.NotSpecified:
                     return "";
                 default:
                     throw new GraphViewException("Invalid sort order");
             }
         }
 
-        public static string DataType(DataTypeReference dtype)
+        public static string DataType(WDataTypeReference dtype)
         {
             switch (dtype.GetType().Name)
             {
                 case "SqlDataTypeReference":
                     {
-                        var sqltype = dtype as SqlDataTypeReference;
+                        var sqltype = dtype as WSqlDataTypeReference;
                         var sb = new StringBuilder(1024);
-                        sb.Append(SchemaObjectName(sqltype.Name));
+                        sb.Append(WSchemaObjectName(sqltype.Name));
                         if (sqltype.Parameters.Any())
                         {
                             sb.Append("(");
@@ -292,11 +292,11 @@ namespace GraphView
         {
             switch (type)
             {
-                case Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType.Positive:
+                case GraphView.UnaryExpressionType.Positive:
                     return "+";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType.Negative:
+                case GraphView.UnaryExpressionType.Negative:
                     return "-";
-                case Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType.BitwiseNot:
+                case GraphView.UnaryExpressionType.BitwiseNot:
                     return "~";
                 default:
                     throw new GraphViewException("Invalid unary expression type.");

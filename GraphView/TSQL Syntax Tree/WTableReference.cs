@@ -28,11 +28,33 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
- 
+    public enum QualifiedJoinType
+    {
+        FullOuter,
+        Inner,
+        LeftOuter,
+        RightOuter
+    }
+
+    public enum JoinHint
+    {
+        Hash,
+        Loop,
+        Merge,
+        None,
+        Remote
+    }
+
+    public enum UnqualifiedJoinType
+    {
+        CrossApply, 
+        CrossJoin, 
+        OuterApply
+    }
+
     public abstract partial class WTableReference : WSqlFragment
     {
         /// <summary>

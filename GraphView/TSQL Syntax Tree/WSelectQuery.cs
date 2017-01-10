@@ -31,6 +31,20 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+    public enum BinaryQueryExpressionType
+    {
+        Except,
+        Intersect,
+        Union
+    }
+
+    public enum UniqueRowFilter
+    {
+        All,
+        Distinct,
+        NotSpecified
+    }
+
     /// <summary>
     /// The base class of a SELECT statement
     /// </summary>

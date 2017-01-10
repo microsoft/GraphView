@@ -96,6 +96,301 @@ namespace GraphView
             return wscript;
         }
 
+        private QuoteType ParseQuoteType(Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType qt)
+        {
+            switch (qt)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType.DoubleQuote:
+                    return QuoteType.DoubleQuote;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType.SquareBracket:
+                    return QuoteType.SquareBracket;
+                default:
+                    return QuoteType.NotQuoted;
+            }
+        }
+
+        private Identifier ParseIdentifier(Microsoft.SqlServer.TransactSql.ScriptDom.Identifier id)
+        {
+            return new Identifier()
+            {
+                Value = id.Value,
+                QuoteType = ParseQuoteType(id.QuoteType),
+                FirstTokenIndex = id.FirstTokenIndex,
+                LastTokenIndex = id.LastTokenIndex
+            };
+        }
+
+        private BinaryExpressionType ParseBinaryExpressionType(
+            Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType type)
+        {
+            switch (type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Add:
+                    return BinaryExpressionType.Add;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.BitwiseAnd:
+                    return BinaryExpressionType.BitwiseAnd;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.BitwiseOr:
+                    return BinaryExpressionType.BitwiseOr;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.BitwiseXor:
+                    return BinaryExpressionType.BitwiseXor;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Divide:
+                    return BinaryExpressionType.Divide;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Modulo:
+                    return BinaryExpressionType.Modulo;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Multiply:
+                    return BinaryExpressionType.Multiply;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryExpressionType.Subtract:
+                    return BinaryExpressionType.Subtract;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private BinaryQueryExpressionType ParseBinaryQueryExpressionType (
+            Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType type)
+        {
+            switch (type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Except:
+                    return BinaryQueryExpressionType.Except;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Intersect:
+                    return BinaryQueryExpressionType.Intersect;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BinaryQueryExpressionType.Union:
+                    return BinaryQueryExpressionType.Union;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private BooleanBinaryExpressionType ParseBooleanBinaryExpressionType (
+            Microsoft.SqlServer.TransactSql.ScriptDom.BooleanBinaryExpressionType type)
+        {
+            switch (type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanBinaryExpressionType.And:
+                    return BooleanBinaryExpressionType.And;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanBinaryExpressionType.Or:
+                    return BooleanBinaryExpressionType.Or;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private ParameterModifier ParseParameterModifier(
+            Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier modifier)
+        {
+            switch (modifier)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.None:
+                    return ParameterModifier.None;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.Output:
+                    return ParameterModifier.Output;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.ReadOnly:
+                    return ParameterModifier.ReadOnly;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private SortOrder ParseSortOrder(Microsoft.SqlServer.TransactSql.ScriptDom.SortOrder so)
+        {
+            switch(so)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.SortOrder.Ascending:
+                    return SortOrder.Ascending;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.SortOrder.Descending:
+                    return SortOrder.Descending;
+                default:
+                    return SortOrder.NotSpecified;
+            }
+        }
+
+        private AssignmentKind ParseAssignmentKind(Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind kind)
+        {
+            switch(kind)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.AddEquals:
+                    return AssignmentKind.AddEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.BitwiseAndEquals:
+                    return AssignmentKind.BitwiseAndEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.BitwiseOrEquals:
+                    return AssignmentKind.BitwiseOrEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.BitwiseXorEquals:
+                    return AssignmentKind.BitwiseXorEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.DivideEquals:
+                    return AssignmentKind.DivideEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.Equals:
+                    return AssignmentKind.Equals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.ModEquals:
+                    return AssignmentKind.ModEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.MultiplyEquals:
+                    return AssignmentKind.MultiplyEquals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.AssignmentKind.SubtractEquals:
+                    return AssignmentKind.SubtractEquals;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private UniqueRowFilter ParseUniqueRowFilter(Microsoft.SqlServer.TransactSql.ScriptDom.UniqueRowFilter filter)
+        {
+            switch(filter)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UniqueRowFilter.All:
+                    return UniqueRowFilter.All;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UniqueRowFilter.Distinct:
+                    return UniqueRowFilter.Distinct;
+                default:
+                    return UniqueRowFilter.NotSpecified;
+            }
+        }
+
+        private UnaryExpressionType ParseUnaryExpressionType(
+            Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType type)
+        {
+            switch(type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType.BitwiseNot:
+                    return UnaryExpressionType.BitwiseNot;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType.Negative:
+                    return UnaryExpressionType.Negative;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UnaryExpressionType.Positive:
+                    return UnaryExpressionType.Positive;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private QualifiedJoinType ParseQualifiedJoinType (
+            Microsoft.SqlServer.TransactSql.ScriptDom.QualifiedJoinType jt)
+        {
+            switch(jt)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QualifiedJoinType.FullOuter:
+                    return QualifiedJoinType.FullOuter;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QualifiedJoinType.Inner:
+                    return QualifiedJoinType.Inner;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QualifiedJoinType.LeftOuter:
+                    return QualifiedJoinType.LeftOuter;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.QualifiedJoinType.RightOuter:
+                    return QualifiedJoinType.RightOuter;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private UnqualifiedJoinType ParseUnqualifiedJoinType (
+            Microsoft.SqlServer.TransactSql.ScriptDom.UnqualifiedJoinType ujt)
+        {
+            switch (ujt)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UnqualifiedJoinType.CrossApply:
+                    return UnqualifiedJoinType.CrossApply;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UnqualifiedJoinType.CrossJoin:
+                    return UnqualifiedJoinType.CrossJoin;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.UnqualifiedJoinType.OuterApply:
+                    return UnqualifiedJoinType.OuterApply;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private SubqueryComparisonPredicateType ParseSubqueryComparisonPredicateType(
+            Microsoft.SqlServer.TransactSql.ScriptDom.SubqueryComparisonPredicateType type)
+        {
+            switch (type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.SubqueryComparisonPredicateType.All:
+                    return SubqueryComparisonPredicateType.All;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.SubqueryComparisonPredicateType.Any:
+                    return SubqueryComparisonPredicateType.Any;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.SubqueryComparisonPredicateType.None:
+                    return SubqueryComparisonPredicateType.None;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private JoinHint ParseJoinHint(
+            Microsoft.SqlServer.TransactSql.ScriptDom.JoinHint jh)
+        {
+            switch (jh)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.JoinHint.Hash:
+                    return JoinHint.Hash;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.JoinHint.Loop:
+                    return JoinHint.Loop;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.JoinHint.Merge:
+                    return JoinHint.Merge;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.JoinHint.None:
+                    return JoinHint.None;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.JoinHint.Remote:
+                    return JoinHint.Remote;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private BooleanComparisonType ParseBooleanComparisonType(
+            Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType type)
+        {
+            switch (type)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.Equals:
+                    return BooleanComparisonType.Equals;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.GreaterThan:
+                    return BooleanComparisonType.GreaterThan;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.GreaterThanOrEqualTo:
+                    return BooleanComparisonType.GreaterThanOrEqualTo;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.LeftOuterJoin:
+                    return BooleanComparisonType.LeftOuterJoin;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.LessThan:
+                    return BooleanComparisonType.LessThan;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.LessThanOrEqualTo:
+                    return BooleanComparisonType.LessThanOrEqualTo;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotEqualToBrackets:
+                    return BooleanComparisonType.NotEqualToBrackets;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotEqualToExclamation:
+                    return BooleanComparisonType.NotEqualToExclamation;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotGreaterThan:
+                    return BooleanComparisonType.NotGreaterThan;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.NotLessThan:
+                    return BooleanComparisonType.NotLessThan;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.BooleanComparisonType.RightOuterJoin:
+                    return BooleanComparisonType.RightOuterJoin;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private ParameterModifier Parse(Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier pm)
+        {
+            switch(pm)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.Output:
+                    return ParameterModifier.Output;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ParameterModifier.ReadOnly:
+                    return ParameterModifier.ReadOnly;
+                default:
+                    return ParameterModifier.None;
+            }
+        }
+
+        private WFunctionReturnType ParseFunctionReturnType (FunctionReturnType returnType)
+        {
+            switch(returnType.GetType().Name)
+            {
+                case "WScalarFunctionReturnType":
+                    return new WScalarFunctionReturnType();
+                case "WTableValuedFunctionReturnType":
+                    return new WTableValuedFunctionReturnType();
+                case "WSelectFunctionReturnType":
+                    return new WSelectFunctionReturnType();
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
         private WSqlStatement ParseStatement(TSqlStatement tsqlStat)
         {
             if (tsqlStat == null)
@@ -129,8 +424,17 @@ namespace GraphView
                         var creat = tsqlStat as CreateFunctionStatement;
                         var wcreat = new WCreateFunctionStatement
                         {
-                            Parameters = creat.Parameters,
-                            ReturnType = creat.ReturnType,
+                            Parameters = new List<WProcedureParameter>(creat.Parameters.Select(e => new WProcedureParameter()
+                            {
+                                DataType = ParseDataType(e.DataType),
+                                IsVarying = e.IsVarying,
+                                Modifier = ParseParameterModifier(e.Modifier),
+                                Value = ParseScalarExpression(e.Value),
+                                VariableName = ParseIdentifier(e.VariableName),
+                                FirstTokenIndex = e.FirstTokenIndex,
+                                LastTokenIndex = e.LastTokenIndex
+                            })),
+                            ReturnType = ParseFunctionReturnType(creat.ReturnType),
                             StatementList = new List<WSqlStatement>(creat.StatementList.Statements.Count),
                             FirstTokenIndex = creat.FirstTokenIndex,
                             LastTokenIndex = creat.LastTokenIndex,
@@ -216,9 +520,11 @@ namespace GraphView
                 case "CreateViewStatement":
                 {
                     var cvs = tsqlStat as CreateViewStatement;
+                        
                     var wcvs = new WCreateViewStatement
                     {
-                        Columns = cvs.Columns,
+                        Columns = new List<Identifier>(cvs.Columns.Select(e => 
+                            new Identifier() { Value = e.Value, QuoteType = ParseQuoteType(e.QuoteType) })),
                         FirstTokenIndex = cvs.FirstTokenIndex,
                         LastTokenIndex = cvs.LastTokenIndex,
                         SchemaObjectName = ParseSchemaObjectName(cvs.SchemaObjectName),
@@ -283,14 +589,28 @@ namespace GraphView
                         var wcreat = new WCreateProcedureStatement
                         {
                             IsForReplication = creat.IsForReplication,
-                            Parameters = creat.Parameters,
+                            Parameters = new List<WProcedureParameter>(creat.Parameters.Select(e => new WProcedureParameter()
+                            {
+                                DataType = ParseDataType(e.DataType),
+                                IsVarying = e.IsVarying,
+                                Modifier = ParseParameterModifier(e.Modifier),
+                                Value = ParseScalarExpression(e.Value),
+                                VariableName = ParseIdentifier(e.VariableName),
+                                FirstTokenIndex = e.FirstTokenIndex,
+                                LastTokenIndex = e.LastTokenIndex
+                            })),
                             StatementList = new List<WSqlStatement>(creat.StatementList.Statements.Count),
                             FirstTokenIndex = creat.FirstTokenIndex,
                             LastTokenIndex = creat.LastTokenIndex,
                             ProcedureReference = new WProcedureReference
                             {
                                 Name = ParseSchemaObjectName(creat.ProcedureReference.Name),
-                                Number = creat.ProcedureReference.Number
+                                Number = new WValueExpression()
+                                {
+                                    Value = creat.ProcedureReference.Number.Value,
+                                    FirstTokenIndex = creat.ProcedureReference.Number.FirstTokenIndex,
+                                    LastTokenIndex = creat.ProcedureReference.Number.LastTokenIndex
+                                }
                             }
                         };
 
@@ -363,10 +683,16 @@ namespace GraphView
                 case "SetVariableStatement":
                 {
                     var svs = tsqlStat as SetVariableStatement;
-                    wstat = new WSetVariableStatement()
-                    {
-                        Expression = ParseScalarExpression(svs.Expression),
-                        Identifier = svs.Identifier,
+                        wstat = new WSetVariableStatement()
+                        {
+                            Expression = ParseScalarExpression(svs.Expression),
+                            Identifier = new Identifier()
+                            {
+                                Value = svs.Identifier.Value,
+                                QuoteType = ParseQuoteType(svs.Identifier.QuoteType),
+                                FirstTokenIndex = svs.Identifier.FirstTokenIndex,
+                                LastTokenIndex = svs.Identifier.LastTokenIndex
+                            },
                         FirstTokenIndex = svs.FirstTokenIndex,
                         LastTokenIndex =  svs.LastTokenIndex,
                         Variable = ParseVariableReference(svs.Variable)
@@ -422,6 +748,31 @@ namespace GraphView
             return wTableDef;
         }
 
+        private ColumnType ParseColumnType(Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType ct)
+        {
+            switch (ct)
+            {
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.IdentityCol:
+                    return ColumnType.IdentityCol;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.PseudoColumnAction:
+                    return ColumnType.PseudoColumnAction;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.PseudoColumnCuid:
+                    return ColumnType.PseudoColumnCuid;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.PseudoColumnIdentity:
+                    return ColumnType.PseudoColumnIdentity;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.PseudoColumnRowGuid:
+                    return ColumnType.PseudoColumnRowGuid;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.Regular:
+                    return ColumnType.Regular;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.RowGuidCol:
+                    return ColumnType.RowGuidCol;
+                case Microsoft.SqlServer.TransactSql.ScriptDom.ColumnType.Wildcard:
+                    return ColumnType.Wildcard;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
         private WColumnDefinition ParseColumnDefinition(ColumnDefinition columnDef)
         {
             if (columnDef == null)
@@ -430,9 +781,15 @@ namespace GraphView
             {
                 FirstTokenIndex = columnDef.FirstTokenIndex,
                 LastTokenIndex = columnDef.LastTokenIndex,
-                ColumnIdentifier = columnDef.ColumnIdentifier,
+                ColumnIdentifier = new Identifier()
+                {
+                    Value = columnDef.ColumnIdentifier.Value,
+                    QuoteType = ParseQuoteType(columnDef.ColumnIdentifier.QuoteType),
+                    FirstTokenIndex = columnDef.ColumnIdentifier.FirstTokenIndex,
+                    LastTokenIndex = columnDef.ColumnIdentifier.LastTokenIndex
+                },
                 DataType = ParseDataType(columnDef.DataType),
-                Collation = columnDef.Collation,
+                // Collation = columnDef.Collation,
                 ComputedColumnExpression = ParseScalarExpression(columnDef.ComputedColumnExpression),
                 StorageOptions = columnDef.StorageOptions,
                 Index = ParseIndexDefinition(columnDef.Index),
@@ -467,7 +824,13 @@ namespace GraphView
                         var checkConsDef = consDef as CheckConstraintDefinition;
                         wConsDef = new WCheckConstraintDefinition
                         {
-                            ConstraintIdentifier = checkConsDef.ConstraintIdentifier,
+                            ConstraintIdentifier = new Identifier()
+                            {
+                                Value = checkConsDef.ConstraintIdentifier.Value,
+                                QuoteType = ParseQuoteType(checkConsDef.ConstraintIdentifier.QuoteType),
+                                FirstTokenIndex = checkConsDef.ConstraintIdentifier.FirstTokenIndex,
+                                LastTokenIndex = checkConsDef.ConstraintIdentifier.LastTokenIndex
+                            },
                             CheckCondition = ParseBooleanExpression(checkConsDef.CheckCondition),
                             NotForReplication = checkConsDef.NotForReplication
                         };
@@ -478,9 +841,21 @@ namespace GraphView
                         var defaultConsDef = consDef as DefaultConstraintDefinition;
                         wConsDef = new WDefaultConstraintDefinition
                         {
-                            ConstraintIdentifier = defaultConsDef.ConstraintIdentifier,
+                            ConstraintIdentifier = new Identifier()
+                            {
+                                Value = defaultConsDef.ConstraintIdentifier.Value,
+                                QuoteType = ParseQuoteType(defaultConsDef.ConstraintIdentifier.QuoteType),
+                                FirstTokenIndex = defaultConsDef.ConstraintIdentifier.FirstTokenIndex,
+                                LastTokenIndex = defaultConsDef.ConstraintIdentifier.LastTokenIndex
+                            },
                             Expression = ParseScalarExpression(defaultConsDef.Expression),
-                            Column = defaultConsDef.Column,
+                            Column = new Identifier()
+                            {
+                                Value = defaultConsDef.Column.Value,
+                                QuoteType = ParseQuoteType(defaultConsDef.Column.QuoteType),
+                                FirstTokenIndex = defaultConsDef.Column.FirstTokenIndex,
+                                LastTokenIndex = defaultConsDef.Column.LastTokenIndex
+                            },
                             WithValues = defaultConsDef.WithValues,
                         };
                         break;
@@ -490,7 +865,13 @@ namespace GraphView
                         var foreignConsDef = consDef as ForeignKeyConstraintDefinition;
                         var wForeignConsDef = new WForeignKeyConstraintDefinition
                         {
-                            ConstraintIdentifier = foreignConsDef.ConstraintIdentifier,
+                            ConstraintIdentifier = new Identifier()
+                            {
+                                Value = foreignConsDef.ConstraintIdentifier.Value,
+                                QuoteType = ParseQuoteType(foreignConsDef.ConstraintIdentifier.QuoteType),
+                                FirstTokenIndex = foreignConsDef.ConstraintIdentifier.FirstTokenIndex,
+                                LastTokenIndex = foreignConsDef.ConstraintIdentifier.LastTokenIndex
+                            }, 
                             ReferenceTableName = ParseSchemaObjectName(foreignConsDef.ReferenceTableName),
                             DeleteAction = foreignConsDef.DeleteAction,
                             UpdateAction = foreignConsDef.UpdateAction,
@@ -498,16 +879,24 @@ namespace GraphView
                         };
                         if (foreignConsDef.Columns != null)
                         {
-                            wForeignConsDef.Columns = new List<Identifier>(foreignConsDef.Columns.Count);
-                            foreach (var col in foreignConsDef.Columns)
-                                wForeignConsDef.Columns.Add(col);
+                            wForeignConsDef.Columns = new List<Identifier>(foreignConsDef.Columns.Select(e => new Identifier()
+                            {
+                                Value = e.Value,
+                                QuoteType = ParseQuoteType(e.QuoteType),
+                                FirstTokenIndex = e.FirstTokenIndex,
+                                LastTokenIndex = e.LastTokenIndex
+                            }));
                         }
 
                         if (foreignConsDef.ReferencedTableColumns != null)
                         {
-                            wForeignConsDef.ReferencedTableColumns = new List<Identifier>(foreignConsDef.ReferencedTableColumns.Count);
-                            foreach (var col in foreignConsDef.ReferencedTableColumns)
-                                wForeignConsDef.ReferencedTableColumns.Add(col);
+                            wForeignConsDef.ReferencedTableColumns = new List<Identifier>(foreignConsDef.ReferencedTableColumns.Select(e => new Identifier()
+                            {
+                                Value = e.Value,
+                                QuoteType = ParseQuoteType(e.QuoteType),
+                                FirstTokenIndex = e.FirstTokenIndex,
+                                LastTokenIndex = e.LastTokenIndex
+                            }));
                         }
                         wConsDef = wForeignConsDef;
 
@@ -518,7 +907,13 @@ namespace GraphView
                         var nullConsDef = consDef as NullableConstraintDefinition;
                         wConsDef = new WNullableConstraintDefinition
                         {
-                            ConstraintIdentifier = nullConsDef.ConstraintIdentifier,
+                            ConstraintIdentifier = new Identifier()
+                            {
+                                Value = nullConsDef.ConstraintIdentifier.Value,
+                                QuoteType = ParseQuoteType(nullConsDef.ConstraintIdentifier.QuoteType),
+                                FirstTokenIndex = nullConsDef.ConstraintIdentifier.FirstTokenIndex,
+                                LastTokenIndex = nullConsDef.ConstraintIdentifier.LastTokenIndex
+                            },
                             Nullable = nullConsDef.Nullable,
                         };
                         break;
@@ -528,7 +923,13 @@ namespace GraphView
                         var uniqConsDef = consDef as UniqueConstraintDefinition;
                         var wUniqConsDef = new WUniqueConstraintDefinition
                         {
-                            ConstraintIdentifier = uniqConsDef.ConstraintIdentifier,
+                            ConstraintIdentifier = new Identifier()
+                            {
+                                Value = uniqConsDef.ConstraintIdentifier.Value,
+                                QuoteType = ParseQuoteType(uniqConsDef.ConstraintIdentifier.QuoteType),
+                                FirstTokenIndex = uniqConsDef.ConstraintIdentifier.FirstTokenIndex,
+                                LastTokenIndex = uniqConsDef.ConstraintIdentifier.LastTokenIndex
+                            },
                             Clustered = uniqConsDef.Clustered,
                             IsPrimaryKey = uniqConsDef.IsPrimaryKey,
                         };
@@ -540,12 +941,12 @@ namespace GraphView
                                 wUniqConsDef.Columns.Add(new Tuple<WColumnReferenceExpression, SortOrder>(
                                     new WColumnReferenceExpression
                                     {
-                                        ColumnType = col.Column.ColumnType,
+                                        ColumnType = ParseColumnType(col.Column.ColumnType),
                                         MultiPartIdentifier = ParseMultiPartIdentifier(col.Column.MultiPartIdentifier),
                                         FirstTokenIndex = col.Column.FirstTokenIndex,
                                         LastTokenIndex = col.Column.LastTokenIndex,
                                     },
-                                    col.SortOrder));
+                                    ParseSortOrder(col.SortOrder)));
                             }
                         }
                         wConsDef = wUniqConsDef;
@@ -564,7 +965,7 @@ namespace GraphView
                 FirstTokenIndex = idxDef.FirstTokenIndex,
                 LastTokenIndex = idxDef.LastTokenIndex,
                 IndexType = idxDef.IndexType,
-                Name = idxDef.Name,
+                Name = ParseIdentifier(idxDef.Name),
             };
             if (idxDef.Columns == null)
                 return wIdxDef;
@@ -575,12 +976,12 @@ namespace GraphView
                 wIdxDef.Columns.Add(new Tuple<WColumnReferenceExpression, SortOrder>(
                     new WColumnReferenceExpression
                     {
-                        ColumnType = col.Column.ColumnType,
+                        ColumnType = ParseColumnType(col.Column.ColumnType),
                         MultiPartIdentifier = ParseMultiPartIdentifier(col.Column.MultiPartIdentifier),
                         FirstTokenIndex = col.Column.FirstTokenIndex,
                         LastTokenIndex = col.Column.LastTokenIndex,
                     },
-                    col.SortOrder));
+                    ParseSortOrder(col.SortOrder)));
             }
             return wIdxDef;
         }
@@ -634,7 +1035,7 @@ namespace GraphView
             foreach (var wexpr in insSpec.Columns.Select(column => new WColumnReferenceExpression
             {
                 MultiPartIdentifier = ParseMultiPartIdentifier(column.MultiPartIdentifier),
-                ColumnType = column.ColumnType,
+                ColumnType = ParseColumnType(column.ColumnType),
                 FirstTokenIndex = column.FirstTokenIndex,
                 LastTokenIndex = column.LastTokenIndex
             }))
@@ -848,7 +1249,7 @@ namespace GraphView
         {
             var wasSetClause = new WAssignmentSetClause
             {
-                AssignmentKind = asSetClause.AssignmentKind,
+                AssignmentKind = ParseAssignmentKind(asSetClause.AssignmentKind),
                 FirstTokenIndex = asSetClause.FirstTokenIndex,
                 LastTokenIndex = asSetClause.LastTokenIndex
             };
@@ -858,7 +1259,7 @@ namespace GraphView
                 var wexpr = new WColumnReferenceExpression
                 {
                     MultiPartIdentifier = ParseMultiPartIdentifier(asSetClause.Column.MultiPartIdentifier),
-                    ColumnType = asSetClause.Column.ColumnType,
+                    ColumnType = ParseColumnType(asSetClause.Column.ColumnType),
                     FirstTokenIndex = asSetClause.Column.FirstTokenIndex,
                     LastTokenIndex = asSetClause.Column.LastTokenIndex
                 };
@@ -948,7 +1349,7 @@ namespace GraphView
                             };
                         }
 
-                        pQueryExpr.UniqueRowFilter = qs.UniqueRowFilter;
+                        pQueryExpr.UniqueRowFilter = ParseUniqueRowFilter(qs.UniqueRowFilter);
 
                         //
                         // FROM clause
@@ -1049,7 +1450,7 @@ namespace GraphView
                         {
                             VariableName = ssv.Variable.Name,
                             Expression = ParseScalarExpression(ssv.Expression),
-                            AssignmentType = ssv.AssignmentKind,
+                            AssignmentType = ParseAssignmentKind(ssv.AssignmentKind),
                             FirstTokenIndex = ssv.FirstTokenIndex,
                             LastTokenIndex = ssv.LastTokenIndex
                         };
@@ -1075,7 +1476,7 @@ namespace GraphView
                         var bexpr = scalarExpr as BinaryExpression;
                         var wexpr = new WBinaryExpression
                         {
-                            ExpressionType = bexpr.BinaryExpressionType,
+                            ExpressionType = ParseBinaryExpressionType(bexpr.BinaryExpressionType),
                             FirstExpr = ParseScalarExpression(bexpr.FirstExpression),
                             SecondExpr = ParseScalarExpression(bexpr.SecondExpression),
                             FirstTokenIndex = bexpr.FirstTokenIndex,
@@ -1090,7 +1491,7 @@ namespace GraphView
                         var wuexpr = new WUnaryExpression
                         {
                             Expression = ParseScalarExpression(uexpr.Expression),
-                            ExpressionType = uexpr.UnaryExpressionType,
+                            ExpressionType = ParseUnaryExpressionType(uexpr.UnaryExpressionType),
                             FirstTokenIndex = uexpr.FirstTokenIndex,
                             LastTokenIndex = uexpr.LastTokenIndex
                         };
@@ -1103,7 +1504,7 @@ namespace GraphView
                         var wexpr = new WColumnReferenceExpression
                         {
                             MultiPartIdentifier = ParseMultiPartIdentifier(cre.MultiPartIdentifier),
-                            ColumnType = cre.ColumnType,
+                            ColumnType = ParseColumnType(cre.ColumnType),
                             FirstTokenIndex = cre.FirstTokenIndex,
                             LastTokenIndex = cre.LastTokenIndex
                         };
@@ -1140,8 +1541,8 @@ namespace GraphView
                         var wexpr = new WFunctionCall
                         {
                             CallTarget = ParseCallTarget(fc.CallTarget),
-                            FunctionName = fc.FunctionName,
-                            UniqueRowFilter = fc.UniqueRowFilter,
+                            FunctionName = ParseIdentifier(fc.FunctionName),
+                            UniqueRowFilter = ParseUniqueRowFilter(fc.UniqueRowFilter),
                             FirstTokenIndex = fc.FirstTokenIndex,
                             LastTokenIndex = fc.LastTokenIndex,
                         };
@@ -1242,13 +1643,13 @@ namespace GraphView
                 case "NamedTableReference":
                     {
                         var oref = tabRef as NamedTableReference;
-                        if (oref.SchemaObject.BaseIdentifier.QuoteType == QuoteType.NotQuoted &&
+                        if (oref.SchemaObject.BaseIdentifier.QuoteType == Microsoft.SqlServer.TransactSql.ScriptDom.QuoteType.NotQuoted &&
                             (oref.SchemaObject.BaseIdentifier.Value[0] == '@' ||
                              oref.SchemaObject.BaseIdentifier.Value[0] == '#'))
                         {
                             var pref = new WSpecialNamedTableReference
                             {
-                                Alias = oref.Alias,
+                                Alias = ParseIdentifier(oref.Alias),
                                 TableHints = new List<WTableHint>(),
                                 FirstTokenIndex = oref.FirstTokenIndex,
                                 LastTokenIndex = oref.LastTokenIndex,
@@ -1267,7 +1668,7 @@ namespace GraphView
                         {
                             var pref = new WNamedTableReference
                             {
-                                Alias = oref.Alias,
+                                Alias = ParseIdentifier(oref.Alias),
                                 TableHints = new List<WTableHint>(),
                                 FirstTokenIndex = oref.FirstTokenIndex,
                                 LastTokenIndex = oref.LastTokenIndex,
@@ -1289,8 +1690,8 @@ namespace GraphView
                         var pref = new WQueryDerivedTable
                         {
                             QueryExpr = ParseSelectQueryStatement(oref.QueryExpression),
-                            Alias = oref.Alias,
-                            Columns = oref.Columns,
+                            Alias = ParseIdentifier(oref.Alias),
+                            Columns = new List<Identifier>(oref.Columns.Select(e => ParseIdentifier(e))),
                             FirstTokenIndex = oref.FirstTokenIndex,
                             LastTokenIndex = oref.LastTokenIndex,
                         };
@@ -1302,8 +1703,8 @@ namespace GraphView
                         var oref = tabRef as SchemaObjectFunctionTableReference;
                         var pref = new WSchemaObjectFunctionTableReference
                         {
-                            Alias = oref.Alias,
-                            Columns = oref.Columns,
+                            Alias = ParseIdentifier(oref.Alias),
+                            Columns = new List<Identifier>(oref.Columns.Select(e => ParseIdentifier(e))),
                             SchemaObject = ParseSchemaObjectName(oref.SchemaObject),
                             FirstTokenIndex = oref.FirstTokenIndex,
                             LastTokenIndex = oref.LastTokenIndex
@@ -1322,8 +1723,8 @@ namespace GraphView
                         {
                             FirstTableRef = ParseTableReference(oref.FirstTableReference),
                             SecondTableRef = ParseTableReference(oref.SecondTableReference),
-                            QualifiedJoinType = oref.QualifiedJoinType,
-                            JoinHint = oref.JoinHint,
+                            QualifiedJoinType = ParseQualifiedJoinType(oref.QualifiedJoinType),
+                            JoinHint = ParseJoinHint(oref.JoinHint),
                             JoinCondition = ParseBooleanExpression(oref.SearchCondition),
                             FirstTokenIndex = oref.FirstTokenIndex,
                             LastTokenIndex = oref.LastTokenIndex,
@@ -1338,7 +1739,7 @@ namespace GraphView
                         {
                             FirstTableRef = ParseTableReference(oref.FirstTableReference),
                             SecondTableRef = ParseTableReference(oref.SecondTableReference),
-                            UnqualifiedJoinType = oref.UnqualifiedJoinType,
+                            UnqualifiedJoinType = ParseUnqualifiedJoinType(oref.UnqualifiedJoinType),
                             FirstTokenIndex = oref.FirstTokenIndex,
                             LastTokenIndex = oref.LastTokenIndex,
                         };
@@ -1365,7 +1766,7 @@ namespace GraphView
                         {
                             FirstTokenIndex = ptab.FirstTokenIndex,
                             LastTokenIndex = ptab.LastTokenIndex,
-                            Alias = ptab.Alias,
+                            Alias = ParseIdentifier(ptab.Alias),
                             Variable = ParseVariableReference(ptab.Variable)
                         };
 
@@ -1391,7 +1792,7 @@ namespace GraphView
                                  select new WExpressionWithSortOrder
                                  {
                                      ScalarExpr = pscalar,
-                                     SortOrder = e.SortOrder,
+                                     SortOrder = ParseSortOrder(e.SortOrder),
                                      FirstTokenIndex = e.FirstTokenIndex,
                                      LastTokenIndex = e.LastTokenIndex
                                  })
@@ -1451,7 +1852,7 @@ namespace GraphView
                         {
                             FirstExpr = ParseBooleanExpression(oexpr.FirstExpression),
                             SecondExpr = ParseBooleanExpression(oexpr.SecondExpression),
-                            BooleanExpressionType = oexpr.BinaryExpressionType,
+                            BooleanExpressionType = ParseBooleanBinaryExpressionType(oexpr.BinaryExpressionType),
                             FirstTokenIndex = oexpr.FirstTokenIndex,
                             LastTokenIndex = oexpr.LastTokenIndex,
                         };
@@ -1463,7 +1864,7 @@ namespace GraphView
                         var oexpr = bexpr as BooleanComparisonExpression;
                         var pexpr = new WBooleanComparisonExpression
                         {
-                            ComparisonType = oexpr.ComparisonType,
+                            ComparisonType = ParseBooleanComparisonType(oexpr.ComparisonType),
                             FirstExpr = ParseScalarExpression(oexpr.FirstExpression),
                             SecondExpr = ParseScalarExpression(oexpr.SecondExpression),
                             FirstTokenIndex = oexpr.FirstTokenIndex,
@@ -1615,9 +2016,9 @@ namespace GraphView
                                 LastTokenIndex = oexpr.Subquery.LastTokenIndex
 
                             },
-                            ComparisonType = oexpr.ComparisonType,
+                            ComparisonType = ParseBooleanComparisonType(oexpr.ComparisonType),
                             Expression = ParseScalarExpression(oexpr.Expression),
-                            SubqueryComparisonType = oexpr.SubqueryComparisonPredicateType,
+                            SubqueryComparisonType = ParseSubqueryComparisonPredicateType(oexpr.SubqueryComparisonPredicateType),
                         };
 
                         return pexpr;
@@ -1647,7 +2048,7 @@ namespace GraphView
             {
                 FirstTokenIndex = name.FirstTokenIndex,
                 LastTokenIndex = name.LastTokenIndex,
-                Identifiers = name.Identifiers,
+                Identifiers = new List<Identifier>(name.Identifiers.Select(e => ParseIdentifier(e)))
             };
             if (name.Identifiers != null)
             {
@@ -1660,7 +2061,7 @@ namespace GraphView
                         throw new SyntaxErrorException(token.Line, identifier.Value,
                             "System restricted Name cannot be used");
                     }
-                    wMultiPartIdentifier.Identifiers.Add(identifier);
+                    wMultiPartIdentifier.Identifiers.Add(ParseIdentifier(identifier));
                 }
             }
             return wMultiPartIdentifier;
@@ -1686,7 +2087,7 @@ namespace GraphView
                         throw new SyntaxErrorException(token.Line, identifier.Value,
                             "System restricted Name cannot be used");
                     }
-                    wSchemaObjectName.Identifiers.Add(identifier);
+                    wSchemaObjectName.Identifiers.Add(ParseIdentifier(identifier));
                 }
             }
             return wSchemaObjectName;
@@ -1727,7 +2128,7 @@ namespace GraphView
             {
                 FirstTokenIndex = value.FirstTokenIndex,
                 LastTokenIndex = value.LastTokenIndex,
-                Identifier = value.Identifier,
+                Identifier = ParseIdentifier(value.Identifier),
                 ValueExpression = ParseScalarExpression(value.ValueExpression) as WValueExpression
             };
         }
