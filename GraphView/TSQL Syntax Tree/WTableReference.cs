@@ -399,6 +399,11 @@ namespace GraphView
 
     }
 
+    public partial class WBoundInForwardEdgeTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference
     {
 
