@@ -37,7 +37,6 @@ namespace GremlinTranslationOperator.Tests
 
             GraphTraversal2 graph = new GraphTraversal2(connection);
             string traversalStr = "graph.g().V().In().Out()";
-            var result = 
         }
 
 
