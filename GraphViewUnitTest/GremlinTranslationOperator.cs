@@ -29,6 +29,19 @@ namespace GremlinTranslationOperator.Tests
         }
 
         [TestMethod]
+        public void ExecutingGraphTraversalString()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                        "GroupMatch", "Modern");
+
+            GraphTraversal2 graph = new GraphTraversal2(connection);
+            string traversalStr = "graph.g().V().In().Out()";
+            var result = 
+        }
+
+
+        [TestMethod]
         public void TestModernGraph()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -37,6 +50,7 @@ namespace GremlinTranslationOperator.Tests
             //connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
+
             graph.g().AddV("person").Property("age", "27").Property("name", "vadas").Next();
             graph.g().AddV("person").Property("age", "29").Property("name", "marko").Next();
             graph.g().AddV("person").Property("age", "35").Property("name", "peter").Next();
@@ -59,52 +73,6 @@ namespace GremlinTranslationOperator.Tests
             // v("ripple")
             //graph.g().V().Out().next();
 
-        }
-
-        [TestMethod]
-        public void TestEval()
-        {
-            string csCode = "graph.g().V().In().Out();";
-            object result = Eval(csCode);
-
-        }
-
-        public static object Eval(string sCSCode)
-        {
-            CompilerParameters cp = new CompilerParameters();
-            cp.ReferencedAssemblies.Add("GraphView.dll");
-            cp.ReferencedAssemblies.Add("System.dll");
-            cp.GenerateInMemory = true;
-
-            StringBuilder sb = new StringBuilder("");
-            sb.Append("using GraphView;\n");
-            sb.Append("using System;\n");
-
-            sb.Append("namespace GraphView { \n");
-            sb.Append("public class Program { \n");
-            sb.Append("public object Main() {\n");
-            sb.Append("GraphViewConnection connection = new GraphViewConnection(\"https://graphview.documents.azure.com:443/\",\"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==\",\"GroupMatch\", \"Modern\");");
-            sb.Append("GraphViewCommand graph = new GraphViewCommand(connection);\n");
-            sb.Append("return " + sCSCode + ";\n");
-            sb.Append("}\n");
-            sb.Append("}\n");
-            sb.Append("}\n");
-
-            CSharpCodeProvider c = new CSharpCodeProvider();
-            ICodeCompiler icc = c.CreateCompiler();
-            CompilerResults cr = icc.CompileAssemblyFromSource(cp, sb.ToString());
-            if (cr.Errors.Count > 0)
-            {
-                throw new Exception("ERROR: " + cr.Errors[0].ErrorText + "Error evaluating cs code");
-            }
-
-            System.Reflection.Assembly a = cr.CompiledAssembly;
-            object o = a.CreateInstance("GraphView.Program");
-
-            Type t = o.GetType();
-            MethodInfo mi = t.GetMethod("Main");
-
-            return mi.Invoke(o, null);
         }
 
         [TestMethod]

@@ -1,9 +1,12 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.CSharp;
 
 namespace GraphView
 {
@@ -931,6 +934,69 @@ namespace GraphView
             //TODO
             var str = LastGremlinTranslationOp.ToSqlScript().ToString();
             return new List<object>() {1};
+        }
+
+        public object EvalGremlinTraversal(string sCSCode)
+        {
+            return EvalGraphTraversal(ConvertGremlinToGraphTraversalCode(sCSCode));    
+        }
+
+        public string ConvertGremlinToGraphTraversalCode(string sCSCode)
+        {
+            return sCSCode;
+        }
+
+        public object EvalGraphTraversal(string sCSCode)
+        {
+            CompilerParameters cp = new CompilerParameters();
+            cp.ReferencedAssemblies.Add("GraphView.dll");
+            cp.ReferencedAssemblies.Add("System.dll");
+            cp.GenerateInMemory = true;
+
+            StringBuilder sb = new StringBuilder("");
+            sb.Append("using GraphView;\n");
+            sb.Append("using System;\n");
+
+            sb.Append("namespace GraphView { \n");
+            sb.Append("public class Program { \n");
+            sb.Append("public object Main() {\n");
+            sb.Append("GraphViewConnection connection = new GraphViewConnection("+ getConnectionInfo() +");");
+            sb.Append("GraphViewCommand graph = new GraphViewCommand(connection);\n");
+            sb.Append("return " + sCSCode + ";\n");
+            sb.Append("}\n");
+            sb.Append("}\n");
+            sb.Append("}\n");
+
+            CSharpCodeProvider c = new CSharpCodeProvider();
+            ICodeCompiler icc = c.CreateCompiler();
+            CompilerResults cr = icc.CompileAssemblyFromSource(cp, sb.ToString());
+            if (cr.Errors.Count > 0)
+            {
+                throw new Exception("ERROR: " + cr.Errors[0].ErrorText + "Error evaluating cs code");
+            }
+
+            System.Reflection.Assembly a = cr.CompiledAssembly;
+            object o = a.CreateInstance("GraphView.Program");
+
+            Type t = o.GetType();
+            MethodInfo mi = t.GetMethod("Main");
+
+            return mi.Invoke(o, null);
+        }
+
+        private string addDoubleQuotes(string str)
+        {
+            return "\"" + str + "\"";
+        }
+
+        private string getConnectionInfo()
+        {
+            List<string> connectionList = new List<string>();
+            connectionList.Add(addDoubleQuotes(Connection.DocDB_Url));
+            connectionList.Add(addDoubleQuotes(Connection.DocDB_PrimaryKey));
+            connectionList.Add(addDoubleQuotes(Connection.DocDB_DatabaseId));
+            connectionList.Add(addDoubleQuotes(Connection.DocDB_CollectionId));
+            return string.Join(",", connectionList);
         }
     }
 }
