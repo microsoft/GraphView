@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddVVariable: GremlinTableVariable
+    internal class GremlinAddVVariable: GremlinVertexTableVariable
     {
         public Dictionary<string, object> Properties { get; set; }
         public string VertexLabel { get; set; }

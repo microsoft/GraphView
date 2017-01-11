@@ -32,11 +32,14 @@ namespace GremlinTranslationOperator.Tests
         public void ExecutingGraphTraversalString()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                        "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                        "GroupMatch", "Modern");
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "Modern");
 
+            
             GraphTraversal2 graph = new GraphTraversal2(connection);
             string traversalStr = "graph.g().V().In().Out()";
+
+            var result = graph.EvalGraphTraversal(traversalStr);
         }
 
 
@@ -63,14 +66,6 @@ namespace GremlinTranslationOperator.Tests
             graph.g().V().Has("name", "peter").AddE("created").To(graph.g().V().Has("name", "lop")).Next();
             graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "lop")).Next();
             graph.g().V().Has("name", "josh").AddE("created").To(graph.g().V().Has("name", "ripple")).Next();
-
-            // v("lop")
-            // v("lop")
-            // v("lop")
-            // v("vadas")
-            // v("josh")
-            // v("ripple")
-            //graph.g().V().Out().next();
 
         }
 
@@ -213,12 +208,12 @@ namespace GremlinTranslationOperator.Tests
                 .By(GraphTraversal2.__().Out("mdl").Project("vertex").By(GraphTraversal2.__().Tree())).Next();
 
 
-            //GraphTraversal2.g().V()
+            //graph.g().V()
             //    .has("_app", "test-app")
             //    .has("_id", "product:soda-machine:shop-2")
             //    .hasLabel("product")
             //    .flatMap(GraphTraversal2.__().As("src")
-            //        .flatMap(GraphTraversal2.g().V()
+            //        .flatMap(graph.g().V()
             //            .has("_app", "test-app")
             //            .has("_id", "device:soda-mixer:shop-1")
             //            .hasLabel("device"))

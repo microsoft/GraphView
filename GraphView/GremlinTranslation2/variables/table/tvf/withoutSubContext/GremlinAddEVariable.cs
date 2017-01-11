@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddEVariable: GremlinTableVariable
+    internal class GremlinAddEVariable: GremlinEdgeTableVariable
     {
         public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
@@ -19,6 +19,7 @@ namespace GraphView
             Properties = new Dictionary<string, object>();
             EdgeLabel = edgeLabel;
             InputVariable = inputVariable;
+            EdgeType = WEdgeType.OutEdge;
         }
 
         public override WTableReference ToTableReference()
