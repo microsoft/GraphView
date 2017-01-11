@@ -1652,15 +1652,15 @@ namespace GraphView
     internal class RangeOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator _inputOp;
-        private int _startCount;
-        private int _endCount;
+        private int _lowEnd;
+        private int _highEnd;
         private int _count;
 
-        internal RangeOperator(GraphViewExecutionOperator pInputOperator, int pStartCount, int pEndCount)
+        internal RangeOperator(GraphViewExecutionOperator pInputOperator, int pLowEnd, int pHighEnd)
         {
             _inputOp = pInputOperator;
-            _startCount = pStartCount;
-            _endCount = pEndCount;
+            _lowEnd = pLowEnd;
+            _highEnd = pHighEnd;
             _count = 0;
             this.Open();
         }
@@ -1671,15 +1671,10 @@ namespace GraphView
 
             while (_inputOp.State() && (srcRecord = _inputOp.Next()) != null)
             {
-                if (_count < _startCount)
+                if (_count < _lowEnd || (_highEnd != -1 && _count >= _highEnd))
                 {
                     _count++;
                     continue;
-                }
-                if (_endCount != -1 && _count >= _endCount)
-                {
-                    _count++;
-                    break;
                 }
                     
                 _count++;

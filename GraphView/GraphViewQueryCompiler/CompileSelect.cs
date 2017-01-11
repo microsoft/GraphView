@@ -2519,8 +2519,8 @@ namespace GraphView
             Split(out contextSelect, out repeatSelect);
 
             List<int> inputIndexes = new List<int>();
-            QueryCompilationContext rContext = new QueryCompilationContext(context);
-            rContext.ClearField();
+            QueryCompilationContext rTableContext = new QueryCompilationContext(context);
+            rTableContext.ClearField();
 
             List<WColumnReferenceExpression> columnList = new List<WColumnReferenceExpression>();
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
@@ -2531,69 +2531,42 @@ namespace GraphView
                     throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be select scalar elements.");
                 }
 
-                string rColumnName = selectScalar.ColumnName;
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
                 if (columnRef == null)
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be column references.");
                 }
-                if (rColumnName == null) rColumnName = columnRef.ColumnName;
 
                 int index;
                 if (!context.TryLocateColumnReference(columnRef, out index))
                     index = -1;
                 inputIndexes.Add(index);
-                rContext.AddField("R", rColumnName, columnRef.ColumnGraphType);
+
+                string rColumnName = selectScalar.ColumnName ?? columnRef.ColumnName;
+                rTableContext.AddField("R", rColumnName, columnRef.ColumnGraphType);
+
                 columnList.Add(new WColumnReferenceExpression(Alias.Value, rColumnName, columnRef.ColumnGraphType));
             }
 
-            //WScalarSubquery repeatOutput = Parameters[2] as WScalarSubquery;
-            //if (repeatOutput == null)
-            //    throw new SyntaxErrorException("The third parameter of a repeat table reference must be a scalar subquery.");
-
-            //WSelectQueryBlock repeatOutputSelect = repeatOutput.SubQueryExpr as WSelectQueryBlock; ;
-            //if (repeatOutputSelect == null)
-            //    throw new SyntaxErrorException("The third parameter of a repeat table reference must be a select query block.");
-
-
-            //foreach (WSelectElement selectElement in repeatOutputSelect.SelectElements)
-            //{
-            //    repeatSelect.SelectElements.Add(selectElement);
-
-            //    WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-            //    if (selectScalar == null)
-            //    {
-            //        throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be select scalar elements.");
-            //    }
-            //    WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-            //    if (columnRef == null)
-            //    {
-            //        throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be column references.");
-            //    }
-
-            //    columnList.Add(columnRef);
-            //}
-
-            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rContext, dbConnection);
+            GraphViewExecutionOperator innerOp = repeatSelect.Compile(rTableContext, dbConnection);
 
             WRepeatConditionExpression repeatCondition = Parameters[1] as WRepeatConditionExpression;
             if (repeatCondition == null)
                 throw new SyntaxErrorException("The second parameter of a repeat table reference must be WRepeatConditionExpression");
 
             int repeatTimes = repeatCondition.RepeatTimes;
-            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToFunction(rContext, dbConnection);
+            BooleanFunction terminationCondition = repeatCondition.TerminationCondition?.CompileToFunction(rTableContext, dbConnection);
             bool startFromContext = repeatCondition.StartFromContext;
-            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToFunction(rContext, dbConnection);
+            BooleanFunction emitCondition = repeatCondition.EmitCondition?.CompileToFunction(rTableContext, dbConnection);
             bool emitContext = repeatCondition.EmitContext;
-
 
             RepeatOperator repeatOp;
             if (repeatTimes == -1)
                 repeatOp = new RepeatOperator(context.CurrentExecutionOperator, inputIndexes, innerOp,
-                    rContext.OuterContextOp, terminationCondition, startFromContext, emitCondition, emitContext);
+                    rTableContext.OuterContextOp, terminationCondition, startFromContext, emitCondition, emitContext);
             else
                 repeatOp = new RepeatOperator(context.CurrentExecutionOperator, inputIndexes, innerOp,
-                    rContext.OuterContextOp, repeatTimes, emitCondition, emitContext);
+                    rTableContext.OuterContextOp, repeatTimes, emitCondition, emitContext);
 
             context.CurrentExecutionOperator = repeatOp;
 
