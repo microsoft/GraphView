@@ -21,7 +21,6 @@ namespace GraphView
                 Populate("_source");
                 GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, "_source");
                 GremlinVariableProperty sinkProperty = new GremlinVariableProperty(this, "_sink");
-                currentContext.VariableProperties.Add(sinkProperty);
                 GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
                 currentContext.VariableList.Add(bothVertex);
                 currentContext.TableReferences.Add(bothVertex);
@@ -48,7 +47,6 @@ namespace GraphView
                 Populate("_sink");
 
                 GremlinVariableProperty sinkProperty = new GremlinVariableProperty(this, "_sink");
-                currentContext.VariableProperties.Add(sinkProperty);
                 GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sinkProperty);
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);
@@ -84,7 +82,6 @@ namespace GraphView
                 Populate("_source");
 
                 GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, "_source");
-                currentContext.VariableProperties.Add(sourceProperty);
                 GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sourceProperty);
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);
@@ -117,7 +114,6 @@ namespace GraphView
                 Populate("_other");
 
                 GremlinVariableProperty otherProperty = new GremlinVariableProperty(this, "_other");
-                currentContext.VariableProperties.Add(otherProperty);
                 GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(otherProperty);
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);

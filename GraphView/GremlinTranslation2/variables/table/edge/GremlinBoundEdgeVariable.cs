@@ -42,7 +42,7 @@ namespace GraphView
                         secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, this, VariableName);
                         break;
                     case WEdgeType.OutEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, this, VariableName);
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys,this,  VariableName);
                         break;
                 }
             }

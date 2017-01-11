@@ -171,7 +171,6 @@
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinRepeatVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinSideEffectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinUnionVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\special\GremlinVariableReference.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinBinaryVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinContextTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\derived\GremlinInjectVariable.cs" />

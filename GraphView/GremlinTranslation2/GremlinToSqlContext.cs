@@ -15,23 +15,16 @@ namespace GraphView
         internal List<GremlinMatchPath> PathList { get; set; }
         internal List<GremlinMatchPath> MatchList { get; set; }
         internal List<GremlinTableVariable> TableReferences { get; private set; }
-        //public List<ISqlScalar> ProjectedVariables { get; private set; }
-        internal List<ISqlStatement> SetVariables { get; private set; }
         internal GremlinGroupVariable GroupVariable { get; set; }
         internal WBooleanExpression Predicates { get; private set; }
-        internal List<GremlinVariableProperty> VariableProperties { get; set; }
 
         internal GremlinToSqlContext()
         {
             TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();
             TableReferences = new List<GremlinTableVariable>();
-            SetVariables = new List<ISqlStatement>();
-            //ProjectedVariables = new List<ISqlScalar>();
             VariableList = new List<GremlinVariable>();
             PathList = new List<GremlinMatchPath>();
             MatchList = new List<GremlinMatchPath>();
-
-            VariableProperties = new List<GremlinVariableProperty>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -42,12 +35,10 @@ namespace GraphView
                 TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>(TaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<GremlinTableVariable>(this.TableReferences),
-                //SetVariables = new List<ISqlStatement>(this.SetVariables), //Don't Duplicate for avoiding redundant set-sqlstatment
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
                 PathList = new List<GremlinMatchPath>(this.PathList),
                 MatchList = new List<GremlinMatchPath>(this.MatchList),
                 Predicates = this.Predicates,
-                VariableProperties = new List<GremlinVariableProperty>(this.VariableProperties)
             };
         }
 
@@ -61,7 +52,6 @@ namespace GraphView
             TableReferences.Clear();
             PathList.Clear();
             MatchList.Clear();
-            VariableProperties.Clear();
             // More resetting goes here when more properties are added to GremlinToSqlContext
         }
 
@@ -110,11 +100,6 @@ namespace GraphView
             return PathList.Find(p => p.EdgeVariable.VariableName == edge.VariableName);
         }
 
-        internal GremlinMatchPath GetPathFromMatchList(GremlinTableVariable edge)
-        {
-            return MatchList.Find(p => p.EdgeVariable.VariableName == edge.VariableName);
-        }
-
         internal void AddPredicate(WBooleanExpression newPredicate)
         {
             Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
@@ -134,6 +119,7 @@ namespace GraphView
             AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
+        //TODO: refactor
         internal GremlinTableVariable GetSourceVertex(GremlinVariable edge)
         {
             var existPath = PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName);
@@ -151,6 +137,7 @@ namespace GraphView
             return null;
         }
 
+        //TODO: refactor
         internal GremlinTableVariable GetSinkVertex(GremlinVariable edge)
         {
             var existPath = PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName);
@@ -172,6 +159,7 @@ namespace GraphView
             return null;
         }
 
+        //TODO: refactor
         internal GremlinVariableProperty GetSourceVariableProperty(GremlinVariable edge)
         {
             if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
@@ -214,10 +202,7 @@ namespace GraphView
 
         internal WSqlScript ToSqlScript()
         {
-            return new WSqlScript()
-            {
-                Batches = GetBatchList()
-            };
+            return new WSqlScript() { Batches = GetBatchList() };
         }
 
         internal List<WSqlBatch> GetBatchList()
@@ -231,22 +216,9 @@ namespace GraphView
             };
         }
 
-        internal List<WSqlStatement> GetSetVariableStatements()
-        {
-            List<WSqlStatement> statementList = new List<WSqlStatement>();
-            foreach (var variable in SetVariables)
-            {
-                statementList.AddRange(variable.ToSetVariableStatements());
-            }
-            return statementList;
-        }
-
         internal List<WSqlStatement> GetStatements()
         {
-            List<WSqlStatement> statementList = new List<WSqlStatement>();
-            statementList.AddRange(GetSetVariableStatements());
-            statementList.Add(ToSelectQueryBlock());
-            return statementList;
+            return new List<WSqlStatement>() { ToSelectQueryBlock() };
         }
 
         internal WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)
@@ -298,22 +270,13 @@ namespace GraphView
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    var valueExpr = SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
+                    var columnRefExpr = SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(columnRefExpr));
                 }
             }
             else
             {
-                //if (PivotVariable is GremlinAddEVariable)
-                //{
-                //    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sourceId")));
-                //    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "sinkId")));
-                //    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, "edgeOffset")));
-                //}
-                //else 
-                //{
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
-                //}
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
             }
             return selectElements;
         }

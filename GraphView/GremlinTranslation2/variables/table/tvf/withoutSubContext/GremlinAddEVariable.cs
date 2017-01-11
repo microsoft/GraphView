@@ -6,74 +6,13 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddEVariable: GremlinEdgeTableVariable
+    internal class GremlinAddEVariable: GremlinTableVariable
     {
         public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
         public GremlinToSqlContext ToVertexContext { get; set; }
         public Dictionary<string, object> Properties { get; set; }
         public string EdgeLabel { get; set; }
-
-        //public override List<WSqlStatement> ToSetVariableStatements()
-        //{
-        //    List<WSqlStatement> statementList = new List<WSqlStatement>();
-
-        //    var columnK = new List<WColumnReferenceExpression>();
-        //    var selectBlock = new WSelectQueryBlock()
-        //    {
-        //        FromClause = new WFromClause()
-        //    };
-
-        //    selectBlock.FromClause.TableReferences.Add(FromVariable.ToTableReference());
-        //    selectBlock.FromClause.TableReferences.Add(ToVariable.ToTableReference());
-
-        //    var fromVarExpr = SqlUtil.GetColumnReferenceExpr(FromVariable.VariableName, "id");
-        //    selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(fromVarExpr));
-
-        //    var toVarExpr = SqlUtil.GetColumnReferenceExpr(ToVariable.VariableName, "id");
-        //    selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(toVarExpr));
-
-
-        //    //Add edge key-value
-        //    WScalarExpression valueExpr;
-        //    if (EdgeLabel != null)
-        //    {
-        //        columnK.Add(SqlUtil.GetColumnReferenceExpr("label"));
-        //        valueExpr = SqlUtil.GetValueExpr(EdgeLabel);
-        //        selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
-
-        //    }
-        //    foreach (var property in Properties)
-        //    {
-        //        columnK.Add(SqlUtil.GetColumnReferenceExpr(property.Key));
-        //        valueExpr = SqlUtil.GetValueExpr(property.Value.ToString());
-        //        selectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(valueExpr));
-        //    }
-
-        //    var insertStatement = new WInsertSpecification()
-        //    {
-        //        Columns = columnK,
-        //        InsertSource = new WSelectInsertSource() { Select = selectBlock },
-        //        Target = SqlUtil.GetNamedTableReference("Edge")
-        //    };
-
-        //    var addEStatement = new WInsertEdgeSpecification(insertStatement)
-        //    {
-        //        SelectInsertSource = new WSelectInsertSource() { Select = selectBlock }
-        //    };
-
-        //    var setStatement = new WSetVariableStatement()
-        //    {
-        //        Expression = new WScalarSubquery()
-        //        {
-        //            SubQueryExpr = addEStatement
-        //        },
-        //        Variable = SqlUtil.GetVariableReference(VariableName)
-        //    };
-
-        //    statementList.Add(setStatement);
-        //    return statementList;
-        //}
 
         public GremlinAddEVariable(GremlinVariable inputVariable, string edgeLabel)
         {

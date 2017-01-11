@@ -543,6 +543,7 @@ namespace GraphView
         //internal virtual void Profile()
         //internal virtual void Profile(string sideEffectKey)
         //internal virtual void Program(VertexProgram<?> vertexProgram)
+
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys)
         {
             GremlinProjectVariable newVariable = new GremlinProjectVariable(currentContext.Duplicate(), projectKeys);
