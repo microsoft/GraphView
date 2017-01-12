@@ -1435,6 +1435,29 @@ namespace GraphView
 
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
+            bool hasAggregation = false;
+            int aggregateCount = 0;
+
+            foreach (var selectScalar in selectScalarExprList)
+            {
+                if (selectScalar.SelectExpr is WFunctionCall)
+                {
+                    WFunctionCall fcall = selectScalar.SelectExpr as WFunctionCall;
+                    switch(fcall.FunctionName)
+                    {
+
+                    }
+                } 
+            }
+
+            if (!hasAggregation)
+            {
+            }
+            else
+            {
+
+            }
+
             if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression || e.SelectExpr is WValueExpression))
             {
                 foreach (var expr in selectScalarExprList)
