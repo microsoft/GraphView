@@ -1,7 +1,6 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphViewUnitTest
 {

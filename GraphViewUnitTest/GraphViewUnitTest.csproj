@@ -73,17 +73,13 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="DocDBInsertPerfTest.cs" />
     <Compile Include="DocDBQueryPerfTest.cs" />
     <Compile Include="GraphviewGremlinParserTest.cs" />
     <Compile Include="GraphViewMarvelTest.cs" />
     <Compile Include="GraphVIewIoTTest.cs" />
     <Compile Include="GremlinTranslationOperator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="DocDbInsertDeleteTest.cs" />
     <Compile Include="GraphViewMarvelTest2.cs" />
-    <Compile Include="DocDbSelectTest.cs" />
-    <Compile Include="DocDbPerformanceTest.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
     <Compile Include="IoTTest.cs" />
     <Compile Include="Utils.cs" />

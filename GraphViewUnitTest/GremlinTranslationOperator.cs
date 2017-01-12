@@ -2,7 +2,6 @@
 using GraphView;
 using System;
 using System.Collections.Generic;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.IO;
 using System.Text;
 using System.CodeDom.Compiler;
@@ -14,20 +13,6 @@ namespace GremlinTranslationOperator.Tests
     [TestClass()]
     public class GremlinTranslationOperator
     {
-        [TestMethod]
-        public void test()
-        {
-            const string q2 = @"select null as number from n_0";
-
-            var sr = new StringReader(q2);
-            var parser = new GraphViewParser();
-            IList<ParseError> errors;
-            var script = parser.Parse(sr, out errors) as WSqlScript;
-
-            if (errors.Count > 0)
-                throw new SyntaxErrorException(errors);
-        }
-
         [TestMethod]
         public void ExecutingGraphTraversalString()
         {
