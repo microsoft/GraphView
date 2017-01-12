@@ -2648,19 +2648,21 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var pathFieldList = new List<int>();
+            //<field index, whether this field is a path list needed to be unfolded>
+            var pathFieldList = new List<Tuple<int, bool>>();
 
             foreach (var expression in Parameters)
             {
                 var columnReference = expression as WColumnReferenceExpression;
                 if (columnReference == null) throw new SyntaxErrorException("Parameters in Path function can only be WColumnReference");
 
-                pathFieldList.Add(context.LocateColumnReference(columnReference));
+                pathFieldList.Add(new Tuple<int, bool>(context.LocateColumnReference(columnReference),
+                    columnReference.ColumnName.Equals("_path")));
             }
 
             var pathOp = new PathOperator(context.CurrentExecutionOperator, pathFieldList);
             context.CurrentExecutionOperator = pathOp;
-            context.AddField(Alias.Value, "_path", ColumnGraphType.Value);
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
             return pathOp;
         }
