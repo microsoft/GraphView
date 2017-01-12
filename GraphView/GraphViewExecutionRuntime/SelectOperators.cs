@@ -1746,4 +1746,58 @@ namespace GraphView
             Open();
         }
     }
+
+    internal class InjectOperator : GraphViewExecutionOperator
+    {
+        GraphViewExecutionOperator inputOp;
+
+        // The number of columns returned by each subquery equals to inputIndexes.Count
+        List<GraphViewExecutionOperator> subqueries;
+        int subqueryProgress;
+       
+        public InjectOperator(
+            List<GraphViewExecutionOperator> subqueries, 
+            GraphViewExecutionOperator inputOp)
+        {
+            this.subqueries = subqueries;
+            this.inputOp = inputOp;
+            subqueryProgress = 0;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord r = null;
+
+            while (subqueryProgress < subqueries.Count)
+            {
+                r = subqueries[subqueryProgress].Next();
+                if (r != null)
+                {
+                    return r;
+                }
+
+                subqueryProgress++;
+            }
+
+            r = inputOp.State() ? inputOp.Next() : null;
+
+            if (r == null)
+            {
+                Close();
+            }
+
+            return r;
+        }
+
+        public override void ResetState()
+        {
+            foreach (GraphViewExecutionOperator subqueryOp in subqueries)
+            {
+                subqueryOp.ResetState();
+            }
+
+            subqueryProgress = 0;
+            Open();
+        }
+    }
 }
