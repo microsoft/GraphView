@@ -1428,10 +1428,6 @@ namespace GraphView
                 operatorChain.Add(orderByOp);
             }
 
-            var projectOperator =
-                new ProjectOperator(operatorChain.Any()
-                    ? operatorChain.Last()
-                    : (context.OuterContextOp ?? new ConstantSourceOperator(new RawRecord())));
 
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
@@ -1456,6 +1452,11 @@ namespace GraphView
 
             if (aggregateCount == 0)
             {
+                var projectOperator =
+                    new ProjectOperator(operatorChain.Any()
+                        ? operatorChain.Last()
+                        : (context.OuterContextOp ?? new ConstantSourceOperator(new RawRecord())));
+
                 foreach (var expr in selectScalarExprList)
                 {
                     var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
@@ -1482,24 +1483,36 @@ namespace GraphView
                         columnReference = new WColumnReferenceExpression("", alias);
                     context.RawRecordLayout.Add(columnReference, i++);
                 }
+
+                operatorChain.Add(projectOperator);
+                context.CurrentExecutionOperator = projectOperator;
             }
             else
             {
+                ProjectAggregation projectAggregationOp = new ProjectAggregation(operatorChain.Last());
+
                 foreach (var selectScalar in selectScalarExprList)
                 {
                     WFunctionCall fcall = selectScalar.SelectExpr as WFunctionCall;
+
                     switch (fcall.FunctionName.Value.ToUpper())
                     {
                         case "COUNT":
+                            projectAggregationOp.AddAggregateSpec(new CountFunction(), new List<int>());
+                            break;
                         case "FOLD":
+                            var foldedField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            var foldedFieldIndex = context.LocateColumnReference(foldedField);
+                            projectAggregationOp.AddAggregateSpec(new FoldFunction(), new List<int>(foldedFieldIndex));
+                            break;
                         default:
                             break;
                     }
                 }
-            }
 
-            operatorChain.Add(projectOperator);
-            context.CurrentExecutionOperator = projectOperator;
+                operatorChain.Add(projectAggregationOp);
+                context.CurrentExecutionOperator = projectAggregationOp;
+            }
 
             return operatorChain.Last();
         }
