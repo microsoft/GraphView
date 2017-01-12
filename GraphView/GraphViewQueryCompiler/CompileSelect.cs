@@ -1435,7 +1435,6 @@ namespace GraphView
 
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
-            bool hasAggregation = false;
             int aggregateCount = 0;
 
             foreach (var selectScalar in selectScalarExprList)
@@ -1443,14 +1442,19 @@ namespace GraphView
                 if (selectScalar.SelectExpr is WFunctionCall)
                 {
                     WFunctionCall fcall = selectScalar.SelectExpr as WFunctionCall;
-                    switch(fcall.FunctionName)
+                    switch(fcall.FunctionName.Value.ToUpper())
                     {
-
+                        case "COUNT":
+                        case "FOLD":
+                            aggregateCount++;
+                            break;
+                        default:
+                            break;
                     }
                 } 
             }
 
-            if (!hasAggregation)
+            if (aggregateCount == 0)
             {
             }
             else
