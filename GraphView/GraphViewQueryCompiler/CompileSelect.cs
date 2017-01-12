@@ -1442,6 +1442,7 @@ namespace GraphView
                     {
                         case "COUNT":
                         case "FOLD":
+                        case "TREE":
                             aggregateCount++;
                             break;
                         default:
@@ -1505,6 +1506,11 @@ namespace GraphView
                             var foldedField = fcall.Parameters[0] as WColumnReferenceExpression;
                             var foldedFieldIndex = context.LocateColumnReference(foldedField);
                             projectAggregationOp.AddAggregateSpec(new FoldFunction(), new List<int>(foldedFieldIndex));
+                            break;
+                        case "TREE":
+                            var pathField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            var pathFieldIndex = context.LocateColumnReference(pathField);
+                            projectAggregationOp.AddAggregateSpec(new TreeFunction(), new List<int>(pathFieldIndex));
                             break;
                         default:
                             break;
