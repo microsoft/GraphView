@@ -2628,5 +2628,20 @@ namespace GraphView
             return repeatOp;
         }
     }
+
+    partial class WUnfoldTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var unfoldTargetColumn = Parameters[0] as WColumnReferenceExpression;
+            var unfoldTargetColumnIndex = context.LocateColumnReference(unfoldTargetColumn);
+
+            var unfoldOp = new UnfoldOperator(context.CurrentExecutionOperator, unfoldTargetColumnIndex);
+            context.CurrentExecutionOperator = unfoldOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return unfoldOp;
+        }
+    }
 }
 
