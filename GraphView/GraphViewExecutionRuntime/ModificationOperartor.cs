@@ -141,13 +141,13 @@ namespace GraphView
                 RawRecord rec = SelectInput.Next();
                 if (rec == null) break;
                 List<string> header = (SelectInput as OutputOperator).SelectedElement;
-                string sourceid = rec.RetriveData(header, source);
-                string sinkid = rec.RetriveData(header, sink);
+                string sourceid = rec.RetriveData(header, source).ToString();
+                string sinkid = rec.RetriveData(header, sink).ToString();
                 string sourceDoc = source.Substring(0,source.Length-3) + ".doc";
                 string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
 
-                string sourceJsonStr = rec.RetriveData(header, sourceDoc);
-                string sinkJsonStr = rec.RetriveData(header, sinkDoc);
+                string sourceJsonStr = rec.RetriveData(header, sourceDoc).ToString();
+                string sinkJsonStr = rec.RetriveData(header, sinkDoc).ToString();
                 
                 int edgeId = InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
 
@@ -155,9 +155,9 @@ namespace GraphView
                 {
                     fieldValues =
                     {
-                        [0] = sourceid,
-                        [1] = sinkid,
-                        [2] = edgeId.ToString()
+                        [0] = new StringField(sourceid),
+                        [1] = new StringField(sinkid),
+                        [2] = new StringField(edgeId.ToString())
                     }
                 };
 
@@ -230,13 +230,13 @@ namespace GraphView
                     if (x == null || y == null) break;
                     List<string> headerx = (SrcSelectInput as OutputOperator).SelectedElement;
                     List<string> headery = (DestSelectInput as OutputOperator).SelectedElement;
-                    string sourceid = x.RetriveData(headerx, source);
-                    string sinkid = y.RetriveData(headery, sink);
+                    string sourceid = x.RetriveData(headerx, source).ToString();
+                    string sinkid = y.RetriveData(headery, sink).ToString();
                     string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
                     string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
 
-                    string sourceJsonStr = x.RetriveData(headerx, sourceDoc);
-                    string sinkJsonStr = y.RetriveData(headery, sinkDoc);
+                    string sourceJsonStr = x.RetriveData(headerx, sourceDoc).ToString();
+                    string sinkJsonStr = y.RetriveData(headery, sinkDoc).ToString();
 
                     int edgeId = InsertEdgeInMap(sourceid, sinkid, sourceJsonStr, sinkJsonStr);
 
@@ -244,9 +244,9 @@ namespace GraphView
                     {
                         fieldValues =
                         {
-                            [0] = sourceid,
-                            [1] = sinkid,
-                            [2] = edgeId.ToString()
+                            [0] = new StringField(sourceid),
+                            [1] = new StringField(sinkid),
+                            [2] = new StringField(edgeId.ToString())
                         }
                     };
                     OutputBuffer.Enqueue(record);
@@ -305,17 +305,17 @@ namespace GraphView
                 RawRecord rec = edgeInput.Next();
                 if (rec == null) break;
                 List<string> header = (edgeInput as OutputOperator).SelectedElement;
-                string sourceid = rec.RetriveData(header, source);
-                string sinkid = rec.RetriveData(header, sink);
+                string sourceid = rec.RetriveData(header, source).ToString();
+                string sinkid = rec.RetriveData(header, sink).ToString();
                 //The "e" in the Record is "Reverse_e" in fact
-                string EdgeReverseID = rec.RetriveData(header, edgeSourceId);
-                string EdgeID = rec.RetriveData(header, edgeSinkId);
+                string EdgeReverseID = rec.RetriveData(header, edgeSourceId).ToString();
+                string EdgeID = rec.RetriveData(header, edgeSinkId).ToString();
 
                 //get source.doc and sink.doc
                 string sourceDoc = source.Substring(0, source.Length - 3) + ".doc";
                 string sinkDoc = sink.Substring(0, source.Length - 3) + ".doc";
-                string sourceJsonStr = rec.RetriveData(header, sourceDoc);
-                string sinkJsonStr = rec.RetriveData(header, sinkDoc);
+                string sourceJsonStr = rec.RetriveData(header, sourceDoc).ToString();
+                string sinkJsonStr = rec.RetriveData(header, sinkDoc).ToString();
 
                 int ID, reverse_ID;
                 int.TryParse(EdgeID, out ID);
@@ -366,7 +366,7 @@ namespace GraphView
             Close();
             
             var result = new RawRecord(1);
-            result.fieldValues[0] = _createdDocument.Id;
+            result.fieldValues[0] = new StringField(_createdDocument.Id);
 
             return result;
         }

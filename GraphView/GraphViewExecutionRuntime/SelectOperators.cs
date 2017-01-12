@@ -136,7 +136,7 @@ namespace GraphView
                         break;
                     }
 
-                    inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex]));
+                    inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToString()));
                 }
 
                 // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
@@ -146,9 +146,9 @@ namespace GraphView
                 {
                     foreach (Tuple<RawRecord, string> pair in inputSequence)
                     {
-                        RawRecord resultRecord = new RawRecord { fieldValues = new List<string>() };
+                        RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
                         resultRecord.Append(pair.Item1);
-                        resultRecord.Append(pair.Item2);
+                        resultRecord.Append(new StringField(pair.Item2));
                         outputBuffer.Enqueue(resultRecord);
                     }
 
@@ -213,11 +213,11 @@ namespace GraphView
                     {
                         foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
                         {
-                            if (!sinkVertexCollection.ContainsKey(rec[0]))
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToString()))
                             {
-                                sinkVertexCollection.Add(rec[0], new List<RawRecord>());
+                                sinkVertexCollection.Add(rec[0].ToString(), new List<RawRecord>());
                             }
-                            sinkVertexCollection[rec[0]].Add(rec);
+                            sinkVertexCollection[rec[0].ToString()].Add(rec);
                         }
                     }
                 }
@@ -341,7 +341,7 @@ namespace GraphView
 
                     foreach (var adjacencyListSinkIndex in adjacencyListSinkIndexes)
                     {
-                        inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex]));
+                        inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToString()));
                     }
                 }
 
@@ -352,9 +352,9 @@ namespace GraphView
                 {
                     foreach (Tuple<RawRecord, string> pair in inputSequence)
                     {
-                        RawRecord resultRecord = new RawRecord { fieldValues = new List<string>() };
+                        RawRecord resultRecord = new RawRecord { fieldValues = new List<FieldObject>() };
                         resultRecord.Append(pair.Item1);
-                        resultRecord.Append(pair.Item2);
+                        resultRecord.Append(new StringField(pair.Item2));
                         outputBuffer.Enqueue(resultRecord);
                     }
 
@@ -419,11 +419,11 @@ namespace GraphView
                     {
                         foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
                         {
-                            if (!sinkVertexCollection.ContainsKey(rec[0]))
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToString()))
                             {
-                                sinkVertexCollection.Add(rec[0], new List<RawRecord>());
+                                sinkVertexCollection.Add(rec[0].ToString(), new List<RawRecord>());
                             }
-                            sinkVertexCollection[rec[0]].Add(rec);
+                            sinkVertexCollection[rec[0].ToString()].Add(rec);
                         }
                     }
                 }
@@ -590,7 +590,7 @@ namespace GraphView
 
             foreach (var adjIndex in AdjacencyListIndexes)
             {
-                string jsonArray = record[adjIndex];
+                string jsonArray = record[adjIndex].ToString();
                 // Parse the adj list in JSON array
                 var adj = JArray.Parse(jsonArray);
                 foreach (var edge in adj.Children<JObject>())
@@ -606,7 +606,7 @@ namespace GraphView
                             ? edge
                             : edge[projectedField];
 
-                        result.fieldValues[i] = fieldValue?.ToString();
+                        result.fieldValues[i] = fieldValue != null ? new StringField(fieldValue.ToString()) : null;
                     }
 
                     results.Add(result);
@@ -682,10 +682,10 @@ namespace GraphView
             var otherValue = edge["_sink"].ToString();
             var edgeIdValue = isReversedEdge ? edge["_reverse_ID"].ToString() : edge["_ID"].ToString();
 
-            record.fieldValues[0] = sourceValue;
-            record.fieldValues[1] = sinkValue;
-            record.fieldValues[2] = otherValue;
-            record.fieldValues[3] = edgeIdValue;
+            record.fieldValues[0] = new StringField(sourceValue);
+            record.fieldValues[1] = new StringField(sinkValue);
+            record.fieldValues[2] = new StringField(otherValue);
+            record.fieldValues[3] = new StringField(edgeIdValue);
         }
 
         private List<RawRecord> CrossApply(RawRecord record, bool isReversedEdge)
@@ -693,7 +693,7 @@ namespace GraphView
             List<RawRecord> results = new List<RawRecord>();
             int reservedMetaFieldCount = 4;
 
-            string jsonArray = record[AdjacencyListIndexes[isReversedEdge ? 1 : 0]];
+            string jsonArray = record[AdjacencyListIndexes[isReversedEdge ? 1 : 0]].ToString();
             // Parse the adj list in JSON array
             var adj = JArray.Parse(jsonArray);
             foreach (var edge in adj.Children<JObject>())
@@ -701,7 +701,7 @@ namespace GraphView
                 // Construct new record
                 var result = new RawRecord(ProjectedFields.Count);
 
-                FillMetaField(result, edge, record[_srcIdIndex], isReversedEdge);
+                FillMetaField(result, edge, record[_srcIdIndex].ToString(), isReversedEdge);
                 // Fill the field of selected edge's properties
                 for (var i = reservedMetaFieldCount; i < ProjectedFields.Count; i++)
                 {
@@ -710,7 +710,7 @@ namespace GraphView
                         ? edge
                         : edge[projectedField];
 
-                    result.fieldValues[i] = fieldValue?.ToString();
+                    result.fieldValues[i] = fieldValue != null ? new StringField(fieldValue.ToString()) : null;
                 }
 
                 results.Add(result);
@@ -833,10 +833,10 @@ namespace GraphView
                         var index = orderByElement.Item1;
                         var sortOrder = orderByElement.Item2;
                         if (sortOrder == SortOrder.Ascending || sortOrder == SortOrder.NotSpecified)
-                            ret = string.Compare(x[index], y[index],
+                            ret = string.Compare(x[index].ToString(), y[index].ToString(),
                                 StringComparison.OrdinalIgnoreCase);
                         else if (sortOrder == SortOrder.Descending)
-                            ret = string.Compare(y[index], x[index],
+                            ret = string.Compare(y[index].ToString(), x[index].ToString(),
                                 StringComparison.OrdinalIgnoreCase);
                         if (ret != 0) break;
                     }
@@ -863,9 +863,9 @@ namespace GraphView
     internal interface IAggregateFunction
     {
         void Init();
-        void Accumulate(params string[] values);
+        void Accumulate(params FieldObject[] values);
 
-        string Terminate();
+        FieldObject Terminate();
     }
 
     internal class ProjectOperator : GraphViewExecutionOperator
@@ -901,7 +901,7 @@ namespace GraphView
             foreach (var scalarFunction in selectScalarList)
             {
                 string result = scalarFunction.Evaluate(currentRecord);
-                selectRecord.fieldValues[index++] = result ?? "";
+                selectRecord.fieldValues[index++] = result != null ? new StringField(result) : new StringField("");
             }
 
             return selectRecord;
@@ -949,7 +949,7 @@ namespace GraphView
             {
                 foreach (var aggr in aggregationSpecs)
                 {
-                    string[] paraList = new string[aggr.Item2.Count];
+                    FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
                     for(int i = 0; i < aggr.Item2.Count; i++)
                     {
                         paraList[i] = inputRec[aggr.Item2[i]];
@@ -1194,7 +1194,7 @@ namespace GraphView
                 {
                     if (index < 0)
                     {
-                        r.Append((string)null);
+                        r.Append((FieldObject)null);
                     }
                     else
                     {
@@ -1458,10 +1458,10 @@ namespace GraphView
                     return null;
                 }
 
-                RawRecord initialRec = new RawRecord {fieldValues = new List<string>()};
+                RawRecord initialRec = new RawRecord {fieldValues = new List<FieldObject>()};
                 foreach (int fieldIndex in inputFieldIndexes)
                 {
-                    initialRec.Append(fieldIndex != -1 ? currentRecord[fieldIndex] : "");
+                    initialRec.Append(fieldIndex != -1 ? currentRecord[fieldIndex] : new StringField(""));
                 }
 
                 if (repeatTimes >= 0)
@@ -1614,14 +1614,14 @@ namespace GraphView
     internal class DeduplicateOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator _inputOp;
-        private HashSet<string> _fieldValueSet;
+        private HashSet<FieldObject> _fieldValueSet;
         private int _targetFieldIndex;
 
         internal DeduplicateOperator(GraphViewExecutionOperator pInputOperator, int pTargetFieldIndex)
         {
             _inputOp = pInputOperator;
             _targetFieldIndex = pTargetFieldIndex;
-            _fieldValueSet = new HashSet<string>();
+            _fieldValueSet = new HashSet<FieldObject>();
             this.Open();
         }
 

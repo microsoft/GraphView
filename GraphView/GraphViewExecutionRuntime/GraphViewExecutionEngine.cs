@@ -7,6 +7,50 @@ using Microsoft.Azure.Documents.Client;
 
 namespace GraphView
 {
+    internal abstract class FieldObject
+    {
+    }
+
+    internal class StringField : FieldObject
+    {
+        public string Value { get; private set; }
+
+        public StringField(string value)
+        {
+            Value = value;
+        }
+
+        public override string ToString()
+        {
+            return Value;
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Value.Equals(obj);
+        }
+    }
+
+    internal class CollectionField : FieldObject
+    {
+        public List<FieldObject> Collection { get; private set; }
+
+        public CollectionField()
+        {
+            Collection = new List<FieldObject>();
+        }
+
+        public CollectionField(List<FieldObject> collection)
+        {
+            Collection = collection;
+        }
+    }
+
     /// <summary>
     /// RawRecord is a data sturcture representing data records flowing from one execution operator to another. 
     /// A data record is a multi-field blob. Each field is currently represented as a string.
@@ -27,18 +71,18 @@ namespace GraphView
         }
         internal RawRecord(RawRecord rhs)
         {
-            fieldValues = new List<string>(rhs.fieldValues);
+            fieldValues = new List<FieldObject>(rhs.fieldValues);
         }
         internal RawRecord(int num)
         {
-            fieldValues = new List<string>();
+            fieldValues = new List<FieldObject>();
             for (int i = 0; i < num; i++)
             {
-                fieldValues.Add("");
+                fieldValues.Add(new StringField(""));
             }
         }
 
-        public void Append(string fieldValue)
+        public void Append(FieldObject fieldValue)
         {
             fieldValues.Add(fieldValue);
         }
@@ -56,18 +100,18 @@ namespace GraphView
             }
         }
 
-        internal string RetriveData(List<string> header,string FieldName)
+        internal FieldObject RetriveData(List<string> header,string FieldName)
         {
-            if (header.IndexOf(FieldName) == -1) return "";
-            else if (fieldValues.Count <= header.IndexOf(FieldName)) return "";
+            if (header.IndexOf(FieldName) == -1) return null;
+            else if (fieldValues.Count <= header.IndexOf(FieldName)) return null;
             else return fieldValues[header.IndexOf(FieldName)];
         }
-        internal string RetriveData(int index)
+        internal FieldObject RetriveData(int index)
         {
             return fieldValues[index];
         }
 
-        internal string this[int index]
+        internal FieldObject this[int index]
         {
             get
             {
@@ -90,7 +134,7 @@ namespace GraphView
         //    }
         //    return row;
         //}
-        internal List<string> fieldValues;
+        internal List<FieldObject> fieldValues;
     }
 
     /// <summary>
@@ -116,7 +160,7 @@ namespace GraphView
             {
                 if (index >= rawRecord.fieldValues.Count)
                     throw new IndexOutOfRangeException("Out of range," + "the Record has only " + rawRecord.fieldValues.Count + " fields");
-                else return rawRecord.fieldValues[index];
+                else return rawRecord.fieldValues[index].ToString();
             }
         }
 
@@ -126,7 +170,7 @@ namespace GraphView
             {
                 if (header == null || header.IndexOf(FieldName) == -1) 
                     throw new IndexOutOfRangeException("Out of range," + "the Record has no field \"" + FieldName + "\".");
-                else return rawRecord.fieldValues[header.IndexOf(FieldName)];
+                else return rawRecord.fieldValues[header.IndexOf(FieldName)].ToString();
             }
         }
     }

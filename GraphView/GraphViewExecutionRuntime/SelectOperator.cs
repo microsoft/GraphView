@@ -85,20 +85,21 @@ namespace GraphView
             RawRecord NewRecord = new RawRecord(oldRecord);
 
             // put current node's meta info into new record.
-            NewRecord.fieldValues[nodeIdx] = itemInfo.Item1;
+            NewRecord.fieldValues[nodeIdx] = new StringField(itemInfo.Item1);
             for (var i = nodeIdx + 1; i < nodeIdx + metaHeaderLength - 1; i += 2)
-                NewRecord.fieldValues[i] = itemInfo.Item2[header[i]];
+                NewRecord.fieldValues[i] = new StringField(itemInfo.Item2[header[i]]);
 
             // extend the path if needed.
-            if (appendedPath != "") NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = appendedPath;
-            NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] += itemInfo.Item1 + "-->";
+            if (appendedPath != "") NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = new StringField(appendedPath);
+            NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET] = 
+                new StringField(NewRecord.fieldValues[NewRecord.fieldValues.Count + PATH_OFFSET].ToString() + itemInfo.Item1 + "-->");
 
             // put the new select elements into new record.
             var startOfSelectElementsIdx = nodeIdx + metaHeaderLength;
             for (var i = startOfSelectElementsIdx; i < NewRecord.fieldValues.Count; i++)
             {
-                if (NewRecord.RetriveData(i) == "" && itemInfo.Item3[i] != "")
-                    NewRecord.fieldValues[i] = itemInfo.Item3[i];
+                if (NewRecord.RetriveData(i).ToString() == "" && itemInfo.Item3[i].ToString() != "")
+                    NewRecord.fieldValues[i] = new StringField(itemInfo.Item3[i]);
             }
             return NewRecord;
         }
@@ -314,13 +315,13 @@ namespace GraphView
 
             mostRecentlyDiscoveredPaths.Enqueue(new PathRecord() {
                 PathRec = sourceRecord,
-                SinkId = sourceRecord.fieldValues[1]
+                SinkId = sourceRecord.fieldValues[1].ToString()
             });
 
             allPaths.Enqueue(new PathRecord()
             {
                 PathRec = sourceRecord,
-                SinkId = sourceRecord.fieldValues[1]
+                SinkId = sourceRecord.fieldValues[1].ToString()
             });
 
             pathStepOperator.ResetState();
@@ -348,12 +349,12 @@ namespace GraphView
                     {
                         lastVertexIndex = EndRecord.fieldValues.Count - 4;
                         var sink = EndRecord.fieldValues[lastVertexIndex + 1];
-                        if (sink != "")
+                        if (sink.ToString() != "")
                         {
                             PathRecord newPath = new PathRecord()
                             {
                                 PathRec = EndRecord,
-                                SinkId = sink
+                                SinkId = sink.ToString()
                             };
                             mostRecentlyDiscoveredPaths.Enqueue(newPath);
                             allPaths.Enqueue(newPath);
@@ -511,7 +512,7 @@ namespace GraphView
                 RawRecord NewResult = new RawRecord(result);
                 for (int i = 0; i < OperatorOnSubGraphs[IndexOfOperator].header.Count; i++)
                 {
-                    if (NewResult.RetriveData(header, OperatorOnSubGraphs[IndexOfOperator].header[i]) == "" && record.fieldValues[i] != "")
+                    if (NewResult.RetriveData(header, OperatorOnSubGraphs[IndexOfOperator].header[i]).ToString() == "" && record.fieldValues[i].ToString() != "")
                         NewResult.fieldValues[header.IndexOf(OperatorOnSubGraphs[IndexOfOperator].header[i])] = record.fieldValues[i];
                 }
                 CartesianProductOnRecord(RecordSet, IndexOfOperator + 1, NewResult);
@@ -633,10 +634,10 @@ namespace GraphView
                         var expr = orderByElement.Item1;
                         var sortOrder = orderByElement.Item2;
                         if (sortOrder == SortOrder.Ascending || sortOrder == SortOrder.NotSpecified)
-                            ret = string.Compare(x.RetriveData(header, expr), y.RetriveData(header, expr),
+                            ret = string.Compare(x.RetriveData(header, expr).ToString(), y.RetriveData(header, expr).ToString(),
                                 StringComparison.OrdinalIgnoreCase);
                         else if (sortOrder == SortOrder.Descending)
-                            ret = string.Compare(y.RetriveData(header, expr), x.RetriveData(header, expr),
+                            ret = string.Compare(y.RetriveData(header, expr).ToString(), x.RetriveData(header, expr).ToString(),
                                 StringComparison.OrdinalIgnoreCase);
                         if (ret != 0) break;
                     }
@@ -697,7 +698,7 @@ namespace GraphView
                     }
                     if (InputRecord != null)
                     {
-                        OutputRecord.fieldValues[0] = CutTheTail(InputRecord.fieldValues.Last(),3);
+                        OutputRecord.fieldValues[0] = new StringField(CutTheTail(InputRecord.fieldValues.Last().ToString(), 3));
                         return OutputRecord;
                     }
                     else return null;
@@ -828,7 +829,7 @@ namespace GraphView
         public DataTable GetSchemaTable() { throw new NotImplementedException(); }
         public string GetName(Int32 x) { return DataSource.header[x]; }
         public int GetOrdinal(string x) { throw new NotImplementedException(); }
-        public string GetString(Int32 x) { return CurrentRecord.RetriveData(x); }
+        public string GetString(Int32 x) { return CurrentRecord.RetriveData(x).ToString(); }
         public object GetValue(Int32 x) { return CurrentRecord.RetriveData(x); }
         public int GetValues(object[] x) { throw new NotImplementedException(); }
         public bool IsDBNull(Int32 x) { throw new NotImplementedException(); }

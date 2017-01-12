@@ -55,7 +55,7 @@ namespace GraphView.GraphViewExecutionRuntime
             var reservedWords = new HashSet<string> { "_sink", "_ID" };
 
             // Decode the adj list JSON
-            var adj = JArray.Parse(record.fieldValues[adjIdx]);
+            var adj = JArray.Parse(record.fieldValues[adjIdx].ToString());
             foreach (var edge in adj.Children<JObject>())
             {
                 var sink = edge["_sink"].ToString();
@@ -67,12 +67,12 @@ namespace GraphView.GraphViewExecutionRuntime
                 var result = new RawRecord(header.Count);
                 ExtendAndCopyRecord(record, ref result, dest, metaHeaderLength);
                 // Fill field of the edge's SINK
-                result.fieldValues[adjIdx + 1] = sink;
+                result.fieldValues[adjIdx + 1] = new StringField(sink);
                 // Fill the field of selected edge's properties
                 foreach (var pair in edge)
                 {
                     if (!reservedWords.Contains(pair.Key) && header.Contains(pair.Key))
-                        result.fieldValues[header.IndexOf(pair.Key)] = pair.Value.ToString();
+                        result.fieldValues[header.IndexOf(pair.Key)] = new StringField(pair.Value.ToString());
                 }
                 results.Add(result);
             }
@@ -97,9 +97,9 @@ namespace GraphView.GraphViewExecutionRuntime
             var inputRecord = new RawRecord(0);
 
             // Extracts the metainfo of the starting node from the input record
-            inputRecord.fieldValues.Add("");
-            inputRecord.fieldValues.Add("");
-            inputRecord.fieldValues.Add("");
+            inputRecord.fieldValues.Add(new StringField(""));
+            inputRecord.fieldValues.Add(new StringField(""));
+            inputRecord.fieldValues.Add(new StringField(""));
             inputRecord.fieldValues.Add(record.fieldValues[src]);
             inputRecord.fieldValues.Add(record.fieldValues[adjIdx]);
             inputRecord.fieldValues.Add(record.fieldValues[record.fieldValues.Count - 1]);
@@ -117,8 +117,8 @@ namespace GraphView.GraphViewExecutionRuntime
                     var result = new RawRecord(header.Count);
                     ExtendAndCopyRecord(record, ref result, dest, metaHeaderLength);
                     // update the adjList and adjList's sink field
-                    result.fieldValues[adjIdx] = x.SinkReferences;
-                    result.fieldValues[adjIdx + 1] = sink;
+                    result.fieldValues[adjIdx] = new StringField(x.SinkReferences);
+                    result.fieldValues[adjIdx + 1] = new StringField(sink);
                     // update the path field
                     result.fieldValues[result.fieldValues.Count - 1] =
                         x.PathRec.fieldValues[x.PathRec.fieldValues.Count - 1];
@@ -145,13 +145,13 @@ namespace GraphView.GraphViewExecutionRuntime
             mostRecentlyDiscoveredPaths.Enqueue(new PathRecord()
             {
                 PathRec = sourceRecord,
-                SinkReferences = sourceRecord.fieldValues[sourceRecord.fieldValues.Count - 2]
+                SinkReferences = sourceRecord.fieldValues[sourceRecord.fieldValues.Count - 2].ToString()
             });
 
             allPaths.Enqueue(new PathRecord()
             {
                 PathRec = sourceRecord,
-                SinkReferences = sourceRecord.fieldValues[sourceRecord.fieldValues.Count - 2]
+                SinkReferences = sourceRecord.fieldValues[sourceRecord.fieldValues.Count - 2].ToString()
             });
 
             pathStepOperator.ResetState();
@@ -169,8 +169,8 @@ namespace GraphView.GraphViewExecutionRuntime
                 // Here we take info from an intermediate record to generate a new constant source record
                 srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex]);
                 srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex + 1]);
-                srecord.fieldValues.Add("");
-                srecord.fieldValues.Add("");
+                srecord.fieldValues.Add(new StringField(""));
+                srecord.fieldValues.Add(new StringField(""));
                 srecord.fieldValues.Add(start.PathRec.fieldValues[lastVertexIndex + 2]);
                 source.ConstantSource = srecord;
                 // reset state of internal operator
@@ -191,7 +191,7 @@ namespace GraphView.GraphViewExecutionRuntime
                             PathRecord newPath = new PathRecord()
                             {
                                 PathRec = EndRecord,
-                                SinkReferences = sink
+                                SinkReferences = sink.ToString()
                             };
                             mostRecentlyDiscoveredPaths.Enqueue(newPath);
                             allPaths.Enqueue(newPath);
@@ -256,7 +256,7 @@ namespace GraphView.GraphViewExecutionRuntime
                         // Alias with dot and whitespace is illegal in documentDB, so they will be replaced by "_"
                         string alias = fieldName.Replace(".", "_").Replace(" ", "_");
                         if (item[alias] != null)
-                            selectElements.fieldValues[header.IndexOf(fieldName)] = item[alias].ToString();
+                            selectElements.fieldValues[header.IndexOf(fieldName)] = new StringField(item[alias].ToString());
                     }
                 }
             }
@@ -287,7 +287,7 @@ namespace GraphView.GraphViewExecutionRuntime
                     }
                     adjListsStr.Add(adjName, adjStr.ToString());
                 }
-                result.Add(new Tuple<string, Dictionary<string, string>, List<string>>(id, adjListsStr, it.Value.fieldValues));
+                result.Add(new Tuple<string, Dictionary<string, string>, List<string>>(id, adjListsStr, new List<string>(it.Value.fieldValues.Select(e => e.ToString()))));
             }
             return result;
         }

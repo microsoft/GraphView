@@ -80,7 +80,7 @@ namespace GraphView
                 var fieldValue = record[propIdx];
                 if (fieldValue == null) continue;;
 
-                result.fieldValues[0] = propName + "->" + fieldValue;
+                result.fieldValues[0] = new StringField(propName + "->" + fieldValue);
                 results.Add(result);
             }
 
@@ -128,7 +128,7 @@ namespace GraphView
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var result = new RawRecord(1);
-            result.fieldValues[0] = ConstantValue;
+            result.fieldValues[0] = new StringField(ConstantValue);
 
             return new List<RawRecord> {result};
         }
@@ -149,19 +149,19 @@ namespace GraphView
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
-            var metaInfo = record.fieldValues[FoldedMetaIdx].Split(',');
-            var foldedList = record.fieldValues[FoldedFieldIdx];
-            var start = 0;
+            //var metaInfo = record.fieldValues[FoldedMetaIdx].Split(',');
+            //var foldedList = record.fieldValues[FoldedFieldIdx];
+            //var start = 0;
 
-            foreach (var offsetStr in metaInfo)
-            {
-                var offset = int.Parse(offsetStr);
-                var result = new RawRecord(1);
-                start += 1;
-                result.fieldValues[0] = foldedList.Substring(start, offset);
-                results.Add(result);
-                start += offset;
-            }
+            //foreach (var offsetStr in metaInfo)
+            //{
+            //    var offset = int.Parse(offsetStr);
+            //    var result = new RawRecord(1);
+            //    start += 1;
+            //    result.fieldValues[0] = foldedList.Substring(start, offset);
+            //    results.Add(result);
+            //    start += offset;
+            //}
 
             return results;
         }
@@ -200,7 +200,7 @@ namespace GraphView
 
             projectString.Append(']');
             var result = new RawRecord(1);
-            result.fieldValues[0] = projectString.ToString();
+            result.fieldValues[0] = new StringField(projectString.ToString());
 
             return new List<RawRecord> { result };
         }

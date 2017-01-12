@@ -90,47 +90,28 @@ namespace GraphView
         }
     }
 
-    internal class CountOperator : GroupByFunction
-    {
-        internal CountOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList) 
-            : base(pInputOperatr, pGroupByFieldsList)
-        { }
-
-        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
-        {
-            var result = new RawRecord(1);
-            result.fieldValues[0] = groupedRawRecords.Count.ToString();
-            return result;
-        }
-    }
-
     internal class FoldFunction : IAggregateFunction
     {
-        StringBuilder stringBuilder;
+        List<FieldObject> buffer;
 
-        void IAggregateFunction.Accumulate(params string[] values)
+        void IAggregateFunction.Accumulate(params FieldObject[] values)
         {
             if (values.Length != 1)
             {
                 return;
             }
 
-            if (stringBuilder.Length > 0)
-            {
-                stringBuilder.Append(", ");
-            }
-
-            stringBuilder.Append(values[0]);
+            buffer.Add(values[0]);
         }
 
         void IAggregateFunction.Init()
         {
-            stringBuilder = new StringBuilder(1024);
+            buffer = new List<FieldObject>();
         }
 
-        string IAggregateFunction.Terminate()
+        FieldObject IAggregateFunction.Terminate()
         {
-            return string.Format("[{0}]", stringBuilder.ToString());
+            return new CollectionField(buffer);
         }
     }
 
@@ -138,7 +119,7 @@ namespace GraphView
     {
         long count;
 
-        void IAggregateFunction.Accumulate(params string[] values)
+        void IAggregateFunction.Accumulate(params FieldObject[] values)
         {
             count++;
         }
@@ -148,9 +129,9 @@ namespace GraphView
             count = 0;
         }
 
-        string IAggregateFunction.Terminate()
+        FieldObject IAggregateFunction.Terminate()
         {
-            return count.ToString();
+            return new StringField(count.ToString());
         }
     }
 
@@ -210,12 +191,12 @@ namespace GraphView
             var root = new TreeNode("root");
             foreach (RawRecord t in groupedRawRecords)
             {
-                var path = t.fieldValues[pathIndex];
+                var path = t.fieldValues[pathIndex].ToString();
                 ConstructTree(ref root, ref path);
             }
 
             var result = new RawRecord(1);
-            result.fieldValues[0] = root.ToString();
+            result.fieldValues[0] = new StringField(root.ToString());
             return result;
         }
 

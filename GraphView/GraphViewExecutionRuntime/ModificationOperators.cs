@@ -114,12 +114,12 @@ namespace GraphView
             Upload(obj);
 
             var document = JObject.Parse(_createdDocument.ToString());
-            var result = new RawRecord { fieldValues = new List<string>() };
+            var result = new RawRecord { fieldValues = new List<FieldObject>() };
 
             foreach (var fieldName in _projectedFieldList)
             {
                 var fieldValue = document[fieldName];
-                result.Append(fieldValue?.ToString() ?? "");
+                result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : new StringField(""));
             }
 
             return result;
@@ -151,7 +151,7 @@ namespace GraphView
         {
             var targetId = record[_nodeIdIndex];
 
-            DeleteNode(targetId);
+            DeleteNode(targetId.ToString());
 
             return null;
         }
@@ -217,12 +217,12 @@ namespace GraphView
             Upload(results);
 
             var edgeJObject = JObject.Parse(edgeObjectString);
-            var result = new RawRecord { fieldValues = new List<string>() };
+            var result = new RawRecord { fieldValues = new List<FieldObject>() };
 
             foreach (var fieldName in _edgeProperties)
             {
                 var fieldValue = edgeJObject[fieldName];
-                result.Append(fieldValue?.ToString() ?? "");
+                result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : new StringField(""));
             }
 
             return result;
@@ -270,8 +270,8 @@ namespace GraphView
             var srcId = record[_srcIdIndex];
             var edgeOffset = record[_edgeOffsetIndex];
 
-            var srcJsonDocument = RetrieveDocumentById(srcId);
-            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
+            var srcJsonDocument = RetrieveDocumentById(srcId.ToString());
+            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset.ToString());
 
             if (sinkIdAndReverseEdgeOffset == null) return null;
 
@@ -280,7 +280,7 @@ namespace GraphView
 
             var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
 
-            var results = DeleteEdge(srcId, sinkId, edgeOffset, revEdgeOffset, srcJsonDocument, sinkJsonDocument);
+            var results = DeleteEdge(srcId.ToString(), sinkId, edgeOffset.ToString(), revEdgeOffset, srcJsonDocument, sinkJsonDocument);
 
             Upload(results);
 
@@ -340,7 +340,7 @@ namespace GraphView
                     var propertyNewValue = tuple.Item2;
                     if (propertyIndex == -1) continue;
 
-                    result.fieldValues[propertyIndex] = propertyNewValue;
+                    result.fieldValues[propertyIndex] = new StringField(propertyNewValue);
                 }
 
                 return result;
@@ -366,8 +366,8 @@ namespace GraphView
         {
             var targetId = record[_nodeIdIndex];
 
-            var targetJsonDocument = RetrieveDocumentById(targetId);
-            var results = UpdateNodeProperties(targetId, targetJsonDocument, PropertiesToBeUpdated, Mode);
+            var targetJsonDocument = RetrieveDocumentById(targetId.ToString());
+            var results = UpdateNodeProperties(targetId.ToString(), targetJsonDocument, PropertiesToBeUpdated, Mode);
 
             Upload(results);
 
@@ -426,9 +426,9 @@ namespace GraphView
             var srcId = record[_srcIdIndex];
             var edgeOffset = record[_edgeOffsetIndex];
 
-            var srcJsonDocument = RetrieveDocumentById(srcId);
+            var srcJsonDocument = RetrieveDocumentById(srcId.ToString());
 
-            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
+            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset.ToString());
             if (sinkIdAndReverseEdgeOffset == null) return record;
 
             var sinkId = sinkIdAndReverseEdgeOffset[0];
@@ -436,7 +436,7 @@ namespace GraphView
 
             var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
 
-            var results = UpdateEdgeAndReverseEdgeProperties(srcId, edgeOffset, sinkId, reverseEdgeOffset,
+            var results = UpdateEdgeAndReverseEdgeProperties(srcId.ToString(), edgeOffset.ToString(), sinkId, reverseEdgeOffset,
                 srcJsonDocument, sinkJsonDocument, Mode);
 
             Upload(results);

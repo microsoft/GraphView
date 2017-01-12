@@ -58,7 +58,7 @@ namespace GraphView
             RawRecord firstResult = subqueryOp.Next();
             subqueryOp.Close();
 
-            return firstResult == null ? null : firstResult.RetriveData(0);
+            return firstResult == null ? null : firstResult.RetriveData(0).ToString();
         }
     }
 
@@ -95,7 +95,7 @@ namespace GraphView
 
         public override string Evaluate(RawRecord record)
         {
-            return record[fieldIndex];
+            return record[fieldIndex].ToString();
         }
     }
 

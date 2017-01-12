@@ -271,13 +271,13 @@ namespace GraphView
                 case ComparisonType.neq:
                     return r.RetriveData(lhsIndex) != r.RetriveData(rhsIndex);
                 case ComparisonType.lt:
-                    return double.Parse(r.RetriveData(lhsIndex)) < double.Parse(r.RetriveData(rhsIndex));
+                    return double.Parse(r.RetriveData(lhsIndex).ToString()) < double.Parse(r.RetriveData(rhsIndex).ToString());
                 case ComparisonType.gt:
-                    return double.Parse(r.RetriveData(lhsIndex)) > double.Parse(r.RetriveData(rhsIndex));
+                    return double.Parse(r.RetriveData(lhsIndex).ToString()) > double.Parse(r.RetriveData(rhsIndex).ToString());
                 case ComparisonType.gte:
-                    return double.Parse(r.RetriveData(lhsIndex)) >= double.Parse(r.RetriveData(rhsIndex));
+                    return double.Parse(r.RetriveData(lhsIndex).ToString()) >= double.Parse(r.RetriveData(rhsIndex).ToString());
                 case ComparisonType.lte:
-                    return double.Parse(r.RetriveData(lhsIndex)) <= double.Parse(r.RetriveData(rhsIndex));
+                    return double.Parse(r.RetriveData(lhsIndex).ToString()) <= double.Parse(r.RetriveData(rhsIndex).ToString());
                 default:
                     return false;
             }
