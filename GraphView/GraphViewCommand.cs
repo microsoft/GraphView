@@ -116,7 +116,11 @@ namespace GraphView
 
         public IEnumerable<string> Execute()
         {
-            throw new NotImplementedException();
+            if (CommandText == null)
+            {
+                Console.WriteLine("CommandText doesn't exist, try to set a CommandText.");
+            }
+            return g().EvalGremlinTraversal(CommandText);
         }
 
         public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)

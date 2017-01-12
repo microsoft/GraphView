@@ -17,12 +17,12 @@ namespace GraphView
 
             GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
             GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
-            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjEdge, adjReverseEdge, WEdgeType.BothEdge);
-            bothEdge.Populate("_sink");
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(adjEdge, adjReverseEdge, WEdgeType.BothEdge, GremlinEdgeType.BothE);
             currentContext.VariableList.Add(bothEdge);
             currentContext.TableReferences.Add(bothEdge);
             currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
 
+            bothEdge.Populate("_sink");
             GremlinVariableProperty sinkProperty = new GremlinVariableProperty(bothEdge, "_sink");
             GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sinkProperty);
             currentContext.VariableList.Add(bothVertex);
@@ -42,7 +42,7 @@ namespace GraphView
             GremlinVariableProperty sourceNode = new GremlinVariableProperty(this, GremlinKeyword.NodeID);
             GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
             GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, "_edge");
-            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(sourceNode, adjEdge, adjReverseEdge, WEdgeType.BothEdge);
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(sourceNode, adjEdge, adjReverseEdge, WEdgeType.BothEdge, GremlinEdgeType.BothForwardE);
             bothEdge.Populate("_source");
             bothEdge.Populate("_sink");
             currentContext.VariableList.Add(bothEdge);
@@ -72,8 +72,8 @@ namespace GraphView
             {
                 Populate("_sink");
                 var path = currentContext.GetPathFromPathList(ContextVariable as GremlinEdgeTableVariable);
-
-                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(path.SourceVariable, "id");
+                path.SourceVariable.Populate(GremlinKeyword.NodeID);
+                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(path.SourceVariable, GremlinKeyword.NodeID);
                 GremlinVariableProperty sinkProperty = new GremlinVariableProperty(ContextVariable, "_sink");
                 GremlinBoundVertexVariable newVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
 
@@ -85,10 +85,12 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            Populate(GremlinKeyword.NodeID);
             Populate("_reverse_edge");
 
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(ContextVariable, GremlinKeyword.NodeID);
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
-            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(adjacencyList, WEdgeType.InEdge);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjacencyList, WEdgeType.InEdge, GremlinEdgeType.InE);
             inEdge.Populate("_sink");
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
@@ -106,11 +108,12 @@ namespace GraphView
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            Populate(GremlinKeyword.NodeID);
             Populate("_reverse_edge");
 
             GremlinVariableProperty sourceProperty = new GremlinVariableProperty(ContextVariable, GremlinKeyword.NodeID);
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_reverse_edge");
-            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjacencyList, WEdgeType.InEdge);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjacencyList, WEdgeType.InEdge, GremlinEdgeType.InForwardE);
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
@@ -122,15 +125,16 @@ namespace GraphView
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            Populate(GremlinKeyword.NodeID);
             Populate("_edge");
-
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(ContextVariable, GremlinKeyword.NodeID);
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(adjacencyList, WEdgeType.OutEdge);
-            outEdge.Populate("_sink");
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjacencyList, WEdgeType.OutEdge, GremlinEdgeType.OutE);
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
+            outEdge.Populate("_sink");
             GremlinVariableProperty sinkProperty = new GremlinVariableProperty(outEdge, "_sink");
             GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sinkProperty);
             currentContext.VariableList.Add(outVertex);
@@ -143,10 +147,12 @@ namespace GraphView
 
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            Populate(GremlinKeyword.NodeID);
             Populate("_edge");
 
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(ContextVariable, GremlinKeyword.NodeID);
             GremlinVariableProperty adjacencyList = new GremlinVariableProperty(ContextVariable, "_edge");
-            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(adjacencyList, WEdgeType.OutEdge);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjacencyList, WEdgeType.OutEdge, GremlinEdgeType.OutE);
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
@@ -158,79 +164,85 @@ namespace GraphView
 
         internal override void InV(GremlinToSqlContext currentContext)
         {
-            if ((ContextVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
-            {
-                Populate("_sink");
-                GremlinVariableProperty sinkProperty = new GremlinVariableProperty(ContextVariable, "_sink");
-                GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sinkProperty);
-                currentContext.VariableList.Add(outVertex);
-                currentContext.TableReferences.Add(outVertex);
+            var path = currentContext.GetPathFromPathList(ContextVariable as GremlinEdgeTableVariable);
+            GremlinVariableProperty sinkProperty = new GremlinVariableProperty(this, GremlinKeyword.EdgeSinkId);
+            GremlinBoundVertexVariable newVertex = new GremlinBoundVertexVariable(sinkProperty);
 
-                //currentContext.AddPath(new GremlinMatchPath(this, outEdge, outVertex));
-
-                currentContext.PivotVariable = outVertex;
-            }
-            else
+            switch ((ContextVariable as GremlinEdgeTableVariable).EdgeType)
             {
-                GremlinVariable inVertex = currentContext.GetSinkVertex(ContextVariable);
-                if (inVertex == null)
-                {
-                    //It's a forward edge
-                    Populate("_sink");
-                    GremlinVariableProperty sinkProperty = new GremlinVariableProperty(ContextVariable, "_sink");
-                    GremlinBoundVertexVariable newVertex = new GremlinBoundVertexVariable(sinkProperty);
-                    var path = currentContext.GetPathFromPathList(ContextVariable as GremlinTableVariable);
-                    if (path != null) path.SetSinkVariable(newVertex);
+                case WEdgeType.BothEdge:
+                    Populate(GremlinKeyword.EdgeSinkId);
                     currentContext.VariableList.Add(newVertex);
                     currentContext.TableReferences.Add(newVertex);
                     currentContext.PivotVariable = newVertex;
-                }
-                else
-                {
-                    //It's a reversed edge
-                    GremlinContextVariable newVariable = Create(inVertex);
-                    currentContext.VariableList.Add(newVariable);
-                    currentContext.PivotVariable = newVariable;
-                }
+                    break;
+                case WEdgeType.OutEdge:
+                case WEdgeType.InEdge:
+                    if (path != null || path.SinkVariable != null)
+                    {
+                        if (currentContext.IsVariableInCurrentContext(path.SinkVariable))
+                        {
+                            currentContext.PivotVariable = path.SinkVariable;
+                        }
+                        else
+                        {
+                            GremlinContextVariable newContextVariable = Create(path.SinkVariable);
+                            currentContext.VariableList.Add(newContextVariable);
+                            currentContext.PivotVariable = newContextVariable;
+                        }
+                    }
+                    else
+                    {
+                        Populate(GremlinKeyword.EdgeSinkId);
+                        if (path != null) path.SetSinkVariable(newVertex);
+
+                        currentContext.VariableList.Add(newVertex);
+                        currentContext.TableReferences.Add(newVertex);
+                        currentContext.PivotVariable = newVertex;
+                    }
+                    break;
             }
         }
 
         internal override void OutV(GremlinToSqlContext currentContext)
         {
-            if ((ContextVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
+            var path = currentContext.GetPathFromPathList(ContextVariable as GremlinEdgeTableVariable);
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.EdgeSourceId);
+            GremlinBoundVertexVariable newVertex = new GremlinBoundVertexVariable(sourceProperty);
+
+            switch ((ContextVariable as GremlinEdgeTableVariable).EdgeType)
             {
-                Populate("_source");
-                GremlinVariableProperty sourceProperty = new GremlinVariableProperty(ContextVariable, "_source");
-                GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sourceProperty);
-                currentContext.VariableList.Add(outVertex);
-                currentContext.TableReferences.Add(outVertex);
-
-                //currentContext.AddPath(new GremlinMatchPath(this, outEdge, outVertex));
-
-                currentContext.PivotVariable = outVertex;
-            }
-            else
-            {
-                GremlinVariable outVertex = currentContext.GetSourceVertex(ContextVariable);
-                if (outVertex == null)
-                {
-                    Populate("_sink");
-                    GremlinVariableProperty sinkProperty = new GremlinVariableProperty(ContextVariable, "_sink");
-                    GremlinBoundVertexVariable newVertex = new GremlinBoundVertexVariable(sinkProperty);
-
-                    var path = currentContext.GetPathFromPathList(ContextVariable as GremlinTableVariable);
-                    if (path != null) path.SetSourceVariable(newVertex);
-
+                case WEdgeType.BothEdge:
+                    Populate(GremlinKeyword.EdgeSourceId);
                     currentContext.VariableList.Add(newVertex);
                     currentContext.TableReferences.Add(newVertex);
                     currentContext.PivotVariable = newVertex;
-                }
-                else
-                {
-                    GremlinContextVariable newVariable = Create(outVertex);
-                    currentContext.VariableList.Add(newVariable);
-                    currentContext.PivotVariable = newVariable;
-                }
+                    break;
+                case WEdgeType.OutEdge:
+                case WEdgeType.InEdge:
+                    if (path != null || path.SourceVariable != null)
+                    {
+                        if (currentContext.IsVariableInCurrentContext(path.SourceVariable))
+                        {
+                            currentContext.PivotVariable = path.SourceVariable;
+                        }
+                        else
+                        {
+                            GremlinContextVariable newContextVariable = Create(path.SourceVariable);
+                            currentContext.VariableList.Add(newContextVariable);
+                            currentContext.PivotVariable = newContextVariable;
+                        }
+                    }
+                    else
+                    {
+                        Populate(GremlinKeyword.EdgeSourceId);
+                        if (path != null) path.SetSourceVariable(newVertex);
+
+                        currentContext.VariableList.Add(newVertex);
+                        currentContext.TableReferences.Add(newVertex);
+                        currentContext.PivotVariable = newVertex;
+                    }
+                    break;
             }
         }
 

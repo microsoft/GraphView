@@ -10,9 +10,12 @@ namespace GraphView
     {
         public const string Label = "label";
         public const string EdgeID = "_ID";
+        public const string EdgeSinkId = "_sink";
+        public const string EdgeSourceId = "_source";
         public const string NodeID = "id";
         public const string EdgeReverseID = "_reverse_ID";
         public const string TableValue = "_value";
+
 
         public static class func
         {
@@ -21,7 +24,6 @@ namespace GraphView
             public const string OutE = "OutE";
             public const string InE = "InE";
             public const string BothE = "BothE";
-            public const string BothForwardE = "BothForwardE";
             public const string FlatMap = "FlatMap";
             public const string Key = "Key";
             public const string Local = "Local";
@@ -47,6 +49,8 @@ namespace GraphView
             public const string DropProperties = "DropProperties";
             public const string UpdateNodeProperties = "UpdateNodeProperties";
             public const string UpdateEdgeProperties = "UpdateEdgeProperties";
+            public const string Path = "Path";
+            public const string Inject = "Inject";
         }
         public enum Pop
         {
@@ -73,5 +77,97 @@ namespace GraphView
             Desr,
             Incr
         }
+
+        public static readonly Dictionary<string, string> GremlinStepToGraphTraversalDict = new Dictionary
+            <string, string>()
+            {
+                {"as", "As"},
+                {"addV", "AddV"},
+                {"addE", "AddE"},
+                {"barrier", "Barrier"},
+                {"both", "Both"},
+                {"by", "By"},
+                {"count", "Count"},
+                {"constant", "Constant"},
+                {"coalesce", "Coalesce"},
+                {"drop", "Drop"},
+                {"dedup", "Dedup"},
+                {"fold", "Fold"},
+                {"from", "From"},
+                {"flatMap", "FlatMap"},
+                {"has", "Has"},
+                {"hasLabel", "HasLabel"},
+                {"is", "Is"},
+                {"inject", "Inject"},
+                {"id", "Id"},
+                {"inV", "InV"},
+                {"in", "In"},
+                {"key", "Key"},
+                {"label", "Label"},
+                {"local", "Local"},
+                {"not", "Not"},
+                {"optional", "Optional"},
+                {"otherV", "OtherV"},
+                {"out", "Out"},
+                {"outE", "OutE"},
+                {"property", "Property"},
+                {"properties", "Properties"},
+                {"project", "Project"},
+                {"sideEffect", "SideEffect"},
+                {"select", "Select"},
+                {"repeat", "Repeat"},
+                {"until", "Until"},
+                {"emit", "Emit"},
+                {"range", "Range"},
+                {"to", "To"},
+                {"tree", "Tree"},
+                {"unfold", "Unfold"},
+                {"union", "Union"},
+                {"values", "Values"},
+                {"V", "V"},
+                {"where", "Where"},
+
+                {"next", "Next"},
+                {"toList", "ToList"}
+            };
+
+        public static readonly Dictionary<string, string> GremlinMainStepToGraphTraversalDict = new Dictionary
+            <string, string>()
+            {
+                {"__.", "GraphTraversal2.__()."},
+                {"g.", "graph.g()."}
+
+            };
+
+        public static readonly Dictionary<string, string> GremlinPredicateToGraphTraversalDict = new Dictionary
+            <string, string>()
+            {
+                {"eq", "Predicate.eq"},
+                {"neq", "Predicate.neq"},
+                {"lt", "Predicate.lt"},
+                {"lte", "Predicate.lte"},
+                {"gt", "Predicate.gt"},
+                {"gte", "Predicate.gte"},
+                {"inside", "Predicate.inside"},
+                {"outside", "Predicate.outside"},
+                {"between", "Predicate.between"},
+                {"within", "Predicate.within"},
+                {"without", "Predicate.without"}
+            };
+
+        public static readonly Dictionary<string, string> GremlinKeywordToGraphTraversalDict = new Dictionary<string, string>()
+        {
+            {"last", "GremlinKeyword.Pop.last"},
+            {"first", "GremlinKeyword.Pop.first"},
+        };
+    }
+
+    public enum GremlinEdgeType
+    {
+        BothE,
+        BothForwardE,
+        InE,
+        InForwardE,
+        OutE
     }
 }

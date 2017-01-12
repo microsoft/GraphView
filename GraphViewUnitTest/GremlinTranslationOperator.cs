@@ -55,33 +55,53 @@ namespace GremlinTranslationOperator.Tests
         }
 
         [TestMethod]
+        public void TestExecuteCommandText()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "Modern");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            
+            graph.CommandText =
+                "g.addV('character').property('name', 'VENUS II').property('weapon', 'shield').next()";
+            var results = graph.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
         public void TestStep()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
-            connection.ResetCollection();
+            //connection.ResetCollection();
 
-            graph.g().AddV().Property("name", "a").Property("type", "start").Next();
-            graph.g().AddV().Property("name", "b").Next();
-            graph.g().AddV().Property("name", "c").Next();
-            graph.g().AddV().Property("name", "d").Next();
-            graph.g().AddV().Property("name", "e").Next();
-            graph.g().AddV().Property("name", "f").Next();
-            graph.g().AddV().Property("name", "g").Property("type", "start").Next();
-            graph.g().AddV().Property("name", "h").Next();
-            graph.g().AddV().Property("name", "i").Next();
+            var result = graph.g().V().FlatMap(GraphTraversal2.__().InE().OutV()).Count().Next();
 
-            graph.g().V().Has("name", "a").AddE("val").To(graph.g().V().Has("name", "b")).Next();
-            graph.g().V().Has("name", "a").AddE("val").To(graph.g().V().Has("name", "d")).Next();
-            graph.g().V().Has("name", "b").AddE("fail").To(graph.g().V().Has("name", "c")).Next();
-            graph.g().V().Has("name", "d").AddE("val").To(graph.g().V().Has("name", "e")).Next();
-            graph.g().V().Has("name", "d").AddE("fail").To(graph.g().V().Has("name", "f")).Next();
-            graph.g().V().Has("name", "g").AddE("val").To(graph.g().V().Has("name", "h")).Next();
-            graph.g().V().Has("name", "g").AddE("fail").To(graph.g().V().Has("name", "i")).Next();
+            //graph.g().AddV().Property("name", "a").Property("type", "start").Next();
+            //graph.g().AddV().Property("name", "b").Next();
+            //graph.g().AddV().Property("name", "c").Next();
+            //graph.g().AddV().Property("name", "d").Next();
+            //graph.g().AddV().Property("name", "e").Next();
+            //graph.g().AddV().Property("name", "f").Next();
+            //graph.g().AddV().Property("name", "g").Property("type", "start").Next();
+            //graph.g().AddV().Property("name", "h").Next();
+            //graph.g().AddV().Property("name", "i").Next();
 
-            var results = graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal2.__().OutE("val").InV()).Next();
+            //graph.g().V().Has("name", "a").AddE("val").To(graph.g().V().Has("name", "b")).Next();
+            //graph.g().V().Has("name", "a").AddE("val").To(graph.g().V().Has("name", "d")).Next();
+            //graph.g().V().Has("name", "b").AddE("fail").To(graph.g().V().Has("name", "c")).Next();
+            //graph.g().V().Has("name", "d").AddE("val").To(graph.g().V().Has("name", "e")).Next();
+            //graph.g().V().Has("name", "d").AddE("fail").To(graph.g().V().Has("name", "f")).Next();
+            //graph.g().V().Has("name", "g").AddE("val").To(graph.g().V().Has("name", "h")).Next();
+            //graph.g().V().Has("name", "g").AddE("fail").To(graph.g().V().Has("name", "i")).Next();
+
+            //var results = graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal2.__().OutE("val").InV()).Next();
 
             //a, g, b, d, e, h
 
@@ -99,8 +119,21 @@ namespace GremlinTranslationOperator.Tests
             //graph.g().V().OutE().BothV().Next();
             //graph.g().V().InE().BothV().Next();
             //graph.g().V().BothE().BothV().Next();
-            //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV()).Next();
-            graph.g().V().OutE().FlatMap(GraphTraversal2.__().BothV()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV().InE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV().OutE()).Next();
+            graph.g().V().InE().FlatMap(GraphTraversal2.__().OutV().OutE()).Next();
+            graph.g().V().InE().FlatMap(GraphTraversal2.__().InV().OutE()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().InE().OutV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().InE().InV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().InE().BothV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().InE().OtherV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().OutE().InV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().OutE().BothV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().OutE().OtherV()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().In().OutE()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutE()).Next();
+            graph.g().V().FlatMap(GraphTraversal2.__().Both().OutE()).Next();
 
             //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().Drop()).Next();
             //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();

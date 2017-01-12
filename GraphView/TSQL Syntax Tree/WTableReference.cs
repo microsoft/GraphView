@@ -384,22 +384,12 @@ namespace GraphView
 
     }
 
-    public partial class WBoundBothForwardEdgeTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
     public partial class WBoundOutEdgeTableReference : WSchemaObjectFunctionTableReference
     {
 
     }
 
     public partial class WBoundInEdgeTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WBoundInForwardEdgeTableReference : WSchemaObjectFunctionTableReference
     {
 
     }
@@ -429,6 +419,16 @@ namespace GraphView
     }
 
     public partial class WPropertiesTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WPathTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WInjectTableReference : WSchemaObjectFunctionTableReference
     {
 
     }

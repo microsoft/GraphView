@@ -2415,43 +2415,43 @@ namespace GraphView
         }
     }
 
-    partial class WBoundBothForwardEdgeTableReference
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            var srcNodeIdParameter = Parameters[0] as WColumnReferenceExpression;
-            var firstAdjListParameter = Parameters[1] as WColumnReferenceExpression;
-            var secondAdjListParameter = Parameters[2] as WColumnReferenceExpression;
+    //partial class WBoundBothForwardEdgeTableReference
+    //{
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+    //    {
+    //        var srcNodeIdParameter = Parameters[0] as WColumnReferenceExpression;
+    //        var firstAdjListParameter = Parameters[1] as WColumnReferenceExpression;
+    //        var secondAdjListParameter = Parameters[2] as WColumnReferenceExpression;
 
-            var srcNodeIdIndex = context.LocateColumnReference(srcNodeIdParameter);
-            var adjListIndexes = new List<int>
-            {
-                context.LocateColumnReference(firstAdjListParameter),
-                context.LocateColumnReference(secondAdjListParameter)
-            };
-            var edgeAlias = Alias.Value;
-            var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
+    //        var srcNodeIdIndex = context.LocateColumnReference(srcNodeIdParameter);
+    //        var adjListIndexes = new List<int>
+    //        {
+    //            context.LocateColumnReference(firstAdjListParameter),
+    //            context.LocateColumnReference(secondAdjListParameter)
+    //        };
+    //        var edgeAlias = Alias.Value;
+    //        var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
 
-            for (int i = 3; i < Parameters.Count; i++)
-            {
-                var field = (Parameters[i] as WValueExpression).Value;
-                if (!projectFields.Contains(field))
-                    projectFields.Add(field);
-            }
+    //        for (int i = 3; i < Parameters.Count; i++)
+    //        {
+    //            var field = (Parameters[i] as WValueExpression).Value;
+    //            if (!projectFields.Contains(field))
+    //                projectFields.Add(field);
+    //        }
 
-            var bothForwardAdjDecoder = new BothForwardAdjacencyListDecoder(context.CurrentExecutionOperator, 
-                srcNodeIdIndex, adjListIndexes, null, projectFields);
-            context.CurrentExecutionOperator = bothForwardAdjDecoder;
+    //        var bothForwardAdjDecoder = new BothForwardAdjacencyListDecoder(context.CurrentExecutionOperator, 
+    //            srcNodeIdIndex, adjListIndexes, null, projectFields);
+    //        context.CurrentExecutionOperator = bothForwardAdjDecoder;
 
-            foreach (var projectField in projectFields)
-            {
-                // TODO: Change to correct ColumnGraphType
-                context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
-            }
+    //        foreach (var projectField in projectFields)
+    //        {
+    //            // TODO: Change to correct ColumnGraphType
+    //            context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
+    //        }
 
-            return bothForwardAdjDecoder;
-        }
-    }
+    //        return bothForwardAdjDecoder;
+    //    }
+    //}
 
     partial class WValuesTableReference
     {

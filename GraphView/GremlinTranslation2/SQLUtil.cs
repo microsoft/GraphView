@@ -277,9 +277,6 @@ namespace GraphView
                 case GremlinKeyword.func.BothE:
                     funcTableRef = new WBoundBothEdgeTableReference();
                     break;
-                case GremlinKeyword.func.BothForwardE:
-                    funcTableRef = new WBoundBothForwardEdgeTableReference();
-                    break;
                 case GremlinKeyword.func.FlatMap:
                     funcTableRef = new WFlatMapTableReference();
                     break;
@@ -348,6 +345,12 @@ namespace GraphView
                     break;
                 case GremlinKeyword.func.UpdateEdgeProperties:
                     funcTableRef = new WUpdateEdgePropertiesTableReference();
+                    break;
+                case GremlinKeyword.func.Inject:
+                    funcTableRef = new WInjectTableReference();
+                    break;
+                case GremlinKeyword.func.Path:
+                    funcTableRef = new WPathTableReference();
                     break;
                 default:
                     throw new NotImplementedException();

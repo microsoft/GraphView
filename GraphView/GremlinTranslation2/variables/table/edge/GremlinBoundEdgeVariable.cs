@@ -12,11 +12,6 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            bool isBothForward = false;
-            if (variablePropertyList.Count == 3)
-            {
-                isBothForward = true;
-            }
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             foreach (var variableProperty in variablePropertyList)
             {
@@ -28,50 +23,45 @@ namespace GraphView
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));
             }
             WTableReference secondTableRef = null;
-            if (isBothForward)
+            switch (GremlinEdgeType)
             {
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothForwardE, PropertyKeys, this, VariableName);
-            }
-            else {
-                switch (EdgeType)
-                {
-                    case WEdgeType.BothEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, this, VariableName);
-                        break;
-                    case WEdgeType.InEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, this, VariableName);
-                        break;
-                    case WEdgeType.OutEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys,this,  VariableName);
-                        break;
-                }
+                case GremlinEdgeType.BothE:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, this, VariableName);
+                    break;
+                case GremlinEdgeType.BothForwardE:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothForwardE, PropertyKeys, this, VariableName);
+                    break;
+                case GremlinEdgeType.InE:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, this, VariableName);
+                    break;
+                case GremlinEdgeType.InForwardE:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InForwardE, PropertyKeys, this, VariableName);
+                    break;
+                case GremlinEdgeType.OutE:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, this, VariableName);
+                    break;
             }
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty adjEdge, WEdgeType edgeType)
+        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType, GremlinEdgeType gremlinEdgeType)
         {
             variablePropertyList = new List<GremlinVariableProperty>();
-            variablePropertyList.Add(adjEdge);
+            variablePropertyList.Add(sourceProperty);
+            variablePropertyList.Add(adjReverseEdge);
             EdgeType = edgeType;
+            GremlinEdgeType = gremlinEdgeType;
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType)
+        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType, GremlinEdgeType gremlinEdgeType)
         {
             variablePropertyList = new List<GremlinVariableProperty>();
+            variablePropertyList.Add(sourceProperty);
             variablePropertyList.Add(adjEdge);
             variablePropertyList.Add(adjReverseEdge);
             EdgeType = edgeType;
-        }
-
-        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceNode, GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType)
-        {
-            variablePropertyList = new List<GremlinVariableProperty>();
-            variablePropertyList.Add(sourceNode);
-            variablePropertyList.Add(adjEdge);
-            variablePropertyList.Add(adjReverseEdge);
-            EdgeType = edgeType;
+            GremlinEdgeType = gremlinEdgeType;
         }
     }
 }

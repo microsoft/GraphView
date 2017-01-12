@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.CSharp;
 
@@ -936,17 +937,51 @@ namespace GraphView
             return new List<object>() {1};
         }
 
-        public object EvalGremlinTraversal(string sCSCode)
+        public IEnumerable<string> EvalGremlinTraversal(string sCSCode)
         {
             return EvalGraphTraversal(ConvertGremlinToGraphTraversalCode(sCSCode));    
         }
 
         public string ConvertGremlinToGraphTraversalCode(string sCSCode)
         {
+            sCSCode = sCSCode.Replace("\'", "\"");
+            sCSCode = sCSCode.Replace(" ", "");
+
+            foreach (var item in GremlinKeyword.GremlinStepToGraphTraversalDict)
+            {
+                string originStr = "." + item.Key + "(";
+                string targetStr = "." + item.Value + "(";
+                sCSCode = sCSCode.Replace(originStr, targetStr);
+            }
+            foreach (var item in GremlinKeyword.GremlinMainStepToGraphTraversalDict)
+            {
+                sCSCode = sCSCode.Replace(item.Key, item.Value);
+            }
+            foreach (var item in GremlinKeyword.GremlinPredicateToGraphTraversalDict)
+            {
+                RegexOptions ops = RegexOptions.Multiline;
+                Regex r = new Regex("[^a-zA-Z](" + item.Key + ")\\(");
+                if (r.IsMatch(sCSCode))
+                {
+                    var match = r.Match(sCSCode);
+                    string str = match.Groups[0].Value;
+                    sCSCode = sCSCode.Replace(match.Groups[0].Value, match.Groups[0].Value[0] + item.Value + "(");
+                }
+            }
+            foreach (var item in GremlinKeyword.GremlinKeywordToGraphTraversalDict)
+            {
+                RegexOptions ops = RegexOptions.Multiline;
+                Regex r = new Regex("[^\"](" + item.Key + ")[^\"]", ops);
+                if (r.IsMatch(sCSCode))
+                {
+                    var match = r.Match(sCSCode);
+                    sCSCode = sCSCode.Replace(match.Groups[1].Value, item.Value);
+                }
+            }
             return sCSCode;
         }
 
-        public object EvalGraphTraversal(string sCSCode)
+        public IEnumerable<string> EvalGraphTraversal(string sCSCode)
         {
             CompilerParameters cp = new CompilerParameters();
             cp.ReferencedAssemblies.Add("GraphView.dll");
@@ -981,7 +1016,7 @@ namespace GraphView
             Type t = o.GetType();
             MethodInfo mi = t.GetMethod("Main");
 
-            return mi.Invoke(o, null);
+            return (IEnumerable<string>)mi.Invoke(o, null);
         }
 
         private string addDoubleQuotes(string str)
