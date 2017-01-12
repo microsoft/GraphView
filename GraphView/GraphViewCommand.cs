@@ -114,96 +114,9 @@ namespace GraphView
             Command.Cancel();
         }
 
-        public GraphViewDataReader ExecuteReader()
+        public IEnumerable<string> Execute()
         {
-            try
-            {
-                var sr = new StringReader(CommandText);
-                var parser = new GraphViewParser();
-                IList<ParseError> errors;
-                var script = parser.Parse(sr, out errors) as WSqlScript;
-                if (errors.Count > 0)
-                    throw new SyntaxErrorException(errors);
-
-                var DocumentDBConnection = GraphViewConnection;
-
-                foreach (var Batch in script.Batches)
-                    foreach (var statement in Batch.Statements)
-                        if (statement is WSelectStatement)
-                        {
-                            var selectStatement = (statement as WSelectStatement);
-                            var Query = selectStatement.QueryExpr as WSelectQueryBlock;
-                            GraphViewDataReader Reader = new GraphViewDataReader(Query.Generate(DocumentDBConnection));
-                            return Reader;
-                        }
-                return null;
-            }
-            catch (DocumentClientException e)
-            {
-                throw new SqlExecutionException("An error occurred when executing the query", e);
-            }
-        }
-
-        public int ExecuteNonQuery()
-        {
-            try
-            {
-                var sr = new StringReader(CommandText);
-                var parser = new GraphViewParser();
-                IList<ParseError> errors;
-                var script = parser.Parse(sr, out errors) as WSqlScript;
-                if (errors.Count > 0)
-                    throw new SyntaxErrorException(errors);
-                
-                var DocumentDBConnection = GraphViewConnection;
-
-                foreach (var Batch in script.Batches)
-                {
-                    foreach (var statement in Batch.Statements)
-                    {
-                        if (statement is WInsertSpecification)
-                        {
-                            var insertSpecification = (statement as WInsertSpecification);
-
-                            if (insertSpecification is WInsertNodeSpecification)
-                            {
-                                var insertNodeStatement = insertSpecification as WInsertNodeSpecification;
-                                var Insertop = insertNodeStatement.Generate(DocumentDBConnection);
-                                Insertop.Next();
-                            }
-                            else if (insertSpecification is WInsertEdgeSpecification)
-                            {
-                                var insertEdgeStatement = insertSpecification as WInsertEdgeSpecification;
-                                var Insertop = insertEdgeStatement.Generate(DocumentDBConnection);
-                                Insertop.Next();
-                            }
-                        }
-                        else if (statement is WDeleteSpecification)
-                        {
-                            var deletespecification = statement as WDeleteSpecification;
-
-                            if (deletespecification is WDeleteEdgeSpecification)
-                            {
-                                var deleteEdgeStatement = deletespecification as WDeleteEdgeSpecification;
-                                var Deleteop = deleteEdgeStatement.Generate(DocumentDBConnection);
-                                Deleteop.Next();
-                            }
-                            else if (deletespecification is WDeleteNodeSpecification)
-                            {
-                                var deleteNodeStatement = deletespecification as WDeleteNodeSpecification;
-                                var Deleteop = deleteNodeStatement.Generate(DocumentDBConnection);
-                                Deleteop.Next();
-                            }
-                        }
-                    }
-                }
-
-                return 0;
-            }
-            catch (DocumentClientException e)
-            {
-                throw new SqlExecutionException("An error occurred when executing the query", e);
-            }
+            throw new NotImplementedException();
         }
 
         public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)
