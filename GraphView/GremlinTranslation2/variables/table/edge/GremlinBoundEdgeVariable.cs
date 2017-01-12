@@ -28,14 +28,8 @@ namespace GraphView
                 case GremlinEdgeType.BothE:
                     secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, this, VariableName);
                     break;
-                case GremlinEdgeType.BothForwardE:
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothForwardE, PropertyKeys, this, VariableName);
-                    break;
                 case GremlinEdgeType.InE:
                     secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InE, PropertyKeys, this, VariableName);
-                    break;
-                case GremlinEdgeType.InForwardE:
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InForwardE, PropertyKeys, this, VariableName);
                     break;
                 case GremlinEdgeType.OutE:
                     secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutE, PropertyKeys, this, VariableName);
