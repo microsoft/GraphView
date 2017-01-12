@@ -1456,14 +1456,6 @@ namespace GraphView
 
             if (aggregateCount == 0)
             {
-            }
-            else
-            {
-
-            }
-
-            if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression || e.SelectExpr is WValueExpression))
-            {
                 foreach (var expr in selectScalarExprList)
                 {
                     var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
@@ -1491,14 +1483,19 @@ namespace GraphView
                     context.RawRecordLayout.Add(columnReference, i++);
                 }
             }
-            // TODO: distinguish aggregate function and scalar function from WFunctionCall
-            else if (selectScalarExprList.All(e => e.SelectExpr is WFunctionCall))
-            {
-                throw new NotImplementedException();
-            }
             else
             {
-                throw new NotImplementedException();
+                foreach (var selectScalar in selectScalarExprList)
+                {
+                    WFunctionCall fcall = selectScalar.SelectExpr as WFunctionCall;
+                    switch (fcall.FunctionName.Value.ToUpper())
+                    {
+                        case "COUNT":
+                        case "FOLD":
+                        default:
+                            break;
+                    }
+                }
             }
 
             operatorChain.Add(projectOperator);
