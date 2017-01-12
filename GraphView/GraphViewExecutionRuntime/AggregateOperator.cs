@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class AggregateFunction : GraphViewExecutionOperator
+    internal abstract class GroupByFunction : GraphViewExecutionOperator
     {
         internal GraphViewExecutionOperator InputOperator;
         // TODO: Wrong design, group by should be an independent operator
@@ -14,7 +14,7 @@ namespace GraphView
         protected Queue<RawRecord> InputBuffer;
         protected Queue<RawRecord> OutputBuffer;
 
-        internal AggregateFunction(GraphViewExecutionOperator pInputOperator, List<int> pGroupByFieldsList)
+        internal GroupByFunction(GraphViewExecutionOperator pInputOperator, List<int> pGroupByFieldsList)
         {
             InputOperator = pInputOperator;
             GroupByFieldsList = pGroupByFieldsList;
@@ -90,7 +90,7 @@ namespace GraphView
         }
     }
 
-    internal class CountOperator : AggregateFunction
+    internal class CountOperator : GroupByFunction
     {
         internal CountOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList) 
             : base(pInputOperatr, pGroupByFieldsList)
@@ -104,44 +104,57 @@ namespace GraphView
         }
     }
 
-    internal class FoldOperator : AggregateFunction
+    internal class FoldFunction : IAggregateFunction
     {
-        internal int FoldedFieldIdx;
+        StringBuilder stringBuilder;
 
-        internal FoldOperator(GraphViewExecutionOperator pInputOperatr, List<int> pGroupByFieldsList, int pFoldedFieldIdx)
-            : base(pInputOperatr, pGroupByFieldsList)
+        void IAggregateFunction.Accumulate(params string[] values)
         {
-            FoldedFieldIdx = pFoldedFieldIdx;
+            if (values.Length != 1)
+            {
+                return;
+            }
+
+            if (stringBuilder.Length > 0)
+            {
+                stringBuilder.Append(", ");
+            }
+
+            stringBuilder.Append(values[0]);
         }
 
-        internal override RawRecord ApplyAggregateFunction(List<RawRecord> groupedRawRecords)
+        void IAggregateFunction.Init()
         {
-            var result = new RawRecord(2);
-            var foldedList = new StringBuilder("[");
-            var foldedListMetaInfo = new StringBuilder();
+            stringBuilder = new StringBuilder(1024);
+        }
 
-            foreach (var record in groupedRawRecords)
-            {
-                var value = record.fieldValues[FoldedFieldIdx];
-                foldedList.Append(value).Append(",");
-                foldedListMetaInfo.Append(value.Length).Append(",");
-            }
-
-            if (foldedListMetaInfo.Length != 0)
-            {
-                foldedList.Remove(foldedList.Length - 1, 1);
-                foldedListMetaInfo.Remove(foldedListMetaInfo.Length - 1, 1);
-            }
-            foldedList.Append("]");
-
-            result.fieldValues[0] = foldedList.ToString();
-            result.fieldValues[1] = foldedListMetaInfo.ToString();
-
-            return result;
+        string IAggregateFunction.Terminate()
+        {
+            return string.Format("[{0}]", stringBuilder.ToString());
         }
     }
 
-    internal class TreeOperator : AggregateFunction
+    internal class CountFunction : IAggregateFunction
+    {
+        long count;
+
+        void IAggregateFunction.Accumulate(params string[] values)
+        {
+            count++;
+        }
+
+        void IAggregateFunction.Init()
+        {
+            count = 0;
+        }
+
+        string IAggregateFunction.Terminate()
+        {
+            return count.ToString();
+        }
+    }
+
+    internal class TreeOperator : GroupByFunction
     {
         //TODO: tree().by()
         private class TreeNode
