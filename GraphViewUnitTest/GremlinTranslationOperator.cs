@@ -49,7 +49,7 @@ namespace GremlinTranslationOperator.Tests
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "Modern");
-            //connection.ResetCollection();
+            connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 
@@ -74,12 +74,9 @@ namespace GremlinTranslationOperator.Tests
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "MarvelUniverse");
+                "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
-
-            graph.g().V().Range(0, 10).Properties("name").Range(10, 11).Next();
-
-            graph.g().V().Emit().Repeat(GraphTraversal2.__().OutE("_val").InV()).Next();
+            connection.ResetCollection();
 
             graph.g().AddV().Property("name", "a").Property("type", "start").Next();
             graph.g().AddV().Property("name", "b").Next();
@@ -99,7 +96,7 @@ namespace GremlinTranslationOperator.Tests
             graph.g().V().Has("name", "g").AddE("val").To(graph.g().V().Has("name", "h")).Next();
             graph.g().V().Has("name", "g").AddE("fail").To(graph.g().V().Has("name", "i")).Next();
 
-            graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal2.__().OutE("_val").InV()).Next();
+            var results = graph.g().V().Has("type", "start").Emit().Repeat(GraphTraversal2.__().OutE("val").InV()).Next();
 
             //a, g, b, d, e, h
 

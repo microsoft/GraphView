@@ -385,7 +385,9 @@ namespace GraphView
             return new WQueryDerivedTable()
             {
                 QueryExpr = selectQueryBlock,
-                Alias = GetIdentifier(alias)
+                Alias = GetIdentifier(alias),
+                Low = Int32.MinValue,
+                High = Int32.MaxValue
             };
         }
 

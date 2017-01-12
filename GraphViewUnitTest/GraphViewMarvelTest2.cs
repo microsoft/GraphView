@@ -134,15 +134,15 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
-            //connection.ResetCollection();
+            connection.ResetCollection();
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            graph.g().V().AddV("character").Property("name", "VENUS II").Property("weapon", "shield").Next();
-            graph.g().V().AddV("comicbook").Property("name", "AVF 4").Next();
+            graph.g().AddV("character").Property("name", "VENUS II").Property("weapon", "shield").Next();
+            graph.g().AddV("comicbook").Property("name", "AVF 4").Next();
             graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
-            graph.g().V().AddV("character").Property("name", "HAWK").Property("weapon", "claws").Next();
-            graph.g().V().As("v").Has("character", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
-            graph.g().V().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").Next();
+            graph.g().AddV("character").Property("name", "HAWK").Property("weapon", "claws").Next();
+            graph.g().V().As("v").Has("name", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
+            graph.g().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").Next();
             graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
         }
     }
