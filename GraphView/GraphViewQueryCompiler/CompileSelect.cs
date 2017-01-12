@@ -1428,10 +1428,6 @@ namespace GraphView
                 operatorChain.Add(orderByOp);
             }
 
-            var projectOperator =
-                new ProjectOperator(operatorChain.Any()
-                    ? operatorChain.Last()
-                    : (context.OuterContextOp ?? new ConstantSourceOperator(new RawRecord())));
 
             var selectScalarExprList = SelectElements.Select(e => e as WSelectScalarExpression).ToList();
 
@@ -1456,14 +1452,11 @@ namespace GraphView
 
             if (aggregateCount == 0)
             {
-            }
-            else
-            {
+                var projectOperator =
+                    new ProjectOperator(operatorChain.Any()
+                        ? operatorChain.Last()
+                        : (context.OuterContextOp ?? new ConstantSourceOperator(new RawRecord())));
 
-            }
-
-            if (selectScalarExprList.All(e => e.SelectExpr is WScalarSubquery || e.SelectExpr is WColumnReferenceExpression || e.SelectExpr is WValueExpression))
-            {
                 foreach (var expr in selectScalarExprList)
                 {
                     var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
@@ -1488,21 +1481,48 @@ namespace GraphView
                     }
                     else
                         columnReference = new WColumnReferenceExpression("", alias);
+                    // TODO: Change to Addfield with correct ColumnGraphType
                     context.RawRecordLayout.Add(columnReference, i++);
                 }
-            }
-            // TODO: distinguish aggregate function and scalar function from WFunctionCall
-            else if (selectScalarExprList.All(e => e.SelectExpr is WFunctionCall))
-            {
-                throw new NotImplementedException();
+
+                operatorChain.Add(projectOperator);
+                context.CurrentExecutionOperator = projectOperator;
             }
             else
             {
-                throw new NotImplementedException();
-            }
+                ProjectAggregation projectAggregationOp = new ProjectAggregation(operatorChain.Last());
 
-            operatorChain.Add(projectOperator);
-            context.CurrentExecutionOperator = projectOperator;
+                foreach (var selectScalar in selectScalarExprList)
+                {
+                    WFunctionCall fcall = selectScalar.SelectExpr as WFunctionCall;
+
+                    switch (fcall.FunctionName.Value.ToUpper())
+                    {
+                        case "COUNT":
+                            projectAggregationOp.AddAggregateSpec(new CountFunction(), new List<int>());
+                            break;
+                        case "FOLD":
+                            var foldedField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            var foldedFieldIndex = context.LocateColumnReference(foldedField);
+                            projectAggregationOp.AddAggregateSpec(new FoldFunction(), new List<int>(foldedFieldIndex));
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                // Rebuild the context's layout
+                context.ClearField();
+                foreach (var expr in selectScalarExprList)
+                {
+                    var alias = expr.ColumnName;
+                    // TODO: Change to Addfield with correct ColumnGraphType
+                    context.AddField("", alias, ColumnGraphType.Value);
+                }
+
+                operatorChain.Add(projectAggregationOp);
+                context.CurrentExecutionOperator = projectAggregationOp;
+            }
 
             return operatorChain.Last();
         }
