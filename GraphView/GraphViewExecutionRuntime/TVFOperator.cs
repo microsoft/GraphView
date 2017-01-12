@@ -134,29 +134,67 @@ namespace GraphView
         }
     }
 
-    internal class UnfoldOperator : TableValuedFunction
+    internal class PathOperator : TableValuedFunction
     {
-        int collectionFieldIndex;
+        private List<int> _pathFieldList;
 
-        internal UnfoldOperator(
-            GraphViewExecutionOperator pInputOperator, 
-            int collectionFieldIndex, 
+        public PathOperator(GraphViewExecutionOperator pInputOperator, 
+            List<int> pStepFieldList,
             int pOutputBufferSize = 1000)
             : base(pInputOperator, pOutputBufferSize)
         {
-            this.collectionFieldIndex = collectionFieldIndex;
+            this._pathFieldList = pStepFieldList;
+        }
+
+        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        {
+            List<FieldObject> pathCollection = new List<FieldObject>();
+
+            foreach (var index in _pathFieldList)
+            {
+                if (record[index].GetType() == typeof(StringField))
+                    pathCollection.Add(record[index]);
+                else if (record[index].GetType() == typeof (CollectionField))
+                {
+                    CollectionField cf = record[index] as CollectionField;
+                    foreach (FieldObject fo in cf.Collection)
+                    {
+                        pathCollection.Add(fo);
+                    }
+                }
+            }
+
+            RawRecord newRecord = new RawRecord(record);
+            CollectionField pathResult = new CollectionField(pathCollection);
+            newRecord.Append(pathResult);
+
+            return new List<RawRecord> {newRecord};
+        }
+    }
+
+    internal class UnfoldOperator : TableValuedFunction
+    {
+        private int _collectionFieldIndex;
+
+        internal UnfoldOperator(
+            GraphViewExecutionOperator pInputOperator,
+            int pCollectionFieldIndex,
+            int pOutputBufferSize = 1000)
+            : base(pInputOperator, pOutputBufferSize)
+        {
+            this._collectionFieldIndex = pCollectionFieldIndex;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
 
-            if (record[collectionFieldIndex].GetType() != typeof(CollectionField))
+            if (record[_collectionFieldIndex].GetType() != typeof(CollectionField))
             {
                 throw new GraphViewException("The input of unfold must be a collection.");
             }
 
-            CollectionField cf = record[collectionFieldIndex] as CollectionField;
+            CollectionField cf = record[_collectionFieldIndex] as CollectionField;
             foreach (FieldObject fo in cf.Collection)
             {
                 RawRecord newRecord = new RawRecord(record);

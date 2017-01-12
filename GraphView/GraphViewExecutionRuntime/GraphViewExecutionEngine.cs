@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.Documents.Client;
 
 // Add DocumentDB references
@@ -48,6 +49,20 @@ namespace GraphView
         public CollectionField(List<FieldObject> collection)
         {
             Collection = collection;
+        }
+
+        public override string ToString()
+        {
+            if (Collection.Count == 0) return "[]";
+
+            var collectionStringBuilder = new StringBuilder("[");
+            collectionStringBuilder.Append(Collection[0].ToString());
+
+            for (var i = 1; i < Collection.Count; i++)
+                collectionStringBuilder.Append(',').Append(Collection[0].ToString());
+
+            collectionStringBuilder.Append(']');
+            return collectionStringBuilder.ToString();
         }
     }
 

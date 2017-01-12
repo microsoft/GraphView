@@ -2643,5 +2643,49 @@ namespace GraphView
             return unfoldOp;
         }
     }
+
+    partial class WPathTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var pathFieldList = new List<int>();
+
+            foreach (var expression in Parameters)
+            {
+                var columnReference = expression as WColumnReferenceExpression;
+                if (columnReference == null) throw new SyntaxErrorException("Parameters in Path function can only be WColumnReference");
+
+                pathFieldList.Add(context.LocateColumnReference(columnReference));
+            }
+
+            var pathOp = new PathOperator(context.CurrentExecutionOperator, pathFieldList);
+            context.CurrentExecutionOperator = pathOp;
+            context.AddField(Alias.Value, "_path", ColumnGraphType.Value);
+
+            return pathOp;
+        }
+    }
+
+    partial class WInjectTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            List<GraphViewExecutionOperator> subQueriesOps = new List<GraphViewExecutionOperator>();
+            foreach (var expression in Parameters)
+            {
+                var subQuery = expression as WScalarSubquery;
+                if (subQuery == null) throw new SyntaxErrorException("Parameters in Inject function can only be WScalarSubquery");
+
+                var subContext = new QueryCompilationContext(context);
+                var subQueryOp = subQuery.SubQueryExpr.Compile(subContext, dbConnection);
+                subQueriesOps.Add(subQueryOp);
+            }
+
+            InjectOperator injectOp = new InjectOperator(subQueriesOps, context.CurrentExecutionOperator);
+            context.CurrentExecutionOperator = injectOp;
+
+            return injectOp;
+        }
+    }
 }
 
