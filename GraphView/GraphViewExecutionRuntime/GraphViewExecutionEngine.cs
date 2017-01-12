@@ -68,7 +68,7 @@ namespace GraphView
     {
         internal RawRecord()
         {
-            fieldValues = new List<string>();
+            fieldValues = new List<FieldObject>();
         }
         internal RawRecord(RawRecord rhs)
         {

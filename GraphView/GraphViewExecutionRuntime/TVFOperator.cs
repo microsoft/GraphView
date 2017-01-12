@@ -136,32 +136,33 @@ namespace GraphView
 
     internal class UnfoldOperator : TableValuedFunction
     {
-        internal int FoldedFieldIdx;
-        internal int FoldedMetaIdx;
+        int collectionFieldIndex;
 
-        internal UnfoldOperator(GraphViewExecutionOperator pInputOperator, int pFoldedFieldIdx, int pFoldedMetaIdx, int pOutputBufferSize = 1000)
+        internal UnfoldOperator(
+            GraphViewExecutionOperator pInputOperator, 
+            int collectionFieldIndex, 
+            int pOutputBufferSize = 1000)
             : base(pInputOperator, pOutputBufferSize)
         {
-            FoldedFieldIdx = pFoldedFieldIdx;
-            FoldedMetaIdx = pFoldedMetaIdx;
+            this.collectionFieldIndex = collectionFieldIndex;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
-            //var metaInfo = record.fieldValues[FoldedMetaIdx].Split(',');
-            //var foldedList = record.fieldValues[FoldedFieldIdx];
-            //var start = 0;
 
-            //foreach (var offsetStr in metaInfo)
-            //{
-            //    var offset = int.Parse(offsetStr);
-            //    var result = new RawRecord(1);
-            //    start += 1;
-            //    result.fieldValues[0] = foldedList.Substring(start, offset);
-            //    results.Add(result);
-            //    start += offset;
-            //}
+            if (record[collectionFieldIndex].GetType() != typeof(CollectionField))
+            {
+                throw new GraphViewException("The input of unfold must be a collection.");
+            }
+
+            CollectionField cf = record[collectionFieldIndex] as CollectionField;
+            foreach (FieldObject fo in cf.Collection)
+            {
+                RawRecord newRecord = new RawRecord(record);
+                newRecord.Append(fo);
+                results.Add(newRecord);
+            }
 
             return results;
         }
