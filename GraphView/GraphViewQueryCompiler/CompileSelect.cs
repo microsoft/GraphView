@@ -1481,6 +1481,7 @@ namespace GraphView
                     }
                     else
                         columnReference = new WColumnReferenceExpression("", alias);
+                    // TODO: Change to Addfield with correct ColumnGraphType
                     context.RawRecordLayout.Add(columnReference, i++);
                 }
 
@@ -1508,6 +1509,15 @@ namespace GraphView
                         default:
                             break;
                     }
+                }
+
+                // Rebuild the context's layout
+                context.ClearField();
+                foreach (var expr in selectScalarExprList)
+                {
+                    var alias = expr.ColumnName;
+                    // TODO: Change to Addfield with correct ColumnGraphType
+                    context.AddField("", alias, ColumnGraphType.Value);
                 }
 
                 operatorChain.Add(projectAggregationOp);
