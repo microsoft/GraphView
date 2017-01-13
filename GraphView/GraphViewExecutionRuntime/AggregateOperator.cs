@@ -311,11 +311,6 @@ namespace GraphView
     {
         Dictionary<FieldObject, int> aggregateState;    // To consider: whether a single key is enough, or a composite key?
 
-        public StoreStateFunction(int stateIndex)
-        {
-            this.stateIndex = stateIndex;
-        }
-
         void Init()
         {
             aggregateState = new Dictionary<FieldObject, int>();
@@ -348,6 +343,21 @@ namespace GraphView
             }
 
             return new StringField("[" + sb.ToString() + "]");
+        }
+
+        void IAggregateFunction.Init()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IAggregateFunction.Accumulate(params FieldObject[] values)
+        {
+            throw new NotImplementedException();
+        }
+
+        FieldObject IAggregateFunction.Terminate()
+        {
+            throw new NotImplementedException();
         }
     }
 }
