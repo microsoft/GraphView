@@ -166,47 +166,16 @@ namespace GraphView
             AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        //TODO: refactor
         internal GremlinTableVariable GetSourceVertex(GremlinVariable edge)
         {
-            var existPath = PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName);
-            if (existPath != null)
-            {
-                if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-                {
-                    return existPath.SinkVariable;
-                }
-                else if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
-                {
-                    return existPath.SourceVariable;
-                }
-            }
-            return null;
+            return PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
         }
 
-        //TODO: refactor
         internal GremlinTableVariable GetSinkVertex(GremlinVariable edge)
         {
-            var existPath = PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName);
-            if (existPath != null)
-            {
-                if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-                {
-                    return existPath.SourceVariable;
-                }
-                else if ((existPath.EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
-                {
-                    return existPath.SinkVariable;
-                }
-                else
-                {
-                    throw new QueryCompilationException();
-                }
-            }
-            return null;
+            return PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
         }
 
-        //TODO: refactor
         internal GremlinVariableProperty GetSourceVariableProperty(GremlinVariable edge)
         {
             if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
@@ -231,7 +200,7 @@ namespace GraphView
         {
             if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
             {
-                return new GremlinVariableProperty(edge, GremlinKeyword.EdgeReverseID);
+                return new GremlinVariableProperty(edge, GremlinKeyword.ReverseEdgeAdj);
             }
             else
             {
@@ -303,6 +272,10 @@ namespace GraphView
                     if (!(path.SinkVariable is GremlinFreeVertexVariable))
                     {
                         path.SinkVariable = null;
+                    }
+                    if (!(path.SourceVariable is GremlinFreeVertexVariable))
+                    {
+                        path.SourceVariable = null;
                     }
                     newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
                 }

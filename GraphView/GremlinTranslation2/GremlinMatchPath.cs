@@ -21,26 +21,12 @@ namespace GraphView
 
         public void SetSinkVariable(GremlinTableVariable sinkVariable)
         {
-            if ((EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-            {
-                throw new QueryCompilationException();
-            }
-            if ((EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
-            {
-                SinkVariable = sinkVariable;
-            }
+            SinkVariable = sinkVariable;
         }
 
         public void SetSourceVariable(GremlinTableVariable sourceVariable)
         {
-            if ((EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-            {
-                SinkVariable = sourceVariable;
-            }
-            if ((EdgeVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.OutEdge)
-            {
-                throw new QueryCompilationException();
-            }
+            SourceVariable = sourceVariable;
         }
     } 
 }

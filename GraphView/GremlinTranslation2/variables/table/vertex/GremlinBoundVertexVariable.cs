@@ -34,23 +34,24 @@ namespace GraphView
             {
                 secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, this, VariableName);
             }
+            else if (variablePropertyList.First().GremlinVariable is GremlinEdgeTableVariable)
+            {
+                switch ((variablePropertyList.First().GremlinVariable as GremlinEdgeTableVariable).EdgeType)
+                {
+                    case WEdgeType.BothEdge:
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OtherV, PropertyKeys, this, VariableName);
+                        break;
+                    case WEdgeType.InEdge:
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
+                        break;
+                    case WEdgeType.OutEdge:
+                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, VariableName);
+                        break;
+                }
+            }
             else
             {
-                if (variablePropertyList.First().GremlinVariable is GremlinEdgeTableVariable)
-                {
-                    if ((variablePropertyList.First().GremlinVariable as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-                    {
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
-                    }
-                    else
-                    {
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, VariableName);
-                    }
-                }
-                else
-                {
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
-                }
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
             }
            
 

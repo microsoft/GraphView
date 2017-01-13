@@ -10,10 +10,12 @@ namespace GraphView
     {
         public const string Label = "label";
         public const string EdgeID = "_ID";
-        public const string EdgeSinkId = "_sink";
-        public const string EdgeSourceId = "_source";
+        public const string EdgeSourceV = "_source";
+        public const string EdgeSinkV = "_sink";
+        public const string EdgeOtherV = "_other";
         public const string NodeID = "id";
-        public const string EdgeReverseID = "_reverse_ID";
+        public const string EdgeAdj = "_edge";
+        public const string ReverseEdgeAdj = "_reverse_edge";
         public const string TableValue = "_value";
         public const string Path = "_path";
 
@@ -52,6 +54,7 @@ namespace GraphView
             public const string Path = "Path";
             public const string Inject = "Inject";
             public const string Tree = "Tree";
+            public const string OtherV = "OtherV";
         }
         public enum Pop
         {

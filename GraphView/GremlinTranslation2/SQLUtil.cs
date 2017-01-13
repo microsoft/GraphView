@@ -224,8 +224,26 @@ namespace GraphView
             return new WMatchPath()
             {
                 PathEdgeList = GetPathEdgeList(path),
-                Tail = path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable.VariableName)
+                Tail = GetPathTail(path)
             };
+        }
+
+        internal static WSchemaObjectName GetPathTail(GremlinMatchPath path)
+        {
+            var edge = path.EdgeVariable as GremlinEdgeTableVariable;
+            if (edge.EdgeType == WEdgeType.InEdge)
+                return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.VariableName);
+            else
+                return path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable?.VariableName);
+        }
+
+        internal static WSchemaObjectName GetPathSource(GremlinMatchPath path)
+        {
+            var edge = path.EdgeVariable as GremlinEdgeTableVariable;
+            if (edge.EdgeType == WEdgeType.InEdge)
+                return GetSchemaObjectName(path.SinkVariable.VariableName);
+            else
+                return GetSchemaObjectName(path.SourceVariable?.VariableName);
         }
 
         internal static List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> GetPathEdgeList(GremlinMatchPath path)
@@ -233,7 +251,7 @@ namespace GraphView
             return new List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>>()
             {
                 new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
-                    path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable.VariableName),
+                    GetPathSource(path),
                     GetEdgeColumnReferenceExpr(path.EdgeVariable as GremlinEdgeTableVariable)
                 )
             };
@@ -290,6 +308,9 @@ namespace GraphView
                     funcTableRef = new WBoundOutNodeTableReference();
                     break;
                 case GremlinKeyword.func.InV:
+                    funcTableRef = new WBoundOutNodeTableReference();
+                    break;
+                case GremlinKeyword.func.OtherV:
                     funcTableRef = new WBoundOutNodeTableReference();
                     break;
                 case GremlinKeyword.func.BothV:

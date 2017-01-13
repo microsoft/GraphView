@@ -500,12 +500,6 @@ namespace GraphView
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
             GremlinTableVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
-            if (optionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
-                newVariable.Populate(GremlinKeyword.EdgeID);
-            if (optionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
-                newVariable.Populate(GremlinKeyword.NodeID);
-            if (optionalContext.PivotVariable.GetVariableType() == GremlinVariableType.Scalar)
-                newVariable.Populate(GremlinKeyword.TableValue);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

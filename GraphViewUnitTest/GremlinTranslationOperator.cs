@@ -82,7 +82,7 @@ namespace GremlinTranslationOperator.Tests
             //connection.ResetCollection();
 
             //var result = graph.g().V().Out().Inject(1).Next();
-            var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().path().Tree().Next();
+            //var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().path().Tree().Next();
             //var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().Tree().Next();
 
             //graph.g().AddV().Property("name", "a").Property("type", "start").Next();
@@ -109,6 +109,7 @@ namespace GremlinTranslationOperator.Tests
 
 
             //graph.g().V().In().Out().Next();
+            //graph.g().V().OutE().As("a").FlatMap(GraphTraversal2.__().InV()).Select("a").InV().Next();
             //graph.g().V().Out().In().Next();
             //graph.g().V().InE().InV().Next();
             //graph.g().V().InE().OutV().Next();
@@ -123,19 +124,19 @@ namespace GremlinTranslationOperator.Tests
             //graph.g().V().BothE().BothV().Next();
             //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV().InE()).Next();
             //graph.g().V().InE().FlatMap(GraphTraversal2.__().BothV().OutE()).Next();
-            graph.g().V().InE().FlatMap(GraphTraversal2.__().OutV().OutE()).Next();
-            graph.g().V().InE().FlatMap(GraphTraversal2.__().InV().OutE()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().InE().OutV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().InE().InV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().InE().BothV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().InE().OtherV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().OutE().InV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().OutE().BothV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().OutE().OtherV()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().In().OutE()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutE()).Next();
-            graph.g().V().FlatMap(GraphTraversal2.__().Both().OutE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal2.__().OutV().OutE()).Next();
+            //graph.g().V().InE().FlatMap(GraphTraversal2.__().InV().OutE()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().InE().OutV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().InE().InV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().InE().BothV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().InE().OtherV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().InV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().BothV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().OtherV()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().In().OutE()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().OutE().OutE()).Next();
+            //graph.g().V().FlatMap(GraphTraversal2.__().Both().OutE()).Next();
 
             //graph.g().V().OutE().FlatMap(GraphTraversal2.__().InV().InE().Drop()).Next();
             //graph.g().V().BothE().FlatMap(GraphTraversal2.__().InV().InE().OutV()).Next();
@@ -182,7 +183,8 @@ namespace GremlinTranslationOperator.Tests
                             .Out("mdl")
                             .OutE("ref")
                             .Where(GraphTraversal2.__().Values("_key")
-                                .Where(Predicate.eq("key"))))))
+                                .Where(Predicate.eq("key")))))
+                                )
                 .Until(GraphTraversal2.__().FlatMap(
                     GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
                 .Next();

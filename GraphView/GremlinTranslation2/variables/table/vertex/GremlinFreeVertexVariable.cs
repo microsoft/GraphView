@@ -48,7 +48,7 @@ namespace GraphView
             GremlinFreeEdgeVariable inEdge = new GremlinFreeEdgeVariable(WEdgeType.InEdge);
             currentContext.VariableList.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
-            currentContext.AddPath(new GremlinMatchPath(this, inEdge, null));
+            currentContext.AddPath(new GremlinMatchPath(null, inEdge, this));
             currentContext.SetPivotVariable(inEdge);
         }
 
