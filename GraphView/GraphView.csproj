@@ -96,6 +96,7 @@
     <Compile Include="GremlinTranslation2\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation2\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation2\GremlinUtil.cs" />
+    <Compile Include="GremlinTranslation2\map\GremlinPathOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinAsOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinEOp.cs" />
     <Compile Include="GremlinTranslation2\GremlinKeyword.cs" />
@@ -153,17 +154,17 @@
     <Compile Include="GremlinTranslation2\variables\table\GremlinSqlTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinDedupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinDropVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinPathVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinUnfoldVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinUpdatePropertiesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinValuesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinLocalVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\table\derived\GremlinDerivedTableVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\GremlinDerivedTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinKeyVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinProjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarSubquery.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinVariableProperty.cs" />
-    <Compile Include="GremlinTranslation2\variables\scalar\GremlinAggregationVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinCoalesceTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinConstantVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinFlatMapVariable.cs" />
@@ -174,7 +175,7 @@
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinUnionVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinBinaryVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinContextTableVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\table\derived\GremlinInjectVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinInjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinPropertiesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinValueVariable.cs" />

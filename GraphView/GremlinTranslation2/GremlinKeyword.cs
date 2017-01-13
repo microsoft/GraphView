@@ -15,7 +15,7 @@ namespace GraphView
         public const string NodeID = "id";
         public const string EdgeReverseID = "_reverse_ID";
         public const string TableValue = "_value";
-
+        public const string Path = "_path";
 
         public static class func
         {
@@ -51,6 +51,7 @@ namespace GraphView
             public const string UpdateEdgeProperties = "UpdateEdgeProperties";
             public const string Path = "Path";
             public const string Inject = "Inject";
+            public const string Tree = "Tree";
         }
         public enum Pop
         {

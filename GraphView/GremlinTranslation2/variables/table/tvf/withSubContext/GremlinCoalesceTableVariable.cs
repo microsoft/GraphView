@@ -40,7 +40,14 @@ namespace GraphView
             {
                 context.Populate(property);
             }
-            
+        }
+
+        internal override void PopulateGremlinPath()
+        {
+            foreach (var context in CoalesceContextList)
+            {
+                context.PopulateGremlinPath();
+            }
         }
 
         public override  WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)

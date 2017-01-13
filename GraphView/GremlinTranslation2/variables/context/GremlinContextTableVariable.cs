@@ -30,7 +30,7 @@ namespace GraphView
 
             currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, bothEdge, bothVertex));
 
-            currentContext.PivotVariable = bothVertex;
+            currentContext.SetPivotVariable(bothVertex);
         }
 
         internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -51,7 +51,7 @@ namespace GraphView
 
             currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, bothEdge, null));
 
-            currentContext.PivotVariable = bothEdge;
+            currentContext.SetPivotVariable(bothEdge);
         }
 
         internal override void BothV(GremlinToSqlContext currentContext)
@@ -66,7 +66,7 @@ namespace GraphView
                 currentContext.VariableList.Add(bothVertex);
                 currentContext.TableReferences.Add(bothVertex);
 
-                currentContext.PivotVariable = bothVertex;
+                currentContext.SetPivotVariable(bothVertex);
             }
             else
             {
@@ -79,7 +79,7 @@ namespace GraphView
 
                 currentContext.VariableList.Add(newVertex);
                 currentContext.TableReferences.Add(newVertex);
-                currentContext.PivotVariable = newVertex;
+                currentContext.SetPivotVariable(newVertex);
             }
         }
 
@@ -103,7 +103,7 @@ namespace GraphView
 
             currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, inEdge, outVertex));
 
-            currentContext.PivotVariable = outVertex;
+            currentContext.SetPivotVariable(outVertex);
         }
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -120,7 +120,7 @@ namespace GraphView
 
             currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, inEdge, null));
 
-            currentContext.PivotVariable = inEdge;
+            currentContext.SetPivotVariable(inEdge);
         }
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -142,7 +142,7 @@ namespace GraphView
 
             currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, outEdge, outVertex));
 
-            currentContext.PivotVariable = outVertex;
+            currentContext.SetPivotVariable(outVertex);
         }
 
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -159,7 +159,7 @@ namespace GraphView
 
             currentContext.AddPath(new GremlinMatchPath(ContextVariable as GremlinTableVariable, inEdge, null));
 
-            currentContext.PivotVariable = inEdge;
+            currentContext.SetPivotVariable(inEdge);
         }
 
         internal override void InV(GremlinToSqlContext currentContext)
@@ -174,7 +174,7 @@ namespace GraphView
                     Populate(GremlinKeyword.EdgeSinkId);
                     currentContext.VariableList.Add(newVertex);
                     currentContext.TableReferences.Add(newVertex);
-                    currentContext.PivotVariable = newVertex;
+                    currentContext.SetPivotVariable(newVertex);
                     break;
                 case WEdgeType.OutEdge:
                 case WEdgeType.InEdge:
@@ -182,13 +182,13 @@ namespace GraphView
                     {
                         if (currentContext.IsVariableInCurrentContext(path.SinkVariable))
                         {
-                            currentContext.PivotVariable = path.SinkVariable;
+                            currentContext.SetPivotVariable(path.SinkVariable);
                         }
                         else
                         {
                             GremlinContextVariable newContextVariable = Create(path.SinkVariable);
                             currentContext.VariableList.Add(newContextVariable);
-                            currentContext.PivotVariable = newContextVariable;
+                            currentContext.SetPivotVariable(newContextVariable);
                         }
                     }
                     else
@@ -198,7 +198,7 @@ namespace GraphView
 
                         currentContext.VariableList.Add(newVertex);
                         currentContext.TableReferences.Add(newVertex);
-                        currentContext.PivotVariable = newVertex;
+                        currentContext.SetPivotVariable(newVertex);
                     }
                     break;
             }
@@ -216,7 +216,7 @@ namespace GraphView
                     Populate(GremlinKeyword.EdgeSourceId);
                     currentContext.VariableList.Add(newVertex);
                     currentContext.TableReferences.Add(newVertex);
-                    currentContext.PivotVariable = newVertex;
+                    currentContext.SetPivotVariable(newVertex);
                     break;
                 case WEdgeType.OutEdge:
                 case WEdgeType.InEdge:
@@ -224,13 +224,13 @@ namespace GraphView
                     {
                         if (currentContext.IsVariableInCurrentContext(path.SourceVariable))
                         {
-                            currentContext.PivotVariable = path.SourceVariable;
+                            currentContext.SetPivotVariable(path.SourceVariable);
                         }
                         else
                         {
                             GremlinContextVariable newContextVariable = Create(path.SourceVariable);
                             currentContext.VariableList.Add(newContextVariable);
-                            currentContext.PivotVariable = newContextVariable;
+                            currentContext.SetPivotVariable(newContextVariable);
                         }
                     }
                     else
@@ -240,7 +240,7 @@ namespace GraphView
 
                         currentContext.VariableList.Add(newVertex);
                         currentContext.TableReferences.Add(newVertex);
-                        currentContext.PivotVariable = newVertex;
+                        currentContext.SetPivotVariable(newVertex);
                     }
                     break;
             }
@@ -256,7 +256,7 @@ namespace GraphView
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);
 
-                currentContext.PivotVariable = outVertex;
+                currentContext.SetPivotVariable(outVertex);
             }
             else
             {
@@ -296,7 +296,7 @@ namespace GraphView
             GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(ContextVariable as GremlinTableVariable, propertyKeys);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
@@ -306,7 +306,7 @@ namespace GraphView
                 Populate(propertyKeys.First());
                 GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(ContextVariable as GremlinTableVariable, propertyKeys.First());
                 currentContext.VariableList.Add(newVariableProperty);
-                currentContext.PivotVariable = newVariableProperty;
+                currentContext.SetPivotVariable(newVariableProperty);
             }
             else
             {
@@ -317,7 +317,7 @@ namespace GraphView
                 GremlinValuesVariable newVariable = new GremlinValuesVariable(ContextVariable as GremlinTableVariable, propertyKeys);
                 currentContext.VariableList.Add(newVariable);
                 currentContext.TableReferences.Add(newVariable);
-                currentContext.PivotVariable = newVariable;
+                currentContext.SetPivotVariable(newVariable);
             }
         }
     }

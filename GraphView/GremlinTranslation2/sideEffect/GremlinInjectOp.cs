@@ -22,10 +22,10 @@ namespace GraphView
 
             if (inputContext.VariableList.Count == 0)
             {
-                GremlinInjectVariable injectVar = new GremlinInjectVariable(null, Injections);
+                GremlinInjectVariable injectVar = new GremlinInjectVariable(Injections);
                 inputContext.VariableList.Add(injectVar);
                 inputContext.TableReferences.Add(injectVar);
-                inputContext.PivotVariable = injectVar;
+                inputContext.SetPivotVariable(injectVar);
             }
             else
             {

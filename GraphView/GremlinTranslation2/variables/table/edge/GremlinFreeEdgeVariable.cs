@@ -25,7 +25,7 @@ namespace GraphView
                 currentContext.VariableList.Add(bothVertex);
                 currentContext.TableReferences.Add(bothVertex);
 
-                currentContext.PivotVariable = bothVertex;
+                currentContext.SetPivotVariable(bothVertex);
             }
             else
             {
@@ -35,7 +35,7 @@ namespace GraphView
                 GremlinBoundVertexVariable bothVertex = new GremlinBoundVertexVariable(sourceProperty, sinkProperty);
                 currentContext.TableReferences.Add(bothVertex);
                 currentContext.VariableList.Add(bothVertex);
-                currentContext.PivotVariable = bothVertex;
+                currentContext.SetPivotVariable(bothVertex);
             }
         }
 
@@ -50,8 +50,7 @@ namespace GraphView
                 GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sinkProperty);
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);
-
-                currentContext.PivotVariable = outVertex;
+                currentContext.SetPivotVariable(outVertex);
             }
             else
             {
@@ -62,11 +61,11 @@ namespace GraphView
                     path.SetSinkVariable(newVertex);
                     currentContext.TableReferences.Add(newVertex);
                     currentContext.VariableList.Add(newVertex);
-                    currentContext.PivotVariable = newVertex;
+                    currentContext.SetPivotVariable(newVertex);
                 }
                 else
                 {
-                    currentContext.PivotVariable = inVertex;
+                    currentContext.SetPivotVariable(inVertex);
                 }
             }
         }
@@ -85,8 +84,7 @@ namespace GraphView
                 GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(sourceProperty);
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);
-
-                currentContext.PivotVariable = outVertex;
+                currentContext.SetPivotVariable(outVertex);
             }
             else
             {
@@ -98,11 +96,11 @@ namespace GraphView
                     path.SetSourceVariable(newVertex);
                     currentContext.TableReferences.Add(newVertex);
                     currentContext.VariableList.Add(newVertex);
-                    currentContext.PivotVariable = newVertex;
+                    currentContext.SetPivotVariable(newVertex);
                 }
                 else
                 {
-                    currentContext.PivotVariable = outVertex;
+                    currentContext.SetPivotVariable(outVertex);
                 }
             }
         }
@@ -117,8 +115,7 @@ namespace GraphView
                 GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(otherProperty);
                 currentContext.VariableList.Add(outVertex);
                 currentContext.TableReferences.Add(outVertex);
-
-                currentContext.PivotVariable = outVertex;
+                currentContext.SetPivotVariable(outVertex);
             }
             else
             {

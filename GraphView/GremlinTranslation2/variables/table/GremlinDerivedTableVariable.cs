@@ -35,11 +35,6 @@ namespace GraphView
     {
         public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
 
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
-        }
-
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
@@ -53,16 +48,30 @@ namespace GraphView
     {
         public GremlinCountVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
 
-        internal override GremlinVariableProperty DefaultProjection()
+        public override WTableReference ToTableReference()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func.Count, SqlUtil.GetStarColumnReferenceExpr()));
+            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+        }
+    }
+
+    internal class GremlinTreeVariable : GremlinDerivedTableVariable
+    {
+        private GremlinVariableProperty pathVariableProperty;
+
+        public GremlinTreeVariable(GremlinToSqlContext subqueryContext, GremlinVariableProperty pathVariableProperty)
+            : base(subqueryContext)
+        {
+            this.pathVariableProperty = pathVariableProperty;
         }
 
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func.Count, SqlUtil.GetStarColumnReferenceExpr()));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }

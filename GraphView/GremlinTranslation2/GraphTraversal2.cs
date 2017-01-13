@@ -671,7 +671,13 @@ namespace GraphView
 
         //public GraphTraversal2 pageRank()
         //public GraphTraversal2 pageRank(double alpha)
-        //public GraphTraversal2 path()
+
+        public GraphTraversal2 path()
+        {
+            AddGremlinOperator(new GremlinPathOp());
+            return this;   
+        }
+
         //public GraphTraversal2 peerPressure()
         //public GraphTraversal2 profile()
         //public GraphTraversal2 profile(string sideEffectKey)

@@ -73,7 +73,7 @@ namespace GraphView
                 Populate(propertyKeys.First());
                 GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(ContextVariable, propertyKeys.First());
                 currentContext.VariableList.Add(newVariableProperty);
-                currentContext.PivotVariable = newVariableProperty;
+                currentContext.SetPivotVariable(newVariableProperty);
             }
             else
             {

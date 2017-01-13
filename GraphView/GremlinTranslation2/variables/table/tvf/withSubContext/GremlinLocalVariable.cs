@@ -36,6 +36,11 @@ namespace GraphView
             LocalContext.Populate(property);
         }
 
+        internal override void PopulateGremlinPath()
+        {
+            LocalContext.PopulateGremlinPath();
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
