@@ -1839,6 +1839,41 @@ namespace GraphView
         public override void ResetState()
         {
             StoreState = new StoreStateFunction();
+
+    internal class BarrierOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private Queue<RawRecord> _outputBuffer;
+
+        public BarrierOperator(GraphViewExecutionOperator inputOp)
+        {
+            _inputOp = inputOp;
+            _outputBuffer = null;
+        }
+          
+        public override RawRecord Next()
+        {
+            if (_outputBuffer == null)
+            {
+                _outputBuffer = new Queue<RawRecord>();
+                RawRecord record;
+
+                while (_inputOp.State() && (record = _inputOp.Next()) != null)
+                {
+                    _outputBuffer.Enqueue(record);
+                }
+            }
+
+            if (_outputBuffer.Count <= 1) Close();
+            if (_outputBuffer.Count != 0) return _outputBuffer.Dequeue();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            _outputBuffer = null;
+            Open();
         }
     }
 }

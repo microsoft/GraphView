@@ -2724,5 +2724,16 @@ namespace GraphView
             return storeOp;
         }
     }
+
+    partial class WBarrierTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var barrierOp = new BarrierOperator(context.CurrentExecutionOperator);
+            context.CurrentExecutionOperator = barrierOp;
+
+            return barrierOp;
+        }
+    }
 }
 
