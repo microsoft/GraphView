@@ -116,6 +116,13 @@ namespace GraphView
 
         public Dictionary<string, TableGraphType> TableReferences { get; private set; }
 
+        /// <summary>
+        /// A collection of states of side effect functions. A function's state
+        /// implements interfaces of aggregation functions, as each record passes through
+        /// the function, the function's state is updated.
+        /// </summary>
+        public Dictionary<string, IAggregateFunction> SideEffectStates { get; private set; }
+
         public QueryCompilationContext()
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();

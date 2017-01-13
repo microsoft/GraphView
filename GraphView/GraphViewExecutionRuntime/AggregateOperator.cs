@@ -226,4 +226,48 @@ namespace GraphView
             }
         }
     }
+
+    internal class StoreStateFunction : IAggregateFunction
+    {
+        Dictionary<FieldObject, int> aggregateState;    // To consider: whether a single key is enough, or a composite key?
+
+        public StoreStateFunction(int stateIndex)
+        {
+            this.stateIndex = stateIndex;
+        }
+
+        void Init()
+        {
+            aggregateState = new Dictionary<FieldObject, int>();
+        }
+
+        void Accumulate(params FieldObject[] values)
+        {
+            if (aggregateState.ContainsKey(values[0]))
+            {
+                aggregateState[values[0]]++;
+            }
+            else
+            {
+                aggregateState.Add(values[0], 1);
+            }
+        }
+
+        FieldObject Terminate()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (FieldObject key in aggregateState.Keys)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(", ");
+                }
+
+                sb.AppendFormat("{0}:{1}", key.ToString(), aggregateState[key]);
+            }
+
+            return new StringField("[" + sb.ToString() + "]");
+        }
+    }
 }
