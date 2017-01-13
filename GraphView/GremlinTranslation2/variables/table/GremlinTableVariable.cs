@@ -26,7 +26,6 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            //TODO
             return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
 
@@ -107,7 +106,7 @@ namespace GraphView
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             BothE(currentContext, edgeLabels);
-            OtherV(currentContext);
+            currentContext.PivotVariable.OtherV(currentContext);
         }
 
         internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -144,7 +143,7 @@ namespace GraphView
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             InE(currentContext, edgeLabels);
-            OutV(currentContext);
+            currentContext.PivotVariable.OutV(currentContext);
         }
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -166,7 +165,7 @@ namespace GraphView
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             OutE(currentContext, edgeLabels);
-            InV(currentContext);
+            currentContext.PivotVariable.InV(currentContext);
         }
 
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -334,7 +333,7 @@ namespace GraphView
     {
         internal override GremlinVariableProperty DefaultProjection()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
+            return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
         }
 
         internal override GremlinVariableType GetVariableType()

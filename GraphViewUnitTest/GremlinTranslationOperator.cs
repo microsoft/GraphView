@@ -165,6 +165,9 @@ namespace GremlinTranslationOperator.Tests
             //        .Union(graph.g().V().OutE(), GraphTraversal2.__().V().In())
             //        .Next();
 
+            graph.g().V().AddE().From(graph.g().V()).Next();
+            graph.g().V().AddE().To(graph.g().V()).From(graph.g().V()).Next();
+
             graph.g().V().As("@v")
                 .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
                 .Repeat(GraphTraversal2.__().As("@e")

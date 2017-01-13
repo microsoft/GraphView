@@ -14,12 +14,15 @@ namespace GraphView
         public Dictionary<string, object> Properties { get; set; }
         public string EdgeLabel { get; set; }
 
+        private int OtherVIndex;
+
         public GremlinAddEVariable(GremlinVariable inputVariable, string edgeLabel)
         {
             Properties = new Dictionary<string, object>();
             EdgeLabel = edgeLabel;
             InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
+            OtherVIndex = 1;
         }
 
         public override WTableReference ToTableReference()
@@ -27,6 +30,13 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(GetSelectQueryBlock(FromVertexContext)));
             parameters.Add(SqlUtil.GetScalarSubquery(GetSelectQueryBlock(ToVertexContext)));
+
+            if (ToVertexContext == null && FromVertexContext != null) OtherVIndex = 0;
+            if (ToVertexContext != null && FromVertexContext == null) OtherVIndex = 1;
+            if (ToVertexContext != null && FromVertexContext != null) OtherVIndex = 1;
+
+            parameters.Add(SqlUtil.GetValueExpr(OtherVIndex));
+
             if (EdgeLabel != null)
             {
                 parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));

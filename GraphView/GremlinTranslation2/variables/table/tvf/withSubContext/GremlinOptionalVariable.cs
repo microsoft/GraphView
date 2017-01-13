@@ -51,6 +51,11 @@ namespace GraphView
             List<string> firstProjectProperties = new List<string>();
             List<string> secondProjectProperties = new List<string>();
 
+            if (projectProperties.Count == 0)
+            {
+                projectProperties.Add(gremlinVariable.DefaultProjection().VariableProperty);
+            }
+
             foreach (var projectProperty in projectProperties)
             {
                 if ((InputVariable.GetVariableType() == GremlinVariableType.Vertex
@@ -101,6 +106,16 @@ namespace GraphView
             }
             WSelectQueryBlock firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(secondProjectProperties);
+
+            if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
+            {
+                firstQueryExpr.SelectElements.Add(
+                    SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(),
+                        GremlinKeyword.TableValue));
+                secondQueryExpr.SelectElements.Add(
+                    SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultProjection().ToScalarExpression(),
+                        GremlinKeyword.TableValue));
+            }
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 

@@ -13,18 +13,22 @@ namespace GraphView
                                                   RepeatCondition repeatCondition)
         {
             var contextVariable = GremlinContextVariable.Create(inputVariable);
-            switch (repeatContext.PivotVariable.GetVariableType())
+            if (repeatContext.PivotVariable.GetVariableType() == inputVariable.GetVariableType())
             {
-                case GremlinVariableType.Vertex:
-                    return new GremlinRepeatVertexVariable(contextVariable, repeatContext, repeatCondition);
-                case GremlinVariableType.Edge:
-                    return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
-                case GremlinVariableType.Scalar:
-                    return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
-                case GremlinVariableType.Table:
-                    return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
+                switch (repeatContext.PivotVariable.GetVariableType())
+                {
+                    case GremlinVariableType.Vertex:
+                        return new GremlinRepeatVertexVariable(contextVariable, repeatContext, repeatCondition);
+                    case GremlinVariableType.Edge:
+                        return new GremlinRepeatEdgeVariable(contextVariable, repeatContext, repeatCondition);
+                    case GremlinVariableType.Scalar:
+                        return new GremlinRepeatScalarVariable(contextVariable, repeatContext, repeatCondition);
+                    case GremlinVariableType.Table:
+                        return new GremlinRepeatTableVariable(contextVariable, repeatContext, repeatCondition);
+                }
             }
-            throw new NotImplementedException();
+            return new GremlinRepeatTableVariable(contextVariable, repeatContext, repeatCondition);
+
         }
 
         public GremlinContextVariable InputVariable { get; set; }
@@ -46,11 +50,6 @@ namespace GraphView
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
-            if (projectProperties.Count == 0)
-            {
-                projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
-            }
-
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
             var useProperties = new List<string>();
             InputVariable = RepeatContext.VariableList.First() as GremlinContextVariable;
@@ -85,11 +84,36 @@ namespace GraphView
             {
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(item.Key.Item1, item.Key.Item2), item.Value.Item2));
             }
-            foreach (var temp in projectProperties)
+
+            if (projectProperties.Count == 0)
             {
-                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
-                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
+                projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
+
+                if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
+                {
+                    firstQueryExpr.SelectElements.Add(
+                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
+                    selectQueryBlock.SelectElements.Add(
+                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
+                }
+                else
+                {
+                    firstQueryExpr.SelectElements.Add(
+                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression()));
+                    selectQueryBlock.SelectElements.Add(
+                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+                }
+                
             }
+            else
+            {
+                foreach (var temp in projectProperties)
+                {
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
+                    selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
+                }
+            }
+            
 
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
