@@ -135,6 +135,86 @@ namespace GraphView
         }
     }
 
+    internal class TreeFunction : IAggregateFunction
+    {
+        private class TreeNode
+        {
+            private string _value;
+            internal SortedDictionary<string, TreeNode> Children;
+
+            internal TreeNode(string pValue)
+            {
+                _value = pValue;
+                Children = new SortedDictionary<string, TreeNode>();
+            }
+
+            public override string ToString()
+            {
+                var strBuilder = new StringBuilder();
+                strBuilder.Append("[");
+                var cnt = 0;
+                foreach (var child in Children)
+                {
+                    if (cnt++ != 0)
+                        strBuilder.Append(",");
+                    child.Value.ToString(strBuilder);
+                }
+                strBuilder.Append("]");
+                return strBuilder.ToString();
+            }
+
+            private void ToString(StringBuilder strBuilder)
+            {
+                strBuilder.Append(_value).Append(":[");
+                var cnt = 0;
+                foreach (var child in Children)
+                {
+                    if (cnt++ != 0)
+                        strBuilder.Append(",");
+                    child.Value.ToString(strBuilder);
+                }
+                strBuilder.Append("]");
+            }
+        }
+
+        private static void ConstructTree(TreeNode root, int index, CollectionField path)
+        {
+            if (index >= path.Collection.Count) return;
+            var node = path.Collection[index++].ToString();
+
+            TreeNode child;
+            if (!root.Children.TryGetValue(node, out child))
+            {
+                child = new TreeNode(node);
+                root.Children[node] = child;
+            }
+
+            ConstructTree(child, index, path);
+        }
+
+        private TreeNode _root;
+
+        void IAggregateFunction.Accumulate(params FieldObject[] values)
+        {
+            if (values.Length != 1)
+            {
+                return;
+            }
+
+            ConstructTree(_root, 0, values[0] as CollectionField);
+        }
+
+        void IAggregateFunction.Init()
+        {
+            _root = new TreeNode("root");
+        }
+
+        FieldObject IAggregateFunction.Terminate()
+        {
+            return new StringField(_root.ToString());
+        }
+    }
+
     internal class TreeOperator : GroupByFunction
     {
         //TODO: tree().by()

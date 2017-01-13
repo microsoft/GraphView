@@ -136,10 +136,11 @@ namespace GraphView
 
     internal class PathOperator : TableValuedFunction
     {
-        private List<int> _pathFieldList;
+        // <field index, whether this field is a path list needed to be unfolded>
+        private List<Tuple<int, bool>> _pathFieldList;
 
-        public PathOperator(GraphViewExecutionOperator pInputOperator, 
-            List<int> pStepFieldList,
+        public PathOperator(GraphViewExecutionOperator pInputOperator,
+            List<Tuple<int, bool>> pStepFieldList,
             int pOutputBufferSize = 1000)
             : base(pInputOperator, pOutputBufferSize)
         {
@@ -150,17 +151,25 @@ namespace GraphView
         {
             List<FieldObject> pathCollection = new List<FieldObject>();
 
-            foreach (var index in _pathFieldList)
+            foreach (var tuple in _pathFieldList)
             {
-                if (record[index].GetType() == typeof(StringField))
-                    pathCollection.Add(record[index]);
-                else if (record[index].GetType() == typeof (CollectionField))
+                var index = tuple.Item1;
+                var needsUnfold = tuple.Item2;
+
+                if (needsUnfold)
                 {
                     CollectionField cf = record[index] as CollectionField;
                     foreach (FieldObject fo in cf.Collection)
                     {
                         pathCollection.Add(fo);
                     }
+                }
+                else
+                {
+                    if (record[index].GetType() == typeof(StringField))
+                        pathCollection.Add(record[index]);
+                    else
+                        pathCollection.Add(new StringField(record[index].ToString()));
                 }
             }
 
