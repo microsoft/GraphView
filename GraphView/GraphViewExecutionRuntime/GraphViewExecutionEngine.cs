@@ -66,6 +66,43 @@ namespace GraphView
         }
     }
 
+    internal class MapField : FieldObject
+    {
+        public SortedDictionary<string, FieldObject> Map { get; private set; }
+
+        public MapField()
+        {
+            Map = new SortedDictionary<string, FieldObject>();
+        }
+
+        public MapField(SortedDictionary<string, FieldObject> map)
+        {
+            Map = map;
+        }
+
+        public override string ToString()
+        {
+            if (Map.Count == 0) return "[]";
+
+            var mapStringBuilder = new StringBuilder('[');
+            var i = 0;
+
+            foreach (var pair in Map)
+            {
+                var key = pair.Key;
+                var value = pair.Value;
+
+                if (i > 0)
+                    mapStringBuilder.Append(',');
+                mapStringBuilder.Append(key).Append(":[").Append(value.ToString()).Append(']');
+            }
+
+            mapStringBuilder.Append(']');
+
+            return mapStringBuilder.ToString();
+        }
+    }
+
     /// <summary>
     /// RawRecord is a data sturcture representing data records flowing from one execution operator to another. 
     /// A data record is a multi-field blob. Each field is currently represented as a string.

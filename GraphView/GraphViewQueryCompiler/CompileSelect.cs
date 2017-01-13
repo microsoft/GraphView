@@ -1443,6 +1443,7 @@ namespace GraphView
                         case "COUNT":
                         case "FOLD":
                         case "TREE":
+                        case "CAP":
                             aggregateCount++;
                             break;
                         default:
@@ -1460,7 +1461,7 @@ namespace GraphView
 
                 foreach (var expr in selectScalarExprList)
                 {
-                    var scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
+                    ScalarFunction scalarFunction = expr.SelectExpr.CompileToFunction(context, connection);
                     projectOperator.AddSelectScalarElement(scalarFunction);
                 }
 
@@ -1512,6 +1513,18 @@ namespace GraphView
                             var pathFieldIndex = context.LocateColumnReference(pathField);
                             projectAggregationOp.AddAggregateSpec(new TreeFunction(), new List<int>(pathFieldIndex));
                             break;
+                        case "CAP":
+                            var capAggregate = new CapAggregate();
+                            foreach (var expression in fcall.Parameters)
+                            {
+                                var capName = expression as WValueExpression;
+                                IAggregateFunction sideEffectState;
+                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectState))
+                                    throw new GraphViewException("SideEffect state " + capName + " doesn't exist in the context");
+                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectState);
+                            }
+                            projectAggregationOp.AddAggregateSpec(new CapAggregate(), new List<int>());
+                            break;
                         default:
                             break;
                     }
@@ -1523,7 +1536,7 @@ namespace GraphView
                 {
                     var alias = expr.ColumnName;
                     // TODO: Change to Addfield with correct ColumnGraphType
-                    context.AddField("", alias, ColumnGraphType.Value);
+                    context.AddField("", "_value", ColumnGraphType.Value);
                 }
 
                 operatorChain.Add(projectAggregationOp);
@@ -2693,6 +2706,22 @@ namespace GraphView
             context.CurrentExecutionOperator = injectOp;
 
             return injectOp;
+        }
+    }
+
+    partial class WStoreTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var targetFieldParameter = Parameters[0] as WColumnReferenceExpression;
+            var targetFieldIndex = context.LocateColumnReference(targetFieldParameter);
+
+            var storedName = (Parameters[1] as WValueExpression).Value;
+            var storeOp = new StoreOperator(context.CurrentExecutionOperator, targetFieldIndex);
+            context.CurrentExecutionOperator = storeOp;
+            context.SideEffectStates.Add(storedName, storeOp.StoreState);
+
+            return storeOp;
         }
     }
 }

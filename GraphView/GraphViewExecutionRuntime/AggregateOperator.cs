@@ -309,70 +309,65 @@ namespace GraphView
 
     internal class StoreStateFunction : IAggregateFunction
     {
-        Dictionary<FieldObject, int> aggregateState;    // To consider: whether a single key is enough, or a composite key?
+        List<FieldObject> aggregateState;
 
         public StoreStateFunction()
         {
-            aggregateState = new Dictionary<FieldObject, int>();
+            aggregateState = new List<FieldObject>();
         }
 
         public void Init()
         {
-            aggregateState = new Dictionary<FieldObject, int>();
+            aggregateState = new List<FieldObject>();
         }
 
         public void Accumulate(params FieldObject[] values)
         {
-            if (aggregateState.ContainsKey(values[0]))
-            {
-                aggregateState[values[0]] = aggregateState[values[0]] + 1;
-            }
-            else
-            {
-                aggregateState.Add(values[0], 1);
-            }
+            aggregateState.Add(values[0]);
         }
 
         public FieldObject Terminate()
         {
-            StringBuilder sb = new StringBuilder();
-
-            foreach (FieldObject key in aggregateState.Keys)
-            {
-                if (sb.Length > 0)
-                {
-                    sb.Append(", ");
-                }
-
-                sb.AppendFormat("{0}:{1}", key.ToString(), aggregateState[key]);
-            }
-
-            return new StringField("[" + sb.ToString() + "]");
+            return new CollectionField(aggregateState);
         }
     }
 
     internal class CapAggregate : IAggregateFunction
     {
-        IAggregateFunction sideEffectState;
+        List<Tuple<string, IAggregateFunction>> sideEffectStates;
 
-        public CapAggregate(IAggregateFunction sideEffectState)
+        public CapAggregate()
         {
-            this.sideEffectState = sideEffectState;
+            sideEffectStates = new List<Tuple<string, IAggregateFunction>>();
         }
 
-        void IAggregateFunction.Accumulate(params FieldObject[] values)
+        public void AddCapatureSideEffectState(string key, IAggregateFunction sideEffect)
+        {
+            sideEffectStates.Add(new Tuple<string, IAggregateFunction>(key, sideEffect));
+        }
+
+        public void Accumulate(params FieldObject[] values)
         {
             return;
         }
 
-        void IAggregateFunction.Init()
+        public void Init()
         {
             return;
         }
 
-        FieldObject IAggregateFunction.Terminate()
+        public FieldObject Terminate()
         {
-            return sideEffectState.Terminate();
+            var map = new SortedDictionary<string, FieldObject>();
+
+            foreach (var tuple in sideEffectStates)
+            {
+                var key = tuple.Item1;
+                var sideEffectState = tuple.Item2;
+                map.Add(key, sideEffectState.Terminate());
+            }
+
+            return new MapField(map);
         }
     }
 }
