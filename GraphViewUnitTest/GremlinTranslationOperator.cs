@@ -165,32 +165,32 @@ namespace GremlinTranslationOperator.Tests
             //        .Union(graph.g().V().OutE(), GraphTraversal2.__().V().In())
             //        .Next();
 
-            graph.g().V().AddE().From(graph.g().V()).Next();
-            graph.g().V().AddE().To(graph.g().V()).From(graph.g().V()).Next();
+            //graph.g().V().AddE().From(graph.g().V()).Next();
+            //graph.g().V().AddE().To(graph.g().V()).From(graph.g().V()).Next();
 
-            graph.g().V().As("@v")
-                .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
-                .Repeat(GraphTraversal2.__().As("@e")
-                    .FlatMap(GraphTraversal2.__().InV()
-                        .As("mdl")
-                        .Select(GremlinKeyword.Pop.last, "@v")
-                        .Both()
-                        .Where(GraphTraversal2.__().Out("mdl")
-                            .Where(Predicate.eq("mdl"))))
-                    .As("@v")
-                    .Optional(GraphTraversal2.__().FlatMap(
-                        GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e")
-                            .Values("_ref")
-                            .As("key")
-                            .Select(GremlinKeyword.Pop.last, "@v")
-                            .Out("mdl")
-                            .OutE("ref")
-                            .Where(GraphTraversal2.__().Values("_key")
-                                .Where(Predicate.eq("key")))))
-                                )
-                .Until(GraphTraversal2.__().FlatMap(
-                    GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
-                .Next();
+            //graph.g().V().As("@v")
+            //    .FlatMap(GraphTraversal2.__().Out("mdl").OutE("ref"))
+            //    .Repeat(GraphTraversal2.__().As("@e")
+            //        .FlatMap(GraphTraversal2.__().InV()
+            //            .As("mdl")
+            //            .Select(GremlinKeyword.Pop.last, "@v")
+            //            .Both()
+            //            .Where(GraphTraversal2.__().Out("mdl")
+            //                .Where(Predicate.eq("mdl"))))
+            //        .As("@v")
+            //        .Optional(GraphTraversal2.__().FlatMap(
+            //            GraphTraversal2.__().Select(GremlinKeyword.Pop.last, "@e")
+            //                .Values("_ref")
+            //                .As("key")
+            //                .Select(GremlinKeyword.Pop.last, "@v")
+            //                .Out("mdl")
+            //                .OutE("ref")
+            //                .Where(GraphTraversal2.__().Values("_key")
+            //                    .Where(Predicate.eq("key")))))
+            //                    )
+            //    .Until(GraphTraversal2.__().FlatMap(
+            //        GraphTraversal2.__().As("res").Select(GremlinKeyword.Pop.last, "@v").Where(Predicate.eq("res"))))
+            //    .Next();
 
             graph.g().V()
                 .Project("vertex", "parents", "references", "model")

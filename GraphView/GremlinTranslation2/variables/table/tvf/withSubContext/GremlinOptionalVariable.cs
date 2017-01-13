@@ -46,6 +46,11 @@ namespace GraphView
             OptionalContext.Populate(property);
         }
 
+        internal override void PopulateGremlinPath()
+        {
+            OptionalContext.PopulateGremlinPath();
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<string> firstProjectProperties = new List<string>();

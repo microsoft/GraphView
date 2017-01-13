@@ -48,6 +48,11 @@ namespace GraphView
             RepeatContext.Populate(property);
         }
 
+        internal override void PopulateGremlinPath()
+        {
+            RepeatContext.PopulateGremlinPath();
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
