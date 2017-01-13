@@ -864,7 +864,6 @@ namespace GraphView
     {
         void Init();
         void Accumulate(params FieldObject[] values);
-
         FieldObject Terminate();
     }
 
@@ -1798,6 +1797,48 @@ namespace GraphView
 
             subqueryProgress = 0;
             Open();
+        }
+    }
+
+    internal class StoreOperator : GraphViewExecutionOperator
+    {
+        public StoreStateFunction StoreState { get; private set; }
+        GraphViewExecutionOperator inputOp;
+        int targetFieldIndex;
+
+        public StoreOperator(GraphViewExecutionOperator inputOp, int targetFieldIndex)
+        {
+            StoreState = new StoreStateFunction();
+            this.inputOp = inputOp;
+            this.targetFieldIndex = targetFieldIndex;
+        }
+
+        public override RawRecord Next()
+        {
+            if (inputOp.State())
+            {
+                RawRecord r = inputOp.Next();
+                if (r == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                StoreState.Accumulate(r[targetFieldIndex]);
+
+                if (!inputOp.State())
+                {
+                    Close();
+                }
+                return r;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            StoreState = new StoreStateFunction();
         }
     }
 }

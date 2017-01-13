@@ -94,7 +94,7 @@ namespace GraphView
     {
         List<FieldObject> buffer;
 
-        void IAggregateFunction.Accumulate(params FieldObject[] values)
+        public void Accumulate(params FieldObject[] values)
         {
             if (values.Length != 1)
             {
@@ -104,12 +104,12 @@ namespace GraphView
             buffer.Add(values[0]);
         }
 
-        void IAggregateFunction.Init()
+        public void Init()
         {
             buffer = new List<FieldObject>();
         }
 
-        FieldObject IAggregateFunction.Terminate()
+        public FieldObject Terminate()
         {
             return new CollectionField(buffer);
         }
@@ -119,17 +119,17 @@ namespace GraphView
     {
         long count;
 
-        void IAggregateFunction.Accumulate(params FieldObject[] values)
+        public void Accumulate(params FieldObject[] values)
         {
             count++;
         }
 
-        void IAggregateFunction.Init()
+        public void Init()
         {
             count = 0;
         }
 
-        FieldObject IAggregateFunction.Terminate()
+        public FieldObject Terminate()
         {
             return new StringField(count.ToString());
         }
@@ -311,16 +311,21 @@ namespace GraphView
     {
         Dictionary<FieldObject, int> aggregateState;    // To consider: whether a single key is enough, or a composite key?
 
-        void Init()
+        public StoreStateFunction()
         {
             aggregateState = new Dictionary<FieldObject, int>();
         }
 
-        void Accumulate(params FieldObject[] values)
+        public void Init()
+        {
+            aggregateState = new Dictionary<FieldObject, int>();
+        }
+
+        public void Accumulate(params FieldObject[] values)
         {
             if (aggregateState.ContainsKey(values[0]))
             {
-                aggregateState[values[0]]++;
+                aggregateState[values[0]] = aggregateState[values[0]] + 1;
             }
             else
             {
@@ -328,7 +333,7 @@ namespace GraphView
             }
         }
 
-        FieldObject Terminate()
+        public FieldObject Terminate()
         {
             StringBuilder sb = new StringBuilder();
 
@@ -344,20 +349,30 @@ namespace GraphView
 
             return new StringField("[" + sb.ToString() + "]");
         }
+    }
 
-        void IAggregateFunction.Init()
+    internal class CapAggregate : IAggregateFunction
+    {
+        IAggregateFunction sideEffectState;
+
+        public CapAggregate(IAggregateFunction sideEffectState)
         {
-            throw new NotImplementedException();
+            this.sideEffectState = sideEffectState;
         }
 
         void IAggregateFunction.Accumulate(params FieldObject[] values)
         {
-            throw new NotImplementedException();
+            return;
+        }
+
+        void IAggregateFunction.Init()
+        {
+            return;
         }
 
         FieldObject IAggregateFunction.Terminate()
         {
-            throw new NotImplementedException();
+            return sideEffectState.Terminate();
         }
     }
 }
