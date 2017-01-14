@@ -168,18 +168,18 @@ namespace GraphView
 
             GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.NodeID);
             GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(this, GremlinKeyword.ReverseEdgeAdj);
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
-            currentContext.VariableList.Add(outEdge);
-            currentContext.TableReferences.Add(outEdge);
-            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
+            currentContext.VariableList.Add(inEdge);
+            currentContext.TableReferences.Add(inEdge);
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
 
-            outEdge.Populate(GremlinKeyword.EdgeSourceV);
-            GremlinVariableProperty edgeProperty = new GremlinVariableProperty(outEdge, GremlinKeyword.EdgeSourceV);
+            inEdge.Populate(GremlinKeyword.EdgeSourceV);
+            GremlinVariableProperty edgeProperty = new GremlinVariableProperty(inEdge, GremlinKeyword.EdgeSourceV);
             GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(edgeProperty);
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
 
-            currentContext.AddPath(new GremlinMatchPath(outVertex, outEdge, this));
+            currentContext.AddPath(new GremlinMatchPath(outVertex, inEdge, this));
 
             currentContext.SetPivotVariable(outVertex);
 

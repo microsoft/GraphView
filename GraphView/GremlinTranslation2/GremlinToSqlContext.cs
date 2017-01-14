@@ -12,6 +12,7 @@ namespace GraphView
         internal GremlinVariable PivotVariable { get; set; }
         internal Dictionary<string, List<GremlinVariable>> TaggedVariables { get; set; }
         internal Dictionary<string, List<GremlinVariable>> InheritedTaggedVariables { get; set; }
+        internal List<GremlinVariable> InheritedVariableList { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
         internal List<GremlinVariable> StepList { get; set; }
         internal List<GremlinMatchPath> PathList { get; set; }
@@ -29,6 +30,7 @@ namespace GraphView
             InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();
             TableReferences = new List<GremlinTableVariable>();
             VariableList = new List<GremlinVariable>();
+            InheritedVariableList = new List<GremlinVariable>();
             PathList = new List<GremlinMatchPath>();
             MatchList = new List<GremlinMatchPath>();
             StepList = new List<GremlinVariable>();
@@ -41,6 +43,7 @@ namespace GraphView
             return new GremlinToSqlContext()
             {
                 VariableList = new List<GremlinVariable>(this.VariableList),
+                InheritedVariableList = new List<GremlinVariable>(this.InheritedVariableList),
                 TaggedVariables = new Dictionary<string, List<GremlinVariable>>(TaggedVariables),
                 InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>(InheritedTaggedVariables),
                 PivotVariable = this.PivotVariable,
@@ -63,6 +66,7 @@ namespace GraphView
             TaggedVariables.Clear();
             InheritedTaggedVariables.Clear();
             VariableList.Clear();
+            InheritedVariableList.Clear();
             TableReferences.Clear();
             PathList.Clear();
             MatchList.Clear();
