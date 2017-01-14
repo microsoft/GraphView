@@ -48,33 +48,33 @@ namespace GraphView
 
     internal class GremlinMapVertexVariable : GremlinVertexTableVariable
     {
-        public GremlinMapVertexVariable(GremlinToSqlContext MapContext)
+        public GremlinMapVertexVariable(GremlinToSqlContext mapContext)
         {
-            SqlTableVariable = new GremlinMapVariable(MapContext);
+            SqlTableVariable = new GremlinMapVariable(mapContext);
         }
     }
 
     internal class GremlinMapEdgeVariable : GremlinEdgeTableVariable
     {
-        public GremlinMapEdgeVariable(GremlinToSqlContext MapContext)
+        public GremlinMapEdgeVariable(GremlinToSqlContext mapContext)
         {
-            SqlTableVariable = new GremlinMapVariable(MapContext);
+            SqlTableVariable = new GremlinMapVariable(mapContext);
         }
     }
 
     internal class GremlinMapScalarVariable : GremlinEdgeTableVariable
     {
-        public GremlinMapScalarVariable(GremlinToSqlContext MapContext)
+        public GremlinMapScalarVariable(GremlinToSqlContext mapContext)
         {
-            SqlTableVariable = new GremlinMapVariable(MapContext);
+            SqlTableVariable = new GremlinMapVariable(mapContext);
         }
     }
 
     internal class GremlinMapTableVariable : GremlinEdgeTableVariable
     {
-        public GremlinMapTableVariable(GremlinToSqlContext MapContext)
+        public GremlinMapTableVariable(GremlinToSqlContext mapContext)
         {
-            SqlTableVariable = new GremlinMapVariable(MapContext);
+            SqlTableVariable = new GremlinMapVariable(mapContext);
         }
     }
 }

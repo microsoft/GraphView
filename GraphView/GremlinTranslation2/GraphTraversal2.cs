@@ -490,6 +490,11 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal2 Identity()
+        {
+            return this;
+        }
+
         public GraphTraversal2 In(params string[] edgeLabels)
         {
             AddGremlinOperator(new GremlinInOp(edgeLabels));
@@ -559,7 +564,13 @@ namespace GraphView
 
         //public GraphTraversal2 loops()
         //public GraphTraversal2 map(Function<Traversal<?, E2>> function)
-        //public GraphTraversal2 map(Traversal<?, E2> mapTraversal)
+
+        public GraphTraversal2 Map(GraphTraversal2 mapTraversal)
+        {
+            AddGremlinOperator(new GremlinMapOp(mapTraversal));
+            return this;   
+        }
+
         //public GraphTraversal2 mapKeys() //Deprecated
         //public GraphTraversal2 mapvalues() //Deprecated
 

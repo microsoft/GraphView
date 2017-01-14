@@ -96,6 +96,7 @@
     <Compile Include="GremlinTranslation2\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation2\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation2\GremlinUtil.cs" />
+    <Compile Include="GremlinTranslation2\map\GremlinMapOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinPathOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinAsOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinEOp.cs" />
@@ -164,6 +165,7 @@
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinLocalVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinDerivedTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinKeyVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinMapVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withSubContext\GremlinProjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarSubquery.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinScalarVariable.cs" />

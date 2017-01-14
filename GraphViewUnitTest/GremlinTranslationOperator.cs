@@ -79,10 +79,13 @@ namespace GremlinTranslationOperator.Tests
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var result = graph.g().V().As("a").Constant(new List<object>() {"name", "properties"}).As("p").Select("a").Values("name").Where(Predicate.within("p")).Next();
+
             //connection.ResetCollection();
             //graph.g().V().Has("comicbook", "AVF 4").InE().OutV().Property("test", "123").Next();
             //graph.g().V().OutE().Property("test", "name").Next();
-            var results = graph.g().V().HasLabel("Stanford").Union(GraphTraversal2.__().Out()).path().Next();
+            //var results = graph.g().V().HasLabel("Stanford").Union(GraphTraversal2.__().Out()).path().Next();
             //var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().Optional(GraphTraversal2.__().InE().Properties("label"))).Next();
 
             //var result = graph.g().V().Out().Inject(1).Next();

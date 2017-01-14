@@ -224,6 +224,7 @@ namespace GraphView
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
         }
+
         internal virtual void Count(GremlinToSqlContext currentContext)
         {
             GremlinCountVariable newVariable = new GremlinCountVariable(currentContext.Duplicate());
@@ -454,6 +455,22 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal virtual void Map(GremlinToSqlContext currentContext, GremlinToSqlContext mapContext)
+        {
+
+            GremlinTableVariable mapVariable = GremlinMapVariable.Create(mapContext);
+            currentContext.VariableList.Add(mapVariable);
+
+            //It's used for repeat step, we should propagate all the variable to the main context
+            //Then we can check the variableList to know if the sub context used the main context variable when
+            //the variable is GremlinContextVariable and the value of IsFromSelect is True
+            //
+            currentContext.VariableList.AddRange(mapContext.VariableList);
+
+            currentContext.TableReferences.Add(mapVariable);
+            currentContext.SetPivotVariable(mapVariable);
+        }
+
         internal virtual void Max(GremlinToSqlContext currentContext)
         {
             throw new NotImplementedException();
@@ -607,29 +624,31 @@ namespace GraphView
 
         internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, string selectKey)
         {
-            if (!currentContext.TaggedVariables.ContainsKey(selectKey) || !currentContext.InheritedTaggedVariables.ContainsKey(selectKey))
-            {
-                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
-            }
+            List<GremlinVariable> taggedVariable = new List<GremlinVariable>();
+
+            //foreach (var variable in currentContext.InheritedVariableList)
+            //{
+            //    var  
+            //}
 
             GremlinVariable variable;
-            switch (pop) 
+            
+            if (currentContext.TaggedVariables.ContainsKey(selectKey))
             {
-                case GremlinKeyword.Pop.first:
-                    variable = currentContext.TaggedVariables[selectKey].First();
-                    break;
-                case GremlinKeyword.Pop.last:
-                    variable = currentContext.TaggedVariables[selectKey].Last();
-                    break;
-                default:
-                    throw new NotImplementedException();
-            }
-
-            if (variable != null)
-            {
+                switch (pop)
+                {
+                    case GremlinKeyword.Pop.first:
+                        variable = currentContext.TaggedVariables[selectKey].First();
+                        break;
+                    case GremlinKeyword.Pop.last:
+                        variable = currentContext.TaggedVariables[selectKey].Last();
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
                 currentContext.SetPivotVariable(variable);
             }
-            else
+            else if (currentContext.InheritedTaggedVariables.ContainsKey(selectKey))
             {
                 switch (pop)
                 {
@@ -665,6 +684,10 @@ namespace GraphView
                     case GremlinVariableType.Scalar:
                         throw new NotImplementedException();
                 }
+            }
+            else
+            {
+                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
             }
         }
         internal virtual void Select(GremlinToSqlContext currentContext, string tagName)
@@ -814,9 +837,14 @@ namespace GraphView
             WScalarExpression secondExpr = null;
             if (predicate.Label != null)
             {
+                //TODO
                 var compareVar = currentContext.TaggedVariables[predicate.Label].Last();
                 Populate(compareVar.DefaultProjection().VariableProperty);
                 secondExpr = compareVar.DefaultProjection().ToScalarExpression();
+            }
+            else
+            {
+                throw new Exception("Predicate.Label can't be null");
             }
             var firstExpr = DefaultProjection().ToScalarExpression();
             Populate(DefaultProjection().VariableProperty);

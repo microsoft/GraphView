@@ -69,21 +69,42 @@ namespace GraphView
             switch (predicate.PredicateType)
             {
                 case PredicateType.within:
-                    foreach (var value in predicate.Values)
+                    if (predicate.Label != null)
                     {
-                        secondExpr = GetValueExpr(value);
-                        booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
-                            GetComparisonType(PredicateType.eq)));
+                        List<WScalarExpression> parameters = new List<WScalarExpression>();
+                        parameters.Add(firstExpr);
+                        parameters.Add(secondExpr);
+                        return GetFunctionBooleanExpression("WithInArray", parameters);
                     }
-                    return GetBooleanParenthesisExpr(ConcatBooleanExprWithOr(booleanExprList));
+                    else
+                    {
+                        foreach (var value in predicate.Values)
+                        {
+                            secondExpr = GetValueExpr(value);
+                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
+                                GetComparisonType(PredicateType.eq)));
+                        }
+                        return GetBooleanParenthesisExpr(ConcatBooleanExprWithOr(booleanExprList));
+                    }
                 case PredicateType.without:
-                    foreach (var value in predicate.Values)
+                    if (predicate.Label != null)
                     {
-                        secondExpr = GetValueExpr(value);
-                        booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
-                            GetComparisonType(PredicateType.neq)));
+                        List<WScalarExpression> parameters = new List<WScalarExpression>();
+                        parameters.Add(firstExpr);
+                        parameters.Add(secondExpr);
+                        return GetFunctionBooleanExpression("WithOutArray", parameters);
                     }
-                    return GetBooleanParenthesisExpr(ConcatBooleanExprWithAnd(booleanExprList));
+                    else
+                    {
+                        foreach (var value in predicate.Values)
+                        {
+                            secondExpr = GetValueExpr(value);
+                            booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
+                                GetComparisonType(PredicateType.neq)));
+                        }
+                        return GetBooleanParenthesisExpr(ConcatBooleanExprWithAnd(booleanExprList));
+                    }
+
                 case PredicateType.inside:
                     throw new NotImplementedException();
                 case PredicateType.outside:
@@ -93,6 +114,26 @@ namespace GraphView
                 default:
                     return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(predicate.PredicateType));
             }
+        }
+
+        internal static WBooleanExpression GetFunctionBooleanExpression(string functionName, List<WScalarExpression> parameters)
+        {
+            WBooleanExpression booleanExpr = new WBooleanComparisonExpression()
+            {
+                ComparisonType = BooleanComparisonType.Equals,
+                FirstExpr = GetFunctionCall(functionName, parameters),
+                SecondExpr = GetValueExpr(true)
+            };
+            return booleanExpr;
+        }
+
+        internal static WFunctionCall GetFunctionCall(string functionName, List<WScalarExpression> parameters)
+        {
+            return new WFunctionCall()
+            {
+                FunctionName = GetIdentifier(functionName),
+                Parameters = parameters
+            };
         }
 
         internal static WBooleanComparisonExpression GetEqualBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr)
@@ -375,6 +416,9 @@ namespace GraphView
                     break;
                 case GremlinKeyword.func.Expand:
                     funcTableRef = new WExpandTableReference();
+                    break;
+                case GremlinKeyword.func.Map:
+                    funcTableRef = new WMapTableReference();
                     break;
                 default:
                     throw new NotImplementedException();

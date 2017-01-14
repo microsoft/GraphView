@@ -104,6 +104,11 @@ namespace GraphView
             return new Predicate(PredicateType.within, objects);
         }
 
+        public static Predicate within(string label)
+        {
+            return new Predicate(PredicateType.within, label);
+        }
+
         public static Predicate without(params object[] objects)
         {
             return new Predicate(PredicateType.without, objects);

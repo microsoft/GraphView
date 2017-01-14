@@ -48,7 +48,7 @@ namespace GraphView
                 InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>(InheritedTaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<GremlinTableVariable>(this.TableReferences),
-                GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
+                GroupVariable = GroupVariable,
                 PathList = new List<GremlinMatchPath>(this.PathList),
                 MatchList = new List<GremlinMatchPath>(this.MatchList),
                 Predicates = this.Predicates,
@@ -71,7 +71,6 @@ namespace GraphView
             PathList.Clear();
             MatchList.Clear();
             StepList.Clear();
-            // More resetting goes here when more properties are added to GremlinToSqlContext
             isPopulateGremlinPath = false;
             CurrentContextPath = null;
         }
