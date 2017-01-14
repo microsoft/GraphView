@@ -94,7 +94,7 @@ namespace GraphView
                     else
                     {
                         GremlinFreeVertexVariable freeOutVertex = new GremlinFreeVertexVariable();
-                        path.SetSinkVariable(freeOutVertex);
+                        path.SetSourceVariable(freeOutVertex);
 
                         currentContext.VariableList.Add(freeOutVertex);
                         currentContext.TableReferences.Add(freeOutVertex);

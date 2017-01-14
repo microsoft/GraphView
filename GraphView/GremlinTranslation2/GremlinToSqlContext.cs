@@ -10,7 +10,8 @@ namespace GraphView
     internal class GremlinToSqlContext
     {
         internal GremlinVariable PivotVariable { get; set; }
-        internal Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> TaggedVariables { get; set; }
+        internal Dictionary<string, List<GremlinVariable>> TaggedVariables { get; set; }
+        internal Dictionary<string, List<GremlinVariable>> InheritedTaggedVariables { get; set; }
         internal List<GremlinVariable> VariableList { get; private set; }
         internal List<GremlinVariable> StepList { get; set; }
         internal List<GremlinMatchPath> PathList { get; set; }
@@ -24,7 +25,8 @@ namespace GraphView
 
         internal GremlinToSqlContext()
         {
-            TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();
+            TaggedVariables = new Dictionary<string, List<GremlinVariable>>();
+            InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();
             TableReferences = new List<GremlinTableVariable>();
             VariableList = new List<GremlinVariable>();
             PathList = new List<GremlinMatchPath>();
@@ -39,7 +41,8 @@ namespace GraphView
             return new GremlinToSqlContext()
             {
                 VariableList = new List<GremlinVariable>(this.VariableList),
-                TaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>(TaggedVariables),
+                TaggedVariables = new Dictionary<string, List<GremlinVariable>>(TaggedVariables),
+                InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>(InheritedTaggedVariables),
                 PivotVariable = this.PivotVariable,
                 TableReferences = new List<GremlinTableVariable>(this.TableReferences),
                 GroupVariable = GroupVariable,   // more properties need to be added when GremlinToSqlContext is changed.
@@ -58,6 +61,7 @@ namespace GraphView
             GroupVariable = null;
             Predicates = null;
             TaggedVariables.Clear();
+            InheritedTaggedVariables.Clear();
             VariableList.Clear();
             TableReferences.Clear();
             PathList.Clear();
@@ -80,6 +84,11 @@ namespace GraphView
             PivotVariable.Populate(propertyName);
         }
 
+        internal void PopulateVariable()
+        {
+            throw new NotImplementedException();
+        }
+
         internal GremlinVariable SelectVariable(string selectKey, GremlinKeyword.Pop pop = GremlinKeyword.Pop.Default)
         {
             if (!TaggedVariables.ContainsKey(selectKey))
@@ -89,11 +98,11 @@ namespace GraphView
             switch (pop)
             {
                 case GremlinKeyword.Pop.first:
-                    return TaggedVariables[selectKey].First().Item1;
+                    return TaggedVariables[selectKey].First();
                 case GremlinKeyword.Pop.last:
-                    return TaggedVariables[selectKey].Last().Item1;
+                    return TaggedVariables[selectKey].Last();
                 default:
-                    return TaggedVariables[selectKey].Last().Item1;
+                    return TaggedVariables[selectKey].Last();
             }
         }
 

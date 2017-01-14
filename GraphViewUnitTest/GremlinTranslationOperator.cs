@@ -80,6 +80,9 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
             //connection.ResetCollection();
+            //graph.g().V().Has("comicbook", "AVF 4").InE().OutV().Property("test", "123").Next();
+            graph.g().V().OutE().Property("test", "name").Next();
+
 
             //var result = graph.g().V().Out().Inject(1).Next();
             //var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().path().Tree().Next();

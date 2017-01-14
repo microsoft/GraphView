@@ -23,7 +23,20 @@ namespace GraphView
             {
                 GremlinParentContextOp rootAsContextOp = this as GremlinParentContextOp;
                 rootAsContextOp.InheritedPivotVariable = parentContext.PivotVariable;
-                rootAsContextOp.InheritedTaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>(parentContext.TaggedVariables);
+                var inheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>(parentContext.InheritedTaggedVariables.Copy());
+                foreach (var item in parentContext.TaggedVariables)
+                {
+                    if (inheritedTaggedVariables.ContainsKey(item.Key))
+                    {
+                        inheritedTaggedVariables[item.Key].AddRange(item.Value);
+                    }
+                    else
+                    {
+                        inheritedTaggedVariables[item.Key] = new List<GremlinVariable>();
+                        inheritedTaggedVariables[item.Key].AddRange(item.Value);
+                    }
+                }
+                rootAsContextOp.InheritedTaggedVariables = inheritedTaggedVariables;
                 rootAsContextOp.InheritedPathList = new List<GremlinMatchPath>(parentContext.PathList);
             }
         }
@@ -47,13 +60,12 @@ namespace GraphView
     {
         public GremlinVariable InheritedPivotVariable { get; set; }
         public GremlinToSqlContext InheritedContext { get; set; }
-        public Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>> InheritedTaggedVariables { get;
-            set; }
+        public Dictionary<string, List<GremlinVariable>> InheritedTaggedVariables { get; set; }
         public List<GremlinMatchPath> InheritedPathList { get; set; }
 
         public GremlinParentContextOp()
         {
-            InheritedTaggedVariables = new Dictionary<string, List<Tuple<GremlinVariable, GremlinToSqlContext>>>();   
+            InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();   
         }
 
         internal override GremlinToSqlContext GetContext()

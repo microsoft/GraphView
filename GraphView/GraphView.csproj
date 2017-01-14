@@ -144,6 +144,9 @@
     <Compile Include="GremlinTranslation2\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinTreeOp.cs" />
+    <Compile Include="GremlinTranslation2\variables\context\GremlinSubContextVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\scalar\GremlinCollectionVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\scalar\GremlinListVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\edge\GremlinBoundEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinContextVariable.cs" />

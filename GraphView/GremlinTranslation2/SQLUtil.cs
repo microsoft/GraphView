@@ -373,6 +373,9 @@ namespace GraphView
                 case GremlinKeyword.func.Path:
                     funcTableRef = new WPathTableReference();
                     break;
+                case GremlinKeyword.func.Expand:
+                    funcTableRef = new WExpandTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

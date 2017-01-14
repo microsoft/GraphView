@@ -57,6 +57,7 @@ namespace GraphView
             public const string Inject = "Inject";
             public const string Tree = "Tree";
             public const string OtherV = "OtherV";
+            public const string Expand = "Expand";
         }
         public enum Pop
         {

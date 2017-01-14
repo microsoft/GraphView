@@ -64,6 +64,11 @@ namespace GraphView
             SqlTableVariable?.PopulateGremlinPath();
         }
 
+        internal override void PopulateGremlinVariable()
+        {
+            SqlTableVariable?.PopulateVariable();
+        }
+
         internal override GremlinVariableProperty GetPath()
         {
             if (SqlTableVariable != null) return new GremlinVariableProperty(this, GremlinKeyword.Path);
@@ -105,8 +110,24 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            BothE(currentContext, edgeLabels);
-            currentContext.PivotVariable.OtherV(currentContext);
+            Populate(GremlinKeyword.NodeID);
+            Populate(GremlinKeyword.EdgeAdj);
+            Populate(GremlinKeyword.ReverseEdgeAdj);
+
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.NodeID);
+            GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(this, GremlinKeyword.ReverseEdgeAdj);
+            GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, GremlinKeyword.EdgeAdj);
+            GremlinBoundEdgeVariable bothEdge = new GremlinBoundEdgeVariable(sourceProperty, adjEdge, adjReverseEdge, WEdgeType.BothEdge);
+            currentContext.VariableList.Add(bothEdge);
+            currentContext.TableReferences.Add(bothEdge);
+            currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
+
+            bothEdge.Populate(GremlinKeyword.EdgeOtherV);
+            GremlinVariableProperty otherProperty = new GremlinVariableProperty(bothEdge, GremlinKeyword.EdgeOtherV);
+            GremlinBoundVertexVariable otherVertex = new GremlinBoundVertexVariable(otherProperty);
+            currentContext.VariableList.Add(otherVertex);
+            currentContext.TableReferences.Add(otherVertex);
+            currentContext.SetPivotVariable(otherVertex);
         }
 
         internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -142,12 +163,6 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            InE(currentContext, edgeLabels);
-            currentContext.PivotVariable.OutV(currentContext);
-        }
-
-        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
-        {
             Populate(GremlinKeyword.NodeID);
             Populate(GremlinKeyword.ReverseEdgeAdj);
 
@@ -158,14 +173,55 @@ namespace GraphView
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
-            currentContext.AddPath(new GremlinMatchPath(null, outEdge, this));
-            currentContext.SetPivotVariable(outEdge);
+            outEdge.Populate(GremlinKeyword.EdgeSourceV);
+            GremlinVariableProperty edgeProperty = new GremlinVariableProperty(outEdge, GremlinKeyword.EdgeSourceV);
+            GremlinBoundVertexVariable outVertex = new GremlinBoundVertexVariable(edgeProperty);
+            currentContext.VariableList.Add(outVertex);
+            currentContext.TableReferences.Add(outVertex);
+
+            currentContext.AddPath(new GremlinMatchPath(outVertex, outEdge, this));
+
+            currentContext.SetPivotVariable(outVertex);
+
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            Populate(GremlinKeyword.NodeID);
+            Populate(GremlinKeyword.ReverseEdgeAdj);
+
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.NodeID);
+            GremlinVariableProperty adjReverseEdge = new GremlinVariableProperty(this, GremlinKeyword.ReverseEdgeAdj);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
+            currentContext.VariableList.Add(inEdge);
+            currentContext.TableReferences.Add(inEdge);
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
+
+            currentContext.AddPath(new GremlinMatchPath(null, inEdge, this));
+            currentContext.SetPivotVariable(inEdge);
         }
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
-            OutE(currentContext, edgeLabels);
-            currentContext.PivotVariable.InV(currentContext);
+            Populate(GremlinKeyword.NodeID);
+            Populate(GremlinKeyword.EdgeAdj);
+
+            GremlinVariableProperty sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.NodeID);
+            GremlinVariableProperty adjEdge = new GremlinVariableProperty(this, GremlinKeyword.EdgeAdj);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjEdge, WEdgeType.OutEdge);
+            currentContext.VariableList.Add(outEdge);
+            currentContext.TableReferences.Add(outEdge);
+            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
+
+            outEdge.Populate(GremlinKeyword.EdgeSinkV);
+            GremlinVariableProperty sinkProperty = new GremlinVariableProperty(outEdge, GremlinKeyword.EdgeSinkV);
+            GremlinBoundVertexVariable sinkVariable = new GremlinBoundVertexVariable(sinkProperty);
+            currentContext.VariableList.Add(sinkVariable);
+            currentContext.TableReferences.Add(sinkVariable);
+
+            currentContext.AddPath(new GremlinMatchPath(this, outEdge, sinkVariable));
+
+            currentContext.SetPivotVariable(sinkVariable);
         }
 
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -421,9 +477,9 @@ namespace GraphView
 
         internal override void Drop(GremlinToSqlContext currentContext)
         {
-            var variableProperty = currentContext.GetSourceVariableProperty(this);
-            var edgeProperty = currentContext.GetEdgeVariableProperty(this);
-            GremlinDropEdgeVariable newVariable = new GremlinDropEdgeVariable(variableProperty, edgeProperty);
+            var sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.EdgeSourceV);
+            var edgeProperty = new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
+            GremlinDropEdgeVariable newVariable = new GremlinDropEdgeVariable(sourceProperty, edgeProperty);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -433,9 +489,9 @@ namespace GraphView
         {
             if (UpdateVariable == null)
             {
-                var nodeProperty = currentContext.GetSourceVariableProperty(this);
-                var edgeProperty = currentContext.GetEdgeVariableProperty(this);
-                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(nodeProperty, edgeProperty, properties);
+                var sourceProperty = new GremlinVariableProperty(this, GremlinKeyword.EdgeSourceV);
+                var edgeProperty = new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
+                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(sourceProperty, edgeProperty, properties);
                 currentContext.VariableList.Add(UpdateVariable);
                 currentContext.TableReferences.Add(UpdateVariable);
             }
