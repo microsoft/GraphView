@@ -1839,6 +1839,10 @@ namespace GraphView
         public override void ResetState()
         {
             StoreState = new StoreStateFunction();
+            inputOp.ResetState();
+            Open();
+        }
+    }
 
     internal class BarrierOperator : GraphViewExecutionOperator
     {
