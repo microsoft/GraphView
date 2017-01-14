@@ -99,12 +99,14 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void And(
-            GremlinToSqlContext currentContext,
-            GremlinToSqlContext subContext1,
-            GremlinToSqlContext subContext2)
+        internal virtual void And(GremlinToSqlContext currentContext, List<GremlinToSqlContext> andContexts)
         {
-            throw new NotImplementedException();
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            foreach (var context in andContexts)
+            {
+                booleanExprList.Add(context.ToSqlBoolean());
+            }
+            currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithAnd(booleanExprList));
         }
 
         internal virtual void As(GremlinToSqlContext currentContext, List<string> labels)
@@ -414,6 +416,14 @@ namespace GraphView
             {
                 var compareVar = currentContext.TaggedVariables[predicate.Label].Last();
                 secondExpr = compareVar.DefaultProjection().ToScalarExpression();
+            }
+            else if (predicate.Number != null)
+            {
+                secondExpr = SqlUtil.GetValueExpr(predicate.Number);
+            }
+            else
+            {
+                throw new Exception();
             }
             var firstExpr = DefaultProjection().ToScalarExpression();
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);

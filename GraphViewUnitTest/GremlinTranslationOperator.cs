@@ -80,7 +80,9 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            var result = graph.g().V().As("a").Constant(new List<object>() {"name", "properties"}).As("p").Select("a").Values("name").Where(Predicate.within("p")).Next();
+
+            var result = graph.g().V().And(GraphTraversal2.__().Values("age").Is(Predicate.lt(30))).Values("name").Next();
+            //var result = graph.g().V().As("a").Constant(new List<object>() {"name", "properties"}).As("p").Select("a").Values("name").Where(Predicate.within("p")).Next();
 
             //connection.ResetCollection();
             //graph.g().V().Has("comicbook", "AVF 4").InE().OutV().Property("test", "123").Next();

@@ -9,6 +9,7 @@ namespace GraphView
 {
     internal class GremlinToSqlContext
     {
+        internal GremlinToSqlContext ParentContext { get; set; }
         internal GremlinVariable PivotVariable { get; set; }
         internal Dictionary<string, List<GremlinVariable>> TaggedVariables { get; set; }
         internal Dictionary<string, List<GremlinVariable>> InheritedTaggedVariables { get; set; }
@@ -34,7 +35,6 @@ namespace GraphView
             PathList = new List<GremlinMatchPath>();
             MatchList = new List<GremlinMatchPath>();
             StepList = new List<GremlinVariable>();
-
             isPopulateGremlinPath = false;
         }
 
@@ -54,7 +54,8 @@ namespace GraphView
                 Predicates = this.Predicates,
                 StepList = new List<GremlinVariable>(this.StepList),
                 isPopulateGremlinPath = this.isPopulateGremlinPath,
-                CurrentContextPath = this.CurrentContextPath
+                CurrentContextPath = this.CurrentContextPath,
+                ParentContext = this.ParentContext
             };
         }
 
