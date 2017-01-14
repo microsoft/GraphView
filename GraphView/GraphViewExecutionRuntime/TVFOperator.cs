@@ -173,7 +173,7 @@ namespace GraphView
                 }
             }
 
-            RawRecord newRecord = new RawRecord(record);
+            RawRecord newRecord = new RawRecord();
             CollectionField pathResult = new CollectionField(pathCollection);
             newRecord.Append(pathResult);
 
@@ -228,27 +228,23 @@ namespace GraphView
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
-            var projectString = new StringBuilder("[");
+            var projectMap = new Dictionary<string, FieldObject>();
 
-            var scalarFunction = ProjectList[0].Item1;
-            var projectName = ProjectList[0].Item2;
-            var projectValue = scalarFunction.Evaluate(record);
-
-            projectString.Append(projectName).Append(':').Append(projectValue ?? "null");
-
-
-            for (var i = 1; i < ProjectList.Count; i++)
+            foreach (var tuple in ProjectList)
             {
-                scalarFunction = ProjectList[i].Item1;
-                projectName = ProjectList[i].Item2;
-                projectValue = scalarFunction.Evaluate(record);
+                var scalarFunction = tuple.Item1;
+                var value = scalarFunction.Evaluate(record);
+                var key = tuple.Item2;
 
-                projectString.Append(',').Append(projectName).Append(':').Append(projectValue ?? "null");
+                if (value == null)
+                    throw new GraphViewException(
+                        string.Format("The provided traverser of key \"{0}\" does not map to a value.", key));
+
+                projectMap.Add(key, value);
             }
 
-            projectString.Append(']');
             var result = new RawRecord(1);
-            result.fieldValues[0] = new StringField(projectString.ToString());
+            result.fieldValues[0] = new MapField(projectMap);
 
             return new List<RawRecord> { result };
         }

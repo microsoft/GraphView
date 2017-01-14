@@ -899,8 +899,8 @@ namespace GraphView
             int index = 0;
             foreach (var scalarFunction in selectScalarList)
             {
-                string result = scalarFunction.Evaluate(currentRecord);
-                selectRecord.fieldValues[index++] = result != null ? new StringField(result) : new StringField("");
+                FieldObject result = scalarFunction.Evaluate(currentRecord);
+                selectRecord.fieldValues[index++] = result;
             }
 
             return selectRecord;

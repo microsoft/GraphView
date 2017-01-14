@@ -119,7 +119,8 @@ namespace GraphView
             foreach (var fieldName in _projectedFieldList)
             {
                 var fieldValue = document[fieldName];
-                result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : new StringField(""));
+
+                result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : null);
             }
 
             return result;
@@ -183,6 +184,7 @@ namespace GraphView
 
     internal class AddEOperator : ModificationBaseOpertaor2
     {
+        private int _otherVTag;
         // The scalar subquery function select the vertex ID of source and sink of the edge to be added or deleted
         private ScalarFunction _srcFunction;
         private ScalarFunction _sinkFunction;
@@ -190,21 +192,24 @@ namespace GraphView
         private string _edgeJsonDocument;
         private List<string> _edgeProperties;
 
+        private const int ReservedMetaFieldCount = 4;
+
         public AddEOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, 
             ScalarFunction pSrcFunction, ScalarFunction pSinkFunction, 
-            string pEdgeJsonDocument, List<string> pProjectedFieldList)
+            int otherVTag, string pEdgeJsonDocument, List<string> pProjectedFieldList)
             : base(pInputOp, pConnection)
         {
             _srcFunction = pSrcFunction;
             _sinkFunction = pSinkFunction;
+            _otherVTag = otherVTag;
             _edgeJsonDocument = pEdgeJsonDocument;
             _edgeProperties = pProjectedFieldList;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = _srcFunction.Evaluate(record);
-            var sinkId = _sinkFunction.Evaluate(record);
+            var srcId = _srcFunction.Evaluate(record).ToString();
+            var sinkId = _sinkFunction.Evaluate(record).ToString();
 
             if (srcId == null || sinkId == null) return null;
 
@@ -219,10 +224,16 @@ namespace GraphView
             var edgeJObject = JObject.Parse(edgeObjectString);
             var result = new RawRecord { fieldValues = new List<FieldObject>() };
 
-            foreach (var fieldName in _edgeProperties)
+            record.Append(new StringField(srcId)); 
+            record.Append(new StringField(sinkId));
+            record.Append(new StringField(_otherVTag == 0 ? srcId : sinkId));
+            record.Append(new StringField(edgeJObject["_ID"].ToString()));
+
+            for (var i = ReservedMetaFieldCount; i < _edgeProperties.Count; i++)
             {
-                var fieldValue = edgeJObject[fieldName];
-                result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : new StringField(""));
+
+                var fieldValue = edgeJObject[_edgeProperties[i]];
+                result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : null);
             }
 
             return result;

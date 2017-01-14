@@ -59,23 +59,24 @@ namespace GraphView
             collectionStringBuilder.Append(Collection[0].ToString());
 
             for (var i = 1; i < Collection.Count; i++)
-                collectionStringBuilder.Append(',').Append(Collection[0].ToString());
+                collectionStringBuilder.Append(',').Append(Collection[i].ToString());
 
             collectionStringBuilder.Append(']');
+            ;
             return collectionStringBuilder.ToString();
         }
     }
 
     internal class MapField : FieldObject
     {
-        public SortedDictionary<string, FieldObject> Map { get; private set; }
+        public Dictionary<string, FieldObject> Map { get; private set; }
 
         public MapField()
         {
-            Map = new SortedDictionary<string, FieldObject>();
+            Map = new Dictionary<string, FieldObject>();
         }
 
-        public MapField(SortedDictionary<string, FieldObject> map)
+        public MapField(Dictionary<string, FieldObject> map)
         {
             Map = map;
         }
@@ -84,7 +85,7 @@ namespace GraphView
         {
             if (Map.Count == 0) return "[]";
 
-            var mapStringBuilder = new StringBuilder('[');
+            var mapStringBuilder = new StringBuilder("[");
             var i = 0;
 
             foreach (var pair in Map)
@@ -92,8 +93,8 @@ namespace GraphView
                 var key = pair.Key;
                 var value = pair.Value;
 
-                if (i > 0)
-                    mapStringBuilder.Append(',');
+                if (i++ > 0)
+                    mapStringBuilder.Append(", ");
                 mapStringBuilder.Append(key).Append(":[").Append(value.ToString()).Append(']');
             }
 

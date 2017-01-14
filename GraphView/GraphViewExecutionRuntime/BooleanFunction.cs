@@ -44,10 +44,12 @@ namespace GraphView
 
             JsonDataType targetType = type1 > type2 ? type1 : type2;
 
-            string value1 = firstScalarFunction.Evaluate(record);
-            string value2 = secondScalarFunction.Evaluate(record);
+            //string value1 = firstScalarFunction.Evaluate(record);
+            //string value2 = secondScalarFunction.Evaluate(record);
+            string value1 = firstScalarFunction.Evaluate(record).ToString();
+            string value2 = secondScalarFunction.Evaluate(record).ToString();
 
-            switch(targetType)
+            switch (targetType)
             {
                 case JsonDataType.Boolean:
                     bool bool_value1, bool_value2;
