@@ -38,12 +38,14 @@ namespace GraphView
             var sinkSubQuery = Parameters[1] as WScalarSubquery;
             if (srcSubQuery == null || sinkSubQuery == null)
                 throw new SyntaxErrorException("The first two parameters of AddE can only be WScalarSubquery.");
+            var otherVTagParameter = Parameters[2] as WValueExpression;
+            var otherVTag = int.Parse(otherVTagParameter.Value);
 
             var srcSubQueryFunction = srcSubQuery.CompileToFunction(context, dbConnection);
             var sinkSubQueryFunction = sinkSubQuery.CompileToFunction(context, dbConnection);
 
             GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator,
-                dbConnection, srcSubQueryFunction, sinkSubQueryFunction, edgeJsonDocument, projectedField);
+                dbConnection, srcSubQueryFunction, sinkSubQueryFunction, otherVTag, edgeJsonDocument, projectedField);
             context.CurrentExecutionOperator = addEOp;
 
             foreach (var columnName in projectedField)

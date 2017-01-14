@@ -358,7 +358,7 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            var map = new SortedDictionary<string, FieldObject>();
+            var map = new Dictionary<string, FieldObject>();
 
             foreach (var tuple in sideEffectStates)
             {
