@@ -1761,6 +1761,7 @@ namespace GraphView
             this.subqueries = subqueries;
             this.inputOp = inputOp;
             subqueryProgress = 0;
+            Open();
         }
 
         public override RawRecord Next()
@@ -1811,6 +1812,7 @@ namespace GraphView
             StoreState = new StoreStateFunction();
             this.inputOp = inputOp;
             this.targetFieldIndex = targetFieldIndex;
+            Open();
         }
 
         public override RawRecord Next()
@@ -1853,6 +1855,7 @@ namespace GraphView
         {
             _inputOp = inputOp;
             _outputBuffer = null;
+            Open();
         }
           
         public override RawRecord Next()
