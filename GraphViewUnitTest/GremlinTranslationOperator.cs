@@ -81,8 +81,8 @@ namespace GremlinTranslationOperator.Tests
             GraphViewCommand graph = new GraphViewCommand(connection);
             //connection.ResetCollection();
             //graph.g().V().Has("comicbook", "AVF 4").InE().OutV().Property("test", "123").Next();
-            graph.g().V().OutE().Property("test", "name").Next();
-
+            //graph.g().V().OutE().Property("test", "name").Next();
+            var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().Optional(GraphTraversal2.__().InE().Properties("label"))).Next();
 
             //var result = graph.g().V().Out().Inject(1).Next();
             //var result = graph.g().V().Out().Union(GraphTraversal2.__().In().Out(), GraphTraversal2.__().In()).Out().path().Tree().Next();

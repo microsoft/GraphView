@@ -56,7 +56,7 @@ namespace GraphView
             List<string> firstProjectProperties = new List<string>();
             List<string> secondProjectProperties = new List<string>();
 
-            if (projectProperties.Count == 0)
+            if (gremlinVariable.GetVariableType() != GremlinVariableType.Table && projectProperties.Count == 0)
             {
                 projectProperties.Add(gremlinVariable.DefaultProjection().VariableProperty);
             }
@@ -111,6 +111,8 @@ namespace GraphView
             }
             WSelectQueryBlock firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(secondProjectProperties);
+
+            if (secondProjectProperties.Count == 0) secondQueryExpr.SelectElements.Clear();
 
             if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
             {
