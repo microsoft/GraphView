@@ -22,7 +22,9 @@ namespace GraphView
         Float,
         Double,
         Date,
-        Null
+        Null,
+        Object,
+        Array
     }
 
     /// <summary>
@@ -321,6 +323,52 @@ namespace GraphView
                 default:
                     throw new QueryCompilationException("Unsupported data type.");
             }
+        }
+    }
+
+    internal class Compose1 : ScalarFunction
+    {
+        List<Tuple<string, int>> targetFieldsAndTheirNames;
+        
+        public Compose1(List<Tuple<string, int>> targetFieldsAndTheirNames)
+        {
+            this.targetFieldsAndTheirNames = targetFieldsAndTheirNames;
+        }
+
+        public override FieldObject Evaluate(RawRecord record)
+        {
+            Dictionary<string, FieldObject> compositField = new Dictionary<string, FieldObject>(targetFieldsAndTheirNames.Count);
+            foreach (Tuple<string, int> p in targetFieldsAndTheirNames)
+            {
+                compositField[p.Item1] = record[p.Item2];
+            }
+
+            return new MapField(compositField);
+        }
+
+        public override JsonDataType DataType()
+        {
+            return JsonDataType.Object;
+        }
+    }
+
+    internal class Compose2 : ScalarFunction
+    {
+        List<int> targetFieldIndexes;
+
+        public Compose2(List<int> targetFieldIndexes)
+        {
+            this.targetFieldIndexes = targetFieldIndexes;
+        }
+
+        public override FieldObject Evaluate(RawRecord record)
+        {
+            return new CollectionField(new List<FieldObject>(targetFieldIndexes.Select(e => record[e])));
+        }
+
+        public override JsonDataType DataType()
+        {
+            return JsonDataType.Array;
         }
     }
 }
