@@ -117,18 +117,29 @@ namespace GraphView
 
     internal class ConstantOperator : TableValuedFunction
     {
-        internal string ConstantValue;
+        private List<string> _constantValues;
 
-        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, string pConstantValue, int pOutputBufferSize = 1000)
+        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, List<string> pConstantValues, int pOutputBufferSize = 1000)
             : base(pInputOperator, pOutputBufferSize)
         {
-            ConstantValue = pConstantValue;
+            _constantValues = pConstantValues;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var result = new RawRecord(1);
-            result.fieldValues[0] = new StringField(ConstantValue);
+            if (_constantValues.Count == 1)
+                result.fieldValues[0] = new StringField(_constantValues[0]);
+            else
+            {
+                List<FieldObject> cf = new List<FieldObject>();
+                foreach (var value in _constantValues)
+                {
+                    cf.Add(new StringField(value));
+                }
+                
+                result.fieldValues[0] = new CollectionField(cf);
+            }
 
             return new List<RawRecord> {result};
         }

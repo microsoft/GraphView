@@ -46,8 +46,8 @@ namespace GraphView
 
             //string value1 = firstScalarFunction.Evaluate(record);
             //string value2 = secondScalarFunction.Evaluate(record);
-            string value1 = firstScalarFunction.Evaluate(record).ToString();
-            string value2 = secondScalarFunction.Evaluate(record).ToString();
+            string value1 = firstScalarFunction.Evaluate(record)?.ToString();
+            string value2 = secondScalarFunction.Evaluate(record)?.ToString();
 
             switch (targetType)
             {

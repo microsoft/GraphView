@@ -968,6 +968,54 @@ namespace GraphView
         }
     }
 
+    internal class MapOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+
+        // The traversal inside the map function.
+        private GraphViewExecutionOperator mapTraversal;
+        private ConstantSourceOperator contextOp;
+
+        public MapOperator(
+            GraphViewExecutionOperator inputOp,
+            GraphViewExecutionOperator mapTraversal,
+            ConstantSourceOperator contextOp)
+        {
+            this.inputOp = inputOp;
+            this.mapTraversal = mapTraversal;
+            this.contextOp = contextOp;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
+            {
+                contextOp.ConstantSource = currentRecord;
+                mapTraversal.ResetState();
+                RawRecord mapRec = mapTraversal.Next();
+
+                if (mapRec == null) continue;
+                RawRecord resultRecord = new RawRecord(currentRecord);
+                resultRecord.Append(mapRec);
+
+                return resultRecord;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            contextOp.ResetState();
+            mapTraversal.ResetState();
+            Open();
+        }
+    }
+
     internal class FlatMapOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
