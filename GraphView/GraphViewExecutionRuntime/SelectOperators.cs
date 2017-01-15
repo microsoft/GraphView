@@ -1042,7 +1042,7 @@ namespace GraphView
             }
 
             RawRecord inputRec = null;
-            while ((inputRec = inputOp.Next()) != null)
+            while (inputOp.State() && (inputRec = inputOp.Next()) != null)
             {
                 foreach (var aggr in aggregationSpecs)
                 {
@@ -1062,6 +1062,7 @@ namespace GraphView
                 outputRec.Append(aggr.Item1.Terminate());
             }
 
+            Close();
             return outputRec;
         }
     }
@@ -1868,6 +1869,7 @@ namespace GraphView
                     return null;
                 }
 
+                //RawRecord resultRecord = new RawRecord(currentRecord);
                 contextOp.ConstantSource = currentRecord;
                 sideEffectTraversal.ResetState();
 
