@@ -364,15 +364,15 @@ namespace GraphView
 
         internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
-            if (propertyKeys.Count == 1)
-            {
-                Populate(propertyKeys.First());
-                GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, propertyKeys.First());
-                currentContext.VariableList.Add(newVariableProperty);
-                currentContext.SetPivotVariable(newVariableProperty);
-            }
-            else
-            {
+            //if (propertyKeys.Count == 1)
+            //{
+            //    Populate(propertyKeys.First());
+            //    GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(this, propertyKeys.First());
+            //    currentContext.VariableList.Add(newVariableProperty);
+            //    currentContext.SetPivotVariable(newVariableProperty);
+            //}
+            //else
+            //{
                 foreach (var property in propertyKeys)
                 {
                     Populate(property);
@@ -381,7 +381,7 @@ namespace GraphView
                 currentContext.VariableList.Add(newVariable);
                 currentContext.TableReferences.Add(newVariable);
                 currentContext.SetPivotVariable(newVariable);
-            }
+            //}
         }
     }
 

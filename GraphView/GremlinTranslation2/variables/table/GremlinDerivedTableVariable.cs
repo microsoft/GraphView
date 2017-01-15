@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDerivedTableVariable: GremlinTableVariable
+    internal class GremlinDerivedTableVariable: GremlinScalarTableVariable
     {
         public GremlinToSqlContext SubqueryContext { get; set; }
 
@@ -39,7 +39,7 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func.Fold, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
@@ -52,7 +52,7 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func.Count, SqlUtil.GetStarColumnReferenceExpr()));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Count), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
@@ -71,7 +71,7 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }

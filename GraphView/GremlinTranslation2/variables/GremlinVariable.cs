@@ -359,6 +359,7 @@ namespace GraphView
 
         internal virtual void HasLabel(GremlinToSqlContext currentContext, List<object> values)
         {
+            Populate(GremlinKeyword.Label);
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
