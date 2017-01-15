@@ -51,12 +51,49 @@ namespace GraphView
             }
         }
 
-        internal override void PopulateVariable()
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            GremlinBranchVariable branchVariable = new GremlinBranchVariable();
+            foreach (var context in UnionContextList)
+            {
+                var variableList = context.SelectCurrentAndChildVariable(label);
+                branchVariable.BrachVariableList.Add(variableList);
+            }
+
+            return new List<GremlinVariable>() {branchVariable};
+        }
+
+        //internal override GremlinVariable PopulateFirstTaggedVariable(string label)
+        //{
+        //    foreach (var context in UnionContextList)
+        //    {
+        //        context.PopulateCurrAndChildContextFirstTaggedVariable(label);
+        //    }
+        //    return null;
+        //}
+
+        //internal override GremlinVariable PopulateLastTaggedVariable(string label)
+        //{
+        //    foreach (var context in UnionContextList)
+        //    {
+        //        context.PopulateCurrAndChildContextLastTaggedVariable(label);
+        //    }
+        //    return null;
+        //}
+
+        internal override bool ContainsLabel(string label)
         {
             foreach (var context in UnionContextList)
             {
-                context.PopulateVariable();
+                foreach (var variable in context.VariableList)
+                {
+                    if (variable.ContainsLabel(label))
+                    {
+                        return true;
+                    }
+                }
             }
+            return false;
         }
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)

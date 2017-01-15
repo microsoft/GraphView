@@ -18,15 +18,29 @@ namespace GraphView {
             throw new NotImplementedException();    
         }
 
-        internal virtual void PopulateVariable()
+        internal virtual List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
             throw new NotImplementedException();
         }
+
+        //internal virtual GremlinVariable PopulateFirstTaggedVariable(string label)
+        //{
+        //    throw new NotImplementedException();
+        //}
+
+        //internal virtual GremlinVariable PopulateLastTaggedVariable(string label)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         public virtual WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             throw new NotImplementedException();
         }
 
+        internal virtual bool ContainsLabel(string label)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

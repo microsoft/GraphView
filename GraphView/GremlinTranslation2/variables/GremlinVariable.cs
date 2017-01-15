@@ -37,11 +37,14 @@ namespace GraphView
         public string VariableName { get; set; }
         public int Low { get; set; }
         public int High { get; set; }
+        public List<string> Labels { get; set; }
+        public GremlinToSqlContext ParentContext;
 
         public GremlinVariable()
         {
             Low = Int32.MinValue;
             High = Int32.MaxValue;
+            Labels = new List<string>();
         }
 
         internal virtual GremlinVariableType GetVariableType()
@@ -49,11 +52,37 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal virtual bool ContainsLabel(string label)
+        {
+            return Labels.Contains(label);
+        }
+
         internal virtual void Populate(string property) {}
+
+        internal virtual void BottomUpPopulate(string property)
+        {
+            
+        }
 
         internal virtual void PopulateGremlinPath() {}
 
-        internal virtual void PopulateGremlinVariable() { }
+        internal virtual List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            if (Labels.Contains(label)) return new List<GremlinVariable>() {this};
+            return null;
+        }
+
+        //internal virtual GremlinVariable PopulateLastTaggedVariable(string label)
+        //{
+        //    if (Labels.Contains(label)) return this;
+        //    return null;
+        //}
+
+        //internal virtual GremlinVariable PopulateFirstTaggedVariable(string label)
+        //{
+        //    if (Labels.Contains(label)) return this;
+        //    return null;
+        //}
 
         internal virtual GremlinVariableProperty GetPath()
         {
@@ -118,6 +147,7 @@ namespace GraphView
                     currentContext.TaggedVariables[label] = new List<GremlinVariable>();
                 }
                 currentContext.TaggedVariables[label].Add(this);
+                currentContext.PivotVariable.Labels.Add(label);
             }
         }
         //internal virtual void barrier()
@@ -631,79 +661,189 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        //internal virtual void sample(Scope scope, int amountToSample)
+        internal virtual void sample(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope, int amountToSample)
+        {
+            throw new NotImplementedException();
+        }
 
         internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, string selectKey)
         {
-            List<GremlinVariable> taggedVariable = new List<GremlinVariable>();
-
-            //foreach (var variable in currentContext.InheritedVariableList)
+            //GremlinVariable selectVariable;
+            //switch (pop)
             //{
-            //    var  
+            //    case GremlinKeyword.Pop.first:
+            //        selectVariable = currentContext.SelectFirstTaggedVariable(selectKey);
+            //        break;
+            //    case GremlinKeyword.Pop.last:
+            //        selectVariable = currentContext.SelectLastTaggedVariable(selectKey);
+            //        break;
+            //    default:
+            //        throw new NotImplementedException();
             //}
 
-            GremlinVariable variable;
-            
-            if (currentContext.TaggedVariables.ContainsKey(selectKey))
-            {
-                switch (pop)
-                {
-                    case GremlinKeyword.Pop.first:
-                        variable = currentContext.TaggedVariables[selectKey].First();
-                        break;
-                    case GremlinKeyword.Pop.last:
-                        variable = currentContext.TaggedVariables[selectKey].Last();
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
-                currentContext.SetPivotVariable(variable);
+            //if (selectVariable == null)
+            //{
+            //    throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
+            //}
+            //else if (selectVariable is GremlinListVariable)
+            //{
+            //    currentContext.VariableList.Add(selectVariable);
+            //    currentContext.PivotVariable = selectVariable;
+            //} else if (selectVariable is GremlinWrapVariable)
+            //{
+            //    GremlinExpandVariable expandVariable = new GremlinExpandVariable(selectVariable);
+            //    currentContext.VariableList.Add(expandVariable);
+            //    currentContext.TableReferences.Add(expandVariable);
+            //    currentContext.PivotVariable = expandVariable;
+            //}
+            //else
+            //{
+            //    switch (selectVariable.GetVariableType())
+            //    {
+            //        case GremlinVariableType.Vertex:
+            //            GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(selectVariable);
+            //            contextVertex.IsFromSelect = true;
+            //            contextVertex.Pop = pop;
+            //            contextVertex.SelectKey = selectKey;
+            //            currentContext.VariableList.Add(contextVertex);
+            //            currentContext.SetPivotVariable(contextVertex);
+            //            break;
+            //        case GremlinVariableType.Edge:
+            //            GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(selectVariable);
+            //            contextEdge.IsFromSelect = true;
+            //            contextEdge.Pop = pop;
+            //            contextEdge.SelectKey = selectKey;
+            //            currentContext.VariableList.Add(contextEdge);
+            //            currentContext.SetPivotVariable(contextEdge);
+            //            break;
+            //        case GremlinVariableType.Table:
+            //            throw new NotImplementedException();
+            //        case GremlinVariableType.Scalar:
+            //            throw new NotImplementedException();
+            //    }
+            //}
+
+                //List<GremlinVariable> taggedVariable = new List<GremlinVariable>();
+
+                //foreach (var variable in currentContext.InheritedVariableList)
+                //{
+                //    var  
+                //}
+
+                //GremlinVariable variable;
+
+                //if (currentContext.TaggedVariables.ContainsKey(selectKey))
+                //{
+                //    switch (pop)
+                //    {
+                //        case GremlinKeyword.Pop.first:
+                //            variable = currentContext.TaggedVariables[selectKey].First();
+                //            break;
+                //        case GremlinKeyword.Pop.last:
+                //            variable = currentContext.TaggedVariables[selectKey].Last();
+                //            break;
+                //        default:
+                //            throw new NotImplementedException();
+                //    }
+                //    currentContext.SetPivotVariable(variable);
+                //}
+                //else if (currentContext.InheritedTaggedVariables.ContainsKey(selectKey))
+                //{
+                //    switch (pop)
+                //    {
+                //        case GremlinKeyword.Pop.first:
+                //            variable = currentContext.InheritedTaggedVariables[selectKey].First();
+                //            break;
+                //        case GremlinKeyword.Pop.last:
+                //            variable = currentContext.InheritedTaggedVariables[selectKey].Last();
+                //            break;
+                //        default:
+                //            throw new NotImplementedException();
+                //    }
+                //    switch (variable.GetVariableType())
+                //    {
+                //        case GremlinVariableType.Vertex:
+                //            GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(variable);
+                //            contextVertex.IsFromSelect = true;
+                //            contextVertex.Pop = pop;
+                //            contextVertex.SelectKey = selectKey;
+                //            currentContext.VariableList.Add(contextVertex);
+                //            currentContext.SetPivotVariable(contextVertex);
+                //            break;
+                //        case GremlinVariableType.Edge:
+                //            GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(variable);
+                //            contextEdge.IsFromSelect = true;
+                //            contextEdge.Pop = pop;
+                //            contextEdge.SelectKey = selectKey;
+                //            currentContext.VariableList.Add(contextEdge);
+                //            currentContext.SetPivotVariable(contextEdge);
+                //            break;
+                //        case GremlinVariableType.Table:
+                //            throw new NotImplementedException();
+                //        case GremlinVariableType.Scalar:
+                //            throw new NotImplementedException();
+                //    }
+                //}
+                //else
+                //{
+                //    throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
+                //}
             }
-            else if (currentContext.InheritedTaggedVariables.ContainsKey(selectKey))
+        internal virtual void Select(GremlinToSqlContext currentContext, string label)
+        {
+            List<GremlinVariable> taggedVariableList = currentContext.Select(label);
+
+            if (taggedVariableList.Count == 0)
             {
-                switch (pop)
-                {
-                    case GremlinKeyword.Pop.first:
-                        variable = currentContext.InheritedTaggedVariables[selectKey].First();
-                        break;
-                    case GremlinKeyword.Pop.last:
-                        variable = currentContext.InheritedTaggedVariables[selectKey].Last();
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
-                switch (variable.GetVariableType())
-                {
-                    case GremlinVariableType.Vertex:
-                        GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(variable);
-                        contextVertex.IsFromSelect = true;
-                        contextVertex.Pop = pop;
-                        contextVertex.SelectKey = selectKey;
-                        currentContext.VariableList.Add(contextVertex);
-                        currentContext.SetPivotVariable(contextVertex);
-                        break;
-                    case GremlinVariableType.Edge:
-                        GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(variable);
-                        contextEdge.IsFromSelect = true;
-                        contextEdge.Pop = pop;
-                        contextEdge.SelectKey = selectKey;
-                        currentContext.VariableList.Add(contextEdge);
-                        currentContext.SetPivotVariable(contextEdge);
-                        break;
-                    case GremlinVariableType.Table:
-                        throw new NotImplementedException();
-                    case GremlinVariableType.Scalar:
-                        throw new NotImplementedException();
-                }
+                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", label));
+            } else if (taggedVariableList.Count == 1)
+            {
+                currentContext.VariableList.Add(taggedVariableList.First());
+                currentContext.PivotVariable = taggedVariableList.First();
             }
             else
             {
-                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
+                GremlinListVariable newVariableList = new GremlinListVariable(taggedVariableList);
+                currentContext.VariableList.Add(newVariableList);
+                currentContext.PivotVariable = newVariableList;
             }
-        }
-        internal virtual void Select(GremlinToSqlContext currentContext, string tagName)
-        {
-            Select(currentContext, GremlinKeyword.Pop.last, tagName);
+
+            var test = "";
+            //if (selectVariable is GremlinListVariable)
+            //{
+            //    currentContext.VariableList.Add(selectVariable);
+            //    currentContext.PivotVariable = selectVariable;
+            //} else if (selectVariable is GremlinWrapVariable)
+            //{
+            //    GremlinExpandVariable newExpandVariable = new GremlinExpandVariable(selectVariable);
+            //    currentContext.VariableList.Add(newExpandVariable);
+            //    currentContext.TableReferences.Add(newExpandVariable);
+            //    currentContext.PivotVariable = newExpandVariable;
+            //}
+            //else
+            //{
+            //    switch (selectVariable.GetVariableType())
+            //    {
+            //        case GremlinVariableType.Vertex:
+            //            GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(selectVariable);
+            //            contextVertex.IsFromSelect = true;
+            //            contextVertex.SelectKey = label;
+            //            currentContext.VariableList.Add(contextVertex);
+            //            currentContext.SetPivotVariable(contextVertex);
+            //            break;
+            //        case GremlinVariableType.Edge:
+            //            GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(selectVariable);
+            //            contextEdge.IsFromSelect = true;
+            //            contextEdge.SelectKey = label;
+            //            currentContext.VariableList.Add(contextEdge);
+            //            currentContext.SetPivotVariable(contextEdge);
+            //            break;
+            //        case GremlinVariableType.Table:
+            //            throw new NotImplementedException();
+            //        case GremlinVariableType.Scalar:
+            //            throw new NotImplementedException();
+            //    }
+            //}
         }
 
         internal virtual void Select(GremlinToSqlContext currentContext, List<string> selectKeys)
@@ -798,6 +938,10 @@ namespace GraphView
         internal virtual void Union(ref GremlinToSqlContext currentContext, List<GremlinToSqlContext> unionContexts)
         {
             GremlinTableVariable newVariable = GremlinUnionVariable.Create(unionContexts);
+            foreach (var unionContext in unionContexts)
+            {
+                unionContext.ParentVariable = newVariable;
+            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

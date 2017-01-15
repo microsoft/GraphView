@@ -80,8 +80,17 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
+            var results = graph.g().V().As("a").Out().As("b").Union(GraphTraversal2.__().Out().As("a")).In().Union(GraphTraversal2.__().Out().Select("a")).Next();
 
-            var result = graph.g().V().And(GraphTraversal2.__().Values("age").Is(Predicate.lt(30))).Values("name").Next();
+            //var results = graph.g()
+            //    .V()
+            //    .As("node")
+            //    .Union(GraphTraversal2.__().Constant(new List<object> { "HAWK", "AVF 4" }))
+            //    .As("list")
+            //    .Values("name")
+            //    .Where(Predicate.within("list"));
+            //var result = graph.g().V().As("a").Out().In().Select("a").Next();
+            //var result = graph.g().V().And(GraphTraversal2.__().Values("age").Is(Predicate.lt(30))).Values("name").Next();
             //var result = graph.g().V().As("a").Constant(new List<object>() {"name", "properties"}).As("p").Select("a").Values("name").Where(Predicate.within("p")).Next();
 
             //connection.ResetCollection();

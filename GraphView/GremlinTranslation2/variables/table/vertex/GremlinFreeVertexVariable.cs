@@ -39,7 +39,7 @@ namespace GraphView
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
-            currentContext.AddPath(new GremlinMatchPath(this, inEdge, outVertex));
+            currentContext.AddPath(new GremlinMatchPath(outVertex, inEdge, this));
             currentContext.SetPivotVariable(outVertex);
         }
 

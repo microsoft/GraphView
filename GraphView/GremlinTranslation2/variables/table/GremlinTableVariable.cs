@@ -64,9 +64,40 @@ namespace GraphView
             SqlTableVariable?.PopulateGremlinPath();
         }
 
-        internal override void PopulateGremlinVariable()
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
-            SqlTableVariable?.PopulateVariable();
+            if (SqlTableVariable != null)
+                return SqlTableVariable.PopulateAllTaggedVariable(label);
+            else
+                return base.PopulateAllTaggedVariable(label);
+        }
+
+        //internal override GremlinVariable PopulateFirstTaggedVariable(string label)
+        //{
+        //    if (SqlTableVariable != null)
+        //        return SqlTableVariable.PopulateFirstTaggedVariable(label);
+        //    else
+        //        return base.PopulateFirstTaggedVariable(label);
+        //}
+
+        //internal override GremlinVariable PopulateLastTaggedVariable(string label)
+        //{
+        //    if (SqlTableVariable != null)
+        //        return SqlTableVariable.PopulateLastTaggedVariable(label);
+        //    else
+        //        return base.PopulateLastTaggedVariable(label);
+        //}
+
+        internal override bool ContainsLabel(string label)
+        {
+            if (SqlTableVariable != null)
+            {
+                return SqlTableVariable.ContainsLabel(label);
+            }
+            else
+            {
+                return base.ContainsLabel(label);
+            }
         }
 
         internal override GremlinVariableProperty GetPath()

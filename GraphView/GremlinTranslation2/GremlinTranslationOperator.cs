@@ -24,45 +24,46 @@ namespace GraphView
                 GremlinParentContextOp rootAsContextOp = this as GremlinParentContextOp;
                 rootAsContextOp.InheritedPivotVariable = parentContext.PivotVariable;
 
-                var inheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();
-                foreach (var item in parentContext.InheritedTaggedVariables)
-                {
-                    if (inheritedTaggedVariables.ContainsKey(item.Key))
-                    {
-                        inheritedTaggedVariables[item.Key].AddRange(item.Value);
-                    }
-                    else
-                    {
-                        inheritedTaggedVariables[item.Key] = new List<GremlinVariable>();
-                        inheritedTaggedVariables[item.Key].AddRange(item.Value);
-                    }
-                }
-                foreach (var item in parentContext.TaggedVariables)
-                {
-                    if (inheritedTaggedVariables.ContainsKey(item.Key))
-                    {
-                        inheritedTaggedVariables[item.Key].AddRange(item.Value);
-                    }
-                    else
-                    {
-                        inheritedTaggedVariables[item.Key] = new List<GremlinVariable>();
-                        inheritedTaggedVariables[item.Key].AddRange(item.Value);
-                    }
-                }
+                //var inheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();
+                //foreach (var item in parentContext.InheritedTaggedVariables)
+                //{
+                //    if (inheritedTaggedVariables.ContainsKey(item.Key))
+                //    {
+                //        inheritedTaggedVariables[item.Key].AddRange(item.Value);
+                //    }
+                //    else
+                //    {
+                //        inheritedTaggedVariables[item.Key] = new List<GremlinVariable>();
+                //        inheritedTaggedVariables[item.Key].AddRange(item.Value);
+                //    }
+                //}
+                //foreach (var item in parentContext.TaggedVariables)
+                //{
+                //    if (inheritedTaggedVariables.ContainsKey(item.Key))
+                //    {
+                //        inheritedTaggedVariables[item.Key].AddRange(item.Value);
+                //    }
+                //    else
+                //    {
+                //        inheritedTaggedVariables[item.Key] = new List<GremlinVariable>();
+                //        inheritedTaggedVariables[item.Key].AddRange(item.Value);
+                //    }
+                //}
 
-                var inheritedVariableList = new List<GremlinVariable>();
-                foreach (var variable in parentContext.InheritedVariableList)
-                {
-                    inheritedVariableList.Add(variable);
-                }
-                foreach (var variable in parentContext.VariableList)
-                {
-                    inheritedVariableList.Add(variable);
-                }
+                //var inheritedVariableList = new List<GremlinVariable>();
+                //foreach (var variable in parentContext.InheritedVariableList)
+                //{
+                //    inheritedVariableList.Add(variable);
+                //}
+                //foreach (var variable in parentContext.VariableList)
+                //{
+                //    inheritedVariableList.Add(variable);
+                //}
 
-                rootAsContextOp.InheritedVariableList = inheritedVariableList;
-                rootAsContextOp.InheritedTaggedVariables = inheritedTaggedVariables;
+                //rootAsContextOp.InheritedVariableList = inheritedVariableList;
+                //rootAsContextOp.InheritedTaggedVariables = inheritedTaggedVariables;
                 rootAsContextOp.InheritedPathList = new List<GremlinMatchPath>(parentContext.PathList);
+                rootAsContextOp.ParentContext = parentContext;
             }
         }
 
@@ -85,23 +86,25 @@ namespace GraphView
     {
         public GremlinVariable InheritedPivotVariable { get; set; }
         public GremlinToSqlContext InheritedContext { get; set; }
-        public Dictionary<string, List<GremlinVariable>> InheritedTaggedVariables { get; set; }
+        //public Dictionary<string, List<GremlinVariable>> InheritedTaggedVariables { get; set; }
         public List<GremlinMatchPath> InheritedPathList { get; set; }
-        public List<GremlinVariable> InheritedVariableList { get; set; }
+        //public List<GremlinVariable> InheritedVariableList { get; set; }
+        public GremlinToSqlContext ParentContext { get; set; }
 
         public GremlinParentContextOp()
         {
-            InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();
-            InheritedVariableList = new List<GremlinVariable>();
+            //InheritedTaggedVariables = new Dictionary<string, List<GremlinVariable>>();
+            //InheritedVariableList = new List<GremlinVariable>();
         }
 
         internal override GremlinToSqlContext GetContext()
         {
             if (InheritedContext != null) return InheritedContext;
             GremlinToSqlContext newContext = new GremlinToSqlContext();
-            newContext.InheritedTaggedVariables = InheritedTaggedVariables;
-            newContext.InheritedVariableList = InheritedVariableList;
+            //newContext.InheritedTaggedVariables = InheritedTaggedVariables;
+            //newContext.InheritedVariableList = InheritedVariableList;
             newContext.PathList = InheritedPathList;
+            newContext.ParentContext = ParentContext;
             if (InheritedPivotVariable != null)
             {
                 GremlinContextVariable newVariable = GremlinContextVariable.Create(InheritedPivotVariable);

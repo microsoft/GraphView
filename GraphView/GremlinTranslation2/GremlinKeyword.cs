@@ -59,6 +59,7 @@ namespace GraphView
             public const string OtherV = "OtherV";
             public const string Expand = "Expand";
             public const string Map = "Map";
+            public const string Compose1 = "Compose1";
         }
         public enum Pop
         {
