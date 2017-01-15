@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 // Add DocumentDB references
 
@@ -33,7 +34,15 @@ namespace GraphView
 
         public override bool Equals(object obj)
         {
-            return Value.Equals(obj);
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            StringField stringField = obj as StringField;
+            if (stringField == null)
+            {
+                return false;
+            }
+
+            return Value.Equals(stringField.Value);
         }
     }
 
@@ -62,8 +71,34 @@ namespace GraphView
                 collectionStringBuilder.Append(", ").Append(Collection[i].ToString());
 
             collectionStringBuilder.Append(']');
-            ;
+            
             return collectionStringBuilder.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            CollectionField colField = obj as CollectionField;
+            if (colField == null || Collection.Count != colField.Collection.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < Collection.Count; i++)
+            {
+                if (!Collection[i].Equals(colField.Collection[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
         }
     }
 
@@ -101,6 +136,34 @@ namespace GraphView
             mapStringBuilder.Append(']');
 
             return mapStringBuilder.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            MapField mapField = obj as MapField;
+            if (mapField == null || Map.Count != mapField.Map.Count)
+            {
+                return false;
+            }
+
+            foreach (var kvp in Map)
+            {
+                var key = kvp.Key;
+                FieldObject value2;
+                if (!mapField.Map.TryGetValue(key, out value2))
+                    return false;
+                if (!kvp.Value.Equals(value2))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
         }
     }
 

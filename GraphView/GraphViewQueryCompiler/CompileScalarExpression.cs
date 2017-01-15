@@ -104,4 +104,23 @@ namespace GraphView
             }
         }
     }
+
+    public partial class WFunctionCall
+    {
+        internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            string funcName = FunctionName.ToString();
+
+            switch (funcName)
+            {
+                case "WithInArray":
+                    var checkField = Parameters[0] as WColumnReferenceExpression;
+                    var arrayField = Parameters[1] as WColumnReferenceExpression;
+                    return new WithInArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
+                default:
+                    throw new NotImplementedException("Function " + funcName + " hasn't been implemented.");
+            }
+            throw new NotImplementedException("Function " + funcName + " hasn't been implemented.");
+        }
+    }
 }

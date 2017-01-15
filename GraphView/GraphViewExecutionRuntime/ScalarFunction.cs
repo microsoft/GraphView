@@ -371,4 +371,38 @@ namespace GraphView
             return JsonDataType.Array;
         }
     }
+
+    internal class WithInArray : ScalarFunction
+    {
+        private int _checkFieldIndex;
+        private int _arrayFieldIndex;
+
+        public WithInArray(int checkFieldIndex, int arrayFieldIndex)
+        {
+            _checkFieldIndex = checkFieldIndex;
+            _arrayFieldIndex = arrayFieldIndex;
+        }
+
+        public override FieldObject Evaluate(RawRecord record)
+        {
+            var checkObject = record[_checkFieldIndex];
+            var arrayObject = record[_arrayFieldIndex] as CollectionField;
+            if (arrayObject == null)
+                throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
+            if (checkObject == null) return new StringField("false");
+
+            foreach (var fieldObject in arrayObject.Collection)
+            {
+                if (checkObject.Equals(fieldObject))
+                    return new StringField("true");
+            }
+
+            return new StringField("false");
+        }
+
+        public override JsonDataType DataType()
+        {
+            return JsonDataType.Boolean;
+        }
+    }
 }
