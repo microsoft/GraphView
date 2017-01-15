@@ -2926,5 +2926,30 @@ namespace GraphView
             return mapOp;
         }
     }
+
+    partial class WSideEffectTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery sideEffectSubquery = Parameters[0] as WScalarSubquery;
+            if (sideEffectSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a sideEffect table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock sideEffectSelect = sideEffectSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (sideEffectSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator sideEffectTraversalOp = sideEffectSelect.Compile(subcontext, dbConnection);
+
+            SideEffectOperator sideEffectOp = new SideEffectOperator(context.CurrentExecutionOperator, sideEffectTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = sideEffectOp;
+
+            return sideEffectOp;
+        }
+    }
 }
 
