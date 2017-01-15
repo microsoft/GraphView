@@ -61,10 +61,6 @@ namespace GraphView
                 {
                     return new ScalarValue(Value, JsonDataType.Date);
                 }
-                else if (bool.TryParse(Value, out bool_value))
-                {
-                    return new ScalarValue(Value, JsonDataType.Boolean);
-                }
                 else
                 {
                     return new ScalarValue(Value, JsonDataType.String);
@@ -75,6 +71,10 @@ namespace GraphView
                 if (Value.Equals("null", StringComparison.CurrentCultureIgnoreCase))
                 {
                     return new ScalarValue(Value, JsonDataType.Null);
+                }
+                else if (bool.TryParse(Value, out bool_value))
+                {
+                    return new ScalarValue(Value, JsonDataType.Boolean);
                 }
                 else if (Value.IndexOf('.') >= 0)
                 {
