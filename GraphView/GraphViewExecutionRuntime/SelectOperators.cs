@@ -1925,7 +1925,9 @@ namespace GraphView
                 subqueryProgress++;
             }
 
-            r = inputOp.State() ? inputOp.Next() : null;
+            // For the g.Inject() case, Inject operator itself is the first operator, and its inputOp is null
+            if (inputOp != null)
+                r = inputOp.State() ? inputOp.Next() : null;
 
             if (r == null)
             {

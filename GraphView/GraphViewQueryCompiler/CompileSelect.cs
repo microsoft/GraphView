@@ -2845,6 +2845,9 @@ namespace GraphView
                 if (subQuery == null) throw new SyntaxErrorException("Parameters in Inject function can only be WScalarSubquery");
 
                 var subContext = new QueryCompilationContext(context);
+                // In g.Inject() case, the Inject operator itself is the first operator, so a not-null OuterContextOp is faked here
+                if (context.CurrentExecutionOperator == null)
+                    subContext.OuterContextOp.SetRef(new RawRecord());
                 var subQueryOp = subQuery.SubQueryExpr.Compile(subContext, dbConnection);
                 subQueriesOps.Add(subQueryOp);
             }
