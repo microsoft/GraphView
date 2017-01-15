@@ -300,6 +300,9 @@ namespace GraphView
                     searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
             }
 
+            var booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
+            booleanWValueExpressionVisitor.Invoke(searchCondition);
+
             var jsonQuery = new JsonQuery
             {
                 Alias = nodeAlias,

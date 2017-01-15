@@ -139,4 +139,25 @@ namespace GraphView
             }
         }
     }
+
+    /// <summary>
+    /// Turn a SQL-style boolean WValueExpression to lower case
+    /// </summary>
+    internal class BooleanWValueExpressionVisitor : WSqlFragmentVisitor
+    {
+        public void Invoke(
+            WBooleanExpression booleanExpression)
+        {
+            if (booleanExpression != null)
+                booleanExpression.Accept(this);
+        }
+
+        public override void Visit(WValueExpression valueExpression)
+        {
+            bool bool_value;
+            // JSON requires a lower case string if it is a boolean value
+            if (!valueExpression.SingleQuoted && bool.TryParse(valueExpression.Value, out bool_value))
+                valueExpression.Value = bool_value.ToString().ToLowerInvariant();
+        }
+    }
 }
