@@ -227,14 +227,13 @@ namespace GraphView
             var edgeJObject = JObject.Parse(edgeObjectString);
             var result = new RawRecord { fieldValues = new List<FieldObject>() };
 
-            record.Append(new StringField(srcId)); 
-            record.Append(new StringField(sinkId));
-            record.Append(new StringField(_otherVTag == 0 ? srcId : sinkId));
-            record.Append(new StringField(edgeJObject["_ID"].ToString()));
+            result.Append(new StringField(srcId));
+            result.Append(new StringField(sinkId));
+            result.Append(new StringField(_otherVTag == 0 ? srcId : sinkId));
+            result.Append(new StringField(edgeJObject["_ID"].ToString()));
 
             for (var i = ReservedMetaFieldCount; i < _edgeProperties.Count; i++)
             {
-
                 var fieldValue = edgeJObject[_edgeProperties[i]];
                 result.Append(fieldValue != null ? new StringField(fieldValue.ToString()) : null);
             }
@@ -405,10 +404,10 @@ namespace GraphView
                     var propertyNewValue = tuple.Item2;
                     if (propertyIndex == -1) continue;
 
-                    result.fieldValues[propertyIndex] = new StringField(propertyNewValue.Value);
+                    srcRecord.fieldValues[propertyIndex] = new StringField(propertyNewValue.Value);
                 }
 
-                return result;
+                return srcRecord;
             }
 
             Close();
