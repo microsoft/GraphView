@@ -44,6 +44,14 @@ namespace GraphView
         }
     }
 
+    public partial class WBooleanNotExpression
+    {
+        internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            return new BooleanNotFunction(Expression.CompileToFunction(context, dbConnection));
+        }
+    }
+
     public partial class WExistsPredicate
     {
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)

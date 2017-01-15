@@ -336,4 +336,19 @@ namespace GraphView
             return firstResult != null;
         }
     }
+
+    internal class BooleanNotFunction : BooleanFunction
+    {
+        private BooleanFunction _booleanFunction;
+
+        public BooleanNotFunction(BooleanFunction booleanFunction)
+        {
+            _booleanFunction = booleanFunction;
+        }
+
+        public override bool Evaluate(RawRecord r)
+        {
+            return !_booleanFunction.Evaluate(r);
+        }
+    }
 }
