@@ -1486,6 +1486,9 @@ namespace GraphView
                         // TODO: Change to correct ColumnGraphType
                         context.AddField(tableAlias, columnName, ColumnGraphType.Value);
                     }
+
+                    // TODO: Change to correct ColumnGraphType
+                    tableReferences.Add(tableReference.Alias.Value, TableGraphType.Vertex);
                     context.CurrentExecutionOperator = operatorChain.Last();
                 }
                 else if (tableReference is WVariableTableReference)
@@ -1516,7 +1519,7 @@ namespace GraphView
                 else if (tableReference is WSchemaObjectFunctionTableReference)
                 {
                     var functionTableReference = tableReference as WSchemaObjectFunctionTableReference;
-                    var functionName = functionTableReference.SchemaObject.Identifiers.ToString();
+                    var functionName = functionTableReference.SchemaObject.Identifiers.Last().ToString();
                     var tableOp = functionTableReference.Compile(context, connection);
 
                     GraphViewEdgeTableReferenceEnum edgeTypeEnum;
@@ -1660,7 +1663,7 @@ namespace GraphView
                 {
                     var alias = expr.ColumnName;
                     // TODO: Change to Addfield with correct ColumnGraphType
-                    context.AddField("", "_value", ColumnGraphType.Value);
+                    context.AddField("", alias ?? "_value", ColumnGraphType.Value);
                 }
 
                 operatorChain.Add(projectAggregationOp);
@@ -2857,6 +2860,10 @@ namespace GraphView
 
             InjectOperator injectOp = new InjectOperator(subQueriesOps, context.CurrentExecutionOperator);
             context.CurrentExecutionOperator = injectOp;
+
+            // In g.Inject() case, the inject() step creates a new column in RawRecord
+            if (context.RawRecordLayout.Count == 0)
+                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
             return injectOp;
         }

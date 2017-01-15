@@ -217,7 +217,7 @@ namespace GraphView
             CollectionField cf = record[_collectionFieldIndex] as CollectionField;
             foreach (FieldObject fo in cf.Collection)
             {
-                RawRecord newRecord = new RawRecord(record);
+                RawRecord newRecord = new RawRecord();
                 newRecord.Append(fo);
                 results.Add(newRecord);
             }
