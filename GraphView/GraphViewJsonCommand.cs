@@ -1,14 +1,48 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.IO;
 using System.Text;
 
 // Add DocumentDB references
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
     public class GraphViewJsonCommand
     {
+        public static void UpdateProperty(JObject jsonObject, WValueExpression fieldName, WValueExpression fieldValue)
+        {
+            string key = fieldName.Value;
+
+            bool bool_value;
+            JToken value;
+
+            if (!fieldValue.SingleQuoted && fieldValue.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
+            {
+                var property = jsonObject.Property(key);
+                property?.Remove();
+                return;
+            }
+
+            // JSON requires a lower case string if it is a boolean value
+            if (!fieldValue.SingleQuoted && bool.TryParse(fieldValue.Value, out bool_value))
+                value = JToken.Parse(bool_value.ToString().ToLowerInvariant());
+            else
+                value = JToken.Parse(fieldValue.ToString());
+
+            jsonObject[key] = value;
+        }
+
+        public static void UpdateEdgeMetaProperty(JObject edgeJObject, long edgeOffset, long reverseEdgeOffset, string sinkId, string sinkNodeLabel)
+        {
+            edgeJObject["_ID"] = edgeOffset;
+            edgeJObject["_reverse_ID"] = reverseEdgeOffset;
+            edgeJObject["_sink"] = sinkId;
+            if (sinkNodeLabel != null) edgeJObject["_sinkLabel"] = sinkNodeLabel;
+        }
+
+
         //insert reader into s1 according reader's type
         public static void insert_reader(ref StringBuilder s1, JsonTextReader reader, ref JsonWriter writer)
         {

@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -487,24 +488,30 @@ namespace GraphView
     {
         public string ConstructEdgeJsonDocument(out List<string> projectedFieldList)
         {
-            string edgeJsonDocument = "{}";
-            projectedFieldList = new List<string> { "_sink", "_ID" };
-            edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_ID").ToString();
-            edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_reverse_ID").ToString();
-            edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_sink").ToString();
+            JObject edgeJsonDocument = JObject.Parse("{}");
+            projectedFieldList = new List<string> { "_source", "_sink", "_other", "_ID" };
+            //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_ID").ToString();
+            //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_reverse_ID").ToString();
+            //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_sink").ToString();
+            edgeJsonDocument.Add("_ID", "");
+            edgeJsonDocument.Add("_reverse_ID", "");
+            edgeJsonDocument.Add("_sink", "");
 
-
-            for (var i = 2; i < Parameters.Count; i += 2)
+            // Skip edgeSourceScalarFunction, edgeSinkScalarFunction, otherVTag
+            for (var i = 3; i < Parameters.Count; i += 2)
             {
                 var key = (Parameters[i] as WValueExpression).Value;
-                var value = (Parameters[i + 1] as WValueExpression).ToString();
-                edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, value, key).ToString();
+                //var value = (Parameters[i + 1] as WValueExpression).ToString();
+                //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, value, key).ToString();
+
+                GraphViewJsonCommand.UpdateProperty(edgeJsonDocument, Parameters[i] as WValueExpression,
+                    Parameters[i + 1] as WValueExpression);
 
                 if (!projectedFieldList.Contains(key))
                     projectedFieldList.Add(key);
             }
 
-            return edgeJsonDocument;
+            return edgeJsonDocument.ToString();
         }
     }
 
@@ -512,23 +519,29 @@ namespace GraphView
     {
         public string ConstructNodeJsonDocument(out List<string> projectedFieldList)
         {
-            string nodeJsonDocument = "{}";
+            JObject nodeJsonDocument = JObject.Parse("{}");
             projectedFieldList = new List<string> { "id", "_edge", "_reverse_edge" };
 
             for (var i = 0; i < Parameters.Count; i += 2)
             {
                 var key = (Parameters[i] as WValueExpression).Value;
-                var value = (Parameters[i + 1] as WValueExpression).ToString();
-                nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, value, key).ToString();
+
+                //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, value, key).ToString();
+                GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
+                    Parameters[i + 1] as WValueExpression);
 
                 if (!projectedFieldList.Contains(key))
                     projectedFieldList.Add(key);
             }
 
-            nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
-            nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
+            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
+            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
+            nodeJsonDocument["_edge"] = new JArray();
+            nodeJsonDocument["_reverse_edge"] = new JArray();
+            nodeJsonDocument["_nextEdgeOffset"] = 0;
+            nodeJsonDocument["_nextReverseEdgeOffset"] = 0;
 
-            return nodeJsonDocument;
+            return nodeJsonDocument.ToString();
         }
     }
 

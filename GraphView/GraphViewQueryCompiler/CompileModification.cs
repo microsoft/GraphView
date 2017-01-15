@@ -65,7 +65,7 @@ namespace GraphView
             var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
             var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
 
-            var dropNodeOp = new DropVOperator(context.CurrentExecutionOperator, dbConnection, nodeIdIndex);
+            var dropNodeOp = new DropNodeOperator(context.CurrentExecutionOperator, dbConnection, nodeIdIndex);
             context.CurrentExecutionOperator = dropNodeOp;
 
             return dropNodeOp;
@@ -81,7 +81,7 @@ namespace GraphView
             var srcIdIndex = context.LocateColumnReference(srcIdParameter);
             var edgeOffsetIndex = context.LocateColumnReference(edgeOffsetParameter);
 
-            var dropEdgeOp = new DropEOperator(context.CurrentExecutionOperator, dbConnection, srcIdIndex, edgeOffsetIndex);
+            var dropEdgeOp = new DropEdgeOperator(context.CurrentExecutionOperator, dbConnection, srcIdIndex, edgeOffsetIndex);
             context.CurrentExecutionOperator = dropEdgeOp;
 
             return dropEdgeOp;
@@ -95,19 +95,18 @@ namespace GraphView
             var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
             var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
             var nodeAlias = nodeIdParameter.TableReference;
-            var propertiesList = new List<Tuple<string, string, int>>();
+            var propertiesList = new List<Tuple<WValueExpression, WValueExpression, int>>();
 
             for (var i = 1; i < Parameters.Count; i += 2)
             {
-                var key = (Parameters[i] as WValueExpression).Value;
-                var value = (Parameters[i+1] as WValueExpression).Value;
-                if (value.Equals("null")) value = null;
+                var keyExpression = Parameters[i] as WValueExpression;
+                var valueExpression = Parameters[i+1] as WValueExpression;
 
                 int propertyIndex;
-                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(nodeAlias, key), out propertyIndex))
+                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(nodeAlias, keyExpression.Value), out propertyIndex))
                     propertyIndex = -1;
 
-                propertiesList.Add(new Tuple<string, string, int>(key, value, propertyIndex));
+                propertiesList.Add(new Tuple<WValueExpression, WValueExpression, int>(keyExpression, valueExpression, propertyIndex));
             }
 
             var updateNodePropertiesOp = new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection,
@@ -127,19 +126,18 @@ namespace GraphView
             var srcIdIndex = context.LocateColumnReference(srcIdParameter);
             var edgeOffsetIndex = context.LocateColumnReference(edgeOffsetParameter);
             var edgeAlias = edgeOffsetParameter.TableReference;
-            var propertiesList = new List<Tuple<string, string, int>>();
+            var propertiesList = new List<Tuple<WValueExpression, WValueExpression, int>>();
 
             for (var i = 2; i < Parameters.Count; i += 2)
             {
-                var key = (Parameters[i] as WValueExpression).Value;
-                var value = (Parameters[i + 1] as WValueExpression).Value;
-                if (value.Equals("null")) value = null;
+                var keyExpression = Parameters[i] as WValueExpression;
+                var valueExpression = Parameters[i + 1] as WValueExpression;
 
                 int propertyIndex;
-                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(edgeAlias, key), out propertyIndex))
+                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(edgeAlias, keyExpression.Value), out propertyIndex))
                     propertyIndex = -1;
 
-                propertiesList.Add(new Tuple<string, string, int>(key, value, propertyIndex));
+                propertiesList.Add(new Tuple<WValueExpression, WValueExpression, int>(keyExpression, valueExpression, propertyIndex));
             }
 
             var updateEdgePropertiesOp = new UpdateEdgePropertiesOperator(context.CurrentExecutionOperator, dbConnection,

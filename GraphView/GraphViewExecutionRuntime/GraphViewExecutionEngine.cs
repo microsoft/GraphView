@@ -59,7 +59,7 @@ namespace GraphView
             collectionStringBuilder.Append(Collection[0].ToString());
 
             for (var i = 1; i < Collection.Count; i++)
-                collectionStringBuilder.Append(',').Append(Collection[i].ToString());
+                collectionStringBuilder.Append(", ").Append(Collection[i].ToString());
 
             collectionStringBuilder.Append(']');
             ;

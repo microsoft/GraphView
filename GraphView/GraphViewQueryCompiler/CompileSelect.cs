@@ -209,8 +209,38 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// This function works like the FillMetaField function in the AdjacencyListDecoder
+        /// </summary>
+        /// <param name="edge"></param>
+        /// <returns></returns>
+        internal static string ConstructMetaFieldSelectClauseOfEdge(MatchEdge edge)
+        {
+            var metaFieldSelectStringBuilder = new StringBuilder();
+            var isStartVertexTheOriginVertex = edge.IsReversed;
+            var isReversedAdjList = IsTraversalThroughPhysicalReverseEdge(edge);
+            var nodeId = edge.SourceNode.NodeAlias + ".id";
+            var edgeSink = edge.EdgeAlias + "._sink";
+            var edgeId = edge.EdgeAlias + "._ID";
+            var edgeReverseId = edge.EdgeAlias + "._reverse_ID";
+
+
+            var sourceValue = isReversedAdjList ? edgeSink : nodeId;
+            var sinkValue = isReversedAdjList ? nodeId : edgeSink;
+            var otherValue = isStartVertexTheOriginVertex ? edgeSink : nodeId;
+            var edgeIdValue = isReversedAdjList ? edgeReverseId : edgeId;
+
+            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", sourceValue, edge.EdgeAlias + "_source"));
+            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", sinkValue, edge.EdgeAlias + "_sink"));
+            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", otherValue, edge.EdgeAlias + "_other"));
+            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", edgeIdValue, edge.EdgeAlias + "_ID"));
+
+            return metaFieldSelectStringBuilder.ToString();
+        }
+
         internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         {
+            const int ReservedEdgeMetaFieldCount = 4;
             var nodeAlias = node.NodeAlias;
             var selectStrBuilder = new StringBuilder();
             var joinStrBuilder = new StringBuilder();
@@ -239,10 +269,17 @@ namespace GraphView
                     .Append(edge.EdgeAlias)
                     .Append(" in ")
                     .Append(node.NodeAlias)
-                    .Append(edge.IsReversed ? "._reverse_edge " : "_edge ");
+                    .Append(IsTraversalThroughPhysicalReverseEdge(edge) ? "._reverse_edge" : "_edge");
 
-                foreach (var property in edge.Properties)
+                selectStrBuilder.Append(ConstructMetaFieldSelectClauseOfEdge(edge));
+                properties.Add(edge.EdgeAlias + "_source");
+                properties.Add(edge.EdgeAlias + "_sink");
+                properties.Add(edge.EdgeAlias + "_other");
+                properties.Add(edge.EdgeAlias + "_ID");
+
+                for (var i = ReservedEdgeMetaFieldCount; i < edge.Properties.Count; i++)
                 {
+                    var property = edge.Properties[i];
                     var selectName = edge.EdgeAlias;
                     var selectAlias = edge.EdgeAlias;
                     if ("*".Equals(property, StringComparison.OrdinalIgnoreCase))
@@ -620,8 +657,8 @@ namespace GraphView
                                             ),
                                     IsReversed = false,
                                     EdgeType = CurrentEdgeColumnRef.EdgeType,
-                                    Properties = new List<string> { "_sink", "_ID" },
-                                };
+                                    Properties = new List<string> { "_source", "_sink", "_other", "_ID" },
+                            };
                             }
                             else
                             {
@@ -640,8 +677,8 @@ namespace GraphView
                                     AttributeValueDict = CurrentEdgeColumnRef.AttributeValueDict,
                                     IsReversed = false,
                                     EdgeType = CurrentEdgeColumnRef.EdgeType,
-                                    Properties = new List<string> { "_sink", "_ID" },
-                                };
+                                    Properties = new List<string> { "_source", "_sink", "_other", "_ID" },
+                            };
                                 pathDictionary[EdgeAlias] = matchPath;
                                 EdgeFromSrcNode = matchPath;
                             }
@@ -670,8 +707,8 @@ namespace GraphView
                                             ),
                                         IsReversed = true,
                                         EdgeType = EdgeToSrcNode.EdgeType,
-                                        Properties = new List<string> { "_sink", "_ID" },
-                                    };
+                                        Properties = new List<string> { "_source", "_sink", "_other", "_ID" },
+                                };
                                     SrcNode.ReverseNeighbors.Add(reverseEdge);
                                     reversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
                                 }
@@ -744,8 +781,8 @@ namespace GraphView
                                         ),
                                     IsReversed = true,
                                     EdgeType = EdgeToSrcNode.EdgeType,
-                                    Properties = new List<string> { "_sink", "_ID" },
-                                };
+                                    Properties = new List<string> { "_source", "_sink", "_other", "_ID" },
+                            };
                                 DestNode.ReverseNeighbors.Add(reverseEdge);
                                 reversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
                             }
@@ -927,56 +964,6 @@ namespace GraphView
             return BooleanList;
         }
 
-        private void ConstructTraversalChain(MatchGraph graph)
-        {
-            var graphOptimizer = new DocDbGraphOptimizer(graph);
-            foreach (var subGraph in graph.ConnectedSubGraphs)
-            {
-                // <node, node's edges which need to be pulled from the server>
-                Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> nodeToMatEdgesDict;
-                subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph, out nodeToMatEdgesDict);
-                subGraph.NodeToMaterializedEdgesDict = nodeToMatEdgesDict;
-            }
-        }
-
-        private void ConstructTraversalChain2(MatchGraph graphPattern)
-        {
-            var graphOptimizer = new DocDbGraphOptimizer(graphPattern);
-            foreach (var subGraph in graphPattern.ConnectedSubGraphs)
-            {
-                subGraph.TraversalChain2 = graphOptimizer.GetOptimizedTraversalOrder2(subGraph);
-            }
-        }
-
-        private List<int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
-        {
-            var edgeIndex =
-                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_edge"));
-            var reverseEdgeIndex =
-                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_reverse_edge"));
-            if (edge.EdgeType == WEdgeType.BothEdge)
-                return new List<int> { edgeIndex, reverseEdgeIndex };
-            else if ((edge.EdgeType == WEdgeType.OutEdge && edge.IsReversed)
-                    || edge.EdgeType == WEdgeType.InEdge && !edge.IsReversed)
-                return new List<int> { reverseEdgeIndex };
-            else
-                return new List<int> { edgeIndex };
-        } 
-
-        internal QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
-        {
-            var localContext = new QueryCompilationContext();
-
-            var localIndex = 0;
-            foreach (var projectedField in projectedFields)
-            {
-                var columnReference = new WColumnReferenceExpression(edgeTableAlias, projectedField);
-                localContext.RawRecordLayout.Add(columnReference, localIndex++);
-            }
-
-            return localContext;
-        }
-
         private List<string> ConstructHeader(MatchGraph graph, out Dictionary<string, string> columnToAliasDict, out Dictionary<string, DColumnReferenceExpression> headerToColumnRefDict)
         {
             List<string> header = new List<string>();
@@ -992,7 +979,8 @@ namespace GraphView
 
                 var SortedNodes = new Stack<Tuple<MatchNode, MatchEdge>>(subgraph.TraversalChain);
                 var nodeToMatEdgesDict = subgraph.NodeToMaterializedEdgesDict;
-                while (SortedNodes.Count != 0) {
+                while (SortedNodes.Count != 0)
+                {
                     var processingNodePair = SortedNodes.Pop();
                     var srcNode = processingNodePair.Item1;
                     var sinkNode = processingNodePair.Item2?.SinkNode;
@@ -1062,7 +1050,7 @@ namespace GraphView
                         ColumnName = alias,
                         MultiPartIdentifier = new DMultiPartIdentifier(expr),
                     };
-                    var iden = new Identifier {Value = expr};
+                    var iden = new Identifier { Value = expr };
                     SelectElements[i] = new WSelectScalarExpression
                     {
                         ColumnName = alias,
@@ -1123,6 +1111,108 @@ namespace GraphView
             return header;
         }
 
+        private void ConstructTraversalChain(MatchGraph graph)
+        {
+            var graphOptimizer = new DocDbGraphOptimizer(graph);
+            foreach (var subGraph in graph.ConnectedSubGraphs)
+            {
+                // <node, node's edges which need to be pulled from the server>
+                Dictionary<string, List<Tuple<MatchEdge, MaterializedEdgeType>>> nodeToMatEdgesDict;
+                subGraph.TraversalChain = graphOptimizer.GetOptimizedTraversalOrder(subGraph, out nodeToMatEdgesDict);
+                subGraph.NodeToMaterializedEdgesDict = nodeToMatEdgesDict;
+            }
+        }
+
+        private void ConstructTraversalChain2(MatchGraph graphPattern)
+        {
+            var graphOptimizer = new DocDbGraphOptimizer(graphPattern);
+            foreach (var subGraph in graphPattern.ConnectedSubGraphs)
+            {
+                subGraph.TraversalChain2 = graphOptimizer.GetOptimizedTraversalOrder2(subGraph);
+            }
+        }
+
+        /// <summary>
+        /// If using node._reverse_edge, return true.
+        /// If using node._edge, return false
+        /// </summary>
+        /// <param name="edge"></param>
+        /// <returns></returns>
+        internal static bool IsTraversalThroughPhysicalReverseEdge(MatchEdge edge)
+        {
+            if ((edge.EdgeType == WEdgeType.OutEdge && edge.IsReversed)
+                || edge.EdgeType == WEdgeType.InEdge && !edge.IsReversed)
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Return adjacency list's index.
+        /// Item1 is _edge's index and Item2 is _reverse_edge's index.
+        /// They are set to -1 if not used.
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="edge"></param>
+        /// <returns></returns>
+        private Tuple<int, int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
+        {
+            var edgeIndex =
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_edge"));
+            var reverseEdgeIndex =
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_reverse_edge"));
+            if (edge.EdgeType == WEdgeType.BothEdge)
+                return new Tuple<int, int>(edgeIndex, reverseEdgeIndex);
+
+            if (IsTraversalThroughPhysicalReverseEdge(edge))
+                return new Tuple<int, int>(-1, reverseEdgeIndex);
+            else
+                return new Tuple<int, int>(edgeIndex, -1);
+        }
+
+        /// <summary>
+        /// Return the edge's traversal column reference
+        /// </summary>
+        /// <param name="edge"></param>
+        /// <returns></returns>
+        private static WColumnReferenceExpression GetAdjacencyListTraversalColumn(MatchEdge edge)
+        {
+            if (edge.EdgeType == WEdgeType.BothEdge)
+                return new WColumnReferenceExpression(edge.EdgeAlias, "_other");
+            return new WColumnReferenceExpression(edge.EdgeAlias, IsTraversalThroughPhysicalReverseEdge(edge) ? "_source" : "_sink");
+        }
+
+        /// <summary>
+        /// Locate the edge's traversal column's index in the context
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="edge"></param>
+        /// <returns></returns>
+        private int LocateAdjacencyListTraversalIndex(QueryCompilationContext context, MatchEdge edge)
+        {
+            var adjListTraversalColumn = GetAdjacencyListTraversalColumn(edge);
+            return context.LocateColumnReference(adjListTraversalColumn);
+        }
+
+        /// <summary>
+        /// Generate a local context for edge's predicate evaluation
+        /// </summary>
+        /// <param name="edgeTableAlias"></param>
+        /// <param name="projectedFields"></param>
+        /// <returns></returns>
+        internal QueryCompilationContext GenerateLocalContextForAdjacentListDecoder(string edgeTableAlias, List<string> projectedFields)
+        {
+            var localContext = new QueryCompilationContext();
+
+            var localIndex = 0;
+            foreach (var projectedField in projectedFields)
+            {
+                var columnReference = new WColumnReferenceExpression(edgeTableAlias, projectedField);
+                localContext.RawRecordLayout.Add(columnReference, localIndex++);
+            }
+
+            return localContext;
+        }
+
         /// <summary>
         /// Check whether all the tabls referenced by the cross-table predicate have been processed
         /// If so, embed the predicate in a filter operator and append it to the operator list
@@ -1152,6 +1242,15 @@ namespace GraphView
             }
         }
 
+        /// <summary>
+        /// Generate AdjacencyListDecoder and update context's layout for edges
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="context"></param>
+        /// <param name="operatorChain"></param>
+        /// <param name="edges"></param>
+        /// <param name="predicatesAccessedTableReferences"></param>
+        /// <param name="isForwardingEdges"></param>
         private void CrossApplyEdges(GraphViewConnection connection, QueryCompilationContext context, 
             List<GraphViewExecutionOperator> operatorChain, IList<MatchEdge> edges, 
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences,
@@ -1161,12 +1260,13 @@ namespace GraphView
             var rawRecordLayout = context.RawRecordLayout;
             foreach (var edge in edges)
             {
-                var edgeIndex = LocateAdjacencyListIndexes(context, edge);
+                var edgeIndexTuple = LocateAdjacencyListIndexes(context, edge);
                 var localEdgeContext = GenerateLocalContextForAdjacentListDecoder(edge.EdgeAlias, edge.Properties);
                 var edgePredicates = edge.RetrievePredicatesExpression();
-                operatorChain.Add(new AdjacencyListDecoder(
+                operatorChain.Add(new AdjacencyListDecoder2(
                     operatorChain.Last(),
-                    edgeIndex,
+                    context.LocateColumnReference(edge.SourceNode.NodeAlias, "id"),
+                    edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                     edge.Properties));
 
@@ -1177,8 +1277,8 @@ namespace GraphView
                 if (isForwardingEdges)
                 {
                     var sinkNodeIdColumnReference = new WColumnReferenceExpression(edge.SinkNode.NodeAlias, "id");
-                    // Add "forwardEdge.sink = sinkNode.id" filter
-                    var edgeSinkColumnReference = new WColumnReferenceExpression(edge.EdgeAlias, "_sink");
+                    // Add "forwardEdge.traversalColumn = sinkNode.id" filter
+                    var edgeSinkColumnReference = GetAdjacencyListTraversalColumn(edge);
                     var edgeJoinPredicate = new WBooleanComparisonExpression
                     {
                         ComparisonType = BooleanComparisonType.Equals,
@@ -1195,6 +1295,37 @@ namespace GraphView
                     operatorChain);
             }
         }
+
+        /// <summary>
+        /// Generate matching indexes for backwardMatchingEdges
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="backwardMatchingEdges"></param>
+        /// <returns></returns>
+        private List<Tuple<int, int>> GenerateMatchingIndexesForBackforwadMatchingEdges(QueryCompilationContext context, List<MatchEdge> backwardMatchingEdges)
+        {
+            if (backwardMatchingEdges.Count == 0) return null;
+            var localContext = new QueryCompilationContext();
+            var localRawRecordLayout = localContext.RawRecordLayout;
+            var node = backwardMatchingEdges[0].SourceNode;
+            UpdateRawRecordLayout(node.NodeAlias, node.Properties, localRawRecordLayout);
+
+            var matchingIndexes = new List<Tuple<int, int>>();
+            foreach (var backwardMatchingEdge in backwardMatchingEdges)
+            {
+                // backwardEdges.SinkNode.id = backwardEdges.traversalColumn
+                var sourceMatchIndex =
+                    context.RawRecordLayout[new WColumnReferenceExpression(backwardMatchingEdge.SinkNode.NodeAlias, "id")];
+
+                UpdateRawRecordLayout(backwardMatchingEdge.EdgeAlias, backwardMatchingEdge.Properties, localRawRecordLayout);
+
+                var edgeTraversalColumn = GetAdjacencyListTraversalColumn(backwardMatchingEdge);
+
+                matchingIndexes.Add(new Tuple<int, int>(sourceMatchIndex, localContext.LocateColumnReference(edgeTraversalColumn)));
+            }
+
+            return matchingIndexes;
+        } 
 
         /// <summary>
         /// Update the raw record layout when new properties are added
@@ -1291,22 +1422,12 @@ namespace GraphView
                             CrossApplyEdges(connection, context, operatorChain, new List<MatchEdge> {traversalEdge},
                                 predicatesAccessedTableReferences);
 
-                            var currentEdgeSinkIndex = rawRecordLayout.Count - traversalEdge.Properties.Count;
+                            var traversalEdgeSinkIndex = LocateAdjacencyListTraversalIndex(context, traversalEdge);
                             // Generate matching indexes for backwardMatchingEdges
-                            var matchingIndexes = new List<Tuple<int, int>>();
-                            var localSinkAdjListSinkIndex = sinkNode.Properties.Count;
-                            foreach (var backwardMatchingEdge in backwardMatchingEdges)
-                            {
-                                // backwardEdges.SinkNode.id = backwardEdges.sink
-                                var sourceMatchIndex =
-                                    rawRecordLayout[new WColumnReferenceExpression(backwardMatchingEdge.SinkNode.NodeAlias, "id")];
-                                matchingIndexes.Add(new Tuple<int, int>(sourceMatchIndex, localSinkAdjListSinkIndex));
-
-                                localSinkAdjListSinkIndex += backwardMatchingEdge.Properties.Count;
-                            }
+                            var matchingIndexes = GenerateMatchingIndexesForBackforwadMatchingEdges(context, backwardMatchingEdges);
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
-                                currentEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
+                                traversalEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
 
                             // Update sinkNode's context info
                             processedNodes.Add(sinkNode);
@@ -2092,7 +2213,8 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
                 }
-                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             context.CurrentExecutionOperator = unionOp;
@@ -2143,7 +2265,8 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select column epxressions.");
                 }
-                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             context.CurrentExecutionOperator = coalesceOp;
@@ -2159,7 +2282,7 @@ namespace GraphView
             Split(out contextSelect, out optionalSelect);
 
             List<int> inputIndexes = new List<int>();
-            List<WColumnReferenceExpression> columnList = new List<WColumnReferenceExpression>();
+            List<Tuple<WColumnReferenceExpression, string>> columnList = new List<Tuple<WColumnReferenceExpression, string>>();
 
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
             {
@@ -2177,7 +2300,8 @@ namespace GraphView
                 int index = context.LocateColumnReference(columnRef);
                 inputIndexes.Add(index);
 
-                columnList.Add(columnRef);
+                string selectElementAlias = selectScalar.ColumnName;
+                columnList.Add(new Tuple<WColumnReferenceExpression, string>(columnRef, selectElementAlias));
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
@@ -2188,9 +2312,11 @@ namespace GraphView
 
             // Updates the raw record layout. The columns of this table-valued function 
             // are specified by the select elements of the input subqueries.
-            foreach (WColumnReferenceExpression columnRef in columnList)
+            foreach (var tuple in columnList)
             {
-                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
+                var columnRef = tuple.Item1;
+                var selectElementAlias = tuple.Item2;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             return optionalOp;
@@ -2230,7 +2356,8 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be column references.");
                 }
-                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             return localOp;
@@ -2270,7 +2397,8 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be column references.");
                 }
-                context.AddField(Alias.Value, columnRef.ColumnName, columnRef.ColumnGraphType);
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             return flatMapOp;
@@ -2293,6 +2421,7 @@ namespace GraphView
                 Properties = new List<string>{ "id", "_edge", "_reverse_edge" },
             };
 
+            // Construct JSON query
             if (isSendQueryRequired)
             {
                 for (int i = 1; i < Parameters.Count; i++)
@@ -2302,7 +2431,15 @@ namespace GraphView
                         matchNode.Properties.Add(property);
                 }
                 WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
+            }
 
+            var traversalOp = new TraversalOperator2(context.CurrentExecutionOperator, dbConnection, sinkIndex,
+                matchNode.AttachedJsonQuery, null);
+            context.CurrentExecutionOperator = traversalOp;
+
+            // Update context's record layout
+            if (isSendQueryRequired)
+            {
                 // TODO: Change to correct ColumnGraphType
                 foreach (var property in matchNode.Properties)
                     context.AddField(nodeAlias, property, ColumnGraphType.Value);
@@ -2311,10 +2448,6 @@ namespace GraphView
             {
                 context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
             }
-
-            var traversalOp = new TraversalOperator2(context.CurrentExecutionOperator, dbConnection, sinkIndex,
-                matchNode.AttachedJsonQuery, null);
-            context.CurrentExecutionOperator = traversalOp;
 
             return traversalOp;
         }
@@ -2341,6 +2474,7 @@ namespace GraphView
                 Properties = new List<string> { "id", "_edge", "_reverse_edge" },
             };
 
+            // Construct JSON query
             if (isSendQueryRequired)
             {
                 for (int i = 2; i < Parameters.Count; i++)
@@ -2350,7 +2484,15 @@ namespace GraphView
                         matchNode.Properties.Add(property);
                 }
                 WSelectQueryBlock.ConstructJsonQueryOnNode(matchNode);
+            }
 
+            var bothVOp = new BothVOperator(context.CurrentExecutionOperator, dbConnection, sinkIndexes,
+                matchNode.AttachedJsonQuery);
+            context.CurrentExecutionOperator = bothVOp;
+
+            // Update context's record layout
+            if (isSendQueryRequired)
+            {
                 // TODO: Change to correct ColumnGraphType
                 foreach (var property in matchNode.Properties)
                     context.AddField(nodeAlias, property, ColumnGraphType.Value);
@@ -2359,10 +2501,6 @@ namespace GraphView
             {
                 context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
             }
-
-            var bothVOp = new BothVOperator(context.CurrentExecutionOperator, dbConnection, sinkIndexes,
-                matchNode.AttachedJsonQuery);
-            context.CurrentExecutionOperator = bothVOp;
 
             return bothVOp;
         }
@@ -2373,27 +2511,67 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context,
             GraphViewConnection dbConnection)
         {
-            var adjListParameter = Parameters[0] as WColumnReferenceExpression;
-            var adjListIndex = context.LocateColumnReference(adjListParameter);
-            var edgeAlias = Alias.Value;
-            var projectFields = new List<string> { "_sink", "_ID" };
+            var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var adjListParameter = Parameters[1] as WColumnReferenceExpression;
 
-            for (int i = 1; i < Parameters.Count; i++)
+            var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
+            var adjListIndex = context.LocateColumnReference(adjListParameter);
+
+            var edgeAlias = Alias.Value;
+            var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
+
+            for (int i = 2; i < Parameters.Count; i++)
             {
                 var field = (Parameters[i] as WValueExpression).Value;
                 if (!projectFields.Contains(field))
                     projectFields.Add(field);
             }
 
+            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
+                adjListIndex, -1, true, null, projectFields);
+            context.CurrentExecutionOperator = adjListDecoder;
+
+            // Update context's record layout
             foreach (var projectField in projectFields)
             {
                 // TODO: Change to correct ColumnGraphType
                 context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, new List<int> {adjListIndex},
-                null, projectFields);
+            return adjListDecoder;
+        }
+    }
+
+    partial class WBoundInEdgeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var revAdjListParameter = Parameters[1] as WColumnReferenceExpression;
+
+            var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
+            var revAdjListIndex = context.LocateColumnReference(revAdjListParameter);
+
+            var edgeAlias = Alias.Value;
+            var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
+
+            for (int i = 2; i < Parameters.Count; i++)
+            {
+                var field = (Parameters[i] as WValueExpression).Value;
+                if (!projectFields.Contains(field))
+                    projectFields.Add(field);
+            }
+
+            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
+               -1, revAdjListIndex, true, null, projectFields);
             context.CurrentExecutionOperator = adjListDecoder;
+
+            // Update context's record layout
+            foreach (var projectField in projectFields)
+            {
+                // TODO: Change to correct ColumnGraphType
+                context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
+            }
 
             return adjListDecoder;
         }
@@ -2403,27 +2581,29 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var firstAdjListParameter = Parameters[0] as WColumnReferenceExpression;
-            var secondAdjListParameter = Parameters[1] as WColumnReferenceExpression;
-            var adjListIndexes = new List<int>
-            {
-                context.LocateColumnReference(firstAdjListParameter),
-                context.LocateColumnReference(secondAdjListParameter)
-            };
-            var edgeAlias = Alias.Value;
-            var projectFields = new List<string> { "_sink", "_ID" };
+            var startVertexIdParameter = Parameters[0] as WColumnReferenceExpression;
+            var adjListParameter = Parameters[1] as WColumnReferenceExpression;
+            var revAdjListParameter = Parameters[2] as WColumnReferenceExpression;
 
-            for (int i = 2; i < Parameters.Count; i++)
+            var startVertexIndex = context.LocateColumnReference(startVertexIdParameter);
+            var adjListIndex = context.LocateColumnReference(adjListParameter);
+            var revAdjListIndex = context.LocateColumnReference(revAdjListParameter);
+
+            var edgeAlias = Alias.Value;
+            var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
+
+            for (int i = 3; i < Parameters.Count; i++)
             {
                 var field = (Parameters[i] as WValueExpression).Value;
                 if (!projectFields.Contains(field))
                     projectFields.Add(field);
             }
 
-            var adjListDecoder = new AdjacencyListDecoder(context.CurrentExecutionOperator, adjListIndexes,
-                null, projectFields);
+            var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex,
+                adjListIndex, revAdjListIndex, true, null, projectFields);
             context.CurrentExecutionOperator = adjListDecoder;
 
+            // Update context's record layout
             foreach (var projectField in projectFields)
             {
                 // TODO: Change to correct ColumnGraphType
@@ -2433,44 +2613,6 @@ namespace GraphView
             return adjListDecoder;
         }
     }
-
-    //partial class WBoundBothForwardEdgeTableReference
-    //{
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-    //    {
-    //        var srcNodeIdParameter = Parameters[0] as WColumnReferenceExpression;
-    //        var firstAdjListParameter = Parameters[1] as WColumnReferenceExpression;
-    //        var secondAdjListParameter = Parameters[2] as WColumnReferenceExpression;
-
-    //        var srcNodeIdIndex = context.LocateColumnReference(srcNodeIdParameter);
-    //        var adjListIndexes = new List<int>
-    //        {
-    //            context.LocateColumnReference(firstAdjListParameter),
-    //            context.LocateColumnReference(secondAdjListParameter)
-    //        };
-    //        var edgeAlias = Alias.Value;
-    //        var projectFields = new List<string> { "_source", "_sink", "_other", "_ID" };
-
-    //        for (int i = 3; i < Parameters.Count; i++)
-    //        {
-    //            var field = (Parameters[i] as WValueExpression).Value;
-    //            if (!projectFields.Contains(field))
-    //                projectFields.Add(field);
-    //        }
-
-    //        var bothForwardAdjDecoder = new BothForwardAdjacencyListDecoder(context.CurrentExecutionOperator, 
-    //            srcNodeIdIndex, adjListIndexes, null, projectFields);
-    //        context.CurrentExecutionOperator = bothForwardAdjDecoder;
-
-    //        foreach (var projectField in projectFields)
-    //        {
-    //            // TODO: Change to correct ColumnGraphType
-    //            context.AddField(edgeAlias, projectField, ColumnGraphType.Value);
-    //        }
-
-    //        return bothForwardAdjDecoder;
-    //    }
-    //}
 
     partial class WValuesTableReference
     {
@@ -2537,11 +2679,16 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var targetField = Parameters[0] as WValueExpression;
-            if (targetField == null)
-                throw new SyntaxErrorException("The parameter of Constant function can only be a WValueExpression");
+            List<string> constantValues = new List<string>();
+            foreach (var parameter in Parameters)
+            {
+                var constantParameter = parameter as WValueExpression;
+                if (constantParameter == null)
+                    throw new SyntaxErrorException("The parameter of Constant function can only be a WValueExpression");
+                constantValues.Add(constantParameter.Value);
+            }
 
-            var constantOp = new ConstantOperator(context.CurrentExecutionOperator, targetField.Value);
+            var constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues);
             context.CurrentExecutionOperator = constantOp;
             context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
@@ -2733,6 +2880,47 @@ namespace GraphView
             context.CurrentExecutionOperator = barrierOp;
 
             return barrierOp;
+        }
+    }
+
+    partial class WMapTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery mapSubquery = Parameters[0] as WScalarSubquery;
+            if (mapSubquery == null)
+            {
+                throw new SyntaxErrorException("The input of a map table reference must be a scalar subquery.");
+            }
+            WSelectQueryBlock mapSelect = mapSubquery.SubQueryExpr as WSelectQueryBlock;
+            if (mapSelect == null)
+            {
+                throw new SyntaxErrorException("The sub-query must be a select query block.");
+            }
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator mapTraversalOp = mapSelect.Compile(subcontext, dbConnection);
+
+            MapOperator mapOp = new MapOperator(context.CurrentExecutionOperator, mapTraversalOp, subcontext.OuterContextOp);
+            context.CurrentExecutionOperator = mapOp;
+
+            foreach (WSelectElement selectElement in mapSelect.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a map table reference must be select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a map table reference must be column references.");
+                }
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            return mapOp;
         }
     }
 }
