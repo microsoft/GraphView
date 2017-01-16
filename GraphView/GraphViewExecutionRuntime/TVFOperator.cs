@@ -254,16 +254,20 @@ namespace GraphView
         {
             var results = new List<RawRecord>();
 
-            if (record[_collectionFieldIndex].GetType() != typeof(CollectionField))
+            if (record[_collectionFieldIndex].GetType() == typeof(CollectionField))
             {
-                throw new GraphViewException("The input of unfold must be a collection.");
+                CollectionField cf = record[_collectionFieldIndex] as CollectionField;
+                foreach (FieldObject fo in cf.Collection)
+                {
+                    RawRecord newRecord = new RawRecord();
+                    newRecord.Append(fo);
+                    results.Add(newRecord);
+                }
             }
-
-            CollectionField cf = record[_collectionFieldIndex] as CollectionField;
-            foreach (FieldObject fo in cf.Collection)
+            else
             {
-                RawRecord newRecord = new RawRecord();
-                newRecord.Append(fo);
+                RawRecord newRecord = new RawRecord(1);
+                newRecord.Append(record[_collectionFieldIndex]);
                 results.Add(newRecord);
             }
 
