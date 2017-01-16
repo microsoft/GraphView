@@ -61,18 +61,31 @@ namespace GraphView
 
     internal class PropertiesOperator : TableValuedFunction
     {
-        internal List<Tuple<string, int>> PropertiesList;
+        List<Tuple<string, int>> propertyList;
+        int allPropertyIndex;
 
-        internal PropertiesOperator(GraphViewExecutionOperator pInputOperatr, List<Tuple<string, int>> pPropertiesList, int pOutputBufferSize = 1000)
+        public PropertiesOperator(
+            GraphViewExecutionOperator pInputOperatr, 
+            List<Tuple<string, int>> pPropertiesList, 
+            int pOutputBufferSize = 1000)
             : base(pInputOperatr, pOutputBufferSize)
         {
-            PropertiesList = pPropertiesList;
+            propertyList = pPropertiesList;
+        }
+
+        public PropertiesOperator(
+            GraphViewExecutionOperator inputOp, 
+            int allPropertyIndex,
+            int bufferSize = 1000)
+            : base(inputOp, bufferSize)
+        {
+            this.allPropertyIndex = allPropertyIndex;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
-            foreach (var pair in PropertiesList)
+            foreach (var pair in propertyList)
             {
                 var propName = pair.Item1;
                 var propIdx = pair.Item2;
