@@ -56,7 +56,14 @@ namespace GraphView
         {
             if (context == null)
             {
-                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, new List<string>() { GremlinKeyword.NodeID }); ;
+                if (InputVariable is GremlinGhostVariable)
+                {
+                    return SqlUtil.GetSimpleSelectQueryBlock((InputVariable as GremlinGhostVariable).DefaultProjection());
+                }
+                else
+                {
+                    return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, new List<string>() { GremlinKeyword.NodeID });
+                }
             }
             else
             {
@@ -73,6 +80,7 @@ namespace GraphView
         internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
             FromVertexContext = fromVertexContext;
+            FromVertexContext.ParentVariable = this;
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
@@ -91,6 +99,7 @@ namespace GraphView
         internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
             ToVertexContext = toVertexContext;
+            //ToVertexContext.ParentVariable = this;
         }
     }
 }

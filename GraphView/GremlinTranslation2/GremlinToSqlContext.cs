@@ -161,13 +161,24 @@ namespace GraphView
         //    //}
         //}
 
+        internal void AddProjectVariablePropertiesList(GremlinVariableProperty variableProperty, string alias)
+        {
+            foreach (var projectProperty in ProjectVariablePropertiesList)
+            {
+                if (projectProperty.Item1.VariableName == variableProperty.VariableName &&
+                    projectProperty.Item1.VariableProperty == variableProperty.VariableProperty &&
+                    projectProperty.Item2 == alias) return;
+            }
+            ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(variableProperty, alias));
+        }
+
         internal List<GremlinVariable> SelectParent(string label)
         {
             List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label);
             if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
 
             //Count - 1 to ignore the last one, for ignoring the other subContext
-            for (var i = 0; i < VariableList.Count - 1; i++)
+            for (var i = 0; i < VariableList.Count; i++)
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
@@ -440,8 +451,8 @@ namespace GraphView
         {
             return new WSelectQueryBlock()
             {
-                SelectElements = GetSelectElement(ProjectedProperties),
                 FromClause = GetFromClause(),
+                SelectElements = GetSelectElement(ProjectedProperties),
                 MatchClause = GetMatchClause(),
                 WhereClause = GetWhereClause(),
                 OrderByClause = GetOrderByClause(),
@@ -454,9 +465,15 @@ namespace GraphView
             if (TableReferences.Count == 0) return null;
 
             var newFromClause = new WFromClause();
-            foreach (var tableReference in TableReferences)
+            //generate tableReference in a reverse way, because the later tableReference may use the column of previous tableReference
+            List<WTableReference> reversedTableReference = new List<WTableReference>();
+            for (var i = TableReferences.Count - 1; i >= 0; i--)
             {
-                newFromClause.TableReferences.Add(tableReference.ToTableReference());
+                reversedTableReference.Add(TableReferences[i].ToTableReference());
+            }
+            for (var i = reversedTableReference.Count - 1; i >= 0; i--)
+            {
+                newFromClause.TableReferences.Add(reversedTableReference[i]);
             }
             return newFromClause;
         }

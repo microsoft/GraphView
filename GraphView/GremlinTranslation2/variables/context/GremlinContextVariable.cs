@@ -80,6 +80,16 @@ namespace GraphView
                 throw new NotImplementedException();
             }
         }
+
+        internal override void Select(GremlinToSqlContext currentContext, List<string> Labels)
+        {
+            ContextVariable.Select(currentContext, Labels);
+        }
+
+        internal override void Select(GremlinToSqlContext currentContext, string selectKey)
+        {
+            ContextVariable.Select(currentContext, selectKey);
+        }
     }
 
     internal class GremlinContextScalarVariable : GremlinContextVariable
