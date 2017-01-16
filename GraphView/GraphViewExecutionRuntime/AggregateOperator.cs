@@ -332,6 +332,46 @@ namespace GraphView
         }
     }
 
+    internal class GroupFunction : IAggregateFunction
+    {
+        Dictionary<FieldObject, FoldFunction> aggregateState;
+
+        public GroupFunction()
+        {
+            aggregateState = new Dictionary<FieldObject, FoldFunction>();
+        }
+
+        public void Init()
+        {
+            aggregateState = new Dictionary<FieldObject, FoldFunction>();
+        }
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            var groupByKey = values[0];
+            var groupByValue = values[1];
+            if (!aggregateState.ContainsKey(groupByKey))
+            {
+                aggregateState.Add(groupByKey, new FoldFunction());
+                aggregateState[groupByKey].Init();
+            }
+
+            aggregateState[groupByKey].Accumulate(groupByValue);
+        }
+
+        public FieldObject Terminate()
+        {
+            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(aggregateState.Count);
+
+            foreach (FieldObject key in aggregateState.Keys)
+            {
+                resultCollection[key] = aggregateState[key].Terminate();
+            }
+
+            return new MapField(resultCollection);
+        }
+    }
+
     internal class CapAggregate : IAggregateFunction
     {
         List<Tuple<string, IAggregateFunction>> sideEffectStates;
@@ -371,6 +411,59 @@ namespace GraphView
         }
     }
 
+    internal class GroupSideEffectOperator : GraphViewExecutionOperator
+    {
+        public GroupFunction GroupState { get; private set; }
+        GraphViewExecutionOperator inputOp;
+        ScalarFunction groupByKeyFunction;
+        ScalarFunction aggregateTargetFunction;
+
+        public GroupSideEffectOperator(
+            GraphViewExecutionOperator inputOp,
+            ScalarFunction groupByKeyFunction,
+            ScalarFunction aggregateTargetFunction)
+        {
+            this.inputOp = inputOp;
+            this.groupByKeyFunction = groupByKeyFunction;
+            this.aggregateTargetFunction = aggregateTargetFunction;
+
+            GroupState = new GroupFunction();
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            if (inputOp.State())
+            {
+                RawRecord r = inputOp.Next();
+                if (r == null)
+                {
+                    Close();
+                    return null;
+                }
+                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
+                FieldObject groupByValue = aggregateTargetFunction.Evaluate(r);
+
+                GroupState.Accumulate(new []{ groupByKey, groupByValue });
+
+                if (!inputOp.State())
+                {
+                    Close();
+                }
+                return r;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            GroupState.Init();
+            inputOp.ResetState();
+            Open();
+        }
+    }
+
     internal class GroupOperator : GraphViewExecutionOperator
     {
         GraphViewExecutionOperator inputOp;
@@ -389,7 +482,8 @@ namespace GraphView
             this.aggregateTargetFunction = aggregateTargetFunction;
 
             aggregatedState = new Dictionary<FieldObject, FoldFunction>();
-            aggregatedState.Clear();
+            Open();
+            //aggregatedState.Clear();
         }
 
         public override RawRecord Next()
@@ -423,6 +517,7 @@ namespace GraphView
         {
             inputOp.ResetState();
             aggregatedState.Clear();
+            Open();
         }
     }
 }
