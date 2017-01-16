@@ -104,14 +104,14 @@ namespace GraphView
 
     internal class MapField : FieldObject
     {
-        public Dictionary<string, FieldObject> Map { get; private set; }
+        public Dictionary<FieldObject, FieldObject> Map { get; private set; }
 
         public MapField()
         {
-            Map = new Dictionary<string, FieldObject>();
+            Map = new Dictionary<FieldObject, FieldObject>();
         }
 
-        public MapField(Dictionary<string, FieldObject> map)
+        public MapField(Dictionary<FieldObject, FieldObject> map)
         {
             Map = map;
         }
@@ -130,7 +130,7 @@ namespace GraphView
 
                 if (i++ > 0)
                     mapStringBuilder.Append(", ");
-                mapStringBuilder.Append(key).Append(":[").Append(value.ToString()).Append(']');
+                mapStringBuilder.Append(key.ToString()).Append(":[").Append(value.ToString()).Append(']');
             }
 
             mapStringBuilder.Append(']');

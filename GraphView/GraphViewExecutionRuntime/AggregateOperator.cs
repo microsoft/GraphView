@@ -358,16 +358,70 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            var map = new Dictionary<string, FieldObject>();
+            var map = new Dictionary<FieldObject, FieldObject>();
 
             foreach (var tuple in sideEffectStates)
             {
                 var key = tuple.Item1;
                 var sideEffectState = tuple.Item2;
-                map.Add(key, sideEffectState.Terminate());
+                map.Add(new StringField(key), sideEffectState.Terminate());
             }
 
             return new MapField(map);
+        }
+    }
+
+    internal class GroupOperator : GraphViewExecutionOperator
+    {
+        GraphViewExecutionOperator inputOp;
+        ScalarFunction groupByKeyFunction;
+        ScalarFunction aggregateTargetFunction;
+
+        Dictionary<FieldObject, FoldFunction> aggregatedState;
+
+        public GroupOperator(
+            GraphViewExecutionOperator inputOp,
+            ScalarFunction groupByKeyFunction,
+            ScalarFunction aggregateTargetFunction)
+        {
+            this.inputOp = inputOp;
+            this.groupByKeyFunction = groupByKeyFunction;
+            this.aggregateTargetFunction = aggregateTargetFunction;
+
+            aggregatedState = new Dictionary<FieldObject, FoldFunction>();
+            aggregatedState.Clear();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord r = null;
+            while (inputOp.State() && (r = inputOp.Next()) != null)
+            {
+                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
+                if (!aggregatedState.ContainsKey(groupByKey))
+                {
+                    aggregatedState.Add(groupByKey, new FoldFunction());
+                }
+                aggregatedState[groupByKey].Accumulate(aggregateTargetFunction.Evaluate(r));
+            }
+
+            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(aggregatedState.Count);
+            foreach (FieldObject key in aggregatedState.Keys)
+            {
+                resultCollection[key] = aggregatedState[key].Terminate();
+            }
+
+            RawRecord resultRecord = new RawRecord(1);
+            resultRecord.Append(new MapField(resultCollection));
+
+            Close();
+            return resultRecord;
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            aggregatedState.Clear();
         }
     }
 }

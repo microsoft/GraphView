@@ -284,7 +284,7 @@ namespace GraphView
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
-            var projectMap = new Dictionary<string, FieldObject>();
+            var projectMap = new Dictionary<FieldObject, FieldObject>();
 
             foreach (var tuple in ProjectList)
             {
@@ -296,7 +296,7 @@ namespace GraphView
                     throw new GraphViewException(
                         string.Format("The provided traverser of key \"{0}\" does not map to a value.", key));
 
-                projectMap.Add(key, value);
+                projectMap.Add(new StringField(key), value);
             }
 
             var result = new RawRecord(1);

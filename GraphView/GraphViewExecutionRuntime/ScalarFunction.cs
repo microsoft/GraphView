@@ -337,10 +337,10 @@ namespace GraphView
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            Dictionary<string, FieldObject> compositField = new Dictionary<string, FieldObject>(targetFieldsAndTheirNames.Count);
+            Dictionary<FieldObject, FieldObject> compositField = new Dictionary<FieldObject, FieldObject>(targetFieldsAndTheirNames.Count);
             foreach (Tuple<string, int> p in targetFieldsAndTheirNames)
             {
-                compositField[p.Item1] = record[p.Item2];
+                compositField[new StringField(p.Item1)] = record[p.Item2];
             }
 
             return new MapField(compositField);
