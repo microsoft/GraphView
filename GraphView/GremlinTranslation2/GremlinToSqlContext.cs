@@ -180,8 +180,7 @@ namespace GraphView
                         List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
                         foreach (var subContextVar in subContextVariableList)
                         {
-                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i]);
-                            newVariable.SelectKey = label;
+                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
                             taggedVariableList.Add(newVariable);
                         }
                     }
@@ -210,8 +209,7 @@ namespace GraphView
                         List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
                         foreach (var subContextVar in subContextVariableList)
                         {
-                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i]);
-                            newVariable.SelectKey = label;
+                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
                             taggedVariableList.Add(newVariable);
                         }
                     }

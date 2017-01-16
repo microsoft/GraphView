@@ -8,15 +8,16 @@ namespace GraphView
 {
     internal class GremlinGhostVariable : GremlinVariable
     {
-        public GremlinGhostVariable(GremlinVariable realVariable, GremlinVariable attachedVariable)
+        public GremlinGhostVariable(GremlinVariable realVariable, GremlinVariable attachedVariable, string label)
         {
             RealVariable = realVariable;
             AttachedVariable = attachedVariable;
             ColumnReferenceMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
             UsedProperties = new List<string>();
+            SelectKey = label;
         }
 
-        public static GremlinGhostVariable Create(GremlinVariable realVariable, GremlinVariable attachedVariable)
+        public static GremlinGhostVariable Create(GremlinVariable realVariable, GremlinVariable attachedVariable, string label)
         {
             if (realVariable is GremlinGhostVariable)
             {
@@ -25,13 +26,13 @@ namespace GraphView
             switch (realVariable.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    return new GremlinGhostVertexVariable(realVariable, attachedVariable);
+                    return new GremlinGhostVertexVariable(realVariable, attachedVariable, label);
                 case GremlinVariableType.Edge:
-                    return new GremlinGhostEdgeVariable(realVariable, attachedVariable);
+                    return new GremlinGhostEdgeVariable(realVariable, attachedVariable, label);
                 case GremlinVariableType.Table:
-                    return new GremlinGhostTableVariable(realVariable, attachedVariable);
+                    return new GremlinGhostTableVariable(realVariable, attachedVariable, label);
                 case GremlinVariableType.Scalar:
-                    return new GremlinGhostScalarVariable(realVariable, attachedVariable);
+                    return new GremlinGhostScalarVariable(realVariable, attachedVariable, label);
 
             }
             throw new NotImplementedException();
@@ -100,12 +101,14 @@ namespace GraphView
 
     internal class GremlinGhostScalarVariable : GremlinGhostVariable
     {
-        public GremlinGhostScalarVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable) : base(ghostVariable, attachedVariable) { }
+        public GremlinGhostScalarVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label) 
+            : base(ghostVariable, attachedVariable, label) { }
     }
 
     internal class GremlinGhostVertexVariable : GremlinGhostTableVariable
     {
-        public GremlinGhostVertexVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable) : base(ghostVariable, attachedVariable) { }
+        public GremlinGhostVertexVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label)
+            : base(ghostVariable, attachedVariable, label) { }
 
         internal override void Drop(GremlinToSqlContext currentGhost)
         {
@@ -120,7 +123,8 @@ namespace GraphView
 
     internal class GremlinGhostEdgeVariable : GremlinGhostTableVariable
     {
-        public GremlinGhostEdgeVariable(GremlinVariable ghostEdge, GremlinVariable attachedVariable) : base(ghostEdge, attachedVariable) { }
+        public GremlinGhostEdgeVariable(GremlinVariable ghostEdge, GremlinVariable attachedVariable, string label)
+            : base(ghostEdge, attachedVariable, label) { }
 
         internal override void Property(GremlinToSqlContext currentGhost, Dictionary<string, object> properties)
         {

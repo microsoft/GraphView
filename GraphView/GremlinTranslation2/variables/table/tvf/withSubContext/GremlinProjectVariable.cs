@@ -37,6 +37,7 @@ namespace GraphView
         {
             byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
             GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
+            byContext.ParentVariable = this;
             ProjectContextList.Add(byContext);
         }
 
@@ -52,6 +53,18 @@ namespace GraphView
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, this, VariableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+        }
+
+        internal override void Select(GremlinToSqlContext currentContext, string label)
+        {
+            int index = ProjectKeys.FindIndex(p=> p == label);
+            if (index < 0)
+            {
+                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", label));
+            }
+            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.PivotVariable = newVariable;
         }
     }
 }
