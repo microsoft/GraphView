@@ -1031,6 +1031,10 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
+            foreach (var aggr in aggregationSpecs)
+            {
+                aggr.Item1.Init();
+            }
             Open();
         }
 
@@ -1991,7 +1995,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            StoreState = new StoreStateFunction();
+            StoreState.Init();
             inputOp.ResetState();
             Open();
         }
@@ -2091,6 +2095,12 @@ namespace GraphView
 
             Close();
             return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
         }
     }
 }
