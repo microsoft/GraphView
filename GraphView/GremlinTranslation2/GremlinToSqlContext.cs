@@ -24,7 +24,7 @@ namespace GraphView
         internal GremlinGroupVariable GroupVariable { get; set; }
         internal WBooleanExpression Predicates { get; private set; }
         internal GremlinPathVariable CurrentContextPath { get; set; }
-        internal List<Tuple<string, GremlinVariable>> ProjectVariableList { get; set; }
+        internal List<Tuple<GremlinVariableProperty, string>> ProjectVariablePropertiesList { get; set; }
 
         private bool isPopulateGremlinPath;
 
@@ -39,7 +39,7 @@ namespace GraphView
             MatchList = new List<GremlinMatchPath>();
             StepList = new List<GremlinVariable>();
             isPopulateGremlinPath = false;
-            ProjectVariableList = new List<Tuple<string, GremlinVariable>>();
+            ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -59,7 +59,7 @@ namespace GraphView
                 StepList = new List<GremlinVariable>(this.StepList),
                 isPopulateGremlinPath = this.isPopulateGremlinPath,
                 CurrentContextPath = this.CurrentContextPath,
-                ProjectVariableList = new List<Tuple<string, GremlinVariable>>(this.ProjectVariableList)
+                ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>(this.ProjectVariablePropertiesList)
             };
         }
 
@@ -78,7 +78,7 @@ namespace GraphView
             StepList.Clear();
             isPopulateGremlinPath = false;
             CurrentContextPath = null;
-            ProjectVariableList.Clear();
+            ProjectVariablePropertiesList.Clear();
         }
 
         internal void Populate(string propertyName)
@@ -161,16 +161,17 @@ namespace GraphView
         //    //}
         //}
 
-        internal List<GremlinVariable> Select(string label)
+        internal List<GremlinVariable> SelectParent(string label)
         {
-            List<GremlinVariable> taggedVariableList = ParentContext?.Select(label);
+            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label);
             if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
 
+            //Count - 1 to ignore the last one, for ignoring the other subContext
             for (var i = 0; i < VariableList.Count - 1; i++)
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
-                    taggedVariableList.Add(VariableList[i]);
+                    taggedVariableList.Add(GremlinContextVariable.Create(VariableList[i]));
                 }
                 else
                 {
@@ -179,7 +180,38 @@ namespace GraphView
                         List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
                         foreach (var subContextVar in subContextVariableList)
                         {
-                            GremlinGhostVariable newVariable = new GremlinGhostVariable(subContextVar, VariableList[i]);
+                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i]);
+                            newVariable.SelectKey = label;
+                            taggedVariableList.Add(newVariable);
+                        }
+                    }
+                }
+            }
+            return taggedVariableList;
+        }
+
+        internal List<GremlinVariable> Select(string label)
+        {
+            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label);
+            if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
+
+            for (var i = 0; i < VariableList.Count; i++)
+            {
+                if (VariableList[i].Labels.Contains(label))
+                {
+                    //in the current context
+                    taggedVariableList.Add(VariableList[i]);
+                }
+                else
+                {
+                    //in the subContext of current Context
+                    if (VariableList[i].ContainsLabel(label))
+                    {
+                        List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
+                        foreach (var subContextVar in subContextVariableList)
+                        {
+                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i]);
+                            newVariable.SelectKey = label;
                             taggedVariableList.Add(newVariable);
                         }
                     }
@@ -286,6 +318,7 @@ namespace GraphView
                 if (!(PivotVariable as GremlinContextVariable).IsFromSelect) return;
             }
             StepList.Add(newPivotVariable);
+            newPivotVariable.ParentContext = this;
         }
 
         internal List<GremlinVariableProperty> GetGremlinStepList()
@@ -470,11 +503,9 @@ namespace GraphView
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(CurrentContextPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
             }
-            foreach (var item in ProjectVariableList)
+            foreach (var item in ProjectVariablePropertiesList)
             {
-                List<WScalarExpression> parameters = new List<WScalarExpression>();
-                parameters.Add(SqlUtil.GetValueExpr(item.Item2.VariableName));
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, parameters), item.Item1));
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(item.Item1.ToScalarExpression(), item.Item2));
             }
             return selectElements;
         }

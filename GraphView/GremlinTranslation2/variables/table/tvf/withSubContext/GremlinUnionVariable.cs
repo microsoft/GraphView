@@ -51,7 +51,7 @@ namespace GraphView
             }
         }
 
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
         {
             GremlinBranchVariable branchVariable = new GremlinBranchVariable();
             foreach (var context in UnionContextList)
@@ -59,7 +59,9 @@ namespace GraphView
                 var variableList = context.SelectCurrentAndChildVariable(label);
                 branchVariable.BrachVariableList.Add(variableList);
             }
-
+            GremlinToSqlContext newContext = new GremlinToSqlContext();
+            //newContext.ParentVariable = parentVariable;
+            //branchVariable.ParentContext = newContext;
             return new List<GremlinVariable>() {branchVariable};
         }
 

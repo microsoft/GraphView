@@ -20,5 +20,18 @@ namespace GraphView
             }
             return isSameType;
         }
+
+        internal static bool IsTheSameType(List<GremlinVariable> variableList)
+        {
+            if (variableList.Count <= 1) return true;
+            bool isSameType = true;
+            for (var i = 1; i < variableList.Count; i++)
+            {
+                isSameType = variableList[i - 1].GetVariableType() ==
+                             variableList[i].GetVariableType();
+                if (isSameType == false) return false;
+            }
+            return isSameType;
+        }
     }
 }

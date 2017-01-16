@@ -67,7 +67,7 @@ namespace GraphView
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
             if (SqlTableVariable != null)
-                return SqlTableVariable.PopulateAllTaggedVariable(label);
+                return SqlTableVariable.PopulateAllTaggedVariable(label, this);
             else
                 return base.PopulateAllTaggedVariable(label);
         }

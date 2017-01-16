@@ -59,9 +59,32 @@ namespace GraphView
 
         internal virtual void Populate(string property) {}
 
-        internal virtual void BottomUpPopulate(string property)
+        internal virtual string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
         {
-            
+            if (this is GremlinBranchVariable)
+            {
+                foreach (var variableList in (this as GremlinBranchVariable).BrachVariableList)
+                {
+                    foreach (var variable in variableList)
+                    {
+                        variable.BottomUpPopulate(property, terminateVariable, alias, columnName);
+                    }
+                } 
+                return alias + "_" + property;
+            }
+            else
+            {
+                if (terminateVariable == this) return property;
+                if (ParentContext == null) throw new Exception();
+                if (columnName == null)
+                {
+                    columnName = alias + "_" + property;
+                }
+                ParentContext.ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(
+                    new GremlinVariableProperty(this, property), columnName));
+                if (ParentContext.ParentVariable == null) throw new Exception();
+                return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
+            }
         }
 
         internal virtual void PopulateGremlinPath() {}
@@ -789,6 +812,7 @@ namespace GraphView
                 //    throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
                 //}
             }
+
         internal virtual void Select(GremlinToSqlContext currentContext, string label)
         {
             List<GremlinVariable> taggedVariableList = currentContext.Select(label);
@@ -808,7 +832,7 @@ namespace GraphView
                 currentContext.PivotVariable = newVariableList;
             }
 
-            var test = "";
+            
             //if (selectVariable is GremlinListVariable)
             //{
             //    currentContext.VariableList.Add(selectVariable);

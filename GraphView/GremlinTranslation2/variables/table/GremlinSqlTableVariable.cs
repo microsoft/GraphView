@@ -18,7 +18,7 @@ namespace GraphView {
             throw new NotImplementedException();    
         }
 
-        internal virtual List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        internal virtual List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
         {
             throw new NotImplementedException();
         }
