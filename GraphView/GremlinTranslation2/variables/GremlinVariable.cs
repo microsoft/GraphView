@@ -80,8 +80,7 @@ namespace GraphView
                 {
                     columnName = alias + "_" + property;
                 }
-                ParentContext.ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(
-                    new GremlinVariableProperty(this, property), columnName));
+                ParentContext.AddProjectVariablePropertiesList(new GremlinVariableProperty(this, property), columnName);
                 if (ParentContext.ParentVariable == null) throw new Exception();
                 return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
             }
@@ -258,10 +257,10 @@ namespace GraphView
         internal virtual void Coalesce(GremlinToSqlContext currentContext, List<GremlinToSqlContext> coalesceContextList)
         {
             GremlinTableVariable newVariable = GremlinCoalesceVariable.Create(coalesceContextList);
-            //foreach (var context in coalesceContextList)
-            //{
-            //    currentContext.SetVariables.AddRange(context.SetVariables);
-            //}
+            foreach (var context in coalesceContextList)
+            {
+                context.ParentVariable = newVariable;
+            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -326,7 +325,7 @@ namespace GraphView
         //}
 
         internal virtual void FlatMap(GremlinToSqlContext currentContext, GremlinToSqlContext flatMapContext)
-        { 
+        {
             GremlinTableVariable flatMapVariable = GremlinFlatMapVariable.Create(flatMapContext);
             currentContext.VariableList.Add(flatMapVariable);
             
@@ -504,6 +503,7 @@ namespace GraphView
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
             GremlinTableVariable localMapVariable = GremlinLocalVariable.Create(localContext);
+            localContext.ParentVariable = localMapVariable;
             currentContext.VariableList.Add(localMapVariable);
             currentContext.VariableList.AddRange(localContext.VariableList);
 
@@ -524,7 +524,7 @@ namespace GraphView
 
             GremlinTableVariable mapVariable = GremlinMapVariable.Create(mapContext);
             currentContext.VariableList.Add(mapVariable);
-
+            
             //It's used for repeat step, we should propagate all the variable to the main context
             //Then we can check the variableList to know if the sub context used the main context variable when
             //the variable is GremlinContextVariable and the value of IsFromSelect is True
@@ -579,6 +579,7 @@ namespace GraphView
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
             GremlinTableVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
+            optionalContext.ParentVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -664,6 +665,7 @@ namespace GraphView
                                      RepeatCondition repeatCondition)
         {
             GremlinTableVariable newVariable = GremlinRepeatVariable.Create(this, repeatContext, repeatCondition);
+            repeatContext.ParentVariable = newVariable;
             if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
                 newVariable.Populate(GremlinKeyword.EdgeID);
             if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex)

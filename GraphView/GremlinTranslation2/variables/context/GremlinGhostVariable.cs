@@ -59,7 +59,10 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            return RealVariable.DefaultProjection();
+            var defaultColumn = RealVariable.DefaultProjection().VariableProperty;
+            Populate(defaultColumn);
+            var temp = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, defaultColumn)];
+            return new GremlinVariableProperty(AttachedVariable, temp.Item2);
         }
 
         internal override void Populate(string property)

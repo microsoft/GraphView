@@ -516,6 +516,16 @@ namespace GraphView
             };
         }
 
+        internal static WSelectQueryBlock GetSimpleSelectQueryBlock(params GremlinVariableProperty[] projectProperties)
+        {
+            var queryBlock = new WSelectQueryBlock();
+            foreach (var property in projectProperties)
+            {
+                queryBlock.SelectElements.Add(GetSelectScalarExpr(property.DefaultProjection().ToScalarExpression()));
+            }
+            return queryBlock;
+        }
+
         internal static WSelectQueryBlock GetSimpleSelectQueryBlock(string variableName, List<string> projectProperties)
         {
             var queryBlock = new WSelectQueryBlock();
