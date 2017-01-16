@@ -244,16 +244,25 @@ namespace GraphView
             var nodeAlias = node.NodeAlias;
             var selectStrBuilder = new StringBuilder();
             var joinStrBuilder = new StringBuilder();
-            var properties = new List<string>(node.Properties);
+            var properties = new List<string>();
             WBooleanExpression searchCondition = null;
 
-            selectStrBuilder.Append(nodeAlias).Append('.').Append(node.Properties[0]);
-            for (var i = 1; i < node.Properties.Count; i++)
+            for (var i = 0; i < node.Properties.Count; i++)
             {
                 var selectName = nodeAlias;
                 if (!"*".Equals(node.Properties[i], StringComparison.OrdinalIgnoreCase))
+                {
                     selectName += "." + node.Properties[i];
-                selectStrBuilder.Append(", ").Append(selectName);
+                    properties.Add(node.Properties[i]);
+                }
+                else
+                {
+                    properties.Add(nodeAlias);
+                }
+
+                if (i > 0)
+                    selectStrBuilder.Append(", ");
+                selectStrBuilder.Append(selectName);
             }
                 
 
