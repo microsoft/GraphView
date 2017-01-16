@@ -3,22 +3,23 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
     internal abstract class TableValuedFunction : GraphViewExecutionOperator
     {
-        internal GraphViewExecutionOperator InputOperator;
-        protected Queue<RawRecord> OutputBuffer;
-        protected int OutputBufferSize;
+        protected GraphViewExecutionOperator inputOperator;
+        protected Queue<RawRecord> outputBuffer;
+        protected int outputBufferSize;
 
         internal TableValuedFunction(
             GraphViewExecutionOperator pInputOperator, 
             int pOutputBufferSize = 1000)
         {
-            InputOperator = pInputOperator;
-            OutputBufferSize = pOutputBufferSize;
-            OutputBuffer = new Queue<RawRecord>(OutputBufferSize);
+            inputOperator = pInputOperator;
+            outputBufferSize = pOutputBufferSize;
+            outputBuffer = new Queue<RawRecord>(outputBufferSize);
             this.Open();
         }
 
@@ -26,14 +27,14 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (OutputBuffer.Count != 0)
+            if (outputBuffer.Count != 0)
             {
-                return OutputBuffer.Dequeue();
+                return outputBuffer.Dequeue();
             }
 
-            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
+            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
             {
-                var srcRecord = InputOperator.Next();
+                var srcRecord = inputOperator.Next();
                 if (srcRecord == null)
                     break;
 
@@ -42,19 +43,19 @@ namespace GraphView
                 {
                     var resultRecord = new RawRecord(srcRecord);
                     resultRecord.Append(rec);
-                    OutputBuffer.Enqueue(resultRecord);
+                    outputBuffer.Enqueue(resultRecord);
                 }
             }
 
-            if (OutputBuffer.Count <= 1) this.Close();
-            if (OutputBuffer.Count != 0) return OutputBuffer.Dequeue();
+            if (outputBuffer.Count <= 1) this.Close();
+            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
             return null;
         }
 
         public override void ResetState()
         {
-            InputOperator.ResetState();
-            OutputBuffer.Clear();
+            inputOperator.ResetState();
+            outputBuffer.Clear();
             this.Open();
         }
     }
@@ -85,16 +86,47 @@ namespace GraphView
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
-            foreach (var pair in propertyList)
-            {
-                var propName = pair.Item1;
-                var propIdx = pair.Item2;
-                var result = new RawRecord(1);
-                var fieldValue = record[propIdx];
-                if (fieldValue == null) continue;;
 
-                result.fieldValues[0] = new StringField(propName + "->" + fieldValue);
-                results.Add(result);
+            if (allPropertyIndex >= 0 && record[allPropertyIndex] != null)
+            {
+                JObject jsonObj = JObject.Parse(record[allPropertyIndex].ToString());
+                foreach (JProperty property in jsonObj.Properties())
+                {
+                    switch (property.Name.ToLower())
+                    {
+                        // Reversed properties for meta-data
+                        case "_edge":
+                        case "_reverse_edge":
+                        case "_nextEdgeOffset":
+                        case "_nextReverseEdgeOffset":
+                        case "_reverse_ID":
+                        case "_sink":
+                        case "_sinkLabel":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord(1);
+                            r.Append(new PropertyField(property.Name, property.Value.ToString()));
+                            results.Add(r);
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var pair in propertyList)
+                {
+                    string propertyName = pair.Item1;
+                    int propertyValueIndex = pair.Item2;
+                    var propertyValue = record[propertyValueIndex];
+                    if (propertyValue == null)
+                    {
+                        continue;
+                    }
+
+                    var result = new RawRecord(1);
+                    result.Append(new PropertyField(propertyName, propertyValue.ToString()));
+                    results.Add(result);
+                }
             }
 
             return results;

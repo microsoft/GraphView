@@ -618,12 +618,12 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (OutputBuffer == null)
-                OutputBuffer = new Queue<RawRecord>();
+            if (outputBuffer == null)
+                outputBuffer = new Queue<RawRecord>();
 
-            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
+            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
             {
-                RawRecord srcRecord = InputOperator.Next();
+                RawRecord srcRecord = inputOperator.Next();
                 if (srcRecord == null)
                     break;
 
@@ -635,31 +635,31 @@ namespace GraphView
 
                     var resultRecord = new RawRecord(srcRecord);
                     resultRecord.Append(edgeRecord);
-                    OutputBuffer.Enqueue(resultRecord);
+                    outputBuffer.Enqueue(resultRecord);
                 }
             }
 
-            if (OutputBuffer.Count == 0)
+            if (outputBuffer.Count == 0)
             {
-                if (!InputOperator.State())
+                if (!inputOperator.State())
                     Close();
                 return null;
             }
-            else if (OutputBuffer.Count == 1)
+            else if (outputBuffer.Count == 1)
             {
                 Close();
-                return OutputBuffer.Dequeue();
+                return outputBuffer.Dequeue();
             }
             else
             {
-                return OutputBuffer.Dequeue();
+                return outputBuffer.Dequeue();
             }
         }
 
         public override void ResetState()
         {
-            InputOperator.ResetState();
-            OutputBuffer?.Clear();
+            inputOperator.ResetState();
+            outputBuffer?.Clear();
             Open();
         }
     }
@@ -784,12 +784,12 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (OutputBuffer == null)
-                OutputBuffer = new Queue<RawRecord>();
+            if (outputBuffer == null)
+                outputBuffer = new Queue<RawRecord>();
 
-            while (OutputBuffer.Count < OutputBufferSize && InputOperator.State())
+            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
             {
-                RawRecord srcRecord = InputOperator.Next();
+                RawRecord srcRecord = inputOperator.Next();
                 if (srcRecord == null)
                     break;
 
@@ -801,31 +801,31 @@ namespace GraphView
 
                     var resultRecord = new RawRecord(srcRecord);
                     resultRecord.Append(edgeRecord);
-                    OutputBuffer.Enqueue(resultRecord);
+                    outputBuffer.Enqueue(resultRecord);
                 }
             }
 
-            if (OutputBuffer.Count == 0)
+            if (outputBuffer.Count == 0)
             {
-                if (!InputOperator.State())
+                if (!inputOperator.State())
                     Close();
                 return null;
             }
-            else if (OutputBuffer.Count == 1)
+            else if (outputBuffer.Count == 1)
             {
                 Close();
-                return OutputBuffer.Dequeue();
+                return outputBuffer.Dequeue();
             }
             else
             {
-                return OutputBuffer.Dequeue();
+                return outputBuffer.Dequeue();
             }
         }
 
         public override void ResetState()
         {
-            InputOperator.ResetState();
-            OutputBuffer?.Clear();
+            inputOperator.ResetState();
+            outputBuffer?.Clear();
             Open();
         }
     }

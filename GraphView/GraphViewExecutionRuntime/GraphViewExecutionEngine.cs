@@ -167,6 +167,41 @@ namespace GraphView
         }
     }
 
+    internal class PropertyField : FieldObject
+    {
+        public string PropertyName { get; private set; }
+        public string PropertyValue { get; private set; }
+
+        public PropertyField(string propertyName, string propertyValue)
+        {
+            PropertyName = propertyName;
+            PropertyValue = propertyValue;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{0}->{1}", PropertyName, PropertyValue);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            PropertyField pf = obj as PropertyField;
+            if (pf == null)
+            {
+                return false;
+            }
+
+            return PropertyName == pf.PropertyName && PropertyValue == pf.PropertyValue;
+        }
+
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
+        }
+    }
+
     /// <summary>
     /// RawRecord is a data sturcture representing data records flowing from one execution operator to another. 
     /// A data record is a multi-field blob. Each field is currently represented as a string.
