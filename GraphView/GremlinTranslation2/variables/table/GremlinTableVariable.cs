@@ -387,6 +387,10 @@ namespace GraphView
             {
                 Populate(property);
             }
+            if (propertyKeys.Count == 0)
+            {
+                Populate("*");
+            }
             GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(this, propertyKeys);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
@@ -407,6 +411,10 @@ namespace GraphView
                 foreach (var property in propertyKeys)
                 {
                     Populate(property);
+                }
+                if (propertyKeys.Count == 0)
+                {
+                    Populate("*");
                 }
                 GremlinValuesVariable newVariable = new GremlinValuesVariable(this, propertyKeys);
                 currentContext.VariableList.Add(newVariable);
