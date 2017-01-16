@@ -20,9 +20,16 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            foreach (var property in PropertyKeys)
+            if (PropertyKeys.Count == 0)
             {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
+                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, "*"));
+            }
+            else
+            {
+                foreach (var property in PropertyKeys)
+                {
+                    parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
+                }
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
