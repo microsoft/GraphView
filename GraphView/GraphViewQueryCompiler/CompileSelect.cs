@@ -2634,7 +2634,13 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<int> valuesIdxList = new List<int>();
+            int allValuesIndex = -1;
 
+            if (Parameters.Count == 1 &&
+                (Parameters[0] as WColumnReferenceExpression).ColumnName.Equals("*", StringComparison.OrdinalIgnoreCase))
+            {
+                allValuesIndex = context.LocateColumnReference(Parameters[0] as WColumnReferenceExpression);
+            }
             foreach (var expression in Parameters)
             {
                 var columnReference = expression as WColumnReferenceExpression;
@@ -2643,7 +2649,7 @@ namespace GraphView
                 valuesIdxList.Add(context.LocateColumnReference(columnReference));
             }
 
-            GraphViewExecutionOperator valuesOperator = new ValuesOperator(context.CurrentExecutionOperator, valuesIdxList);
+            GraphViewExecutionOperator valuesOperator = new ValuesOperator(context.CurrentExecutionOperator, valuesIdxList, allValuesIndex);
             context.CurrentExecutionOperator = valuesOperator;
             context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
             
@@ -2656,17 +2662,27 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<Tuple<string, int>> propertiesList = new List<Tuple<string, int>>();
+            int allPropertyIndex = -1;
 
-            foreach (var expression in Parameters)
+            if (Parameters.Count == 1 &&
+                (Parameters[0] as WColumnReferenceExpression).ColumnName.Equals("*", StringComparison.OrdinalIgnoreCase))
             {
-                var columnReference = expression as WColumnReferenceExpression;
-                if (columnReference == null)
-                    throw new SyntaxErrorException("Parameters of Properties function can only be WColumnReference.");
-                propertiesList.Add(new Tuple<string, int>(columnReference.ColumnName,
-                    context.LocateColumnReference(columnReference)));
+                allPropertyIndex = context.LocateColumnReference(Parameters[0] as WColumnReferenceExpression);
+            }
+            else
+            {
+                foreach (var expression in Parameters)
+                {
+                    var columnReference = expression as WColumnReferenceExpression;
+                    if (columnReference == null)
+                        throw new SyntaxErrorException("Parameters of Properties function can only be WColumnReference.");
+
+                    propertiesList.Add(new Tuple<string, int>(columnReference.ColumnName,
+                        context.LocateColumnReference(columnReference)));
+                }
             }
 
-            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, propertiesList);
+            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, propertiesList, allPropertyIndex);
             context.CurrentExecutionOperator = propertiesOp;
             context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
@@ -2715,7 +2731,7 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var projectList = new List<Tuple<ScalarFunction, string>>();
+            var projectByOp = new ProjectByOperator(context.CurrentExecutionOperator);
             for (var i = 0; i < Parameters.Count; i += 2)
             {
                 var scalarSubquery = Parameters[i] as WScalarSubquery;
@@ -2726,14 +2742,35 @@ namespace GraphView
                 if (projectName == null)
                     throw new SyntaxErrorException("The parameter of ProjectTableReference at an even position has to be a WValueExpression.");
 
-                projectList.Add(
-                    new Tuple<ScalarFunction, string>(scalarSubquery.CompileToFunction(context, dbConnection),
-                        projectName.Value));
+                QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                GraphViewExecutionOperator projectOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+
+                projectByOp.AddProjectBy(subcontext.OuterContextOp, projectOp, projectName.Value);
             }
 
-            var projectByOp = new ProjectByOperator(context.CurrentExecutionOperator, projectList);
             context.CurrentExecutionOperator = projectByOp;
             context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            for (var i = 0; i < Parameters.Count; i += 2)
+            {
+                var scalarSubquery = Parameters[i] as WScalarSubquery;
+                if (scalarSubquery == null)
+                    throw new SyntaxErrorException("The parameter of ProjectTableReference at an odd position has to be a WScalarSubquery.");
+                var selectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                if (selectQuery == null)
+                {
+                    throw new SyntaxErrorException("The input of a project table reference must be one or more select query blocks.");
+                }
+
+                for (var j = 1; j < selectQuery.SelectElements.Count; j++)
+                {
+                    var scalarExpr = selectQuery.SelectElements[j] as WSelectScalarExpression;
+                    var alias = scalarExpr.ColumnName;
+
+                    // TODO: Change to correct ColumnGraphType
+                    context.AddField(Alias.Value, alias, ColumnGraphType.Value);
+                }
+            }
 
             return projectByOp;
         }

@@ -1094,6 +1094,7 @@ namespace GraphView
                 contextOp.ConstantSource = currentRecord;
                 mapTraversal.ResetState();
                 RawRecord mapRec = mapTraversal.Next();
+                mapTraversal.Close();
 
                 if (mapRec == null) continue;
                 RawRecord resultRecord = new RawRecord(currentRecord);
@@ -2031,6 +2032,65 @@ namespace GraphView
             _inputOp.ResetState();
             _outputBuffer = null;
             Open();
+        }
+    }
+
+    internal class ProjectByOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator, string>> _projectList;
+
+        internal ProjectByOperator(GraphViewExecutionOperator pInputOperator)
+        {
+            _inputOp = pInputOperator;
+            _projectList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator, string>>();
+            Open();
+        }
+
+        public void AddProjectBy(ConstantSourceOperator contextOp, GraphViewExecutionOperator traversal, string key)
+        {
+            _projectList.Add(new Tuple<ConstantSourceOperator, GraphViewExecutionOperator, string>(contextOp, traversal, key));
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                var projectMap = new Dictionary<FieldObject, FieldObject>();
+                var extraRecord = new RawRecord();
+
+                foreach (var tuple in _projectList)
+                {
+                    string projectKey = tuple.Item3;
+                    ConstantSourceOperator projectContext = tuple.Item1;
+                    GraphViewExecutionOperator projectTraversal = tuple.Item2;
+                    projectContext.ConstantSource = currentRecord;
+                    projectTraversal.ResetState();
+
+                    RawRecord projectRec = projectTraversal.Next();
+                    projectTraversal.Close();
+
+                    if (projectRec == null)
+                        throw new GraphViewException(
+                            string.Format("The provided traverser of key \"{0}\" does not map to a value.", projectKey));
+
+                    projectMap.Add(new StringField(projectKey), projectRec.RetriveData(0));
+                    for (var i = 1; i < projectRec.Length; i++)
+                        extraRecord.Append(projectRec[i]);
+                }
+
+                var result = new RawRecord(currentRecord);
+                result.Append(new MapField(projectMap));
+                if (extraRecord.Length > 0)
+                    result.Append(extraRecord);
+
+                return result;
+            }
+
+            Close();
+            return null;
         }
     }
 }

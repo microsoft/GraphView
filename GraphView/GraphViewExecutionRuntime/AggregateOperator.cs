@@ -401,6 +401,7 @@ namespace GraphView
                 if (!aggregatedState.ContainsKey(groupByKey))
                 {
                     aggregatedState.Add(groupByKey, new FoldFunction());
+                    aggregatedState[groupByKey].Init();
                 }
                 aggregatedState[groupByKey].Accumulate(aggregateTargetFunction.Evaluate(r));
             }
@@ -411,7 +412,7 @@ namespace GraphView
                 resultCollection[key] = aggregatedState[key].Terminate();
             }
 
-            RawRecord resultRecord = new RawRecord(1);
+            RawRecord resultRecord = new RawRecord();
             resultRecord.Append(new MapField(resultCollection));
 
             Close();

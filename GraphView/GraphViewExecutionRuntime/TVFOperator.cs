@@ -66,21 +66,14 @@ namespace GraphView
         int allPropertyIndex;
 
         public PropertiesOperator(
-            GraphViewExecutionOperator pInputOperatr, 
-            List<Tuple<string, int>> pPropertiesList, 
+            GraphViewExecutionOperator pInputOperator, 
+            List<Tuple<string, int>> pPropertiesList,
+            int pAllPropertyIndex,
             int pOutputBufferSize = 1000)
-            : base(pInputOperatr, pOutputBufferSize)
+            : base(pInputOperator, pOutputBufferSize)
         {
             propertyList = pPropertiesList;
-        }
-
-        public PropertiesOperator(
-            GraphViewExecutionOperator inputOp, 
-            int allPropertyIndex,
-            int bufferSize = 1000)
-            : base(inputOp, bufferSize)
-        {
-            this.allPropertyIndex = allPropertyIndex;
+            allPropertyIndex = pAllPropertyIndex;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
@@ -97,14 +90,19 @@ namespace GraphView
                         // Reversed properties for meta-data
                         case "_edge":
                         case "_reverse_edge":
-                        case "_nextEdgeOffset":
-                        case "_nextReverseEdgeOffset":
-                        case "_reverse_ID":
+                        case "_nextedgeoffset":
+                        case "_nextreverseedgeoffset":
+                        case "_reverse_id":
                         case "_sink":
-                        case "_sinkLabel":
+                        case "_sinklabel":
+                        case "_rid":
+                        case "_self":
+                        case "_etag":
+                        case "_attachments":
+                        case "_ts":
                             continue;
                         default:
-                            RawRecord r = new RawRecord(1);
+                            RawRecord r = new RawRecord();
                             r.Append(new PropertyField(property.Name, property.Value.ToString()));
                             results.Add(r);
                             break;
@@ -123,7 +121,7 @@ namespace GraphView
                         continue;
                     }
 
-                    var result = new RawRecord(1);
+                    var result = new RawRecord();
                     result.Append(new PropertyField(propertyName, propertyValue.ToString()));
                     results.Add(result);
                 }
@@ -136,25 +134,61 @@ namespace GraphView
     internal class ValuesOperator : TableValuedFunction
     {
         internal List<int> ValuesIdxList;
+        int allValuesIndex;
 
-        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pOutputBufferSize = 1000)
+        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pAllValuesIndex, int pOutputBufferSize = 1000)
             : base(pInputOperator, pOutputBufferSize)
         {
             ValuesIdxList = pValuesIdxList;
+            allValuesIndex = pAllValuesIndex;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
-            foreach (var propIdx in ValuesIdxList)
-            {
-                var result = new RawRecord(1);
-                var fieldValue = record[propIdx];
-                if (fieldValue == null) continue;
 
-                result.fieldValues[0] = fieldValue;
-                results.Add(result);
+            if (allValuesIndex >= 0 && record[allValuesIndex] != null)
+            {
+                JObject jsonObj = JObject.Parse(record[allValuesIndex].ToString());
+                foreach (JProperty property in jsonObj.Properties())
+                {
+                    switch (property.Name.ToLower())
+                    {
+                        // Reversed properties for meta-data
+                        case "_edge":
+                        case "_reverse_edge":
+                        case "_nextedgeoffset":
+                        case "_nextreverseedgeoffset":
+                        case "_reverse_id":
+                        case "_sink":
+                        case "_sinklabel":
+                        case "_rid":
+                        case "_self":
+                        case "_etag":
+                        case "_attachments":
+                        case "_ts":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(new StringField(property.Value.ToString()));
+                            results.Add(r);
+                            break;
+                    }
+                }
             }
+            else
+            {
+                foreach (var propIdx in ValuesIdxList)
+                {
+                    var result = new RawRecord(1);
+                    var fieldValue = record[propIdx];
+                    if (fieldValue == null) continue;
+
+                    result.fieldValues[0] = new StringField(fieldValue.ToString());
+                    results.Add(result);
+                }
+            }
+
 
             return results;
         }
@@ -266,47 +300,12 @@ namespace GraphView
             }
             else
             {
-                RawRecord newRecord = new RawRecord(1);
+                RawRecord newRecord = new RawRecord();
                 newRecord.Append(record[_collectionFieldIndex]);
                 results.Add(newRecord);
             }
 
             return results;
-        }
-    }
-
-    internal class ProjectByOperator : TableValuedFunction
-    {
-        internal List<Tuple<ScalarFunction, string>> ProjectList;
-
-        internal ProjectByOperator(GraphViewExecutionOperator pInputOperatr, List<Tuple<ScalarFunction, string>> pPropertiesList, 
-            int pOutputBufferSize = 1000)
-            : base(pInputOperatr, pOutputBufferSize)
-        {
-            ProjectList = pPropertiesList;
-        }
-
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
-        {
-            var projectMap = new Dictionary<FieldObject, FieldObject>();
-
-            foreach (var tuple in ProjectList)
-            {
-                var scalarFunction = tuple.Item1;
-                var value = scalarFunction.Evaluate(record);
-                var key = tuple.Item2;
-
-                if (value == null)
-                    throw new GraphViewException(
-                        string.Format("The provided traverser of key \"{0}\" does not map to a value.", key));
-
-                projectMap.Add(new StringField(key), value);
-            }
-
-            var result = new RawRecord(1);
-            result.fieldValues[0] = new MapField(projectMap);
-
-            return new List<RawRecord> { result };
         }
     }
 }
