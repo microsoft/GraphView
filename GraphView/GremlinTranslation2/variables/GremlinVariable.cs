@@ -825,13 +825,13 @@ namespace GraphView
             } else if (taggedVariableList.Count == 1)
             {
                 currentContext.VariableList.Add(taggedVariableList.First());
-                currentContext.PivotVariable = taggedVariableList.First();
+                currentContext.SetPivotVariable(taggedVariableList.First());
             }
             else
             {
                 GremlinListVariable newVariableList = new GremlinListVariable(taggedVariableList);
                 currentContext.VariableList.Add(newVariableList);
-                currentContext.PivotVariable = newVariableList;
+                currentContext.SetPivotVariable(newVariableList);
             }
 
             
@@ -1019,9 +1019,10 @@ namespace GraphView
             if (predicate.Label != null)
             {
                 //TODO
-                var compareVar = currentContext.TaggedVariables[predicate.Label].Last();
-                Populate(compareVar.DefaultProjection().VariableProperty);
-                secondExpr = compareVar.DefaultProjection().ToScalarExpression();
+                var compareVar = currentContext.Select(predicate.Label);
+                if (compareVar.Count > 1) throw new Exception();
+                Populate(compareVar.First().DefaultProjection().VariableProperty);
+                secondExpr = compareVar.First().DefaultProjection().ToScalarExpression();
             }
             else
             {

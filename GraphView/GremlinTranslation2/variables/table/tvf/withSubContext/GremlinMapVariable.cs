@@ -36,6 +36,11 @@ namespace GraphView
             MapContext.Populate(property);
         }
 
+        internal override bool ContainsLabel(string label)
+        {
+            return false;
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -62,7 +67,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinMapScalarVariable : GremlinEdgeTableVariable
+    internal class GremlinMapScalarVariable : GremlinScalarTableVariable
     {
         public GremlinMapScalarVariable(GremlinToSqlContext mapContext)
         {
@@ -70,7 +75,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinMapTableVariable : GremlinEdgeTableVariable
+    internal class GremlinMapTableVariable : GremlinTableVariable
     {
         public GremlinMapTableVariable(GremlinToSqlContext mapContext)
         {

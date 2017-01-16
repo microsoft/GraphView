@@ -182,7 +182,18 @@ namespace GraphView
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
-                    taggedVariableList.Add(GremlinContextVariable.Create(VariableList[i]));
+                    if (VariableList[i] is GremlinGhostVariable)
+                    {
+                        var ghostVar = VariableList[i] as GremlinGhostVariable;
+                        var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
+                            ghostVar.AttachedVariable, label);
+                        taggedVariableList.Add(newGhostVar);
+                        newGhostVar.ParentContext = this;
+                    }
+                    else
+                    {
+                        taggedVariableList.Add(GremlinContextVariable.Create(VariableList[i]));
+                    }
                 }
                 else
                 {
@@ -191,8 +202,20 @@ namespace GraphView
                         List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
                         foreach (var subContextVar in subContextVariableList)
                         {
-                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
-                            taggedVariableList.Add(newVariable);
+                            if (subContextVar is GremlinGhostVariable)
+                            {
+                                var ghostVar = subContextVar as GremlinGhostVariable;
+                                var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
+                                    ghostVar.AttachedVariable, label);
+                                taggedVariableList.Add(newGhostVar);
+                                newGhostVar.ParentContext = this;
+                            }
+                            else
+                            {
+                                GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
+                                taggedVariableList.Add(newVariable);
+                                newVariable.ParentContext = this;
+                            }
                         }
                     }
                 }
@@ -210,7 +233,18 @@ namespace GraphView
                 if (VariableList[i].Labels.Contains(label))
                 {
                     //in the current context
-                    taggedVariableList.Add(VariableList[i]);
+                    if (VariableList[i] is GremlinGhostVariable)
+                    {
+                        var ghostVar = VariableList[i] as GremlinGhostVariable;
+                        var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
+                                    ghostVar.AttachedVariable, label);
+                        newGhostVar.ParentContext = this;
+                        taggedVariableList.Add(newGhostVar);
+                    }
+                    else
+                    {
+                        taggedVariableList.Add(VariableList[i]);
+                    }
                 }
                 else
                 {
@@ -220,8 +254,21 @@ namespace GraphView
                         List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
                         foreach (var subContextVar in subContextVariableList)
                         {
-                            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
-                            taggedVariableList.Add(newVariable);
+                            if (subContextVar is GremlinGhostVariable)
+                            {
+                                var ghostVar = subContextVar as GremlinGhostVariable;
+                                var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
+                                    ghostVar.AttachedVariable, label);
+                                taggedVariableList.Add(newGhostVar);
+                                newGhostVar.ParentContext = this;
+                            }
+                            else
+                            {
+                                GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar,
+                                    VariableList[i], label);
+                                newVariable.ParentContext = this;
+                                taggedVariableList.Add(newVariable);
+                            }
                         }
                     }
                 }
@@ -451,8 +498,8 @@ namespace GraphView
         {
             return new WSelectQueryBlock()
             {
-                FromClause = GetFromClause(),
                 SelectElements = GetSelectElement(ProjectedProperties),
+                FromClause = GetFromClause(),
                 MatchClause = GetMatchClause(),
                 WhereClause = GetWhereClause(),
                 OrderByClause = GetOrderByClause(),
@@ -506,8 +553,15 @@ namespace GraphView
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    var columnRefExpr = SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(columnRefExpr));
+                    if (PivotVariable is GremlinGhostVariable)
+                    {
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr((PivotVariable as GremlinGhostVariable).GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                    }
+                    else
+                    {
+                        var columnRefExpr = SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr(columnRefExpr));
+                    }
                 }
             }
             else

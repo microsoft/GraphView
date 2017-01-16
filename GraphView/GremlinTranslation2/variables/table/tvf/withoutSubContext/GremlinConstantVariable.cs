@@ -26,6 +26,13 @@ namespace GraphView
                     parameters.Add(SqlUtil.GetValueExpr(value));
                 }
             }
+            else if (Value is List<string>)
+            {
+                foreach (var value in Value as List<string>)
+                {
+                    parameters.Add(SqlUtil.GetValueExpr(value));
+                }
+            }
             else
             {
                 parameters.Add(SqlUtil.GetValueExpr(Value));

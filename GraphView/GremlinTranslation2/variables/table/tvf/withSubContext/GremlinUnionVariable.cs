@@ -53,13 +53,13 @@ namespace GraphView
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
         {
-            GremlinBranchVariable branchVariable = new GremlinBranchVariable();
+            GremlinBranchVariable branchVariable = new GremlinBranchVariable(label, parentVariable);
             foreach (var context in UnionContextList)
             {
                 var variableList = context.SelectCurrentAndChildVariable(label);
                 branchVariable.BrachVariableList.Add(variableList);
             }
-            GremlinToSqlContext newContext = new GremlinToSqlContext();
+            //GremlinToSqlContext newContext = new GremlinToSqlContext();
             //newContext.ParentVariable = parentVariable;
             //branchVariable.ParentContext = newContext;
             return new List<GremlinVariable>() {branchVariable};
@@ -102,10 +102,10 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            if (projectProperties.Count == 0)
-            {
-                Populate(UnionContextList.First().PivotVariable.DefaultProjection().VariableProperty);
-            }
+            //if (projectProperties.Count == 0)
+            //{
+            //    Populate(UnionContextList.First().PivotVariable.DefaultProjection().VariableProperty);
+            //}
             foreach (var context in UnionContextList)
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(projectProperties)));

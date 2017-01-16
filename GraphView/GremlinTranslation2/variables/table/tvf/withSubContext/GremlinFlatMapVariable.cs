@@ -36,6 +36,11 @@ namespace GraphView
             FlatMapContext.Populate(property);
         }
 
+        internal override bool ContainsLabel(string label)
+        {
+            return false;
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

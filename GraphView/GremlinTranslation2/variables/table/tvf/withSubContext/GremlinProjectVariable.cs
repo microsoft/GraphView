@@ -60,11 +60,28 @@ namespace GraphView
             int index = ProjectKeys.FindIndex(p=> p == label);
             if (index < 0)
             {
-                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", label));
+                base.Select(currentContext, label);
             }
-            GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.PivotVariable = newVariable;
+            else
+            {
+                if (ProjectContextList[index % ProjectContextList.Count].PivotVariable is GremlinGhostVariable)
+                {
+                    var ghostVar =
+                        ProjectContextList[index%ProjectContextList.Count].PivotVariable as GremlinGhostVariable;
+                    var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable, ghostVar.AttachedVariable,
+                        label);
+                    newGhostVar.ParentContext = currentContext;
+                    currentContext.VariableList.Add(newGhostVar);
+                    currentContext.SetPivotVariable(newGhostVar);
+                }
+                else
+                {
+                    GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
+                    newVariable.ParentContext = currentContext;
+                    currentContext.VariableList.Add(newVariable);
+                    currentContext.SetPivotVariable(newVariable);
+                }
+            }
         }
     }
 }

@@ -61,8 +61,7 @@ namespace GraphView
         {
             var defaultColumn = RealVariable.DefaultProjection().VariableProperty;
             Populate(defaultColumn);
-            var temp = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, defaultColumn)];
-            return new GremlinVariableProperty(AttachedVariable, temp.Item2);
+            return GetVariableProperty(defaultColumn);
         }
 
         internal override void Populate(string property)
@@ -78,6 +77,22 @@ namespace GraphView
             {
                 UsedProperties.Add(property);
             }
+        }
+
+        internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
+        {
+            //if we want to bottomUp populate a ghost Variable, then there are two part we should populate
+            Populate(property);
+
+            if (terminateVariable == this) return property;
+            if (ParentContext == null) throw new Exception();
+            if (columnName == null)
+            {
+                columnName = alias + "_" + property;
+            }
+            ParentContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
+            if (ParentContext.ParentVariable == null) throw new Exception();
+            return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
         }
 
         internal override void Property(GremlinToSqlContext currentGhost, Dictionary<string, object> properties)

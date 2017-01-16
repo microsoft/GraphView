@@ -8,11 +8,23 @@ namespace GraphView
 {
     internal class GremlinBranchVariable: GremlinVariable
     {
-        public List<List<GremlinVariable>> BrachVariableList { get; set; }
+        protected static int _count = 0;
 
-        public GremlinBranchVariable()
+        internal virtual string GenerateTableAlias()
         {
+            return "B_" + _count++;
+        }
+
+        public List<List<GremlinVariable>> BrachVariableList { get; set; }
+        public GremlinVariable ParentVariable { get; set; }
+        public string Label { get; set; }
+
+        public GremlinBranchVariable(string label, GremlinVariable parentVariable)
+        {
+            Label = label;
             BrachVariableList = new List<List<GremlinVariable>>();
+            ParentVariable = parentVariable;
+            VariableName = GenerateTableAlias();
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -22,19 +34,51 @@ namespace GraphView
                 if (branchVariable.Count() > 1) return GremlinVariableType.Table;
             }
             
-            List<GremlinVariable> checkList = new List<GremlinVariable>();
-            foreach (var branchVariable in BrachVariableList)
+            if (checkIsTheSameType())
             {
-                checkList.Add(branchVariable.First());
-            }
-            if (GremlinUtil.IsTheSameType(checkList))
-            {
-                return checkList.First().GetVariableType();
+                return BrachVariableList.First().First().GetVariableType();
             }
             else
             {
                 return GremlinVariableType.Table;
             }
+        }
+
+        internal override GremlinVariableProperty DefaultProjection()
+        {
+            foreach (var branchVariable in BrachVariableList)
+            {
+                if (branchVariable.Count() > 1)
+                {
+                    throw new NotImplementedException();
+                    //return new GremlinVariableProperty(ParentVariable, Label);
+                }
+            }
+            if (checkIsTheSameType())
+            {
+                switch (BrachVariableList.First().First().GetVariableType())
+                {
+                    case GremlinVariableType.Table:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+                    case GremlinVariableType.Edge:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.EdgeID);
+                    case GremlinVariableType.Scalar:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
+                    case GremlinVariableType.Vertex:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.NodeID);
+                }
+            }
+            throw new NotImplementedException();
+        }
+
+        private bool checkIsTheSameType()
+        {
+            List<GremlinVariable> checkList = new List<GremlinVariable>();
+            foreach (var branchVariable in BrachVariableList)
+            {
+                checkList.Add(branchVariable.First());
+            }
+            return GremlinUtil.IsTheSameType(checkList);
         }
     }
 }

@@ -962,7 +962,6 @@ namespace GraphView
         public string ConvertGremlinToGraphTraversalCode(string sCSCode)
         {
             sCSCode = sCSCode.Replace("\'", "\"");
-            sCSCode = sCSCode.Replace(" ", "");
 
             foreach (var item in GremlinKeyword.GremlinStepToGraphTraversalDict)
             {

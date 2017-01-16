@@ -51,6 +51,18 @@ namespace GraphView
             OptionalContext.PopulateGremlinPath();
         }
 
+        internal override bool ContainsLabel(string label)
+        {
+            foreach (var variable in OptionalContext.VariableList)
+            {
+                if (variable.ContainsLabel(label))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<string> firstProjectProperties = new List<string>();
@@ -109,7 +121,24 @@ namespace GraphView
                     secondProjectProperties.Add(projectProperty);
                 }
             }
-            WSelectQueryBlock firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
+
+            WSelectQueryBlock firstQueryExpr;
+            List<GremlinVariableProperty> variableProperties = new List<GremlinVariableProperty>();
+            if (InputVariable is GremlinGhostVariable)
+            {
+                var ghostVar = InputVariable as GremlinGhostVariable;
+                firstQueryExpr = new WSelectQueryBlock();
+                foreach (var projectProperty in projectProperties)
+                {
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ghostVar.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                }
+            }
+            else
+            {
+                firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
+
+            }
+
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(secondProjectProperties);
 
             if (secondProjectProperties.Count == 0) secondQueryExpr.SelectElements.Clear();
