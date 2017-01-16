@@ -23,10 +23,7 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            if (PropertyKeys.Count == 0)
-            {
-                throw new QueryCompilationException("The number of parameters of Values step must be greater than one");
-            }
+
             inputContext.PivotVariable.Values(inputContext, PropertyKeys);
 
             return inputContext;
