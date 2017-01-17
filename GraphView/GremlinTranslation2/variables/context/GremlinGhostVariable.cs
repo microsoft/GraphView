@@ -46,7 +46,7 @@ namespace GraphView
         public List<string> UsedProperties { get; set; }
         public Dictionary<Tuple<string, string>, Tuple<string, string>> ColumnReferenceMap { get; set; }
 
-        internal GremlinVariableProperty GetVariableProperty(string property)
+        internal override GremlinVariableProperty GetVariableProperty(string property)
         {
             var temp = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)];
             return new GremlinVariableProperty(AttachedVariable, temp.Item2);

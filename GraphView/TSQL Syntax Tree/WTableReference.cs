@@ -484,6 +484,11 @@ namespace GraphView
 
     }
 
+    public partial class WGroupTableReference : WSchemaObjectFunctionTableReference
+    {
+        
+    }
+
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
         public string ConstructEdgeJsonDocument(out List<string> projectedFieldList)

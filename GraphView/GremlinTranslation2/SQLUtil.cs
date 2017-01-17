@@ -420,6 +420,9 @@ namespace GraphView
                 case GremlinKeyword.func.Map:
                     funcTableRef = new WMapTableReference();
                     break;
+                case GremlinKeyword.func.Group:
+                    funcTableRef = new WGroupTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

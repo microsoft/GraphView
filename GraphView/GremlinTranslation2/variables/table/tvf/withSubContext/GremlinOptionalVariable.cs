@@ -46,6 +46,11 @@ namespace GraphView
             OptionalContext.Populate(property);
         }
 
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
+        {
+            return OptionalContext.SelectCurrentAndChildVariable(label);
+        }
+
         internal override void PopulateGremlinPath()
         {
             OptionalContext.PopulateGremlinPath();
@@ -123,21 +128,24 @@ namespace GraphView
             }
 
             WSelectQueryBlock firstQueryExpr;
-            List<GremlinVariableProperty> variableProperties = new List<GremlinVariableProperty>();
-            if (InputVariable is GremlinGhostVariable)
-            {
-                var ghostVar = InputVariable as GremlinGhostVariable;
+            //if (InputVariable is GremlinGhostVariable)
+            //{
+            //    var ghostVar = InputVariable as GremlinGhostVariable;
+            //if (InputVariable is GremlinContextVariable)
+            //{
+            //    string stop = "";
+            //}
                 firstQueryExpr = new WSelectQueryBlock();
                 foreach (var projectProperty in projectProperties)
                 {
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ghostVar.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
                 }
-            }
-            else
-            {
-                firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
+            //}
+            //else
+            //{
+            //    firstQueryExpr = SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, firstProjectProperties);
 
-            }
+            //}
 
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(secondProjectProperties);
 

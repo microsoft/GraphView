@@ -90,14 +90,13 @@ namespace GraphView
 
         internal override bool ContainsLabel(string label)
         {
+            if (base.ContainsLabel(label)) return true;
             if (SqlTableVariable != null)
             {
                 return SqlTableVariable.ContainsLabel(label);
+
             }
-            else
-            {
-                return base.ContainsLabel(label);
-            }
+            return false;
         }
 
         internal override GremlinVariableProperty GetPath()

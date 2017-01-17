@@ -12,7 +12,7 @@ namespace GraphView
         {
             if (contextVariable is GremlinContextVariable)
             {
-                return contextVariable as GremlinContextVariable;
+                contextVariable = (contextVariable as GremlinContextVariable).ContextVariable;
             }
             switch (contextVariable.GetVariableType())
             {
@@ -52,6 +52,11 @@ namespace GraphView
             return ContextVariable.DefaultProjection();
         }
 
+        internal override GremlinVariableProperty GetVariableProperty(string property)
+        {
+            return ContextVariable.GetVariableProperty(property);
+        }
+
         internal override void Populate(string property)
         {
             ContextVariable.Populate(property);
@@ -59,6 +64,16 @@ namespace GraphView
             {
                 UsedProperties.Add(property);
             }
+        }
+
+        internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,
+            string columnName = null)
+        {
+            if (!UsedProperties.Contains(property))
+            {
+                UsedProperties.Add(property);
+            }
+            return ContextVariable.BottomUpPopulate(property, terminateVariable, alias, columnName);
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)

@@ -182,18 +182,7 @@ namespace GraphView
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
-                    if (VariableList[i] is GremlinGhostVariable)
-                    {
-                        var ghostVar = VariableList[i] as GremlinGhostVariable;
-                        var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
-                            ghostVar.AttachedVariable, label);
-                        taggedVariableList.Add(newGhostVar);
-                        newGhostVar.ParentContext = this;
-                    }
-                    else
-                    {
-                        taggedVariableList.Add(GremlinContextVariable.Create(VariableList[i]));
-                    }
+                    taggedVariableList.Add(GremlinContextVariable.Create(VariableList[i]));
                 }
                 else
                 {
@@ -208,13 +197,13 @@ namespace GraphView
                                 var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
                                     ghostVar.AttachedVariable, label);
                                 taggedVariableList.Add(newGhostVar);
-                                newGhostVar.ParentContext = this;
+                                //newGhostVar.ParentContext = this;
                             }
                             else
                             {
                                 GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
                                 taggedVariableList.Add(newVariable);
-                                newVariable.ParentContext = this;
+                                //newVariable.ParentContext = this;
                             }
                         }
                     }
@@ -232,19 +221,19 @@ namespace GraphView
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
-                    //in the current context
-                    if (VariableList[i] is GremlinGhostVariable)
-                    {
-                        var ghostVar = VariableList[i] as GremlinGhostVariable;
-                        var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
-                                    ghostVar.AttachedVariable, label);
-                        newGhostVar.ParentContext = this;
-                        taggedVariableList.Add(newGhostVar);
-                    }
-                    else
-                    {
+                    ////in the current context
+                    //if (VariableList[i] is GremlinGhostVariable)
+                    //{
+                    //    var ghostVar = VariableList[i] as GremlinGhostVariable;
+                    //    var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
+                    //                ghostVar.AttachedVariable, label);
+                    //    //newGhostVar.ParentContext = this;
+                    //    taggedVariableList.Add(newGhostVar);
+                    //}
+                    //else
+                    //{
                         taggedVariableList.Add(VariableList[i]);
-                    }
+                    //}
                 }
                 else
                 {
@@ -260,13 +249,13 @@ namespace GraphView
                                 var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
                                     ghostVar.AttachedVariable, label);
                                 taggedVariableList.Add(newGhostVar);
-                                newGhostVar.ParentContext = this;
+                                //newGhostVar.ParentContext = this;
                             }
                             else
                             {
                                 GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar,
                                     VariableList[i], label);
-                                newVariable.ParentContext = this;
+                                //newVariable.ParentContext = this;
                                 taggedVariableList.Add(newVariable);
                             }
                         }
