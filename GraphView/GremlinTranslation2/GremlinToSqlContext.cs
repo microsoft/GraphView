@@ -187,13 +187,14 @@ namespace GraphView
             ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(variableProperty, alias));
         }
 
-        internal List<GremlinVariable> SelectParent(string label)
+        internal List<GremlinVariable> SelectParent(string label, GremlinVariable stopVariable)
         {
-            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label);
+            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label, ParentVariable);
             if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
 
-            //Count - 1 to ignore the last one, for ignoring the other subContext
-            for (var i = 0; i < VariableList.Count; i++)
+            var stopIndex = stopVariable == null ? VariableList.Count : VariableList.IndexOf(stopVariable);
+
+            for (var i = 0; i < stopIndex; i++)
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
@@ -227,12 +228,14 @@ namespace GraphView
             return taggedVariableList;
         }
 
-        internal List<GremlinVariable> Select(string label)
+        internal List<GremlinVariable> Select(string label, GremlinVariable stopVariable = null)
         {
-            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label);
+            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label, ParentVariable);
             if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
 
-            for (var i = 0; i < VariableList.Count; i++)
+            var stopIndex = stopVariable == null ? VariableList.Count : VariableList.IndexOf(stopVariable);
+
+            for (var i = 0; i < stopIndex; i++)
             {
                 if (VariableList[i].Labels.Contains(label))
                 {

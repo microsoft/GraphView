@@ -684,12 +684,6 @@ namespace GraphView
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
                                      RepeatCondition repeatCondition)
         {
-            //Dictionary<Tuple<string, string>, Tuple<string, string>> map = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
-
-            //List<WSelectScalarExpression> inputSelectList = GetInputSelectList(useProperties, ref map);
-            //List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
-
-
             GremlinTableVariable newVariable = GremlinRepeatVariable.Create(this, repeatContext, repeatCondition);
             repeatContext.ParentVariable = newVariable;
             if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
@@ -739,6 +733,7 @@ namespace GraphView
             }
 
             List<GremlinVariable> taggedVariableList = currentContext.Select(selectKey);
+            GremlinVariable selectedVariable;
 
             if (taggedVariableList.Count == 0)
             {
@@ -747,12 +742,12 @@ namespace GraphView
             else if (taggedVariableList.Count == 1)
             {
                 taggedVariableList[0].ParentContext = currentContext;
-                currentContext.VariableList.Add(taggedVariableList.First());
-                currentContext.SetPivotVariable(taggedVariableList.First());
+                selectedVariable = taggedVariableList.First();
+                currentContext.VariableList.Add(selectedVariable);
+                currentContext.SetPivotVariable(selectedVariable);
             }
             else
             {
-                GremlinVariable selectedVariable;
                 switch (pop)
                 {
                     case GremlinKeyword.Pop.first:
@@ -765,14 +760,16 @@ namespace GraphView
                         throw new NotImplementedException();
                 }
                 selectedVariable.ParentContext = currentContext;
-                if (selectedVariable is GremlinSelectedVariable)
-                {
-                    (selectedVariable as GremlinSelectedVariable).IsFromSelect = true;
-                    (selectedVariable as GremlinSelectedVariable).Pop = pop;
-                    (selectedVariable as GremlinSelectedVariable).SelectKey = selectKey;
-                }
+                
                 currentContext.VariableList.Add(selectedVariable);
                 currentContext.SetPivotVariable(selectedVariable);
+            }
+
+            if (selectedVariable is GremlinSelectedVariable)
+            {
+                (selectedVariable as GremlinSelectedVariable).IsFromSelect = true;
+                (selectedVariable as GremlinSelectedVariable).Pop = pop;
+                (selectedVariable as GremlinSelectedVariable).SelectKey = selectKey;
             }
 
             //GremlinVariable selectVariable;
