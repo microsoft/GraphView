@@ -53,6 +53,23 @@ namespace GraphView
             RepeatContext.PopulateGremlinPath();
         }
 
+        internal override bool ContainsLabel(string label)
+        {
+            foreach (var variable in RepeatContext.VariableList)
+            {
+                if (variable.ContainsLabel(label))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
+        {
+            return RepeatContext.SelectCurrentAndChildVariable(label);
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();

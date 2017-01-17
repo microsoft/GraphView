@@ -144,7 +144,8 @@ namespace GraphView
                 {"values", "Values"},
                 {"V", "V"},
                 {"where", "Where"},
-
+                {"group", "Group"},
+                {"value", "Value"},
                 {"next", "Next"},
                 {"toList", "ToList"}
             };
