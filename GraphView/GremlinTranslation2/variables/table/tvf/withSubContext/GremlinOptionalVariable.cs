@@ -51,10 +51,16 @@ namespace GraphView
             return OptionalContext.SelectCurrentAndChildVariable(label);
         }
 
+        internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        {
+            return OptionalContext.FetchAllVariablesInCurrAndChildContext();
+        }
+
         internal override void PopulateGremlinPath()
         {
             OptionalContext.PopulateGremlinPath();
         }
+
 
         internal override bool ContainsLabel(string label)
         {

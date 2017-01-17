@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextVariable: GremlinVariable
+    internal class GremlinContextVariable: GremlinSelectedVariable
     {
         public static GremlinContextVariable Create(GremlinVariable contextVariable)
         {
-            if (contextVariable is GremlinContextVariable)
-            {
-                contextVariable = (contextVariable as GremlinContextVariable).ContextVariable;
-            }
+            //if (contextVariable is GremlinContextVariable)
+            //{
+            //    contextVariable = (contextVariable as GremlinContextVariable).ContextVariable;
+            //}
             switch (contextVariable.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
@@ -29,11 +29,12 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal override string GetVariableName()
+        {
+            return ContextVariable.GetVariableName();
+        }
+
         public GremlinVariable ContextVariable { get; set; }
-        public bool IsFromSelect { get; set; }
-        public GremlinKeyword.Pop Pop { get; set; }
-        public string SelectKey { get; set; }
-        public List<string> UsedProperties { get; set; }
 
         public GremlinContextVariable(GremlinVariable contextVariable)
         {
@@ -79,21 +80,6 @@ namespace GraphView
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
             ContextVariable.Property(currentContext, properties);
-        }
-
-        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
-        {
-            if (propertyKeys.Count == 1)
-            {
-                Populate(propertyKeys.First());
-                GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(ContextVariable, propertyKeys.First());
-                currentContext.VariableList.Add(newVariableProperty);
-                currentContext.SetPivotVariable(newVariableProperty);
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
         }
 
         internal override void Select(GremlinToSqlContext currentContext, List<string> Labels)

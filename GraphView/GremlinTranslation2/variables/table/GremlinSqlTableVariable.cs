@@ -23,15 +23,10 @@ namespace GraphView {
             throw new NotImplementedException();
         }
 
-        //internal virtual GremlinVariable PopulateFirstTaggedVariable(string label)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //internal virtual GremlinVariable PopulateLastTaggedVariable(string label)
-        //{
-        //    throw new NotImplementedException();
-        //}
+        internal virtual List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        {
+            throw new NotImplementedException();
+        }
 
         public virtual WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {

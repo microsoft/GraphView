@@ -161,24 +161,34 @@ namespace GraphView
         public List<WSelectScalarExpression> GetOuterSelectList(ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
         {
             List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
-            foreach (var variable in RepeatContext.VariableList)
+            foreach (var variable in RepeatContext.FetchAllVariablesInCurrAndChildContext())
             {
-                if (variable is GremlinContextVariable)
+                if (variable is GremlinSelectedVariable)
                 {
-                    var temp = (variable as GremlinContextVariable);
-                    if (temp.IsFromSelect)
+                    var repeatInnerVar = (variable as GremlinSelectedVariable);
+                    if (repeatInnerVar.IsFromSelect)
                     {
-                        var selectVar = RepeatContext.SelectVariable(temp.SelectKey, temp.Pop);
-                        if (selectVar != temp.ContextVariable)
+                        List<GremlinVariable> selectedVarList = RepeatContext.Select(repeatInnerVar.SelectKey);
+                        GremlinSelectedVariable selectedVar = null;
+                        switch (repeatInnerVar.Pop)
                         {
-                            foreach (var property in temp.UsedProperties)
+                            case GremlinKeyword.Pop.last:
+                                selectedVar = selectedVarList.Last() as GremlinSelectedVariable;
+                                break;
+                            case GremlinKeyword.Pop.first:
+                                selectedVar = selectedVarList.First() as GremlinSelectedVariable;
+                                break;
+                            Default:
+                                selectedVar = new GremlinListVariable(selectedVarList);
+                        }
+                        if (repeatInnerVar != selectedVar)
+                        {
+                            foreach (var property in selectedVar.UsedProperties)
                             {
-                                selectVar.Populate(property);
-                                //var alias = temp.ContextVariable.VariableName + "." + property;
-                                var projectValue = SqlUtil.GetColumnReferenceExpr(selectVar.VariableName, property);
+                                selectedVar.Populate(property);
                                 var tuple = GetMapTuple();
-                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, tuple.Item2));
-                                map[new Tuple<string, string>(temp.ContextVariable.VariableName, property)] = tuple;
+                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(selectedVar.GetVariableProperty(property).ToScalarExpression(), tuple.Item2));
+                                map[new Tuple<string, string>(repeatInnerVar.GetVariableName(), property)] = tuple;
                             }
                         }
                     }

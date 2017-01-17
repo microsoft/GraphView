@@ -34,6 +34,11 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
+        internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        {
+            return SqlTableVariable?.FetchAllVariablesInCurrAndChildContext();
+        }
+
         public virtual WTableReference ToTableReference()
         {
             if (SqlTableVariable != null)

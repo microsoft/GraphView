@@ -119,6 +119,21 @@ namespace GraphView
             return taggedVariableList;
         }
 
+        internal List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            for (var i = 0; i < VariableList.Count; i++)
+            {
+                variableList.Add(VariableList[i]);
+                List<GremlinVariable> subContextVariableList = VariableList[i].FetchAllVariablesInCurrAndChildContext();
+                if (subContextVariableList != null)
+                {
+                    variableList.AddRange(subContextVariableList);
+                }
+            }
+            return variableList;
+        }
+
         //internal GremlinVariable PopulateCurrAndChildContextAllTaggedVariable(string label)
         //{
         //    List<GremlinVariable> taggedVariableList = new List<GremlinVariable>();
@@ -337,23 +352,6 @@ namespace GraphView
             isPopulateGremlinPath = true;
         }
 
-        internal GremlinVariable SelectVariable(string selectKey, GremlinKeyword.Pop pop = GremlinKeyword.Pop.Default)
-        {
-            if (!TaggedVariables.ContainsKey(selectKey))
-            {
-                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
-            }
-            switch (pop)
-            {
-                case GremlinKeyword.Pop.first:
-                    return TaggedVariables[selectKey].First();
-                case GremlinKeyword.Pop.last:
-                    return TaggedVariables[selectKey].Last();
-                default:
-                    return TaggedVariables[selectKey].Last();
-            }
-        }
-
         internal void SetPivotVariable(GremlinVariable newPivotVariable)
         {
             PivotVariable = newPivotVariable;
@@ -542,14 +540,13 @@ namespace GraphView
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    if (PivotVariable is GremlinGhostVariable)
+                    if (projectProperty == GremlinKeyword.TableValue)
                     {
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr((PivotVariable as GremlinGhostVariable).GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
                     }
                     else
                     {
-                        var columnRefExpr = SqlUtil.GetColumnReferenceExpr(PivotVariable.VariableName, projectProperty);
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr(columnRefExpr));
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression()));
                     }
                 }
             }

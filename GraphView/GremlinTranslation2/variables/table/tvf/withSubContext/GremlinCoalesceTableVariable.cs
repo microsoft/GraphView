@@ -50,6 +50,21 @@ namespace GraphView
             }
         }
 
+        internal override bool ContainsLabel(string label)
+        {
+            foreach (var context in CoalesceContextList)
+            {
+                foreach (var variable in context.VariableList)
+                {
+                    if (variable.ContainsLabel(label))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         public override  WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

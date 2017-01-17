@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinListVariable: GremlinVariable
+    internal class GremlinListVariable: GremlinSelectedVariable
     {
         public List<GremlinVariable> GremlinVariableList;
 
