@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinBranchVariable: GremlinVariable
+    internal class GremlinBranchVariable : GremlinVariable
     {
         protected static int _count = 0;
 
@@ -33,7 +33,7 @@ namespace GraphView
             {
                 if (branchVariable.Count() > 1) return GremlinVariableType.Table;
             }
-            
+
             if (checkIsTheSameType())
             {
                 return BrachVariableList.First().First().GetVariableType();
@@ -79,6 +79,19 @@ namespace GraphView
                 checkList.Add(branchVariable.First());
             }
             return GremlinUtil.IsTheSameType(checkList);
+        }
+
+        internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,
+            string columnName = null)
+        {
+            foreach (var variableList in (this as GremlinBranchVariable).BrachVariableList)
+            {
+                foreach (var variable in variableList)
+                {
+                    variable.BottomUpPopulate(property, terminateVariable, alias, columnName);
+                }
+            }
+            return alias + "_" + property;
         }
     }
 }

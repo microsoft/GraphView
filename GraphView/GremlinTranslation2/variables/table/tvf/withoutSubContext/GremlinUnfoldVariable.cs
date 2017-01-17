@@ -31,12 +31,27 @@ namespace GraphView
             UnfoldVariable = unfoldVariable;
         }
 
+        internal override void Populate(string property)
+        {
+        }
+
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
         {
-            List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(UnfoldVariable.DefaultProjection().ToScalarExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, gremlinVariable, tableName);
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            if (UnfoldVariable is GremlinListVariable)
+            {
+                List<WScalarExpression> parameters = new List<WScalarExpression>();
+                parameters.Add((UnfoldVariable as GremlinListVariable).ToScalarExpression());
+                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, gremlinVariable, tableName);
+                return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            }
+            else
+            {
+                List<WScalarExpression> parameters = new List<WScalarExpression>();
+                parameters.Add(UnfoldVariable.DefaultProjection().ToScalarExpression());
+                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, gremlinVariable, tableName);
+                return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            }
+            throw new NotImplementedException();
         }
     }
 

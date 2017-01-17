@@ -34,6 +34,7 @@ namespace GraphView
         public GremlinContextVariable InputVariable { get; set; }
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
+        public List<Tuple<string, GremlinVariable>> SelectedVariableList { get; set; }
 
         public GremlinRepeatVariable(GremlinContextVariable inputVariable, GremlinToSqlContext repeatContext,
                                     RepeatCondition repeatCondition)
@@ -41,6 +42,7 @@ namespace GraphView
             RepeatContext = repeatContext;
             InputVariable = inputVariable;
             RepeatCondition = repeatCondition;
+            SelectedVariableList = new List<Tuple<string, GremlinVariable>>();
         }
 
         internal override void Populate(string property)
@@ -67,7 +69,13 @@ namespace GraphView
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
         {
-            return RepeatContext.SelectCurrentAndChildVariable(label);
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            foreach (var repeatSelectVar in RepeatContext.SelectCurrentAndChildVariable(label))
+            {
+                variableList.Add(new GremlinRepeatSelectedVariable(parentVariable, repeatSelectVar, label));
+                SelectedVariableList.Add(new Tuple<string, GremlinVariable>(label, repeatSelectVar));
+            }
+            return variableList;
         }
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
@@ -130,6 +138,28 @@ namespace GraphView
                 {
                     firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
                     selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
+                }
+            }
+
+            if (SelectedVariableList.Count != 0)
+            {
+                foreach (var selectedVariableTuple in SelectedVariableList)
+                {
+                    var columnName = selectedVariableTuple.Item1;
+                    var selectedVariable = selectedVariableTuple.Item2;
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null),
+                        columnName));
+
+                    List<WScalarExpression> compose1Paramters = new List<WScalarExpression>();
+                    compose1Paramters.Add(selectedVariable.DefaultProjection().ToScalarExpression());
+                    //foreach (var property in selectedVariable.Item2)
+                    WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Paramters);
+
+                    List<WScalarExpression> compose2Paramters = new List<WScalarExpression>();
+                    compose2Paramters.Add(compose1);
+                    compose2Paramters.Add(SqlUtil.GetColumnReferenceExpr("R", columnName));
+                    WFunctionCall compose2 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose2, compose2Paramters);
+                    selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(compose2, columnName));
                 }
             }
 

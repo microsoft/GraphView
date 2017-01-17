@@ -71,29 +71,15 @@ namespace GraphView
 
         internal virtual string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
         {
-            if (this is GremlinBranchVariable)
+            if (terminateVariable == this) return property;
+            if (ParentContext == null) throw new Exception();
+            if (columnName == null)
             {
-                foreach (var variableList in (this as GremlinBranchVariable).BrachVariableList)
-                {
-                    foreach (var variable in variableList)
-                    {
-                        variable.BottomUpPopulate(property, terminateVariable, alias, columnName);
-                    }
-                } 
-                return alias + "_" + property;
+                columnName = alias + "_" + property;
             }
-            else
-            {
-                if (terminateVariable == this) return property;
-                if (ParentContext == null) throw new Exception();
-                if (columnName == null)
-                {
-                    columnName = alias + "_" + property;
-                }
-                ParentContext.AddProjectVariablePropertiesList(new GremlinVariableProperty(this, property), columnName);
-                if (ParentContext.ParentVariable == null) throw new Exception();
-                return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
-            }
+            ParentContext.AddProjectVariablePropertiesList(new GremlinVariableProperty(this, property), columnName);
+            if (ParentContext.ParentVariable == null) throw new Exception();
+            return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
         }
 
         internal virtual void PopulateGremlinPath() {}
@@ -759,8 +745,9 @@ namespace GraphView
                     default:
                         throw new NotImplementedException();
                 }
+                if (selectedVariable is GremlinRepeatSelectedVariable) throw new NotImplementedException();
+
                 selectedVariable.ParentContext = currentContext;
-                
                 currentContext.VariableList.Add(selectedVariable);
                 currentContext.SetPivotVariable(selectedVariable);
             }
