@@ -35,6 +35,9 @@ namespace GraphView
         public GremlinToSqlContext RepeatContext { get; set; }
         public RepeatCondition RepeatCondition { get; set; }
 
+        private List<WSelectScalarExpression> inputSelectList { get; set; }
+        private List<WSelectScalarExpression> outerSelectList { get; set; }
+
         public GremlinRepeatVariable(GremlinContextVariable inputVariable, GremlinToSqlContext repeatContext,
                                     RepeatCondition repeatCondition)
         {
@@ -65,10 +68,7 @@ namespace GraphView
             }
 
             //Set the select Elements
-            Dictionary<Tuple<string, string>, Tuple<string, string>> map = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
 
-            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(useProperties, ref map);
-            List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
             selectQueryBlock.SelectElements.Clear();
@@ -81,50 +81,50 @@ namespace GraphView
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
 
-            ModifyColumnNameVisitor newVisitor = new ModifyColumnNameVisitor();
-            newVisitor.Invoke(selectQueryBlock, map);
+            //ModifyColumnNameVisitor newVisitor = new ModifyColumnNameVisitor();
+            //newVisitor.Invoke(selectQueryBlock, map);
 
-            WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
-            foreach (var item in map)
-            {
-                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(item.Key.Item1, item.Key.Item2), item.Value.Item2));
-            }
+            //WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
+            //foreach (var item in map)
+            //{
+            //    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(item.Key.Item1, item.Key.Item2), item.Value.Item2));
+            //}
 
-            if (projectProperties.Count == 0)
-            {
-                projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
+            //if (projectProperties.Count == 0)
+            //{
+            //    projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
 
-                if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
-                {
-                    firstQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
-                    selectQueryBlock.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
-                }
-                else
-                {
-                    firstQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression()));
-                    selectQueryBlock.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression()));
-                }
-                
-            }
-            else
-            {
-                foreach (var temp in projectProperties)
-                {
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
-                    selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
-                }
-            }
-            
+            //    if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
+            //    {
+            //        firstQueryExpr.SelectElements.Add(
+            //            SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
+            //        selectQueryBlock.SelectElements.Add(
+            //            SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
+            //    }
+            //    else
+            //    {
+            //        firstQueryExpr.SelectElements.Add(
+            //            SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression()));
+            //        selectQueryBlock.SelectElements.Add(
+            //            SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+            //    }
+
+            //}
+            //else
+            //{
+            //    foreach (var temp in projectProperties)
+            //    {
+            //        firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
+            //        selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
+            //    }
+            //}
 
 
-            var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
 
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            PropertyKeys.Add(GetRepeatConditionExpression());
+            //var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
+
+            //PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
+            //PropertyKeys.Add(GetRepeatConditionExpression());
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, gremlinVariable, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
@@ -142,60 +142,60 @@ namespace GraphView
             };
         }
 
-        public List<WSelectScalarExpression> GetInputSelectList(List<string> projectProperties, ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
-        {
-            List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
-            foreach (var projectProperty in projectProperties)
-            {
-                var projectValue = SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
-                    projectProperty);
-                //var alias = InputVariable.VariableName + "." + projectProperty;
-                var tuple = GetMapTuple();
-                inputSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, tuple.Item2));
-                map[new Tuple<string, string>(InputVariable.VariableName, projectProperty)] = tuple;
-            }
+        //public static List<WSelectScalarExpression> GetInputSelectList(List<string> projectProperties, ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
+        //{
+        //    List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
+        //    foreach (var projectProperty in projectProperties)
+        //    {
+        //        var projectValue = SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName,
+        //            projectProperty);
+        //        //var alias = InputVariable.VariableName + "." + projectProperty;
+        //        var tuple = GetMapTuple();
+        //        inputSelectList.Add(SqlUtil.GetSelectScalarExpr(projectValue, tuple.Item2));
+        //        map[new Tuple<string, string>(InputVariable.VariableName, projectProperty)] = tuple;
+        //    }
 
-            return inputSelectList;
-        }
+        //    return inputSelectList;
+        //}
 
-        public List<WSelectScalarExpression> GetOuterSelectList(ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
-        {
-            List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
-            foreach (var variable in RepeatContext.FetchAllVariablesInCurrAndChildContext())
-            {
-                if (variable is GremlinSelectedVariable)
-                {
-                    var repeatInnerVar = (variable as GremlinSelectedVariable);
-                    if (repeatInnerVar.IsFromSelect)
-                    {
-                        List<GremlinVariable> selectedVarList = RepeatContext.Select(repeatInnerVar.SelectKey);
-                        GremlinSelectedVariable selectedVar = null;
-                        switch (repeatInnerVar.Pop)
-                        {
-                            case GremlinKeyword.Pop.last:
-                                selectedVar = selectedVarList.Last() as GremlinSelectedVariable;
-                                break;
-                            case GremlinKeyword.Pop.first:
-                                selectedVar = selectedVarList.First() as GremlinSelectedVariable;
-                                break;
-                            Default:
-                                selectedVar = new GremlinListVariable(selectedVarList);
-                        }
-                        if (repeatInnerVar != selectedVar)
-                        {
-                            foreach (var property in selectedVar.UsedProperties)
-                            {
-                                selectedVar.Populate(property);
-                                var tuple = GetMapTuple();
-                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(selectedVar.GetVariableProperty(property).ToScalarExpression(), tuple.Item2));
-                                map[new Tuple<string, string>(repeatInnerVar.GetVariableName(), property)] = tuple;
-                            }
-                        }
-                    }
-                }
-            }
-            return outerSelectList;
-        }
+        //public static List<WSelectScalarExpression> GetOuterSelectList(ref Dictionary<Tuple<string, string>, Tuple<string, string>> map)
+        //{
+        //    List<WSelectScalarExpression> outerSelectList = new List<WSelectScalarExpression>();
+        //    foreach (var variable in RepeatContext.FetchAllVariablesInCurrAndChildContext())
+        //    {
+        //        if (variable is GremlinSelectedVariable)
+        //        {
+        //            var repeatInnerVar = (variable as GremlinSelectedVariable);
+        //            if (repeatInnerVar.IsFromSelect)
+        //            {
+        //                List<GremlinVariable> selectedVarList = RepeatContext.Select(repeatInnerVar.SelectKey);
+        //                GremlinSelectedVariable selectedVar = null;
+        //                switch (repeatInnerVar.Pop)
+        //                {
+        //                    case GremlinKeyword.Pop.last:
+        //                        selectedVar = selectedVarList.Last() as GremlinSelectedVariable;
+        //                        break;
+        //                    case GremlinKeyword.Pop.first:
+        //                        selectedVar = selectedVarList.First() as GremlinSelectedVariable;
+        //                        break;
+        //                    Default:
+        //                        selectedVar = new GremlinListVariable(selectedVarList);
+        //                }
+        //                if (repeatInnerVar != selectedVar)
+        //                {
+        //                    foreach (var property in selectedVar.UsedProperties)
+        //                    {
+        //                        selectedVar.Populate(property);
+        //                        var tuple = GetMapTuple();
+        //                        outerSelectList.Add(SqlUtil.GetSelectScalarExpr(selectedVar.GetVariableProperty(property).ToScalarExpression(), tuple.Item2));
+        //                        map[new Tuple<string, string>(repeatInnerVar.GetVariableName(), property)] = tuple;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    return outerSelectList;
+        //}
 
         public Tuple<string, string> GetMapTuple()
         {

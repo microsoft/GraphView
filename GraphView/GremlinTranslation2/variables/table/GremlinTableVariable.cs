@@ -457,7 +457,8 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.NodeID);
+            Populate(GremlinKeyword.Star);
+            return new GremlinVariableProperty(this, GremlinKeyword.Star);
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -510,7 +511,8 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
+            Populate(GremlinKeyword.Star);
+            return new GremlinVariableProperty(this, GremlinKeyword.Star);
         }
 
         internal override GremlinVariableType GetVariableType()

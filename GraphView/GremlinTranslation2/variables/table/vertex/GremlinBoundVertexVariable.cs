@@ -23,7 +23,6 @@ namespace GraphView
             {
                 PropertyKeys.Add(variableProperty.ToScalarExpression());
             }
-            Populate(GremlinKeyword.NodeID);
             foreach (var property in ProjectedProperties)
             {
                 PropertyKeys.Add(SqlUtil.GetValueExpr(property));

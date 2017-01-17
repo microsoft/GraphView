@@ -684,6 +684,12 @@ namespace GraphView
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
                                      RepeatCondition repeatCondition)
         {
+            //Dictionary<Tuple<string, string>, Tuple<string, string>> map = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
+
+            //List<WSelectScalarExpression> inputSelectList = GetInputSelectList(useProperties, ref map);
+            //List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
+
+
             GremlinTableVariable newVariable = GremlinRepeatVariable.Create(this, repeatContext, repeatCondition);
             repeatContext.ParentVariable = newVariable;
             if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
