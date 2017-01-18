@@ -963,16 +963,19 @@ namespace GraphView
         {
             sCSCode = sCSCode.Replace("\'", "\"");
 
+            //repleace gremlin steps with uppercase
             foreach (var item in GremlinKeyword.GremlinStepToGraphTraversalDict)
             {
                 string originStr = "." + item.Key + "(";
                 string targetStr = "." + item.Value + "(";
                 sCSCode = sCSCode.Replace(originStr, targetStr);
             }
+            //repleace with GraphTraversal FunctionName
             foreach (var item in GremlinKeyword.GremlinMainStepToGraphTraversalDict)
             {
                 sCSCode = sCSCode.Replace(item.Key, item.Value);
             }
+            //repleace gremlin predicate with GraphTraversal predicate
             foreach (var item in GremlinKeyword.GremlinPredicateToGraphTraversalDict)
             {
                 RegexOptions ops = RegexOptions.Multiline;
@@ -984,6 +987,8 @@ namespace GraphView
                     sCSCode = sCSCode.Replace(match.Groups[0].Value, match.Groups[0].Value[0] + item.Value + "(");
                 }
             }
+
+            //repeleace gremlin keyword
             foreach (var item in GremlinKeyword.GremlinKeywordToGraphTraversalDict)
             {
                 RegexOptions ops = RegexOptions.Multiline;
@@ -992,6 +997,24 @@ namespace GraphView
                 {
                     var match = r.Match(sCSCode);
                     sCSCode = sCSCode.Replace(match.Groups[1].Value, item.Value);
+                }
+            }
+
+            //replace gremlin array with C# array
+            Regex arrayRegex = new Regex("[\\[]((\\s*?[\\\"|']\\w+[\\\"|']\\s*?[,]*?\\s*?)*)[\\]]", RegexOptions.Multiline);
+            var matchtest = arrayRegex.Match(sCSCode);
+            if (arrayRegex.IsMatch(sCSCode))
+            {
+                var matchs = arrayRegex.Matches(sCSCode);
+                for (var i = 0; i < matchs.Count; i++)
+                {
+                    List<string> values = new List<string>();
+                    for (var j = 0; j < matchs[i].Groups.Count; j++)
+                    {
+                        values.Add(matchs[i].Groups[j].Value);
+                    }
+                    sCSCode = sCSCode.Replace(matchs[i].Groups[0].Value, "new List<string>() {"+ matchs[i].Groups[1].Value + "}");
+                    values.Clear();
                 }
             }
             return sCSCode;
@@ -1007,6 +1030,7 @@ namespace GraphView
             StringBuilder sb = new StringBuilder("");
             sb.Append("using GraphView;\n");
             sb.Append("using System;\n");
+            sb.Append("using System.Collections.Generic;\n");
 
             sb.Append("namespace GraphView { \n");
             sb.Append("public class Program { \n");
