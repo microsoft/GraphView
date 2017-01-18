@@ -15,12 +15,10 @@ namespace GraphView
             return "R_" + _count++;
         }
 
-        public List<string> ProjectedProperties { get; set; }
         public GremlinSqlTableVariable SqlTableVariable { get; set; }
 
         public GremlinTableVariable()
         {
-            ProjectedProperties = new List<string>();
             VariableName = GenerateTableAlias();
         }
 
@@ -31,7 +29,6 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            Populate(GremlinKeyword.TableValue);
             return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
 
@@ -63,10 +60,7 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (!ProjectedProperties.Contains(property))
-            {
-                ProjectedProperties.Add(property);
-            }
+            base.Populate(property);
             SqlTableVariable?.Populate(property);
         }
 

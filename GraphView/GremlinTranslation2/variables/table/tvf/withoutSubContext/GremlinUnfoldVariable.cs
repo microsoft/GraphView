@@ -33,6 +33,7 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            UnfoldVariable.Populate(property);
         }
 
         public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
@@ -41,6 +42,10 @@ namespace GraphView
             {
                 List<WScalarExpression> parameters = new List<WScalarExpression>();
                 parameters.Add((UnfoldVariable as GremlinListVariable).ToScalarExpression());
+                foreach (var projectProperty in projectProperties)
+                {
+                    parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+                }
                 var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, gremlinVariable, tableName);
                 return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
             }
@@ -71,7 +76,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinUnfoldTableVariable : GremlinEdgeTableVariable
+    internal class GremlinUnfoldTableVariable : GremlinTableVariable
     {
         public GremlinUnfoldTableVariable(GremlinVariable unfoldVariable)
         {
@@ -79,7 +84,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinUnfoldScalarVariable : GremlinEdgeTableVariable
+    internal class GremlinUnfoldScalarVariable : GremlinScalarTableVariable
     {
         public GremlinUnfoldScalarVariable(GremlinVariable unfoldVariable)
         {

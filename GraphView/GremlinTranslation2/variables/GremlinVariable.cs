@@ -38,13 +38,15 @@ namespace GraphView
         public int Low { get; set; }
         public int High { get; set; }
         public List<string> Labels { get; set; }
-        public GremlinToSqlContext ParentContext;
+        public GremlinToSqlContext ParentContext { get; set; }
+        public List<string> ProjectedProperties { get; set; }
 
         public GremlinVariable()
         {
             Low = Int32.MinValue;
             High = Int32.MaxValue;
             Labels = new List<string>();
+            ProjectedProperties = new List<string>();
         }
 
         internal virtual GremlinVariableType GetVariableType()
@@ -57,7 +59,13 @@ namespace GraphView
             return Labels.Contains(label);
         }
 
-        internal virtual void Populate(string property) {}
+        internal virtual void Populate(string property)
+        {
+            if (!ProjectedProperties.Contains(property))
+            {
+                ProjectedProperties.Add(property);
+            }
+        }
 
         internal virtual GremlinVariableProperty GetVariableProperty(string property)
         {
@@ -677,12 +685,12 @@ namespace GraphView
         {
             GremlinTableVariable newVariable = GremlinRepeatVariable.Create(this, repeatContext, repeatCondition);
             repeatContext.ParentVariable = newVariable;
-            if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
-                newVariable.Populate(GremlinKeyword.EdgeID);
-            if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
-                newVariable.Populate(GremlinKeyword.NodeID);
-            if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Scalar)
-                newVariable.Populate(GremlinKeyword.TableValue);
+            //if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
+            //    newVariable.Populate(GremlinKeyword.EdgeID);
+            //if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
+            //    newVariable.Populate(GremlinKeyword.NodeID);
+            ////if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Scalar)
+            ////    newVariable.Populate(GremlinKeyword.TableValue);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -1101,7 +1109,8 @@ namespace GraphView
                 //TODO
                 var compareVar = currentContext.Select(predicate.Label);
                 if (compareVar.Count > 1) throw new Exception();
-                Populate(compareVar.First().DefaultVariableProperty().VariableProperty);
+                if (compareVar.First().GetVariableType() != GremlinVariableType.Table)
+                    Populate(compareVar.First().DefaultVariableProperty().VariableProperty);
                 secondExpr = compareVar.First().DefaultVariableProperty().ToScalarExpression();
             }
             else

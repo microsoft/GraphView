@@ -73,29 +73,8 @@ namespace GraphView
                 var variableList = context.SelectCurrentAndChildVariable(label);
                 branchVariable.BrachVariableList.Add(variableList);
             }
-            //GremlinToSqlContext newContext = new GremlinToSqlContext();
-            //newContext.ParentVariable = parentVariable;
-            //branchVariable.ParentContext = newContext;
             return new List<GremlinVariable>() {branchVariable};
         }
-
-        //internal override GremlinVariable PopulateFirstTaggedVariable(string label)
-        //{
-        //    foreach (var context in UnionContextList)
-        //    {
-        //        context.PopulateCurrAndChildContextFirstTaggedVariable(label);
-        //    }
-        //    return null;
-        //}
-
-        //internal override GremlinVariable PopulateLastTaggedVariable(string label)
-        //{
-        //    foreach (var context in UnionContextList)
-        //    {
-        //        context.PopulateCurrAndChildContextLastTaggedVariable(label);
-        //    }
-        //    return null;
-        //}
 
         internal override bool ContainsLabel(string label)
         {
@@ -163,11 +142,13 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            string key =
-                (SqlTableVariable as GremlinUnionVariable).UnionContextList.First()
-                    .PivotVariable.DefaultVariableProperty()
-                    .VariableProperty;
-            return new GremlinVariableProperty(this, key);
+            foreach (var context in (SqlTableVariable as GremlinUnionVariable).UnionContextList)
+            {
+                context.ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(
+                    context.PivotVariable.DefaultVariableProperty(), GremlinKeyword.TableValue
+                    ));   
+            }
+            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
     }
 }

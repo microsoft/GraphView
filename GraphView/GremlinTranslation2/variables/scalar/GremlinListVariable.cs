@@ -20,6 +20,15 @@ namespace GraphView
             return new GremlinVariableProperty(null, GremlinKeyword.ScalarValue);
         }
 
+        internal override void Populate(string property)
+        {
+            foreach (var variable in GremlinVariableList)
+            {
+                variable.Populate(property);
+            }
+            base.Populate(property);
+        }
+
         internal WScalarExpression ToScalarExpression()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -32,7 +41,10 @@ namespace GraphView
                 else
                 {
                     List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
-                    compose1Parameters.Add(variable.DefaultVariableProperty().ToScalarExpression());
+                    foreach (var property in ProjectedProperties)
+                    {
+                        compose1Parameters.Add(variable.GetVariableProperty(property).ToScalarExpression());
+                    }
                     WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
                     parameters.Add(compose1);
                 }
@@ -42,7 +54,8 @@ namespace GraphView
 
         internal override GremlinVariableType GetVariableType()
         {
-            return GremlinVariableType.Scalar;
+            if (GremlinUtil.IsTheSameType(GremlinVariableList)) return GremlinVariableList.First().GetVariableType();
+            return GremlinVariableType.Table;
         }
 
         internal override void Unfold(GremlinToSqlContext currentContext)
