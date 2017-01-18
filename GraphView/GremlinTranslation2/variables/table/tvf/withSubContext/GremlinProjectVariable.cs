@@ -19,7 +19,10 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            throw new NotImplementedException();
+            foreach (var context in ProjectContextList)
+            {
+                context.Populate(property);
+            }
         }
 
         //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)

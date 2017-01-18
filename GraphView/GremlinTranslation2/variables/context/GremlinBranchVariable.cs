@@ -68,7 +68,7 @@ namespace GraphView
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.NodeID);
                 }
             }
-            throw new NotImplementedException();
+            return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
         }
 
         internal override GremlinVariableProperty DefaultProjection()

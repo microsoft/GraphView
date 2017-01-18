@@ -134,48 +134,6 @@ namespace GraphView
             return variableList;
         }
 
-        //internal GremlinVariable PopulateCurrAndChildContextAllTaggedVariable(string label)
-        //{
-        //    List<GremlinVariable> taggedVariableList = new List<GremlinVariable>();
-        //    //Populate Variable and add them to ProjectVariableList
-        //    foreach (var currentContextVariable in VariableList)
-        //    {
-        //        if (currentContextVariable.ContainsLabel(label))
-        //        {
-        //            var taggedVariable = currentContextVariable.PopulateAllTaggedVariable(label);
-        //            taggedVariableList.Add(taggedVariable);
-        //            ProjectVariableList.Add(new Tuple<string, GremlinVariable>(label, taggedVariable));
-        //        }
-        //    }
-        //    if (taggedVariableList.Count == 0) return null;
-        //    if (taggedVariableList.Count == 1) return taggedVariableList.First();
-        //    return new GremlinListVariable(taggedVariableList);
-        //}
-
-        //internal void PopulateCurrAndChildContextFirstTaggedVariable(string label)
-        //{
-        //Populate Variable and add them to ProjectVariableList
-        //foreach (var currentContextVariable in VariableList)
-        //{
-        //    if (currentContextVariable.ContainsLabel(label))
-        //    {
-        //        ProjectVariableList.Add(currentContextVariable.PopulateFirstTaggedVariable(label));
-        //    }
-        //}
-        //}
-
-        //internal void PopulateCurrAndChildContextLastTaggedVariable(string label)
-        //{
-        //    //Populate Variable and add them to ProjectVariableList
-        //    //foreach (var currentContextVariable in VariableList)
-        //    //{
-        //    //    if (currentContextVariable.ContainsLabel(label))
-        //    //    {
-        //    //        ProjectVariableList.Add(currentContextVariable.PopulateLastTaggedVariable(label));
-        //    //    }
-        //    //}
-        //}
-
         internal void AddProjectVariablePropertiesList(GremlinVariableProperty variableProperty, string alias)
         {
             foreach (var projectProperty in ProjectVariablePropertiesList)
@@ -213,13 +171,11 @@ namespace GraphView
                                 var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
                                     ghostVar.AttachedVariable, label);
                                 taggedVariableList.Add(newGhostVar);
-                                //newGhostVar.ParentContext = this;
                             }
                             else
                             {
                                 GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
                                 taggedVariableList.Add(newVariable);
-                                //newVariable.ParentContext = this;
                             }
                         }
                     }
@@ -239,19 +195,7 @@ namespace GraphView
             {
                 if (VariableList[i].Labels.Contains(label))
                 {
-                    ////in the current context
-                    //if (VariableList[i] is GremlinGhostVariable)
-                    //{
-                    //    var ghostVar = VariableList[i] as GremlinGhostVariable;
-                    //    var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
-                    //                ghostVar.AttachedVariable, label);
-                    //    //newGhostVar.ParentContext = this;
-                    //    taggedVariableList.Add(newGhostVar);
-                    //}
-                    //else
-                    //{
-                        taggedVariableList.Add(VariableList[i]);
-                    //}
+                    taggedVariableList.Add(VariableList[i]);
                 }
                 else
                 {
@@ -267,13 +211,11 @@ namespace GraphView
                                 var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
                                     ghostVar.AttachedVariable, label);
                                 taggedVariableList.Add(newGhostVar);
-                                //newGhostVar.ParentContext = this;
                             }
                             else
                             {
                                 GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar,
                                     VariableList[i], label);
-                                //newVariable.ParentContext = this;
                                 taggedVariableList.Add(newVariable);
                             }
                         }
