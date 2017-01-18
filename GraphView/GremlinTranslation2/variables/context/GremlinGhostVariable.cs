@@ -12,7 +12,7 @@ namespace GraphView
         {
             RealVariable = realVariable;
             AttachedVariable = attachedVariable;
-            ColumnReferenceMap = new Dictionary<Tuple<string, string>, Tuple<string, string>>();
+            ColumnReferenceMap = new Dictionary<Tuple<string, string>, string>();
             UsedProperties = new List<string>();
             SelectKey = label;
         }
@@ -40,12 +40,13 @@ namespace GraphView
 
         public GremlinVariable RealVariable { get; set; }
         public GremlinVariable AttachedVariable { get; set; }
-        public Dictionary<Tuple<string, string>, Tuple<string, string>> ColumnReferenceMap { get; set; }
+        public Dictionary<Tuple<string, string>, string> ColumnReferenceMap { get; set; }
 
         internal override GremlinVariableProperty GetVariableProperty(string property)
         {
-            var temp = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)];
-            return new GremlinVariableProperty(AttachedVariable, temp.Item2);
+            Populate(property);
+            var column = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)];
+            return new GremlinVariableProperty(AttachedVariable, column);
         }
 
         internal override string GetVariableName()
@@ -74,11 +75,11 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            RealVariable.Populate(property);
             if (!ColumnReferenceMap.ContainsKey(new Tuple<string, string>(RealVariable.VariableName, property)))
             {
                 var column = RealVariable.BottomUpPopulate(property, AttachedVariable, SelectKey);
-                ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)] =
-                    new Tuple<string, string>(AttachedVariable.VariableName, column);
+                ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)] = column;
             }
 
             if (!UsedProperties.Contains(property))

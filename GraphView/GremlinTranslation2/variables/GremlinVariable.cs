@@ -69,6 +69,7 @@ namespace GraphView
 
         internal virtual GremlinVariableProperty GetVariableProperty(string property)
         {
+            Populate(property);
             return new GremlinVariableProperty(this, property);
         }
 
@@ -102,18 +103,6 @@ namespace GraphView
         {
             return null;
         }
-
-        //internal virtual GremlinVariable PopulateLastTaggedVariable(string label)
-        //{
-        //    if (Labels.Contains(label)) return this;
-        //    return null;
-        //}
-
-        //internal virtual GremlinVariable PopulateFirstTaggedVariable(string label)
-        //{
-        //    if (Labels.Contains(label)) return this;
-        //    return null;
-        //}
 
         internal virtual GremlinVariableProperty GetPath()
         {
@@ -874,10 +863,7 @@ namespace GraphView
 
         internal virtual void Unfold(GremlinToSqlContext currentContext)
         {
-            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
+            throw new NotImplementedException();
         }
 
         internal virtual void Union(ref GremlinToSqlContext currentContext, List<GremlinToSqlContext> unionContexts)
@@ -940,9 +926,8 @@ namespace GraphView
                 //TODO
                 var compareVar = currentContext.Select(predicate.Label);
                 if (compareVar.Count > 1) throw new Exception();
-                if (compareVar.First().GetVariableType() != GremlinVariableType.Table)
-                    Populate(compareVar.First().DefaultVariableProperty().VariableProperty);
-                secondExpr = compareVar.First().DefaultVariableProperty().ToScalarExpression();
+                compareVar.First().Populate(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType()));
+                secondExpr = new GremlinVariableProperty(compareVar.First(), GremlinUtil.GetTypeKeyWithVariableType(GetVariableType())).ToScalarExpression();
             }
             else
             {

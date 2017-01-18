@@ -24,12 +24,14 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
+            throw new NotImplementedException();
+            //return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
+            throw new NotImplementedException();
+            //return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -46,10 +48,6 @@ namespace GraphView
         {
             if (SqlTableVariable != null)
             {
-                //if (ProjectedProperties.Count == 0)
-                //{
-                //    Populate(DefaultVariableProperty().VariableProperty);
-                //}
                 return SqlTableVariable.ToTableReference(ProjectedProperties, VariableName, this);
             }
             else
@@ -77,21 +75,6 @@ namespace GraphView
                 return base.PopulateAllTaggedVariable(label);
         }
 
-        //internal override GremlinVariable PopulateFirstTaggedVariable(string label)
-        //{
-        //    if (SqlTableVariable != null)
-        //        return SqlTableVariable.PopulateFirstTaggedVariable(label);
-        //    else
-        //        return base.PopulateFirstTaggedVariable(label);
-        //}
-
-        //internal override GremlinVariable PopulateLastTaggedVariable(string label)
-        //{
-        //    if (SqlTableVariable != null)
-        //        return SqlTableVariable.PopulateLastTaggedVariable(label);
-        //    else
-        //        return base.PopulateLastTaggedVariable(label);
-        //}
 
         internal override bool ContainsLabel(string label)
         {
@@ -430,6 +413,23 @@ namespace GraphView
 
     internal abstract class GremlinScalarTableVariable : GremlinTableVariable
     {
+        internal override void Populate(string property)
+        {
+            if (property == GremlinKeyword.EdgeID
+                || property == GremlinKeyword.EdgeAdj
+                || property == GremlinKeyword.ReverseEdgeAdj
+                || property == GremlinKeyword.EdgeSourceV
+                || property == GremlinKeyword.EdgeSinkV
+                || property == GremlinKeyword.EdgeOtherV
+                || property == GremlinKeyword.NodeID
+            )
+            {
+                return;
+            }
+            base.Populate(property);
+            SqlTableVariable?.Populate(property);
+        }
+
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
             Populate(GremlinKeyword.ScalarValue);
@@ -460,6 +460,20 @@ namespace GraphView
         internal override string GenerateTableAlias()
         {
             return "N_" + _count++;
+        }
+
+        internal override void Populate(string property)
+        {
+            if (property == GremlinKeyword.EdgeID
+                || property == GremlinKeyword.EdgeSourceV
+                || property == GremlinKeyword.EdgeSinkV
+                || property == GremlinKeyword.EdgeOtherV
+            )
+            {
+                return;
+            }
+            base.Populate(property);
+            SqlTableVariable?.Populate(property);
         }
 
         internal override GremlinVariableProperty DefaultVariableProperty()
@@ -521,6 +535,18 @@ namespace GraphView
         }
 
         public WEdgeType EdgeType { get; set; }
+
+        internal override void Populate(string property)
+        {
+            if (property == GremlinKeyword.NodeID
+                || property == GremlinKeyword.EdgeAdj
+                || property == GremlinKeyword.ReverseEdgeAdj)
+            {
+                return;
+            }
+            base.Populate(property);
+            SqlTableVariable?.Populate(property);
+        }
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {

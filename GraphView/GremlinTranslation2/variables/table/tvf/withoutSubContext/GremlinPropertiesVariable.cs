@@ -38,7 +38,7 @@ namespace GraphView
 
         internal override void Key(GremlinToSqlContext currentContext)
         {
-            GremlinKeyVariable newVariable = new GremlinKeyVariable(new GremlinVariableProperty(this, GremlinKeyword.TableValue));
+            GremlinKeyVariable newVariable = new GremlinKeyVariable(DefaultVariableProperty());
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -46,7 +46,7 @@ namespace GraphView
 
         internal override void Value(GremlinToSqlContext currentContext)
         {
-            GremlinValueVariable newVariable = new GremlinValueVariable(new GremlinVariableProperty(this, GremlinKeyword.TableValue));
+            GremlinValueVariable newVariable = new GremlinValueVariable(DefaultVariableProperty());
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

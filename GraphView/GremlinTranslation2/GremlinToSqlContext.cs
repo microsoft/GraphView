@@ -491,19 +491,19 @@ namespace GraphView
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    if (projectProperty == GremlinKeyword.TableValue)
-                    {
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
-                    }
-                    else
-                    {
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
-                    }
+                     selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
                 }
             }
             else
             {
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
+                if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
+                {
+
+                }
+                else
+                {
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
+                }
             }
             if (isPopulateGremlinPath)
             {

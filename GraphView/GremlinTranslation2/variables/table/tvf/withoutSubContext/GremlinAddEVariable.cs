@@ -56,18 +56,11 @@ namespace GraphView
         {
             if (context == null)
             {
-                if (InputVariable is GremlinGhostVariable)
-                {
-                    return SqlUtil.GetSimpleSelectQueryBlock((InputVariable as GremlinGhostVariable).DefaultVariableProperty());
-                }
-                else
-                {
-                    return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.VariableName, new List<string>() { GremlinKeyword.NodeID });
-                }
+                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.DefaultVariableProperty());
             }
             else
             {
-                return context.ToSelectQueryBlock();
+                return context.ToSelectQueryBlock(new List<string>() { GremlinKeyword.NodeID });
             } 
         }
 

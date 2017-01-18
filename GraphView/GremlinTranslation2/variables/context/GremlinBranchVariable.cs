@@ -59,7 +59,8 @@ namespace GraphView
                 switch (BrachVariableList.First().First().GetVariableType())
                 {
                     case GremlinVariableType.Table:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+                        throw new NotImplementedException();
+                        //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
                     case GremlinVariableType.Edge:
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.EdgeID);
                     case GremlinVariableType.Scalar:
@@ -68,7 +69,8 @@ namespace GraphView
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.NodeID);
                 }
             }
-            return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+            throw new NotImplementedException();
+            //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
@@ -78,7 +80,7 @@ namespace GraphView
                 if (branchVariable.Count() > 1)
                 {
                     throw new NotImplementedException();
-                    //return new GremlinVariableProperty(ParentVariable, Label);
+                    return new GremlinVariableProperty(ParentVariable, Label);
                 }
             }
             if (checkIsTheSameType())
@@ -86,7 +88,8 @@ namespace GraphView
                 switch (BrachVariableList.First().First().GetVariableType())
                 {
                     case GremlinVariableType.Table:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+                        throw new NotImplementedException();
+                        //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
                     case GremlinVariableType.Edge:
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
                     case GremlinVariableType.Scalar:
