@@ -63,6 +63,8 @@ namespace GraphView
             public const string Compose1 = "Compose1";
             public const string Compose2 = "Compose2";
             public const string Group = "Group";
+            public const string Cap = "Cap";
+            public const string Store = "Store";
         }
 
         public enum Pop

@@ -161,10 +161,12 @@
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\edge\GremlinFreeEdgeVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinSqlTableVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinCapVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinDedupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinDropVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinExpandVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinPathVariable.cs" />
+    <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinStoreVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinUnfoldVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinUpdatePropertiesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\withoutSubContext\GremlinValuesVariable.cs" />
