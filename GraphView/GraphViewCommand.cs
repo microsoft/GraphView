@@ -27,7 +27,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
@@ -35,31 +34,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Documents;
 
+
 namespace GraphView
 {
     public partial class GraphViewCommand : IDisposable
     {
-        /// <summary>
-        /// Returns the translated T-SQL script. For testing only.
-        /// </summary>
-        /// <returns>The translated T-SQL script</returns>
-        internal string GetTsqlQuery()
-        {
-            var sr = new StringReader(CommandText);
-            var parser = new GraphViewParser();
-            IList<ParseError> errors;
-            var script = parser.Parse(sr, out errors) as WSqlScript;
-            if (errors.Count > 0)
-                throw new SyntaxErrorException(errors);
-
-            if (errors.Count > 0)
-                throw new SyntaxErrorException(errors);
-
-            // Translation and Check CheckInvisibleColumn
-
-                return script.ToString();
-        }
-
         public CommandType CommandType
         {
             get { return Command.CommandType; }
@@ -74,14 +53,9 @@ namespace GraphView
             get { return Command.CommandTimeout; }
             set { Command.CommandTimeout = value; }
         }
-        public System.Data.SqlClient.SqlParameterCollection Parameters
-        {
-            get { return Command.Parameters; }
-        }
         internal SqlCommand Command { get; private set; }
 
         internal SqlTransaction Tx { get; private set; }
-
 
         public GraphViewCommand()
         {
@@ -102,7 +76,6 @@ namespace GraphView
             CommandText = commandText;
             GraphViewConnection = connection;
         }
-
 
         public void CreateParameter()
         {

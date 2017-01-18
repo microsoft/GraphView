@@ -32,6 +32,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json;
+using System.Threading;
+using Newtonsoft.Json.Linq;
 
 // For debugging
 
@@ -53,6 +55,8 @@ namespace GraphView
 
         public string DocDB_Url;
         public DocumentClient DocDBclient;
+
+        internal VertexObjectCache VertexCache { get; private set; }
 
         /// <summary>
         ///     Initializes a new connection to DocDB.
@@ -78,6 +82,8 @@ namespace GraphView
                 });
 
             DocDBclient.OpenAsync();
+
+            VertexCache = VertexObjectCache.Instance;
         }
 
         public GraphViewConnection()
@@ -215,5 +221,66 @@ namespace GraphView
             _disposed = true;
         }
         
+    }
+
+    internal sealed class VertexObjectCache
+    {
+        private static volatile VertexObjectCache instance;
+        private static Dictionary<string, VertexField> cachedVertexCollection;
+        private static ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
+
+        private VertexObjectCache()
+        {
+            cachedVertexCollection = new Dictionary<string, VertexField>();
+        }
+
+        public static VertexObjectCache Instance
+        {
+            get
+            {
+                if (instance == null)
+                {
+                    lock (_lock)
+                    {
+                        if (instance == null)
+                        {
+                            instance = new VertexObjectCache();
+                        }
+                    }
+                }
+
+                return instance;
+            }
+        }
+
+        public VertexField GetVertexField(string vertexId, string vertexJson)
+        {
+            _lock.EnterUpgradeableReadLock();
+            try
+            {
+                VertexField vertexObject = null;
+                if (cachedVertexCollection.TryGetValue(vertexId, out vertexObject))
+                {
+                    return vertexObject;
+                }
+                else
+                {
+                    _lock.EnterWriteLock();
+                    try
+                    {
+                        JObject jsonObject = JObject.Parse(vertexJson);
+                    }
+                    finally
+                    {
+                        _lock.ExitWriteLock();
+                    }
+                    return vertexObject;
+                }
+            }
+            finally
+            {
+                _lock.ExitUpgradeableReadLock();
+            }
+        }
     }
 }
