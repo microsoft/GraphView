@@ -15,7 +15,7 @@ namespace GraphView
 
     internal class StringField : FieldObject
     {
-        public string Value { get; private set; }
+        public string Value { get; set; }
 
         public StringField(string value)
         {
@@ -48,7 +48,7 @@ namespace GraphView
 
     internal class CollectionField : FieldObject
     {
-        public List<FieldObject> Collection { get; private set; }
+        public List<FieldObject> Collection { get; set; }
 
         public CollectionField()
         {
@@ -104,7 +104,7 @@ namespace GraphView
 
     internal class MapField : FieldObject
     {
-        public Dictionary<FieldObject, FieldObject> Map { get; private set; }
+        public Dictionary<FieldObject, FieldObject> Map { get; set; }
 
         public MapField()
         {
@@ -199,6 +199,52 @@ namespace GraphView
         public override int GetHashCode()
         {
             return ToString().GetHashCode();
+        }
+    }
+
+    internal class VertexPropertyField : PropertyField
+    {
+        public VertexPropertyField(string propertyName, string propertyValue) 
+            : base(propertyName, propertyValue)
+        {
+        }
+    }
+
+    internal class EdgePropertyField : PropertyField
+    {
+        public EdgePropertyField(string propertyName, string propertyValue) 
+            : base(propertyName, propertyValue)
+        {
+        }
+    }
+
+
+    internal class EdgeField : FieldObject
+    {
+        public List<EdgePropertyField> EdgeProperties;
+    }
+
+    internal class AdjacencyListField : FieldObject
+    {
+        public List<EdgeField> Edges { get; set; }
+
+        public AdjacencyListField()
+        {
+            Edges = new List<EdgeField>();
+        }
+    }
+
+    internal class VertexField : FieldObject
+    {
+        public List<VertexPropertyField> VertexProperties { get; set; }
+        public AdjacencyListField AdjacencyList { get; set; }
+        public AdjacencyListField RevAdjacencyList { get; set; }
+
+        public VertexField()
+        {
+            VertexProperties = new List<VertexPropertyField>();
+            AdjacencyList = new AdjacencyListField();
+            RevAdjacencyList = new AdjacencyListField();
         }
     }
 
