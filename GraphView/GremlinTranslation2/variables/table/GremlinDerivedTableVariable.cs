@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDerivedTableVariable: GremlinScalarTableVariable
+    internal class GremlinDerivedTableVariable: GremlinTableVariable
     {
         public GremlinToSqlContext SubqueryContext { get; set; }
 
@@ -33,14 +33,49 @@ namespace GraphView
 
     internal class GremlinFoldVariable : GremlinDerivedTableVariable
     {
-        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) {}
+        public GremlinVariable FoldVariable { get; set; }
+
+        public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext)
+        {
+            FoldVariable = subqueryContext.PivotVariable;
+        }
 
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, SubqueryContext.PivotVariable.DefaultVariableProperty().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());
+            }
+            WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, parameters);
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, compose1), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+        }
+
+        internal override void Unfold(GremlinToSqlContext currentContext)
+        {
+            GremlinTableVariable newVariable = null;
+            switch (FoldVariable.GetVariableType())
+            {
+                case GremlinVariableType.Edge:
+                    newVariable = new GremlinUnfoldEdgeVariable(this);
+                    break;
+                case GremlinVariableType.Vertex:
+                    newVariable = new GremlinUnfoldVertexVariable(this);
+                    break;
+                case GremlinVariableType.Scalar:
+                    newVariable = new GremlinUnfoldScalarVariable(this);
+                    break;
+                case GremlinVariableType.Table:
+                    newVariable = new GremlinUnfoldTableVariable(this);
+                    break;
+            }
+            
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
     }
 

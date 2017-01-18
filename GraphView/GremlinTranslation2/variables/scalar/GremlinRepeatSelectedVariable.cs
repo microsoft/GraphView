@@ -25,7 +25,7 @@ namespace GraphView
 
         internal override GremlinVariableType GetVariableType()
         {
-            return GremlinVariableType.Scalar;
+            return GremlinVariableType.Table;
         }
 
         internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,

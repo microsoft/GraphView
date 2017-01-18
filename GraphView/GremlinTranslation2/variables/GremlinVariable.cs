@@ -205,38 +205,17 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void By(GremlinToSqlContext currentContext)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void By(GremlinToSqlContext currentContext, string name)
-        {
-            throw new NotImplementedException();
-        }
-
-
+        //internal virtual void By(GremlinToSqlContext currentContext)
+        //internal virtual void By(GremlinToSqlContext currentContext, string name)
         //internal virtual void by(GremlinToSqlContext currentContext, Comparator<E> comparator)
         //internal virtual void by(GremlinToSqlContext currentContext, Function<U, Object> function, Comparator comparator)
         //internal virtual void by(GremlinToSqlContext currentContext, Function<V, Object> function)
-
-        internal virtual void By(GremlinToSqlContext currentContext, GremlinKeyword.Order order)
-        {
-            throw new NotImplementedException();
-        }
-
+        //internal virtual void By(GremlinToSqlContext currentContext, GremlinKeyword.Order order)
         //internal virtual void by(GremlinToSqlContext currentContext, string key, Comparator<V> comparator)
         //internal virtual void by(GremlinToSqlContext currentContext, T token)
-
-        
-        internal virtual void By(GremlinToSqlContext currentContext, GraphTraversal2 byContext)
-        {
-            // use GraphTraversal2 instead of GremlinToSqlContext
-            //because it should inherite from last context rather than current Context 
-            throw new NotImplementedException();
-        }
-
+        //internal virtual void By(GremlinToSqlContext currentContext, GraphTraversal2 byContext)
         //internal virtual void by(GremlinToSqlContext currentContext, GremlinToSqlContext<?, ?> byContext, Comparator comparator)
+
         internal virtual void Cap(GremlinToSqlContext currentContext, params string[] keys)
         {
             //currentContext.ProjectedVariables.Clear();
@@ -374,12 +353,19 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Group(GremlinToSqlContext currentContext, string groupByKey = null)
+        internal virtual void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
         {
-            GremlinGroupVariable newVariable = new GremlinGroupVariable(currentContext.Duplicate(), groupByKey);
+            GremlinGroupVariable newVariable = new GremlinGroupVariable(sideEffectKey, parameters);
+            foreach (var parameter in parameters)
+            {
+                if (parameter is GremlinToSqlContext)
+                {
+                    (parameter as GremlinToSqlContext).ParentVariable = newVariable;
+                }
+            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
-            if (groupByKey == null)
+            if (sideEffectKey == null)
             {
                 currentContext.SetPivotVariable(newVariable);
             }
@@ -650,9 +636,13 @@ namespace GraphView
         //internal virtual void Profile(string sideEffectKey)
         //internal virtual void Program(VertexProgram<?> vertexProgram)
 
-        internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys)
+        internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys, List<GremlinToSqlContext> byContexts)
         {
-            GremlinProjectVariable newVariable = new GremlinProjectVariable(currentContext.Duplicate(), projectKeys);
+            GremlinProjectVariable newVariable = new GremlinProjectVariable(projectKeys, byContexts);
+            foreach (var context in byContexts)
+            {
+                context.ParentVariable = newVariable;
+            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -726,11 +716,6 @@ namespace GraphView
 
         internal virtual void Select(GremlinToSqlContext currentContext, GremlinKeyword.Pop pop, string selectKey)
         {
-            if (selectKey == "@v")
-            {
-                string test = "";
-            }
-
             List<GremlinVariable> taggedVariableList = currentContext.Select(selectKey);
             GremlinVariable selectedVariable;
 
@@ -771,127 +756,6 @@ namespace GraphView
                 (selectedVariable as GremlinSelectedVariable).Pop = pop;
                 (selectedVariable as GremlinSelectedVariable).SelectKey = selectKey;
             }
-
-            //GremlinVariable selectVariable;
-            //switch (pop)
-            //{
-            //    case GremlinKeyword.Pop.first:
-            //        selectVariable = currentContext.SelectFirstTaggedVariable(selectKey);
-            //        break;
-            //    case GremlinKeyword.Pop.last:
-            //        selectVariable = currentContext.SelectLastTaggedVariable(selectKey);
-            //        break;
-            //    default:
-            //        throw new NotImplementedException();
-            //}
-
-            //if (selectVariable == null)
-            //{
-            //    throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
-            //}
-            //else if (selectVariable is GremlinListVariable)
-            //{
-            //    currentContext.VariableList.Add(selectVariable);
-            //    currentContext.PivotVariable = selectVariable;
-            //} else if (selectVariable is GremlinWrapVariable)
-            //{
-            //    GremlinExpandVariable expandVariable = new GremlinExpandVariable(selectVariable);
-            //    currentContext.VariableList.Add(expandVariable);
-            //    currentContext.TableReferences.Add(expandVariable);
-            //    currentContext.PivotVariable = expandVariable;
-            //}
-            //else
-            //{
-            //    switch (selectVariable.GetVariableType())
-            //    {
-            //        case GremlinVariableType.Vertex:
-            //            GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(selectVariable);
-            //            contextVertex.IsFromSelect = true;
-            //            contextVertex.Pop = pop;
-            //            contextVertex.SelectKey = selectKey;
-            //            currentContext.VariableList.Add(contextVertex);
-            //            currentContext.SetPivotVariable(contextVertex);
-            //            break;
-            //        case GremlinVariableType.Edge:
-            //            GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(selectVariable);
-            //            contextEdge.IsFromSelect = true;
-            //            contextEdge.Pop = pop;
-            //            contextEdge.SelectKey = selectKey;
-            //            currentContext.VariableList.Add(contextEdge);
-            //            currentContext.SetPivotVariable(contextEdge);
-            //            break;
-            //        case GremlinVariableType.Table:
-            //            throw new NotImplementedException();
-            //        case GremlinVariableType.Scalar:
-            //            throw new NotImplementedException();
-            //    }
-            //}
-
-            //List<GremlinVariable> taggedVariable = new List<GremlinVariable>();
-
-            //foreach (var variable in currentContext.InheritedVariableList)
-            //{
-            //    var  
-            //}
-
-            //GremlinVariable variable;
-
-            //if (currentContext.TaggedVariables.ContainsKey(selectKey))
-            //{
-            //    switch (pop)
-            //    {
-            //        case GremlinKeyword.Pop.first:
-            //            variable = currentContext.TaggedVariables[selectKey].First();
-            //            break;
-            //        case GremlinKeyword.Pop.last:
-            //            variable = currentContext.TaggedVariables[selectKey].Last();
-            //            break;
-            //        default:
-            //            throw new NotImplementedException();
-            //    }
-            //    currentContext.SetPivotVariable(variable);
-            //}
-            //else if (currentContext.InheritedTaggedVariables.ContainsKey(selectKey))
-            //{
-            //    switch (pop)
-            //    {
-            //        case GremlinKeyword.Pop.first:
-            //            variable = currentContext.InheritedTaggedVariables[selectKey].First();
-            //            break;
-            //        case GremlinKeyword.Pop.last:
-            //            variable = currentContext.InheritedTaggedVariables[selectKey].Last();
-            //            break;
-            //        default:
-            //            throw new NotImplementedException();
-            //    }
-            //    switch (variable.GetVariableType())
-            //    {
-            //        case GremlinVariableType.Vertex:
-            //            GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(variable);
-            //            contextVertex.IsFromSelect = true;
-            //            contextVertex.Pop = pop;
-            //            contextVertex.SelectKey = selectKey;
-            //            currentContext.VariableList.Add(contextVertex);
-            //            currentContext.SetPivotVariable(contextVertex);
-            //            break;
-            //        case GremlinVariableType.Edge:
-            //            GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(variable);
-            //            contextEdge.IsFromSelect = true;
-            //            contextEdge.Pop = pop;
-            //            contextEdge.SelectKey = selectKey;
-            //            currentContext.VariableList.Add(contextEdge);
-            //            currentContext.SetPivotVariable(contextEdge);
-            //            break;
-            //        case GremlinVariableType.Table:
-            //            throw new NotImplementedException();
-            //        case GremlinVariableType.Scalar:
-            //            throw new NotImplementedException();
-            //    }
-            //}
-            //else
-            //{
-            //    throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", selectKey));
-            //}
         }
 
         internal virtual void Select(GremlinToSqlContext currentContext, string label)
@@ -923,42 +787,6 @@ namespace GraphView
                 (selectedVariable as GremlinSelectedVariable).SelectKey = label;
             }
 
-            
-            //if (selectVariable is GremlinListVariable)
-            //{
-            //    currentContext.VariableList.Add(selectVariable);
-            //    currentContext.PivotVariable = selectVariable;
-            //} else if (selectVariable is GremlinWrapVariable)
-            //{
-            //    GremlinExpandVariable newExpandVariable = new GremlinExpandVariable(selectVariable);
-            //    currentContext.VariableList.Add(newExpandVariable);
-            //    currentContext.TableReferences.Add(newExpandVariable);
-            //    currentContext.PivotVariable = newExpandVariable;
-            //}
-            //else
-            //{
-            //    switch (selectVariable.GetVariableType())
-            //    {
-            //        case GremlinVariableType.Vertex:
-            //            GremlinContextVertexVariable contextVertex = new GremlinContextVertexVariable(selectVariable);
-            //            contextVertex.IsFromSelect = true;
-            //            contextVertex.SelectKey = label;
-            //            currentContext.VariableList.Add(contextVertex);
-            //            currentContext.SetPivotVariable(contextVertex);
-            //            break;
-            //        case GremlinVariableType.Edge:
-            //            GremlinContextEdgeVariable contextEdge = new GremlinContextEdgeVariable(selectVariable);
-            //            contextEdge.IsFromSelect = true;
-            //            contextEdge.SelectKey = label;
-            //            currentContext.VariableList.Add(contextEdge);
-            //            currentContext.SetPivotVariable(contextEdge);
-            //            break;
-            //        case GremlinVariableType.Table:
-            //            throw new NotImplementedException();
-            //        case GremlinVariableType.Scalar:
-            //            throw new NotImplementedException();
-            //    }
-            //}
         }
 
         internal virtual void Select(GremlinToSqlContext currentContext, List<string> selectKeys)
@@ -975,6 +803,7 @@ namespace GraphView
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
+            sideEffectContext.ParentVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
@@ -1033,7 +862,9 @@ namespace GraphView
         {
             currentContext.PopulateGremlinPath();
             GremlinVariableProperty pathVariableProperty = currentContext.CurrentContextPath.DefaultVariableProperty();
-            GremlinTreeVariable newVariable = new GremlinTreeVariable(currentContext.Duplicate(), pathVariableProperty);
+            GremlinToSqlContext duplicatedContext = currentContext.Duplicate();
+            GremlinTreeVariable newVariable = new GremlinTreeVariable(duplicatedContext, pathVariableProperty);
+            duplicatedContext.ParentVariable = newVariable;
             currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);

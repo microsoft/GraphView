@@ -8,13 +8,13 @@ namespace GraphView
 {
     internal class GremlinGroupVariable: GremlinScalarTableVariable
     {
-        public GremlinToSqlContext ParentContext { get; set; }
         public List<object> Parameters { get; set; }
+        public string SideEffectKey { get; set; }
 
-        public GremlinGroupVariable(GremlinToSqlContext parentContext, string groupByKey = null)
+        public GremlinGroupVariable(string sideEffectKey, List<object> parameters)
         {
-            ParentContext = parentContext;
-            Parameters = new List<object>() { groupByKey };
+            SideEffectKey = sideEffectKey;
+            Parameters = new List<object>(parameters);
         }
 
         internal override void Populate(string property)
@@ -22,22 +22,22 @@ namespace GraphView
             ParentContext.Populate(property);
         }
 
-        internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
-        {
-            byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
-            GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-            Parameters.Add(byContext);
-        }
+        //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
+        //{
+        //    byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
+        //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
+        //    Parameters.Add(byContext);
+        //}
 
-        internal override void By(GremlinToSqlContext currentContext, string name)
-        {
-            Parameters.Add(name);
-        }
+        //internal override void By(GremlinToSqlContext currentContext, string name)
+        //{
+        //    Parameters.Add(name);
+        //}
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-
+            parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
             foreach (var parameter in Parameters)
             {
                 if (parameter is GremlinToSqlContext)

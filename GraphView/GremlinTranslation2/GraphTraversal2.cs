@@ -231,7 +231,8 @@ namespace GraphView
 
         public GraphTraversal2 By()
         {
-            AddGremlinOperator(new GremlinByOp());
+            //AddGremlinOperator(new GremlinByOp());
+            ((IGremlinByModulating)GetEndOp()).ModulateBy();
             return this;
         }
 
@@ -241,13 +242,15 @@ namespace GraphView
 
         public GraphTraversal2 By(GremlinKeyword.Order order)
         {
-            AddGremlinOperator(new GremlinByOp(order));
+            //AddGremlinOperator(new GremlinByOp(order));
+            ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
             return this;
         }
 
         public GraphTraversal2 By(string key)
         {
-            AddGremlinOperator(new GremlinByOp(key));
+            //AddGremlinOperator(new GremlinByOp(key));
+            ((IGremlinByModulating)GetEndOp()).ModulateBy(key);
             return this;
         }
 
@@ -255,11 +258,17 @@ namespace GraphView
         //public GraphTraversal2 by(T token)
         public GraphTraversal2 By(GraphTraversal2 traversal)
         {
-            AddGremlinOperator(new GremlinByOp(traversal));
+            //AddGremlinOperator(new GremlinByOp(traversal));
+            ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
             return this;
         }
         //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
-        //public GraphTraversal2 cap(string sideEffectKey, params string[] sideEffectKeys)
+
+        public GraphTraversal2 Cap(string sideEffectKey, params string[] sideEffectKeys)
+        {
+            return this;
+        }
+
         //public GraphTraversal2 choose(Function<E, M> choiceFunction)
 
         public GraphTraversal2 Choose(Predicate choosePredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
@@ -774,7 +783,10 @@ namespace GraphView
         }
 
         //public GraphTraversal2 simplePath()
-        //public GraphTraversal2 store(string sideEffectKey)
+        public GraphTraversal2 Store(string sideEffectKey)
+        {
+            return this;
+        }
         //public GraphTraversal2 subgraph(string sideEffectKey)
 
         public GraphTraversal2 Sum()

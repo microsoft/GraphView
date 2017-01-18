@@ -31,6 +31,11 @@ namespace GraphView
             UnfoldVariable = unfoldVariable;
         }
 
+        internal override bool ContainsLabel(string label)
+        {
+            return false;
+        }
+
         internal override void Populate(string property)
         {
             UnfoldVariable.Populate(property);

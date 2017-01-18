@@ -8,38 +8,27 @@ namespace GraphView
 {
     internal class GremlinProjectVariable: GremlinScalarTableVariable
     {
-        public GremlinToSqlContext ParentContext { get; set; }
         public List<string> ProjectKeys { get; set; }
         public List<GremlinToSqlContext> ProjectContextList { get; set; }
 
-        public GremlinProjectVariable(GremlinToSqlContext parentContext, List<string> projectKeys)
+        public GremlinProjectVariable(List<string> projectKeys, List<GremlinToSqlContext> byContexts)
         {
-            ParentContext = parentContext;
-
             ProjectKeys = new List<string>(projectKeys);
-            ProjectContextList = new List<GremlinToSqlContext>();
-
-            foreach (var projectKey in projectKeys)
-            {
-                Populate(projectKey);
-            }
+            ProjectContextList = byContexts;
         }
 
         internal override void Populate(string property)
         {
-            foreach (var context in ProjectContextList)
-            {
-                context.Populate(property);
-            }
+            throw new NotImplementedException();
         }
 
-        internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
-        {
-            byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
-            GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-            byContext.ParentVariable = this;
-            ProjectContextList.Add(byContext);
-        }
+        //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
+        //{
+        //    byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
+        //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
+        //    byContext.ParentVariable = this;
+        //    ProjectContextList.Add(byContext);
+        //}
 
         public override WTableReference ToTableReference()
         {

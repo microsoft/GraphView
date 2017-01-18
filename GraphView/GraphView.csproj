@@ -96,6 +96,7 @@
     <Compile Include="GremlinTranslation2\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation2\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation2\GremlinUtil.cs" />
+    <Compile Include="GremlinTranslation2\IGremlinByModulating.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinMapOp.cs" />
     <Compile Include="GremlinTranslation2\map\GremlinPathOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinAsOp.cs" />
