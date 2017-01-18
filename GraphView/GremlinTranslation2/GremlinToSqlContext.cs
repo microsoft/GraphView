@@ -549,7 +549,7 @@ namespace GraphView
                     }
                     else
                     {
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression()));
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
                     }
                 }
             }
