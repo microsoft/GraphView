@@ -114,21 +114,21 @@ namespace GraphView
 
             if (projectProperties.Count == 0)
             {
-                projectProperties.Add(RepeatContext.PivotVariable.DefaultProjection().VariableProperty);
+                projectProperties.Add(RepeatContext.PivotVariable.DefaultVariableProperty().VariableProperty);
 
                 if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
                 {
                     firstQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
+                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultVariableProperty().ToScalarExpression(), GremlinKeyword.TableValue));
                     selectQueryBlock.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableValue));
+                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultVariableProperty().ToScalarExpression(), GremlinKeyword.TableValue));
                 }
                 else
                 {
                     firstQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression()));
+                        SqlUtil.GetSelectScalarExpr(InputVariable.DefaultVariableProperty().ToScalarExpression()));
                     selectQueryBlock.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression()));
+                        SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultVariableProperty().ToScalarExpression()));
                 }
                 
             }
@@ -151,7 +151,7 @@ namespace GraphView
                         columnName));
 
                     List<WScalarExpression> compose1Paramters = new List<WScalarExpression>();
-                    compose1Paramters.Add(selectedVariable.DefaultProjection().ToScalarExpression());
+                    compose1Paramters.Add(selectedVariable.DefaultVariableProperty().ToScalarExpression());
                     //foreach (var property in selectedVariable.Item2)
                     WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Paramters);
 

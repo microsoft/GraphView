@@ -58,6 +58,13 @@ namespace GraphView
             return RealVariable.GetVariableType();
         }
 
+        internal override GremlinVariableProperty DefaultVariableProperty()
+        {
+            var defaultColumn = RealVariable.DefaultVariableProperty().VariableProperty;
+            Populate(defaultColumn);
+            return GetVariableProperty(defaultColumn);
+        }
+
         internal override GremlinVariableProperty DefaultProjection()
         {
             var defaultColumn = RealVariable.DefaultProjection().VariableProperty;

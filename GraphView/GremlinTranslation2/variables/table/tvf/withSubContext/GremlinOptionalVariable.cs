@@ -81,7 +81,7 @@ namespace GraphView
 
             if (gremlinVariable.GetVariableType() != GremlinVariableType.Table && projectProperties.Count == 0)
             {
-                projectProperties.Add(gremlinVariable.DefaultProjection().VariableProperty);
+                projectProperties.Add(gremlinVariable.DefaultVariableProperty().VariableProperty);
             }
 
             foreach (var projectProperty in projectProperties)
@@ -160,10 +160,10 @@ namespace GraphView
             if (gremlinVariable.GetVariableType() == GremlinVariableType.Table)
             {
                 firstQueryExpr.SelectElements.Add(
-                    SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(),
+                    SqlUtil.GetSelectScalarExpr(InputVariable.DefaultVariableProperty().ToScalarExpression(),
                         GremlinKeyword.TableValue));
                 secondQueryExpr.SelectElements.Add(
-                    SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultProjection().ToScalarExpression(),
+                    SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultVariableProperty().ToScalarExpression(),
                         GremlinKeyword.TableValue));
             }
 

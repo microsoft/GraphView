@@ -15,7 +15,7 @@ namespace GraphView
             GremlinVariableList = new List<GremlinVariable>(gremlinVariableList);
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             return new GremlinVariableProperty(null, GremlinKeyword.ScalarValue);
         }
@@ -27,12 +27,12 @@ namespace GraphView
             {
                 if (variable is GremlinGhostVariable && (variable as GremlinGhostVariable).RealVariable is GremlinRepeatSelectedVariable)
                 {
-                    parameters.Add((variable as GremlinGhostVariable).RealVariable.DefaultProjection().ToScalarExpression());
+                    parameters.Add((variable as GremlinGhostVariable).RealVariable.DefaultVariableProperty().ToScalarExpression());
                 }
                 else
                 {
                     List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
-                    compose1Parameters.Add(variable.DefaultProjection().ToScalarExpression());
+                    compose1Parameters.Add(variable.DefaultVariableProperty().ToScalarExpression());
                     WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
                     parameters.Add(compose1);
                 }

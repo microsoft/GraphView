@@ -38,7 +38,7 @@ namespace GraphView {
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(VertexVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(VertexVariable.DefaultVariableProperty().ToScalarExpression());
             foreach (var property in Properties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
@@ -65,8 +65,8 @@ namespace GraphView {
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SourceVariable.DefaultProjection().ToScalarExpression());
-            parameters.Add(EdgeVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SourceVariable.DefaultVariableProperty().ToScalarExpression());
+            parameters.Add(EdgeVariable.DefaultVariableProperty().ToScalarExpression());
             foreach (var property in Properties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));

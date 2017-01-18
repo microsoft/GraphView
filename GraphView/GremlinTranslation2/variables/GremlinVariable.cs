@@ -109,7 +109,12 @@ namespace GraphView
 
         internal virtual GremlinVariableProperty GetPath()
         {
-            return DefaultProjection();
+            return DefaultVariableProperty();
+        }
+
+        internal virtual GremlinVariableProperty DefaultVariableProperty()
+        {
+            throw new NotImplementedException();
         }
 
         internal virtual GremlinVariableProperty DefaultProjection()
@@ -236,7 +241,7 @@ namespace GraphView
             //    }
 
             //    GremlinVariable var = currentContext.TaggedVariables[key].Item1;
-            //    currentContext.ProjectedVariables.Add(var.DefaultProjection());
+            //    currentContext.ProjectedVariables.Add(var.DefaultVariableProperty());
             //}
         }
         //internal virtual void Choose(Function<E, M> choiceFunction)
@@ -463,7 +468,7 @@ namespace GraphView
 
         internal virtual void Is(GremlinToSqlContext currentContext, object value)
         {
-            WScalarExpression firstExpr = DefaultProjection().ToScalarExpression();
+            WScalarExpression firstExpr = DefaultVariableProperty().ToScalarExpression();
             WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
             currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
@@ -474,7 +479,7 @@ namespace GraphView
             if (predicate.Label != null)
             {
                 var compareVar = currentContext.TaggedVariables[predicate.Label].Last();
-                secondExpr = compareVar.DefaultProjection().ToScalarExpression();
+                secondExpr = compareVar.DefaultVariableProperty().ToScalarExpression();
             }
             else if (predicate.Number != null)
             {
@@ -484,7 +489,7 @@ namespace GraphView
             {
                 throw new Exception();
             }
-            var firstExpr = DefaultProjection().ToScalarExpression();
+            var firstExpr = DefaultVariableProperty().ToScalarExpression();
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
@@ -1019,7 +1024,7 @@ namespace GraphView
         internal virtual void Tree(GremlinToSqlContext currentContext)
         {
             currentContext.PopulateGremlinPath();
-            GremlinVariableProperty pathVariableProperty = currentContext.CurrentContextPath.DefaultProjection();
+            GremlinVariableProperty pathVariableProperty = currentContext.CurrentContextPath.DefaultVariableProperty();
             GremlinTreeVariable newVariable = new GremlinTreeVariable(currentContext.Duplicate(), pathVariableProperty);
             currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
@@ -1096,15 +1101,15 @@ namespace GraphView
                 //TODO
                 var compareVar = currentContext.Select(predicate.Label);
                 if (compareVar.Count > 1) throw new Exception();
-                Populate(compareVar.First().DefaultProjection().VariableProperty);
-                secondExpr = compareVar.First().DefaultProjection().ToScalarExpression();
+                Populate(compareVar.First().DefaultVariableProperty().VariableProperty);
+                secondExpr = compareVar.First().DefaultVariableProperty().ToScalarExpression();
             }
             else
             {
                 throw new Exception("Predicate.Label can't be null");
             }
-            var firstExpr = DefaultProjection().ToScalarExpression();
-            Populate(DefaultProjection().VariableProperty);
+            var firstExpr = DefaultVariableProperty().ToScalarExpression();
+            Populate(DefaultVariableProperty().VariableProperty);
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }

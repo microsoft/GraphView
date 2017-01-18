@@ -20,7 +20,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(InputVariable.DefaultVariableProperty().ToScalarExpression());
             foreach (var dedupLabel in DedupLabels)
             {
                 //TODO:
@@ -68,7 +68,7 @@ namespace GraphView
     //    public override WTableReference ToTableReference(List<string> projectProperties, string tableName)
     //    {
     //        List<WScalarExpression> parameters = new List<WScalarExpression>();
-    //        parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+    //        parameters.Add(InputVariable.DefaultVariableProperty().ToScalarExpression());
     //        foreach (var dedupLabel in DedupLabels)
     //        {
     //            //TODO:

@@ -58,7 +58,7 @@ namespace GraphView
             {
                 if (InputVariable is GremlinGhostVariable)
                 {
-                    return SqlUtil.GetSimpleSelectQueryBlock((InputVariable as GremlinGhostVariable).DefaultProjection());
+                    return SqlUtil.GetSimpleSelectQueryBlock((InputVariable as GremlinGhostVariable).DefaultVariableProperty());
                 }
                 else
                 {

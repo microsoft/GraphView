@@ -13,7 +13,7 @@ namespace GraphView
             return GremlinVariableType.Scalar;
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             throw new NotImplementedException();
         }

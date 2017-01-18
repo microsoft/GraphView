@@ -61,7 +61,7 @@ namespace GraphView
             }
             if (ProjectVariable is GremlinVertexTableVariable)
             {
-                UpdateVariable = new GremlinUpdateNodePropertiesVariable(ProjectVariable.DefaultProjection(), properties);
+                UpdateVariable = new GremlinUpdateNodePropertiesVariable(ProjectVariable.DefaultVariableProperty(), properties);
                 currentContext.VariableList.Add(UpdateVariable);
                 currentContext.TableReferences.Add(UpdateVariable);
             }

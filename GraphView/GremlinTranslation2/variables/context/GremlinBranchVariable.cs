@@ -44,7 +44,7 @@ namespace GraphView
             }
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             foreach (var branchVariable in BrachVariableList)
             {
@@ -66,6 +66,33 @@ namespace GraphView
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
                     case GremlinVariableType.Vertex:
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.NodeID);
+                }
+            }
+            throw new NotImplementedException();
+        }
+
+        internal override GremlinVariableProperty DefaultProjection()
+        {
+            foreach (var branchVariable in BrachVariableList)
+            {
+                if (branchVariable.Count() > 1)
+                {
+                    throw new NotImplementedException();
+                    //return new GremlinVariableProperty(ParentVariable, Label);
+                }
+            }
+            if (checkIsTheSameType())
+            {
+                switch (BrachVariableList.First().First().GetVariableType())
+                {
+                    case GremlinVariableType.Table:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+                    case GremlinVariableType.Edge:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
+                    case GremlinVariableType.Scalar:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
+                    case GremlinVariableType.Vertex:
+                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
                 }
             }
             throw new NotImplementedException();

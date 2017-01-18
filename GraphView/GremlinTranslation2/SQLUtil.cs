@@ -524,7 +524,7 @@ namespace GraphView
             var queryBlock = new WSelectQueryBlock();
             foreach (var property in projectProperties)
             {
-                queryBlock.SelectElements.Add(GetSelectScalarExpr(property.DefaultProjection().ToScalarExpression()));
+                queryBlock.SelectElements.Add(GetSelectScalarExpr(property.DefaultVariableProperty().ToScalarExpression()));
             }
             return queryBlock;
         }

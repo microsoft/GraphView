@@ -22,5 +22,14 @@ namespace GraphView {
             return RealVariable;
         }
 
+        internal override GremlinVariableProperty DefaultVariableProperty()
+        {
+            return RealVariable.DefaultVariableProperty();
+        }
+
+        internal override GremlinVariableProperty DefaultProjection()
+        {
+            return RealVariable.DefaultProjection();
+        }
     }
 }

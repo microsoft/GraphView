@@ -118,7 +118,7 @@ namespace GraphView
 
             //if (projectProperties.Count == 0)
             //{
-            //    Populate(UnionContextList.First().PivotVariable.DefaultProjection().VariableProperty);
+            //    Populate(UnionContextList.First().PivotVariable.DefaultVariableProperty().VariableProperty);
             //}
             foreach (var context in UnionContextList)
             {
@@ -161,11 +161,11 @@ namespace GraphView
             SqlTableVariable = new GremlinUnionVariable(unionContextList);
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             string key =
                 (SqlTableVariable as GremlinUnionVariable).UnionContextList.First()
-                    .PivotVariable.DefaultProjection()
+                    .PivotVariable.DefaultVariableProperty()
                     .VariableProperty;
             return new GremlinVariableProperty(this, key);
         }

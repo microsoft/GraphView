@@ -15,7 +15,7 @@ namespace GraphView
             DropVetexVariable = dropVetexVariable;
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             return DropVetexVariable;
         }
@@ -34,7 +34,7 @@ namespace GraphView
         public GremlinVariableProperty SourceVariable;
         public GremlinVariableProperty EdgeVariable;
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             return EdgeVariable;
         }

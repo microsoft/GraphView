@@ -438,7 +438,7 @@ namespace GraphView
                 }
                 else
                 {
-                    return sourceVariable.DefaultProjection();
+                    return sourceVariable.DefaultVariableProperty();
                 }
             }
         }
@@ -481,7 +481,13 @@ namespace GraphView
 
         internal List<WSqlStatement> GetStatements()
         {
-            return new List<WSqlStatement>() { ToSelectQueryBlock() };
+            List<string> projectProperties = new List<string>();
+            if (PivotVariable.GetVariableType() == GremlinVariableType.Edge ||
+                PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
+            {
+                projectProperties = new List<string>() { GremlinKeyword.Star };
+            }
+            return new List<WSqlStatement>() { ToSelectQueryBlock(projectProperties) };
         }
 
         internal WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)

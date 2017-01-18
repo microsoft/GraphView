@@ -18,7 +18,7 @@ namespace GraphView
             ColumnName = columnName;
         }
 
-        internal override GremlinVariableProperty DefaultProjection()
+        internal override GremlinVariableProperty DefaultVariableProperty()
         {
             return new GremlinVariableProperty(AttachedRepeatVariable, ColumnName);
         }

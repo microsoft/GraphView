@@ -18,7 +18,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(ExpandVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(ExpandVariable.DefaultVariableProperty().ToScalarExpression());
             foreach (var property in ProjectedProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property));

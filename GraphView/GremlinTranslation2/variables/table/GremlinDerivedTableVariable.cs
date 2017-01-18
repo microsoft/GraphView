@@ -39,7 +39,7 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, SubqueryContext.PivotVariable.DefaultVariableProperty().ToScalarExpression()), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
     }
