@@ -23,6 +23,8 @@ namespace GraphView
                         return new GremlinUnionTableVariable(unionContextList);
                     case GremlinVariableType.Scalar:
                         return new GremlinUnionScalarVariable(unionContextList);
+                    case GremlinVariableType.NULL:
+                        return new GremlinUnionNullVariable(unionContextList);
                 }
             }
             return new GremlinUnionTableVariable(unionContextList);
@@ -150,6 +152,14 @@ namespace GraphView
             //        ));   
             //}
             //return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
+        }
+    }
+
+    internal class GremlinUnionNullVariable : GremlinDropTableVariable
+    {
+        public GremlinUnionNullVariable(List<GremlinToSqlContext> unionContextList)
+        {
+            SqlTableVariable = new GremlinUnionVariable(unionContextList);
         }
     }
 }

@@ -62,21 +62,20 @@ namespace GraphView
             if (ProjectVariable is GremlinVertexTableVariable)
             {
                 UpdateVariable = new GremlinUpdateNodePropertiesVariable(ProjectVariable.DefaultVariableProperty(), properties);
-                currentContext.VariableList.Add(UpdateVariable);
-                currentContext.TableReferences.Add(UpdateVariable);
             }
             else if (ProjectVariable is GremlinEdgeTableVariable)
             {
-                GremlinVariableProperty nodeProperty = currentContext.GetSourceVariableProperty(ProjectVariable);
-                GremlinVariableProperty edgeProperty = currentContext.GetEdgeVariableProperty(ProjectVariable);
+                GremlinVariableProperty nodeProperty = ProjectVariable.GetVariableProperty(GremlinKeyword.EdgeSourceV);
+                GremlinVariableProperty edgeProperty = ProjectVariable.GetVariableProperty(GremlinKeyword.EdgeID);
                 UpdateVariable = new GremlinUpdateEdgePropertiesVariable(nodeProperty, edgeProperty, properties);
-                currentContext.VariableList.Add(UpdateVariable);
-                currentContext.TableReferences.Add(UpdateVariable);
             }
             else
             {
                 throw new QueryCompilationException();
             }
+            currentContext.VariableList.Add(UpdateVariable);
+            currentContext.TableReferences.Add(UpdateVariable);
+            currentContext.SetPivotVariable(UpdateVariable);
         }
 
         internal override void HasKey(GremlinToSqlContext currentContext, List<string> values)

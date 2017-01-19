@@ -40,6 +40,21 @@ namespace GraphView
             FoldVariable = subqueryContext.PivotVariable;
         }
 
+        internal override GremlinVariableProperty DefaultProjection()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
+        }
+
+        internal override GremlinVariableProperty DefaultVariableProperty()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Scalar;
+        }
+
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();

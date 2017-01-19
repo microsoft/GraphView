@@ -62,11 +62,11 @@ namespace GraphView
                         throw new NotImplementedException();
                         //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
                     case GremlinVariableType.Edge:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.EdgeID);
+                        return ParentVariable.GetVariableProperty(GremlinKeyword.EdgeID);
                     case GremlinVariableType.Scalar:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
+                        return ParentVariable.GetVariableProperty(GremlinKeyword.ScalarValue);
                     case GremlinVariableType.Vertex:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.NodeID);
+                        return ParentVariable.GetVariableProperty(GremlinKeyword.NodeID);
                 }
             }
             throw new NotImplementedException();
@@ -91,11 +91,11 @@ namespace GraphView
                         throw new NotImplementedException();
                         //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
                     case GremlinVariableType.Edge:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
+                        return ParentVariable.GetVariableProperty(GremlinKeyword.Star);
                     case GremlinVariableType.Scalar:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
+                        return ParentVariable.GetVariableProperty(GremlinKeyword.ScalarValue);
                     case GremlinVariableType.Vertex:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
+                        return ParentVariable.GetVariableProperty(GremlinKeyword.Star);
                 }
             }
             throw new NotImplementedException();

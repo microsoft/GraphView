@@ -20,7 +20,7 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            return new GremlinVariableProperty(AttachedRepeatVariable, ColumnName);
+            return AttachedRepeatVariable.GetVariableProperty(ColumnName);
         }
 
         internal override GremlinVariableType GetVariableType()

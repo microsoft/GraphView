@@ -67,7 +67,15 @@ namespace GraphView
 
         internal override void From(GremlinToSqlContext currentContext, string label)
         {
-            throw new NotImplementedException();
+            List<GremlinVariable> selectVariableList = currentContext.Select(label);
+            if (selectVariableList.Count == 0 || selectVariableList.Count > 1)
+            {
+                throw new Exception("Error: Select variable with label");
+            }
+            GremlinVariable fromVariable = selectVariableList.First();
+            GremlinToSqlContext fromContext = new GremlinToSqlContext();
+            fromContext.SetPivotVariable(fromVariable);
+            FromVertexContext = fromContext;
         }
 
         internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
@@ -86,13 +94,21 @@ namespace GraphView
 
         internal override void To(GremlinToSqlContext currentContext, string label)
         {
-            throw new NotImplementedException();
+            List<GremlinVariable> selectVariableList = currentContext.Select(label);
+            if (selectVariableList.Count == 0 || selectVariableList.Count > 1)
+            {
+                throw new Exception("Error: Select variable with label");
+            }
+            GremlinVariable toVariable = selectVariableList.First();
+            GremlinToSqlContext toContext = new GremlinToSqlContext();
+            toContext.SetPivotVariable(toVariable);
+            ToVertexContext = toContext;
         }
 
         internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
             ToVertexContext = toVertexContext;
-            //ToVertexContext.ParentVariable = this;
+            ToVertexContext.ParentVariable = this;
         }
     }
 }

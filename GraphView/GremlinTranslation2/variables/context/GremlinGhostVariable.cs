@@ -45,7 +45,7 @@ namespace GraphView
         {
             Populate(property);
             var column = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)];
-            return new GremlinVariableProperty(AttachedVariable, column);
+            return AttachedVariable.GetVariableProperty(column);
         }
 
         internal override string GetVariableName()
@@ -112,9 +112,7 @@ namespace GraphView
         {
             if (propertyKeys.Count == 1)
             {
-                Populate(propertyKeys.First());
-                GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(RealVariable,
-                    propertyKeys.First());
+                GremlinVariableProperty newVariableProperty = RealVariable.GetVariableProperty(propertyKeys.First());
                 currentGhost.VariableList.Add(newVariableProperty);
                 currentGhost.SetPivotVariable(newVariableProperty);
             }
