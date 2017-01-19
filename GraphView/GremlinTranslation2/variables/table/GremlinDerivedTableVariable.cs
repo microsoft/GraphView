@@ -44,13 +44,20 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            List<WScalarExpression> parameters = new List<WScalarExpression>();
-            foreach (var projectProperty in ProjectedProperties)
+            List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
+            foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
             {
-                parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());
+                compose1Parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());
             }
-            WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, parameters);
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, compose1), GremlinKeyword.ScalarValue));
+            WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
+
+            List<WScalarExpression> foldParameters = new List<WScalarExpression>();
+            foldParameters.Add(compose1);
+            foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
+            {
+                foldParameters.Add(SqlUtil.GetValueExpr(projectProperty));
+            }
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
 

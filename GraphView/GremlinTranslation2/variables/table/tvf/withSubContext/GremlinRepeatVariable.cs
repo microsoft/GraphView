@@ -131,7 +131,7 @@ namespace GraphView
                     List<WScalarExpression> compose1Paramters = new List<WScalarExpression>();
                     foreach (var property in selectedVariable.ProjectedProperties)
                     {
-                        compose1Paramters.Add(SqlUtil.GetValueExpr(property));
+                        compose1Paramters.Add(selectedVariable.RealVariable.GetVariableProperty(property).ToScalarExpression());
                     }
                     WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Paramters);
 
