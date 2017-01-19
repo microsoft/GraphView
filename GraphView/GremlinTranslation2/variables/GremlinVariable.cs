@@ -86,6 +86,10 @@ namespace GraphView
 
         internal virtual string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
         {
+            if (VariableName == "R_58")
+            {
+                string stop = "stop";
+            }
             if (terminateVariable == this) return property;
             if (ParentContext == null) throw new Exception();
             if (columnName == null)
@@ -173,11 +177,10 @@ namespace GraphView
         {
             foreach (var label in labels)
             {
-                if (!currentContext.TaggedVariables.ContainsKey(label))
+                if (label == "#a")
                 {
-                    currentContext.TaggedVariables[label] = new List<GremlinVariable>();
+                    string stop = "";
                 }
-                currentContext.TaggedVariables[label].Add(this);
                 currentContext.PivotVariable.Labels.Add(label);
             }
         }

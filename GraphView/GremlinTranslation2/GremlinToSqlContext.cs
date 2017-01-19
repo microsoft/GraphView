@@ -225,66 +225,6 @@ namespace GraphView
             return taggedVariableList;
         }
 
-
-        //internal GremlinVariable Select(string label)
-        //{
-        //    GremlinVariable parentVariable = ParentContext?.Select(label);
-        //    List<GremlinVariable> taggedVariableList = new List<GremlinVariable>();
-        //    if (parentVariable is GremlinWrapVariable)
-        //    {
-        //        taggedVariableList.Add(parentVariable);
-        //    }
-        //    else if (parentVariable is GremlinListVariable)
-        //    {
-        //        taggedVariableList.AddRange((parentVariable as GremlinListVariable).GremlinVariableList);
-        //    }
-        //    else if (parentVariable != null)
-        //    {
-        //        taggedVariableList.Add(parentVariable);
-        //    }
-        //    foreach (var currentContextVariable in VariableList)
-        //    {
-        //        if (currentContextVariable.ContainsLabel(label))
-        //        {
-        //            var taggedVariable = currentContextVariable.PopulateAllTaggedVariable(label);
-        //            if (taggedVariable is GremlinListVariable)
-        //            {
-        //                taggedVariableList.AddRange((taggedVariable as GremlinListVariable).GremlinVariableList);
-        //            }
-        //            else
-        //            {
-        //                taggedVariableList.Add(taggedVariable);
-        //            }
-        //        }
-        //    }
-        //    if (taggedVariableList.Count == 0) return null;
-        //    if (taggedVariableList.Count == 1) return taggedVariableList.First();
-        //    return new GremlinListVariable(taggedVariableList);
-        //}
-
-        //internal GremlinVariable SelectLastTaggedVariable(string label)
-        //{
-        //    GremlinVariable selectVariable = null;
-        //    for (var i = VariableList.Count; i >= 0; i--)
-        //    {
-        //        selectVariable = VariableList[i].PopulateLastTaggedVariable(label);
-        //        if (selectVariable != null) return selectVariable;
-        //    }
-        //    return ParentContext?.SelectLastTaggedVariable(label);
-        //}
-
-        //internal GremlinVariable SelectFirstTaggedVariable(string label)
-        //{
-        //    var selectVariable = ParentContext?.SelectFirstTaggedVariable(label);
-        //    if (selectVariable != null) return selectVariable;
-        //    for (var i = 0; i < VariableList.Count; i++)
-        //    {
-        //        selectVariable = VariableList[i].PopulateFirstTaggedVariable(label);
-        //        if (selectVariable != null) return selectVariable;
-        //    }
-        //    return null;
-        //}
-
         internal void PopulateGremlinPath()
         {
             if (isPopulateGremlinPath) return;
@@ -443,11 +383,33 @@ namespace GraphView
         internal List<WSelectElement> GetSelectElement(List<string> ProjectedProperties)
         {
             var selectElements = new List<WSelectElement>();
+
+            if (PivotVariable is GremlinDropTableVariable
+                || (PivotVariable is GremlinUnionTableVariable && ParentVariable is GremlinSideEffectVariable))
+            {
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
+            }
+
+            //else if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
+            //{
+            //    throw new Exception("Can't process table type");
+            //}
+            else
+            {
+                GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            }
+
             if (ProjectedProperties != null && ProjectedProperties.Count != 0)
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                     selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                    if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
+                    {
+                        selectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(
+                                PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                    }
                 }
             }
             if (isPopulateGremlinPath)
@@ -475,6 +437,7 @@ namespace GraphView
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression()));
                 }
             }
+
             return selectElements;
         }
 

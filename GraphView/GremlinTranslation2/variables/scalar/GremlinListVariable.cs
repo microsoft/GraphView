@@ -44,6 +44,7 @@ namespace GraphView
                     foreach (var property in ProjectedProperties)
                     {
                         compose1Parameters.Add(variable.GetVariableProperty(property).ToScalarExpression());
+                        compose1Parameters.Add(SqlUtil.GetValueExpr(property));
                     }
                     WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
                     parameters.Add(compose1);

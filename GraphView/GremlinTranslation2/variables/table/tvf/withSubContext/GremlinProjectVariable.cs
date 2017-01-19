@@ -67,14 +67,12 @@ namespace GraphView
                         ProjectContextList[index%ProjectContextList.Count].PivotVariable as GremlinGhostVariable;
                     var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable, ghostVar.AttachedVariable,
                         label);
-                    newGhostVar.ParentContext = currentContext;
                     currentContext.VariableList.Add(newGhostVar);
                     currentContext.SetPivotVariable(newGhostVar);
                 }
                 else
                 {
                     GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
-                    newVariable.ParentContext = currentContext;
                     currentContext.VariableList.Add(newVariable);
                     currentContext.SetPivotVariable(newVariable);
                 }

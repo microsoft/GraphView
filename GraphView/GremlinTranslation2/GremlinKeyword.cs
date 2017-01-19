@@ -16,7 +16,7 @@ namespace GraphView
         public const string NodeID = "id";
         public const string EdgeAdj = "_edge";
         public const string ReverseEdgeAdj = "_reverse_edge";
-        //public const string TableValue = "_t";
+        public const string TableDefaultColumnName = "_t";
         public const string Path = "_path";
         public const string DefaultProject = "_result";
         public const string ScalarValue = "_value";

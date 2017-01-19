@@ -48,15 +48,11 @@ namespace GraphView
             foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
             {
                 compose1Parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());
+                compose1Parameters.Add(SqlUtil.GetValueExpr(projectProperty));
             }
             WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
 
-            List<WScalarExpression> foldParameters = new List<WScalarExpression>();
-            foldParameters.Add(compose1);
-            foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
-            {
-                foldParameters.Add(SqlUtil.GetValueExpr(projectProperty));
-            }
+            List<WScalarExpression> foldParameters = new List<WScalarExpression> { compose1 };
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, VariableName);
         }
