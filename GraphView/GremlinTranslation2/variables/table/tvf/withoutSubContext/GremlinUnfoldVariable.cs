@@ -58,6 +58,7 @@ namespace GraphView
             {
                 List<WScalarExpression> parameters = new List<WScalarExpression>();
                 parameters.Add(UnfoldVariable.DefaultVariableProperty().ToScalarExpression());
+                parameters.Add(SqlUtil.GetValueExpr(UnfoldVariable.DefaultVariableProperty().VariableProperty));
                 var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, gremlinVariable, tableName);
                 return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
             }
