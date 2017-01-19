@@ -30,7 +30,7 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
+            return new GremlinVariableProperty(this, GremlinKeyword.TableDefaultColumnName);
         }
 
         internal override GremlinVariableType GetVariableType()
