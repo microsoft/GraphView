@@ -514,7 +514,7 @@ namespace GraphView
                 || property == GremlinKeyword.EdgeAdj
                 || property == GremlinKeyword.ReverseEdgeAdj)
             {
-                property = null;
+                return;
             }
             base.Populate(property);
             SqlTableVariable?.Populate(property);
