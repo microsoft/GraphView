@@ -932,7 +932,7 @@ namespace GraphView
                 var compareVar = currentContext.Select(predicate.Label);
                 if (compareVar.Count > 1) throw new Exception();
                 compareVar.First().Populate(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType()));
-                secondExpr = new GremlinVariableProperty(compareVar.First(), GremlinUtil.GetTypeKeyWithVariableType(GetVariableType())).ToScalarExpression();
+                secondExpr = compareVar.First().GetVariableProperty(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType())).ToScalarExpression();
             }
             else
             {
