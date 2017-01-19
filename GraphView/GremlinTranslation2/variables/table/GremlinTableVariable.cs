@@ -382,6 +382,10 @@ namespace GraphView
     {
         internal override void Populate(string property)
         {
+            if (VariableName == "R_58")
+            {
+                string stop = "";
+            }
             if (property == GremlinKeyword.EdgeID
                 || property == GremlinKeyword.EdgeAdj
                 || property == GremlinKeyword.ReverseEdgeAdj

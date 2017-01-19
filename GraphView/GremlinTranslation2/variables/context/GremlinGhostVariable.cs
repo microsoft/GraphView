@@ -90,8 +90,8 @@ namespace GraphView
         internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
         {
             //if we want to bottomUp populate a ghost Variable, then there are two part we should populate
-            //Populate(property);
-            RealVariable.Populate(property);
+            Populate(property);
+            //RealVariable.Populate(property);
 
             if (terminateVariable == this) return property;
             if (ParentContext == null) throw new Exception();
