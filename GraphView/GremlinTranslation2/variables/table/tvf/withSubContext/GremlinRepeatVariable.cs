@@ -51,6 +51,10 @@ namespace GraphView
             {
                 RepeatContext.Populate(property);
             }
+            else
+            {
+                throw new Exception();
+            }
         }
 
         internal override void PopulateGremlinPath()
