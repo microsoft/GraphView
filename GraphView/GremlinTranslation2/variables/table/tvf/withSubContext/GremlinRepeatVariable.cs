@@ -74,7 +74,10 @@ namespace GraphView
             {
                 var repeatSelectedVariable = new GremlinRepeatSelectedVariable(parentVariable, variable, label);
                 variableList.Add(repeatSelectedVariable);
-                SelectedVariableList.Add(new Tuple<string, GremlinRepeatSelectedVariable>(label, repeatSelectedVariable));
+                if (SelectedVariableList.All(p => p.Item1 != label))
+                {
+                    SelectedVariableList.Add(new Tuple<string, GremlinRepeatSelectedVariable>(label, repeatSelectedVariable));
+                }
             }
             return variableList;
         }
@@ -125,8 +128,7 @@ namespace GraphView
                 {
                     var columnName = selectedVariableTuple.Item1;
                     var selectedVariable = selectedVariableTuple.Item2;
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null),
-                        columnName));
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
 
                     List<WScalarExpression> compose1Paramters = new List<WScalarExpression>();
                     foreach (var property in selectedVariable.ProjectedProperties)

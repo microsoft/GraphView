@@ -460,11 +460,7 @@ namespace GraphView
             }
             if (selectElements.Count == 0)
             {
-                if (PivotVariable is GremlinDropTableVariable)
-                {
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
-                }
-                else if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
+                if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
                 {
                     throw new Exception("Can't process table type");
                 }
