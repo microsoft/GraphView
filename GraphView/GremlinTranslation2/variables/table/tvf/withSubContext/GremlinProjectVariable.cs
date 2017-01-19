@@ -39,12 +39,12 @@ namespace GraphView
 
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
-                List<string> defaultProjectProperty = new List<string>()
-                {
-                    ProjectContextList[i%ProjectContextList.Count].PivotVariable.DefaultVariableProperty()
-                        .VariableProperty
-                };
-                parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock(defaultProjectProperty)));
+                //List<string> defaultProjectProperty = new List<string>()
+                //{
+                //    ProjectContextList[i%ProjectContextList.Count].PivotVariable.DefaultVariableProperty()
+                //        .VariableProperty
+                //};
+                parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
                 parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, this, VariableName);

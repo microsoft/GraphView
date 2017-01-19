@@ -79,6 +79,8 @@ namespace GraphView
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
             secondQueryExpr.SelectElements.Clear();
+            firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             foreach (var projectProperty in projectProperties)
             {
                 if (InputVariable.ContainsProperties(projectProperty))
