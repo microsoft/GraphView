@@ -29,6 +29,7 @@ namespace GraphView
         Edge,
         Scalar,
         Table,
+        NULL,
         Undefined
     }
      
@@ -91,7 +92,7 @@ namespace GraphView
             {
                 columnName = alias + "_" + property;
             }
-            ParentContext.AddProjectVariablePropertiesList(new GremlinVariableProperty(this, property), columnName);
+            ParentContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
             if (ParentContext.ParentVariable == null) throw new Exception();
             return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
         }

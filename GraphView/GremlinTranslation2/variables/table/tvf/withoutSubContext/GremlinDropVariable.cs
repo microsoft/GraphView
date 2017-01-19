@@ -6,18 +6,13 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDropVertexVariable : GremlinTableVariable
+    internal class GremlinDropVertexVariable : GremlinDropTableVariable
     {
         public GremlinVariableProperty DropVetexVariable { get; set; }
 
         public GremlinDropVertexVariable(GremlinVariableProperty dropVetexVariable)
         {
             DropVetexVariable = dropVetexVariable;
-        }
-
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            return DropVetexVariable;
         }
 
         public override WTableReference ToTableReference()
@@ -29,15 +24,10 @@ namespace GraphView
         }
     }
 
-    internal class GremlinDropEdgeVariable : GremlinTableVariable
+    internal class GremlinDropEdgeVariable : GremlinDropTableVariable
     {
         public GremlinVariableProperty SourceVariable;
         public GremlinVariableProperty EdgeVariable;
-
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            return EdgeVariable;
-        }
 
         public GremlinDropEdgeVariable(GremlinVariableProperty sourceVariable, GremlinVariableProperty edgeVariable)
         {

@@ -355,50 +355,6 @@ namespace GraphView
             AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal GremlinTableVariable GetSourceVertex(GremlinVariable edge)
-        {
-            return PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SourceVariable;
-        }
-
-        internal GremlinTableVariable GetSinkVertex(GremlinVariable edge)
-        {
-            return PathList.Find(path => path.EdgeVariable.VariableName == edge.VariableName)?.SinkVariable;
-        }
-
-        internal GremlinVariableProperty GetSourceVariableProperty(GremlinVariable edge)
-        {
-            if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.BothEdge)
-            {
-                return new GremlinVariableProperty(edge, "_source");
-            }
-            else
-            {
-                var sourceVariable = GetSourceVertex(edge);
-                if (sourceVariable == null)
-                {
-                    return new GremlinVariableProperty(edge, "_sink");
-                }
-                else
-                {
-                    return sourceVariable.DefaultVariableProperty();
-                }
-            }
-        }
-
-        internal GremlinVariableProperty GetEdgeVariableProperty(GremlinVariable edge)
-        {
-            if ((edge as GremlinEdgeTableVariable).EdgeType == WEdgeType.InEdge)
-            {
-                return new GremlinVariableProperty(edge, GremlinKeyword.ReverseEdgeAdj);
-            }
-            else
-            {
-                return new GremlinVariableProperty(edge, GremlinKeyword.EdgeID);
-
-            }
-        }
-
-
         internal WBooleanExpression ToSqlBoolean()
         {
             return TableReferences.Count == 0 ? (WBooleanExpression) SqlUtil.GetBooleanParenthesisExpr(Predicates)
@@ -494,17 +450,6 @@ namespace GraphView
                      selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
                 }
             }
-            else
-            {
-                if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
-                {
-
-                }
-                else
-                {
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression()));
-                }
-            }
             if (isPopulateGremlinPath)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(CurrentContextPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
@@ -512,6 +457,23 @@ namespace GraphView
             foreach (var item in ProjectVariablePropertiesList)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(item.Item1.ToScalarExpression(), item.Item2));
+            }
+            if (selectElements.Count == 0)
+            {
+                if (PivotVariable is GremlinDropTableVariable
+                    || (PivotVariable is GremlinUnionTableVariable && ParentVariable is GremlinSideEffectVariable))
+                {
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
+                }
+                else if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
+                {
+                    throw new Exception("Can't process table type");
+                }
+                else
+                {
+                    GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression()));
+                }
             }
             return selectElements;
         }

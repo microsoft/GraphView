@@ -47,7 +47,14 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            RepeatContext.Populate(property);
+            if (SelectedVariableList.All(p => p.Item1 != property))
+            {
+                RepeatContext.Populate(property);
+            }
+            else
+            {
+                throw new Exception();
+            }
         }
 
         internal override void PopulateGremlinPath()
@@ -74,7 +81,10 @@ namespace GraphView
             {
                 var repeatSelectedVariable = new GremlinRepeatSelectedVariable(parentVariable, variable, label);
                 variableList.Add(repeatSelectedVariable);
-                SelectedVariableList.Add(new Tuple<string, GremlinRepeatSelectedVariable>(label, repeatSelectedVariable));
+                if (SelectedVariableList.All(p => p.Item1 != label))
+                {
+                    SelectedVariableList.Add(new Tuple<string, GremlinRepeatSelectedVariable>(label, repeatSelectedVariable));
+                }
             }
             return variableList;
         }
@@ -113,10 +123,10 @@ namespace GraphView
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(item.Key.ToScalarExpression(), item.Value));
             }
 
-            foreach (var temp in projectProperties)
+            foreach (var property in projectProperties)
             {
-                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(InputVariable.VariableName, temp)));
-                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetColumnReferenceExpr(RepeatContext.PivotVariable.VariableName, temp)));
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression(), property));
             }
 
             if (SelectedVariableList.Count != 0)
@@ -125,8 +135,7 @@ namespace GraphView
                 {
                     var columnName = selectedVariableTuple.Item1;
                     var selectedVariable = selectedVariableTuple.Item2;
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null),
-                        columnName));
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
 
                     List<WScalarExpression> compose1Paramters = new List<WScalarExpression>();
                     foreach (var property in selectedVariable.ProjectedProperties)

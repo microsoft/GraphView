@@ -328,7 +328,7 @@ namespace GraphView
             }
             else
             {
-                GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(RealVariable as GremlinTableVariable, propertyKeys);
+                GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(RealVariable, propertyKeys);
                 currentContext.VariableList.Add(newVariable);
                 currentContext.TableReferences.Add(newVariable);
                 currentContext.SetPivotVariable(newVariable);

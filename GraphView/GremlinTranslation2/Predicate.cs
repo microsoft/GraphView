@@ -113,6 +113,11 @@ namespace GraphView
         {
             return new Predicate(PredicateType.without, objects);
         }
+
+        public static Predicate without(string label)
+        {
+            return new Predicate(PredicateType.without, label);
+        }
     }
 
     public enum PredicateType

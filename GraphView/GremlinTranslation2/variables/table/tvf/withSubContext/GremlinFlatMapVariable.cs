@@ -71,7 +71,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinFlatMapScalarVariable : GremlinEdgeTableVariable
+    internal class GremlinFlatMapScalarVariable : GremlinScalarTableVariable
     {
         public GremlinFlatMapScalarVariable(GremlinToSqlContext flatMapContext)
         {
@@ -79,7 +79,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinFlatMapTableVariable : GremlinEdgeTableVariable
+    internal class GremlinFlatMapTableVariable : GremlinTableVariable
     {
         public GremlinFlatMapTableVariable(GremlinToSqlContext flatMapContext)
         {
