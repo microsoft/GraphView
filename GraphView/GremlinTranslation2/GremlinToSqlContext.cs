@@ -319,13 +319,7 @@ namespace GraphView
 
         internal List<WSqlStatement> GetStatements()
         {
-            List<string> projectProperties = new List<string>();
-            if (PivotVariable.GetVariableType() == GremlinVariableType.Edge ||
-                PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
-            {
-                projectProperties = new List<string>() { GremlinKeyword.Star };
-            }
-            return new List<WSqlStatement>() { ToSelectQueryBlock(projectProperties) };
+            return new List<WSqlStatement>() { ToSelectQueryBlock() };
         }
 
         internal WSelectQueryBlock ToSelectQueryBlock(List<string> ProjectedProperties = null)

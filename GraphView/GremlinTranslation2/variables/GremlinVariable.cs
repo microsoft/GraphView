@@ -872,7 +872,10 @@ namespace GraphView
 
         internal virtual void Unfold(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Union(ref GremlinToSqlContext currentContext, List<GremlinToSqlContext> unionContexts)
