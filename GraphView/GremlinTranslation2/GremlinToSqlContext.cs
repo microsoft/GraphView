@@ -460,7 +460,8 @@ namespace GraphView
             }
             if (selectElements.Count == 0)
             {
-                if (PivotVariable is GremlinDropTableVariable)
+                if (PivotVariable is GremlinDropTableVariable
+                    || (PivotVariable is GremlinUnionTableVariable && ParentVariable is GremlinSideEffectVariable))
                 {
                     selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
                 }

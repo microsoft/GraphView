@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDerivedTableVariable: GremlinTableVariable
+    internal class GremlinDerivedTableVariable: GremlinScalarTableVariable
     {
         public GremlinToSqlContext SubqueryContext { get; set; }
 
@@ -38,21 +38,6 @@ namespace GraphView
         public GremlinFoldVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext)
         {
             FoldVariable = subqueryContext.PivotVariable;
-        }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
-        }
-
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return GremlinVariableType.Scalar;
         }
 
         public override WTableReference ToTableReference()

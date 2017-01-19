@@ -8,6 +8,8 @@ namespace GraphView
 {
     internal class GremlinContextVariable: GremlinSelectedVariable
     {
+        public GremlinUpdatePropertiesVariable UpdateVariable { get; set; }
+
         public static GremlinContextVariable Create(GremlinVariable contextVariable)
         {
             //if (contextVariable is GremlinContextVariable)
@@ -103,7 +105,18 @@ namespace GraphView
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
-            RealVariable.Property(currentContext, properties);
+            if (UpdateVariable == null)
+            {
+                var sourceProperty = GetVariableProperty(GremlinKeyword.EdgeSourceV);
+                var edgeProperty = GetVariableProperty(GremlinKeyword.EdgeID);
+                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(sourceProperty, edgeProperty, properties);
+                currentContext.VariableList.Add(UpdateVariable);
+                currentContext.TableReferences.Add(UpdateVariable);
+            }
+            else
+            {
+                UpdateVariable.Property(currentContext, properties);
+            }
         }
     }
 
@@ -113,7 +126,18 @@ namespace GraphView
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
-            RealVariable.Property(currentContext, properties);
+            if (UpdateVariable == null)
+            {
+                var sourceProperty = GetVariableProperty(GremlinKeyword.EdgeSourceV);
+                var edgeProperty = GetVariableProperty(GremlinKeyword.EdgeID);
+                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(sourceProperty, edgeProperty, properties);
+                currentContext.VariableList.Add(UpdateVariable);
+                currentContext.TableReferences.Add(UpdateVariable);
+            }
+            else
+            {
+                UpdateVariable.Property(currentContext, properties);
+            }
         }
     }
 }
