@@ -104,6 +104,8 @@ namespace GraphView
             Dictionary<GremlinVariableProperty, string> map = new Dictionary<GremlinVariableProperty, string>();
             Dictionary<GremlinVariableProperty, string> map2 = new Dictionary<GremlinVariableProperty, string>();
 
+            WRepeatConditionExpression conditionExpr = GetRepeatConditionExpression();
+
             List<WSelectScalarExpression> inputSelectList = GetInputSelectList(useProperties, ref map);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
             List<WSelectScalarExpression> terminateSelectList = GetConditionSelectList(ref map2);
@@ -170,7 +172,7 @@ namespace GraphView
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
 
-            WRepeatConditionExpression conditionExpr = GetRepeatConditionExpression();
+            
             newVisitor.Invoke(conditionExpr, map2);
 
             PropertyKeys.Add(conditionExpr);
@@ -276,14 +278,14 @@ namespace GraphView
                             slot.Add(new Tuple<string, string>(variable.GetVariableName(), property));
                         }
                     }
-                    if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == variable.DefaultProjection().VariableProperty) == -1)
-                    {
-                        (variable as GremlinSelectedVariable).RealVariable.Populate(variable.DefaultProjection().VariableProperty);
-                        var aliasName = GenerateKey();
-                        terminateSelectList.Add(SqlUtil.GetSelectScalarExpr((variable as GremlinSelectedVariable).RealVariable.GetVariableProperty(variable.DefaultProjection().VariableProperty).ToScalarExpression(), aliasName));
-                        map[repeatInnerVar.GetVariableProperty(variable.DefaultProjection().VariableProperty)] = aliasName;
-                        slot.Add(new Tuple<string, string>(variable.GetVariableName(), variable.DefaultProjection().VariableProperty));
-                    }
+                    //if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == variable.DefaultProjection().VariableProperty) == -1)
+                    //{
+                    //    //(variable as GremlinSelectedVariable).RealVariable.Populate(variable.DefaultProjection().VariableProperty);
+                    //    var aliasName = GenerateKey();
+                    //    terminateSelectList.Add(SqlUtil.GetSelectScalarExpr(variable.DefaultProjection().ToScalarExpression(), aliasName));
+                    //    map[repeatInnerVar.GetVariableProperty(variable.DefaultProjection().VariableProperty)] = aliasName;
+                    //    slot.Add(new Tuple<string, string>(variable.GetVariableName(), variable.DefaultProjection().VariableProperty));
+                    //}
                 }
             }
             return terminateSelectList;
