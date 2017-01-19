@@ -350,18 +350,24 @@ namespace GraphView
 
         internal override bool OneLine()
         {
-            return false;
+            return SubQueryExpr.OneLine();
         }
 
         internal override string ToString(string indent)
         {
-            var sb = new StringBuilder(128);
+            if (OneLine())
+            {
+                return string.Format("{0}({1})", indent, SubQueryExpr.ToString(""));
+            }
+            else
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.AppendFormat("{0}(\r\n", indent);
+                sb.Append(SubQueryExpr.ToString(indent + "  "));
+                sb.AppendFormat("\r\n{0})", indent);
 
-            sb.AppendFormat("\r\n{0}(", indent);
-            sb.AppendFormat("\r\n{0}", SubQueryExpr.ToString(indent + "  "));
-            sb.AppendFormat("\r\n{0})", indent);
-
-            return sb.ToString();
+                return sb.ToString();
+            }
         }
 
         public override void Accept(WSqlFragmentVisitor visitor)
@@ -682,9 +688,35 @@ namespace GraphView
         internal WBooleanExpression EmitCondition { get; set; }
         internal WBooleanExpression TerminationCondition { get; set; }
 
+        internal override bool OneLine()
+        {
+            return false;
+        }
+
         internal override string ToString(string indent)
         {
-            return "RepeatConditionExpr";
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendFormat("{0}RepeatCondition(", indent);
+            if (RepeatTimes >= 0)
+            {
+                sb.Append(RepeatTimes);
+            }
+            else
+            {
+                sb.Append("\r\n");
+                sb.Append(TerminationCondition.ToString(indent + "  "));
+            }
+
+            if (EmitCondition != null)
+            {
+                sb.Append(",\r\n");
+                sb.Append(EmitCondition.ToString(indent + "  "));
+            }
+
+            sb.Append(")");
+
+            return sb.ToString();
         }
     }
 

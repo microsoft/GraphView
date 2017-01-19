@@ -137,18 +137,6 @@ namespace GraphView
 
         internal IList<WTableHint> TableHints { set; get; }
 
-        public Identifier ExposedName
-        {
-            get
-            {
-                if (Alias != null)
-                    return Alias;
-                if (TableObjectName != null)
-                    return TableObjectName.BaseIdentifier;
-                return null;
-            }
-        }
-
         // SchemaObjectName cannot be modified externally. 
         // We use this field to add a new table reference to the parsed tree.
         public string TableObjectString { set; get; }
@@ -246,7 +234,7 @@ namespace GraphView
             var sb = new StringBuilder(32);
 
             sb.AppendFormat("{0}(\r\n", indent);
-            sb.AppendFormat("{0}{1}\r\n", indent, QueryExpr.ToString(indent));
+            sb.AppendFormat("{0}\r\n", QueryExpr.ToString(indent + "  "));
             sb.AppendFormat("{0}) AS [{1}]", indent, Alias.Value);
 
             if (Columns != null && Columns.Count > 0)
@@ -295,28 +283,56 @@ namespace GraphView
 
         internal override bool OneLine()
         {
+            if (Parameters == null)
+            {
+                return true;
+            }
+
+            foreach (WScalarExpression para in Parameters)
+            {
+                if (!para.OneLine())
+                {
+                    return false;
+                }
+            }
+
             return true;
         }
 
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
-            sb.AppendFormat("{0}", SchemaObject);
-            if (Parameters != null)
+            sb.AppendFormat("{0}{1}(", indent, SchemaObject);
+
+            if (OneLine())
             {
-                var index = 0;
-                sb.Append("(");
-                for (var count = Parameters.Count; index < count; ++index)
+                if (Parameters != null)
                 {
-                    if (index > 0)
-                        sb.Append(", ");
-                    if (Parameters[index].OneLine())
-                        sb.Append(Parameters[index].ToString(""));
-                    else
-                        sb.Append(Parameters[index].ToString(indent));
+                    for (int i = 0; i < Parameters.Count; i++)
+                    {
+                        if (i > 0)
+                        {
+                            sb.Append(", ");
+                        }
+                        sb.Append(Parameters[i].ToString(""));
+                    }
+                    sb.Append(")");
                 }
-                sb.Append(")");
             }
+            else
+            {
+                sb.Append("\r\n");
+                for (int i = 0; i < Parameters.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        sb.Append(",\r\n");
+                    }
+                    sb.Append(Parameters[i].ToString(indent + "  "));
+                }
+                sb.AppendFormat("\r\n{0})", indent);
+            }
+
             if (Alias != null)
                 sb.Append(" AS [" + Alias.Value + "]");
 
@@ -764,12 +780,25 @@ namespace GraphView
         {
             var sb = new StringBuilder(32);
 
-            if (FirstTableRef != null)
+            if (OneLine())
             {
-                sb.Append(FirstTableRef.ToString(indent) + "\n");
+                if (FirstTableRef != null)
+                {
+                    sb.AppendFormat("{0}{1} ", indent, FirstTableRef.ToString(""));
+                }
+                sb.Append(TsqlFragmentToString.JoinType(UnqualifiedJoinType));
+                sb.AppendFormat(" {0}", SecondTableRef.ToString(""));
             }
-            sb.AppendFormat("{0}", TsqlFragmentToString.JoinType(UnqualifiedJoinType));
-            sb.Append(SecondTableRef.ToString(indent));
+            else
+            {
+                if (FirstTableRef != null)
+                {
+                    sb.Append(FirstTableRef.ToString(indent + "  "));
+                    sb.Append("\r\n");
+                }
+                sb.AppendFormat("{0}  {1}\r\n", indent, TsqlFragmentToString.JoinType(UnqualifiedJoinType));
+                sb.Append(SecondTableRef.ToString(indent + "  "));
+            }
 
             return sb.ToString();
         }

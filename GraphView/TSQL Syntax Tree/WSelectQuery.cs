@@ -229,6 +229,7 @@ namespace GraphView
         internal override bool OneLine()
         {
             if (FromClause == null &&
+                MatchClause == null &&
                 WhereClause == null &&
                 OrderByClause == null &&
                 GroupByClause == null)

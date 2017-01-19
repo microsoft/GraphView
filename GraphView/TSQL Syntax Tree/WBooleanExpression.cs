@@ -355,15 +355,23 @@ namespace GraphView
 
         internal override bool OneLine()
         {
-            return false;
+            return Subquery.OneLine();
         }
 
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder(512);
 
-            sb.AppendFormat("{0}EXISTS", indent);
-            sb.Append(Subquery.ToString(indent + " "));
+            if (OneLine())
+            {
+                sb.AppendFormat("{0}EXISTS {1}", indent, Subquery.ToString(""));
+            }
+            else
+            {
+                sb.AppendFormat("{0}EXISTS (\r\n", indent);
+                sb.AppendFormat(Subquery.SubQueryExpr.ToString(indent + "  "));
+                sb.AppendFormat("\r\n{0})", indent);
+            }
 
             return sb.ToString();
         }
