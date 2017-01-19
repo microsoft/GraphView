@@ -45,7 +45,7 @@ namespace GraphView
         {
             Populate(property);
             var column = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)];
-            return AttachedVariable.GetVariableProperty(column);
+            return new GremlinVariableProperty(AttachedVariable, column);
         }
 
         internal override string GetVariableName()

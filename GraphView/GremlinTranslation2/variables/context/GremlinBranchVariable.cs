@@ -114,7 +114,7 @@ namespace GraphView
         internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,
             string columnName = null)
         {
-            foreach (var variableList in (this as GremlinBranchVariable).BrachVariableList)
+            foreach (var variableList in BrachVariableList)
             {
                 foreach (var variable in variableList)
                 {

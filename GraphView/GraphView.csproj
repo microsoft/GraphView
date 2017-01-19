@@ -150,7 +150,6 @@
     <Compile Include="GremlinTranslation2\variables\context\GremlinGhostTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinGhostVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinSelectedVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\context\GremlinSubContextVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinCollectionVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinListVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinRepeatSelectedVariable.cs" />

@@ -11,12 +11,6 @@ namespace GraphView
         public GremlinGhostTableVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label)
             : base(ghostVariable, attachedVariable, label) { }
 
-        internal override GremlinVariableProperty GetVariableProperty(string property)
-        {
-            Populate(property);
-            return RealVariable.GetVariableProperty(property);
-        }
-
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
@@ -247,9 +241,7 @@ namespace GraphView
             //if (propertyKeys.Count == 1)
             //{
             //    Populate(propertyKeys.First());
-            //    GremlinVariableProperty newVariableProperty = 
-
-            //RealVariable as GremlinTableVariable, propertyKeys.First());
+            //    GremlinVariableProperty newVariableProperty = new GremlinVariableProperty(RealVariable as GremlinTableVariable, propertyKeys.First());
             //    currentContext.VariableList.Add(newVariableProperty);
             //    currentContext.SetPivotVariable(newVariableProperty);
             //}
