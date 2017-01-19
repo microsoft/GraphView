@@ -693,6 +693,21 @@ namespace GraphView
             return false;
         }
 
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            if (EmitCondition != null)
+                EmitCondition.Accept(visitor);
+            if (TerminationCondition != null)
+                TerminationCondition.Accept(visitor);
+            base.AcceptChildren(visitor);
+        }
+
         internal override string ToString(string indent)
         {
             StringBuilder sb = new StringBuilder();

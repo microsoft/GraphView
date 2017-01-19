@@ -37,10 +37,12 @@ namespace GraphView
 
             RepeatCondition repeatCondition = new RepeatCondition();
             repeatCondition.StartFromContext = StartFromContext;
-            repeatCondition.EmitContext = EmitContext;
+            repeatCondition.IsEmitContext = EmitContext;
             if (IsEmit)
             {
-                repeatCondition.EmitCondition = SqlUtil.GetTrueBooleanComparisonExpr();
+                GremlinToSqlContext emitContext = new GremlinToSqlContext();
+                emitContext.AddPredicate(SqlUtil.GetTrueBooleanComparisonExpr());
+                repeatCondition.EmitContext = emitContext;
             }
             if (TerminationPredicate != null)
             {
@@ -49,7 +51,7 @@ namespace GraphView
             if (TerminationTraversal != null)
             {
                 TerminationTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
-                repeatCondition.TerminationCondition = TerminationTraversal.GetEndOp().GetContext().ToSqlBoolean();
+                repeatCondition.TerminationContext = TerminationTraversal.GetEndOp().GetContext();
             }
             if (EmitPredicate != null)
             {
@@ -58,7 +60,7 @@ namespace GraphView
             if (EmitTraversal != null)
             {
                 EmitTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
-                repeatCondition.EmitCondition = EmitTraversal.GetEndOp().GetContext().ToSqlBoolean();
+                repeatCondition.EmitContext = EmitTraversal.GetEndOp().GetContext();
             }
 
             inputContext.PivotVariable.Repeat(inputContext, repeatContext, repeatCondition);
@@ -71,16 +73,16 @@ namespace GraphView
     public class RepeatCondition
     {
         internal bool StartFromContext { get; set; }
-        internal bool EmitContext { get; set; }
+        internal bool IsEmitContext { get; set; }
         internal int RepeatTimes { get; set; }
-        internal WBooleanExpression EmitCondition { get; set; }
-        internal WBooleanExpression TerminationCondition { get; set; }
+        internal GremlinToSqlContext EmitContext { get; set; }
+        internal GremlinToSqlContext TerminationContext { get; set; }
 
         public RepeatCondition()
         {
             RepeatTimes = -1;
             StartFromContext = false;
-            EmitContext = false;
+            IsEmitContext = false;
         }
     } 
 }

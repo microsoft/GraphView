@@ -102,10 +102,11 @@ namespace GraphView
 
             //Set the select Elements
             Dictionary<GremlinVariableProperty, string> map = new Dictionary<GremlinVariableProperty, string>();
+            Dictionary<GremlinVariableProperty, string> map2 = new Dictionary<GremlinVariableProperty, string>();
 
             List<WSelectScalarExpression> inputSelectList = GetInputSelectList(useProperties, ref map);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
-
+            List<WSelectScalarExpression> terminateSelectList = GetConditionSelectList(ref map2);
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
 
             ModifyColumnNameVisitor newVisitor = new ModifyColumnNameVisitor();
@@ -120,11 +121,19 @@ namespace GraphView
             {
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
+            foreach (var selectElement in terminateSelectList)
+            {
+                selectQueryBlock.SelectElements.Add(selectElement);
+            }
 
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
             foreach (var item in map)
             {
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(item.Key.ToScalarExpression(), item.Value));
+            }
+            foreach (var item in map2)
+            {
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), item.Value));
             }
 
             foreach (var property in projectProperties)
@@ -160,7 +169,11 @@ namespace GraphView
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
 
             PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            PropertyKeys.Add(GetRepeatConditionExpression());
+
+            WRepeatConditionExpression conditionExpr = GetRepeatConditionExpression();
+            newVisitor.Invoke(conditionExpr, map2);
+
+            PropertyKeys.Add(conditionExpr);
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, gremlinVariable, tableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
@@ -170,11 +183,11 @@ namespace GraphView
         {
             return new WRepeatConditionExpression()
             {
-                EmitCondition = RepeatCondition.EmitCondition,
-                TerminationCondition = RepeatCondition.TerminationCondition,
+                EmitCondition = RepeatCondition.EmitContext?.ToSqlBoolean(),
+                TerminationCondition = RepeatCondition.TerminationContext?.ToSqlBoolean(),
                 RepeatTimes = RepeatCondition.RepeatTimes,
                 StartFromContext = RepeatCondition.StartFromContext,
-                EmitContext = RepeatCondition.EmitContext
+                EmitContext = RepeatCondition.IsEmitContext
             };
         }
 
@@ -200,7 +213,8 @@ namespace GraphView
                 if (variable is GremlinSelectedVariable)
                 {
                     var repeatInnerVar = (variable as GremlinSelectedVariable);
-                    if (repeatInnerVar.IsFromSelect && !allVariablesInRepeatContext.Contains(repeatInnerVar.RealVariable))
+                    if (repeatInnerVar.IsFromSelect &&
+                        !allVariablesInRepeatContext.Contains(repeatInnerVar.RealVariable))
                     {
                         List<GremlinVariable> outerVarList = RepeatContext.Select(repeatInnerVar.SelectKey);
                         GremlinVariable outerVar = null;
@@ -219,7 +233,9 @@ namespace GraphView
                             {
                                 outerVar.Populate(property);
                                 var aliasName = GenerateKey();
-                                outerSelectList.Add(SqlUtil.GetSelectScalarExpr(outerVar.GetVariableProperty(property).ToScalarExpression(), aliasName));
+                                outerSelectList.Add(
+                                    SqlUtil.GetSelectScalarExpr(
+                                        outerVar.GetVariableProperty(property).ToScalarExpression(), aliasName));
                                 map[repeatInnerVar.GetVariableProperty(property)] = aliasName;
                             }
                         }
@@ -227,6 +243,50 @@ namespace GraphView
                 }
             }
             return outerSelectList;
+        }
+
+        public List<WSelectScalarExpression> GetConditionSelectList(ref Dictionary<GremlinVariableProperty, string> map)
+        {
+            List<WSelectScalarExpression> terminateSelectList = new List<WSelectScalarExpression>();
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            List<GremlinVariable> temp = RepeatCondition.TerminationContext?.FetchAllVariablesInCurrAndChildContext();
+            if (temp != null)
+            {
+                variableList.AddRange(temp);
+            }
+            temp = RepeatCondition.EmitContext?.FetchAllVariablesInCurrAndChildContext();
+            if (temp != null)
+            {
+                variableList.AddRange(temp);
+            }
+            List<Tuple<string, string>> slot = new List<Tuple<string, string>>();
+            foreach (var variable in variableList)
+            {
+                if (variable is GremlinSelectedVariable)
+                {
+                    var repeatInnerVar = (variable as GremlinSelectedVariable);
+                    foreach (var property in repeatInnerVar.UsedProperties)
+                    {
+                        if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == property) == -1)
+                        {
+                            (variable as GremlinSelectedVariable).RealVariable.Populate(property);
+                            var aliasName = GenerateKey();
+                            terminateSelectList.Add(SqlUtil.GetSelectScalarExpr((variable as GremlinSelectedVariable).RealVariable.GetVariableProperty(property).ToScalarExpression(), aliasName));
+                            map[repeatInnerVar.GetVariableProperty(property)] = aliasName;
+                            slot.Add(new Tuple<string, string>(variable.GetVariableName(), property));
+                        }
+                    }
+                    if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == variable.DefaultProjection().VariableProperty) == -1)
+                    {
+                        (variable as GremlinSelectedVariable).RealVariable.Populate(variable.DefaultProjection().VariableProperty);
+                        var aliasName = GenerateKey();
+                        terminateSelectList.Add(SqlUtil.GetSelectScalarExpr((variable as GremlinSelectedVariable).RealVariable.GetVariableProperty(variable.DefaultProjection().VariableProperty).ToScalarExpression(), aliasName));
+                        map[repeatInnerVar.GetVariableProperty(variable.DefaultProjection().VariableProperty)] = aliasName;
+                        slot.Add(new Tuple<string, string>(variable.GetVariableName(), variable.DefaultProjection().VariableProperty));
+                    }
+                }
+            }
+            return terminateSelectList;
         }
 
         public string GenerateKey()
