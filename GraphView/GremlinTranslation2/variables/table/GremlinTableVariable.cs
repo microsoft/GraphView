@@ -584,10 +584,5 @@ namespace GraphView
         {
             return GremlinVariableType.NULL;
         }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            return GetVariableProperty(GremlinKeyword.Star);
-        }
     }
 }

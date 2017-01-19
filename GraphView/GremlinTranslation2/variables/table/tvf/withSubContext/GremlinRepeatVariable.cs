@@ -47,7 +47,10 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            RepeatContext.Populate(property);
+            if (SelectedVariableList.All(p => p.Item1 != property))
+            {
+                RepeatContext.Populate(property);
+            }
         }
 
         internal override void PopulateGremlinPath()
