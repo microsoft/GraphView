@@ -22,6 +22,11 @@ namespace GraphView {
             return RealVariable;
         }
 
+        internal override bool ContainsProperties(string property)
+        {
+            return RealVariable.ContainsProperties(property);
+        }
+
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
             return RealVariable.DefaultVariableProperty();

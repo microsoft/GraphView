@@ -81,7 +81,7 @@ namespace GraphView
             secondQueryExpr.SelectElements.Clear();
             foreach (var projectProperty in projectProperties)
             {
-                if (InputVariable.ProjectedProperties.Contains(projectProperty))
+                if (InputVariable.ContainsProperties(projectProperty))
                 {
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
@@ -92,7 +92,7 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
                 }
-                if (OptionalContext.PivotVariable.ProjectedProperties.Contains(projectProperty))
+                if (OptionalContext.PivotVariable.ContainsProperties(projectProperty))
                 {
                     secondQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(

@@ -59,6 +59,11 @@ namespace GraphView
             return Labels.Contains(label);
         }
 
+        internal virtual bool ContainsProperties(string property)
+        {
+            return ProjectedProperties.Contains(property);
+        }
+
         internal virtual void Populate(string property)
         {
             if (!ProjectedProperties.Contains(property))

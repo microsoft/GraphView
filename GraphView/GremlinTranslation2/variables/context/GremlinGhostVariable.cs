@@ -38,7 +38,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public GremlinVariable RealVariable { get; set; }
         public GremlinVariable AttachedVariable { get; set; }
         public Dictionary<Tuple<string, string>, string> ColumnReferenceMap { get; set; }
 
