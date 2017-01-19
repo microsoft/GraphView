@@ -472,7 +472,7 @@ namespace GraphView
                 else
                 {
                     GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                    selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), defaultProjection.VariableProperty));
+                    selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression()));
                 }
             }
             return selectElements;

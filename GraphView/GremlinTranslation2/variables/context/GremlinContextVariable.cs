@@ -107,9 +107,8 @@ namespace GraphView
         {
             if (UpdateVariable == null)
             {
-                var sourceProperty = GetVariableProperty(GremlinKeyword.EdgeSourceV);
-                var edgeProperty = GetVariableProperty(GremlinKeyword.EdgeID);
-                UpdateVariable = new GremlinUpdateEdgePropertiesVariable(sourceProperty, edgeProperty, properties);
+                GremlinVariableProperty variableProperty = GetVariableProperty(GremlinKeyword.NodeID);
+                UpdateVariable = new GremlinUpdateNodePropertiesVariable(variableProperty, properties);
                 currentContext.VariableList.Add(UpdateVariable);
                 currentContext.TableReferences.Add(UpdateVariable);
             }
