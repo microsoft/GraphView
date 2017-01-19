@@ -107,6 +107,10 @@ namespace GraphView
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
+
+            ModifyColumnNameVisitor newVisitor = new ModifyColumnNameVisitor();
+            newVisitor.Invoke(selectQueryBlock, map);
+
             selectQueryBlock.SelectElements.Clear();
             foreach (var selectElement in inputSelectList)
             {
@@ -275,9 +279,9 @@ namespace GraphView
 
     internal class ModifyColumnNameVisitor : WSqlFragmentVisitor
     {
-        private Dictionary<Tuple<string, string>, Tuple<string, string>> _map;
+        private Dictionary<GremlinVariableProperty, string> _map;
 
-        public void Invoke(WSqlFragment queryBlock, Dictionary<Tuple<string, string>, Tuple<string, string>> map)
+        public void Invoke(WSqlFragment queryBlock, Dictionary<GremlinVariableProperty, string> map)
         {
             _map = map;
             queryBlock.Accept(this);
@@ -289,10 +293,10 @@ namespace GraphView
             var value = columnReference.MultiPartIdentifier.Identifiers[1].Value;
             foreach (var item in _map)
             {
-                if (item.Key.Item1.Equals(key) && item.Key.Item2.Equals(value))
+                if (item.Key.GremlinVariable.VariableName.Equals(key) && item.Key.VariableProperty.Equals(value))
                 {
-                    columnReference.MultiPartIdentifier.Identifiers[0].Value = item.Value.Item1;
-                    columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value.Item2;
+                    columnReference.MultiPartIdentifier.Identifiers[0].Value = "R";
+                    columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value;
                 }
             }
         }
