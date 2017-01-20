@@ -207,6 +207,8 @@ namespace GraphView
             _edgeProperties = pProjectedFieldList;
         }
 
+        // TODO: If the scalarSubquery yields a vertex field, we could skip the RetrieveDocument from server
+        // TODO: But that means we need a function which can translate a VertexField back to a Json String for uploading to the server
         internal override RawRecord DataModify(RawRecord record)
         {
             var srcFieldObject = _srcFunction.Evaluate(record);
