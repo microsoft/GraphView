@@ -208,7 +208,7 @@ namespace GraphView
         }
 
         // TODO: If the scalarSubquery yields a vertex field, we could skip the RetrieveDocument from server
-        // TODO: But that means we need a function which can translate a VertexField back to a Json String for uploading to the server
+        // TODO: and that means we need a function which can translate a VertexField back to a Json string for uploading to the server
         internal override RawRecord DataModify(RawRecord record)
         {
             var srcFieldObject = _srcFunction.Evaluate(record);
@@ -219,12 +219,12 @@ namespace GraphView
             string srcId;
             string sinkId;
 
-            // TODO: Just a hack, needs to modify the translation code
+            // TODO: Just a hack, need to modify the translation code
             if (srcFieldObject is StringField) srcId = (srcFieldObject as StringField).Value;
             else if (srcFieldObject is PropertyField) srcId = (srcFieldObject as PropertyField).PropertyValue;
             else if (srcFieldObject is VertexField) srcId = (srcFieldObject as VertexField)["id"].ToString();
             else srcId = srcFieldObject.ToString();
-            // TODO: Just a hack, needs to modify the translation code
+            // TODO: Just a hack, need to modify the translation code
             if (sinkFieldObject is StringField) sinkId = (sinkFieldObject as StringField).Value;
             else if (sinkFieldObject is PropertyField) sinkId = (sinkFieldObject as PropertyField).PropertyValue;
             else if (sinkFieldObject is VertexField) sinkId = (sinkFieldObject as VertexField)["id"].ToString();
