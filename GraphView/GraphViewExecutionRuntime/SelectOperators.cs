@@ -136,7 +136,7 @@ namespace GraphView
                         break;
                     }
 
-                    inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToString()));
+                    inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToValue));
                 }
 
                 // When sinkVertexQuery is null, only sink vertices' IDs are to be returned. 
@@ -213,11 +213,11 @@ namespace GraphView
                     {
                         foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
                         {
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToString()))
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
                             {
-                                sinkVertexCollection.Add(rec[0].ToString(), new List<RawRecord>());
+                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
                             }
-                            sinkVertexCollection[rec[0].ToString()].Add(rec);
+                            sinkVertexCollection[rec[0].ToValue].Add(rec);
                         }
                     }
                 }
@@ -241,7 +241,7 @@ namespace GraphView
                             {
                                 int sourceMatchIndex = matchingIndexes[k].Item1;
                                 int sinkMatchIndex = matchingIndexes[k].Item2;
-                                if (!sourceRec[sourceMatchIndex].ToString().Equals(sinkRec[sinkMatchIndex].ToString(), StringComparison.OrdinalIgnoreCase))
+                                if (!sourceRec[sourceMatchIndex].ToValue.Equals(sinkRec[sinkMatchIndex].ToValue, StringComparison.OrdinalIgnoreCase))
                                 //if (sourceRec[sourceMatchIndex] != sinkRec[sinkMatchIndex])
                                 {
                                     break;
@@ -342,7 +342,7 @@ namespace GraphView
 
                     foreach (var adjacencyListSinkIndex in adjacencyListSinkIndexes)
                     {
-                        inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToString()));
+                        inputSequence.Add(new Tuple<RawRecord, string>(record, record[adjacencyListSinkIndex].ToValue));
                     }
                 }
 

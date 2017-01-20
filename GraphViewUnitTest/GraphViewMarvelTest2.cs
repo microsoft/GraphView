@@ -25,6 +25,24 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void SelectMarvelQuery1b()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            graph.CommandText =
+                "g.V().has('weapon','shield').as('character').next()";
+            var results = graph.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
         public void SelectMarvelQuery2()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -141,7 +159,7 @@ namespace GraphViewUnitTest
             graph.g().AddV("comicbook").Property("name", "AVF 4").Next();
             graph.g().V().Has("name", "VENUS II").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
             graph.g().AddV("character").Property("name", "HAWK").Property("weapon", "claws").Next();
-            graph.g().V().As("v").Has("character", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
+            graph.g().V().As("v").Has("name", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
             graph.g().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").Next();
             graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
         }

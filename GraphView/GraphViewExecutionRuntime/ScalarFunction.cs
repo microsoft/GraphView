@@ -129,8 +129,8 @@ namespace GraphView
             JsonDataType targetType = DataType();
             //string value1 = f1.Evaluate(record);
             //string value2 = f2.Evaluate(record);
-            string value1 = f1.Evaluate(record)?.ToString();
-            string value2 = f2.Evaluate(record)?.ToString();
+            string value1 = f1.Evaluate(record)?.ToValue;
+            string value2 = f2.Evaluate(record)?.ToValue;
 
             switch (targetType)
             {

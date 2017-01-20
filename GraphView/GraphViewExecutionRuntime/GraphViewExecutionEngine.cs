@@ -30,7 +30,7 @@ namespace GraphView
             {
                 switch (property.Name.ToLower())
                 {
-                    // Reversed properties for DocumentDB meta-data
+                    // DocumentDB-reserved JSON properties
                     case "_rid":
                     case "_self":
                     case "_etag":
@@ -75,84 +75,20 @@ namespace GraphView
 
             return adjListField;
         }
+
+        public virtual string ToGraphSON()
+        {
+            return ToString();
+        }
+
+        public virtual string ToValue
+        {
+            get
+            {
+                return ToString();
+            }
+        }
     }
-
-    //internal class VertexField : FieldObject
-    //{
-    //    public string VertexJsonString { get; private set; }
-
-    //    public VertexField(string vertexJsonString)
-    //    {
-    //        VertexJsonString = vertexJsonString;
-    //    }
-
-    //    public override string ToString()
-    //    {
-    //        JObject vertex = JObject.Parse(VertexJsonString);
-    //        return string.Format("v[{0}]", vertex["id"].ToString());
-    //    }
-
-    //    // TODO: Documents' meta fields like _etag shouldn't be included when executing GetHashCode()
-    //    public override int GetHashCode()
-    //    {
-    //        return VertexJsonString.GetHashCode();
-    //    }
-
-    //    // TODO: Documents' meta fields like _etag shouldn't be included when executing Equals()
-    //    public override bool Equals(object obj)
-    //    {
-    //        if (Object.ReferenceEquals(this, obj)) return true;
-
-    //        VertexField vertexField = obj as VertexField;
-    //        if (vertexField == null)
-    //        {
-    //            return false;
-    //        }
-
-    //        return VertexJsonString.Equals(vertexField.VertexJsonString);
-    //    }
-    //}
-
-    //internal class EdgeField : FieldObject
-    //{
-    //    public string SourceId { get; private set; }
-    //    public string SinkId { get; private set; }
-    //    public string EdgeId { get; private set; }
-    //    public string EdgeJsonString { get; private set; }
-
-    //    public EdgeField(string sourceId, string sinkId, string edgeId, string edgeJsonString)
-    //    {
-    //        SourceId = sourceId;
-    //        SinkId = sinkId;
-    //        EdgeId = edgeId;
-    //        EdgeJsonString = edgeJsonString;
-    //    }
-
-    //    public override string ToString()
-    //    {
-    //        JObject edge = JObject.Parse(EdgeJsonString);
-    //        return string.Format("e[{0}][{1}-{2}->{3}]", 
-    //            EdgeId, SourceId, edge["label"] ?? "", SinkId);
-    //    }
-
-    //    public override int GetHashCode()
-    //    {
-    //        return EdgeJsonString.GetHashCode();
-    //    }
-
-    //    public override bool Equals(object obj)
-    //    {
-    //        if (Object.ReferenceEquals(this, obj)) return true;
-
-    //        EdgeField edgeField = obj as EdgeField;
-    //        if (edgeField == null)
-    //        {
-    //            return false;
-    //        }
-
-    //        return EdgeJsonString.Equals(edgeField.EdgeJsonString);
-    //    }
-    //}
 
     internal class StringField : FieldObject
     {
@@ -184,6 +120,14 @@ namespace GraphView
             }
 
             return Value.Equals(stringField.Value);
+        }
+
+        public override string ToValue
+        {
+            get
+            {
+                return Value;
+            }
         }
     }
 
@@ -341,6 +285,14 @@ namespace GraphView
         {
             return ToString().GetHashCode();
         }
+
+        public override string ToValue
+        {
+            get
+            {
+                return PropertyValue;
+            }
+        }
     }
 
     internal class VertexPropertyField : PropertyField
@@ -352,7 +304,7 @@ namespace GraphView
 
         public override string ToString()
         {
-            return PropertyValue;
+            return string.Format("vp[{0}]", base.ToString());
         }
     }
 
@@ -365,7 +317,7 @@ namespace GraphView
 
         public override string ToString()
         {
-            return PropertyValue;
+            return string.Format("p[{0}]", base.ToString());
         }
     }
 
@@ -424,6 +376,22 @@ namespace GraphView
             Edges.TryGetValue(edgeOffset, out edgeField);
             return edgeField;
         }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e)))
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(", ");
+                }
+                sb.Append(Edges[offset].ToString());
+            }
+
+            return string.Format("[{0}]", sb.ToString());
+        }
     }
 
     internal class VertexField : FieldObject
@@ -471,6 +439,22 @@ namespace GraphView
         public override string ToString()
         {
             return string.Format("v[{0}]", VertexProperties["id"].ToString());
+        }
+
+        public override string ToValue
+        {
+            get
+            {
+                VertexPropertyField idProperty;
+                if (VertexProperties.TryGetValue("id", out idProperty))
+                {
+                    return idProperty.ToValue;
+                }
+                else
+                {
+                    return "";
+                }
+            }
         }
     }
 

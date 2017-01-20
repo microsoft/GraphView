@@ -153,7 +153,7 @@ namespace GraphView
         {
             var targetId = record[_nodeIdIndex];
 
-            DeleteNode(targetId.ToString());
+            DeleteNode(targetId.ToValue);
 
             return null;
         }
@@ -222,12 +222,12 @@ namespace GraphView
             // TODO: Just a hack, need to modify the translation code
             if (srcFieldObject is StringField) srcId = (srcFieldObject as StringField).Value;
             else if (srcFieldObject is PropertyField) srcId = (srcFieldObject as PropertyField).PropertyValue;
-            else if (srcFieldObject is VertexField) srcId = (srcFieldObject as VertexField)["id"].ToString();
+            else if (srcFieldObject is VertexField) srcId = (srcFieldObject as VertexField)["id"].ToValue;
             else srcId = srcFieldObject.ToString();
             // TODO: Just a hack, need to modify the translation code
             if (sinkFieldObject is StringField) sinkId = (sinkFieldObject as StringField).Value;
             else if (sinkFieldObject is PropertyField) sinkId = (sinkFieldObject as PropertyField).PropertyValue;
-            else if (sinkFieldObject is VertexField) sinkId = (sinkFieldObject as VertexField)["id"].ToString();
+            else if (sinkFieldObject is VertexField) sinkId = (sinkFieldObject as VertexField)["id"].ToValue;
             else sinkId = sinkFieldObject.ToString();
 
             var srcJsonDocument = RetrieveDocumentById(srcId);
@@ -244,8 +244,8 @@ namespace GraphView
             var edgeField = FieldObject.GetEdgeField(edgeObject);
             var revEdgeField = FieldObject.GetEdgeField(revEdgeObject);
 
-            srcVertexField.AdjacencyList.Edges.Add(edgeField["_ID"].ToString(), edgeField);
-            sinkVertexField.RevAdjacencyList.Edges.Add(revEdgeField["_ID"].ToString(), revEdgeField);
+            srcVertexField.AdjacencyList.Edges.Add(edgeField["_ID"].ToValue, edgeField);
+            sinkVertexField.RevAdjacencyList.Edges.Add(revEdgeField["_ID"].ToValue, revEdgeField);
 
             var result = new RawRecord();
 
@@ -333,8 +333,8 @@ namespace GraphView
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = record[_srcIdIndex].ToString();
-            var edgeOffset = record[_edgeOffsetIndex].ToString();
+            var srcId = record[_srcIdIndex].ToValue;
+            var edgeOffset = record[_edgeOffsetIndex].ToValue;
 
             var srcJsonDocument = RetrieveDocumentById(srcId);
             var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
@@ -461,9 +461,9 @@ namespace GraphView
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var targetId = record[_nodeIdIndex].ToString();
+            string targetId = record[_nodeIdIndex].ToValue;
 
-            var targetJsonDocument = RetrieveDocumentById(targetId.ToString());
+            var targetJsonDocument = RetrieveDocumentById(targetId);
 
             var targetVertexField = Connection.VertexCache.GetVertexField(targetId, targetJsonDocument);
 
@@ -520,8 +520,8 @@ namespace GraphView
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = record[_srcIdIndex].ToString();
-            var edgeOffset = record[_edgeOffsetIndex].ToString();
+            string srcId = record[_srcIdIndex].ToValue;
+            string edgeOffset = record[_edgeOffsetIndex].ToValue;
 
             var srcJsonDocument = RetrieveDocumentById(srcId);
 
