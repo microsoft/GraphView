@@ -438,7 +438,17 @@ namespace GraphView
 
         public override string ToString()
         {
-            return string.Format("v[{0}]", VertexProperties["id"].ToString());
+            VertexPropertyField idProperty;
+            string id;
+            if (VertexProperties.TryGetValue("id", out idProperty))
+            {
+                id = idProperty.ToValue;
+            }
+            else
+            {
+                id = "";
+            }
+            return string.Format("v[{0}]", id);
         }
 
         public override string ToValue
