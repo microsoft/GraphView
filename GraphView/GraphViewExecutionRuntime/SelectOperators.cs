@@ -702,10 +702,10 @@ namespace GraphView
         /// <param name="isReversedAdjList"></param>
         private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, bool isReversedAdjList)
         {
-            var sourceValue = isReversedAdjList ? edge["_sink"].ToString() : startVertexId;
-            var sinkValue = isReversedAdjList ? startVertexId : edge["_sink"].ToString();
-            var otherValue = isStartVertexTheOriginVertex ? edge["_sink"].ToString() : startVertexId;
-            var edgeIdValue = isReversedAdjList ? edge["_reverse_ID"].ToString() : edge["_ID"].ToString();
+            var sourceValue = isReversedAdjList ? edge["_sink"].ToValue : startVertexId;
+            var sinkValue = isReversedAdjList ? startVertexId : edge["_sink"].ToValue;
+            var otherValue = isStartVertexTheOriginVertex ? edge["_sink"].ToValue : startVertexId;
+            var edgeIdValue = isReversedAdjList ? edge["_reverse_ID"].ToValue : edge["_ID"].ToValue;
 
             record.fieldValues[0] = new StringField(sourceValue);
             record.fieldValues[1] = new StringField(sinkValue);
