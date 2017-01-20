@@ -22,7 +22,7 @@ namespace GraphView
         public string Alias { get; set; }
         public List<string> Properties { get; set; } 
 
-        public List<ColumnGraphType> ProjectedColumns { get; set; }
+        public List<ColumnGraphType> ProjectedColumnsType { get; set; }
 
         public string ToString(DatabaseType dbType)
         {
@@ -64,20 +64,60 @@ namespace GraphView
                 vertexQuery.ToString(DatabaseType.DocumentDB), queryOptions).ToList();
 
             var properties = vertexQuery.Properties;
-            var newRecordLength = properties.Count;
+            var projectedColumnsType = vertexQuery.ProjectedColumnsType;
             var results = new List<RawRecord>();
+
+            var nodeAlias = properties[0];
+            // Skip i = 0, which is the (node.* as nodeAlias) field
+            properties.RemoveAt(0);
 
             foreach (var dynamicItem in items)
             {
-                var rawRecord = new RawRecord(newRecordLength);
-                var item = (JObject)dynamicItem;
-                var index = 0;
+                var item = (JObject) dynamicItem;
+                var vertexJson = item[nodeAlias];
+                var rawRecord = new RawRecord();
+                VertexField vertexObject = Connection.VertexCache.GetVertexField(vertexJson["id"].ToString(),
+                    vertexJson.ToString());
 
-                foreach (var property in properties)
+                var endOfNodePropertyIndex = projectedColumnsType.FindIndex(e => e == ColumnGraphType.EdgeSource);
+                if (endOfNodePropertyIndex == -1) endOfNodePropertyIndex = properties.Count;
+                // Fill node property field
+                for (var i = 0; i < endOfNodePropertyIndex; i++)
                 {
-                    var propertyValue = item[property];
-                    rawRecord.fieldValues[index] = propertyValue != null ? new StringField(propertyValue.ToString()) : null;
-                    ++index;
+                    var propertyValue = vertexObject[properties[i]];
+                    //var propertyType = projectedColumnsType[i];
+
+                    rawRecord.Append(propertyValue);
+                }
+
+                // Fill all the backward matching edges' fields
+                var startOfEdgeIndex = endOfNodePropertyIndex;
+                var endOfEdgeIndex = projectedColumnsType.FindIndex(startOfEdgeIndex,
+                    e => e == ColumnGraphType.EdgeSource);
+                if (endOfEdgeIndex == -1) endOfEdgeIndex = properties.Count;
+                for (var i = startOfEdgeIndex; i < properties.Count;)
+                {
+                    // These are corresponding meta fields generated in the ConstructMetaFieldSelectClauseOfEdge()
+                    var source = item[properties[i++]].ToString();
+                    var sink = item[properties[i++]].ToString();
+                    var other = item[properties[i++]].ToString();
+                    var edgeOffset = item[properties[i++]].ToString();
+                    var physicalOffset = item[properties[i++]].ToString();
+                    var adjType = item[properties[i++]].ToString();
+
+                    var edgeField = (vertexObject[adjType] as AdjacencyListField).GetEdgeFieldByOffset(physicalOffset);
+
+                    rawRecord.Append(new StringField(source));
+                    rawRecord.Append(new StringField(sink));
+                    rawRecord.Append(new StringField(other));
+                    rawRecord.Append(new StringField(edgeOffset));
+                    
+                    // Fill edge property field
+                    for (; i < endOfEdgeIndex; i++)
+                        rawRecord.Append(edgeField[properties[i]]);
+
+                    endOfEdgeIndex = projectedColumnsType.FindIndex(i,
+                        e => e == ColumnGraphType.EdgeSource);
                 }
 
                 results.Add(rawRecord);

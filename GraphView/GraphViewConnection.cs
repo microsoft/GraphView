@@ -269,6 +269,7 @@ namespace GraphView
                     try
                     {
                         JObject jsonObject = JObject.Parse(vertexJson);
+                        vertexObject = FieldObject.GetVertexField(jsonObject);
                     }
                     finally
                     {

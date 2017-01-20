@@ -195,7 +195,7 @@ namespace GraphView
                         Alias = sinkVertexQuery.Alias,
                         WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
                         SelectClause = sinkVertexQuery.SelectClause,
-                        ProjectedColumns = sinkVertexQuery.ProjectedColumns,
+                        ProjectedColumnsType = sinkVertexQuery.ProjectedColumnsType,
                         Properties = sinkVertexQuery.Properties,
                     };
 
@@ -241,7 +241,8 @@ namespace GraphView
                             {
                                 int sourceMatchIndex = matchingIndexes[k].Item1;
                                 int sinkMatchIndex = matchingIndexes[k].Item2;
-                                if (sourceRec[sourceMatchIndex] != sinkRec[sinkMatchIndex])
+                                if (!sourceRec[sourceMatchIndex].ToString().Equals(sinkRec[sinkMatchIndex].ToString(), StringComparison.OrdinalIgnoreCase))
+                                //if (sourceRec[sourceMatchIndex] != sinkRec[sinkMatchIndex])
                                 {
                                     break;
                                 }
@@ -401,7 +402,7 @@ namespace GraphView
                         Alias = sinkVertexQuery.Alias,
                         WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
                         SelectClause = sinkVertexQuery.SelectClause,
-                        ProjectedColumns = sinkVertexQuery.ProjectedColumns,
+                        ProjectedColumnsType = sinkVertexQuery.ProjectedColumnsType,
                         Properties = sinkVertexQuery.Properties,
                     };
 
@@ -676,7 +677,7 @@ namespace GraphView
 
         private bool isStartVertexTheOriginVertex;
 
-        protected const int ReservedMetaFieldCount = 4;
+        protected const int ReservedMetaFieldCount = 5;
 
         public AdjacencyListDecoder2(GraphViewExecutionOperator input, int startVertexIndex,
             int adjacencyListIndex, int revAdjacencyListIndex, bool isStartVertexTheOriginVertex,
@@ -693,13 +694,13 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Fill edge's _source, _sink, _other, _ID meta fields
+        /// Fill edge's _source, _sink, _other, _ID, * meta fields
         /// </summary>
         /// <param name="record"></param>
         /// <param name="edge"></param>
         /// <param name="startVertexId"></param>
         /// <param name="isReversedAdjList"></param>
-        private void FillMetaField(RawRecord record, JObject edge, string startVertexId, bool isReversedAdjList)
+        private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, bool isReversedAdjList)
         {
             var sourceValue = isReversedAdjList ? edge["_sink"].ToString() : startVertexId;
             var sinkValue = isReversedAdjList ? startVertexId : edge["_sink"].ToString();
@@ -710,6 +711,7 @@ namespace GraphView
             record.fieldValues[1] = new StringField(sinkValue);
             record.fieldValues[2] = new StringField(otherValue);
             record.fieldValues[3] = new StringField(edgeIdValue);
+            record.fieldValues[4] = edge;
         }
 
         /// <summary>
@@ -717,16 +719,24 @@ namespace GraphView
         /// </summary>
         /// <param name="record"></param>
         /// <param name="edge"></param>
-        private void FillPropertyField(RawRecord record, JObject edge)
+        private void FillPropertyField(RawRecord record, EdgeField edge)
         {
             for (var i = ReservedMetaFieldCount; i < ProjectedFields.Count; i++)
             {
-                var projectedField = ProjectedFields[i];
-                var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
-                    ? edge
-                    : edge[projectedField];
+                record.fieldValues[i] = edge[ProjectedFields[i]];
 
-                record.fieldValues[i] = fieldValue != null ? new StringField(fieldValue.ToString()) : null;
+                //var projectedField = ProjectedFields[i];
+                //var isEdgeObject = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase);
+                //var fieldValue = isEdgeObject ? edge : edge[projectedField];
+                //if (fieldValue == null)
+                //    record.fieldValues[i] = null;
+                //else
+                //    record.fieldValues[i] = isEdgeObject
+                //        ? (FieldObject)new EdgeField(record.fieldValues[0].ToString(), // source
+                //                                     record.fieldValues[1].ToString(), // sink
+                //                                     record.fieldValues[3].ToString(), // edgeOffset
+                //                                     fieldValue.ToString())            // edgeObject
+                //        : new StringField(fieldValue.ToString());
             }
         }
 
@@ -737,10 +747,12 @@ namespace GraphView
 
             if (adjacencyListIndex >= 0)
             {
-                var jsonArray = record[adjacencyListIndex].ToString();
-                // Parse the adj list in JSON array
-                var adj = JArray.Parse(jsonArray);
-                foreach (var edge in adj.Children<JObject>())
+                var adj = record[adjacencyListIndex] as AdjacencyListField;
+                if (adj == null)
+                    throw new GraphViewException(string.Format("The FieldObject at {0} is not a adjacency list but {1}", 
+                        adjacencyListIndex, record[adjacencyListIndex] != null ? record[adjacencyListIndex].ToString() : "null"));
+
+                foreach (var edge in adj.Edges.Values)
                 {
                     // Construct new record
                     var result = new RawRecord(ProjectedFields.Count);
@@ -754,10 +766,12 @@ namespace GraphView
 
             if (revAdjacencyListIndex >= 0)
             {
-                var jsonArray = record[revAdjacencyListIndex].ToString();
-                // Parse the adj list in JSON array
-                var adj = JArray.Parse(jsonArray);
-                foreach (var edge in adj.Children<JObject>())
+                var adj = record[revAdjacencyListIndex] as AdjacencyListField;
+                if (adj == null)
+                    throw new GraphViewException(string.Format("The FieldObject at {0} is not a reverse adjacency list but {1}",
+                        adjacencyListIndex, record[revAdjacencyListIndex] != null ? record[revAdjacencyListIndex].ToString() : "null"));
+
+                foreach (var edge in adj.Edges.Values)
                 {
                     // Construct new record
                     var result = new RawRecord(ProjectedFields.Count);
@@ -1050,6 +1064,14 @@ namespace GraphView
             {
                 foreach (var aggr in aggregationSpecs)
                 {
+                    // Handle the fold function case
+                    if (aggr.Item2.Count == 1 && aggr.Item2[0] == -1)
+                    {
+                        var foldFunction = aggr.Item1 as FoldFunction;
+                        foldFunction.Accumulate(inputRec);
+                        continue;
+                    }
+
                     FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
                     for(int i = 0; i < aggr.Item2.Count; i++)
                     {
@@ -1612,7 +1634,7 @@ namespace GraphView
                 RawRecord initialRec = new RawRecord {fieldValues = new List<FieldObject>()};
                 foreach (int fieldIndex in inputFieldIndexes)
                 {
-                    initialRec.Append(fieldIndex != -1 ? currentRecord[fieldIndex] : new StringField(""));
+                    initialRec.Append(fieldIndex != -1 ? currentRecord[fieldIndex] : null);
                 }
 
                 if (repeatTimes >= 0)
@@ -2101,6 +2123,71 @@ namespace GraphView
         {
             _inputOp.ResetState();
             Open();
+        }
+    }
+
+    internal class PropertyKeyOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _propertyFieldIndex;
+
+        public PropertyKeyOperator(GraphViewExecutionOperator pInputOp, int pPropertyFieldIndex)
+        {
+            _inputOp = pInputOp;
+            _propertyFieldIndex = pPropertyFieldIndex;
+        }
+
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                PropertyField p = currentRecord[_propertyFieldIndex] as PropertyField;
+                if (p == null)
+                    throw new GraphViewException("The input of the key step should be a property");
+
+                RawRecord result = new RawRecord();
+                result.Append(new StringField(p.PropertyName));
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+    }
+
+    internal class PropertyValueOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _propertyFieldIndex;
+
+        public PropertyValueOperator(GraphViewExecutionOperator pInputOp, int pPropertyFieldIndex)
+        {
+            _inputOp = pInputOp;
+            _propertyFieldIndex = pPropertyFieldIndex;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                PropertyField p = currentRecord[_propertyFieldIndex] as PropertyField;
+                if (p == null)
+                    throw new GraphViewException("The input of the value step should be a property");
+
+                RawRecord result = new RawRecord();
+                result.Append(new StringField(p.PropertyValue));
+
+                return result;
+            }
+
+            Close();
+            return null;
         }
     }
 }

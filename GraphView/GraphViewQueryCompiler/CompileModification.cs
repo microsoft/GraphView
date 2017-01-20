@@ -17,10 +17,13 @@ namespace GraphView
             GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
             context.CurrentExecutionOperator = addVOp;
 
-            foreach (var columnName in projectedField)
+            context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
+            context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
+            context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
+            context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
+            for (var i = 4; i < projectedField.Count; i++)
             {
-                // TODO: Change to correct ColumnGraphType
-                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+                context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }
 
             return addVOp;
@@ -48,10 +51,15 @@ namespace GraphView
                 dbConnection, srcSubQueryFunction, sinkSubQueryFunction, otherVTag, edgeJsonDocument, projectedField);
             context.CurrentExecutionOperator = addEOp;
 
-            foreach (var columnName in projectedField)
+            // Update context's record layout
+            context.AddField(Alias.Value, "_source", ColumnGraphType.EdgeSource);
+            context.AddField(Alias.Value, "_sink", ColumnGraphType.EdgeSink);
+            context.AddField(Alias.Value, "_other", ColumnGraphType.Value);
+            context.AddField(Alias.Value, "_ID", ColumnGraphType.EdgeOffset);
+            context.AddField(Alias.Value, "*", ColumnGraphType.EdgeObject);
+            for (var i = 5; i < projectedField.Count; i++)
             {
-                // TODO: Change to correct ColumnGraphType
-                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+                context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }
 
             return addEOp;

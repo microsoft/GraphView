@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Newtonsoft.Json.Linq;
 
 // Add DocumentDB references
 
@@ -11,7 +12,147 @@ namespace GraphView
 {
     internal abstract class FieldObject
     {
+        public static VertexPropertyField GetVertexPropertyField(JProperty property)
+        {
+            return new VertexPropertyField(property.Name, property.Value.ToString());
+        }
+
+        public static EdgePropertyField GetEdgePropertyField(JProperty property)
+        {
+            return new EdgePropertyField(property.Name, property.Value.ToString());
+        }
+
+        public static VertexField GetVertexField(JObject vertexObject)
+        {
+            VertexField vertexField = new VertexField();
+
+            foreach (var property in vertexObject.Properties())
+            {
+                switch (property.Name.ToLower())
+                {
+                    // Reversed properties for DocumentDB meta-data
+                    case "_rid":
+                    case "_self":
+                    case "_etag":
+                    case "_attachments":
+                    case "_ts":
+                        continue;
+                    case "_edge":
+                        vertexField.AdjacencyList = GetAdjacencyListField((JArray)property.Value);
+                        break;
+                    case "_reverse_edge":
+                        vertexField.RevAdjacencyList = GetAdjacencyListField((JArray)property.Value);
+                        break;
+                    default:
+                        vertexField.VertexProperties.Add(property.Name, GetVertexPropertyField(property));
+                        break;
+                }
+            }
+
+            return vertexField;
+        }
+
+        public static EdgeField GetEdgeField(JObject edgeObject)
+        {
+            EdgeField edgeField = new EdgeField();
+
+            foreach (JProperty property in edgeObject.Properties())
+            {
+                edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
+            }
+
+            return edgeField;
+        }
+
+        public static AdjacencyListField GetAdjacencyListField(JArray adjArray)
+        {
+            AdjacencyListField adjListField = new AdjacencyListField();
+
+            foreach (var edgeObject in adjArray.Children<JObject>())
+            {
+                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetEdgeField(edgeObject));
+            }
+
+            return adjListField;
+        }
     }
+
+    //internal class VertexField : FieldObject
+    //{
+    //    public string VertexJsonString { get; private set; }
+
+    //    public VertexField(string vertexJsonString)
+    //    {
+    //        VertexJsonString = vertexJsonString;
+    //    }
+
+    //    public override string ToString()
+    //    {
+    //        JObject vertex = JObject.Parse(VertexJsonString);
+    //        return string.Format("v[{0}]", vertex["id"].ToString());
+    //    }
+
+    //    // TODO: Documents' meta fields like _etag shouldn't be included when executing GetHashCode()
+    //    public override int GetHashCode()
+    //    {
+    //        return VertexJsonString.GetHashCode();
+    //    }
+
+    //    // TODO: Documents' meta fields like _etag shouldn't be included when executing Equals()
+    //    public override bool Equals(object obj)
+    //    {
+    //        if (Object.ReferenceEquals(this, obj)) return true;
+
+    //        VertexField vertexField = obj as VertexField;
+    //        if (vertexField == null)
+    //        {
+    //            return false;
+    //        }
+
+    //        return VertexJsonString.Equals(vertexField.VertexJsonString);
+    //    }
+    //}
+
+    //internal class EdgeField : FieldObject
+    //{
+    //    public string SourceId { get; private set; }
+    //    public string SinkId { get; private set; }
+    //    public string EdgeId { get; private set; }
+    //    public string EdgeJsonString { get; private set; }
+
+    //    public EdgeField(string sourceId, string sinkId, string edgeId, string edgeJsonString)
+    //    {
+    //        SourceId = sourceId;
+    //        SinkId = sinkId;
+    //        EdgeId = edgeId;
+    //        EdgeJsonString = edgeJsonString;
+    //    }
+
+    //    public override string ToString()
+    //    {
+    //        JObject edge = JObject.Parse(EdgeJsonString);
+    //        return string.Format("e[{0}][{1}-{2}->{3}]", 
+    //            EdgeId, SourceId, edge["label"] ?? "", SinkId);
+    //    }
+
+    //    public override int GetHashCode()
+    //    {
+    //        return EdgeJsonString.GetHashCode();
+    //    }
+
+    //    public override bool Equals(object obj)
+    //    {
+    //        if (Object.ReferenceEquals(this, obj)) return true;
+
+    //        EdgeField edgeField = obj as EdgeField;
+    //        if (edgeField == null)
+    //        {
+    //            return false;
+    //        }
+
+    //        return EdgeJsonString.Equals(edgeField.EdgeJsonString);
+    //    }
+    //}
 
     internal class StringField : FieldObject
     {
@@ -170,7 +311,7 @@ namespace GraphView
     internal class PropertyField : FieldObject
     {
         public string PropertyName { get; private set; }
-        public string PropertyValue { get; private set; }
+        public string PropertyValue { get; set; }
 
         public PropertyField(string propertyName, string propertyValue)
         {
@@ -208,6 +349,11 @@ namespace GraphView
             : base(propertyName, propertyValue)
         {
         }
+
+        public override string ToString()
+        {
+            return PropertyValue;
+        }
     }
 
     internal class EdgePropertyField : PropertyField
@@ -216,35 +362,115 @@ namespace GraphView
             : base(propertyName, propertyValue)
         {
         }
+
+        public override string ToString()
+        {
+            return PropertyValue;
+        }
     }
 
 
     internal class EdgeField : FieldObject
     {
-        public List<EdgePropertyField> EdgeProperties;
+        // <PropertyName, EdgePropertyField>
+        public Dictionary<string, EdgePropertyField> EdgeProperties;
+
+        public EdgeField()
+        {
+            EdgeProperties = new Dictionary<string, EdgePropertyField>();
+        }
+
+        public FieldObject this[string propertyName]
+        {
+            get
+            {
+                if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
+                    return this;
+                EdgePropertyField propertyField;
+                EdgeProperties.TryGetValue(propertyName, out propertyField);
+                return propertyField;
+            }
+        }
+
+        public void UpdateEdgeProperty(string propertyName, string propertyValue)
+        {
+            EdgePropertyField propertyField;
+            if (EdgeProperties.TryGetValue(propertyName, out propertyField))
+                propertyField.PropertyValue = propertyValue;
+            else
+                EdgeProperties.Add(propertyName, new EdgePropertyField(propertyName, propertyValue));
+        }
+
+        public override string ToString()
+        {
+            return string.Format("e[{0}]-{1}->{2}", EdgeProperties["_ID"].ToString(), EdgeProperties["label"].ToString(),
+                EdgeProperties["_sink"].ToString());
+        }
     }
 
     internal class AdjacencyListField : FieldObject
     {
-        public List<EdgeField> Edges { get; set; }
+        // <edgeOffset, EdgeField>
+        public Dictionary<string, EdgeField> Edges { get; set; }
 
         public AdjacencyListField()
         {
-            Edges = new List<EdgeField>();
+            Edges = new Dictionary<string, EdgeField>();
+        }
+
+        public EdgeField GetEdgeFieldByOffset(string edgeOffset)
+        {
+            EdgeField edgeField;
+            Edges.TryGetValue(edgeOffset, out edgeField);
+            return edgeField;
         }
     }
 
     internal class VertexField : FieldObject
     {
-        public List<VertexPropertyField> VertexProperties { get; set; }
+        // <Property Name, VertexPropertyField>
+        public Dictionary<string, VertexPropertyField> VertexProperties { get; set; }
         public AdjacencyListField AdjacencyList { get; set; }
         public AdjacencyListField RevAdjacencyList { get; set; }
 
+        public FieldObject this[string propertyName]
+        {
+            get
+            {
+                if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
+                    return this;
+                else if (propertyName.Equals("_edge", StringComparison.OrdinalIgnoreCase))
+                    return AdjacencyList;
+                else if (propertyName.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase))
+                    return RevAdjacencyList;
+                else
+                {
+                    VertexPropertyField propertyField;
+                    VertexProperties.TryGetValue(propertyName, out propertyField);
+                    return propertyField;
+                }
+            }
+        }
+
+        public void UpdateVertexProperty(string propertyName, string propertyValue)
+        {
+            VertexPropertyField propertyField;
+            if (VertexProperties.TryGetValue(propertyName, out propertyField))
+                propertyField.PropertyValue = propertyValue;
+            else
+                VertexProperties.Add(propertyName, new VertexPropertyField(propertyName, propertyValue));
+        }
+
         public VertexField()
         {
-            VertexProperties = new List<VertexPropertyField>();
+            VertexProperties = new Dictionary<string, VertexPropertyField>();
             AdjacencyList = new AdjacencyListField();
             RevAdjacencyList = new AdjacencyListField();
+        }
+
+        public override string ToString()
+        {
+            return string.Format("v[{0}]", VertexProperties["id"].ToString());
         }
     }
 

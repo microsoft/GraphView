@@ -11,7 +11,7 @@ namespace GraphView
 {
     public class GraphViewJsonCommand
     {
-        public static void UpdateProperty(JObject jsonObject, WValueExpression fieldName, WValueExpression fieldValue)
+        public static JProperty UpdateProperty(JObject jsonObject, WValueExpression fieldName, WValueExpression fieldValue)
         {
             string key = fieldName.Value;
 
@@ -22,7 +22,7 @@ namespace GraphView
             {
                 var property = jsonObject.Property(key);
                 property?.Remove();
-                return;
+                return null;
             }
 
             // JSON requires a lower case string if it is a boolean value
@@ -32,6 +32,8 @@ namespace GraphView
                 value = JToken.Parse(fieldValue.ToString());
 
             jsonObject[key] = value;
+
+            return jsonObject.Property(key);
         }
 
         public static void UpdateEdgeMetaProperty(JObject edgeJObject, long edgeOffset, long reverseEdgeOffset, string sinkId, string sinkNodeLabel)
