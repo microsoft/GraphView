@@ -93,15 +93,21 @@ namespace GraphView
     internal class FoldFunction : IAggregateFunction
     {
         List<FieldObject> buffer;
+        ScalarFunction compose1;
+
+        public FoldFunction(ScalarFunction compose1)
+        {
+            this.compose1 = compose1;
+        }
 
         public void Accumulate(params FieldObject[] values)
         {
-            if (values.Length != 1)
-            {
-                return;
-            }
+            throw new NotImplementedException();
+        }
 
-            buffer.Add(values[0]);
+        public void Accumulate(RawRecord value)
+        {
+            buffer.Add(compose1.Evaluate(value));
         }
 
         public void Init()
@@ -334,38 +340,68 @@ namespace GraphView
 
     internal class GroupFunction : IAggregateFunction
     {
-        Dictionary<FieldObject, FoldFunction> aggregateState;
+        Dictionary<FieldObject, List<RawRecord>> aggregateState;
+        ScalarFunction aggregateTargetFunction;
+        int elementPropertyProjectionIndex;
 
-        public GroupFunction()
+        public GroupFunction(ScalarFunction aggregateTargetFunction, int elementPropertyProjectionIndex)
         {
-            aggregateState = new Dictionary<FieldObject, FoldFunction>();
+            aggregateState = new Dictionary<FieldObject, List<RawRecord>>();
+            this.aggregateTargetFunction = aggregateTargetFunction;
+            this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
         }
 
         public void Init()
         {
-            aggregateState = new Dictionary<FieldObject, FoldFunction>();
+            aggregateState = new Dictionary<FieldObject, List<RawRecord>>();
         }
 
         public void Accumulate(params FieldObject[] values)
         {
-            var groupByKey = values[0];
-            var groupByValue = values[1];
+            throw new NotImplementedException();
+        }
+
+        public void Accumulate(params Object[] values)
+        {
+            var groupByKey = values[0] as FieldObject;
+            var groupByValue = values[1] as RawRecord;
+
             if (!aggregateState.ContainsKey(groupByKey))
             {
-                aggregateState.Add(groupByKey, new FoldFunction());
-                aggregateState[groupByKey].Init();
+                aggregateState.Add(groupByKey, new List<RawRecord>());
             }
 
-            aggregateState[groupByKey].Accumulate(groupByValue);
+            aggregateState[groupByKey].Add(groupByValue);
         }
 
         public FieldObject Terminate()
         {
             Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(aggregateState.Count);
 
-            foreach (FieldObject key in aggregateState.Keys)
+            if (elementPropertyProjectionIndex >= 0)
             {
-                resultCollection[key] = aggregateState[key].Terminate();
+                foreach (FieldObject key in aggregateState.Keys)
+                {
+                    List<FieldObject> fo = new List<FieldObject>();
+                    foreach (var rawRecord in aggregateState[key])
+                    {
+                        fo.Add(rawRecord[elementPropertyProjectionIndex]);
+                    }
+                    resultCollection[key] = new CollectionField(fo);
+                }
+            }
+            else
+            {
+                foreach (FieldObject key in aggregateState.Keys)
+                {
+                    RawRecord rc = aggregateState[key][0];
+                    FieldObject aggregateResult = aggregateTargetFunction.Evaluate(rc);
+                    if (aggregateResult == null)
+                    {
+                        return null;
+                    }
+                    resultCollection[key] = aggregateResult;
+                }
             }
 
             return new MapField(resultCollection);
@@ -404,7 +440,9 @@ namespace GraphView
             {
                 var key = tuple.Item1;
                 var sideEffectState = tuple.Item2;
-                map.Add(new StringField(key), sideEffectState.Terminate());
+                var capResult = sideEffectState.Terminate();
+                if (capResult != null)
+                    map.Add(new StringField(key), capResult);
             }
 
             return new MapField(map);
@@ -416,18 +454,17 @@ namespace GraphView
         public GroupFunction GroupState { get; private set; }
         GraphViewExecutionOperator inputOp;
         ScalarFunction groupByKeyFunction;
-        ScalarFunction aggregateTargetFunction;
 
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ScalarFunction aggregateTargetFunction)
+            ScalarFunction aggregateTargetFunction,
+            int elementPropertyProjectionIndex)
         {
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
-            this.aggregateTargetFunction = aggregateTargetFunction;
 
-            GroupState = new GroupFunction();
+            GroupState = new GroupFunction(aggregateTargetFunction, elementPropertyProjectionIndex);
             Open();
         }
 
@@ -441,10 +478,10 @@ namespace GraphView
                     Close();
                     return null;
                 }
-                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
-                FieldObject groupByValue = aggregateTargetFunction.Evaluate(r);
 
-                GroupState.Accumulate(new []{ groupByKey, groupByValue });
+                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
+
+                GroupState.Accumulate(new Object[]{ groupByKey, r });
 
                 if (!inputOp.State())
                 {
@@ -469,19 +506,22 @@ namespace GraphView
         GraphViewExecutionOperator inputOp;
         ScalarFunction groupByKeyFunction;
         ScalarFunction aggregateTargetFunction;
+        int elementPropertyProjectionIndex;
 
-        Dictionary<FieldObject, FoldFunction> aggregatedState;
+        Dictionary<FieldObject, List<RawRecord>> aggregatedState;
 
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ScalarFunction aggregateTargetFunction)
+            ScalarFunction aggregateTargetFunction,
+            int elementPropertyProjectionIndex)
         {
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
             this.aggregateTargetFunction = aggregateTargetFunction;
+            this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
 
-            aggregatedState = new Dictionary<FieldObject, FoldFunction>();
+            aggregatedState = new Dictionary<FieldObject, List<RawRecord>>();
             Open();
             //aggregatedState.Clear();
         }
@@ -494,16 +534,37 @@ namespace GraphView
                 FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
                 if (!aggregatedState.ContainsKey(groupByKey))
                 {
-                    aggregatedState.Add(groupByKey, new FoldFunction());
-                    aggregatedState[groupByKey].Init();
+                    aggregatedState.Add(groupByKey, new List<RawRecord>());
                 }
-                aggregatedState[groupByKey].Accumulate(aggregateTargetFunction.Evaluate(r));
+                aggregatedState[groupByKey].Add(r);
             }
 
             Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(aggregatedState.Count);
-            foreach (FieldObject key in aggregatedState.Keys)
+            if (elementPropertyProjectionIndex >= 0)
             {
-                resultCollection[key] = aggregatedState[key].Terminate();
+                foreach (FieldObject key in aggregatedState.Keys)
+                {
+                    List<FieldObject> fo = new List<FieldObject>();
+                    foreach (var rawRecord in aggregatedState[key])
+                    {
+                        fo.Add(rawRecord[elementPropertyProjectionIndex]);
+                    }
+                    resultCollection[key] = new CollectionField(fo);
+                }
+            }
+            else
+            {
+                foreach (FieldObject key in aggregatedState.Keys)
+                {
+                    RawRecord rc = aggregatedState[key][0];
+                    FieldObject aggregateResult = aggregateTargetFunction.Evaluate(rc);
+                    if (aggregateResult == null)
+                    {
+                        Close();
+                        return null;
+                    }
+                    resultCollection[key] = aggregateResult;
+                }
             }
 
             RawRecord resultRecord = new RawRecord();
