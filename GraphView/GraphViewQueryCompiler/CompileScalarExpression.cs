@@ -39,6 +39,8 @@ namespace GraphView
     {
         internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
+            if (ColumnType == ColumnType.Wildcard)
+                return null;
             int fieldIndex = context.LocateColumnReference(this);
             return new FieldValue(fieldIndex);
         }
@@ -109,14 +111,44 @@ namespace GraphView
     {
         internal override ScalarFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            string funcName = FunctionName.ToString();
+            string funcName = FunctionName.ToString().ToLowerInvariant();
 
             switch (funcName)
             {
-                case "WithInArray":
+                case "withinarray":
                     var checkField = Parameters[0] as WColumnReferenceExpression;
                     var arrayField = Parameters[1] as WColumnReferenceExpression;
                     return new WithInArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
+                case "withoutarray":
+                    checkField = Parameters[0] as WColumnReferenceExpression;
+                    arrayField = Parameters[1] as WColumnReferenceExpression;
+                    return new WithOutArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
+                case "compose1":
+                    var targetFieldsAndTheirNames = new List<Tuple<string, int>>();
+
+                    for (var i = 0; i < Parameters.Count; i += 2)
+                    {
+                        var columnRef = Parameters[i] as WColumnReferenceExpression;
+                        var name = Parameters[i+1] as WValueExpression;
+
+                        if (name == null)
+                            throw new SyntaxErrorException("The parameter of Compose1 at an even position has to be a WValueExpression.");
+                        if (columnRef == null)
+                            throw new SyntaxErrorException("The parameter of Compose1 at an odd position has to be a WColumnReference.");
+
+                        targetFieldsAndTheirNames.Add(new Tuple<string, int>(name.Value, context.LocateColumnReference(columnRef)));
+                    }
+
+                    return new Compose1(targetFieldsAndTheirNames);
+                case "compose2":
+                    var inputOfCompose2 = new List<ScalarFunction>();
+
+                    foreach (var parameter in Parameters)
+                    {
+                        inputOfCompose2.Add(parameter.CompileToFunction(context, dbConnection));
+                    }
+
+                    return new Compose2(inputOfCompose2);
                 default:
                     throw new NotImplementedException("Function " + funcName + " hasn't been implemented.");
             }
