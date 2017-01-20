@@ -354,21 +354,70 @@ namespace GraphView
 
     internal class Compose2 : ScalarFunction
     {
-        List<int> targetFieldIndexes;
+        List<ScalarFunction> inputOfCompose2;
 
-        public Compose2(List<int> targetFieldIndexes)
+        public Compose2(List<ScalarFunction> inputOfCompose2)
         {
-            this.targetFieldIndexes = targetFieldIndexes;
+            this.inputOfCompose2 = inputOfCompose2;
         }
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            return new CollectionField(new List<FieldObject>(targetFieldIndexes.Select(e => record[e])));
+            //return new CollectionField(new List<FieldObject>(targetFieldIndexes.Select(e => record[e])));
+
+            List<FieldObject> results = new List<FieldObject>();
+            foreach (var input in inputOfCompose2)
+            {
+                if (input is Compose2)
+                {
+                    var subCompose2 = input.Evaluate(record) as CollectionField;
+                    results.AddRange(subCompose2.Collection);
+                }
+                else if (input == null)
+                {
+                    continue;
+                }
+                else
+                {
+                    results.Add(input.Evaluate(record));
+                }
+            }
+
+            return new CollectionField(results);
         }
 
         public override JsonDataType DataType()
         {
             return JsonDataType.Array;
+        }
+    }
+
+    internal class WithOutArray : ScalarFunction
+    {
+        private int _checkFieldIndex;
+        private int _arrayFieldIndex;
+
+        public WithOutArray(int checkFieldIndex, int arrayFieldIndex)
+        {
+            _checkFieldIndex = checkFieldIndex;
+            _arrayFieldIndex = arrayFieldIndex;
+        }
+
+        public override FieldObject Evaluate(RawRecord record)
+        {
+            var checkObject = record[_checkFieldIndex];
+            var arrayObject = record[_arrayFieldIndex] as CollectionField;
+            if (arrayObject == null)
+                throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
+            if (checkObject == null) return new StringField("false");
+
+            foreach (var fieldObject in arrayObject.Collection)
+            {
+                if (checkObject.Equals(fieldObject))
+                    return new StringField("false");
+            }
+
+            return new StringField("true");
         }
     }
 

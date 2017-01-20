@@ -273,35 +273,52 @@ namespace GraphView
 
     internal class UnfoldOperator : TableValuedFunction
     {
-        private int _collectionFieldIndex;
+        private ScalarFunction _unfoldTarget;
+        private List<string> _unfoldColumns; 
 
         internal UnfoldOperator(
             GraphViewExecutionOperator pInputOperator,
-            int pCollectionFieldIndex,
+            ScalarFunction pUnfoldTarget,
+            List<string> pUnfoldColumns,
             int pOutputBufferSize = 1000)
             : base(pInputOperator, pOutputBufferSize)
         {
-            this._collectionFieldIndex = pCollectionFieldIndex;
+            this._unfoldTarget = pUnfoldTarget;
+            this._unfoldColumns = pUnfoldColumns;
         }
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
 
-            if (record[_collectionFieldIndex].GetType() == typeof(CollectionField))
+            var unfoldTarget = _unfoldTarget.Evaluate(record);
+
+            if (unfoldTarget.GetType() == typeof (CollectionField))
             {
-                CollectionField cf = record[_collectionFieldIndex] as CollectionField;
+                CollectionField cf = unfoldTarget as CollectionField;
                 foreach (FieldObject fo in cf.Collection)
                 {
                     RawRecord newRecord = new RawRecord();
-                    newRecord.Append(fo);
+                    // Extract only needed columns from MapField
+                    if (fo.GetType() == typeof (MapField))
+                    {
+                        var mapField = fo as MapField;
+                        foreach (var unfoldColumn in _unfoldColumns)
+                        {
+                            newRecord.Append(mapField.Map[new StringField(unfoldColumn)]);
+                        }
+                    }
+                    else
+                    {
+                        newRecord.Append(fo);
+                    }
                     results.Add(newRecord);
                 }
             }
             else
             {
                 RawRecord newRecord = new RawRecord();
-                newRecord.Append(record[_collectionFieldIndex]);
+                newRecord.Append(unfoldTarget);
                 results.Add(newRecord);
             }
 
