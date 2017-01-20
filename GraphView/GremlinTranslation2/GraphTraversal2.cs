@@ -1056,8 +1056,9 @@ namespace GraphView
             sb.Append("}\n");
             sb.Append("}\n");
 
-            CSharpCodeProvider c = new CSharpCodeProvider();
-            ICodeCompiler icc = c.CreateCompiler();
+            //CSharpCodeProvider c = new CSharpCodeProvider();
+            //ICodeCompiler icc = c.CreateCompiler();
+            CodeDomProvider icc = CodeDomProvider.CreateProvider("CSharp");
             CompilerResults cr = icc.CompileAssemblyFromSource(cp, sb.ToString());
             if (cr.Errors.Count > 0)
             {
