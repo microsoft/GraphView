@@ -4,12 +4,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GraphView.GraphViewExecutionRuntime;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
+    internal class ConstantSourceOperator : GraphViewExecutionOperator
+    {
+        private RawRecord _constantSource;
+
+        public RawRecord ConstantSource
+        {
+            get { return _constantSource; }
+            set { _constantSource = value; this.Open(); }
+        }
+
+        public ConstantSourceOperator(RawRecord pConstant)
+        {
+            _constantSource = pConstant;
+            this.Open();
+        }
+
+        public void SetRef(RawRecord pConstant)
+        {
+            _constantSource = pConstant;
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            this.Close();
+            return _constantSource;
+        }
+    }
+
     internal class FetchNodeOperator2 : GraphViewExecutionOperator
     {
         private Queue<RawRecord> outputBuffer;
@@ -420,11 +448,11 @@ namespace GraphView
                     {
                         foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
                         {
-                            if (!sinkVertexCollection.ContainsKey(rec[0].ToString()))
+                            if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
                             {
-                                sinkVertexCollection.Add(rec[0].ToString(), new List<RawRecord>());
+                                sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
                             }
-                            sinkVertexCollection[rec[0].ToString()].Add(rec);
+                            sinkVertexCollection[rec[0].ToValue].Add(rec);
                         }
                     }
                 }
@@ -570,100 +598,100 @@ namespace GraphView
         }
     }
 
-    internal class AdjacencyListDecoder : TableValuedFunction
-    {
-        protected List<int> AdjacencyListIndexes;
-        protected BooleanFunction EdgePredicate;
-        protected List<string> ProjectedFields;
+    //internal class AdjacencyListDecoder : TableValuedFunction
+    //{
+    //    protected List<int> AdjacencyListIndexes;
+    //    protected BooleanFunction EdgePredicate;
+    //    protected List<string> ProjectedFields;
 
-        public AdjacencyListDecoder(GraphViewExecutionOperator input, List<int> adjacencyListIndexes,
-            BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
-            : base(input, outputBufferSize)
-        {
-            this.AdjacencyListIndexes = adjacencyListIndexes;
-            this.EdgePredicate = edgePredicate;
-            this.ProjectedFields = projectedFields;
-        }
+    //    public AdjacencyListDecoder(GraphViewExecutionOperator input, List<int> adjacencyListIndexes,
+    //        BooleanFunction edgePredicate, List<string> projectedFields, int outputBufferSize = 1000)
+    //        : base(input, outputBufferSize)
+    //    {
+    //        this.AdjacencyListIndexes = adjacencyListIndexes;
+    //        this.EdgePredicate = edgePredicate;
+    //        this.ProjectedFields = projectedFields;
+    //    }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
-        {
-            List<RawRecord> results = new List<RawRecord>();
+    //    internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+    //    {
+    //        List<RawRecord> results = new List<RawRecord>();
 
-            foreach (var adjIndex in AdjacencyListIndexes)
-            {
-                string jsonArray = record[adjIndex].ToString();
-                // Parse the adj list in JSON array
-                var adj = JArray.Parse(jsonArray);
-                foreach (var edge in adj.Children<JObject>())
-                {
-                    // Construct new record
-                    var result = new RawRecord(ProjectedFields.Count);
+    //        foreach (var adjIndex in AdjacencyListIndexes)
+    //        {
+    //            string jsonArray = record[adjIndex].ToString();
+    //            // Parse the adj list in JSON array
+    //            var adj = JArray.Parse(jsonArray);
+    //            foreach (var edge in adj.Children<JObject>())
+    //            {
+    //                // Construct new record
+    //                var result = new RawRecord(ProjectedFields.Count);
 
-                    // Fill the field of selected edge's properties
-                    for (var i = 0; i < ProjectedFields.Count; i++)
-                    {
-                        var projectedField = ProjectedFields[i];
-                        var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
-                            ? edge
-                            : edge[projectedField];
+    //                // Fill the field of selected edge's properties
+    //                for (var i = 0; i < ProjectedFields.Count; i++)
+    //                {
+    //                    var projectedField = ProjectedFields[i];
+    //                    var fieldValue = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase)
+    //                        ? edge
+    //                        : edge[projectedField];
 
-                        result.fieldValues[i] = fieldValue != null ? new StringField(fieldValue.ToString()) : null;
-                    }
+    //                    result.fieldValues[i] = fieldValue != null ? new StringField(fieldValue.ToString()) : null;
+    //                }
 
-                    results.Add(result);
-                }
-            }
+    //                results.Add(result);
+    //            }
+    //        }
 
-            return results;
-        }
+    //        return results;
+    //    }
 
-        public override RawRecord Next()
-        {
-            if (outputBuffer == null)
-                outputBuffer = new Queue<RawRecord>();
+    //    public override RawRecord Next()
+    //    {
+    //        if (outputBuffer == null)
+    //            outputBuffer = new Queue<RawRecord>();
 
-            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
-            {
-                RawRecord srcRecord = inputOperator.Next();
-                if (srcRecord == null)
-                    break;
+    //        while (outputBuffer.Count < outputBufferSize && inputOperator.State())
+    //        {
+    //            RawRecord srcRecord = inputOperator.Next();
+    //            if (srcRecord == null)
+    //                break;
 
-                var results = CrossApply(srcRecord);
-                foreach (var edgeRecord in results)
-                {
-                    if (EdgePredicate != null && !EdgePredicate.Evaluate(edgeRecord))
-                        continue;
+    //            var results = CrossApply(srcRecord);
+    //            foreach (var edgeRecord in results)
+    //            {
+    //                if (EdgePredicate != null && !EdgePredicate.Evaluate(edgeRecord))
+    //                    continue;
 
-                    var resultRecord = new RawRecord(srcRecord);
-                    resultRecord.Append(edgeRecord);
-                    outputBuffer.Enqueue(resultRecord);
-                }
-            }
+    //                var resultRecord = new RawRecord(srcRecord);
+    //                resultRecord.Append(edgeRecord);
+    //                outputBuffer.Enqueue(resultRecord);
+    //            }
+    //        }
 
-            if (outputBuffer.Count == 0)
-            {
-                if (!inputOperator.State())
-                    Close();
-                return null;
-            }
-            else if (outputBuffer.Count == 1)
-            {
-                Close();
-                return outputBuffer.Dequeue();
-            }
-            else
-            {
-                return outputBuffer.Dequeue();
-            }
-        }
+    //        if (outputBuffer.Count == 0)
+    //        {
+    //            if (!inputOperator.State())
+    //                Close();
+    //            return null;
+    //        }
+    //        else if (outputBuffer.Count == 1)
+    //        {
+    //            Close();
+    //            return outputBuffer.Dequeue();
+    //        }
+    //        else
+    //        {
+    //            return outputBuffer.Dequeue();
+    //        }
+    //    }
 
-        public override void ResetState()
-        {
-            inputOperator.ResetState();
-            outputBuffer?.Clear();
-            Open();
-        }
-    }
+    //    public override void ResetState()
+    //    {
+    //        inputOperator.ResetState();
+    //        outputBuffer?.Clear();
+    //        Open();
+    //    }
+    //}
 
     internal class AdjacencyListDecoder2 : TableValuedFunction
     {
@@ -724,26 +752,13 @@ namespace GraphView
             for (var i = ReservedMetaFieldCount; i < ProjectedFields.Count; i++)
             {
                 record.fieldValues[i] = edge[ProjectedFields[i]];
-
-                //var projectedField = ProjectedFields[i];
-                //var isEdgeObject = "*".Equals(projectedField, StringComparison.OrdinalIgnoreCase);
-                //var fieldValue = isEdgeObject ? edge : edge[projectedField];
-                //if (fieldValue == null)
-                //    record.fieldValues[i] = null;
-                //else
-                //    record.fieldValues[i] = isEdgeObject
-                //        ? (FieldObject)new EdgeField(record.fieldValues[0].ToString(), // source
-                //                                     record.fieldValues[1].ToString(), // sink
-                //                                     record.fieldValues[3].ToString(), // edgeOffset
-                //                                     fieldValue.ToString())            // edgeObject
-                //        : new StringField(fieldValue.ToString());
             }
         }
 
         private List<RawRecord> Decode(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
-            string startVertexId = record[startVertexIndex].ToString();
+            string startVertexId = record[startVertexIndex].ToValue;
 
             if (adjacencyListIndex >= 0)
             {
@@ -945,10 +960,10 @@ namespace GraphView
                         var index = orderByElement.Item1;
                         var sortOrder = orderByElement.Item2;
                         if (sortOrder == SortOrder.Ascending || sortOrder == SortOrder.NotSpecified)
-                            ret = string.Compare(x[index].ToString(), y[index].ToString(),
+                            ret = string.Compare(x[index].ToValue, y[index].ToValue,
                                 StringComparison.OrdinalIgnoreCase);
                         else if (sortOrder == SortOrder.Descending)
-                            ret = string.Compare(y[index].ToString(), x[index].ToString(),
+                            ret = string.Compare(y[index].ToValue, x[index].ToValue,
                                 StringComparison.OrdinalIgnoreCase);
                         if (ret != 0) break;
                     }
@@ -1011,6 +1026,8 @@ namespace GraphView
             int index = 0;
             foreach (var scalarFunction in selectScalarList)
             {
+                // TODO: Skip * for now, need refactor
+                if (scalarFunction == null) continue;
                 FieldObject result = scalarFunction.Evaluate(currentRecord);
                 selectRecord.fieldValues[index++] = result;
             }

@@ -15,10 +15,10 @@ namespace GraphView.GremlinTranslation
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
 
-        public GraphTraversal2(GraphTraversal rhs)
-        {
-            GremlinTranslationOpList = new List<GremlinTranslationOperator>();
-        }
+        //public GraphTraversal2(GraphTraversal rhs)
+        //{
+        //    GremlinTranslationOpList = new List<GremlinTranslationOperator>();
+        //}
 
         public GraphTraversal2(GraphViewConnection pConnection)
         {

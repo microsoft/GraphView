@@ -75,8 +75,6 @@
   <ItemGroup>
     <Compile Include="DocDBQueryPerfTest.cs" />
     <Compile Include="GraphviewGremlinParserTest.cs" />
-    <Compile Include="GraphViewMarvelTest.cs" />
-    <Compile Include="GraphVIewIoTTest.cs" />
     <Compile Include="GremlinFunctionalTestSuite.cs" />
     <Compile Include="GremlinTranslationOperator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

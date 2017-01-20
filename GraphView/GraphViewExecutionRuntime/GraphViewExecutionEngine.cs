@@ -355,8 +355,8 @@ namespace GraphView
 
         public override string ToString()
         {
-            return string.Format("e[{0}]-{1}->{2}", EdgeProperties["_ID"].ToString(), EdgeProperties["label"].ToString(),
-                EdgeProperties["_sink"].ToString());
+            return string.Format("e[{0}]-{1}->{2}", EdgeProperties["_ID"].ToValue, EdgeProperties["label"].ToValue,
+                EdgeProperties["_sink"].ToValue);
         }
     }
 
@@ -368,6 +368,11 @@ namespace GraphView
         public AdjacencyListField()
         {
             Edges = new Dictionary<string, EdgeField>();
+        }
+
+        public void InsertEdgeField(string edgeOffset, EdgeField edgeField)
+        {
+            Edges.Add(edgeOffset, edgeField);
         }
 
         public EdgeField GetEdgeFieldByOffset(string edgeOffset)
@@ -559,39 +564,39 @@ namespace GraphView
     /// Record differs from RawRecord in that the field names of the blob is annotated. 
     /// It is hence comprehensible to external data readers.  
     /// </summary>
-    public class Record
-    {
-        RawRecord rawRecord;
+    //public class Record
+    //{
+    //    RawRecord rawRecord;
 
-        internal Record(RawRecord rhs, List<string> pHeader)
-        {
-            if (rhs != null)
-            {
-                rawRecord = rhs;
-                header = pHeader;
-            }
-        }
-        internal List<string> header { get; set; }
-        public string this[int index]
-        {
-            get
-            {
-                if (index >= rawRecord.fieldValues.Count)
-                    throw new IndexOutOfRangeException("Out of range," + "the Record has only " + rawRecord.fieldValues.Count + " fields");
-                else return rawRecord.fieldValues[index].ToString();
-            }
-        }
+    //    internal Record(RawRecord rhs, List<string> pHeader)
+    //    {
+    //        if (rhs != null)
+    //        {
+    //            rawRecord = rhs;
+    //            header = pHeader;
+    //        }
+    //    }
+    //    internal List<string> header { get; set; }
+    //    public string this[int index]
+    //    {
+    //        get
+    //        {
+    //            if (index >= rawRecord.fieldValues.Count)
+    //                throw new IndexOutOfRangeException("Out of range," + "the Record has only " + rawRecord.fieldValues.Count + " fields");
+    //            else return rawRecord.fieldValues[index].ToString();
+    //        }
+    //    }
 
-        public string this[string FieldName]
-        {
-            get
-            {
-                if (header == null || header.IndexOf(FieldName) == -1) 
-                    throw new IndexOutOfRangeException("Out of range," + "the Record has no field \"" + FieldName + "\".");
-                else return rawRecord.fieldValues[header.IndexOf(FieldName)].ToString();
-            }
-        }
-    }
+    //    public string this[string FieldName]
+    //    {
+    //        get
+    //        {
+    //            if (header == null || header.IndexOf(FieldName) == -1) 
+    //                throw new IndexOutOfRangeException("Out of range," + "the Record has no field \"" + FieldName + "\".");
+    //            else return rawRecord.fieldValues[header.IndexOf(FieldName)].ToString();
+    //        }
+    //    }
+    //}
 
     internal enum GraphViewEdgeTableReferenceEnum
     {
@@ -645,8 +650,6 @@ namespace GraphView
             this.Open();
         }
         public abstract RawRecord Next();
-
-        public List<string> header;     // To be removed. 
 
         protected Dictionary<WColumnReferenceExpression, int> privateRecordLayout;
 

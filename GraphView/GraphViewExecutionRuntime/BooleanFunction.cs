@@ -6,23 +6,23 @@ namespace GraphView
 {
     internal abstract class BooleanFunction
     {
-        internal List<string> header { get; set; }      // To be removed.
+        //internal List<string> header { get; set; }      // To be removed.
         public abstract bool Evaluate(RawRecord r);
     }
 
-    internal abstract class ComparisonBooleanFunction : BooleanFunction
-    {
-        // To be replaced by BooleanComparisonType
-        internal enum ComparisonType
-        {
-            neq,
-            eq,
-            lt,
-            gt,
-            gte,
-            lte
-        }
-    }
+    //internal abstract class ComparisonBooleanFunction : BooleanFunction
+    //{
+    //    // To be replaced by BooleanComparisonType
+    //    internal enum ComparisonType
+    //    {
+    //        neq,
+    //        eq,
+    //        lt,
+    //        gt,
+    //        gte,
+    //        lte
+    //    }
+    //}
 
     internal class ComparisonFunction : BooleanFunction
     {
@@ -241,51 +241,51 @@ namespace GraphView
         }
     }
 
-    internal class FieldComparisonFunction : ComparisonBooleanFunction
-    {
-        //internal int LhsFieldIndex;
-        //internal int RhsFieldIndex;
-        internal string LhsFieldName;
-        internal string RhsFieldName;
-        internal ComparisonType type;
+    //internal class FieldComparisonFunction : ComparisonBooleanFunction
+    //{
+    //    //internal int LhsFieldIndex;
+    //    //internal int RhsFieldIndex;
+    //    internal string LhsFieldName;
+    //    internal string RhsFieldName;
+    //    internal ComparisonType type;
 
-        //internal FieldComparisonFunction(int lhs, int rhs, ComparisonType pType)
-        //{
-        //    LhsFieldIndex = lhs;
-        //    RhsFieldIndex = rhs;
-        //    type = pType;
-        //}
+    //    //internal FieldComparisonFunction(int lhs, int rhs, ComparisonType pType)
+    //    //{
+    //    //    LhsFieldIndex = lhs;
+    //    //    RhsFieldIndex = rhs;
+    //    //    type = pType;
+    //    //}
 
-        public FieldComparisonFunction(string lhs, string rhs, ComparisonType pType)
-        {
-            LhsFieldName = lhs;
-            RhsFieldName = rhs;
-            type = pType;
-        }
-        public override bool Evaluate(RawRecord r)
-        {
-            var lhsIndex = header.IndexOf(LhsFieldName);
-            var rhsIndex = header.IndexOf(RhsFieldName);
-            switch (type)
-            {
-                case ComparisonType.eq:
-                    return r.RetriveData(lhsIndex) == r.RetriveData(rhsIndex);
-                case ComparisonType.neq:
-                    return r.RetriveData(lhsIndex) != r.RetriveData(rhsIndex);
-                case ComparisonType.lt:
-                    return double.Parse(r.RetriveData(lhsIndex).ToString()) < double.Parse(r.RetriveData(rhsIndex).ToString());
-                case ComparisonType.gt:
-                    return double.Parse(r.RetriveData(lhsIndex).ToString()) > double.Parse(r.RetriveData(rhsIndex).ToString());
-                case ComparisonType.gte:
-                    return double.Parse(r.RetriveData(lhsIndex).ToString()) >= double.Parse(r.RetriveData(rhsIndex).ToString());
-                case ComparisonType.lte:
-                    return double.Parse(r.RetriveData(lhsIndex).ToString()) <= double.Parse(r.RetriveData(rhsIndex).ToString());
-                default:
-                    return false;
-            }
+    //    public FieldComparisonFunction(string lhs, string rhs, ComparisonType pType)
+    //    {
+    //        LhsFieldName = lhs;
+    //        RhsFieldName = rhs;
+    //        type = pType;
+    //    }
+    //    public override bool Evaluate(RawRecord r)
+    //    {
+    //        var lhsIndex = header.IndexOf(LhsFieldName);
+    //        var rhsIndex = header.IndexOf(RhsFieldName);
+    //        switch (type)
+    //        {
+    //            case ComparisonType.eq:
+    //                return r.RetriveData(lhsIndex) == r.RetriveData(rhsIndex);
+    //            case ComparisonType.neq:
+    //                return r.RetriveData(lhsIndex) != r.RetriveData(rhsIndex);
+    //            case ComparisonType.lt:
+    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) < double.Parse(r.RetriveData(rhsIndex).ToString());
+    //            case ComparisonType.gt:
+    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) > double.Parse(r.RetriveData(rhsIndex).ToString());
+    //            case ComparisonType.gte:
+    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) >= double.Parse(r.RetriveData(rhsIndex).ToString());
+    //            case ComparisonType.lte:
+    //                return double.Parse(r.RetriveData(lhsIndex).ToString()) <= double.Parse(r.RetriveData(rhsIndex).ToString());
+    //            default:
+    //                return false;
+    //        }
             
-        }
-    }
+    //    }
+    //}
 
     internal enum BooleanBinaryFunctionType
     {

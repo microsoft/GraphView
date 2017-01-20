@@ -21,18 +21,20 @@ namespace GraphViewUnitTest
             var sumTime = 0.0;
             var result = new List<Double>();
 
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
             for (int i = 0; i < expTimes; i++)
             {
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
                 // Note: update as the random number
                 string DeviceID = "25015";
-                GraphTraversal g = new GraphTraversal(connection);
-                var q = g.V()
-                        .has("label", "DeviceModel")
-                        .has("id", DeviceID)
+                
+                var q = graph.g().V()
+                        .Has("label", "DeviceModel")
+                        .Has("id", DeviceID)
                         .As("DeviceModel")
-                        .@select("DeviceModel");
+                        .Select("DeviceModel").Next();
                 
                 foreach (var x in q)
                 {
@@ -60,6 +62,9 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IOTTest");
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
             var expTimes = 100;
             var sumTime = 0.0;
             var result = new List<Double>();
@@ -70,12 +75,12 @@ namespace GraphViewUnitTest
                 sw.Start();
                 // Note: update as the random number
                 string DeviceID = "250" + i;
-                GraphTraversal g = new GraphTraversal(connection);
-                var q = g.V()
-                        .has("label", "DeviceModel")
-                        .has("id", DeviceID)
+
+                var q = graph.g().V()
+                        .Has("label", "DeviceModel")
+                        .Has("id", DeviceID)
                         .As("DeviceModel")
-                        .@select("DeviceModel");
+                        .Select("DeviceModel").Next();
 
                 foreach (var x in q)
                 {
@@ -103,6 +108,8 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IOTTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
             var expTimes = 100;
             var sumTime = 0.0;
             var result = new List<Double>();
@@ -113,15 +120,15 @@ namespace GraphViewUnitTest
                 sw.Start();
                 // Note: update as the random number
                 string DeviceID = "25015";
-                GraphTraversal g = new GraphTraversal(connection);
-                var q = g.V()
-                    .has("label", "DeviceModel")
-                    .has("id", DeviceID)
+
+                var q = graph.g().V()
+                    .Has("label", "DeviceModel")
+                    .Has("id", DeviceID)
                     .As("DeviceModel")
                     .Out("type_of")
-                    .has("label", "DeviceTwin")
+                    .Has("label", "DeviceTwin")
                     .As("device")
-                    .@select("device", "DeviceModel");
+                    .Select("device", "DeviceModel").Next();
                 
                 foreach (var x in q)
                 {
@@ -149,6 +156,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
 "GroupMatch", "IOTTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
             var expTimes = 100;
             var sumTime = 0.0;
             var result = new List<Double>();
@@ -159,15 +167,15 @@ namespace GraphViewUnitTest
                 sw.Start();
                 // Note: update as the random number
                 string DeviceID = "250" + i;
-                GraphTraversal g = new GraphTraversal(connection);
-                var q = g.V()
-                    .has("label", "DeviceModel")
-                    .has("id", DeviceID)
+
+                var q = graph.g().V()
+                    .Has("label", "DeviceModel")
+                    .Has("id", DeviceID)
                     .As("DeviceModel")
                     .Out("type_of")
-                    .has("label", "DeviceTwin")
+                    .Has("label", "DeviceTwin")
                     .As("device")
-                    .@select("device", "DeviceModel");
+                    .Select("device", "DeviceModel").Next();
 
                 foreach (var x in q)
                 {

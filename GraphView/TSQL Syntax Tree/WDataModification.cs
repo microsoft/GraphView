@@ -245,11 +245,11 @@ namespace GraphView
 
         public WColumnReferenceExpression EdgeColumn { get; set; }
 
-        public GraphTraversal.direction dir { get; set; }
+        //public GraphTraversal.direction dir { get; set; }
 
-        public WInsertEdgeFromTwoSourceSpecification(WSqlStatement SrcSpec, WSqlStatement DestSpec, GraphTraversal.direction pDir)
+        public WInsertEdgeFromTwoSourceSpecification(WSqlStatement SrcSpec, WSqlStatement DestSpec/*, GraphTraversal.direction pDir*/)
         {
-            dir = pDir;
+            //dir = pDir;
             SrcInsertSource = (SrcSpec as WInsertEdgeSpecification).SelectInsertSource as WSelectInsertSource;
             DestInsertSource = DestSpec as WSelectQueryBlock;
 
