@@ -270,6 +270,7 @@ namespace GraphView
                     {
                         JObject jsonObject = JObject.Parse(vertexJson);
                         vertexObject = FieldObject.GetVertexField(jsonObject);
+                        cachedVertexCollection.Add(vertexId, vertexObject);
                     }
                     finally
                     {

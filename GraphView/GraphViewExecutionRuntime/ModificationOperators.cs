@@ -233,14 +233,19 @@ namespace GraphView
             var srcJsonDocument = RetrieveDocumentById(srcId);
             var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
 
-            var srcVertexField = Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
-            var sinkVertexField = Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
+            var srcVertexField = (srcFieldObject is VertexField) 
+                                    ? srcFieldObject as VertexField 
+                                    : Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
+            var sinkVertexField = (sinkFieldObject is VertexField) 
+                                    ? sinkFieldObject as VertexField 
+                                    : Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
 
             JObject edgeObject, revEdgeObject;
             var results = InsertEdge(srcJsonDocument, sinkJsonDocument, _edgeJsonDocument, srcId, sinkId, out edgeObject, out revEdgeObject);
 
             Upload(results);
 
+            // Update vertex's adjacency list and reverse adjacency list
             var edgeField = FieldObject.GetEdgeField(edgeObject);
             var revEdgeField = FieldObject.GetEdgeField(revEdgeObject);
 
@@ -286,9 +291,10 @@ namespace GraphView
             srcJsonDocument["_nextEdgeOffset"] = edgeOffset + 1;
             documentsMap[srcId] = srcJsonDocument.ToString();
 
-            edgeObject = new JObject(edgeJsonDocument);
+            edgeObject = JObject.FromObject(edgeJsonDocument);
 
             // Construct the edge object for sinkNode._reverse_edge
+            edgeJsonDocument = JObject.FromObject(edgeJsonDocument);
             var srcNodeLabel = srcJsonDocument["label"]?.ToString();
             GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, reverseEdgeOffset, edgeOffset, srcId, srcNodeLabel);
 
@@ -299,7 +305,7 @@ namespace GraphView
             sinkJsonDocument["_nextReverseEdgeOffset"] = reverseEdgeOffset + 1;
             documentsMap[sinkId] = sinkJsonDocument.ToString();
 
-            revEdgeObject = new JObject(edgeJsonDocument);
+            revEdgeObject = JObject.FromObject(edgeJsonDocument);
 
             //var edgeOffset = GraphViewJsonCommand.get_edge_num(srcJsonDocumentString);
             //var reverseEdgeOffset = GraphViewJsonCommand.get_reverse_edge_num(sinkJsonDocumentString);
@@ -412,6 +418,7 @@ namespace GraphView
         /// Item3 is property's index in the input record. If it is -1, then the input record doesn't contain this property.
         /// </summary>
         // TODO: Now the item3 is useless
+        // TODO: Both the translation code and the physical operator haven't handled the g.V().properties().drop() case.
         protected List<Tuple<WValueExpression, WValueExpression, int>> PropertiesToBeUpdated;
 
         protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,

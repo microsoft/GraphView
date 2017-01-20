@@ -123,6 +123,9 @@ namespace GraphView
                 results.Add(rawRecord);
             }
 
+            // TODO: Refactor
+            properties.Insert(0, nodeAlias);
+
             return results;
         }
     }
