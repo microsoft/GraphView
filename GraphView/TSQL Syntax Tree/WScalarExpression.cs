@@ -720,13 +720,13 @@ namespace GraphView
             else
             {
                 sb.Append("\r\n");
-                sb.Append(TerminationCondition.ToString(indent + "  "));
+                sb.Append(TerminationCondition?.ToString(indent + "  "));
             }
 
             if (EmitCondition != null)
             {
                 sb.Append(",\r\n");
-                sb.Append(EmitCondition.ToString(indent + "  "));
+                sb.Append(EmitCondition?.ToString(indent + "  "));
             }
 
             sb.Append(")");
