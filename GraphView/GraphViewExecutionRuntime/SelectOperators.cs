@@ -2165,7 +2165,7 @@ namespace GraphView
                 if (p == null)
                     throw new GraphViewException("The input of the key step should be a property");
 
-                RawRecord result = new RawRecord();
+                RawRecord result = new RawRecord(currentRecord);
                 result.Append(new StringField(p.PropertyName));
 
                 return result;
@@ -2197,7 +2197,7 @@ namespace GraphView
                 if (p == null)
                     throw new GraphViewException("The input of the value step should be a property");
 
-                RawRecord result = new RawRecord();
+                RawRecord result = new RawRecord(currentRecord);
                 result.Append(new StringField(p.PropertyValue));
 
                 return result;
