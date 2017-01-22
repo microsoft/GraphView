@@ -33,7 +33,7 @@ namespace GraphViewUnitTest
 
             GraphViewCommand graph = new GraphViewCommand(connection);
             graph.CommandText =
-                "g.V().has('weapon','shield').as('character').next()";
+                "g.V().has('weapon','shield').as('character').out('appeared').as('comicbook').select('character').next()";
             var results = graph.Execute();
 
             foreach (var result in results)
@@ -67,6 +67,22 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void SelectMarvelQuery2b()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            graph.CommandText = "g.V().has('weapon', 'lasso').as('character').out('appeared').as('comicbook').select('comicbook').next()";
+            var results = graph.Execute();
+
+            foreach (string result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
         public void SelectMarvelQuery3()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -82,6 +98,22 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void SelectMarvelQuery3b()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            graph.CommandText = "g.V().has('name', 'AVF 4').in('appeared').values('name').next()";
+            var results = graph.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
         public void SelectMarvelQuery4()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -89,6 +121,22 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphViewCommand graph = new GraphViewCommand(connection);
             var results = graph.g().V().Has("name", "AVF 4").In("appeared").Has("weapon", "shield").Values("name").Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void SelectMarvelQuery4b()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            graph.CommandText = "g.V().has('name', 'AVF 4').in('appeared').has('weapon', 'shield').values('name').next()";
+            var results = graph.Execute();
 
             foreach (var result in results)
             {
@@ -162,6 +210,23 @@ namespace GraphViewUnitTest
             graph.g().V().As("v").Has("name", "HAWK").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
             graph.g().AddV("character").Property("name", "WOODGOD").Property("weapon", "lasso").Next();
             graph.g().V().As("v").Has("name", "WOODGOD").AddE("appeared").To(graph.g().V().Has("name", "AVF 4")).Next();
+        }
+
+        [TestMethod]
+        public void GraphViewMarvelInsertTest2()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            connection.ResetCollection();
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+
+            cmd.CommandText = "g.addV('character').property('name', 'VENUS II').property('weapon', 'shield').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('comicbook').property('name', 'AVF 4').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V().has('name', 'VENUS II').addE('appeared').to(g.V().has('name', 'AVF 4')).next()";
+            cmd.Execute();
         }
     }
 }
