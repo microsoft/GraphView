@@ -736,7 +736,7 @@ namespace GraphView
                                         IsReversed = true,
                                         EdgeType = EdgeToSrcNode.EdgeType,
                                         Properties = new List<string> { "_source", "_sink", "_other", "_ID", "*" },
-                                };
+                                    };
                                     SrcNode.ReverseNeighbors.Add(reverseEdge);
                                     reversedEdgeDict[EdgeToSrcNode.EdgeAlias] = reverseEdge;
                                 }
@@ -854,6 +854,7 @@ namespace GraphView
                     }
                     foreach (var edge in node.Value.DanglingEdges)
                     {
+                        edge.IsDanglingEdge = true;
                         subGraph.Edges[edge.EdgeAlias] = edge;
                     }
                     subGraphMap[root] = subGraph;
@@ -870,6 +871,7 @@ namespace GraphView
                     }
                     foreach (var edge in node.Value.DanglingEdges)
                     {
+                        edge.IsDanglingEdge = true;
                         subGraph.Edges[edge.EdgeAlias] = edge;
                     }
                     subGraph.IsTailNode[node.Value] = false;

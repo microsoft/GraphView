@@ -39,6 +39,7 @@ namespace GraphView
         public bool IsReversed { get; set; }
         public WEdgeType EdgeType { get; set; }
         public bool IsFromOuterContext { get; set; }
+        public bool IsDanglingEdge { get; set; }
 
         /// <summary>
         /// Schema Object of the node table/node view which the edge is bound to.

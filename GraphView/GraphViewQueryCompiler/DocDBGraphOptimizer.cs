@@ -41,7 +41,7 @@ namespace GraphView
                     var nodeUnits = GetNodeUnits(subGraph, curComponent);
                     if (nodeUnits == null
                         && curComponent.ActiveNodeCount == subGraph.ActiveNodeCount
-                        && curComponent.EdgeMaterilizedDict.Count(e => e.Value == true) == subGraph.EdgeCount)
+                        && curComponent.EdgeMaterilizedDict.Count(e => e.Value == true) == subGraph.Edges.Count(e => e.Value.IsDanglingEdge == false))
                     {
                         curComponent.TraversalChain2.Reverse();
                         return curComponent.TraversalChain2;

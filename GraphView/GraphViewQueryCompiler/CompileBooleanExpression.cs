@@ -52,6 +52,14 @@ namespace GraphView
         }
     }
 
+    public partial class WBooleanParenthesisExpression
+    {
+        internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            return Expression.CompileToFunction(context, dbConnection);
+        }
+    }
+
     public partial class WExistsPredicate
     {
         internal override BooleanFunction CompileToFunction(QueryCompilationContext context, GraphViewConnection dbConnection)
