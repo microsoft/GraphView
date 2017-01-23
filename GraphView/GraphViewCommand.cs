@@ -39,27 +39,11 @@ namespace GraphView
 {
     public partial class GraphViewCommand : IDisposable
     {
-        public CommandType CommandType
-        {
-            get { return Command.CommandType; }
-            set { Command.CommandType = value; }
-        }
         public GraphViewConnection GraphViewConnection { get; set; }
         
         public string CommandText { get; set; }
 
-        public int CommandTimeOut
-        {
-            get { return Command.CommandTimeout; }
-            set { Command.CommandTimeout = value; }
-        }
-        internal SqlCommand Command { get; private set; }
-
-        internal SqlTransaction Tx { get; private set; }
-
-        public GraphViewCommand()
-        {
-        }
+        public OutputFormat OutputFormat { get; set; }
 
         public GraphViewCommand(GraphViewConnection connecion)
         {
@@ -77,21 +61,11 @@ namespace GraphView
             GraphViewConnection = connection;
         }
 
-        public void CreateParameter()
-        {
-            Command.CreateParameter();
-        }
-
-        public void Cancel()
-        {
-            Command.Cancel();
-        }
-
         public IEnumerable<string> Execute()
         {
             if (CommandText == null)
             {
-                Console.WriteLine("CommandText doesn't exist, try to set a CommandText.");
+                throw new QueryExecutionException("CommandText of GraphViewCommand is not set.");
             }
             return g().EvalGremlinTraversal(CommandText);
         }
@@ -136,12 +110,11 @@ namespace GraphView
 
         public void Dispose()
         {
-            Command.Dispose();
         }
 
         public GraphTraversal2 g()
         {
-            return new GraphTraversal2(GraphViewConnection);
+            return new GraphTraversal2(GraphViewConnection, OutputFormat);
         }
     }
 }

@@ -471,6 +471,26 @@ namespace GraphView
                 }
             }
         }
+
+        public override string ToGraphSON()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (string propertyName in VertexProperties.Keys)
+            {
+                VertexPropertyField vp = VertexProperties[propertyName];
+                if (sb.Length > 0)
+                {
+                    sb.Append(", ");
+                }
+                sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, vp.PropertyValue);
+            }
+
+            sb.AppendFormat(", \"_outE\": {0}", AdjacencyList.ToGraphSON());
+            sb.AppendFormat(", \"_inE\": {0}", RevAdjacencyList.ToGraphSON());
+
+            return "{" + sb.ToString() + "}";
+        }
     }
 
     /// <summary>

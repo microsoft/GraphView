@@ -86,26 +86,16 @@ namespace GraphView
             VertexCache = VertexObjectCache.Instance;
         }
 
-        public GraphViewConnection()
-        { }
-
         internal DbPortal CreateDatabasePortal()
         {
             return new DocumentDbPortal(this);
         }
 
         /// <summary>
-        ///     Connection to a SQL database
-        /// </summary>
-        public bool Overwrite { get; set; }
-        
-        /// <summary>
         ///     Releases all resources used by GraphViewConnection.
         /// </summary>
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         public void ResetCollection()
@@ -200,27 +190,6 @@ namespace GraphView
                 Console.WriteLine(insertTask.Result + " nodes has already been inserted.");
             }
         }
-
-        
-        /// <summary>
-        ///     Releases the unmanaged resources used by GraphViewConnection and optionally releases the managed resources.
-        /// </summary>
-        /// <param name="disposing">
-        ///     true to release both managed and unmanaged resources; false to release only unmanaged
-        ///     resources.
-        /// </param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-
-                }
-            }
-            _disposed = true;
-        }
-        
     }
 
     internal sealed class VertexObjectCache

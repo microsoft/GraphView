@@ -26,7 +26,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
@@ -45,16 +44,6 @@ namespace GraphView
     [Serializable]
     public class SyntaxErrorException : GraphViewException
     {
-        private static string ParseErrorsMes(IEnumerable<ParseError> errors)
-        {
-            var errorStr = "";
-            foreach (var error in errors)
-            {
-                errorStr += String.Format("\nLine {0}:\n{1}", error.Line, error.Message);
-            }
-            return errorStr;
-        }
-
         public SyntaxErrorException() { }
         public SyntaxErrorException(string message) : base(message) { }
         public SyntaxErrorException(string message, Exception innerException) :
@@ -70,10 +59,6 @@ namespace GraphView
             : base("\nLine " + line + ":\n" + "Incorrect syntax near " + key + "\n")
         {
         }
-
-        public SyntaxErrorException(IEnumerable<ParseError> errors)
-            : base(ParseErrorsMes(errors)) { }
-
     }
 
     [Serializable]
@@ -83,6 +68,15 @@ namespace GraphView
         public QueryCompilationException(string message) : base(message) { }
         public QueryCompilationException(string message, Exception innerException) :
             base(message, innerException) { }
+    }
+
+    [Serializable]
+    public class QueryExecutionException : GraphViewException
+    {
+        public QueryExecutionException() { }
+        public QueryExecutionException(string message) : base(message) { }
+        public QueryExecutionException(string message, Exception innerException)
+            : base (message, innerException) { }
     }
 
     [Serializable]

@@ -16,6 +16,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
 
             GraphViewCommand graph = new GraphViewCommand(connection);
+            graph.OutputFormat = OutputFormat.GraphSON;
             var results = graph.g().V().Has("weapon", "shield").As("character").Out("appeared").As("comicbook").Select("character").Next();
 
             foreach (var result in results)
@@ -31,10 +32,11 @@ namespace GraphViewUnitTest
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
                 "GroupMatch", "MarvelTest");
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
-            graph.CommandText =
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            cmd.CommandText =
                 "g.V().has('weapon','shield').as('character').out('appeared').as('comicbook').select('character').next()";
-            var results = graph.Execute();
+            cmd.OutputFormat = OutputFormat.GraphSON;
+            var results = cmd.Execute();
 
             foreach (var result in results)
             {
@@ -226,6 +228,14 @@ namespace GraphViewUnitTest
             cmd.CommandText = "g.addV('comicbook').property('name', 'AVF 4').next()";
             cmd.Execute();
             cmd.CommandText = "g.V().has('name', 'VENUS II').addE('appeared').to(g.V().has('name', 'AVF 4')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('character').property('name', 'HAWK').property('weapon', 'claws').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V().as('v').has('name', 'HAWK').addE('appeared').to(g.V().has('name', 'AVF 4')).next()";
+            cmd.Execute();
+            cmd.CommandText = "g.addV('character').property('name', 'WOODGOD').property('weapon', 'lasso').next()";
+            cmd.Execute();
+            cmd.CommandText = "g.V().as('v').has('name', 'WOODGOD').addE('appeared').to(g.V().has('name', 'AVF 4')).next()";
             cmd.Execute();
         }
     }

@@ -11,6 +11,12 @@ using Microsoft.CSharp;
 
 namespace GraphView
 {
+    public enum OutputFormat
+    {
+        Regular = 0,
+        GraphSON
+    }
+
     public class GraphTraversal2 : IEnumerable<string>
     {
         public class GraphTraversalIterator : IEnumerator<string>
@@ -85,19 +91,25 @@ namespace GraphView
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
         internal GremlinTranslationOperator LastGremlinTranslationOp { set; get; }
 
-        public GraphTraversal2() {
+        OutputFormat outputFormat;
+
+        public GraphTraversal2()
+        {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
         }
-
-        //public GraphTraversal2(GraphTraversal rhs)
-        //{
-        //    GremlinTranslationOpList = new List<GremlinTranslationOperator>();
-        //}
 
         public GraphTraversal2(GraphViewConnection pConnection)
         {
             GremlinTranslationOpList = new List<GremlinTranslationOperator>();
             Connection = pConnection;
+            outputFormat = OutputFormat.Regular;
+        }
+
+        public GraphTraversal2(GraphViewConnection connection, OutputFormat outputFormat)
+        {
+            GremlinTranslationOpList = new List<GremlinTranslationOperator>();
+            Connection = connection;
+            this.outputFormat = outputFormat;
         }
 
         public List<string> Next()
@@ -118,12 +130,23 @@ namespace GraphView
             List<string> results = new List<string>();
             foreach (var record in rawRecordResults)
             {
-                var recordString = "";
-                foreach (var fieldValue in record.fieldValues)
+                //var recordString = "";
+                //foreach (var fieldValue in record.fieldValues)
+                //{
+                //    recordString += fieldValue + "  ";
+                //}
+                //results.Add(recordString);
+
+                FieldObject field = record[0];
+                switch(outputFormat)
                 {
-                    recordString += fieldValue + "  ";
+                    case OutputFormat.GraphSON:
+                        results.Add(field.ToGraphSON());
+                        break;
+                    default:
+                        results.Add(field.ToString());
+                        break;
                 }
-                results.Add(recordString);
             }
 
             return results;
@@ -1051,6 +1074,14 @@ namespace GraphView
             sb.Append("public object Main() {\n");
             sb.Append("GraphViewConnection connection = new GraphViewConnection("+ getConnectionInfo() +");");
             sb.Append("GraphViewCommand graph = new GraphViewCommand(connection);\n");
+            switch(outputFormat)
+            {
+                case OutputFormat.GraphSON:
+                    sb.Append("graph.OutputFormat = OutputFormat.GraphSON;\r\n");
+                    break;
+                default:
+                    break;
+            }
             sb.Append("return " + sCSCode + ";\n");
             sb.Append("}\n");
             sb.Append("}\n");
