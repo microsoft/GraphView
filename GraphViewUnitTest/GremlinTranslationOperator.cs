@@ -91,8 +91,9 @@ namespace GremlinTranslationOperator.Tests
                 "GroupMatch", "Modern");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            var results = graph.g().V().Project("Vertex").By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As
-                ("_").InV())).Next();
+            var result = graph.g().V().Properties().Drop().Next();
+            //var results = graph.g().V().Project("Vertex").By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As
+            //    ("_").InV())).Next();
 
             //var results = graph.g().V().Has("type", "University").Project("info", "edge_label").By(GraphTraversal2.__().Properties("label", "type")).By(GraphTraversal2.__().Optional(GraphTraversal2.__().InE().Properties("label"))).Next();
             //var results = graph.g().V().Out().Union(GraphTraversal2.__().Out().As("a").In()).Select("a").Out().Next();

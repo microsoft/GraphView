@@ -59,6 +59,10 @@ namespace GraphView
             {
                 properties[propertyKey] = null;
             }
+            if (PropertyKeys.Count == 0)
+            {
+                properties["*"] = null;
+            }
             if (ProjectVariable is GremlinVertexTableVariable)
             {
                 UpdateVariable = new GremlinUpdateNodePropertiesVariable(ProjectVariable.DefaultVariableProperty(), properties);
