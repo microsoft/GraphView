@@ -1522,6 +1522,7 @@ namespace GraphView
 
             foreach (var tableReference in nonVertexTableReferences)
             {
+                // TODO: New Compilation of QueryDerivedTable
                 if (tableReference is WQueryDerivedTable)
                 {
                     var derivedQueryExpr = (tableReference as WQueryDerivedTable).QueryExpr;

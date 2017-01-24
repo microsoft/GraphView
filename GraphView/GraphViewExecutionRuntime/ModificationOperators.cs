@@ -151,9 +151,35 @@ namespace GraphView
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var targetId = record[_nodeIdIndex];
+            var targetId = record[_nodeIdIndex].ToValue;
 
-            DeleteNode(targetId.ToValue);
+            var targetJson = RetrieveDocumentById(targetId);
+
+            var targetJObject = JObject.Parse(targetJson);
+
+            // Temporarily change
+            DropEdgeOperator dropEdgeOp = new DropEdgeOperator(null, Connection, 0, 1);
+            RawRecord temp = new RawRecord(2);
+
+            var adj = (JArray)targetJObject["_edge"];
+
+            foreach (var edge in adj.Children<JObject>())
+            {
+                temp.fieldValues[0] = new StringField(targetId);
+                temp.fieldValues[1] = new StringField(edge["_ID"].ToString());
+                dropEdgeOp.DataModify(temp);
+            }
+
+            var revAdj = (JArray)targetJObject["_reverse_edge"];
+
+            foreach (var revEdge in revAdj.Children<JObject>())
+            {
+                temp.fieldValues[0] = new StringField(revEdge["_sink"].ToString());
+                temp.fieldValues[1] = new StringField(revEdge["_reverse_ID"].ToString());
+                dropEdgeOp.DataModify(temp);
+            }
+
+            DeleteNode(targetId);
 
             return null;
         }
