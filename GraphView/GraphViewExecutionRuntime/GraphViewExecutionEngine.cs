@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Azure.Documents.Client;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
 
 // Add DocumentDB references
@@ -37,10 +36,10 @@ namespace GraphView
                     case "_attachments":
                     case "_ts":
                         continue;
-                    case "_edge":
+                    case GremlinKeyword.EdgeAdj:
                         vertexField.AdjacencyList = GetAdjacencyListField((JArray)property.Value);
                         break;
-                    case "_reverse_edge":
+                    case GremlinKeyword.ReverseEdgeAdj:
                         vertexField.RevAdjacencyList = GetAdjacencyListField((JArray)property.Value);
                         break;
                     default:
@@ -475,21 +474,94 @@ namespace GraphView
         public override string ToGraphSON()
         {
             StringBuilder sb = new StringBuilder();
+            sb.Append("{");
+            sb.AppendFormat("\"id\": \"{0}\"", VertexProperties["id"].PropertyValue);
 
+            if (VertexProperties.ContainsKey("label"))
+            {
+                sb.Append(", ");
+                sb.AppendFormat("\"label\": \"{0}\"", VertexProperties["label"].PropertyValue);
+            }
+
+            if (RevAdjacencyList != null && RevAdjacencyList.Edges.Count > 0)
+            {
+                sb.Append(", inE: {");
+                // Groups all edges by their labels
+                var groupByLabel = RevAdjacencyList.Edges.Values.GroupBy(e => e["label"].ToValue);
+                bool firstInEGroup = true;
+                foreach (var g in groupByLabel)
+                {
+                    if (firstInEGroup)
+                    {
+                        firstInEGroup = false;
+                    }
+                    else
+                    {
+                        sb.Append(", ");
+                    }
+
+                    string edgelLabel = g.Key;
+                    sb.AppendFormat("\"{0}\": [", edgelLabel);
+
+                    bool firstInEdge = true;
+                    foreach (EdgeField edgeField in g)
+                    {
+                        if (firstInEdge)
+                        {
+                            firstInEdge = false;
+                        }
+                        else
+                        {
+                            sb.Append(", ");
+                        }
+
+                        sb.Append("{");
+                    }
+
+                }
+            }
+
+            bool firstProperty = true;
             foreach (string propertyName in VertexProperties.Keys)
             {
-                VertexPropertyField vp = VertexProperties[propertyName];
-                if (sb.Length > 0)
+                switch(propertyName)
+                {
+                    case GremlinKeyword.EdgeAdj:
+                    case GremlinKeyword.ReverseEdgeAdj:
+                    case "_nextEdgeOffset":
+                    case "_nextReverseEdgeOffset":
+                    case "id":
+                    case "label":
+                        continue;
+                    default:
+                        break;
+                }
+
+                if (firstProperty)
+                {
+                    sb.Append(", \"properties\": {");
+                    firstProperty = false;
+                }
+                else
                 {
                     sb.Append(", ");
                 }
-                sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, vp.PropertyValue);
+
+                VertexPropertyField vp = VertexProperties[propertyName];
+                sb.AppendFormat("\"{0}\": [{{\"value\": \"{0}\"}}]", propertyName, vp.PropertyValue);
+
+                
+            }
+            if (!firstProperty)
+            {
+                sb.Append("}");
             }
 
-            sb.AppendFormat(", \"_outE\": {0}", AdjacencyList.ToGraphSON());
-            sb.AppendFormat(", \"_inE\": {0}", RevAdjacencyList.ToGraphSON());
+            sb.AppendFormat(", \"outE\": {0}", AdjacencyList.ToGraphSON());
 
-            return "{" + sb.ToString() + "}";
+            sb.Append("}");
+
+            return sb.ToString();
         }
     }
 
