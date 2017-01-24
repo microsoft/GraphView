@@ -18,10 +18,11 @@ namespace GraphView
             context.CurrentExecutionOperator = addVOp;
 
             context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
+            context.AddField(Alias.Value, "label", ColumnGraphType.Value);
             context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
             context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
             context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
-            for (var i = 4; i < projectedField.Count; i++)
+            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++)
             {
                 context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }
@@ -57,7 +58,7 @@ namespace GraphView
             context.AddField(Alias.Value, "_other", ColumnGraphType.Value);
             context.AddField(Alias.Value, "_ID", ColumnGraphType.EdgeOffset);
             context.AddField(Alias.Value, "*", ColumnGraphType.EdgeObject);
-            for (var i = 5; i < projectedField.Count; i++)
+            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedField.Count; i++)
             {
                 context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }

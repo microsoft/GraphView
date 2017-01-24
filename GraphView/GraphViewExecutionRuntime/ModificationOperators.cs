@@ -193,8 +193,6 @@ namespace GraphView
         private string _edgeJsonDocument;
         private List<string> _edgeProperties;
 
-        private const int ReservedMetaFieldCount = 5;
-
         public AddEOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, 
             ScalarFunction pSrcFunction, ScalarFunction pSinkFunction, 
             int otherVTag, string pEdgeJsonDocument, List<string> pProjectedFieldList)
@@ -261,7 +259,13 @@ namespace GraphView
             result.Append(new StringField(edgeObject["_ID"].ToString()));
             result.Append(edgeField);
 
-            for (var i = ReservedMetaFieldCount; i < _edgeProperties.Count; i++)
+            edgeField.Label = edgeField["label"]?.ToValue;
+            edgeField.InV = srcId;
+            edgeField.OutV = sinkId;
+            edgeField.InVLabel = srcVertexField["label"]?.ToValue;
+            edgeField.OutVLabel = sinkVertexField["label"]?.ToValue;
+
+            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++)
             {
                 var fieldValue = edgeField[_edgeProperties[i]];
                 result.Append(fieldValue);
@@ -419,6 +423,7 @@ namespace GraphView
         /// </summary>
         // TODO: Now the item3 is useless
         // TODO: Both the translation code and the physical operator haven't handled the g.V().properties().drop() case.
+        // TODO: Handle <*, null>
         protected List<Tuple<WValueExpression, WValueExpression, int>> PropertiesToBeUpdated;
 
         protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,

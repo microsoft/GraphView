@@ -138,10 +138,18 @@ namespace GraphView
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), item.Value));
             }
 
-            foreach (var property in projectProperties)
+            if (projectProperties.Count == 0)
             {
-                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.GetVariableProperty(property).ToScalarExpression(), property));
-                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            }
+            else
+            {
+                foreach (var property in projectProperties)
+                {
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                    selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                }
             }
 
             if (SelectedVariableList.Count != 0)

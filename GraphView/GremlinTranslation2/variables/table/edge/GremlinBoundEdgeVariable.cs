@@ -39,20 +39,22 @@ namespace GraphView
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty adjEdge, WEdgeType edgeType)
+        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty adjEdge, GremlinVariableProperty labelProperty, WEdgeType edgeType)
         {
             variablePropertyList = new List<GremlinVariableProperty>();
             variablePropertyList.Add(sourceProperty);
             variablePropertyList.Add(adjEdge);
+            variablePropertyList.Add(labelProperty);
             EdgeType = edgeType;
         }
 
-        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, WEdgeType edgeType)
+        public GremlinBoundEdgeVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty adjEdge, GremlinVariableProperty adjReverseEdge, GremlinVariableProperty labelProperty, WEdgeType edgeType)
         {
             variablePropertyList = new List<GremlinVariableProperty>();
             variablePropertyList.Add(sourceProperty);
             variablePropertyList.Add(adjEdge);
             variablePropertyList.Add(adjReverseEdge);
+            variablePropertyList.Add(labelProperty);
             EdgeType = edgeType;
         }
     }
