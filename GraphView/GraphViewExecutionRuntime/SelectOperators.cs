@@ -12,6 +12,7 @@ namespace GraphView
     internal class ConstantSourceOperator : GraphViewExecutionOperator
     {
         private RawRecord _constantSource;
+        ContainerEnumerator sourceEnumerator;
 
         public RawRecord ConstantSource
         {
@@ -19,22 +20,52 @@ namespace GraphView
             set { _constantSource = value; this.Open(); }
         }
 
-        public ConstantSourceOperator(RawRecord pConstant)
+        public ContainerEnumerator SourceEnumerator
         {
-            _constantSource = pConstant;
-            this.Open();
+            get { return sourceEnumerator; }
+            set
+            {
+                sourceEnumerator = value;
+                Open();
+            }
         }
 
-        public void SetRef(RawRecord pConstant)
+        public ConstantSourceOperator()
         {
-            _constantSource = pConstant;
-            this.Open();
         }
 
         public override RawRecord Next()
         {
-            this.Close();
-            return _constantSource;
+            if (sourceEnumerator != null)
+            {
+                if (sourceEnumerator.MoveNext())
+                {
+                    return sourceEnumerator.Current;
+                }
+                else
+                {
+                    Close();
+                    return null;
+                }
+             }
+            else
+            {
+                Close();
+                return _constantSource;
+            }
+        }
+
+        public override void ResetState()
+        {
+            if (sourceEnumerator != null)
+            {
+                sourceEnumerator.Reset();
+                Open();
+            }
+            else
+            {
+                Open();
+            }
         }
     }
 
@@ -1426,12 +1457,22 @@ namespace GraphView
         private RawRecord currentRecord;
         private Queue<RawRecord> traversalOutputBuffer;
 
+        int activeTraversalIndex;
+
         public UnionOperator(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
             traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
             traversalOutputBuffer = new Queue<RawRecord>();
             Open();
+        }
+
+        public UnionOperator()
+        {
+            traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
+            traversalOutputBuffer = new Queue<RawRecord>();
+            Open();
+            activeTraversalIndex = 0;
         }
 
         public void AddTraversal(ConstantSourceOperator contextOp, GraphViewExecutionOperator traversal)
@@ -1485,6 +1526,33 @@ namespace GraphView
 
             Close();
             return null;
+        }
+
+        public RawRecord Next2()
+        {
+            RawRecord traversalRecord = null;
+            while (traversalRecord == null && activeTraversalIndex < traversalList.Count)
+            {
+                GraphViewExecutionOperator activeOp = traversalList[activeTraversalIndex].Item2;
+                if (activeOp.State() && (traversalRecord = activeOp.Next()) != null)
+                {
+                    break;
+                }
+                else
+                {
+                    activeTraversalIndex++;
+                }
+            }
+
+            if (traversalRecord == null)
+            {
+                Close();
+                return null;
+            }
+            else
+            {
+                return traversalRecord;
+            }
         }
 
         public override void ResetState()

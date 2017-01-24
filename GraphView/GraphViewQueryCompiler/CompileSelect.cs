@@ -1641,7 +1641,7 @@ namespace GraphView
                 var projectOperator =
                     new ProjectOperator(operatorChain.Any()
                         ? operatorChain.Last()
-                        : (context.OuterContextOp ?? new ConstantSourceOperator(new RawRecord())));
+                        : (context.OuterContextOp ?? new ConstantSourceOperator()));
 
                 foreach (var expr in selectScalarExprList)
                 {
@@ -2263,6 +2263,60 @@ namespace GraphView
 
                 QueryCompilationContext subcontext = new QueryCompilationContext(context);
                 GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+            }
+
+            // Updates the raw record layout. The columns of this table-valued function 
+            // are specified by the select elements of the input subqueries.
+            foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The input subquery of a union table reference can only select scalar elements.");
+                }
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef == null)
+                {
+                    throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
+                }
+                if (columnRef.ColumnType == ColumnType.Wildcard)
+                    continue;
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            context.CurrentExecutionOperator = unionOp;
+            return unionOp;
+        }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+
+            UnionOperator unionOp = new UnionOperator();
+
+            WSelectQueryBlock firstSelectQuery = null;
+            foreach (WScalarExpression parameter in Parameters)
+            {
+                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                if (scalarSubquery == null)
+                {
+                    throw new SyntaxErrorException("The input of a union table reference must be one or more scalar subqueries.");
+                }
+
+                if (firstSelectQuery == null)
+                {
+                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    if (firstSelectQuery == null)
+                    {
+                        throw new SyntaxErrorException("The input of a union table reference must be one or more select query blocks.");
+                    }
+                }
+
+                QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
                 unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
             }
 
@@ -3019,7 +3073,7 @@ namespace GraphView
                 var subContext = new QueryCompilationContext(context);
                 // In g.Inject() case, the Inject operator itself is the first operator, so a not-null OuterContextOp is faked here
                 if (context.CurrentExecutionOperator == null)
-                    subContext.OuterContextOp.SetRef(new RawRecord());
+                    subContext.OuterContextOp.ConstantSource = new RawRecord();
                 var subQueryOp = subQuery.SubQueryExpr.Compile(subContext, dbConnection);
                 subQueriesOps.Add(subQueryOp);
             }

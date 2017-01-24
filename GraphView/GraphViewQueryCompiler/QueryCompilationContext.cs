@@ -137,7 +137,7 @@ namespace GraphView
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(parentContext.RawRecordLayout,
                 new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>(parentContext.TableReferences);
-            OuterContextOp = new ConstantSourceOperator(null);
+            OuterContextOp = new ConstantSourceOperator();
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables)
