@@ -2242,43 +2242,43 @@ namespace GraphViewUnitTest
                         .Has("__id", "product:soda-machine")
                         .HasLabel("product-model")
                         .Property("__etag", "iBuelvJFQuSGRQfEvvzPrA=="))
-                    .As("#v")).Next();
-                    //.Project("#e0", "#e1")
-                    //.By(GraphTraversal2.__().Select("#v0").FlatMap(
-                    //    GraphTraversal2.__()
-                    //        .As("src")
-                    //        .FlatMap(GraphTraversal2.__().Select("#v").Select("#v1"))
-                    //        .As("tgt")
-                    //        .Select("src")
-                    //        .Coalesce(GraphTraversal2.__()
-                    //            .OutE("ref")
-                    //            .And(GraphTraversal2.__().InV().Where(
-                    //                Predicate.eq("tgt")))
-                    //            .Has("_key", "syrup_level")
-                    //            .Has("_ref", "syrup_level"),
-                    //            GraphTraversal2.__()
-                    //                .AddE("ref")
-                    //                .To("tgt")
-                    //                .Property("_key", "syrup_level")
-                    //                .Property("_ref", "syrup_level"))))
-                    //.By(GraphTraversal2.__().Select("#v0").FlatMap(
-                    //    GraphTraversal2.__()
-                    //        .As("src")
-                    //        .FlatMap(GraphTraversal2.__().Select("#v").Select("#v1"))
-                    //        .As("tgt")
-                    //        .Select("src")
-                    //        .Coalesce(GraphTraversal2.__()
-                    //            .OutE("ref")
-                    //            .And(GraphTraversal2.__().InV().Where(
-                    //                Predicate.eq("tgt")))
-                    //            .Has("_key", "ice_level")
-                    //            .Has("_ref", "ice_level"),
-                    //            GraphTraversal2.__()
-                    //                .AddE("ref")
-                    //                .To("tgt")
-                    //                .Property("_key", "ice_level")
-                    //                .Property("_ref", "ice_level"))))
-                    //.As("#e")
+                    .As("#v")
+                    .Project("#e0", "#e1")
+                    .By(GraphTraversal2.__().Select("#v0").FlatMap(
+                        GraphTraversal2.__()
+                            .As("src")
+                            .FlatMap(GraphTraversal2.__().Select("#v").Select("#v1"))
+                            .As("tgt")
+                            .Select("src")
+                            .Coalesce(GraphTraversal2.__()
+                                    .OutE("ref")
+                                    .And(GraphTraversal2.__().InV().Where(
+                                        Predicate.eq("tgt")))
+                                    .Has("_key", "syrup_level")
+                                    .Has("_ref", "syrup_level"),
+                                GraphTraversal2.__()
+                                    .AddE("ref")
+                                    .To("tgt")
+                                    .Property("_key", "syrup_level")
+                                    .Property("_ref", "syrup_level"))))
+                    .By(GraphTraversal2.__().Select("#v0").FlatMap(
+                        GraphTraversal2.__()
+                            .As("src")
+                            .FlatMap(GraphTraversal2.__().Select("#v").Select("#v1"))
+                            .As("tgt")
+                            .Select("src")
+                            .Coalesce(GraphTraversal2.__()
+                                    .OutE("ref")
+                                    .And(GraphTraversal2.__().InV().Where(
+                                        Predicate.eq("tgt")))
+                                    .Has("_key", "ice_level")
+                                    .Has("_ref", "ice_level"),
+                                GraphTraversal2.__()
+                                    .AddE("ref")
+                                    .To("tgt")
+                                    .Property("_key", "ice_level")
+                                    .Property("_ref", "ice_level"))))
+                    .As("#e")).Next();
                     //.Union(
                     //    GraphTraversal2.__()
                     //        .Select("#v")

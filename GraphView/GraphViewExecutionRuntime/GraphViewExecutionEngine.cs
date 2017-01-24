@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
+using System.Collections.ObjectModel;
 
 // Add DocumentDB references
 
@@ -327,6 +328,12 @@ namespace GraphView
         // <PropertyName, EdgePropertyField>
         public Dictionary<string, EdgePropertyField> EdgeProperties;
 
+        public string Label;
+        public string InVLabel;
+        public string OutVLabel;
+        public string InV;
+        public string OutV;
+
         public EdgeField()
         {
             EdgeProperties = new Dictionary<string, EdgePropertyField>();
@@ -355,8 +362,7 @@ namespace GraphView
 
         public override string ToString()
         {
-            return string.Format("e[{0}]-{1}->{2}", EdgeProperties["_ID"].ToValue, EdgeProperties["label"].ToValue,
-                EdgeProperties["_sink"].ToValue);
+            return string.Format("e[{0}]{1}({2})-{3}->{4}({5})", EdgeProperties["_ID"].ToValue, InV, InVLabel, Label, OutV, OutVLabel);
         }
     }
 
@@ -630,6 +636,15 @@ namespace GraphView
         Both,
         OutV,
         InV
+    }
+
+    internal class GraphViewReservedProperties
+    {
+        internal static readonly ReadOnlyCollection<string> ReservedNodeProperties = 
+            new ReadOnlyCollection<string>(new List<string> { "id", "label", "_edge", "_reverse_edge", "*" });
+
+        internal static readonly ReadOnlyCollection<string> ReservedEdgeProperties =
+            new ReadOnlyCollection<string>(new List<string> {"_source", "_sink", "_other", "_ID", "*"});
     }
 
     /// <summary>

@@ -510,7 +510,7 @@ namespace GraphView
         public string ConstructEdgeJsonDocument(out List<string> projectedFieldList)
         {
             JObject edgeJsonDocument = JObject.Parse("{}");
-            projectedFieldList = new List<string> { "_source", "_sink", "_other", "_ID", "*" };
+            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
             //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_ID").ToString();
             //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_reverse_ID").ToString();
             //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_sink").ToString();
@@ -541,7 +541,7 @@ namespace GraphView
         public string ConstructNodeJsonDocument(out List<string> projectedFieldList)
         {
             JObject nodeJsonDocument = JObject.Parse("{}");
-            projectedFieldList = new List<string> { "id", "_edge", "_reverse_edge", "*" };
+            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
 
             for (var i = 0; i < Parameters.Count; i += 2)
             {

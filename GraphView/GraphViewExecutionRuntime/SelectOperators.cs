@@ -695,7 +695,8 @@ namespace GraphView
 
     internal class AdjacencyListDecoder2 : TableValuedFunction
     {
-        protected int startVertexIndex;
+        private int startVertexIndex;
+        private int startVertexLabelIndex;
 
         private int adjacencyListIndex;
         private int revAdjacencyListIndex;
@@ -705,15 +706,14 @@ namespace GraphView
 
         private bool isStartVertexTheOriginVertex;
 
-        protected const int ReservedMetaFieldCount = 5;
-
-        public AdjacencyListDecoder2(GraphViewExecutionOperator input, int startVertexIndex,
-            int adjacencyListIndex, int revAdjacencyListIndex, bool isStartVertexTheOriginVertex,
+        public AdjacencyListDecoder2(GraphViewExecutionOperator input,
+            int startVertexIndex, int startVertexLabelIndex, int adjacencyListIndex, int revAdjacencyListIndex, bool isStartVertexTheOriginVertex,
             BooleanFunction edgePredicate, List<string> projectedFields, 
             int outputBufferSize = 1000)
             : base(input, outputBufferSize)
         {
             this.startVertexIndex = startVertexIndex;
+            this.startVertexLabelIndex = startVertexLabelIndex;
             this.adjacencyListIndex = adjacencyListIndex;
             this.revAdjacencyListIndex = revAdjacencyListIndex;
             this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
@@ -728,18 +728,26 @@ namespace GraphView
         /// <param name="edge"></param>
         /// <param name="startVertexId"></param>
         /// <param name="isReversedAdjList"></param>
-        private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, bool isReversedAdjList)
+        private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, string startVertexLabel, bool isReversedAdjList)
         {
             var sourceValue = isReversedAdjList ? edge["_sink"].ToValue : startVertexId;
             var sinkValue = isReversedAdjList ? startVertexId : edge["_sink"].ToValue;
             var otherValue = isStartVertexTheOriginVertex ? edge["_sink"].ToValue : startVertexId;
             var edgeIdValue = isReversedAdjList ? edge["_reverse_ID"].ToValue : edge["_ID"].ToValue;
+            var sourceLabel = isReversedAdjList ? edge["_sinkLabel"]?.ToValue : startVertexLabel;
+            var sinkLabel = isReversedAdjList ? startVertexLabel : edge["_sinkLabel"]?.ToValue;
 
             record.fieldValues[0] = new StringField(sourceValue);
             record.fieldValues[1] = new StringField(sinkValue);
             record.fieldValues[2] = new StringField(otherValue);
             record.fieldValues[3] = new StringField(edgeIdValue);
             record.fieldValues[4] = edge;
+
+            edge.Label = edge["label"]?.ToValue;
+            edge.InV = sourceValue;
+            edge.OutV = sinkValue;
+            edge.InVLabel = sourceLabel;
+            edge.OutVLabel = sinkLabel;
         }
 
         /// <summary>
@@ -749,7 +757,7 @@ namespace GraphView
         /// <param name="edge"></param>
         private void FillPropertyField(RawRecord record, EdgeField edge)
         {
-            for (var i = ReservedMetaFieldCount; i < ProjectedFields.Count; i++)
+            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < ProjectedFields.Count; i++)
             {
                 record.fieldValues[i] = edge[ProjectedFields[i]];
             }
@@ -759,6 +767,7 @@ namespace GraphView
         {
             List<RawRecord> results = new List<RawRecord>();
             string startVertexId = record[startVertexIndex].ToValue;
+            string startVertexLabel = record[startVertexLabelIndex]?.ToValue;
 
             if (adjacencyListIndex >= 0)
             {
@@ -772,7 +781,7 @@ namespace GraphView
                     // Construct new record
                     var result = new RawRecord(ProjectedFields.Count);
 
-                    FillMetaField(result, edge, startVertexId, false);
+                    FillMetaField(result, edge, startVertexId, startVertexLabel, false);
                     FillPropertyField(result, edge);
 
                     results.Add(result);
@@ -791,7 +800,7 @@ namespace GraphView
                     // Construct new record
                     var result = new RawRecord(ProjectedFields.Count);
 
-                    FillMetaField(result, edge, startVertexId, true);
+                    FillMetaField(result, edge, startVertexId, startVertexLabel, true);
                     // Fill the field of selected edge's properties
                     FillPropertyField(result, edge);
 
@@ -1071,6 +1080,9 @@ namespace GraphView
 
         public override RawRecord Next()
         {
+            if (!State())
+                return null;
+
             foreach (var aggr in aggregationSpecs)
             {
                 aggr.Item1.Init();
