@@ -9,7 +9,9 @@ namespace GraphView
     public class GremlinKeyword
     {
         public const string Label = "label";
+        public const string SinkLabel = "_sinkLabel";
         public const string EdgeID = "_ID";
+        public const string EdgeReverseID = "_reverse_ID";
         public const string EdgeSourceV = "_source";
         public const string EdgeSinkV = "_sink";
         public const string EdgeOtherV = "_other";

@@ -492,7 +492,7 @@ namespace GraphView
             if (RevAdjacencyList != null && RevAdjacencyList.Edges.Count > 0)
             {
                 sb.Append(", inE: {");
-                // Groups all edges by their labels
+                // Groups incoming edges by their labels
                 var groupByLabel = RevAdjacencyList.Edges.Values.GroupBy(e => e["label"].ToValue);
                 bool firstInEGroup = true;
                 foreach (var g in groupByLabel)
@@ -522,12 +522,132 @@ namespace GraphView
                         }
 
                         sb.Append("{");
-                    }
+                        sb.AppendFormat("\"id\": {0}, ", 
+                            edgeField.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
+                        sb.AppendFormat("\"outV\": \"{0}\"", edgeField.InV);
 
+                        bool firstInEProperty = true;
+                        foreach (string propertyName in edgeField.EdgeProperties.Keys)
+                        {
+                            switch(propertyName)
+                            {
+                                case GremlinKeyword.EdgeID:
+                                case GremlinKeyword.EdgeReverseID:
+                                case GremlinKeyword.EdgeSourceV:
+                                case GremlinKeyword.EdgeSinkV:
+                                case GremlinKeyword.EdgeOtherV:
+                                case GremlinKeyword.Label:
+                                case GremlinKeyword.SinkLabel:
+                                    continue;
+                                default:
+                                    break;
+                            }
+
+                            if (firstInEProperty)
+                            {
+                                sb.Append(", \"properties\": {");
+                                firstInEProperty = false;
+                            }
+                            else
+                            {
+                                sb.Append(", ");
+                            }
+
+                            sb.AppendFormat("\"{0}\": \"{1}\"", 
+                                propertyName, 
+                                edgeField.EdgeProperties[propertyName].PropertyValue);
+                        }
+                        if (!firstInEProperty)
+                        {
+                            sb.Append("}");
+                        }
+                        sb.Append("}");
+                    }
+                    sb.Append("]");
                 }
+                sb.Append("}");
             }
 
-            bool firstProperty = true;
+            if (AdjacencyList != null && AdjacencyList.Edges.Count > 0)
+            {
+                sb.Append(", outE: {");
+                // Groups outgoing edges by their labels
+                var groupByLabel = AdjacencyList.Edges.Values.GroupBy(e => e["label"].ToValue);
+                bool firstOutEGroup = true;
+                foreach (var g in groupByLabel)
+                {
+                    if (firstOutEGroup)
+                    {
+                        firstOutEGroup = false;
+                    }
+                    else
+                    {
+                        sb.Append(", ");
+                    }
+
+                    string edgelLabel = g.Key;
+                    sb.AppendFormat("\"{0}\": [", edgelLabel);
+
+                    bool firstOutEdge = true;
+                    foreach (EdgeField edgeField in g)
+                    {
+                        if (firstOutEdge)
+                        {
+                            firstOutEdge = false;
+                        }
+                        else
+                        {
+                            sb.Append(", ");
+                        }
+
+                        sb.Append("{");
+                        sb.AppendFormat("\"id\": {0}, ", 
+                            edgeField.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
+                        sb.AppendFormat("\"inV\": \"{0}\"", edgeField.OutV);
+
+                        bool firstOutEProperty = true;
+                        foreach (string propertyName in edgeField.EdgeProperties.Keys)
+                        {
+                            switch (propertyName)
+                            {
+                                case GremlinKeyword.EdgeID:
+                                case GremlinKeyword.EdgeReverseID:
+                                case GremlinKeyword.EdgeSourceV:
+                                case GremlinKeyword.EdgeSinkV:
+                                case GremlinKeyword.EdgeOtherV:
+                                case GremlinKeyword.Label:
+                                case GremlinKeyword.SinkLabel:
+                                    continue;
+                                default:
+                                    break;
+                            }
+
+                            if (firstOutEProperty)
+                            {
+                                sb.Append(", \"properties\": {");
+                                firstOutEProperty = false;
+                            }
+                            else
+                            {
+                                sb.Append(", ");
+                            }
+
+                            sb.AppendFormat("\"{0}\": \"{1}\"",
+                                propertyName,
+                                edgeField.EdgeProperties[propertyName].PropertyValue);
+                        }
+                        if (!firstOutEProperty)
+                        {
+                            sb.Append("}");
+                        }
+                        sb.Append("}");
+                    }
+                    sb.Append("]");
+                }
+                sb.Append("}");
+            }
+
+            bool firstVertexProperty = true;
             foreach (string propertyName in VertexProperties.Keys)
             {
                 switch(propertyName)
@@ -543,10 +663,10 @@ namespace GraphView
                         break;
                 }
 
-                if (firstProperty)
+                if (firstVertexProperty)
                 {
                     sb.Append(", \"properties\": {");
-                    firstProperty = false;
+                    firstVertexProperty = false;
                 }
                 else
                 {
@@ -555,15 +675,11 @@ namespace GraphView
 
                 VertexPropertyField vp = VertexProperties[propertyName];
                 sb.AppendFormat("\"{0}\": [{{\"value\": \"{0}\"}}]", propertyName, vp.PropertyValue);
-
-                
             }
-            if (!firstProperty)
+            if (!firstVertexProperty)
             {
                 sb.Append("}");
             }
-
-            sb.AppendFormat(", \"outE\": {0}", AdjacencyList.ToGraphSON());
 
             sb.Append("}");
 
