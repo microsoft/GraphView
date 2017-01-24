@@ -293,6 +293,11 @@ namespace GraphView
                 return PropertyValue;
             }
         }
+
+        public override string ToGraphSON()
+        {
+            return string.Format("{\"{0}\": \"{1}\"}", PropertyName, PropertyValue);
+        }
     }
 
     internal class VertexPropertyField : PropertyField
