@@ -57,7 +57,8 @@ namespace GraphView
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
             GremlinVariableProperty adjReverseEdge = GetVariableProperty(GremlinKeyword.ReverseEdgeAdj);
-            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
+            GremlinVariableProperty labelProperty = GetVariableProperty(GremlinKeyword.Label);
+            GremlinBoundEdgeVariable inEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, labelProperty, WEdgeType.InEdge);
             currentContext.VariableList.Add(inEdge);
             currentContext.TableReferences.Add(inEdge);
             currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
@@ -76,7 +77,8 @@ namespace GraphView
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
             GremlinVariableProperty adjReverseEdge = GetVariableProperty(GremlinKeyword.ReverseEdgeAdj);
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, WEdgeType.InEdge);
+            GremlinVariableProperty labelProperty = GetVariableProperty(GremlinKeyword.Label);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjReverseEdge, labelProperty, WEdgeType.InEdge);
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
@@ -89,7 +91,8 @@ namespace GraphView
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
             GremlinVariableProperty adjEdge = GetVariableProperty(GremlinKeyword.EdgeAdj);
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjEdge, WEdgeType.OutEdge);
+            GremlinVariableProperty labelProperty = GetVariableProperty(GremlinKeyword.Label);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjEdge, labelProperty, WEdgeType.OutEdge);
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
@@ -108,7 +111,8 @@ namespace GraphView
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
             GremlinVariableProperty adjEdge = GetVariableProperty(GremlinKeyword.EdgeAdj);
-            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjEdge, WEdgeType.OutEdge);
+            GremlinVariableProperty labelProperty = GetVariableProperty(GremlinKeyword.Label);
+            GremlinBoundEdgeVariable outEdge = new GremlinBoundEdgeVariable(sourceProperty, adjEdge, labelProperty, WEdgeType.OutEdge);
             currentContext.VariableList.Add(outEdge);
             currentContext.TableReferences.Add(outEdge);
             currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
