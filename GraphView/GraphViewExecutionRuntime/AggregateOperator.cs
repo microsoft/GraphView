@@ -11,19 +11,16 @@ namespace GraphView
         List<FieldObject> buffer;
         ScalarFunction compose1;
 
-        public FoldFunction(ScalarFunction compose1)
-        {
-            this.compose1 = compose1;
-        }
+        //public FoldFunction(ScalarFunction compose1)
+        //{
+        //    this.compose1 = compose1;
+        //}
+
+        public FoldFunction() { }
 
         public void Accumulate(params FieldObject[] values)
         {
-            throw new NotImplementedException();
-        }
-
-        public void Accumulate(RawRecord value)
-        {
-            buffer.Add(compose1.Evaluate(value));
+            buffer.Add(values[0]);
         }
 
         public void Init()

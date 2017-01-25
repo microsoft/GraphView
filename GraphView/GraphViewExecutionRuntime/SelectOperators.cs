@@ -1067,9 +1067,16 @@ namespace GraphView
             foreach (var scalarFunction in selectScalarList)
             {
                 // TODO: Skip * for now, need refactor
-                if (scalarFunction == null) continue;
-                FieldObject result = scalarFunction.Evaluate(currentRecord);
-                selectRecord.fieldValues[index++] = result;
+                // if (scalarFunction == null) continue;
+                if (scalarFunction != null)
+                {
+                    FieldObject result = scalarFunction.Evaluate(currentRecord);
+                    selectRecord.fieldValues[index++] = result;
+                }
+                else
+                {
+                    selectRecord.fieldValues[index++] = null;
+                }
             }
 
             return selectRecord;
@@ -1084,19 +1091,19 @@ namespace GraphView
 
     internal class ProjectAggregation : GraphViewExecutionOperator
     {
-        List<Tuple<IAggregateFunction, List<int>>> aggregationSpecs;
+        List<Tuple<IAggregateFunction, List<ScalarFunction>>> aggregationSpecs;
         GraphViewExecutionOperator inputOp;
 
         public ProjectAggregation(GraphViewExecutionOperator inputOp)
         {
             this.inputOp = inputOp;
-            aggregationSpecs = new List<Tuple<IAggregateFunction, List<int>>>();
+            aggregationSpecs = new List<Tuple<IAggregateFunction, List<ScalarFunction>>>();
             Open();
         }
 
-        public void AddAggregateSpec(IAggregateFunction aggrFunc, List<int> aggrInputIndexes)
+        public void AddAggregateSpec(IAggregateFunction aggrFunc, List<ScalarFunction> aggrInput)
         {
-            aggregationSpecs.Add(new Tuple<IAggregateFunction, List<int>>(aggrFunc, aggrInputIndexes));
+            aggregationSpecs.Add(new Tuple<IAggregateFunction, List<ScalarFunction>>(aggrFunc, aggrInput));
         }
 
         public override void ResetState()
@@ -1104,7 +1111,10 @@ namespace GraphView
             inputOp.ResetState();
             foreach (var aggr in aggregationSpecs)
             {
-                aggr.Item1.Init();
+                if (aggr.Item1 != null)
+                {
+                    aggr.Item1.Init();
+                }
             }
             Open();
         }
@@ -1116,7 +1126,10 @@ namespace GraphView
 
             foreach (var aggr in aggregationSpecs)
             {
-                aggr.Item1.Init();
+                if (aggr.Item1 != null)
+                {
+                    aggr.Item1.Init();
+                }
             }
 
             RawRecord inputRec = null;
@@ -1124,28 +1137,35 @@ namespace GraphView
             {
                 foreach (var aggr in aggregationSpecs)
                 {
-                    // Handle the fold function case
-                    if (aggr.Item2.Count == 1 && aggr.Item2[0] == -1)
+                    IAggregateFunction aggregate = aggr.Item1;
+                    List<ScalarFunction> parameterFunctions = aggr.Item2;
+
+                    if (aggregate == null)
                     {
-                        var foldFunction = aggr.Item1 as FoldFunction;
-                        foldFunction.Accumulate(inputRec);
                         continue;
                     }
 
                     FieldObject[] paraList = new FieldObject[aggr.Item2.Count];
-                    for(int i = 0; i < aggr.Item2.Count; i++)
+                    for(int i = 0; i < parameterFunctions.Count; i++)
                     {
-                        paraList[i] = inputRec[aggr.Item2[i]];
+                        paraList[i] = parameterFunctions[i].Evaluate(inputRec); 
                     }
 
-                    aggr.Item1.Accumulate(paraList);
+                    aggregate.Accumulate(paraList);
                 }
             }
 
             RawRecord outputRec = new RawRecord();
             foreach (var aggr in aggregationSpecs)
             {
-                outputRec.Append(aggr.Item1.Terminate());
+                if (aggr.Item1 != null)
+                {
+                    outputRec.Append(aggr.Item1.Terminate());
+                }
+                else
+                {
+                    outputRec.Append((StringField)null);
+                }
             }
 
             Close();

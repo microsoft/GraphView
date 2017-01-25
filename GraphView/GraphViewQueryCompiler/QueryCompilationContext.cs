@@ -123,11 +123,16 @@ namespace GraphView
         /// </summary>
         public Dictionary<string, IAggregateFunction> SideEffectStates { get; private set; }
 
+        public bool CarryOn { get; set; }
+        public Dictionary<WColumnReferenceExpression, int> ParentContextRawRecordLayout { get; private set; }
+
         public QueryCompilationContext()
         {
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>();
+
+            CarryOn = false;
         }
 
         public QueryCompilationContext(QueryCompilationContext parentContext)
@@ -138,6 +143,10 @@ namespace GraphView
                 new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>(parentContext.TableReferences);
             OuterContextOp = new ConstantSourceOperator();
+
+            CarryOn = false;
+            ParentContextRawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(
+                parentContext.RawRecordLayout, new WColumnReferenceExpressionComparer());
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables)
