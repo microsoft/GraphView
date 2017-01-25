@@ -104,7 +104,7 @@ namespace GraphView
                     var edgeOffset = item[properties[i++]].ToString();
                     var physicalOffset = item[properties[i++]].ToString();
                     var adjType = item[properties[i++]].ToString();
-                    var isReversedAdjList = adjType.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase);
+                    //var isReversedAdjList = adjType.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase);
 
                     var edgeField = (vertexObject[adjType] as AdjacencyListField).GetEdgeFieldByOffset(physicalOffset);
 
@@ -117,15 +117,15 @@ namespace GraphView
                     for (; i < endOfEdgeIndex; i++)
                         rawRecord.Append(edgeField[properties[i]]);
 
-                    edgeField.Label = edgeField["label"]?.ToValue;
-                    edgeField.InV = source;
-                    edgeField.OutV = sink;
-                    edgeField.InVLabel = isReversedAdjList
-                        ? edgeField["_sinkLabel"]?.ToValue
-                        : vertexObject["label"]?.ToValue;
-                    edgeField.OutVLabel = isReversedAdjList
-                        ? vertexObject["label"]?.ToValue
-                        : edgeField["_sinkLabel"]?.ToValue;
+                    //edgeField.Label = edgeField["label"]?.ToValue;
+                    //edgeField.InV = source;
+                    //edgeField.OutV = sink;
+                    //edgeField.InVLabel = isReversedAdjList
+                    //    ? edgeField["_sinkLabel"]?.ToValue
+                    //    : vertexObject["label"]?.ToValue;
+                    //edgeField.OutVLabel = isReversedAdjList
+                    //    ? vertexObject["label"]?.ToValue
+                    //    : edgeField["_sinkLabel"]?.ToValue;
 
                     endOfEdgeIndex = projectedColumnsType.FindIndex(i,
                         e => e == ColumnGraphType.EdgeSource);

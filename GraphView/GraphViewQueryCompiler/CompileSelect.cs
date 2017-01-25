@@ -1094,10 +1094,12 @@ namespace GraphView
 
             if (aggregateCount == 0)
             {
+                // If operatorChain is empty and OuterContextOp is null, this is a SelectQueryBlock only selects WValueExpression
+                // and a ConstantSource is faked as the input
                 var projectOperator =
                     new ProjectOperator(operatorChain.Any()
                         ? operatorChain.Last()
-                        : (context.OuterContextOp ?? new ConstantSourceOperator()));
+                        : (context.OuterContextOp ?? new ConstantSourceOperator {ConstantSource = new RawRecord()}));
 
                 // When CarryOn is set, in addition to the SELECT elements in the SELECT clause,
                 // the query also projects fields from its parent context.
