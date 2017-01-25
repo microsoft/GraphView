@@ -774,11 +774,11 @@ namespace GraphView
             record.fieldValues[3] = new StringField(edgeIdValue);
             record.fieldValues[4] = edge;
 
-            edge.Label = edge["label"]?.ToValue;
-            edge.InV = sourceValue;
-            edge.OutV = sinkValue;
-            edge.InVLabel = sourceLabel;
-            edge.OutVLabel = sinkLabel;
+            //edge.Label = edge["label"]?.ToValue;
+            //edge.InV = sourceValue;
+            //edge.OutV = sinkValue;
+            //edge.InVLabel = sourceLabel;
+            //edge.OutVLabel = sinkLabel;
         }
 
         /// <summary>

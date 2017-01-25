@@ -26,6 +26,12 @@ namespace GraphView
         {
             VertexField vertexField = new VertexField();
 
+            string vertexId = null; 
+            string vertexLabel = null;
+
+            JArray forwardAdjList = null;
+            JArray backwardAdjList = null;
+
             foreach (var property in vertexObject.Properties())
             {
                 switch (property.Name.ToLower())
@@ -37,16 +43,35 @@ namespace GraphView
                     case "_attachments":
                     case "_ts":
                         continue;
+                    case GremlinKeyword.NodeID:
+                        vertexId = property.Value.ToString();
+                        vertexField.VertexProperties.Add(property.Name, GetVertexPropertyField(property));
+                        break;
+                    case GremlinKeyword.Label:
+                        vertexLabel = property.Value.ToString();
+                        vertexField.VertexProperties.Add(property.Name, GetVertexPropertyField(property));
+                        break;
                     case GremlinKeyword.EdgeAdj:
-                        vertexField.AdjacencyList = GetAdjacencyListField((JArray)property.Value);
+                        // vertexField.AdjacencyList = GetAdjacencyListField((JArray)property.Value);
+                        forwardAdjList = (JArray)property.Value;
                         break;
                     case GremlinKeyword.ReverseEdgeAdj:
-                        vertexField.RevAdjacencyList = GetAdjacencyListField((JArray)property.Value);
+                        //vertexField.RevAdjacencyList = GetAdjacencyListField((JArray)property.Value);
+                        backwardAdjList = (JArray)property.Value;
                         break;
                     default:
                         vertexField.VertexProperties.Add(property.Name, GetVertexPropertyField(property));
                         break;
                 }
+            }
+
+            if (forwardAdjList != null)
+            {
+                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, forwardAdjList);
+            }
+            if (backwardAdjList != null)
+            {
+                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, backwardAdjList);
             }
 
             return vertexField;
@@ -64,6 +89,54 @@ namespace GraphView
             return edgeField;
         }
 
+        public static EdgeField GetForwardEdgeField(string inVId, string inVLabel, JObject edgeObject)
+        {
+            EdgeField edgeField = new EdgeField();
+
+            edgeField.InV = inVId;
+            edgeField.InVLabel = inVLabel;
+
+            foreach (JProperty property in edgeObject.Properties())
+            {
+                edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
+
+                if (property.Name == "_sink")
+                {
+                    edgeField.OutV = property.Value.ToString();
+                }
+                else if (property.Name == "_sinkLabel")
+                {
+                    edgeField.OutVLabel = property.Value.ToString();
+                }
+            }
+
+            return edgeField;
+        }
+
+        public static EdgeField GetBackwardEdgeField(string outVId, string outVLabel, JObject edgeObject)
+        {
+            EdgeField edgeField = new EdgeField();
+
+            edgeField.OutV = outVId;
+            edgeField.OutVLabel = outVLabel;
+
+            foreach (JProperty property in edgeObject.Properties())
+            {
+                edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
+
+                if (property.Name == "_sink")
+                {
+                    edgeField.InV = property.Value.ToString();
+                }
+                else if (property.Name == "_sinkLabel")
+                {
+                    edgeField.InVLabel = property.Value.ToString();
+                }
+            }
+
+            return edgeField;
+        }
+
         public static AdjacencyListField GetAdjacencyListField(JArray adjArray)
         {
             AdjacencyListField adjListField = new AdjacencyListField();
@@ -75,6 +148,33 @@ namespace GraphView
 
             return adjListField;
         }
+
+        public static AdjacencyListField GetForwardAdjacencyListField(
+            string inVId, string inVLabel, JArray adjArray)
+        {
+            AdjacencyListField adjListField = new AdjacencyListField();
+
+            foreach (var edgeObject in adjArray.Children<JObject>())
+            {
+                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetForwardEdgeField(inVId, inVLabel, edgeObject));
+            }
+
+            return adjListField;
+        }
+
+        public static AdjacencyListField GetBackwardAdjacencyListField(
+            string outVId, string outVLabel, JArray adjArray)
+        {
+            AdjacencyListField adjListField = new AdjacencyListField();
+
+            foreach (var edgeObject in adjArray.Children<JObject>())
+            {
+                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetBackwardEdgeField(outVId, outVLabel, edgeObject));
+            }
+
+            return adjListField;
+        }
+
 
         public virtual string ToGraphSON()
         {
