@@ -160,6 +160,25 @@ namespace GraphView
             return collectionStringBuilder.ToString();
         }
 
+        public override string ToGraphSON()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("[");
+
+            for (int i = 0; i < Collection.Count; i++)
+            {
+                if (i > 0)
+                {
+                    sb.Append(", ");
+                }
+                sb.Append(Collection[i].ToGraphSON());
+            }
+
+            sb.Append("]");
+
+            return sb.ToString();
+        }
+
         public override bool Equals(object obj)
         {
             if (Object.ReferenceEquals(this, obj)) return true;
@@ -221,6 +240,30 @@ namespace GraphView
             mapStringBuilder.Append(']');
 
             return mapStringBuilder.ToString();
+        }
+
+        public override string ToGraphSON()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("[");
+
+            bool firstEntry = true;
+            foreach (var entry in Map)
+            {
+                if (firstEntry)
+                {
+                    firstEntry = false;
+                }
+                else
+                {
+                    sb.Append(", ");
+                }
+
+                sb.AppendFormat("{0}: [{1}]", entry.Key.ToGraphSON(), entry.Value.ToGraphSON());
+            }
+
+            sb.Append("]");
+            return sb.ToString();
         }
 
         public override bool Equals(object obj)
@@ -366,7 +409,73 @@ namespace GraphView
 
         public override string ToString()
         {
-            return string.Format("e[{0}]{1}({2})-{3}->{4}({5})", EdgeProperties["_ID"].ToValue, InV, InVLabel, Label, OutV, OutVLabel);
+            return string.Format("e[{0}]{1}({2})-{3}->{4}({5})", EdgeProperties[GremlinKeyword.EdgeID].ToValue, InV, InVLabel, Label, OutV, OutVLabel);
+        }
+
+        public override string ToGraphSON()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendFormat("{{\"id\": {0}", EdgeProperties[GremlinKeyword.EdgeID].ToValue);
+            if (Label != null)
+            {
+                sb.AppendFormat(", \"label\": \"{0}\"", Label);
+            }
+
+            sb.Append(", \"type\": \"edge\"");
+
+            if (OutVLabel != null)
+            {
+                sb.AppendFormat(", \"inVLabel\": \"{0}\"", OutVLabel);
+            }
+            if (InVLabel != null)
+            {
+                sb.AppendFormat(", \"outVLabel\": \"{0}\"", InVLabel);
+            }
+            if (OutV != null)
+            {
+                sb.AppendFormat(", \"inV\": \"{0}\"", OutV);
+            }
+            if (InV != null)
+            {
+                sb.AppendFormat(", \"outV\": \"{0}\"", InV);
+            }
+
+            bool firstProperty = true;
+            foreach (string propertyName in EdgeProperties.Keys)
+            {
+                switch(propertyName)
+                {
+                    case GremlinKeyword.Label:
+                    case GremlinKeyword.SinkLabel:
+                    case GremlinKeyword.EdgeID:
+                    case GremlinKeyword.EdgeReverseID:
+                    case GremlinKeyword.EdgeSourceV:
+                    case GremlinKeyword.EdgeSinkV:
+                    case GremlinKeyword.EdgeOtherV:
+                        continue;
+                    default:
+                        break;
+                }
+
+                if (firstProperty)
+                {
+                    sb.Append(", \"properties\": {");
+                    firstProperty = false;
+                }
+                else
+                {
+                    sb.Append(", ");
+                }
+
+                sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, EdgeProperties[propertyName].PropertyValue);
+            }
+            if (!firstProperty)
+            {
+                sb.Append("}");
+            }
+            sb.Append("}");
+
+            return sb.ToString();
         }
     }
 
@@ -403,6 +512,22 @@ namespace GraphView
                     sb.Append(", ");
                 }
                 sb.Append(Edges[offset].ToString());
+            }
+
+            return string.Format("[{0}]", sb.ToString());
+        }
+
+        public override string ToGraphSON()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e)))
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(", ");
+                }
+                sb.Append(Edges[offset].ToGraphSON());
             }
 
             return string.Format("[{0}]", sb.ToString());

@@ -45,6 +45,25 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void SelectMarvelQuery1c()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            cmd.CommandText =
+                "g.V().has('weapon','shield').as('character').outE('appeared').next()";
+            cmd.OutputFormat = OutputFormat.GraphSON;
+            var results = cmd.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
         public void SelectMarvelQuery2()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -76,6 +95,7 @@ namespace GraphViewUnitTest
                 "GroupMatch", "MarvelTest");
             GraphViewCommand graph = new GraphViewCommand(connection);
             graph.CommandText = "g.V().has('weapon', 'lasso').as('character').out('appeared').as('comicbook').select('comicbook').next()";
+            graph.OutputFormat = OutputFormat.GraphSON;
             var results = graph.Execute();
 
             foreach (string result in results)
