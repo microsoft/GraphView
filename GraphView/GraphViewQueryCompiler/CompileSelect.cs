@@ -998,28 +998,11 @@ namespace GraphView
                 // TODO: New Compilation of QueryDerivedTable
                 if (tableReference is WQueryDerivedTable)
                 {
-                    var derivedQueryExpr = (tableReference as WQueryDerivedTable).QueryExpr;
-                    //var derivedQueryContext = new QueryCompilationContext(context.TemporaryTableCollection);
-                    var derivedQueryContext = new QueryCompilationContext(context);
-                    // TODO: Fix this hack
-                    derivedQueryContext.OuterContextOp.ConstantSource = new RawRecord();
-                    var derivedQueryOp = derivedQueryExpr.Compile(derivedQueryContext, connection);
-
-                    operatorChain.Add(operatorChain.Any()
-                        ? new CartesianProductOperator2(operatorChain.Last(), derivedQueryOp)
-                        : derivedQueryOp);
-
-                    foreach (var pair in derivedQueryContext.RawRecordLayout.OrderBy(e => e.Value))
-                    {
-                        var tableAlias = tableReference.Alias.Value;
-                        var columnName = pair.Key.ColumnName;
-                        // TODO: Change to correct ColumnGraphType
-                        context.AddField(tableAlias, columnName, ColumnGraphType.Value);
-                    }
-
+                    var derivedTableOp = tableReference.Compile(context, connection);
+                    operatorChain.Add(derivedTableOp);
+                    
                     // TODO: Change to correct ColumnGraphType
                     tableReferences.Add(tableReference.Alias.Value, TableGraphType.Vertex);
-                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
                 else if (tableReference is WVariableTableReference)
                 {
@@ -1399,57 +1382,6 @@ namespace GraphView
     partial class WUnionTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
-
-            WSelectQueryBlock firstSelectQuery = null;
-            foreach (WScalarExpression parameter in Parameters)
-            {
-                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
-                if (scalarSubquery == null)
-                {
-                    throw new SyntaxErrorException("The input of a union table reference must be one or more scalar subqueries.");
-                }
-
-                if (firstSelectQuery == null)
-                {
-                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
-                    if (firstSelectQuery == null)
-                    {
-                        throw new SyntaxErrorException("The input of a union table reference must be one or more select query blocks.");
-                    }
-                }
-
-                QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
-            }
-
-            // Updates the raw record layout. The columns of this table-valued function 
-            // are specified by the select elements of the input subqueries.
-            foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
-            {
-                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null)
-                {
-                    throw new SyntaxErrorException("The input subquery of a union table reference can only select scalar elements.");
-                }
-                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef == null)
-                {
-                    throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
-                }
-                if (columnRef.ColumnType == ColumnType.Wildcard)
-                    continue;
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
-            }
-
-            context.CurrentExecutionOperator = unionOp;
-            return unionOp;
-        }
-
-        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
 
@@ -2411,6 +2343,71 @@ namespace GraphView
 
                 return groupOp;
             }
+        }
+    }
+
+    partial class WQueryDerivedTable
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WSelectQueryBlock derivedSelectQueryBlock = QueryExpr as WSelectQueryBlock;
+            if (derivedSelectQueryBlock == null)
+                throw new SyntaxErrorException("The QueryExpr of a WQueryDerviedTable must be one select query block.");
+
+            QueryCompilationContext derivedTableContext = new QueryCompilationContext(context);
+
+            // If QueryDerivedTable is the first table in the whole script
+            if (context.CurrentExecutionOperator == null)
+                derivedTableContext.OuterContextOp = null;
+            else
+            {
+                derivedTableContext.CarryOn = true;
+
+                // For Union and Optional's semantics, e.g. g.V().union(__.count())
+                if (context.CarryOn)
+                {
+                    ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+                    derivedTableContext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
+                }
+                // e.g. g.V().coalesce(__.count())
+                else
+                {
+                    derivedTableContext.OuterContextOp = context.OuterContextOp;
+                }
+            }
+
+            GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, dbConnection);
+
+            QueryDerivedTableOperator queryDerivedTableOp = new QueryDerivedTableOperator(subQueryOp);
+
+            foreach (var selectElement in derivedSelectQueryBlock.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                if (selectScalar == null)
+                {
+                    throw new SyntaxErrorException("The inner query of a WQueryDerivedTable can only select scalar elements.");
+                }
+
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard)
+                    continue;
+
+                string selectElementAlias = selectScalar.ColumnName;
+                if (selectElementAlias == null)
+                {
+                    WValueExpression expr = selectScalar.SelectExpr as WValueExpression;;
+                    if (expr == null)
+                        throw new SyntaxErrorException(string.Format("The select element \"{0}\" doesn't have an alias.", selectScalar.ToString()));
+
+                    selectElementAlias = expr.Value;
+                }
+
+                context.AddField(Alias.Value, selectElementAlias, columnRef != null ? columnRef.ColumnGraphType : ColumnGraphType.Value);
+            }
+
+            context.CurrentExecutionOperator = queryDerivedTableOp;
+
+            return queryDerivedTableOp;
         }
     }
 }

@@ -32,6 +32,7 @@ namespace GraphView
 
         public ConstantSourceOperator()
         {
+            Open();
         }
 
         public override RawRecord Next()
@@ -1472,25 +1473,11 @@ namespace GraphView
     internal class UnionOperator : GraphViewExecutionOperator
     {
         private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>> traversalList;
-        private GraphViewExecutionOperator inputOp;
-
-        private RawRecord currentRecord;
-        private Queue<RawRecord> traversalOutputBuffer;
-
-        int activeTraversalIndex;
-
-        public UnionOperator(GraphViewExecutionOperator inputOp)
-        {
-            this.inputOp = inputOp;
-            traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
-            traversalOutputBuffer = new Queue<RawRecord>();
-            Open();
-        }
+        private int activeTraversalIndex;
 
         public UnionOperator()
         {
             traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
-            traversalOutputBuffer = new Queue<RawRecord>();
             Open();
             activeTraversalIndex = 0;
         }
@@ -1501,54 +1488,6 @@ namespace GraphView
         }
 
         public override RawRecord Next()
-        {
-            if (traversalOutputBuffer.Count > 0)
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord traversalRec = traversalOutputBuffer.Dequeue();
-                r.Append(traversalRec);
-
-                return r;
-            }
-
-            while (inputOp.State())
-            {
-                currentRecord = inputOp.Next();
-                if (currentRecord == null)
-                {
-                    Close();
-                    return null;
-                }
-
-                foreach (var traversalPair in traversalList)
-                {
-                    ConstantSourceOperator traversalContext = traversalPair.Item1;
-                    GraphViewExecutionOperator traversal = traversalPair.Item2;
-                    traversalContext.ConstantSource = currentRecord;
-                    traversal.ResetState();
-
-                    RawRecord traversalRec = null;
-                    while ((traversalRec = traversal.Next()) != null)
-                    {
-                        traversalOutputBuffer.Enqueue(traversalRec);
-                    }
-                }
-
-                if (traversalOutputBuffer.Count > 0)
-                {
-                    RawRecord r = new RawRecord(currentRecord);
-                    RawRecord traversalRec = traversalOutputBuffer.Dequeue();
-                    r.Append(traversalRec);
-
-                    return r;
-                }
-            }
-
-            Close();
-            return null;
-        }
-
-        public RawRecord Next2()
         {
             RawRecord traversalRecord = null;
             while (traversalRecord == null && activeTraversalIndex < traversalList.Count)
@@ -1577,8 +1516,11 @@ namespace GraphView
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            traversalOutputBuffer?.Clear();
+            foreach (var tuple in traversalList)
+            {
+                tuple.Item2.ResetState();
+            }
+
             Open();
         }
     }
@@ -2305,6 +2247,38 @@ namespace GraphView
 
             Close();
             return null;
+        }
+    }
+
+    internal class QueryDerivedTableOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _queryOp;
+
+        public QueryDerivedTableOperator(GraphViewExecutionOperator queryOp)
+        {
+            _queryOp = queryOp;
+
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord derivedRecord;
+
+            while (_queryOp.State() && (derivedRecord = _queryOp.Next()) != null)
+            {
+                return derivedRecord;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _queryOp.ResetState();
+
+            Open();
         }
     }
 }

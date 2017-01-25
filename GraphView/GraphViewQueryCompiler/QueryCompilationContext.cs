@@ -112,7 +112,7 @@ namespace GraphView
 
         public GraphViewExecutionOperator CurrentExecutionOperator { get; set; }
 
-        public ConstantSourceOperator OuterContextOp { get; private set; }
+        public ConstantSourceOperator OuterContextOp { get; set; }
 
         public Dictionary<string, TableGraphType> TableReferences { get; private set; }
 
