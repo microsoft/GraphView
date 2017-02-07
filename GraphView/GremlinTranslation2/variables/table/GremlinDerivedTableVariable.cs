@@ -14,6 +14,7 @@ namespace GraphView
         public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext)
         {
             SubqueryContext = subqueryContext;
+            ProjectedProperties.Add(GremlinKeyword.ScalarValue);
         }
 
         internal override void Populate(string property)
@@ -21,8 +22,8 @@ namespace GraphView
             if (!ProjectedProperties.Contains(property))
             {
                 ProjectedProperties.Add(property);
+                SubqueryContext.Populate(property);
             }
-            SubqueryContext.Populate(property);
         }
 
         public override WTableReference ToTableReference()
@@ -45,6 +46,7 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
+            SubqueryContext.PivotVariable.Populate(SubqueryContext.PivotVariable.DefaultVariableProperty().VariableProperty);
             foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
             {
                 compose1Parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());

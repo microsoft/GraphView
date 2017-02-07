@@ -129,6 +129,11 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal virtual GremlinVariableProperty GetDefaultProjection()
+        {
+            throw new NotImplementedException();
+        }
+
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
             GremlinAddEVariable newVariable = new GremlinAddEVariable(this, edgeLabel);

@@ -88,7 +88,7 @@ namespace GraphView
 
         internal override GremlinVariableProperty GetPath()
         {
-            if (SqlTableVariable != null) return GetVariableProperty(GremlinKeyword.Path);
+            if (SqlTableVariable != null) return new GremlinVariableProperty(this, GremlinKeyword.Path);
             return base.GetPath();
         }
 
@@ -407,14 +407,16 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            Populate(GremlinKeyword.ScalarValue);
-            return GetVariableProperty( GremlinKeyword.ScalarValue);
+            //Populate(GremlinKeyword.ScalarValue);
+            return GetVariableProperty(GremlinKeyword.ScalarValue);
+            //return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            Populate(GremlinKeyword.ScalarValue);
-            return GetVariableProperty( GremlinKeyword.ScalarValue);
+            //Populate(GremlinKeyword.ScalarValue);
+            return GetVariableProperty(GremlinKeyword.ScalarValue);
+            //return new GremlinVariableProperty(this, GremlinKeyword.ScalarValue);
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -453,14 +455,16 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            Populate(GremlinKeyword.NodeID);
-            return GetVariableProperty( GremlinKeyword.NodeID);
+            //Populate(GremlinKeyword.NodeID);
+            return GetVariableProperty(GremlinKeyword.NodeID);
+            //return new GremlinVariableProperty(this, GremlinKeyword.NodeID);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            Populate(GremlinKeyword.Star);
-            return GetVariableProperty( GremlinKeyword.Star);
+            //Populate(GremlinKeyword.Star);
+            return GetVariableProperty(GremlinKeyword.Star);
+            //return new GremlinVariableProperty(this, GremlinKeyword.Star);
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -526,14 +530,16 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            Populate(GremlinKeyword.EdgeID);
-            return GetVariableProperty( GremlinKeyword.EdgeID);
+            //Populate(GremlinKeyword.EdgeID);
+            return GetVariableProperty(GremlinKeyword.EdgeID);
+            //return new GremlinVariableProperty(this, GremlinKeyword.EdgeID);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            Populate(GremlinKeyword.Star);
-            return GetVariableProperty( GremlinKeyword.Star);
+            //Populate(GremlinKeyword.Star);
+            return GetVariableProperty(GremlinKeyword.Star);
+            //return new GremlinVariableProperty(this, GremlinKeyword.Star);
         }
 
         internal override GremlinVariableType GetVariableType()
