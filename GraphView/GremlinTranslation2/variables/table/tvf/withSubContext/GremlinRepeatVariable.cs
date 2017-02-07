@@ -28,7 +28,6 @@ namespace GraphView
                 }
             }
             return new GremlinRepeatTableVariable(contextVariable, repeatContext, repeatCondition);
-
         }
 
         public GremlinContextVariable InputVariable { get; set; }
@@ -47,13 +46,13 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (SelectedVariableList.All(p => p.Item1 != property))
+            if (SelectedVariableList.Exists(p => p.Item1 != property))
             {
                 RepeatContext.Populate(property);
             }
             else
             {
-                throw new Exception();
+                RepeatContext.Populate(property);
             }
         }
 

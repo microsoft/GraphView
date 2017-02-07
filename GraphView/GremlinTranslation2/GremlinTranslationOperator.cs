@@ -59,6 +59,7 @@ namespace GraphView
             if (InheritedPivotVariable != null)
             {
                 GremlinContextVariable newVariable = GremlinContextVariable.Create(InheritedPivotVariable);
+                newVariable.ParentContext = newContext;
                 newContext.VariableList.Add(newVariable);
                 newContext.PivotVariable = newVariable;
             } 

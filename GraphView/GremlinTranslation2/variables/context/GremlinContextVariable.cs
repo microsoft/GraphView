@@ -70,7 +70,8 @@ namespace GraphView
             {
                 UsedProperties.Add(property);
             }
-            return RealVariable.BottomUpPopulate(property, terminateVariable, alias, columnName);
+            return base.BottomUpPopulate(property, terminateVariable, alias, columnName);
+            //return RealVariable.BottomUpPopulate(property, terminateVariable, alias, columnName);
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
@@ -92,6 +93,22 @@ namespace GraphView
     internal class GremlinContextScalarVariable : GremlinContextVariable
     {
         public GremlinContextScalarVariable(GremlinVariable contextVariable) : base(contextVariable) { }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            GremlinKeyVariable newVariable = new GremlinKeyVariable(RealVariable.DefaultVariableProperty());
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
+        internal override void Value(GremlinToSqlContext currentContext)
+        {
+            GremlinValueVariable newVariable = new GremlinValueVariable(RealVariable.DefaultVariableProperty());
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
     }
 
     internal class GremlinContextVertexVariable : GremlinContextTableVariable

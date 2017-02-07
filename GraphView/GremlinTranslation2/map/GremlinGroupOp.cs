@@ -13,6 +13,7 @@ namespace GraphView
 
         public GremlinGroupOp()
         {
+            ByParameters = new List<object>();
         }
 
         public GremlinGroupOp(string sideEffect)

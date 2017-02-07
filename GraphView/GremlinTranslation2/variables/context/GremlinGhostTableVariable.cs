@@ -261,5 +261,13 @@ namespace GraphView
             //    currentContext.SetPivotVariable(newVariable);
             //}
         }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            //GremlinKeyVariable newVariable = new GremlinKeyVariable(RealVariable.DefaultVariableProperty());
+            //currentContext.VariableList.Add(newVariable);
+            //currentContext.TableReferences.Add(newVariable);
+            //currentContext.SetPivotVariable(newVariable);
+        }
     }
 }

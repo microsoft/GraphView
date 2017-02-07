@@ -69,7 +69,18 @@ namespace GraphView
         {
             var defaultColumn = RealVariable.DefaultProjection().VariableProperty;
             Populate(defaultColumn);
-            return GetVariableProperty(defaultColumn);
+            if (AttachedVariable is GremlinRepeatTableVariable
+                || AttachedVariable is GremlinRepeatScalarVariable
+                || AttachedVariable is GremlinRepeatVertexVariable
+                || AttachedVariable is GremlinRepeatEdgeVariable)
+            {
+                return new GremlinVariableProperty(AttachedVariable, SelectKey);
+            }
+            else
+            {
+                return GetVariableProperty(defaultColumn);
+
+            }
         }
 
         internal override void Populate(string property)

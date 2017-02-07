@@ -40,6 +40,7 @@ namespace GraphView
         {
             return false;
         }
+
         internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
         {
             return FlatMapContext.FetchAllVariablesInCurrAndChildContext();

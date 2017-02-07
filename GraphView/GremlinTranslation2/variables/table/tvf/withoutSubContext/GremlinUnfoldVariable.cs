@@ -10,7 +10,7 @@ namespace GraphView
     {
         public static GremlinTableVariable Create(GremlinVariable inputVariable)
         {
-            switch (inputVariable.GetVariableType())
+            switch (GetVariableType(inputVariable))
             {
                 case GremlinVariableType.Vertex:
                     return new GremlinUnfoldVertexVariable(inputVariable);
@@ -22,6 +22,19 @@ namespace GraphView
                     return new GremlinUnfoldScalarVariable(inputVariable);
             }
             throw new QueryCompilationException();
+        }
+
+        public static GremlinVariableType GetVariableType(GremlinVariable inputVariable)
+        {
+            if (inputVariable is GremlinFoldVariable)
+            {
+                return (inputVariable as GremlinFoldVariable).FoldVariable.GetVariableType();
+            }
+            if (inputVariable is GremlinSelectedVariable)
+            {
+                return GetVariableType((inputVariable as GremlinSelectedVariable).RealVariable);
+            }
+            return inputVariable.GetVariableType();
         }
 
         public GremlinVariable UnfoldVariable { get; set; }

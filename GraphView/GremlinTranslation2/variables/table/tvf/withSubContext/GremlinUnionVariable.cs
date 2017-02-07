@@ -144,14 +144,16 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            throw new NotImplementedException();
-            //foreach (var context in (SqlTableVariable as GremlinUnionVariable).UnionContextList)
-            //{
-            //    context.ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(
-            //        context.PivotVariable.DefaultVariableProperty(), GremlinKeyword.TableValue
-            //        ));   
-            //}
-            //return new GremlinVariableProperty(this, GremlinKeyword.TableValue);
+            if (GremlinUtil.IsTheSameOutputType((SqlTableVariable as GremlinUnionVariable).UnionContextList))
+            {
+                return
+                    (SqlTableVariable as GremlinUnionVariable).UnionContextList.First()
+                        .PivotVariable.DefaultVariableProperty();
+            }
+            else
+            {
+                return new GremlinVariableProperty(this, GremlinKeyword.TableDefaultColumnName);
+            }
         }
     }
 

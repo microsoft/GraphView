@@ -19,7 +19,7 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            ParentContext.Populate(property);
+            //ParentContext.Populate(property);
         }
 
         //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
