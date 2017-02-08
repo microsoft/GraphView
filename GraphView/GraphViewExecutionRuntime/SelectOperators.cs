@@ -48,9 +48,12 @@ namespace GraphView
                     Close();
                     return null;
                 }
-             }
+            }
             else
             {
+                if (!State())
+                    return null;
+
                 Close();
                 return _constantSource;
             }
@@ -1418,46 +1421,52 @@ namespace GraphView
                 return r;
             }
 
-            currentRecord = inputOp.Next();
-            if (currentRecord == null)
+            while (inputOp.State())
             {
-                Close();
-                return null;
-            }
-
-            contextOp.ConstantSource = currentRecord;
-            optionalTraversal.ResetState();
-            RawRecord optionalRec = null;
-            while ((optionalRec = optionalTraversal.Next()) != null)
-            {
-                outputBuffer.Enqueue(optionalRec);
-            }
-
-            if (outputBuffer.Count > 0)
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord toAppend = outputBuffer.Dequeue();
-                r.Append(toAppend);
-
-                return r;
-            }
-            else
-            {
-                RawRecord r = new RawRecord(currentRecord);
-                foreach (int index in inputIndexes)
+                currentRecord = inputOp.Next();
+                if (currentRecord == null)
                 {
-                    if (index < 0)
-                    {
-                        r.Append((FieldObject)null);
-                    }
-                    else
-                    {
-                        r.Append(currentRecord[index]);
-                    }
+                    Close();
+                    return null;
                 }
 
-                return r;
+                contextOp.ConstantSource = currentRecord;
+                optionalTraversal.ResetState();
+                RawRecord optionalRec = null;
+                while ((optionalRec = optionalTraversal.Next()) != null)
+                {
+                    outputBuffer.Enqueue(optionalRec);
+                }
+
+                if (outputBuffer.Count > 0)
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    RawRecord toAppend = outputBuffer.Dequeue();
+                    r.Append(toAppend);
+
+                    return r;
+                }
+                else
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    foreach (int index in inputIndexes)
+                    {
+                        if (index < 0)
+                        {
+                            r.Append((FieldObject)null);
+                        }
+                        else
+                        {
+                            r.Append(currentRecord[index]);
+                        }
+                    }
+
+                    return r;
+                }
             }
+
+            Close();
+            return null;
         }
 
         public override void ResetState()
