@@ -321,12 +321,9 @@ namespace GraphView
                         pathCollection.Add(fo);
                     }
                 }
-                else
+                else if (record[index] != null)
                 {
-                    if (record[index].GetType() == typeof(StringField))
-                        pathCollection.Add(record[index]);
-                    else
-                        pathCollection.Add(new StringField(record[index].ToString()));
+                    pathCollection.Add(record[index]);
                 }
             }
 
