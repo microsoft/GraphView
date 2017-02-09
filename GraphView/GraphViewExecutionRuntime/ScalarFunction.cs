@@ -406,11 +406,13 @@ namespace GraphView
     {
         private int _checkFieldIndex;
         private int _arrayFieldIndex;
+        private StringField _targetFieldKey;
 
-        public WithOutArray(int checkFieldIndex, int arrayFieldIndex)
+        public WithOutArray(int checkFieldIndex, int arrayFieldIndex, StringField targetFieldKey)
         {
             _checkFieldIndex = checkFieldIndex;
             _arrayFieldIndex = arrayFieldIndex;
+            _targetFieldKey = targetFieldKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -421,13 +423,47 @@ namespace GraphView
                 throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
             if (checkObject == null) return new StringField("false");
 
-            foreach (var fieldObject in arrayObject.Collection)
+            // TODO: Write a comment
+            if (checkObject is MapField)
             {
-                if (checkObject.Equals(fieldObject))
-                    return new StringField("false");
+                foreach (var fieldObject in arrayObject.Collection)
+                {
+                    MapField mf = fieldObject as MapField;
+                    if (mf == null)
+                    {
+                        StringField targetField = fieldObject as StringField;;
+                        if (checkObject.ToString().Equals(targetField.Value))
+                            return new StringField("false");
+                    }
+                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
+                    {
+                        return new StringField("false");
+                    }
+                }
+            }
+            else
+            {
+                foreach (var fieldObject in arrayObject.Collection)
+                {
+                    MapField mf = fieldObject as MapField;
+                    if (mf == null)
+                    {
+                        if (checkObject.Equals(fieldObject))
+                            return new StringField("false");
+                    }
+                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
+                    {
+                        return new StringField("false");
+                    } 
+                }
             }
 
             return new StringField("true");
+        }
+
+        public override JsonDataType DataType()
+        {
+            return JsonDataType.Boolean;
         }
     }
 
@@ -435,11 +471,13 @@ namespace GraphView
     {
         private int _checkFieldIndex;
         private int _arrayFieldIndex;
+        private StringField _targetFieldKey;
 
-        public WithInArray(int checkFieldIndex, int arrayFieldIndex)
+        public WithInArray(int checkFieldIndex, int arrayFieldIndex, StringField targetFieldKey)
         {
             _checkFieldIndex = checkFieldIndex;
             _arrayFieldIndex = arrayFieldIndex;
+            _targetFieldKey = targetFieldKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -450,10 +488,39 @@ namespace GraphView
                 throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
             if (checkObject == null) return new StringField("false");
 
-            foreach (var fieldObject in arrayObject.Collection)
+            // TODO: Write a comment
+            if (checkObject is MapField)
             {
-                if (checkObject.Equals(fieldObject))
-                    return new StringField("true");
+                foreach (var fieldObject in arrayObject.Collection)
+                {
+                    MapField mf = fieldObject as MapField;
+                    if (mf == null)
+                    {
+                        StringField targetField = fieldObject as StringField;
+                        if (checkObject.ToString().Equals(targetField.Value))
+                            return new StringField("true");
+                    }
+                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
+                    {
+                        return new StringField("true");
+                    }
+                }
+            }
+            else
+            {
+                foreach (var fieldObject in arrayObject.Collection)
+                {
+                    MapField mf = fieldObject as MapField;
+                    if (mf == null)
+                    {
+                        if (checkObject.Equals(fieldObject))
+                            return new StringField("true");
+                    }
+                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
+                    {
+                        return new StringField("true");
+                    }
+                }
             }
 
             return new StringField("false");
