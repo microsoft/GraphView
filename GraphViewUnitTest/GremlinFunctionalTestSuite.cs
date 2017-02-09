@@ -25,33 +25,33 @@ namespace GraphViewUnitTest
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             //graph.g().V().OutE().Drop().Next();
-            graph.g().V().Drop().Next();
+            //graph.g().V().Drop().Next();
 
-            //var results =
-            //    graph.g()
-            //        .AddV("application")
-            //        .Property("_app", "test-app")
-            //        .Property("__id", "test-app")
-            //        .Property("_provisioningState", 1)
-            //        .Property("_deleted", false)
-            //        .Next();
+            var results =
+                graph.g()
+                    .AddV("application")
+                    .Property("_app", "test-app")
+                    .Property("__id", "test-app")
+                    .Property("_provisioningState", 1)
+                    .Property("_deleted", false)
+                    .Next();
 
-            //foreach (var result in results)
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+
+            //var nodeCount = graph.g().V().Count();
+            //foreach (var result in nodeCount)
             //{
             //    Console.WriteLine(result);
             //}
 
-            var nodeCount = graph.g().V().Count();
-            foreach (var result in nodeCount)
-            {
-                Console.WriteLine(result);
-            }
-
-            var edgeCount = graph.g().V().OutE().Count();
-            foreach (var result in edgeCount)
-            {
-                Console.WriteLine(result);
-            }
+            //var edgeCount = graph.g().V().OutE().Count();
+            //foreach (var result in edgeCount)
+            //{
+            //    Console.WriteLine(result);
+            //}
         }
 
         [TestMethod]
