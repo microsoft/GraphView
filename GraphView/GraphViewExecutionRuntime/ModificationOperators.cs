@@ -270,8 +270,8 @@ namespace GraphView
             Upload(results);
 
             // Update vertex's adjacency list and reverse adjacency list
-            var edgeField = FieldObject.GetEdgeField(edgeObject);
-            var revEdgeField = FieldObject.GetEdgeField(revEdgeObject);
+            var edgeField = FieldObject.GetForwardEdgeField(srcId, srcVertexField["label"]?.ToValue, edgeObject);
+            var revEdgeField = FieldObject.GetBackwardEdgeField(sinkId, sinkVertexField["label"]?.ToValue, revEdgeObject);
 
             srcVertexField.AdjacencyList.Edges.Add(edgeField["_ID"].ToValue, edgeField);
             sinkVertexField.RevAdjacencyList.Edges.Add(revEdgeField["_ID"].ToValue, revEdgeField);
@@ -285,11 +285,12 @@ namespace GraphView
             result.Append(new StringField(edgeObject["_ID"].ToString()));
             result.Append(edgeField);
 
-            edgeField.Label = edgeField["label"]?.ToValue;
-            edgeField.InV = srcId;
-            edgeField.OutV = sinkId;
-            edgeField.InVLabel = srcVertexField["label"]?.ToValue;
-            edgeField.OutVLabel = sinkVertexField["label"]?.ToValue;
+            //edgeField.Label = edgeField["label"]?.ToValue;
+            //revEdgeField.Label = edgeField.Label;
+            //edgeField.InV = sinkId;
+            //edgeField.OutV = srcId;
+            //edgeField.InVLabel = sinkVertexField["label"]?.ToValue;
+            //edgeField.OutVLabel = srcVertexField["label"]?.ToValue;
 
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++)
             {

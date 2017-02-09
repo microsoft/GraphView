@@ -321,12 +321,9 @@ namespace GraphView
                         pathCollection.Add(fo);
                     }
                 }
-                else
+                else if (record[index] != null)
                 {
-                    if (record[index].GetType() == typeof(StringField))
-                        pathCollection.Add(record[index]);
-                    else
-                        pathCollection.Add(new StringField(record[index].ToString()));
+                    pathCollection.Add(record[index]);
                 }
             }
 
@@ -365,6 +362,7 @@ namespace GraphView
                 CollectionField cf = unfoldTarget as CollectionField;
                 foreach (FieldObject fo in cf.Collection)
                 {
+                    if (fo == null) continue;
                     RawRecord newRecord = new RawRecord();
                     // Extract only needed columns from MapField
                     if (fo.GetType() == typeof (MapField))

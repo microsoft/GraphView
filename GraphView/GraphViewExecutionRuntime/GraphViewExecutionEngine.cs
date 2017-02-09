@@ -77,43 +77,19 @@ namespace GraphView
             return vertexField;
         }
 
-        public static EdgeField GetEdgeField(JObject edgeObject)
-        {
-            EdgeField edgeField = new EdgeField();
+        //public static EdgeField GetEdgeField(JObject edgeObject)
+        //{
+        //    EdgeField edgeField = new EdgeField();
 
-            foreach (JProperty property in edgeObject.Properties())
-            {
-                edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
-            }
+        //    foreach (JProperty property in edgeObject.Properties())
+        //    {
+        //        edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
+        //    }
 
-            return edgeField;
-        }
+        //    return edgeField;
+        //}
 
-        public static EdgeField GetForwardEdgeField(string inVId, string inVLabel, JObject edgeObject)
-        {
-            EdgeField edgeField = new EdgeField();
-
-            edgeField.InV = inVId;
-            edgeField.InVLabel = inVLabel;
-
-            foreach (JProperty property in edgeObject.Properties())
-            {
-                edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
-
-                if (property.Name == "_sink")
-                {
-                    edgeField.OutV = property.Value.ToString();
-                }
-                else if (property.Name == "_sinkLabel")
-                {
-                    edgeField.OutVLabel = property.Value.ToString();
-                }
-            }
-
-            return edgeField;
-        }
-
-        public static EdgeField GetBackwardEdgeField(string outVId, string outVLabel, JObject edgeObject)
+        public static EdgeField GetForwardEdgeField(string outVId, string outVLabel, JObject edgeObject)
         {
             EdgeField edgeField = new EdgeField();
 
@@ -134,42 +110,70 @@ namespace GraphView
                 }
             }
 
+            edgeField.Label = edgeField[GremlinKeyword.Label]?.ToValue;
+
             return edgeField;
         }
 
-        public static AdjacencyListField GetAdjacencyListField(JArray adjArray)
+        public static EdgeField GetBackwardEdgeField(string inVId, string inVLabel, JObject edgeObject)
         {
-            AdjacencyListField adjListField = new AdjacencyListField();
+            EdgeField edgeField = new EdgeField();
 
-            foreach (var edgeObject in adjArray.Children<JObject>())
+            edgeField.InV = inVId;
+            edgeField.InVLabel = inVLabel;
+
+            foreach (JProperty property in edgeObject.Properties())
             {
-                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetEdgeField(edgeObject));
+                edgeField.EdgeProperties.Add(property.Name, GetEdgePropertyField(property));
+
+                if (property.Name == "_sink")
+                {
+                    edgeField.OutV = property.Value.ToString();
+                }
+                else if (property.Name == "_sinkLabel")
+                {
+                    edgeField.OutVLabel = property.Value.ToString();
+                }
             }
 
-            return adjListField;
+            edgeField.Label = edgeField[GremlinKeyword.Label]?.ToValue;
+
+            return edgeField;
         }
+
+        //public static AdjacencyListField GetAdjacencyListField(JArray adjArray)
+        //{
+        //    AdjacencyListField adjListField = new AdjacencyListField();
+
+        //    foreach (var edgeObject in adjArray.Children<JObject>())
+        //    {
+        //        adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetEdgeField(edgeObject));
+        //    }
+
+        //    return adjListField;
+        //}
 
         public static AdjacencyListField GetForwardAdjacencyListField(
-            string inVId, string inVLabel, JArray adjArray)
-        {
-            AdjacencyListField adjListField = new AdjacencyListField();
-
-            foreach (var edgeObject in adjArray.Children<JObject>())
-            {
-                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetForwardEdgeField(inVId, inVLabel, edgeObject));
-            }
-
-            return adjListField;
-        }
-
-        public static AdjacencyListField GetBackwardAdjacencyListField(
             string outVId, string outVLabel, JArray adjArray)
         {
             AdjacencyListField adjListField = new AdjacencyListField();
 
             foreach (var edgeObject in adjArray.Children<JObject>())
             {
-                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetBackwardEdgeField(outVId, outVLabel, edgeObject));
+                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetForwardEdgeField(outVId, outVLabel, edgeObject));
+            }
+
+            return adjListField;
+        }
+
+        public static AdjacencyListField GetBackwardAdjacencyListField(
+            string inVId, string inVLabel, JArray adjArray)
+        {
+            AdjacencyListField adjListField = new AdjacencyListField();
+
+            foreach (var edgeObject in adjArray.Children<JObject>())
+            {
+                adjListField.Edges.Add(edgeObject["_ID"].ToString(), GetBackwardEdgeField(inVId, inVLabel, edgeObject));
             }
 
             return adjListField;
@@ -439,7 +443,7 @@ namespace GraphView
 
         public override string ToGraphSON()
         {
-            return string.Format("{\"{0}\": \"{1}\"}", PropertyName, PropertyValue);
+            return string.Format("{{\"{0}\": \"{1}\"}}", PropertyName, PropertyValue);
         }
     }
 
@@ -509,7 +513,7 @@ namespace GraphView
 
         public override string ToString()
         {
-            return string.Format("e[{0}]{1}({2})-{3}->{4}({5})", EdgeProperties[GremlinKeyword.EdgeID].ToValue, InV, InVLabel, Label, OutV, OutVLabel);
+            return string.Format("e[{0}]{1}({2})-{3}->{4}({5})", EdgeProperties[GremlinKeyword.EdgeID].ToValue, OutV, OutVLabel, Label, InV, InVLabel);
         }
 
         public override string ToGraphSON()
@@ -523,21 +527,21 @@ namespace GraphView
 
             sb.Append(", \"type\": \"edge\"");
 
-            if (OutVLabel != null)
-            {
-                sb.AppendFormat(", \"inVLabel\": \"{0}\"", OutVLabel);
-            }
             if (InVLabel != null)
             {
-                sb.AppendFormat(", \"outVLabel\": \"{0}\"", InVLabel);
+                sb.AppendFormat(", \"inVLabel\": \"{0}\"", InVLabel);
             }
-            if (OutV != null)
+            if (OutVLabel != null)
             {
-                sb.AppendFormat(", \"inV\": \"{0}\"", OutV);
+                sb.AppendFormat(", \"outVLabel\": \"{0}\"", OutVLabel);
             }
             if (InV != null)
             {
-                sb.AppendFormat(", \"outV\": \"{0}\"", InV);
+                sb.AppendFormat(", \"inV\": \"{0}\"", InV);
+            }
+            if (OutV != null)
+            {
+                sb.AppendFormat(", \"outV\": \"{0}\"", OutV);
             }
 
             bool firstProperty = true;
@@ -754,7 +758,7 @@ namespace GraphView
                         sb.Append("{");
                         sb.AppendFormat("\"id\": {0}, ", 
                             edgeField.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
-                        sb.AppendFormat("\"outV\": \"{0}\"", edgeField.InV);
+                        sb.AppendFormat("\"outV\": \"{0}\"", edgeField.OutV);
 
                         bool firstInEProperty = true;
                         foreach (string propertyName in edgeField.EdgeProperties.Keys)
@@ -833,7 +837,7 @@ namespace GraphView
                         sb.Append("{");
                         sb.AppendFormat("\"id\": {0}, ", 
                             edgeField.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
-                        sb.AppendFormat("\"inV\": \"{0}\"", edgeField.OutV);
+                        sb.AppendFormat("\"inV\": \"{0}\"", edgeField.InV);
 
                         bool firstOutEProperty = true;
                         foreach (string propertyName in edgeField.EdgeProperties.Keys)
