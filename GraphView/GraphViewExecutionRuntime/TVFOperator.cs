@@ -362,6 +362,7 @@ namespace GraphView
                 CollectionField cf = unfoldTarget as CollectionField;
                 foreach (FieldObject fo in cf.Collection)
                 {
+                    if (fo == null) continue;
                     RawRecord newRecord = new RawRecord();
                     // Extract only needed columns from MapField
                     if (fo.GetType() == typeof (MapField))

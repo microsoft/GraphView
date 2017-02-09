@@ -368,18 +368,28 @@ namespace GraphView
             List<FieldObject> results = new List<FieldObject>();
             foreach (var input in inputOfCompose2)
             {
-                if (input is Compose2)
-                {
-                    var subCompose2 = input.Evaluate(record) as CollectionField;
-                    results.AddRange(subCompose2.Collection);
-                }
-                else if (input == null)
+                if (input == null)
                 {
                     continue;
                 }
-                else
+                else if (input is Compose2)
+                {
+                    CollectionField subCompose2 = input.Evaluate(record) as CollectionField;
+                    results.AddRange(subCompose2.Collection);
+                }
+                else if (input is Compose1)
                 {
                     results.Add(input.Evaluate(record));
+                }
+                else
+                {
+                    var resultField = input.Evaluate(record);
+                    if (resultField == null) continue;
+
+                    CollectionField compose2ResultField = resultField as CollectionField;
+                    if (compose2ResultField == null)
+                        throw new GraphViewException("A WColumnReference as the parameter of Compose2 must be located to a collection field.");
+                    results.AddRange(compose2ResultField.Collection);
                 }
             }
 
