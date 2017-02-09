@@ -51,7 +51,7 @@ namespace GraphView
                 if (branchVariable.Count() > 1)
                 {
                     throw new NotImplementedException();
-                    //return new GremlinVariableProperty(ParentVariable, Label);
+                    //return new GremlinVariableProperty(HomeVariable, Label);
                 }
             }
             if (checkIsTheSameType())
@@ -60,7 +60,7 @@ namespace GraphView
                 {
                     case GremlinVariableType.Table:
                         throw new NotImplementedException();
-                        //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+                        //return new GremlinVariableProperty(HomeVariable, GremlinKeyword.TableValue);
                     case GremlinVariableType.Edge:
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.EdgeID);
                     case GremlinVariableType.Scalar:
@@ -70,7 +70,7 @@ namespace GraphView
                 }
             }
             throw new NotImplementedException();
-            //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+            //return new GremlinVariableProperty(HomeVariable, GremlinKeyword.TableValue);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
@@ -89,7 +89,7 @@ namespace GraphView
                 {
                     case GremlinVariableType.Table:
                         throw new NotImplementedException();
-                        //return new GremlinVariableProperty(ParentVariable, GremlinKeyword.TableValue);
+                        //return new GremlinVariableProperty(HomeVariable, GremlinKeyword.TableValue);
                     case GremlinVariableType.Edge:
                         return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
                     case GremlinVariableType.Scalar:

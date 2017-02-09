@@ -39,7 +39,7 @@ namespace GraphView
         public int Low { get; set; }
         public int High { get; set; }
         public List<string> Labels { get; set; }
-        public GremlinToSqlContext ParentContext { get; set; }
+        public GremlinToSqlContext HomeContext { get; set; }
         public List<string> ProjectedProperties { get; set; }
 
         public GremlinVariable()
@@ -51,6 +51,11 @@ namespace GraphView
         }
 
         internal virtual GremlinVariableType GetVariableType()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal virtual WEdgeType GetEdgeType()
         {
             throw new NotImplementedException();
         }
@@ -67,6 +72,10 @@ namespace GraphView
 
         internal virtual void Populate(string property)
         {
+            if (property == "_t")
+            {
+                throw new Exception();
+            }
             if (!ProjectedProperties.Contains(property))
             {
                 ProjectedProperties.Add(property);
@@ -75,8 +84,13 @@ namespace GraphView
 
         internal virtual GremlinVariableProperty GetVariableProperty(string property)
         {
-            Populate(property);
+            if (!ProjectedProperties.Contains(property)) Populate(property);
             return new GremlinVariableProperty(this, property);
+        }
+
+        internal virtual GremlinTableVariable CreateAdjVertex(GremlinVariableProperty propertyVariable)
+        {
+            return new GremlinBoundVertexVariable(GetEdgeType(), propertyVariable);
         }
 
         internal virtual string GetVariableName()
@@ -86,19 +100,20 @@ namespace GraphView
 
         internal virtual string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
         {
-            if (VariableName == "R_58")
-            {
-                string stop = "stop";
-            }
             if (terminateVariable == this) return property;
-            if (ParentContext == null) throw new Exception();
+            if (HomeContext == null) throw new Exception();
             if (columnName == null)
             {
                 columnName = alias + "_" + property;
             }
-            ParentContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
-            if (ParentContext.ParentVariable == null) throw new Exception();
-            return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
+            HomeContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
+            if (!(HomeContext.HomeVariable is GremlinRepeatVariable) && !HomeContext.HomeVariable.ProjectedProperties.Contains(columnName))
+            {
+                HomeContext.HomeVariable.ProjectedProperties.Add(columnName);
+            }
+
+            if (HomeContext.HomeVariable == null) throw new Exception();
+            return HomeContext.HomeVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
         }
 
         internal virtual void PopulateGremlinPath() {}
@@ -182,10 +197,6 @@ namespace GraphView
         {
             foreach (var label in labels)
             {
-                if (label == "#a")
-                {
-                    string stop = "";
-                }
                 currentContext.PivotVariable.Labels.Add(label);
             }
         }
@@ -255,7 +266,7 @@ namespace GraphView
             GremlinTableVariable newVariable = GremlinCoalesceVariable.Create(coalesceContextList);
             foreach (var context in coalesceContextList)
             {
-                context.ParentVariable = newVariable;
+                context.HomeVariable = newVariable;
             }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
@@ -363,7 +374,7 @@ namespace GraphView
             {
                 if (parameter is GremlinToSqlContext)
                 {
-                    (parameter as GremlinToSqlContext).ParentVariable = newVariable;
+                    (parameter as GremlinToSqlContext).HomeVariable = newVariable;
                 }
             }
             currentContext.VariableList.Add(newVariable);
@@ -419,16 +430,7 @@ namespace GraphView
 
         internal virtual void HasLabel(GremlinToSqlContext currentContext, List<object> values)
         {
-            Populate(GremlinKeyword.Label);
-            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-            foreach (var value in values)
-            {
-                WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(VariableName, GremlinKeyword.Label);
-                WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
-                booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
-            WBooleanExpression concatSql = SqlUtil.ConcatBooleanExprWithOr(booleanExprList);
-            currentContext.AddPredicate(concatSql);
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
         }
 
         internal virtual void HasValue(GremlinToSqlContext currentContext, List<object> values)
@@ -473,10 +475,11 @@ namespace GraphView
         internal virtual void Is(GremlinToSqlContext currentContext, Predicate predicate)
         {
             WScalarExpression secondExpr = null;
-            if (predicate.Label != null)
+            if (predicate.VariableTag != null)
             {
-                var compareVar = currentContext.TaggedVariables[predicate.Label].Last();
-                secondExpr = compareVar.DefaultVariableProperty().ToScalarExpression();
+                throw new NotImplementedException();
+                //var compareVar = currentContext.TaggedVariables[predicate.VariableTag].Last();
+                //secondExpr = compareVar.DefaultVariableProperty().ToScalarExpression();
             }
             else if (predicate.Number != null)
             {
@@ -511,7 +514,7 @@ namespace GraphView
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
             GremlinTableVariable localMapVariable = GremlinLocalVariable.Create(localContext);
-            localContext.ParentVariable = localMapVariable;
+            localContext.HomeVariable = localMapVariable;
             currentContext.VariableList.Add(localMapVariable);
             currentContext.VariableList.AddRange(localContext.VariableList);
 
@@ -587,7 +590,7 @@ namespace GraphView
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
             GremlinTableVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
-            optionalContext.ParentVariable = newVariable;
+            optionalContext.HomeVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -644,7 +647,7 @@ namespace GraphView
             GremlinProjectVariable newVariable = new GremlinProjectVariable(projectKeys, byContexts);
             foreach (var context in byContexts)
             {
-                context.ParentVariable = newVariable;
+                context.HomeVariable = newVariable;
             }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
@@ -658,7 +661,46 @@ namespace GraphView
 
         internal virtual void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
-            throw new NotImplementedException();
+            GremlinUpdatePropertiesVariable updateVariable;
+            switch (GetVariableType())
+            {
+                case GremlinVariableType.Vertex:
+                    updateVariable =
+                        currentContext.VariableList.Find(
+                            p =>
+                                (p is GremlinUpdateVertexPropertiesVariable) &&
+                                (p as GremlinUpdateVertexPropertiesVariable).VertexVariable == this) as GremlinUpdateVertexPropertiesVariable;
+                    if (updateVariable == null)
+                    {
+                        updateVariable = new GremlinUpdateVertexPropertiesVariable(this, properties);
+                        currentContext.VariableList.Add(updateVariable);
+                        currentContext.TableReferences.Add(updateVariable);
+                    }
+                    else
+                    {
+                        updateVariable.Property(currentContext, properties);
+                    }
+                    break;
+                case GremlinVariableType.Edge:
+                    updateVariable =
+                        currentContext.VariableList.Find(
+                            p =>
+                                (p is GremlinUpdateEdgePropertiesVariable) &&
+                                (p as GremlinUpdateEdgePropertiesVariable).EdgeVariable == this) as GremlinUpdateEdgePropertiesVariable;
+                    if (updateVariable == null)
+                    {
+                        updateVariable = new GremlinUpdateEdgePropertiesVariable(this, properties);
+                        currentContext.VariableList.Add(updateVariable);
+                        currentContext.TableReferences.Add(updateVariable);
+                    }
+                    else
+                    {
+                        updateVariable.Property(currentContext, properties);
+                    }
+                    break;
+                default:
+                    throw new Exception();
+            }
         }
 
         //internal virtual void Property(GremlinToSqlContext currentContext, VertexProperty.Cardinality cardinality, string key, string value, params string[] keyValues)
@@ -676,14 +718,8 @@ namespace GraphView
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
                                      RepeatCondition repeatCondition)
         {
-            GremlinTableVariable newVariable = GremlinRepeatVariable.Create(this, repeatContext, repeatCondition);
-            repeatContext.ParentVariable = newVariable;
-            //if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
-            //    newVariable.Populate(GremlinKeyword.EdgeID);
-            //if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
-            //    newVariable.Populate(GremlinKeyword.NodeID);
-            ////if (repeatContext.PivotVariable.GetVariableType() == GremlinVariableType.Scalar)
-            ////    newVariable.Populate(GremlinKeyword.TableValue);
+            GremlinTableVariable newVariable = GremlinRepeatVariable.Create(repeatContext, repeatCondition);
+            repeatContext.HomeVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -728,7 +764,7 @@ namespace GraphView
             }
             else if (taggedVariableList.Count == 1)
             {
-                taggedVariableList[0].ParentContext = currentContext;
+                taggedVariableList[0].HomeContext = currentContext;
                 selectedVariable = taggedVariableList.First();
                 currentContext.VariableList.Add(selectedVariable);
                 currentContext.SetPivotVariable(selectedVariable);
@@ -748,7 +784,7 @@ namespace GraphView
                 }
                 if (selectedVariable is GremlinRepeatSelectedVariable) throw new NotImplementedException();
 
-                selectedVariable.ParentContext = currentContext;
+                selectedVariable.HomeContext = currentContext;
                 currentContext.VariableList.Add(selectedVariable);
                 currentContext.SetPivotVariable(selectedVariable);
             }
@@ -772,14 +808,14 @@ namespace GraphView
             } else if (taggedVariableList.Count == 1)
             {
                 selectedVariable = taggedVariableList[0];
-                selectedVariable.ParentContext = currentContext;
+                selectedVariable.HomeContext = currentContext;
                 currentContext.VariableList.Add(selectedVariable);
                 currentContext.SetPivotVariable(selectedVariable);
             }
             else
             {
                 selectedVariable = new GremlinListVariable(taggedVariableList);
-                selectedVariable.ParentContext = currentContext;
+                selectedVariable.HomeContext = currentContext;
                 currentContext.VariableList.Add(selectedVariable);
                 currentContext.SetPivotVariable(selectedVariable);
             }
@@ -806,7 +842,7 @@ namespace GraphView
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
-            sideEffectContext.ParentVariable = newVariable;
+            sideEffectContext.HomeVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
@@ -867,7 +903,7 @@ namespace GraphView
             GremlinVariableProperty pathVariableProperty = currentContext.CurrentContextPath.DefaultVariableProperty();
             GremlinToSqlContext duplicatedContext = currentContext.Duplicate();
             GremlinTreeVariable newVariable = new GremlinTreeVariable(duplicatedContext, pathVariableProperty);
-            duplicatedContext.ParentVariable = newVariable;
+            duplicatedContext.HomeVariable = newVariable;
             currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
@@ -888,7 +924,7 @@ namespace GraphView
             GremlinTableVariable newVariable = GremlinUnionVariable.Create(unionContexts);
             foreach (var unionContext in unionContexts)
             {
-                unionContext.ParentVariable = newVariable;
+                unionContext.HomeVariable = newVariable;
             }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
@@ -938,10 +974,10 @@ namespace GraphView
         internal virtual void Where(GremlinToSqlContext currentContext, Predicate predicate)
         {
             WScalarExpression secondExpr = null;
-            if (predicate.Label != null)
+            if (predicate.VariableTag != null)
             {
                 //TODO
-                var compareVar = currentContext.Select(predicate.Label);
+                var compareVar = currentContext.Select(predicate.VariableTag);
                 if (compareVar.Count > 1) throw new Exception();
                 compareVar.First().Populate(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType()));
                 secondExpr = compareVar.First().GetVariableProperty(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType())).ToScalarExpression();

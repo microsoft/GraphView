@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using GraphView;
 
 namespace GraphView {
-    internal class GremlinUpdatePropertiesVariable: GremlinDropTableVariable
+    internal class GremlinUpdatePropertiesVariable: GremlinDropVariable
     {
         public Dictionary<string, object> Properties { get; set; }
 
@@ -25,11 +25,11 @@ namespace GraphView {
         }
     }
 
-    internal class GremlinUpdateNodePropertiesVariable : GremlinUpdatePropertiesVariable
+    internal class GremlinUpdateVertexPropertiesVariable : GremlinUpdatePropertiesVariable
     {
-        public GremlinVariableProperty VertexVariable { get; set; }
+        public GremlinVariable VertexVariable { get; set; }
 
-        public GremlinUpdateNodePropertiesVariable(GremlinVariableProperty vertexVariable,
+        public GremlinUpdateVertexPropertiesVariable(GremlinVariable vertexVariable,
             Dictionary<string, object> properties) : base(properties)
         {
             VertexVariable = vertexVariable;
@@ -38,6 +38,7 @@ namespace GraphView {
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+
             parameters.Add(VertexVariable.DefaultVariableProperty().ToScalarExpression());
             foreach (var property in Properties)
             {
@@ -51,22 +52,22 @@ namespace GraphView {
 
     internal class GremlinUpdateEdgePropertiesVariable: GremlinUpdatePropertiesVariable
     {
-        public GremlinVariableProperty SourceVariable { get; set; }
-        public GremlinVariableProperty EdgeVariable { get; set; }
+        public GremlinVariable EdgeVariable { get; set; }
 
-        public GremlinUpdateEdgePropertiesVariable(GremlinVariableProperty sourceVariable,
-            GremlinVariableProperty edgeVariable,
-            Dictionary<string, object> properties) : base(properties)
+        public GremlinUpdateEdgePropertiesVariable(GremlinVariable edgeVariable,
+                                                    Dictionary<string, object> properties)
+            : base(properties)
         {
-            SourceVariable = sourceVariable;
             EdgeVariable = edgeVariable;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SourceVariable.DefaultVariableProperty().ToScalarExpression());
-            parameters.Add(EdgeVariable.DefaultVariableProperty().ToScalarExpression());
+
+            parameters.Add(EdgeVariable.GetVariableProperty(GremlinKeyword.EdgeSourceV).ToScalarExpression());
+            parameters.Add(EdgeVariable.GetVariableProperty(GremlinKeyword.EdgeID).ToScalarExpression());
+
             foreach (var property in Properties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));

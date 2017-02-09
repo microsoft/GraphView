@@ -8,16 +8,16 @@ namespace GraphView
 {
     public class Predicate
     {
-        public string Label { get; set; }
+        public string VariableTag { get; set; }
         public long Number { get; set; }
         public List<object> Values { get; set; }
         public long Low { get; set; }
         public long High { get; set; }
         public PredicateType PredicateType { get; set; }
 
-        public Predicate(PredicateType type, string label)
+        public Predicate(PredicateType type, string variableTag)
         {
-            Label = label;
+            VariableTag = variableTag;
             PredicateType = type;
         }
         public Predicate(PredicateType type, long number)

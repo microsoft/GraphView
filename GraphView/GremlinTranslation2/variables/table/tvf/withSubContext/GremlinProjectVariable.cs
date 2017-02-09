@@ -17,19 +17,11 @@ namespace GraphView
             ProjectContextList = byContexts;
         }
 
-        internal override void Populate(string property)
-        {
-            //foreach (var context in ProjectContextList)
-            //{
-            //    context.Populate(property);
-            //}
-        }
-
         //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
         //{
-        //    byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
+        //    byTraversal.GetStartOp().InheritedVariableFromParent(HomeContext);
         //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-        //    byContext.ParentVariable = this;
+        //    byContext.HomeVariable = this;
         //    ProjectContextList.Add(byContext);
         //}
 

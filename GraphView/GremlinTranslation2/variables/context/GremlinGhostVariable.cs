@@ -43,7 +43,7 @@ namespace GraphView
 
         internal override GremlinVariableProperty GetVariableProperty(string property)
         {
-            Populate(property);
+            if (!ProjectedProperties.Contains(property)) Populate(property);
             var column = ColumnReferenceMap[new Tuple<string, string>(RealVariable.VariableName, property)];
             return new GremlinVariableProperty(AttachedVariable, column);
         }
@@ -69,7 +69,15 @@ namespace GraphView
         {
             var defaultColumn = RealVariable.DefaultProjection().VariableProperty;
             Populate(defaultColumn);
-            return GetVariableProperty(defaultColumn);
+            if (AttachedVariable is GremlinRepeatVariable)
+            {
+                return new GremlinVariableProperty(AttachedVariable, SelectKey);
+            }
+            else
+            {
+                return GetVariableProperty(defaultColumn);
+
+            }
         }
 
         internal override void Populate(string property)
@@ -94,14 +102,14 @@ namespace GraphView
             //RealVariable.Populate(property);
 
             if (terminateVariable == this) return property;
-            if (ParentContext == null) throw new Exception();
+            if (HomeContext == null) throw new Exception();
             if (columnName == null)
             {
                 columnName = alias + "_" + property;
             }
-            ParentContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
-            if (ParentContext.ParentVariable == null) throw new Exception();
-            return ParentContext.ParentVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
+            HomeContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
+            if (HomeContext.HomeVariable == null) throw new Exception();
+            return HomeContext.HomeVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
         }
 
         internal override void Property(GremlinToSqlContext currentGhost, Dictionary<string, object> properties)
@@ -144,6 +152,41 @@ namespace GraphView
         {
             RealVariable.Property(currentGhost, properties);
         }
+
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Both(this, edgeLabels);
+        }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.BothE(this, edgeLabels);
+        }
+
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+            currentContext.BothV(this);
+        }
+
+        internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.In(this, edgeLabels);
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.InE(this, edgeLabels);
+        }
+
+        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Out(this, edgeLabels);
+        }
+
+        internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.OutE(this, edgeLabels);
+        }
     }
 
     internal class GremlinGhostEdgeVariable : GremlinGhostTableVariable
@@ -151,9 +194,24 @@ namespace GraphView
         public GremlinGhostEdgeVariable(GremlinVariable ghostEdge, GremlinVariable attachedVariable, string label)
             : base(ghostEdge, attachedVariable, label) { }
 
-        internal override void Property(GremlinToSqlContext currentGhost, Dictionary<string, object> properties)
+        //internal override void Property(GremlinToSqlContext currentGhost, Dictionary<string, object> properties)
+        //{
+        //    RealVariable.Property(currentGhost, properties);
+        //}
+
+        internal override void InV(GremlinToSqlContext currentContext)
         {
-            RealVariable.Property(currentGhost, properties);
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
         }
     }
 }

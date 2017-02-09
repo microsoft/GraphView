@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinFlatMapVariable: GremlinSqlTableVariable
+    internal class GremlinFlatMapVariable: GremlinTableVariable
     {
         public GremlinToSqlContext FlatMapContext { get; set; }
 
-        public static GremlinTableVariable Create(GremlinToSqlContext flatMapContext)
+        public static GremlinFlatMapVariable Create(GremlinToSqlContext flatMapContext)
         {
             switch (flatMapContext.PivotVariable.GetVariableType())
             {
@@ -20,70 +20,120 @@ namespace GraphView
                     return new GremlinFlatMapEdgeVariable(flatMapContext);
                 case GremlinVariableType.Scalar:
                     return new GremlinFlatMapScalarVariable(flatMapContext);
-                case GremlinVariableType.Table:
-                    return new GremlinFlatMapTableVariable(flatMapContext);
             }
-            throw new QueryCompilationException();
+            return new GremlinFlatMapVariable(flatMapContext);
         }
 
-        public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext)
+        public GremlinFlatMapVariable(GremlinToSqlContext flatMapContext, GremlinVariableType variableType = GremlinVariableType.Table)
+            : base(variableType)
         {
             FlatMapContext = flatMapContext;
         }
 
+        internal override GremlinVariableProperty GetPath()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.Path);
+        }
+
         internal override void Populate(string property)
         {
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
             FlatMapContext.Populate(property);
         }
 
         internal override bool ContainsLabel(string label)
         {
+            if (base.ContainsLabel(label)) return true;
             return false;
         }
+
         internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
         {
             return FlatMapContext.FetchAllVariablesInCurrAndChildContext();
         }
 
-        public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
+        public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(projectProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.FlatMap, parameters, gremlinVariable, tableName);
+            parameters.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(ProjectedProperties)));
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.FlatMap, parameters, this, VariableName);
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    internal class GremlinFlatMapVertexVariable : GremlinVertexTableVariable
+    internal class GremlinFlatMapVertexVariable : GremlinFlatMapVariable
     {
         public GremlinFlatMapVertexVariable(GremlinToSqlContext flatMapContext)
+            : base(flatMapContext, GremlinVariableType.Vertex)
         {
-            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
+        }
+
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Both(this, edgeLabels);
+        }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.BothE(this, edgeLabels);
+        }
+
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+            currentContext.BothV(this);
+        }
+
+        internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.In(this, edgeLabels);
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.InE(this, edgeLabels);
+        }
+
+        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Out(this, edgeLabels);
+        }
+
+        internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.OutE(this, edgeLabels);
         }
     }
 
-    internal class GremlinFlatMapEdgeVariable : GremlinEdgeTableVariable
+    internal class GremlinFlatMapEdgeVariable : GremlinFlatMapVariable
     {
         public GremlinFlatMapEdgeVariable(GremlinToSqlContext flatMapContext)
+            : base(flatMapContext, GremlinVariableType.Edge)
         {
-            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
+        }
+
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
         }
     }
 
-    internal class GremlinFlatMapScalarVariable : GremlinScalarTableVariable
+    internal class GremlinFlatMapScalarVariable : GremlinFlatMapVariable
     {
         public GremlinFlatMapScalarVariable(GremlinToSqlContext flatMapContext)
+            : base(flatMapContext, GremlinVariableType.Scalar)
         {
-            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
-        }
-    }
-
-    internal class GremlinFlatMapTableVariable : GremlinTableVariable
-    {
-        public GremlinFlatMapTableVariable(GremlinToSqlContext flatMapContext)
-        {
-            SqlTableVariable = new GremlinFlatMapVariable(flatMapContext);
         }
     }
 }

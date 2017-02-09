@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDropVertexVariable : GremlinDropTableVariable
+    internal class GremlinDropVertexVariable : GremlinDropVariable
     {
         public GremlinVariableProperty DropVetexVariable { get; set; }
 
@@ -24,7 +24,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinDropEdgeVariable : GremlinDropTableVariable
+    internal class GremlinDropEdgeVariable : GremlinDropVariable
     {
         public GremlinVariableProperty SourceVariable;
         public GremlinVariableProperty EdgeVariable;

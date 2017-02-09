@@ -22,6 +22,11 @@ namespace GraphView {
             return RealVariable;
         }
 
+        internal override WEdgeType GetEdgeType()
+        {
+            return RealVariable.GetEdgeType();
+        }
+
         internal override bool ContainsProperties(string property)
         {
             return RealVariable.ContainsProperties(property);
