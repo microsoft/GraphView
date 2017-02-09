@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinCapVariable: GremlinTableVariable
-    {
-    }
+    //internal class GremlinCapVariable: GremlinTableVariable
+    //{
+    //}
 }

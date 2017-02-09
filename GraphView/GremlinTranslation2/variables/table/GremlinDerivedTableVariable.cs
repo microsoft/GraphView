@@ -61,23 +61,7 @@ namespace GraphView
 
         internal override void Unfold(GremlinToSqlContext currentContext)
         {
-            GremlinTableVariable newVariable = null;
-            switch (FoldVariable.GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                    newVariable = new GremlinUnfoldEdgeVariable(this);
-                    break;
-                case GremlinVariableType.Vertex:
-                    newVariable = new GremlinUnfoldVertexVariable(this);
-                    break;
-                case GremlinVariableType.Scalar:
-                    newVariable = new GremlinUnfoldScalarVariable(this);
-                    break;
-                case GremlinVariableType.Table:
-                    newVariable = new GremlinUnfoldTableVariable(this);
-                    break;
-            }
-            
+            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

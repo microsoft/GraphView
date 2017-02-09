@@ -25,6 +25,21 @@ namespace GraphView
             OtherVIndex = 1;
         }
 
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -56,11 +71,11 @@ namespace GraphView
         {
             if (context == null)
             {
-                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.DefaultVariableProperty());
+                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.DefaultProjection());
             }
             else
             {
-                return context.ToSelectQueryBlock(new List<string>() { GremlinKeyword.NodeID });
+                return context.ToSelectQueryBlock();
             } 
         }
 
@@ -81,7 +96,7 @@ namespace GraphView
         internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
             FromVertexContext = fromVertexContext;
-            FromVertexContext.ParentVariable = this;
+            FromVertexContext.HomeVariable = this;
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
@@ -108,7 +123,7 @@ namespace GraphView
         internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
             ToVertexContext = toVertexContext;
-            ToVertexContext.ParentVariable = this;
+            ToVertexContext.HomeVariable = this;
         }
     }
 }

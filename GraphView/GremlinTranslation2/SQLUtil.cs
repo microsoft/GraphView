@@ -69,7 +69,7 @@ namespace GraphView
             switch (predicate.PredicateType)
             {
                 case PredicateType.within:
-                    if (predicate.Label != null)
+                    if (predicate.VariableTag != null)
                     {
                         List<WScalarExpression> parameters = new List<WScalarExpression>();
                         parameters.Add(firstExpr);
@@ -87,7 +87,7 @@ namespace GraphView
                         return GetBooleanParenthesisExpr(ConcatBooleanExprWithOr(booleanExprList));
                     }
                 case PredicateType.without:
-                    if (predicate.Label != null)
+                    if (predicate.VariableTag != null)
                     {
                         List<WScalarExpression> parameters = new List<WScalarExpression>();
                         parameters.Add(firstExpr);

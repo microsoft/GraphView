@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinOptionalVariable : GremlinSqlTableVariable
+    internal class GremlinOptionalVariable : GremlinTableVariable
     {
-        public static GremlinTableVariable Create(GremlinVariable inputVariable, GremlinToSqlContext context)
+        public static GremlinOptionalVariable Create(GremlinVariable inputVariable, GremlinToSqlContext context)
         {
             if (inputVariable.GetVariableType() == context.PivotVariable.GetVariableType())
             {
@@ -18,35 +18,40 @@ namespace GraphView
                         return new GremlinOptionalVertexVariable(context, inputVariable);
                     case GremlinVariableType.Edge:
                         return new GremlinOptionalEdgeVariable(context, inputVariable);
-                    case GremlinVariableType.Table:
-                        return new GremlinOptionalTableVariable(context, inputVariable);
                     case GremlinVariableType.Scalar:
                         return new GremlinOptionalScalarVariable(context, inputVariable);
                 }
             }
-            else
-            {
-                return new GremlinOptionalTableVariable(context, inputVariable);
-            }
-            throw new QueryCompilationException();
+            return new GremlinOptionalVariable(context, inputVariable);
         }
 
         public GremlinToSqlContext OptionalContext { get; set; }
         public GremlinVariable InputVariable { get; set; }
 
-        public GremlinOptionalVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
+        public GremlinOptionalVariable(GremlinToSqlContext context,
+                                       GremlinVariable inputVariable,
+                                       GremlinVariableType variableType = GremlinVariableType.Table)
+            : base(variableType)
         {
             OptionalContext = context;
             InputVariable = inputVariable;
         }
 
+        internal override GremlinVariableProperty GetPath()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.Path);
+        }
+
         internal override void Populate(string property)
         {
+            if (ProjectedProperties.Contains(property)) return;
+
+            base.Populate(property);
             InputVariable.Populate(property);
             OptionalContext.Populate(property);
         }
 
-        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label, GremlinVariable parentVariable)
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
             return OptionalContext.SelectCurrentAndChildVariable(label);
         }
@@ -64,6 +69,7 @@ namespace GraphView
 
         internal override bool ContainsLabel(string label)
         {
+            if (base.ContainsLabel(label)) return true;
             foreach (var variable in OptionalContext.VariableList)
             {
                 if (variable.ContainsLabel(label))
@@ -74,14 +80,14 @@ namespace GraphView
             return false;
         }
 
-        public override WTableReference ToTableReference(List<string> projectProperties, string tableName, GremlinVariable gremlinVariable)
+        public override WTableReference ToTableReference()
         {
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
             secondQueryExpr.SelectElements.Clear();
             firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
-            foreach (var projectProperty in projectProperties)
+            foreach (var projectProperty in ProjectedProperties)
             {
                 if (InputVariable.ContainsProperties(projectProperty))
                 {
@@ -111,40 +117,82 @@ namespace GraphView
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, gremlinVariable, tableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, this, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    internal class GremlinOptionalVertexVariable : GremlinVertexTableVariable
+    internal class GremlinOptionalVertexVariable : GremlinOptionalVariable
     {
         public GremlinOptionalVertexVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
+            : base(context, inputVariable, GremlinVariableType.Vertex)
         {
-            SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
+        }
+
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Both(this, edgeLabels);
+        }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.BothE(this, edgeLabels);
+        }
+
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+            currentContext.BothV(this);
+        }
+
+        internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.In(this, edgeLabels);
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.InE(this, edgeLabels);
+        }
+
+        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Out(this, edgeLabels);
+        }
+
+        internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.OutE(this, edgeLabels);
         }
     }
 
-    internal class GremlinOptionalEdgeVariable : GremlinEdgeTableVariable
+    internal class GremlinOptionalEdgeVariable : GremlinOptionalVariable
     {
         public GremlinOptionalEdgeVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
+            : base(context, inputVariable, GremlinVariableType.Edge)
         {
-            SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
+        }
+
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
         }
     }
 
-    internal class GremlinOptionalTableVariable : GremlinTableVariable
-    {
-        public GremlinOptionalTableVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
-        {
-            SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
-        }
-    }
-
-    internal class GremlinOptionalScalarVariable : GremlinScalarTableVariable
+    internal class GremlinOptionalScalarVariable : GremlinOptionalVariable
     {
         public GremlinOptionalScalarVariable(GremlinToSqlContext context, GremlinVariable inputVariable)
+            : base(context, inputVariable, GremlinVariableType.Scalar)
         {
-            SqlTableVariable = new GremlinOptionalVariable(context, inputVariable);
         }
     }
 }
