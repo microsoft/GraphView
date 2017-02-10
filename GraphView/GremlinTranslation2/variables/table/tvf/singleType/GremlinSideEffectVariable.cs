@@ -14,6 +14,7 @@ namespace GraphView
             : base(GremlinVariableType.Table)
         {
             SideEffectContext = sideEffectContext;
+            SideEffectContext.HomeVariable = this;
         }
 
         public override WTableReference ToTableReference()

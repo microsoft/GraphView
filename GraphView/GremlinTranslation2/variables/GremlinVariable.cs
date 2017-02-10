@@ -231,7 +231,7 @@ namespace GraphView
         //internal virtual void By(GremlinToSqlContext currentContext, GraphTraversal2 byContext)
         //internal virtual void by(GremlinToSqlContext currentContext, GremlinToSqlContext<?, ?> byContext, Comparator comparator)
 
-        internal virtual void Cap(GremlinToSqlContext currentContext, params string[] keys)
+        internal virtual void Cap(GremlinToSqlContext currentContext, List<string> sideEffectKeys)
         {
             //currentContext.ProjectedVariables.Clear();
 
@@ -246,6 +246,7 @@ namespace GraphView
             //    currentContext.ProjectedVariables.Add(var.DefaultVariableProperty());
             //}
         }
+
         //internal virtual void Choose(Function<E, M> choiceFunction)
 
         internal virtual void Choose(GremlinToSqlContext currentContext, Predicate choosePredicate, GremlinToSqlContext trueChoice, GremlinToSqlContext falseChoice)
@@ -265,10 +266,6 @@ namespace GraphView
         internal virtual void Coalesce(GremlinToSqlContext currentContext, List<GremlinToSqlContext> coalesceContextList)
         {
             GremlinTableVariable newVariable = GremlinCoalesceVariable.Create(coalesceContextList);
-            foreach (var context in coalesceContextList)
-            {
-                context.HomeVariable = newVariable;
-            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -371,13 +368,6 @@ namespace GraphView
         internal virtual void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
         {
             GremlinGroupVariable newVariable = new GremlinGroupVariable(sideEffectKey, parameters);
-            foreach (var parameter in parameters)
-            {
-                if (parameter is GremlinToSqlContext)
-                {
-                    (parameter as GremlinToSqlContext).HomeVariable = newVariable;
-                }
-            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             if (sideEffectKey == null)
@@ -515,7 +505,6 @@ namespace GraphView
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
             GremlinTableVariable localMapVariable = GremlinLocalVariable.Create(localContext);
-            localContext.HomeVariable = localMapVariable;
             currentContext.VariableList.Add(localMapVariable);
             currentContext.VariableList.AddRange(localContext.VariableList);
 
@@ -591,7 +580,6 @@ namespace GraphView
         internal virtual void Optional(GremlinToSqlContext currentContext, GremlinToSqlContext optionalContext)
         {
             GremlinTableVariable newVariable = GremlinOptionalVariable.Create(this, optionalContext);
-            optionalContext.HomeVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -646,10 +634,6 @@ namespace GraphView
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys, List<GremlinToSqlContext> byContexts)
         {
             GremlinProjectVariable newVariable = new GremlinProjectVariable(projectKeys, byContexts);
-            foreach (var context in byContexts)
-            {
-                context.HomeVariable = newVariable;
-            }
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -720,7 +704,6 @@ namespace GraphView
                                      RepeatCondition repeatCondition)
         {
             GremlinTableVariable newVariable = GremlinRepeatVariable.Create(repeatContext, repeatCondition);
-            repeatContext.HomeVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -843,13 +826,18 @@ namespace GraphView
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
-            sideEffectContext.HomeVariable = newVariable;
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
 
         //internal virtual void SimplePath()
-        //internal virtual void Store(string sideEffectKey)
+        internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey)
+        {
+            GremlinStoreVariable newVariable = new GremlinStoreVariable(sideEffectKey);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+        }
+
         //internal virtual void Subgraph(string sideEffectKey)
 
         internal virtual void Sum(GremlinToSqlContext currentContext)

@@ -15,6 +15,10 @@ namespace GraphView
         {
             ProjectKeys = new List<string>(projectKeys);
             ProjectContextList = byContexts;
+            foreach (var context in ProjectContextList)
+            {
+                context.HomeVariable = this;
+            }
         }
 
         public override WTableReference ToTableReference()

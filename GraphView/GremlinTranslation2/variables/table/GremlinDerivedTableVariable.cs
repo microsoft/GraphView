@@ -46,7 +46,8 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
-            SubqueryContext.PivotVariable.Populate(SubqueryContext.PivotVariable.DefaultVariableProperty().VariableProperty);
+            //TODO
+            //SubqueryContext.PivotVariable.Populate(SubqueryContext.PivotVariable.DefaultVariableProperty().VariableProperty);
             foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
             {
                 compose1Parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());

@@ -35,6 +35,7 @@ namespace GraphView
             : base(variableType)
         {
             LocalContext = localContext;
+            localContext.HomeVariable = this;
         }
 
         internal override void Populate(string property)

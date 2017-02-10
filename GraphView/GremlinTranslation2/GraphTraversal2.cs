@@ -289,8 +289,9 @@ namespace GraphView
         }
         //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
 
-        public GraphTraversal2 Cap(string sideEffectKey, params string[] sideEffectKeys)
+        public GraphTraversal2 Cap(params string[] sideEffectKeys)
         {
+            AddGremlinOperator(new GremlinCapOp(sideEffectKeys));
             return this;
         }
 
@@ -808,8 +809,10 @@ namespace GraphView
         }
 
         //public GraphTraversal2 simplePath()
+
         public GraphTraversal2 Store(string sideEffectKey)
         {
+            AddGremlinOperator(new GremlinStoreOp(sideEffectKey));
             return this;
         }
         //public GraphTraversal2 subgraph(string sideEffectKey)

@@ -41,6 +41,7 @@ namespace GraphView
             : base(variableType)
         {
             RepeatContext = repeatContext;
+            RepeatContext.HomeVariable = this;
             InputVariable = inputVariable;
             RepeatCondition = repeatCondition;
             SelectedVariableList = new List<Tuple<string, GremlinRepeatSelectedVariable>>();

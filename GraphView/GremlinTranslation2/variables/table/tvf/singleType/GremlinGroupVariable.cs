@@ -15,6 +15,13 @@ namespace GraphView
         {
             SideEffectKey = sideEffectKey;
             Parameters = new List<object>(parameters);
+            foreach (var parameter in parameters)
+            {
+                if (parameter is GremlinToSqlContext)
+                {
+                    (parameter as GremlinToSqlContext).HomeVariable = this;
+                }
+            }
         }
 
         public override WTableReference ToTableReference()

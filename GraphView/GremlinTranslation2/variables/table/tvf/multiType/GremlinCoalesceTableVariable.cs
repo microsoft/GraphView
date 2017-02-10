@@ -33,6 +33,10 @@ namespace GraphView
             : base(variableType)
         {
             CoalesceContextList = new List<GremlinToSqlContext>(coalesceContextList);
+            foreach (var context in coalesceContextList)
+            {
+                context.HomeVariable = this;
+            }
         }
 
         internal override GremlinVariableProperty GetPath()

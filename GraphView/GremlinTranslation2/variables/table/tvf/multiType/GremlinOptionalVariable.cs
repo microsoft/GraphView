@@ -37,6 +37,7 @@ namespace GraphView
         {
             OptionalContext = context;
             InputVariable = inputVariable;
+            OptionalContext.HomeVariable = this;
         }
 
         internal override GremlinVariableProperty GetPath()
