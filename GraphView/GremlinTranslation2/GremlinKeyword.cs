@@ -22,6 +22,7 @@ namespace GraphView
         public const string Path = "_path";
         public const string DefaultProject = "_result";
         public const string ScalarValue = "_value";
+        public const string PropertyValue = "_value";
         public const string Star = "*";
 
         public static class func

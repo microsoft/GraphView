@@ -17,18 +17,6 @@ namespace GraphView
             Parameters = new List<object>(parameters);
         }
 
-        //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
-        //{
-        //    byTraversal.GetStartOp().InheritedVariableFromParent(HomeContext);
-        //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-        //    Parameters.Add(byContext);
-        //}
-
-        //internal override void By(GremlinToSqlContext currentContext, string name)
-        //{
-        //    Parameters.Add(name);
-        //}
-
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

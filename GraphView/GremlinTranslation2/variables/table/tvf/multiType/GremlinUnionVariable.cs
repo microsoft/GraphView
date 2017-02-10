@@ -23,6 +23,8 @@ namespace GraphView
                         return new GremlinUnionScalarVariable(unionContextList);
                     case GremlinVariableType.NULL:
                         return new GremlinUnionNullVariable(unionContextList);
+                    case GremlinVariableType.Property:
+                        return new GremlinUnionPropertyVariable(unionContextList);
                 }
             }
             return new GremlinUnionVariable(unionContextList);
@@ -99,11 +101,6 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-
-            //if (projectProperties.Count == 0)
-            //{
-            //    Populate(UnionContextList.First().PivotVariable.DefaultVariableProperty().VariableProperty);
-            //}
             foreach (var context in UnionContextList)
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
@@ -155,6 +152,50 @@ namespace GraphView
         {
             currentContext.OutE(this, edgeLabels);
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropVertex(this);
+        }
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
+        }
     }
 
     internal class GremlinUnionEdgeVariable : GremlinUnionVariable
@@ -190,6 +231,51 @@ namespace GraphView
         {
             currentContext.OtherV(this);
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropEdge(this);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
+        }
     }
 
     internal class GremlinUnionScalarVariable : GremlinUnionVariable
@@ -198,7 +284,24 @@ namespace GraphView
             : base(unionContextList, GremlinVariableType.Scalar)
         {
         }
+    }
 
+    internal class GremlinUnionPropertyVariable : GremlinUnionVariable
+    {
+        public GremlinUnionPropertyVariable(List<GremlinToSqlContext> unionContextList)
+            : base(unionContextList, GremlinVariableType.Property)
+        {
+        }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            currentContext.Key(this);
+        }
+
+        internal override void Value(GremlinToSqlContext currentContext)
+        {
+            currentContext.Value(this);
+        }
     }
 
     internal class GremlinUnionNullVariable : GremlinUnionVariable

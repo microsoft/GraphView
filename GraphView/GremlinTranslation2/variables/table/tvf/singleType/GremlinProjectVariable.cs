@@ -17,25 +17,12 @@ namespace GraphView
             ProjectContextList = byContexts;
         }
 
-        //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
-        //{
-        //    byTraversal.GetStartOp().InheritedVariableFromParent(HomeContext);
-        //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-        //    byContext.HomeVariable = this;
-        //    ProjectContextList.Add(byContext);
-        //}
-
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
-                //List<string> defaultProjectProperty = new List<string>()
-                //{
-                //    ProjectContextList[i%ProjectContextList.Count].PivotVariable.DefaultVariableProperty()
-                //        .VariableProperty
-                //};
                 parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
                 parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }

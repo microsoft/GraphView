@@ -20,6 +20,8 @@ namespace GraphView
                         return new GremlinCoalesceEdgeVariable(coalesceContextList);
                     case GremlinVariableType.Scalar:
                         return new GremlinCoalesceScalarVariable(coalesceContextList);
+                    case GremlinVariableType.Property:
+                        return new GremlinCoalescePropertyVariable(coalesceContextList);
                 }
             }
             return new GremlinCoalesceVariable(coalesceContextList);
@@ -127,6 +129,51 @@ namespace GraphView
         {
             currentContext.OutE(this, edgeLabels);
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropVertex(this);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
+        }
     }
 
     internal class GremlinCoalesceEdgeVariable : GremlinCoalesceVariable
@@ -150,6 +197,50 @@ namespace GraphView
         {
             currentContext.OtherV(this);
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropEdge(this);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
+        }
     }
 
     internal class GremlinCoalesceScalarVariable : GremlinCoalesceVariable
@@ -157,6 +248,24 @@ namespace GraphView
         public GremlinCoalesceScalarVariable(List<GremlinToSqlContext> coalesceContextList)
             : base(coalesceContextList, GremlinVariableType.Scalar)
         {
+        }
+    }
+
+    internal class GremlinCoalescePropertyVariable : GremlinCoalesceVariable
+    {
+        public GremlinCoalescePropertyVariable(List<GremlinToSqlContext> coalesceContextList)
+            : base(coalesceContextList, GremlinVariableType.Property)
+        {
+        }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            currentContext.Key(this);
+        }
+
+        internal override void Value(GremlinToSqlContext currentContext)
+        {
+            currentContext.Value(this);
         }
     }
 }

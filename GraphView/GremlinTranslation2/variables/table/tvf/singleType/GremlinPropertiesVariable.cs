@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinValuesVariable: GremlinScalarTableVariable
+    internal class GremlinPropertiesVariable: GremlinPropertyTableVariable
     {
         public List<string> PropertyKeys { get; set; }
-        public GremlinTableVariable ProjectVariable { get; set; }
+        public GremlinVariable ProjectVariable { get; set; }
 
-        public GremlinValuesVariable(GremlinTableVariable projectVariable, List<string> propertyKeys)
+        public GremlinPropertiesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
         {
             ProjectVariable = projectVariable;
             PropertyKeys = new List<string>(propertyKeys);
@@ -31,8 +31,19 @@ namespace GraphView
                     parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, VariableName);
+            
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Properties, parameters, this, VariableName);
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+        }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            currentContext.Key(this);
+        }
+
+        internal override void Value(GremlinToSqlContext currentContext)
+        {
+            currentContext.Value(this);
         }
     }
 }

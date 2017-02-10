@@ -298,15 +298,15 @@ namespace GraphView
             };
         }
 
-        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeTableVariable edge)
+        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeTableVariable edgeTable)
         {
             return new WEdgeColumnReferenceExpression()
             {
                 MultiPartIdentifier = GetMultiPartIdentifier("Edge"),
-                Alias = edge.VariableName,
+                Alias = edgeTable.VariableName,
                 MinLength = 1,
                 MaxLength = 1,
-                EdgeType = edge.EdgeType
+                EdgeType = edgeTable.EdgeType
             };
         }
 

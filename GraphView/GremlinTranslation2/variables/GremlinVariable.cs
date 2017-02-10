@@ -29,6 +29,7 @@ namespace GraphView
         Edge,
         Scalar,
         Table,
+        Property,
         NULL,
         Undefined
     }
@@ -151,10 +152,10 @@ namespace GraphView
 
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
-            GremlinAddEVariable newVariable = new GremlinAddEVariable(this, edgeLabel);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
+            GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(this, edgeLabel);
+            currentContext.VariableList.Add(newTableVariable);
+            currentContext.TableReferences.Add(newTableVariable);
+            currentContext.SetPivotVariable(newTableVariable);
         }
 
         //internal virtual void addInE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)

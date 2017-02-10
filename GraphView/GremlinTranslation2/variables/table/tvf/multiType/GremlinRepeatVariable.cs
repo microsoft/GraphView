@@ -22,6 +22,8 @@ namespace GraphView
                         return new GremlinRepeatEdgeVariable(inputVariable, repeatContext, repeatCondition);
                     case GremlinVariableType.Scalar:
                         return new GremlinRepeatScalarVariable(inputVariable, repeatContext, repeatCondition);
+                    case GremlinVariableType.Property:
+                        return new GremlinRepeatPropertyVariable(inputVariable, repeatContext, repeatCondition);
                 }
             }
             return new GremlinRepeatVariable(inputVariable, repeatContext, repeatCondition);
@@ -107,7 +109,7 @@ namespace GraphView
 
             WRepeatConditionExpression conditionExpr = GetRepeatConditionExpression();
 
-            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(InputVariable.UsedProperties, ref map);
+            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(InputVariable.ProjectedProperties, ref map);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
             List<WSelectScalarExpression> terminateSelectList = GetConditionSelectList(ref map2);
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
@@ -240,7 +242,7 @@ namespace GraphView
                         }
                         if (repeatInnerVar != outerVar)
                         {
-                            foreach (var property in repeatInnerVar.UsedProperties)
+                            foreach (var property in repeatInnerVar.ProjectedProperties)
                             {
                                 outerVar.Populate(property);
                                 var aliasName = GenerateKey();
@@ -276,7 +278,7 @@ namespace GraphView
                 if (variable is GremlinSelectedVariable)
                 {
                     var repeatInnerVar = (variable as GremlinSelectedVariable);
-                    foreach (var property in repeatInnerVar.UsedProperties)
+                    foreach (var property in repeatInnerVar.ProjectedProperties)
                     {
                         if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == property) == -1)
                         {
@@ -351,6 +353,51 @@ namespace GraphView
         {
             currentContext.OutE(this, edgeLabels);
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropVertex(this);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
+        }
     }
 
     internal class GremlinRepeatEdgeVariable : GremlinRepeatVariable
@@ -358,7 +405,7 @@ namespace GraphView
         public GremlinRepeatEdgeVariable(GremlinContextVariable inputVariable,
                                            GremlinToSqlContext repeatContext,
                                            RepeatCondition repeatCondition)
-            : base(inputVariable, repeatContext, repeatCondition, GremlinVariableType.Vertex)
+            : base(inputVariable, repeatContext, repeatCondition, GremlinVariableType.Edge)
         {
         }
 
@@ -376,6 +423,51 @@ namespace GraphView
         {
             currentContext.OtherV(this);
         }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropEdge(this);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
+        }
     }
 
     internal class GremlinRepeatScalarVariable : GremlinRepeatVariable
@@ -383,8 +475,28 @@ namespace GraphView
         public GremlinRepeatScalarVariable(GremlinContextVariable inputVariable,
                                            GremlinToSqlContext repeatContext,
                                            RepeatCondition repeatCondition)
-            : base(inputVariable, repeatContext, repeatCondition, GremlinVariableType.Vertex)
+            : base(inputVariable, repeatContext, repeatCondition, GremlinVariableType.Scalar)
         {
+        }
+    }
+
+    internal class GremlinRepeatPropertyVariable : GremlinRepeatVariable
+    {
+        public GremlinRepeatPropertyVariable(GremlinContextVariable inputVariable,
+                                           GremlinToSqlContext repeatContext,
+                                           RepeatCondition repeatCondition)
+            : base(inputVariable, repeatContext, repeatCondition, GremlinVariableType.Property)
+        {
+        }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            currentContext.Key(this);
+        }
+
+        internal override void Value(GremlinToSqlContext currentContext)
+        {
+            currentContext.Value(this);
         }
     }
 

@@ -6,96 +6,92 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinContextVariable: GremlinSelectedVariable
+    internal class GremlinUnfoldVariable : GremlinTableVariable
     {
-        public static GremlinContextVariable Create(GremlinVariable contextVariable)
+        public static GremlinUnfoldVariable Create(GremlinVariable inputVariable)
         {
-            switch (contextVariable.GetVariableType())
+            switch (GetUnfoldVariableType(inputVariable))
             {
                 case GremlinVariableType.Vertex:
-                    return new GremlinContextVertexVariable(contextVariable);
+                    return new GremlinUnfoldVertexVariable(inputVariable);
                 case GremlinVariableType.Edge:
-                    return new GremlinContextEdgeVariable(contextVariable);
-                case GremlinVariableType.Table:
-                    return new GremlinContextTableVariable(contextVariable);
+                    return new GremlinUnfoldEdgeVariable(inputVariable);
                 case GremlinVariableType.Scalar:
-                    return new GremlinContextScalarVariable(contextVariable);
-
+                    return new GremlinUnfoldScalarVariable(inputVariable);
+                case GremlinVariableType.Property:
+                    return new GremlinUnfoldPropertyVariable(inputVariable);
             }
-            throw new NotImplementedException();
+            return new GremlinUnfoldVariable(inputVariable);
         }
 
-        internal override string GetVariableName()
+        public static GremlinVariableType GetUnfoldVariableType(GremlinVariable inputVariable)
         {
-            return RealVariable.GetVariableName();
+            if (inputVariable is GremlinFoldVariable)
+            {
+                return (inputVariable as GremlinFoldVariable).FoldVariable.GetVariableType();
+            }
+            if (inputVariable is GremlinListVariable)
+            {
+                return (inputVariable as GremlinListVariable).GetVariableType();
+            }
+            if (inputVariable is GremlinSelectedVariable)
+            {
+                return GetUnfoldVariableType((inputVariable as GremlinSelectedVariable).RealVariable);
+            }
+            return inputVariable.GetVariableType();
         }
 
+        public GremlinVariable UnfoldVariable { get; set; }
 
-        public GremlinContextVariable(GremlinVariable contextVariable)
+        public GremlinUnfoldVariable(GremlinVariable unfoldVariable, GremlinVariableType variableType = GremlinVariableType.Table)
+            : base(variableType)
         {
-            RealVariable = contextVariable;
-            VariableName = contextVariable.VariableName;
+            UnfoldVariable = unfoldVariable;
         }
 
-        internal override GremlinVariableType GetVariableType()
+        internal override bool ContainsLabel(string label)
         {
-            return RealVariable.GetVariableType();
-        }
-
-        internal override GremlinVariableProperty GetVariableProperty(string property)
-        {
-            base.Populate(property);
-            return RealVariable.GetVariableProperty(property);
+            return false;
         }
 
         internal override void Populate(string property)
         {
-            RealVariable.Populate(property);
+            if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
+            UnfoldVariable.Populate(property);
         }
 
-        internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,
-            string columnName = null)
+        public override WTableReference ToTableReference()
         {
-            base.Populate(property);
-            return base.BottomUpPopulate(property, terminateVariable, alias, columnName);
-        }
-
-
-        internal override void Select(GremlinToSqlContext currentContext, List<string> Labels)
-        {
-            RealVariable.Select(currentContext, Labels);
-        }
-
-        internal override void Select(GremlinToSqlContext currentContext, string selectKey)
-        {
-            RealVariable.Select(currentContext, selectKey);
+            if (UnfoldVariable is GremlinListVariable)
+            {
+                List<WScalarExpression> parameters = new List<WScalarExpression>();
+                parameters.Add((UnfoldVariable as GremlinListVariable).ToScalarExpression());
+                foreach (var projectProperty in ProjectedProperties)
+                {
+                    parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+                }
+                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, VariableName);
+                return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            }
+            else
+            {
+                List<WScalarExpression> parameters = new List<WScalarExpression>();
+                parameters.Add(UnfoldVariable.DefaultVariableProperty().ToScalarExpression());
+                parameters.Add(SqlUtil.GetValueExpr(UnfoldVariable.DefaultVariableProperty().VariableProperty));
+                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, VariableName);
+                return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            }
+            throw new NotImplementedException();
         }
     }
 
-    internal class GremlinContextScalarVariable : GremlinContextVariable
+    internal class GremlinUnfoldVertexVariable : GremlinUnfoldVariable
     {
-        public GremlinContextScalarVariable(GremlinVariable contextVariable) : base(contextVariable) { }
-    }
-
-    internal class GremlinContextPropertyVariable : GremlinContextVariable
-    {
-        public GremlinContextPropertyVariable(GremlinVariable contextVariable) : base(contextVariable) { }
-
-        internal override void Key(GremlinToSqlContext currentContext)
+        public GremlinUnfoldVertexVariable(GremlinVariable unfoldVariable)
+            : base(unfoldVariable, GremlinVariableType.Vertex)
         {
-            currentContext.Key(this);
         }
-
-        internal override void Value(GremlinToSqlContext currentContext)
-        {
-            currentContext.Value(this);
-        }
-    }
-
-    internal class GremlinContextVertexVariable : GremlinContextTableVariable
-    {
-        public GremlinContextVertexVariable(GremlinVariable contextVariable) : base(contextVariable) { }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
@@ -178,9 +174,12 @@ namespace GraphView
         }
     }
 
-    internal class GremlinContextEdgeVariable : GremlinContextTableVariable
+    internal class GremlinUnfoldEdgeVariable : GremlinUnfoldVariable
     {
-        public GremlinContextEdgeVariable(GremlinVariable contextEdge) : base(contextEdge) { }
+        public GremlinUnfoldEdgeVariable(GremlinVariable unfoldVariable)
+            : base(unfoldVariable, GremlinVariableType.Edge)
+        {
+        }
 
         internal override void InV(GremlinToSqlContext currentContext)
         {
@@ -240,6 +239,32 @@ namespace GraphView
         internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
             currentContext.Values(this, propertyKeys);
+        }
+    }
+
+    internal class GremlinUnfoldScalarVariable : GremlinUnfoldVariable
+    {
+        public GremlinUnfoldScalarVariable(GremlinVariable unfoldVariable)
+            : base(unfoldVariable, GremlinVariableType.Scalar)
+        {
+        }
+    }
+
+    internal class GremlinUnfoldPropertyVariable : GremlinUnfoldVariable
+    {
+        public GremlinUnfoldPropertyVariable(GremlinVariable unfoldVariable)
+            : base(unfoldVariable, GremlinVariableType.Property)
+        {
+        }
+
+        internal override void Key(GremlinToSqlContext currentContext)
+        {
+            currentContext.Key(this);
+        }
+
+        internal override void Value(GremlinToSqlContext currentContext)
+        {
+            currentContext.Value(this);
         }
     }
 }
