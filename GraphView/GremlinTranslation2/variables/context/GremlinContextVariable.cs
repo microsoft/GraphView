@@ -16,13 +16,12 @@ namespace GraphView
                     return new GremlinContextVertexVariable(contextVariable);
                 case GremlinVariableType.Edge:
                     return new GremlinContextEdgeVariable(contextVariable);
-                case GremlinVariableType.Table:
-                    return new GremlinContextTableVariable(contextVariable);
                 case GremlinVariableType.Scalar:
                     return new GremlinContextScalarVariable(contextVariable);
-
+                case GremlinVariableType.Property:
+                    return new GremlinContextPropertyVariable(contextVariable);
             }
-            throw new NotImplementedException();
+            return new GremlinContextVariable(contextVariable);
         }
 
         internal override string GetVariableName()
@@ -34,7 +33,6 @@ namespace GraphView
         public GremlinContextVariable(GremlinVariable contextVariable)
         {
             RealVariable = contextVariable;
-            VariableName = contextVariable.VariableName;
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -44,23 +42,17 @@ namespace GraphView
 
         internal override GremlinVariableProperty GetVariableProperty(string property)
         {
-            base.Populate(property);
+            Populate(property);
             return RealVariable.GetVariableProperty(property);
         }
 
         internal override void Populate(string property)
         {
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
             RealVariable.Populate(property);
-            base.Populate(property);
         }
-
-        internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,
-            string columnName = null)
-        {
-            base.Populate(property);
-            return base.BottomUpPopulate(property, terminateVariable, alias, columnName);
-        }
-
 
         internal override void Select(GremlinToSqlContext currentContext, List<string> Labels)
         {
@@ -93,7 +85,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinContextVertexVariable : GremlinContextTableVariable
+    internal class GremlinContextVertexVariable : GremlinContextVariable
     {
         public GremlinContextVertexVariable(GremlinVariable contextVariable) : base(contextVariable) { }
 
@@ -178,7 +170,7 @@ namespace GraphView
         }
     }
 
-    internal class GremlinContextEdgeVariable : GremlinContextTableVariable
+    internal class GremlinContextEdgeVariable : GremlinContextVariable
     {
         public GremlinContextEdgeVariable(GremlinVariable contextEdge) : base(contextEdge) { }
 

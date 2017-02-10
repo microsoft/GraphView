@@ -50,8 +50,8 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-
             base.Populate(property);
+
             if (SelectedVariableList.Exists(p => p.Item1 != property))
             {
                 RepeatContext.Populate(property);
@@ -188,7 +188,7 @@ namespace GraphView
             newVisitor.Invoke(conditionExpr, map2);
 
             PropertyKeys.Add(conditionExpr);
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -290,14 +290,6 @@ namespace GraphView
                             slot.Add(new Tuple<string, string>(variable.GetVariableName(), property));
                         }
                     }
-                    //if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == variable.DefaultProjection().VariableProperty) == -1)
-                    //{
-                    //    //(variable as GremlinSelectedVariable).RealVariable.Populate(variable.DefaultProjection().VariableProperty);
-                    //    var aliasName = GenerateKey();
-                    //    terminateSelectList.Add(SqlUtil.GetSelectScalarExpr(variable.DefaultProjection().ToScalarExpression(), aliasName));
-                    //    map[repeatInnerVar.GetVariableProperty(variable.DefaultProjection().VariableProperty)] = aliasName;
-                    //    slot.Add(new Tuple<string, string>(variable.GetVariableName(), variable.DefaultProjection().VariableProperty));
-                    //}
                 }
             }
             return terminateSelectList;
@@ -517,7 +509,7 @@ namespace GraphView
             var value = columnReference.MultiPartIdentifier.Identifiers[1].Value;
             foreach (var item in _map)
             {
-                if (item.Key.GremlinVariable.VariableName.Equals(key) && item.Key.VariableProperty.Equals(value))
+                if (item.Key.GremlinVariable.GetVariableName().Equals(key) && item.Key.VariableProperty.Equals(value))
                 {
                     columnReference.MultiPartIdentifier.Identifiers[0].Value = "R";
                     columnReference.MultiPartIdentifier.Identifiers[1].Value = item.Value;

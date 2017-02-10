@@ -19,16 +19,15 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (!ProjectedProperties.Contains(property))
-            {
-                ProjectedProperties.Add(property);
-                SubqueryContext.Populate(property);
-            }
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
+            SubqueryContext.Populate(property);
         }
 
         public override WTableReference ToTableReference()
         {
-            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), VariableName);
+            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), GetVariableName());
         }
     }
 
@@ -57,7 +56,7 @@ namespace GraphView
 
             List<WScalarExpression> foldParameters = new List<WScalarExpression> { compose1 };
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.ScalarValue));
-            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
 
         internal override void Unfold(GremlinToSqlContext currentContext)
@@ -78,7 +77,7 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Count), GremlinKeyword.ScalarValue));
-            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }
 
@@ -97,7 +96,7 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()), GremlinKeyword.ScalarValue));
-            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }
 }

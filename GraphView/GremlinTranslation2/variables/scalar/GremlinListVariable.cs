@@ -22,11 +22,13 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
             foreach (var variable in GremlinVariableList)
             {
                 variable.Populate(property);
             }
-            base.Populate(property);
         }
 
         internal WScalarExpression ToScalarExpression()

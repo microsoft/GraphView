@@ -38,18 +38,18 @@ namespace GraphView
             if (SourceVariableProperty != null && SinkVariableProperty != null)
             {
                 //BothV
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, this, VariableName);
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, this, GetVariableName());
             }
             switch (InputEdgeType)
             {
                 case WEdgeType.BothEdge:
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OtherV, PropertyKeys, this, VariableName);
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OtherV, PropertyKeys, this, GetVariableName());
                     break;
                 case WEdgeType.InEdge:
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, GetVariableName());
                     break;
                 case WEdgeType.OutEdge:
-                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, VariableName);
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, GetVariableName());
                     break;
             }
 

@@ -20,6 +20,7 @@ namespace GraphView
         internal WBooleanExpression Predicates { get; private set; }
         internal GremlinPathVariable CurrentContextPath { get; set; }
         internal List<Tuple<GremlinVariableProperty, string>> ProjectVariablePropertiesList { get; set; }
+        internal List<string> ProjectedProperties { get; set; }
 
         private bool isPopulateGremlinPath;
 
@@ -32,6 +33,7 @@ namespace GraphView
             StepList = new List<GremlinVariable>();
             isPopulateGremlinPath = false;
             ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>();
+            ProjectedProperties = new List<string>();
         }
 
         internal GremlinToSqlContext Duplicate()
@@ -47,7 +49,8 @@ namespace GraphView
                 StepList = new List<GremlinVariable>(this.StepList),
                 isPopulateGremlinPath = this.isPopulateGremlinPath,
                 CurrentContextPath = this.CurrentContextPath,
-                ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>(this.ProjectVariablePropertiesList)
+                ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>(this.ProjectVariablePropertiesList),
+                ProjectedProperties = new List<string>(this.ProjectedProperties)
             };
         }
 
@@ -63,18 +66,14 @@ namespace GraphView
             isPopulateGremlinPath = false;
             CurrentContextPath = null;
             ProjectVariablePropertiesList.Clear();
+            ProjectedProperties.Clear();
         }
 
-        internal void Populate(string propertyName)
+        internal void Populate(string property)
         {
-            //// For a query with a GROUP BY clause, the ouptut format is determined
-            //// by the aggregation functions following GROUP BY and cannot be changed.
-            //if (GroupVariable != null)
-            //{
-            //    return;
-            //}
-
-            PivotVariable.Populate(propertyName);
+            if (ProjectedProperties.Contains(property)) return;
+            ProjectedProperties.Add(property);
+            PivotVariable.Populate(property);
         }
 
         internal void BottomUpPopulate(string propertyName)
@@ -120,12 +119,8 @@ namespace GraphView
 
         internal void AddProjectVariablePropertiesList(GremlinVariableProperty variableProperty, string alias)
         {
-            foreach (var projectProperty in ProjectVariablePropertiesList)
-            {
-                if (projectProperty.Item1.VariableName == variableProperty.VariableName &&
-                    projectProperty.Item1.VariableProperty == variableProperty.VariableProperty &&
-                    projectProperty.Item2 == alias) return;
-            }
+            if (ProjectedProperties.Contains(alias)) return;
+            ProjectedProperties.Add(alias);
             ProjectVariablePropertiesList.Add(new Tuple<GremlinVariableProperty, string>(variableProperty, alias));
         }
 
@@ -224,11 +219,11 @@ namespace GraphView
         internal void SetPivotVariable(GremlinVariable newPivotVariable)
         {
             PivotVariable = newPivotVariable;
-            if (PivotVariable is GremlinContextVariable)
-            {
-                //Ignore the inherited variable
-                if (!(PivotVariable as GremlinContextVariable).IsFromSelect) return;
-            }
+            //if (PivotVariable is GremlinContextVariable)
+            //{
+            //    //Ignore the inherited variable
+            //    if (!(PivotVariable as GremlinContextVariable).IsFromSelect) return;
+            //}
             StepList.Add(newPivotVariable);
             newPivotVariable.HomeContext = this;
         }
@@ -257,7 +252,7 @@ namespace GraphView
 
         internal GremlinMatchPath GetPathFromPathList(GremlinVariable edge)
         {
-            return PathList.Find(p => p.EdgeVariable.VariableName == edge.VariableName);
+            return PathList.Find(p => p.EdgeVariable.GetVariableName() == edge.GetVariableName());
         }
 
         internal void AddPredicate(WBooleanExpression newPredicate)
@@ -272,7 +267,7 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(edgeTable.VariableName, "label");
+                var firstExpr = SqlUtil.GetColumnReferenceExpr(edgeTable.GetVariableName(), "label");
                 var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
                 booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
@@ -368,10 +363,6 @@ namespace GraphView
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
             }
 
-            //else if (PivotVariable.GetVariableType() == GremlinVariableType.Table)
-            //{
-            //    throw new Exception("Can't process table type");
-            //}
             else
             {
                 GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
@@ -427,28 +418,11 @@ namespace GraphView
         internal WOrderByClause GetOrderByClause()
         {
             return null;
-            //if (OrderByVariable == null) return null;
-
-            //OrderByRecord orderByRecord = OrderByVariable.Item2;
-            //WOrderByClause newOrderByClause = new WOrderByClause()
-            //{
-            //    OrderByElements = orderByRecord.SortOrderList
-            //};
-            //return newOrderByClause;
         }
 
         internal WGroupByClause GetGroupByClause()
         {
             return null;
-            //if (GroupByVariable == null) return null;
-
-            //GroupByRecord groupByRecord = GroupByVariable.Item2;
-            //WGroupByClause newGroupByClause = new WGroupByClause()
-            //{
-            //    GroupingSpecifications = groupByRecord.GroupingSpecList
-            //};
-
-            //return newGroupByClause;
         }
 
 

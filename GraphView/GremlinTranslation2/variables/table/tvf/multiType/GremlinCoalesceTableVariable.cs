@@ -48,6 +48,7 @@ namespace GraphView
         {
             if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
+
             foreach (var context in CoalesceContextList)
             {
                 context.Populate(property);
@@ -86,7 +87,7 @@ namespace GraphView
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

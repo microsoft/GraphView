@@ -35,13 +35,8 @@ namespace GraphView
                     throw new NotImplementedException();
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Inject, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Inject, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
-        }
-
-        internal override void Populate(string property)
-        {
-            throw new NotImplementedException();
         }
 
         internal override void Inject(GremlinToSqlContext currentContext, List<object> values)

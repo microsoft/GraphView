@@ -20,10 +20,10 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             foreach (var path in pathList)
             {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(path.GremlinVariable.VariableName, path.VariableProperty));    
+                parameters.Add(SqlUtil.GetColumnReferenceExpr(path.GremlinVariable.GetVariableName(), path.VariableProperty));    
             }
 
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

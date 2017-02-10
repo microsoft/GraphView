@@ -35,13 +35,14 @@ namespace GraphView
             : base(variableType)
         {
             LocalContext = localContext;
-            localContext.HomeVariable = this;
+            LocalContext.HomeVariable = this;
         }
 
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
+
             LocalContext.Populate(property);
         }
 
@@ -54,7 +55,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(ProjectedProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Local, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Local, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

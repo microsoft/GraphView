@@ -205,7 +205,7 @@ namespace GraphView
         {
             return new WNamedTableReference()
             {
-                Alias = GetIdentifier(gremlinVar.VariableName),
+                Alias = GetIdentifier(gremlinVar.GetVariableName()),
                 TableObjectString = "node",
                 TableObjectName = GetSchemaObjectName("node"),
                 Low = gremlinVar.Low,
@@ -215,7 +215,7 @@ namespace GraphView
 
         internal static WBooleanExpression GetHaskeyBooleanExpr(GremlinVariable currVar, string key)
         {
-            var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.VariableName, key));
+            var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.GetVariableName(), key));
             var secondExpr = GetValueExpr("true");
             return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
         }
@@ -273,18 +273,18 @@ namespace GraphView
         {
             var edge = path.EdgeVariable as GremlinEdgeTableVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
-                return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.VariableName);
+                return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.GetVariableName());
             else
-                return path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable?.VariableName);
+                return path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable?.GetVariableName());
         }
 
         internal static WSchemaObjectName GetPathSource(GremlinMatchPath path)
         {
             var edge = path.EdgeVariable as GremlinEdgeTableVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
-                return GetSchemaObjectName(path.SinkVariable.VariableName);
+                return GetSchemaObjectName(path.SinkVariable.GetVariableName());
             else
-                return GetSchemaObjectName(path.SourceVariable?.VariableName);
+                return GetSchemaObjectName(path.SourceVariable?.GetVariableName());
         }
 
         internal static List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> GetPathEdgeList(GremlinMatchPath path)
@@ -303,7 +303,7 @@ namespace GraphView
             return new WEdgeColumnReferenceExpression()
             {
                 MultiPartIdentifier = GetMultiPartIdentifier("Edge"),
-                Alias = edgeTable.VariableName,
+                Alias = edgeTable.GetVariableName(),
                 MinLength = 1,
                 MaxLength = 1,
                 EdgeType = edgeTable.EdgeType

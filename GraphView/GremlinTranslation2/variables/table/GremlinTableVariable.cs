@@ -23,21 +23,19 @@ namespace GraphView
 
         internal override WEdgeType GetEdgeType()
         {
-            if (EdgeType == null)
-            {
-                throw new QueryCompilationException("EdgeType can't be null");
-            }
+            if (EdgeType == null) throw new QueryCompilationException("EdgeType can't be null");
             return EdgeType;
         }
 
         public void SetVariableTypeAndGenerateName(GremlinVariableType variableType)
         {
             VariableType = variableType;
-            VariableName = GremlinUtil.GenerateTableAlias(VariableType);
+            _variableName = GremlinUtil.GenerateTableAlias(VariableType);
         }
 
         internal override void Populate(string property)
         {
+            if (ProjectedProperties.Contains(property)) return;
             switch (GetVariableType())
             {
                 case GremlinVariableType.Vertex:
@@ -91,6 +89,22 @@ namespace GraphView
                     return GetVariableProperty(GremlinKeyword.PropertyValue);
             }
             return new GremlinVariableProperty(this, GremlinKeyword.TableDefaultColumnName);
+        }
+
+        internal override string GetPrimaryKey()
+        {
+            switch (VariableType)
+            {
+                case GremlinVariableType.Edge:
+                    return GremlinKeyword.EdgeID;
+                case GremlinVariableType.Scalar:
+                    return GremlinKeyword.ScalarValue;
+                case GremlinVariableType.Vertex:
+                    return GremlinKeyword.NodeID;
+                case GremlinVariableType.Property:
+                    return GremlinKeyword.PropertyValue;
+            }
+            return GremlinKeyword.TableDefaultColumnName;
         }
 
         internal override GremlinVariableType GetVariableType()

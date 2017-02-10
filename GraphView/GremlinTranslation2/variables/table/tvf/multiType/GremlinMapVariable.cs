@@ -40,8 +40,8 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-
             base.Populate(property);
+
             MapContext.Populate(property);
         }
 
@@ -55,7 +55,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(MapContext.ToSelectQueryBlock(ProjectedProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Map, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Map, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

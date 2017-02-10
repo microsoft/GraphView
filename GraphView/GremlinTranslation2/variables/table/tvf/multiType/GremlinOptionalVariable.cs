@@ -48,8 +48,8 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-
             base.Populate(property);
+
             InputVariable.Populate(property);
             OptionalContext.Populate(property);
         }
@@ -92,7 +92,7 @@ namespace GraphView
             secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             foreach (var projectProperty in ProjectedProperties)
             {
-                if (InputVariable.ContainsProperties(projectProperty))
+                if (InputVariable.ProjectedProperties.Contains(projectProperty))
                 {
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
@@ -103,7 +103,7 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
                 }
-                if (OptionalContext.PivotVariable.ContainsProperties(projectProperty))
+                if (OptionalContext.PivotVariable.ProjectedProperties.Contains(projectProperty))
                 {
                     secondQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
@@ -120,7 +120,7 @@ namespace GraphView
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Optional, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

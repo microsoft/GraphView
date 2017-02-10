@@ -28,7 +28,7 @@ namespace GraphView
             {
                 if (id is int)
                 {
-                    WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(newVariable.VariableName, "id");
+                    WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(newVariable.GetVariableName(), "id");
                     WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);
                     WBooleanComparisonExpression booleanExpr = SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
                     inputContext.AddPredicate(booleanExpr);

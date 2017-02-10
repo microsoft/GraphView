@@ -58,6 +58,7 @@ namespace GraphView
         {
             if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
+
             UnfoldVariable.Populate(property);
         }
 
@@ -71,15 +72,15 @@ namespace GraphView
                 {
                     parameters.Add(SqlUtil.GetValueExpr(projectProperty));
                 }
-                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, VariableName);
+                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, GetVariableName());
                 return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
             }
             else
             {
                 List<WScalarExpression> parameters = new List<WScalarExpression>();
                 parameters.Add(UnfoldVariable.DefaultVariableProperty().ToScalarExpression());
-                parameters.Add(SqlUtil.GetValueExpr(UnfoldVariable.DefaultVariableProperty().VariableProperty));
-                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, VariableName);
+                parameters.Add(SqlUtil.GetValueExpr(UnfoldVariable.GetPrimaryKey()));
+                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, GetVariableName());
                 return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
             }
             throw new NotImplementedException();

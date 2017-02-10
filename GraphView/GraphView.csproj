@@ -149,7 +149,6 @@
     <Compile Include="GremlinTranslation2\sideEffect\GremlinSideEffectOp.cs" />
     <Compile Include="GremlinTranslation2\sideEffect\GremlinTreeOp.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinBranchVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\context\GremlinGhostTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinGhostVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\context\GremlinSelectedVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\scalar\GremlinCollectionVariable.cs" />
@@ -187,7 +186,6 @@
     <Compile Include="GremlinTranslation2\variables\table\tvf\multiType\GremlinRepeatVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinSideEffectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\multiType\GremlinUnionVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\context\GremlinContextTableVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinInjectVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinPropertiesVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\GremlinTableVariable.cs" />

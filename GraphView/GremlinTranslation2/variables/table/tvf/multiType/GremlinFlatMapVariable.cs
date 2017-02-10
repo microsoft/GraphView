@@ -41,6 +41,7 @@ namespace GraphView
         {
             if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
+
             FlatMapContext.Populate(property);
         }
 
@@ -59,7 +60,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(FlatMapContext.ToSelectQueryBlock(ProjectedProperties)));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.FlatMap, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.FlatMap, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

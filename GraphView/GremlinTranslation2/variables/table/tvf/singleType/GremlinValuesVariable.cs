@@ -31,7 +31,7 @@ namespace GraphView
                     parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.GetVariableName(), property));
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

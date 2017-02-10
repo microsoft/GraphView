@@ -41,8 +41,8 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-
             base.Populate(property);
+
             foreach (var context in UnionContextList)
             {
                 context.Populate(property);
@@ -105,7 +105,7 @@ namespace GraphView
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Union, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Union, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

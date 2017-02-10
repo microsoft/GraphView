@@ -22,17 +22,17 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (PropertyKeys.Count == 0)
             {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, "*"));
+                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.GetVariableName(), "*"));
             }
             else
             {
                 foreach (var property in PropertyKeys)
                 {
-                    parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
+                    parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.GetVariableName(), property));
                 }
             }
             
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Properties, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Properties, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
@@ -44,6 +44,11 @@ namespace GraphView
         internal override void Value(GremlinToSqlContext currentContext)
         {
             currentContext.Value(this);
+        }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropProperties(ProjectVariable, PropertyKeys);
         }
     }
 }

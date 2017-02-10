@@ -8,13 +8,6 @@ namespace GraphView
 {
     internal class GremlinBranchVariable : GremlinVariable
     {
-        protected static int _count = 0;
-
-        internal virtual string GenerateTableAlias()
-        {
-            return "B_" + _count++;
-        }
-
         public List<List<GremlinVariable>> BrachVariableList { get; set; }
         public GremlinVariable ParentVariable { get; set; }
         public string Label { get; set; }
@@ -24,7 +17,6 @@ namespace GraphView
             Label = label;
             BrachVariableList = new List<List<GremlinVariable>>();
             ParentVariable = parentVariable;
-            VariableName = GenerateTableAlias();
         }
 
         internal override GremlinVariableType GetVariableType()
@@ -111,17 +103,15 @@ namespace GraphView
             return GremlinUtil.IsTheSameType(checkList);
         }
 
-        internal override string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias,
-            string columnName = null)
+        internal override void BottomUpPopulate(GremlinVariable terminateVariable, string property, string columnName)
         {
             foreach (var variableList in BrachVariableList)
             {
                 foreach (var variable in variableList)
                 {
-                    variable.BottomUpPopulate(property, terminateVariable, alias, columnName);
+                    variable.BottomUpPopulate(terminateVariable, property, columnName);
                 }
             }
-            return alias + "_" + property;
         }
     }
 }

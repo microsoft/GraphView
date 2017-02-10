@@ -36,7 +36,7 @@ namespace GraphView
      
     internal abstract class GremlinVariable
     {
-        public string VariableName { get; set; }
+        protected string _variableName;
         public int Low { get; set; }
         public int High { get; set; }
         public List<string> Labels { get; set; }
@@ -66,26 +66,15 @@ namespace GraphView
             return Labels.Contains(label);
         }
 
-        internal virtual bool ContainsProperties(string property)
-        {
-            return ProjectedProperties.Contains(property);
-        }
-
         internal virtual void Populate(string property)
         {
-            if (property == "_t")
-            {
-                throw new Exception();
-            }
-            if (!ProjectedProperties.Contains(property))
-            {
-                ProjectedProperties.Add(property);
-            }
+            if (ProjectedProperties.Contains(property)) return;
+            ProjectedProperties.Add(property);
         }
 
         internal virtual GremlinVariableProperty GetVariableProperty(string property)
         {
-            if (!ProjectedProperties.Contains(property)) Populate(property);
+            Populate(property);
             return new GremlinVariableProperty(this, property);
         }
 
@@ -96,17 +85,15 @@ namespace GraphView
 
         internal virtual string GetVariableName()
         {
-            return VariableName;
+            if (_variableName == null) throw new Exception("_variable can't be null");
+            return _variableName;
         }
 
-        internal virtual string BottomUpPopulate(string property, GremlinVariable terminateVariable, string alias, string columnName = null)
+        internal virtual void BottomUpPopulate(GremlinVariable terminateVariable, string property, string columnName)
         {
-            if (terminateVariable == this) return property;
+            if (terminateVariable == this) return ;
             if (HomeContext == null) throw new Exception();
-            if (columnName == null)
-            {
-                columnName = alias + "_" + property;
-            }
+
             HomeContext.AddProjectVariablePropertiesList(GetVariableProperty(property), columnName);
             if (!(HomeContext.HomeVariable is GremlinRepeatVariable) && !HomeContext.HomeVariable.ProjectedProperties.Contains(columnName))
             {
@@ -114,7 +101,7 @@ namespace GraphView
             }
 
             if (HomeContext.HomeVariable == null) throw new Exception();
-            return HomeContext.HomeVariable.BottomUpPopulate(columnName, terminateVariable, alias, columnName);
+            HomeContext.HomeVariable.BottomUpPopulate(terminateVariable, columnName, columnName);
         }
 
         internal virtual void PopulateGremlinPath() {}
@@ -140,12 +127,12 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual GremlinVariableProperty DefaultProjection()
+        internal virtual string GetPrimaryKey()
         {
             throw new NotImplementedException();
         }
 
-        internal virtual GremlinVariableProperty GetDefaultProjection()
+        internal virtual GremlinVariableProperty DefaultProjection()
         {
             throw new NotImplementedException();
         }
@@ -766,7 +753,7 @@ namespace GraphView
                     default:
                         throw new NotImplementedException();
                 }
-                if (selectedVariable is GremlinRepeatSelectedVariable) throw new NotImplementedException();
+                //if (selectedVariable is GremlinGhostVariable) throw new NotImplementedException();
 
                 selectedVariable.HomeContext = currentContext;
                 currentContext.VariableList.Add(selectedVariable);
@@ -976,7 +963,7 @@ namespace GraphView
                 throw new Exception("Predicate.Label can't be null");
             }
             var firstExpr = DefaultVariableProperty().ToScalarExpression();
-            Populate(DefaultVariableProperty().VariableProperty);
+            Populate(GetPrimaryKey());
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
