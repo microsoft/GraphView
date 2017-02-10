@@ -107,6 +107,22 @@ namespace GraphView
             return GremlinKeyword.TableDefaultColumnName;
         }
 
+        internal override string GetProjectKey()
+        {
+            switch (VariableType)
+            {
+                case GremlinVariableType.Edge:
+                    return GremlinKeyword.Star;
+                case GremlinVariableType.Scalar:
+                    return GremlinKeyword.ScalarValue;
+                case GremlinVariableType.Vertex:
+                    return GremlinKeyword.Star;
+                case GremlinVariableType.Property:
+                    return GremlinKeyword.PropertyValue;
+            }
+            return GremlinKeyword.TableDefaultColumnName;
+        }
+
         internal override GremlinVariableType GetVariableType()
         {
             return VariableType;

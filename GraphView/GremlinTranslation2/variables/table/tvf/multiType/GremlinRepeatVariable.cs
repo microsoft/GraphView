@@ -245,7 +245,6 @@ namespace GraphView
                         {
                             foreach (var property in repeatInnerVar.ProjectedProperties)
                             {
-                                outerVar.Populate(property);
                                 var aliasName = GenerateKey();
                                 outerSelectList.Add(
                                     SqlUtil.GetSelectScalarExpr(
@@ -283,7 +282,6 @@ namespace GraphView
                     {
                         if (slot.FindIndex(p => p.Item1 == variable.GetVariableName() && p.Item2 == property) == -1)
                         {
-                            (variable as GremlinSelectedVariable).RealVariable.Populate(property);
                             var aliasName = GenerateKey();
                             terminateSelectList.Add(SqlUtil.GetSelectScalarExpr((variable as GremlinSelectedVariable).RealVariable.GetVariableProperty(property).ToScalarExpression(), aliasName));
                             map[repeatInnerVar.GetVariableProperty(property)] = aliasName;

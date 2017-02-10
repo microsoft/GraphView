@@ -20,7 +20,7 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             foreach (var path in pathList)
             {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(path.GremlinVariable.GetVariableName(), path.VariableProperty));    
+                parameters.Add(path.ToScalarExpression());    
             }
 
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, this, GetVariableName());

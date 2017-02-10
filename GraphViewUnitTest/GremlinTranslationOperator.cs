@@ -101,8 +101,6 @@ namespace GremlinTranslationOperator.Tests
             //        .Property("_deleted", false)
             //        .Next();
 
-           
-
             var test = graph.g().V().Next();
             test = graph.g().E().Next();
             test = null;

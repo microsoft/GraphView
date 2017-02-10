@@ -51,23 +51,6 @@ namespace GraphView
             return isSameType;
         }
 
-        internal static string GetTypeKeyWithVariableType(GremlinVariableType type)
-        {
-            switch (type)
-            {
-                case GremlinVariableType.Edge:
-                    return GremlinKeyword.EdgeID;
-                case GremlinVariableType.Scalar:
-                    return GremlinKeyword.ScalarValue;
-                case GremlinVariableType.Table:
-                    throw new NotImplementedException();
-                case GremlinVariableType.Vertex:
-                    return GremlinKeyword.NodeID;
-            }
-            throw new NotImplementedException();
-            ;
-        }
-
         internal static bool IsVertexProperty(string property)
         {
             if (property == GremlinKeyword.NodeID

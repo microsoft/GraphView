@@ -22,13 +22,13 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (PropertyKeys.Count == 0)
             {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.GetVariableName(), "*"));
+                parameters.Add(ProjectVariable.GetVariableProperty(GremlinKeyword.Star).ToScalarExpression());
             }
             else
             {
                 foreach (var property in PropertyKeys)
                 {
-                    parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.GetVariableName(), property));
+                    parameters.Add(ProjectVariable.GetVariableProperty(property).ToScalarExpression());
                 }
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, GetVariableName());

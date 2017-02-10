@@ -73,13 +73,13 @@ namespace GraphView
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
-            GremlinBranchVariable branchVariable = new GremlinBranchVariable(label, this);
+            List<List<GremlinVariable>> branchVariableList = new List<List<GremlinVariable>>();
             foreach (var context in UnionContextList)
             {
                 var variableList = context.SelectCurrentAndChildVariable(label);
-                branchVariable.BrachVariableList.Add(variableList);
+                branchVariableList.Add(variableList);
             }
-            return new List<GremlinVariable>() {branchVariable};
+            return new List<GremlinVariable>() {GremlinBranchVariable.Create(label, this, branchVariableList)};
         }
 
         internal override bool ContainsLabel(string label)

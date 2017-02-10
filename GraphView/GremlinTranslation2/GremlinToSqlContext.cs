@@ -76,11 +76,6 @@ namespace GraphView
             PivotVariable.Populate(property);
         }
 
-        internal void BottomUpPopulate(string propertyName)
-        {
-            
-        }
-
         internal List<GremlinVariable> SelectCurrentAndChildVariable(string label)
         {
             List<GremlinVariable> taggedVariableList = new List<GremlinVariable>();
@@ -263,11 +258,10 @@ namespace GraphView
         internal void AddLabelPredicateForEdge(GremlinEdgeTableVariable edgeTable, List<string> edgeLabels)
         {
             if (edgeLabels.Count == 0) return;
-            edgeTable.Populate("label");
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var edgeLabel in edgeLabels)
             {
-                var firstExpr = SqlUtil.GetColumnReferenceExpr(edgeTable.GetVariableName(), "label");
+                var firstExpr = edgeTable.GetVariableProperty(GremlinKeyword.Label).ToScalarExpression();
                 var secondExpr = SqlUtil.GetValueExpr(edgeLabel);
                 booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
@@ -711,8 +705,7 @@ namespace GraphView
 
         internal void Has(GremlinVariable lastVariable, string propertyKey, object value)
         {
-            lastVariable.Populate(propertyKey);
-            WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(lastVariable.GetVariableName(), propertyKey);
+            WScalarExpression firstExpr = lastVariable.GetVariableProperty(propertyKey).ToScalarExpression();
             WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
             AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
         }
@@ -725,8 +718,7 @@ namespace GraphView
 
         internal void Has(GremlinVariable lastVariable, string propertyKey, Predicate predicate)
         {
-            lastVariable.Populate(propertyKey);
-            WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(lastVariable.GetVariableName(), propertyKey);
+            WScalarExpression firstExpr = lastVariable.GetVariableProperty(propertyKey).ToScalarExpression();
             AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, null, predicate));
         }
 
@@ -738,22 +730,10 @@ namespace GraphView
 
         internal void HasId(GremlinVariable lastVariable, List<object> values)
         {
-            string compareKey = "";
-            switch (lastVariable.GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                    lastVariable.Populate(GremlinKeyword.EdgeID);
-                    compareKey = GremlinKeyword.EdgeID;
-                    break;
-                case GremlinVariableType.Vertex:
-                    lastVariable.Populate(GremlinKeyword.NodeID);
-                    compareKey = GremlinKeyword.NodeID;
-                    break;
-            }
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
-                WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(lastVariable.GetVariableName(), compareKey);
+                WScalarExpression firstExpr = lastVariable.GetVariableProperty(lastVariable.GetPrimaryKey()).ToScalarExpression();
                 WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
                 booleanExprList.Add(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals));
             }
@@ -763,11 +743,10 @@ namespace GraphView
 
         internal void HasLabel(GremlinVariable lastVariable, List<object> values)
         {
-            lastVariable.Populate(GremlinKeyword.Label);
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
-                WScalarExpression firstExpr = SqlUtil.GetColumnReferenceExpr(lastVariable.GetVariableName(), GremlinKeyword.Label);
+                WScalarExpression firstExpr = lastVariable.GetVariableProperty(GremlinKeyword.Label).ToScalarExpression();
                 WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
                 booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
             }
@@ -777,13 +756,16 @@ namespace GraphView
 
         internal void Properties(GremlinVariable lastVariable, List<string> propertyKeys)
         {
-            foreach (var property in propertyKeys)
-            {
-                Populate(property);
-            }
             if (propertyKeys.Count == 0)
             {
-                Populate("*");
+                lastVariable.Populate(GremlinKeyword.Star);
+            }
+            else
+            {
+                foreach (var property in propertyKeys)
+                {
+                    lastVariable.Populate(property);
+                }
             }
             GremlinPropertiesVariable newVariable = new GremlinPropertiesVariable(lastVariable, propertyKeys);
             VariableList.Add(newVariable);
@@ -793,13 +775,16 @@ namespace GraphView
 
         internal void Values(GremlinVariable lastVariable, List<string> propertyKeys)
         {
-            foreach (var property in propertyKeys)
-            {
-                Populate(property);
-            }
             if (propertyKeys.Count == 0)
             {
-                Populate("*");
+                lastVariable.Populate(GremlinKeyword.Star);
+            }
+            else
+            {
+                foreach (var property in propertyKeys)
+                {
+                    lastVariable.Populate(property);
+                }
             }
             GremlinValuesVariable newVariable = new GremlinValuesVariable(lastVariable, propertyKeys);
             VariableList.Add(newVariable);

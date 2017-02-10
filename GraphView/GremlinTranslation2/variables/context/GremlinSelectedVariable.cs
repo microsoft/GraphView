@@ -31,5 +31,10 @@ namespace GraphView {
         {
             return RealVariable.GetPrimaryKey();
         }
+
+        internal override string GetProjectKey()
+        {
+            return RealVariable.GetProjectKey();
+        }
     }
 }

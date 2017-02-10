@@ -8,95 +8,89 @@ namespace GraphView
 {
     internal class GremlinBranchVariable : GremlinVariable
     {
+        public static GremlinBranchVariable Create(string label,
+                                                    GremlinVariable parentVariable,
+                                                    List<List<GremlinVariable>> brachVariableList)
+        {
+            if (CheckIsTheSameType(brachVariableList))
+            {
+                switch (brachVariableList.First().First().GetVariableType())
+                {
+                    case GremlinVariableType.Vertex:
+                        return new GremlinBranchVertexVariable(label, parentVariable, brachVariableList);
+                    case GremlinVariableType.Edge:
+                        return new GremlinBranchEdgeVariable(label, parentVariable, brachVariableList);
+                    case GremlinVariableType.Scalar:
+                        return new GremlinBranchScalarVariable(label, parentVariable, brachVariableList);
+                    case GremlinVariableType.Property:
+                        return new GremlinBranchPropertyVariable(label, parentVariable, brachVariableList);
+                }
+            }
+            return new GremlinBranchVariable(label, parentVariable, brachVariableList);
+        }
+
         public List<List<GremlinVariable>> BrachVariableList { get; set; }
         public GremlinVariable ParentVariable { get; set; }
         public string Label { get; set; }
 
-        public GremlinBranchVariable(string label, GremlinVariable parentVariable)
+        public GremlinBranchVariable(string label,
+                                    GremlinVariable parentVariable,
+                                    List<List<GremlinVariable>> brachVariableList)
         {
             Label = label;
-            BrachVariableList = new List<List<GremlinVariable>>();
+            BrachVariableList = brachVariableList;
             ParentVariable = parentVariable;
         }
 
         internal override GremlinVariableType GetVariableType()
         {
-            foreach (var branchVariable in BrachVariableList)
-            {
-                if (branchVariable.Count() > 1) return GremlinVariableType.Table;
-            }
+            return GremlinVariableType.Table;
+        }
 
-            if (checkIsTheSameType())
+        internal override string GetPrimaryKey()
+        {
+            return GremlinKeyword.TableDefaultColumnName;
+        }
+
+        internal override string GetProjectKey()
+        {
+            return GremlinKeyword.TableDefaultColumnName;
+        }
+
+        internal override void Populate(string property)
+        {
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
+            foreach (var variableList in BrachVariableList)
             {
-                return BrachVariableList.First().First().GetVariableType();
+                foreach (var variable in variableList)
+                {
+                    variable.BottomUpPopulate(ParentVariable, property, Label + "_" + property);
+                }
             }
-            else
-            {
-                return GremlinVariableType.Table;
-            }
+        }
+
+        internal override GremlinVariableProperty GetVariableProperty(string property)
+        {
+            Populate(property);
+            return new GremlinVariableProperty(ParentVariable, property);
         }
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            foreach (var branchVariable in BrachVariableList)
-            {
-                if (branchVariable.Count() > 1)
-                {
-                    throw new NotImplementedException();
-                    //return new GremlinVariableProperty(HomeVariable, Label);
-                }
-            }
-            if (checkIsTheSameType())
-            {
-                switch (BrachVariableList.First().First().GetVariableType())
-                {
-                    case GremlinVariableType.Table:
-                        throw new NotImplementedException();
-                        //return new GremlinVariableProperty(HomeVariable, GremlinKeyword.TableValue);
-                    case GremlinVariableType.Edge:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.EdgeID);
-                    case GremlinVariableType.Scalar:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
-                    case GremlinVariableType.Vertex:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.NodeID);
-                }
-            }
-            throw new NotImplementedException();
-            //return new GremlinVariableProperty(HomeVariable, GremlinKeyword.TableValue);
+            return GetVariableProperty(GetPrimaryKey());
         }
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            foreach (var branchVariable in BrachVariableList)
-            {
-                if (branchVariable.Count() > 1)
-                {
-                    throw new NotImplementedException();
-                    return new GremlinVariableProperty(ParentVariable, Label);
-                }
-            }
-            if (checkIsTheSameType())
-            {
-                switch (BrachVariableList.First().First().GetVariableType())
-                {
-                    case GremlinVariableType.Table:
-                        throw new NotImplementedException();
-                        //return new GremlinVariableProperty(HomeVariable, GremlinKeyword.TableValue);
-                    case GremlinVariableType.Edge:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
-                    case GremlinVariableType.Scalar:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.ScalarValue);
-                    case GremlinVariableType.Vertex:
-                        return new GremlinVariableProperty(ParentVariable, GremlinKeyword.Star);
-                }
-            }
-            throw new NotImplementedException();
+            return GetVariableProperty(GetProjectKey());
         }
 
-        private bool checkIsTheSameType()
+        public static bool CheckIsTheSameType(List<List<GremlinVariable>> brachVariableList)
         {
             List<GremlinVariable> checkList = new List<GremlinVariable>();
-            foreach (var branchVariable in BrachVariableList)
+            foreach (var branchVariable in brachVariableList)
             {
                 checkList.Add(branchVariable.First());
             }
@@ -112,6 +106,98 @@ namespace GraphView
                     variable.BottomUpPopulate(terminateVariable, property, columnName);
                 }
             }
+        }
+    }
+
+    internal class GremlinBranchVertexVariable : GremlinBranchVariable
+    {
+        public GremlinBranchVertexVariable(string label, GremlinVariable parentVariable, List<List<GremlinVariable>> brachVariableList)
+            :base (label, parentVariable, brachVariableList)
+        {
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Vertex;
+        }
+
+        internal override string GetPrimaryKey()
+        {
+            return GremlinKeyword.NodeID;
+        }
+
+        internal override string GetProjectKey()
+        {
+            return GremlinKeyword.Star;
+        }
+    }
+
+    internal class GremlinBranchEdgeVariable : GremlinBranchVariable
+    {
+        public GremlinBranchEdgeVariable(string label, GremlinVariable parentVariable, List<List<GremlinVariable>> brachVariableList)
+            : base(label, parentVariable, brachVariableList)
+        {
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Edge;
+        }
+
+        internal override string GetPrimaryKey()
+        {
+            return GremlinKeyword.EdgeID;
+        }
+
+        internal override string GetProjectKey()
+        {
+            return GremlinKeyword.Star;
+        }
+    }
+
+    internal class GremlinBranchScalarVariable : GremlinBranchVariable
+    {
+        public GremlinBranchScalarVariable(string label, GremlinVariable parentVariable, List<List<GremlinVariable>> brachVariableList)
+            : base(label, parentVariable, brachVariableList)
+        {
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Scalar;
+        }
+
+        internal override string GetPrimaryKey()
+        {
+            return GremlinKeyword.ScalarValue;
+        }
+
+        internal override string GetProjectKey()
+        {
+            return GremlinKeyword.ScalarValue;
+        }
+    }
+
+    internal class GremlinBranchPropertyVariable : GremlinBranchVariable
+    {
+        public GremlinBranchPropertyVariable(string label, GremlinVariable parentVariable, List<List<GremlinVariable>> brachVariableList)
+            : base(label, parentVariable, brachVariableList)
+        {
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Property;
+        }
+
+        internal override string GetPrimaryKey()
+        {
+            return GremlinKeyword.PropertyValue;
+        }
+
+        internal override string GetProjectKey()
+        {
+            return GremlinKeyword.PropertyValue;
         }
     }
 }

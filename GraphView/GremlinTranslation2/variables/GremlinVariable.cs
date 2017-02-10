@@ -132,6 +132,11 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal virtual string GetProjectKey()
+        {
+            throw new NotImplementedException();
+        }
+
         internal virtual GremlinVariableProperty DefaultProjection()
         {
             throw new NotImplementedException();
@@ -952,18 +957,15 @@ namespace GraphView
             WScalarExpression secondExpr = null;
             if (predicate.VariableTag != null)
             {
-                //TODO
                 var compareVar = currentContext.Select(predicate.VariableTag);
                 if (compareVar.Count > 1) throw new Exception();
-                compareVar.First().Populate(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType()));
-                secondExpr = compareVar.First().GetVariableProperty(GremlinUtil.GetTypeKeyWithVariableType(GetVariableType())).ToScalarExpression();
+                secondExpr = compareVar.First().DefaultVariableProperty().ToScalarExpression();
             }
             else
             {
                 throw new Exception("Predicate.Label can't be null");
             }
             var firstExpr = DefaultVariableProperty().ToScalarExpression();
-            Populate(GetPrimaryKey());
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
