@@ -355,7 +355,7 @@ namespace GraphView.GremlinTranslation.DEMO
     internal class GremlinBoundEdgeVariable : GremlinEdgeVariable2
     {
         private GremlinVariableProperty adjacencyList;
-        // A list of edge properties to project for this edge table
+        // A list of edge properties to project for this edgeTable table
         private List<string> projectedProperties;
 
         public GremlinBoundEdgeVariable(GremlinVariableProperty adjacencyList)

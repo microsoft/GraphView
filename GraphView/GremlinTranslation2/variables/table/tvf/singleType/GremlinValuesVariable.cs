@@ -9,9 +9,9 @@ namespace GraphView
     internal class GremlinValuesVariable: GremlinScalarTableVariable
     {
         public List<string> PropertyKeys { get; set; }
-        public GremlinTableVariable ProjectVariable { get; set; }
+        public GremlinVariable ProjectVariable { get; set; }
 
-        public GremlinValuesVariable(GremlinTableVariable projectVariable, List<string> propertyKeys)
+        public GremlinValuesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
         {
             ProjectVariable = projectVariable;
             PropertyKeys = new List<string>(propertyKeys);
@@ -22,16 +22,16 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (PropertyKeys.Count == 0)
             {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, "*"));
+                parameters.Add(ProjectVariable.GetVariableProperty(GremlinKeyword.Star).ToScalarExpression());
             }
             else
             {
                 foreach (var property in PropertyKeys)
                 {
-                    parameters.Add(SqlUtil.GetColumnReferenceExpr(ProjectVariable.VariableName, property));
+                    parameters.Add(ProjectVariable.GetVariableProperty(property).ToScalarExpression());
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

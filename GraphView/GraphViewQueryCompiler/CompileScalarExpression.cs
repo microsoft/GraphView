@@ -118,11 +118,15 @@ namespace GraphView
                 case "withinarray":
                     var checkField = Parameters[0] as WColumnReferenceExpression;
                     var arrayField = Parameters[1] as WColumnReferenceExpression;
-                    return new WithInArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
+                    string targetFieldKey = checkField.ColumnName;
+                    return new WithInArray(context.LocateColumnReference(checkField), 
+                        context.LocateColumnReference(arrayField), new StringField(targetFieldKey));
                 case "withoutarray":
                     checkField = Parameters[0] as WColumnReferenceExpression;
                     arrayField = Parameters[1] as WColumnReferenceExpression;
-                    return new WithOutArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
+                    targetFieldKey = checkField.ColumnName;
+                    return new WithOutArray(context.LocateColumnReference(checkField),
+                        context.LocateColumnReference(arrayField), new StringField(targetFieldKey));
                 case "compose1":
                     var targetFieldsAndTheirNames = new List<Tuple<string, int>>();
 

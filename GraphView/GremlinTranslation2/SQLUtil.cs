@@ -69,7 +69,7 @@ namespace GraphView
             switch (predicate.PredicateType)
             {
                 case PredicateType.within:
-                    if (predicate.Label != null)
+                    if (predicate.VariableTag != null)
                     {
                         List<WScalarExpression> parameters = new List<WScalarExpression>();
                         parameters.Add(firstExpr);
@@ -87,7 +87,7 @@ namespace GraphView
                         return GetBooleanParenthesisExpr(ConcatBooleanExprWithOr(booleanExprList));
                     }
                 case PredicateType.without:
-                    if (predicate.Label != null)
+                    if (predicate.VariableTag != null)
                     {
                         List<WScalarExpression> parameters = new List<WScalarExpression>();
                         parameters.Add(firstExpr);
@@ -196,16 +196,11 @@ namespace GraphView
             return new WSchemaObjectName(GetIdentifier(value));
         }
 
-        internal static WNamedTableReference GetNamedTableReference(string value)
-        {
-            return new WNamedTableReference() { TableObjectName = GetSchemaObjectName(value) };
-        }
-
         internal static WNamedTableReference GetNamedTableReference(GremlinVariable gremlinVar)
         {
             return new WNamedTableReference()
             {
-                Alias = GetIdentifier(gremlinVar.VariableName),
+                Alias = GetIdentifier(gremlinVar.GetVariableName()),
                 TableObjectString = "node",
                 TableObjectName = GetSchemaObjectName("node"),
                 Low = gremlinVar.Low,
@@ -215,7 +210,7 @@ namespace GraphView
 
         internal static WBooleanExpression GetHaskeyBooleanExpr(GremlinVariable currVar, string key)
         {
-            var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.VariableName, key));
+            var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.GetVariableName(), key));
             var secondExpr = GetValueExpr("true");
             return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
         }
@@ -238,28 +233,6 @@ namespace GraphView
             };
         }
 
-        internal static WExpressionWithSortOrder GetExpressionWithSortOrder(string key, GremlinKeyword.Order order)
-        {
-            return new WExpressionWithSortOrder()
-            {
-                ScalarExpr = GetColumnReferenceExpr(key),
-                SortOrder = ConvertGremlinOrderToSqlOrder(order)
-            };
-        }
-
-        internal static SortOrder ConvertGremlinOrderToSqlOrder(GremlinKeyword.Order order)
-        {
-            if (GremlinKeyword.Order.Desr == order) return SortOrder.Descending;
-            if (GremlinKeyword.Order.Incr == order) return SortOrder.Ascending;
-            if (GremlinKeyword.Order.Shuffle == order) return SortOrder.NotSpecified;
-            throw new NotImplementedException();
-        }
-
-        internal static WGroupingSpecification GetGroupingSpecification(string key)
-        {
-            return new WExpressionGroupingSpec() { Expression = GetColumnReferenceExpr(key) };
-        }
-
         internal static WMatchPath GetMatchPath(GremlinMatchPath path)
         {
             return new WMatchPath()
@@ -273,18 +246,18 @@ namespace GraphView
         {
             var edge = path.EdgeVariable as GremlinEdgeTableVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
-                return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.VariableName);
+                return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.GetVariableName());
             else
-                return path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable?.VariableName);
+                return path.SinkVariable == null ? null : GetSchemaObjectName(path.SinkVariable?.GetVariableName());
         }
 
         internal static WSchemaObjectName GetPathSource(GremlinMatchPath path)
         {
             var edge = path.EdgeVariable as GremlinEdgeTableVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
-                return GetSchemaObjectName(path.SinkVariable.VariableName);
+                return GetSchemaObjectName(path.SinkVariable.GetVariableName());
             else
-                return GetSchemaObjectName(path.SourceVariable?.VariableName);
+                return GetSchemaObjectName(path.SourceVariable?.GetVariableName());
         }
 
         internal static List<Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>> GetPathEdgeList(GremlinMatchPath path)
@@ -298,15 +271,15 @@ namespace GraphView
             };
         }
 
-        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeTableVariable edge)
+        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeTableVariable edgeTable)
         {
             return new WEdgeColumnReferenceExpression()
             {
                 MultiPartIdentifier = GetMultiPartIdentifier("Edge"),
-                Alias = edge.VariableName,
+                Alias = edgeTable.GetVariableName(),
                 MinLength = 1,
                 MaxLength = 1,
-                EdgeType = edge.EdgeType
+                EdgeType = edgeTable.EdgeType
             };
         }
 
@@ -423,6 +396,12 @@ namespace GraphView
                 case GremlinKeyword.func.Group:
                     funcTableRef = new WGroupTableReference();
                     break;
+                case GremlinKeyword.func.Store:
+                    funcTableRef = new WStoreTableReference();
+                    break;
+                case GremlinKeyword.func.Cap:
+                    funcTableRef = new WCapTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }
@@ -472,18 +451,6 @@ namespace GraphView
             return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
         }
 
-        internal static WBooleanExpression GetFalseBooleanComparisonExpr()
-        {
-            var firstExpr = GetValueExpr("1");
-            var secondExpr = GetValueExpr("0");
-            return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
-        }
-
-        internal static WSelectScalarExpression GetSelectFunctionCall(string functionName, params WScalarExpression[] parameters)
-        {
-            return new WSelectScalarExpression() { SelectExpr = GetFunctionCall(functionName, parameters) };
-        }
-
         internal static WBinaryQueryExpression GetBinaryQueryExpr(WSelectQueryExpression firstQueryExpr,
             WSelectQueryExpression secondQueryExpr)
         {
@@ -501,47 +468,12 @@ namespace GraphView
             return new WWhereClause() {SearchCondition = predicate};
         }
 
-        internal static WVariableTableReference GetVariableTableReference(string variableName)
-        {
-            return new WVariableTableReference()
-            {
-                Variable = GetVariableReference(variableName),
-                Alias = GetIdentifier(variableName)
-            };
-        }
-
-        internal static WSetVariableStatement GetSetVariableStatement(string variableName, WScalarExpression scalarExpr)
-        {
-            return new WSetVariableStatement()
-            {
-                Expression = scalarExpr,
-                Variable = GetVariableReference(variableName)
-            };
-        }
-
         internal static WSelectQueryBlock GetSimpleSelectQueryBlock(params GremlinVariableProperty[] projectProperties)
         {
             var queryBlock = new WSelectQueryBlock();
             foreach (var property in projectProperties)
             {
                 queryBlock.SelectElements.Add(GetSelectScalarExpr(property.DefaultVariableProperty().ToScalarExpression()));
-            }
-            return queryBlock;
-        }
-
-        internal static WSelectQueryBlock GetSimpleSelectQueryBlock(string variableName, List<string> projectProperties)
-        {
-            var queryBlock = new WSelectQueryBlock();
-            foreach (var property in projectProperties)
-            {
-                if (property == null)
-                {
-                    queryBlock.SelectElements.Add(GetSelectScalarExpr(GetValueExpr(null)));
-                }
-                else
-                {
-                    queryBlock.SelectElements.Add(GetSelectScalarExpr(GetColumnReferenceExpr(variableName, property)));
-                }
             }
             return queryBlock;
         }

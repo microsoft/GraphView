@@ -10,21 +10,11 @@ namespace GraphView {
         public bool IsFromSelect { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
         public string SelectKey { get; set; }
-        public List<string> UsedProperties { get; set; }
         public GremlinVariable RealVariable { get; set; }
 
-        public GremlinVariable GetRealVariable()
+        internal override WEdgeType GetEdgeType()
         {
-            if (RealVariable is GremlinSelectedVariable)
-            {
-                return (RealVariable as GremlinSelectedVariable).GetRealVariable();
-            }
-            return RealVariable;
-        }
-
-        internal override bool ContainsProperties(string property)
-        {
-            return RealVariable.ContainsProperties(property);
+            return RealVariable.GetEdgeType();
         }
 
         internal override GremlinVariableProperty DefaultVariableProperty()
@@ -35,6 +25,16 @@ namespace GraphView {
         internal override GremlinVariableProperty DefaultProjection()
         {
             return RealVariable.DefaultProjection();
+        }
+
+        internal override string GetPrimaryKey()
+        {
+            return RealVariable.GetPrimaryKey();
+        }
+
+        internal override string GetProjectKey()
+        {
+            return RealVariable.GetProjectKey();
         }
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinDropVertexVariable : GremlinDropTableVariable
+    internal class GremlinDropVertexVariable : GremlinDropVariable
     {
         public GremlinVariableProperty DropVetexVariable { get; set; }
 
@@ -19,12 +19,12 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(DropVetexVariable.ToScalarExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropNode, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropNode, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    internal class GremlinDropEdgeVariable : GremlinDropTableVariable
+    internal class GremlinDropEdgeVariable : GremlinDropVariable
     {
         public GremlinVariableProperty SourceVariable;
         public GremlinVariableProperty EdgeVariable;
@@ -40,7 +40,7 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SourceVariable.ToScalarExpression());
             parameters.Add(EdgeVariable.ToScalarExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropEdge, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.DropEdge, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

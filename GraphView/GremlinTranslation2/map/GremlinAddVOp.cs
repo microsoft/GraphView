@@ -8,7 +8,6 @@ namespace GraphView
 {
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
-        public Dictionary<string, object> Properties { get; set; }
         public string VertexLabel { get; set; }
 
         public GremlinAddVOp() {}

@@ -8,23 +8,23 @@ namespace GraphView
 {
     internal class GremlinMatchPath
     {
-        public GremlinTableVariable SourceVariable { get; set; } 
-        public GremlinTableVariable EdgeVariable { get; set; } 
-        public GremlinTableVariable SinkVariable { get; set; } 
+        public GremlinVariable SourceVariable { get; set; } 
+        public GremlinVariable EdgeVariable { get; set; } 
+        public GremlinVariable SinkVariable { get; set; } 
  
-        public GremlinMatchPath(GremlinTableVariable sourceVariable, GremlinTableVariable edgeVariable, GremlinTableVariable sinkVariable)
+        public GremlinMatchPath(GremlinVariable sourceVariable, GremlinVariable edgeVariable, GremlinVariable sinkVariable)
         { 
             SourceVariable = sourceVariable; 
             EdgeVariable = edgeVariable; 
             SinkVariable = sinkVariable; 
         }
 
-        public void SetSinkVariable(GremlinTableVariable sinkVariable)
+        public void SetSinkVariable(GremlinVariable sinkVariable)
         {
             SinkVariable = sinkVariable;
         }
 
-        public void SetSourceVariable(GremlinTableVariable sourceVariable)
+        public void SetSourceVariable(GremlinVariable sourceVariable)
         {
             SourceVariable = sourceVariable;
         }

@@ -8,14 +8,31 @@ namespace GraphView
 {
     internal class GremlinUtil
     {
+        protected static int _vertexCount = 0;
+        protected static int _edgeCount = 0;
+        protected static int _tableCount = 0;
+
+        internal static string GenerateTableAlias(GremlinVariableType variableType)
+        {
+            switch (variableType)
+            {
+                case GremlinVariableType.Vertex:
+                    return "N_" + _vertexCount++;
+                case GremlinVariableType.Edge:
+                    return "E_" + _edgeCount++;
+            }
+            return "R_" + _tableCount++;
+        }
+
         internal static bool IsTheSameOutputType(List<GremlinToSqlContext> contextList)
         {
             if (contextList.Count <= 1) return true;
             bool isSameType = true;
             for (var i = 1; i < contextList.Count; i++)
             {
-                isSameType = contextList[i - 1].PivotVariable.GetVariableType() ==
-                             contextList[i].PivotVariable.GetVariableType();
+                isSameType = (contextList[i - 1].PivotVariable.GetVariableType() == contextList[i].PivotVariable.GetVariableType())
+                             || contextList[i - 1].PivotVariable.GetVariableType() == GremlinVariableType.Table
+                             || contextList[i].PivotVariable.GetVariableType() == GremlinVariableType.Table;
                 if (isSameType == false) return false;
             }
             return isSameType;
@@ -34,21 +51,28 @@ namespace GraphView
             return isSameType;
         }
 
-        internal static string GetTypeKeyWithVariableType(GremlinVariableType type)
+        internal static bool IsVertexProperty(string property)
         {
-            switch (type)
+            if (property == GremlinKeyword.NodeID
+                || property == GremlinKeyword.EdgeAdj
+                || property == GremlinKeyword.ReverseEdgeAdj)
             {
-                case GremlinVariableType.Edge:
-                    return GremlinKeyword.EdgeID;
-                case GremlinVariableType.Scalar:
-                    return GremlinKeyword.ScalarValue;
-                case GremlinVariableType.Table:
-                    throw new NotImplementedException();
-                case GremlinVariableType.Vertex:
-                    return GremlinKeyword.NodeID;
+                return true;
             }
-            throw new NotImplementedException();
-            ;
+            return false;
+        }
+
+        internal static bool IsEdgeProperty(string property)
+        {
+            if (property == GremlinKeyword.EdgeID
+                || property == GremlinKeyword.EdgeSourceV
+                || property == GremlinKeyword.EdgeSinkV
+                || property == GremlinKeyword.EdgeOtherV
+            )
+            {
+                return true;
+            }
+            return false;
         }
     }
 }

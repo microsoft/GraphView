@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAddEVariable: GremlinEdgeTableVariable
+    internal class GremlinAddETableVariable: GremlinEdgeTableVariable
     {
         public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
@@ -16,13 +16,28 @@ namespace GraphView
 
         private int OtherVIndex;
 
-        public GremlinAddEVariable(GremlinVariable inputVariable, string edgeLabel)
+        public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel)
         {
             Properties = new Dictionary<string, object>();
             EdgeLabel = edgeLabel;
             InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
             OtherVIndex = 1;
+        }
+
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
         }
 
         public override WTableReference ToTableReference()
@@ -47,7 +62,7 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -56,11 +71,11 @@ namespace GraphView
         {
             if (context == null)
             {
-                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.DefaultVariableProperty());
+                return SqlUtil.GetSimpleSelectQueryBlock(InputVariable.DefaultProjection());
             }
             else
             {
-                return context.ToSelectQueryBlock(new List<string>() { GremlinKeyword.NodeID });
+                return context.ToSelectQueryBlock();
             } 
         }
 
@@ -81,7 +96,7 @@ namespace GraphView
         internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
             FromVertexContext = fromVertexContext;
-            FromVertexContext.ParentVariable = this;
+            FromVertexContext.HomeVariable = this;
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
@@ -108,7 +123,7 @@ namespace GraphView
         internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
             ToVertexContext = toVertexContext;
-            ToVertexContext.ParentVariable = this;
+            ToVertexContext.HomeVariable = this;
         }
     }
 }

@@ -6,66 +6,36 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinGhostVariable : GremlinSelectedVariable
+    internal class GremlinLocalVariable : GremlinTableVariable
     {
-        public GremlinGhostVariable(GremlinVariable realVariable, GremlinVariable attachedVariable, string label)
-        {
-            RealVariable = realVariable;
-            AttachedVariable = attachedVariable;
-            SelectKey = label;
+        public GremlinToSqlContext LocalContext { get; set; }
 
-            PropertiesMap = new Dictionary<string, string>();
-        }
-
-        public static GremlinGhostVariable Create(GremlinVariable realVariable, GremlinVariable attachedVariable, string label)
+        public static GremlinLocalVariable Create(GremlinToSqlContext localContext)
         {
-            if (realVariable is GremlinGhostVariable)
-            {
-                return realVariable as GremlinGhostVariable;
-            }
-            switch (realVariable.GetVariableType())
+            switch (localContext.PivotVariable.GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    return new GremlinGhostVertexVariable(realVariable, attachedVariable, label);
+                    return new GremlinLocalVertexVariable(localContext);
                 case GremlinVariableType.Edge:
-                    return new GremlinGhostEdgeVariable(realVariable, attachedVariable, label);
+                    return new GremlinLocalEdgeVariable(localContext);
                 case GremlinVariableType.Scalar:
-                    return new GremlinGhostScalarVariable(realVariable, attachedVariable, label);
+                    return new GremlinLocalScalarVariable(localContext);
                 case GremlinVariableType.Property:
-                    return new GremlinGhostPropertyVariable(realVariable, attachedVariable, label);
-
+                    return new GremlinLocalPropertyVariable(localContext);
             }
-            return new GremlinGhostVariable(realVariable, attachedVariable, label);
+            return new GremlinLocalVariable(localContext);
         }
 
-        public GremlinVariable AttachedVariable { get; set; }
-        public Dictionary<string, string> PropertiesMap { get; set; }
-
-        internal override GremlinVariableProperty GetVariableProperty(string property)
+        internal override GremlinVariableProperty GetPath()
         {
-            Populate(property);
-            return new GremlinVariableProperty(AttachedVariable, PropertiesMap[property]);
+            return new GremlinVariableProperty(this, GremlinKeyword.Path);
         }
 
-        internal override string GetVariableName()
+        public GremlinLocalVariable(GremlinToSqlContext localContext, GremlinVariableType variableType = GremlinVariableType.Table)
+            : base(variableType)
         {
-            return AttachedVariable.GetVariableName();
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return RealVariable.GetVariableType();
-        }
-
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            return GetVariableProperty(GetPrimaryKey());
-        }
-
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            var defaultColumn = RealVariable.DefaultProjection().VariableProperty;
-            return GetVariableProperty(defaultColumn);
+            LocalContext = localContext;
+            LocalContext.HomeVariable = this;
         }
 
         internal override void Populate(string property)
@@ -73,30 +43,29 @@ namespace GraphView
             if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
 
-            RealVariable.Populate(property);
-            if (!PropertiesMap.ContainsKey(property))
-            {
-                string columnName = SelectKey + "_" + property;
-                RealVariable.BottomUpPopulate(AttachedVariable, property, columnName);
-                PropertiesMap[property] = columnName;
-            }
+            LocalContext.Populate(property);
+        }
+
+        internal override void PopulateGremlinPath()
+        {
+            LocalContext.PopulateGremlinPath();
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(SqlUtil.GetScalarSubquery(LocalContext.ToSelectQueryBlock(ProjectedProperties)));
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Local, parameters, this, GetVariableName());
+
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 
-    internal class GremlinGhostScalarVariable : GremlinGhostVariable
+    internal class GremlinLocalVertexVariable : GremlinLocalVariable
     {
-        public GremlinGhostScalarVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label) 
-            : base(ghostVariable, attachedVariable, label) { }
-    }
-
-    internal class GremlinGhostVertexVariable : GremlinGhostVariable
-    {
-        public GremlinGhostVertexVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label)
-            : base(ghostVariable, attachedVariable, label) { }
-
-        internal override void Property(GremlinToSqlContext currentGhost, Dictionary<string, object> properties)
+        public GremlinLocalVertexVariable(GremlinToSqlContext localContext)
+            : base(localContext, GremlinVariableType.Vertex)
         {
-            RealVariable.Property(currentGhost, properties);
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -180,10 +149,12 @@ namespace GraphView
         }
     }
 
-    internal class GremlinGhostEdgeVariable : GremlinGhostVariable
+    internal class GremlinLocalEdgeVariable : GremlinLocalVariable
     {
-        public GremlinGhostEdgeVariable(GremlinVariable ghostEdge, GremlinVariable attachedVariable, string label)
-            : base(ghostEdge, attachedVariable, label) { }
+        public GremlinLocalEdgeVariable(GremlinToSqlContext localContext)
+             : base(localContext, GremlinVariableType.Edge)
+        {
+        }
 
         internal override void InV(GremlinToSqlContext currentContext)
         {
@@ -246,11 +217,20 @@ namespace GraphView
         }
     }
 
-    internal class GremlinGhostPropertyVariable : GremlinGhostVariable
+    internal class GremlinLocalScalarVariable : GremlinLocalVariable
     {
-        public GremlinGhostPropertyVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label)
-            : base(ghostVariable, attachedVariable, label)
-        { }
+        public GremlinLocalScalarVariable(GremlinToSqlContext localContext)
+            : base(localContext, GremlinVariableType.Scalar)
+        {
+        }
+    }
+
+    internal class GremlinLocalPropertyVariable : GremlinLocalVariable
+    {
+        public GremlinLocalPropertyVariable(GremlinToSqlContext localContext)
+            : base(localContext, GremlinVariableType.Property)
+        {
+        }
 
         internal override void Key(GremlinToSqlContext currentContext)
         {

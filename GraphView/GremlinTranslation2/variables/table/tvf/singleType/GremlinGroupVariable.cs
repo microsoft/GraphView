@@ -15,24 +15,14 @@ namespace GraphView
         {
             SideEffectKey = sideEffectKey;
             Parameters = new List<object>(parameters);
+            foreach (var parameter in parameters)
+            {
+                if (parameter is GremlinToSqlContext)
+                {
+                    (parameter as GremlinToSqlContext).HomeVariable = this;
+                }
+            }
         }
-
-        internal override void Populate(string property)
-        {
-            ParentContext.Populate(property);
-        }
-
-        //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
-        //{
-        //    byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
-        //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-        //    Parameters.Add(byContext);
-        //}
-
-        //internal override void By(GremlinToSqlContext currentContext, string name)
-        //{
-        //    Parameters.Add(name);
-        //}
 
         public override WTableReference ToTableReference()
         {
@@ -49,7 +39,7 @@ namespace GraphView
                     parameters.Add(SqlUtil.GetValueExpr(parameter));
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }

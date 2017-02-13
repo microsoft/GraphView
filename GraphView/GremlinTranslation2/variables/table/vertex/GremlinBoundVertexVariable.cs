@@ -13,15 +13,21 @@ namespace GraphView
     /// </summary>
     internal class GremlinBoundVertexVariable : GremlinVertexTableVariable
     {
-        private List<GremlinVariableProperty> variablePropertyList;
+        public WEdgeType InputEdgeType { get; set; }
+        public GremlinVariableProperty SourceVariableProperty { get; set; }
+        public GremlinVariableProperty SinkVariableProperty { get; set; }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-            bool isBothV = variablePropertyList.Count == 2;
-            foreach (var variableProperty in variablePropertyList)
+
+            if (SourceVariableProperty != null)
             {
-                PropertyKeys.Add(variableProperty.ToScalarExpression());
+                PropertyKeys.Add(SourceVariableProperty.ToScalarExpression());
+            }
+            if (SinkVariableProperty != null)
+            {
+                PropertyKeys.Add(SinkVariableProperty.ToScalarExpression());
             }
             foreach (var property in ProjectedProperties)
             {
@@ -29,45 +35,118 @@ namespace GraphView
             }
 
             WTableReference secondTableRef = null;
-            if (isBothV)
+            if (SourceVariableProperty != null && SinkVariableProperty != null)
             {
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, this, VariableName);
+                //BothV
+                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothV, PropertyKeys, this, GetVariableName());
             }
-            else if (variablePropertyList.First().GremlinVariable is GremlinEdgeTableVariable)
+            switch (InputEdgeType)
             {
-                switch ((variablePropertyList.First().GremlinVariable as GremlinEdgeTableVariable).EdgeType)
-                {
-                    case WEdgeType.BothEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OtherV, PropertyKeys, this, VariableName);
-                        break;
-                    case WEdgeType.InEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
-                        break;
-                    case WEdgeType.OutEdge:
-                        secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, VariableName);
-                        break;
-                }
+                case WEdgeType.BothEdge:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OtherV, PropertyKeys, this, GetVariableName());
+                    break;
+                case WEdgeType.InEdge:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, GetVariableName());
+                    break;
+                case WEdgeType.OutEdge:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, GetVariableName());
+                    break;
             }
-            else
-            {
-                secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, VariableName);
-            }
-           
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
 
-        public GremlinBoundVertexVariable(GremlinVariableProperty vertexId)
+        public GremlinBoundVertexVariable(WEdgeType inputEdgeType, GremlinVariableProperty sourceVariableProperty)
         {
-            variablePropertyList = new List<GremlinVariableProperty>();
-            variablePropertyList.Add(vertexId);
+            InputEdgeType = inputEdgeType;
+            SourceVariableProperty = sourceVariableProperty;
         }
 
-        public GremlinBoundVertexVariable(GremlinVariableProperty sourceProperty, GremlinVariableProperty sinkProperty)
+        public GremlinBoundVertexVariable(WEdgeType inputEdgeType, GremlinVariableProperty sourceVariableProperty, GremlinVariableProperty sinkVariableProperty)
         {
-            variablePropertyList = new List<GremlinVariableProperty>();
-            variablePropertyList.Add(sourceProperty);
-            variablePropertyList.Add(sinkProperty);
+            InputEdgeType = inputEdgeType;
+            SourceVariableProperty = sourceVariableProperty;
+            SinkVariableProperty = sinkVariableProperty;
+        }
+
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Both(this, edgeLabels);
+        }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.BothE(this, edgeLabels);
+        }
+
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+            currentContext.BothV(this);
+        }
+
+        internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.In(this, edgeLabels);
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.InE(this, edgeLabels);
+        }
+
+        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.Out(this, edgeLabels);
+        }
+
+        internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+            currentContext.OutE(this, edgeLabels);
+        }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            currentContext.DropVertex(this);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+            currentContext.Has(this, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+            currentContext.Has(this, label, propertyKey, value);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, propertyKey, predicate);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+            currentContext.Has(this, label, propertyKey, predicate);
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasId(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            currentContext.HasLabel(this, values);
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Properties(this, propertyKeys);
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+            currentContext.Values(this, propertyKeys);
         }
     }
 }

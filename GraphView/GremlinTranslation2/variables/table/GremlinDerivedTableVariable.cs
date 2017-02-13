@@ -19,16 +19,15 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (!ProjectedProperties.Contains(property))
-            {
-                ProjectedProperties.Add(property);
-                SubqueryContext.Populate(property);
-            }
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
+            SubqueryContext.Populate(property);
         }
 
         public override WTableReference ToTableReference()
         {
-            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), VariableName);
+            return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), GetVariableName());
         }
     }
 
@@ -46,7 +45,8 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
-            SubqueryContext.PivotVariable.Populate(SubqueryContext.PivotVariable.DefaultVariableProperty().VariableProperty);
+            //TODO
+            //SubqueryContext.PivotVariable.Populate(SubqueryContext.PivotVariable.DefaultVariableProperty().VariableProperty);
             foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
             {
                 compose1Parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());
@@ -56,28 +56,12 @@ namespace GraphView
 
             List<WScalarExpression> foldParameters = new List<WScalarExpression> { compose1 };
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.ScalarValue));
-            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
 
         internal override void Unfold(GremlinToSqlContext currentContext)
         {
-            GremlinTableVariable newVariable = null;
-            switch (FoldVariable.GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                    newVariable = new GremlinUnfoldEdgeVariable(this);
-                    break;
-                case GremlinVariableType.Vertex:
-                    newVariable = new GremlinUnfoldVertexVariable(this);
-                    break;
-                case GremlinVariableType.Scalar:
-                    newVariable = new GremlinUnfoldScalarVariable(this);
-                    break;
-                case GremlinVariableType.Table:
-                    newVariable = new GremlinUnfoldTableVariable(this);
-                    break;
-            }
-            
+            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -93,7 +77,7 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Count), GremlinKeyword.ScalarValue));
-            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }
 
@@ -112,7 +96,7 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()), GremlinKeyword.ScalarValue));
-            return SqlUtil.GetDerivedTable(queryBlock, VariableName);
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }
 }

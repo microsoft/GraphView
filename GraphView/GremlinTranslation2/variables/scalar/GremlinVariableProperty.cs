@@ -24,7 +24,7 @@ namespace GraphView
 
         public override WScalarExpression ToScalarExpression()
         {
-            return SqlUtil.GetColumnReferenceExpr(GremlinVariable.VariableName, VariableProperty);
+            return SqlUtil.GetColumnReferenceExpr(GremlinVariable.GetVariableName(), VariableProperty);
         }
     }
 }

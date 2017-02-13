@@ -22,11 +22,13 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
             foreach (var variable in GremlinVariableList)
             {
                 variable.Populate(property);
             }
-            base.Populate(property);
         }
 
         internal WScalarExpression ToScalarExpression()
@@ -61,29 +63,7 @@ namespace GraphView
 
         internal override void Unfold(GremlinToSqlContext currentContext)
         {
-            GremlinTableVariable newVariable = null;
-            if (GremlinUtil.IsTheSameType(GremlinVariableList))
-            {
-                switch (GremlinVariableList.First().GetVariableType())
-                {
-                    case GremlinVariableType.Vertex:
-                        newVariable =  new GremlinUnfoldVertexVariable(this);
-                        break;
-                    case GremlinVariableType.Edge:
-                        newVariable = new GremlinUnfoldEdgeVariable(this);
-                        break;
-                    case GremlinVariableType.Table:
-                        newVariable = new GremlinUnfoldTableVariable(this);
-                        break;
-                    case GremlinVariableType.Scalar:
-                        newVariable = new GremlinUnfoldScalarVariable(this);
-                        break;
-                }
-            }
-            else
-            {
-                newVariable = GremlinUnfoldVariable.Create(this);
-            }
+            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

@@ -15,23 +15,11 @@ namespace GraphView
         {
             ProjectKeys = new List<string>(projectKeys);
             ProjectContextList = byContexts;
+            foreach (var context in ProjectContextList)
+            {
+                context.HomeVariable = this;
+            }
         }
-
-        internal override void Populate(string property)
-        {
-            //foreach (var context in ProjectContextList)
-            //{
-            //    context.Populate(property);
-            //}
-        }
-
-        //internal override void By(GremlinToSqlContext currentContext, GraphTraversal2 byTraversal)
-        //{
-        //    byTraversal.GetStartOp().InheritedVariableFromParent(ParentContext);
-        //    GremlinToSqlContext byContext = byTraversal.GetEndOp().GetContext();
-        //    byContext.ParentVariable = this;
-        //    ProjectContextList.Add(byContext);
-        //}
 
         public override WTableReference ToTableReference()
         {
@@ -39,15 +27,10 @@ namespace GraphView
 
             for (var i = 0; i < ProjectKeys.Count; i++)
             {
-                //List<string> defaultProjectProperty = new List<string>()
-                //{
-                //    ProjectContextList[i%ProjectContextList.Count].PivotVariable.DefaultVariableProperty()
-                //        .VariableProperty
-                //};
                 parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
                 parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, this, VariableName);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
