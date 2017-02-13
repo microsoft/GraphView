@@ -26,6 +26,7 @@ namespace GraphView
         public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject)
         {
             VertexField vertexField = new VertexField();
+            vertexField.JsonDocument = vertexObject.ToString();
 
             string vertexId = null;
             string vertexLabel = null;
@@ -671,10 +672,15 @@ namespace GraphView
             Edges = new Dictionary<string, EdgeField>();
         }
 
-        //public void InsertEdgeField(string edgeOffset, EdgeField edgeField)
-        //{
-        //    Edges.Add(edgeOffset, edgeField);
-        //}
+        public void AddEdgeField(string edgeOffset, EdgeField edgeField)
+        {
+            Edges.Add(edgeOffset, edgeField);
+        }
+
+        public void RemoveEdgeField(string edgeOffset)
+        {
+            Edges.Remove(edgeOffset);
+        }
 
         public EdgeField GetEdgeFieldByOffset(string edgeOffset)
         {
@@ -722,6 +728,8 @@ namespace GraphView
         public Dictionary<string, VertexPropertyField> VertexProperties { get; set; }
         public AdjacencyListField AdjacencyList { get; set; }
         public AdjacencyListField RevAdjacencyList { get; set; }
+        public string JsonDocument { get; set; }
+
 
         public FieldObject this[string propertyName]
         {
