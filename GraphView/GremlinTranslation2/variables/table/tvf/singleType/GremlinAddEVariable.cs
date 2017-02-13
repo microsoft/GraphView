@@ -11,14 +11,14 @@ namespace GraphView
         public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
         public GremlinToSqlContext ToVertexContext { get; set; }
-        public Dictionary<string, object> Properties { get; set; }
+        public Dictionary<string, object> EdgeProperties { get; set; }
         public string EdgeLabel { get; set; }
 
         private int OtherVIndex;
 
         public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel)
         {
-            Properties = new Dictionary<string, object>();
+            EdgeProperties = new Dictionary<string, object>();
             EdgeLabel = edgeLabel;
             InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
@@ -57,7 +57,7 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
                 parameters.Add(SqlUtil.GetValueExpr(EdgeLabel));
             }
-            foreach (var property in Properties)
+            foreach (var property in EdgeProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
@@ -103,7 +103,7 @@ namespace GraphView
         {
             foreach (var pair in properties)
             {
-                Properties[pair.Key] = pair.Value;
+                EdgeProperties[pair.Key] = pair.Value;
             }
         }
 

@@ -51,6 +51,9 @@ namespace GraphView
                 case WEdgeType.OutEdge:
                     secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.InV, PropertyKeys, this, GetVariableName());
                     break;
+                case WEdgeType.Undefined:
+                    secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OutV, PropertyKeys, this, GetVariableName());
+                    break;
             }
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);

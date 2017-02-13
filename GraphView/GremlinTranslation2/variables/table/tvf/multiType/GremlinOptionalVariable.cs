@@ -56,12 +56,12 @@ namespace GraphView
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
-            return OptionalContext.SelectCurrentAndChildVariable(label);
+            return OptionalContext.SelectVarsFromCurrAndChildContext(label);
         }
 
-        internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
-            return OptionalContext.FetchAllVariablesInCurrAndChildContext();
+            return OptionalContext.FetchVarsFromCurrAndChildContext();
         }
 
         internal override void PopulateGremlinPath()

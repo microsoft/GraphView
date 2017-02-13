@@ -30,14 +30,6 @@ namespace GraphView
             {
                 return (inputVariable as GremlinFoldVariable).FoldVariable.GetVariableType();
             }
-            if (inputVariable is GremlinListVariable)
-            {
-                return (inputVariable as GremlinListVariable).GetVariableType();
-            }
-            if (inputVariable is GremlinSelectedVariable)
-            {
-                return GetUnfoldVariableType((inputVariable as GremlinSelectedVariable).RealVariable);
-            }
             return inputVariable.GetVariableType();
         }
 
@@ -64,26 +56,22 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
             if (UnfoldVariable is GremlinListVariable)
             {
-                List<WScalarExpression> parameters = new List<WScalarExpression>();
                 parameters.Add((UnfoldVariable as GremlinListVariable).ToScalarExpression());
-                foreach (var projectProperty in ProjectedProperties)
-                {
-                    parameters.Add(SqlUtil.GetValueExpr(projectProperty));
-                }
-                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, GetVariableName());
-                return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
             }
             else
             {
-                List<WScalarExpression> parameters = new List<WScalarExpression>();
                 parameters.Add(UnfoldVariable.DefaultVariableProperty().ToScalarExpression());
-                parameters.Add(SqlUtil.GetValueExpr(UnfoldVariable.GetPrimaryKey()));
-                var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this, GetVariableName());
-                return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
             }
-            throw new NotImplementedException();
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+            }
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Unfold, parameters, this,
+                GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
 

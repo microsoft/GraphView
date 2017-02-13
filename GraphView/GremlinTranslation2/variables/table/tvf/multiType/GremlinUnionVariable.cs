@@ -57,12 +57,12 @@ namespace GraphView
             }
         }
 
-        internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>();
             foreach (var context in UnionContextList)
             {
-                var subContextVariableList = context.FetchAllVariablesInCurrAndChildContext();
+                var subContextVariableList = context.FetchVarsFromCurrAndChildContext();
                 if (subContextVariableList != null)
                 {
                     variableList.AddRange(subContextVariableList);
@@ -76,7 +76,7 @@ namespace GraphView
             List<List<GremlinVariable>> branchVariableList = new List<List<GremlinVariable>>();
             foreach (var context in UnionContextList)
             {
-                var variableList = context.SelectCurrentAndChildVariable(label);
+                var variableList = context.SelectVarsFromCurrAndChildContext(label);
                 branchVariableList.Add(variableList);
             }
             return new List<GremlinVariable>() {GremlinBranchVariable.Create(label, this, branchVariableList)};

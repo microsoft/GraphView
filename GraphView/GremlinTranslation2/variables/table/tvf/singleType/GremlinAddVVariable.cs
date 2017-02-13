@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinAddVVariable: GremlinVertexTableVariable
     {
-        public Dictionary<string, object> Properties { get; set; }
+        public Dictionary<string, object> VertexProperties { get; set; }
         public string VertexLabel { get; set; }
         public bool IsFirstTableReference { get; set; }
 
@@ -55,7 +55,7 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
                 parameters.Add(SqlUtil.GetValueExpr(VertexLabel));
             }
-            foreach (var property in Properties)
+            foreach (var property in VertexProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
@@ -68,21 +68,21 @@ namespace GraphView
 
         public GremlinAddVVariable(string vertexLabel, bool isFirstTableReference = false)
         {
-            Properties = new Dictionary<string, object>();
+            VertexProperties = new Dictionary<string, object>();
             VertexLabel = vertexLabel;
             IsFirstTableReference = isFirstTableReference;
         }
 
         public GremlinAddVVariable()
         {
-            Properties = new Dictionary<string, object>();
+            VertexProperties = new Dictionary<string, object>();
         }
 
         internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
         {
             foreach (var pair in properties)
             {
-                Properties[pair.Key] = pair.Value;
+                VertexProperties[pair.Key] = pair.Value;
             }
         }
     }

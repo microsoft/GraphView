@@ -19,7 +19,6 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
             throw new NotImplementedException();
-            return inputContext;
         }
     }
 }

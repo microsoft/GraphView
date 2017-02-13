@@ -22,7 +22,6 @@ namespace GraphView
 
             throw new NotImplementedException();
 
-            return inputContext;
         }
     }
 }

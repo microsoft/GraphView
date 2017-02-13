@@ -9,18 +9,18 @@ using GraphView;
 namespace GraphView {
     internal class GremlinUpdatePropertiesVariable: GremlinDropVariable
     {
-        public Dictionary<string, object> Properties { get; set; }
+        public Dictionary<string, object> UpdateProperties { get; set; }
 
         public GremlinUpdatePropertiesVariable(Dictionary<string, object> properties)
         {
-            Properties = new Dictionary<string, object>(properties);
+            UpdateProperties = new Dictionary<string, object>(properties);
         }
 
         internal override void Property(GremlinToSqlContext currenct, Dictionary<string, object> properties)
         {
             foreach (var property in properties)
             {
-                Properties[property.Key] = property.Value;
+                UpdateProperties[property.Key] = property.Value;
             }
         }
     }
@@ -40,7 +40,7 @@ namespace GraphView {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
             parameters.Add(VertexVariable.DefaultVariableProperty().ToScalarExpression());
-            foreach (var property in Properties)
+            foreach (var property in UpdateProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));
@@ -68,7 +68,7 @@ namespace GraphView {
             parameters.Add(EdgeVariable.GetVariableProperty(GremlinKeyword.EdgeSourceV).ToScalarExpression());
             parameters.Add(EdgeVariable.GetVariableProperty(GremlinKeyword.EdgeID).ToScalarExpression());
 
-            foreach (var property in Properties)
+            foreach (var property in UpdateProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
                 parameters.Add(SqlUtil.GetValueExpr(property.Value));

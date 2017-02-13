@@ -6,8 +6,6 @@ namespace GraphView
 {
     internal abstract class GremlinTableVariable : GremlinVariable
     {
-        public virtual void test1() { }
-
         public WEdgeType EdgeType { get; set; }
         public GremlinVariableType VariableType { get; set; }
 
@@ -23,7 +21,6 @@ namespace GraphView
 
         internal override WEdgeType GetEdgeType()
         {
-            if (EdgeType == null) throw new QueryCompilationException("EdgeType can't be null");
             return EdgeType;
         }
 

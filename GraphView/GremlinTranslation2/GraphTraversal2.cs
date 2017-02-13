@@ -214,7 +214,6 @@ namespace GraphView
         public GraphTraversal2 Aggregate(string sideEffectKey)
         {
             throw new NotImplementedException();
-            return this;
         }
 
         public GraphTraversal2 And(params GraphTraversal2[] andTraversals)
@@ -748,7 +747,6 @@ namespace GraphView
         public GraphTraversal2 PropertyMap(params string[] propertyKeys)
         {
             throw new NotImplementedException();
-            return this;
         }
 
         public GraphTraversal2 Range(int low, int high)
@@ -839,7 +837,6 @@ namespace GraphView
         public GraphTraversal2 TimeLimit(long timeLimit)
         {
             throw new NotImplementedException();
-            return this;
         }
 
         public GraphTraversal2 Times(int maxLoops)
@@ -940,16 +937,14 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 ValueMap(Boolean includeTokens, params string[] propertyKeys)
-        {
-            throw new NotImplementedException();
-            return this;
-        }
+        //public GraphTraversal2 ValueMap(Boolean includeTokens, params string[] propertyKeys)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         public GraphTraversal2 ValueMap(params string[] propertyKeys)
         {
             throw new NotImplementedException();
-            return this;
         }
 
         public GraphTraversal2 Values(params string[] propertyKeys)
@@ -1014,12 +1009,10 @@ namespace GraphView
             //repleace gremlin predicate with GraphTraversal predicate
             foreach (var item in GremlinKeyword.GremlinPredicateToGraphTraversalDict)
             {
-                RegexOptions ops = RegexOptions.Multiline;
                 Regex r = new Regex("[^a-zA-Z](" + item.Key + ")\\(");
                 if (r.IsMatch(sCSCode))
                 {
                     var match = r.Match(sCSCode);
-                    string str = match.Groups[0].Value;
                     sCSCode = sCSCode.Replace(match.Groups[0].Value, match.Groups[0].Value[0] + item.Value + "(");
                 }
             }

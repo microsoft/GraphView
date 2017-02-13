@@ -38,7 +38,7 @@ namespace GraphView
             {
                 if (variable is GremlinGhostVariable && (variable as GremlinGhostVariable).RealVariable is GremlinRepeatSelectedVariable)
                 {
-                    parameters.Add((variable as GremlinGhostVariable).RealVariable.DefaultVariableProperty().ToScalarExpression());
+                    parameters.Add(variable.DefaultVariableProperty().ToScalarExpression());
                 }
                 else
                 {

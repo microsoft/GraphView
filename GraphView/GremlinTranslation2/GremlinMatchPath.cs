@@ -28,5 +28,18 @@ namespace GraphView
         {
             SourceVariable = sourceVariable;
         }
+
+        public WMatchPath ToMatchPath()
+        {
+            if (!(SinkVariable is GremlinFreeVertexVariable))
+            {
+                SinkVariable = null;
+            }
+            if (!(SourceVariable is GremlinFreeVertexVariable))
+            {
+                SourceVariable = null;
+            }
+            return SqlUtil.GetMatchPath(this);
+        }
     } 
 }

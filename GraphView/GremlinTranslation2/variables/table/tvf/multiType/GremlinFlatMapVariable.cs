@@ -51,9 +51,9 @@ namespace GraphView
             return false;
         }
 
-        internal override List<GremlinVariable> FetchAllVariablesInCurrAndChildContext()
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
-            return FlatMapContext.FetchAllVariablesInCurrAndChildContext();
+            return FlatMapContext.FetchVarsFromCurrAndChildContext();
         }
 
         public override WTableReference ToTableReference()

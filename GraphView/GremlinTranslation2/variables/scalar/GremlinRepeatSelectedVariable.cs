@@ -8,24 +8,31 @@ namespace GraphView
 {
     internal class GremlinRepeatSelectedVariable: GremlinSelectedVariable
     {
-        public GremlinVariable AttachedRepeatVariable { get; set; }
-        public string ColumnName { get; set; }
+        public GremlinVariable AttachedVariable { get; set; }
 
-        public GremlinRepeatSelectedVariable(GremlinVariable attachedRepeatVarible, GremlinVariable realVariable, string columnName)
+        public GremlinRepeatSelectedVariable(GremlinVariable attachedRepeatVarible, GremlinVariable realVariable, string selectKey)
         {
-            AttachedRepeatVariable = attachedRepeatVarible;
             RealVariable = realVariable;
-            ColumnName = columnName;
+            AttachedVariable = attachedRepeatVarible;
+            SelectKey = selectKey;
         }
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            return new GremlinVariableProperty(AttachedRepeatVariable, ColumnName);
+            return new GremlinVariableProperty(AttachedVariable, SelectKey);
         }
 
         internal override GremlinVariableType GetVariableType()
         {
             return RealVariable.GetVariableType();
+        }
+
+        internal override void Populate(string property)
+        {
+            if (ProjectedProperties.Contains(property)) return;
+            base.Populate(property);
+
+            RealVariable.Populate(property);
         }
 
         internal override void BottomUpPopulate(GremlinVariable terminateVariable, string property, string columnName)
