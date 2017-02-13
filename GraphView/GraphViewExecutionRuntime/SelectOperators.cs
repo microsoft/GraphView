@@ -2050,13 +2050,13 @@ namespace GraphView
     {
         public StoreStateFunction StoreState { get; private set; }
         GraphViewExecutionOperator inputOp;
-        int targetFieldIndex;
+        ScalarFunction getTargetFieldFunction;
 
-        public StoreOperator(GraphViewExecutionOperator inputOp, int targetFieldIndex)
+        public StoreOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction)
         {
             StoreState = new StoreStateFunction();
             this.inputOp = inputOp;
-            this.targetFieldIndex = targetFieldIndex;
+            this.getTargetFieldFunction = getTargetFieldFunction;
             Open();
         }
 
@@ -2071,7 +2071,7 @@ namespace GraphView
                     return null;
                 }
 
-                StoreState.Accumulate(r[targetFieldIndex]);
+                StoreState.Accumulate(getTargetFieldFunction.Evaluate(r));
 
                 if (!inputOp.State())
                 {

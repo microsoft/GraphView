@@ -995,7 +995,6 @@ namespace GraphView
 
             foreach (var tableReference in nonVertexTableReferences)
             {
-                // TODO: New Compilation of QueryDerivedTable
                 if (tableReference is WQueryDerivedTable)
                 {
                     var derivedTableOp = tableReference.Compile(context, connection);
@@ -1200,16 +1199,18 @@ namespace GraphView
                                 new List<ScalarFunction>() { new FieldValue(pathFieldIndex) });
                             break;
                         case "CAP":
-                            var capAggregate = new CapAggregate();
-                            foreach (var expression in fcall.Parameters)
+                            CapAggregate capAggregate = new CapAggregate();
+                            for (int i = 0; i < fcall.Parameters.Count; i += 2)
                             {
-                                var capName = expression as WValueExpression;
-                                IAggregateFunction sideEffectState;
-                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectState))
+                                WColumnNameList columnNameList = fcall.Parameters[i] as WColumnNameList;
+                                WValueExpression capName = fcall.Parameters[i+1] as WValueExpression;
+
+                                List<IAggregateFunction> sideEffectStateList;
+                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectStateList))
                                     throw new GraphViewException("SideEffect state " + capName + " doesn't exist in the context");
-                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectState);
+                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectStateList);
                             }
-                            projectAggregationOp.AddAggregateSpec(new CapAggregate(), new List<ScalarFunction>());
+                            projectAggregationOp.AddAggregateSpec(capAggregate, new List<ScalarFunction>());
                             break;
                         default:
                             projectAggregationOp.AddAggregateSpec(null, null);
@@ -1219,14 +1220,13 @@ namespace GraphView
 
                 // Rebuilds the output layout of the context
                 context.ClearField();
-                int i = 0;
+
                 if (context.CarryOn)
                 {
                     foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
                     {
                         context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
                     }
-                    i = context.ParentContextRawRecordLayout.Count;
                 }
 
                 foreach (var expr in selectScalarExprList)
@@ -1327,7 +1327,8 @@ namespace GraphView
             GraphViewExecutionOperator op = null;
             foreach (WSqlStatement st in Statements)
             {
-                QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection);
+                QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection, 
+                    priorContext.SideEffectStates);
                 op = st.Compile(statementContext, dbConnection);
                 priorContext = statementContext;
             }
@@ -2187,13 +2188,22 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var targetFieldParameter = Parameters[0] as WColumnReferenceExpression;
-            var targetFieldIndex = context.LocateColumnReference(targetFieldParameter);
+            WFunctionCall targetFieldParameter = Parameters[0] as WFunctionCall;
+            if (targetFieldParameter == null)
+                throw new SyntaxErrorException("The first parameter of a Store function must be a Compose1 function.");
+            ScalarFunction getTargetFieldFunction = targetFieldParameter.CompileToFunction(context, dbConnection);
 
-            var storedName = (Parameters[1] as WValueExpression).Value;
-            var storeOp = new StoreOperator(context.CurrentExecutionOperator, targetFieldIndex);
+            string storedName = (Parameters[1] as WValueExpression).Value;
+            StoreOperator storeOp = new StoreOperator(context.CurrentExecutionOperator, getTargetFieldFunction);
             context.CurrentExecutionOperator = storeOp;
-            context.SideEffectStates.Add(storedName, storeOp.StoreState);
+
+            List<IAggregateFunction> sideEffectList;
+            if (!context.SideEffectStates.TryGetValue(storedName, out sideEffectList))
+            {
+                sideEffectList = new List<IAggregateFunction>();
+                context.SideEffectStates.Add(storedName, sideEffectList);
+            }
+            sideEffectList.Add(storeOp.StoreState);
 
             return storeOp;
         }
@@ -2331,7 +2341,14 @@ namespace GraphView
                     context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
                     elementPropertyProjectionIndex);
                 context.CurrentExecutionOperator = groupSideEffectOp;
-                context.SideEffectStates.Add(groupParameter.Value, groupSideEffectOp.GroupState);
+
+                List<IAggregateFunction> sideEffectList;
+                if (!context.SideEffectStates.TryGetValue(groupParameter.Value, out sideEffectList))
+                {
+                    sideEffectList = new List<IAggregateFunction>();
+                    context.SideEffectStates.Add(groupParameter.Value, sideEffectList);
+                }
+                sideEffectList.Add(groupSideEffectOp.GroupState);
 
                 return groupSideEffectOp;
             }

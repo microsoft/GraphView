@@ -9,12 +9,6 @@ namespace GraphView
     internal class FoldFunction : IAggregateFunction
     {
         List<FieldObject> buffer;
-        ScalarFunction compose1;
-
-        //public FoldFunction(ScalarFunction compose1)
-        //{
-        //    this.compose1 = compose1;
-        //}
 
         public FoldFunction() { }
 
@@ -231,16 +225,16 @@ namespace GraphView
 
     internal class CapAggregate : IAggregateFunction
     {
-        List<Tuple<string, IAggregateFunction>> sideEffectStates;
+        List<Tuple<string, List<IAggregateFunction>>> sideEffectStates;
 
         public CapAggregate()
         {
-            sideEffectStates = new List<Tuple<string, IAggregateFunction>>();
+            sideEffectStates = new List<Tuple<string, List<IAggregateFunction>>>();
         }
 
-        public void AddCapatureSideEffectState(string key, IAggregateFunction sideEffect)
+        public void AddCapatureSideEffectState(string key, List<IAggregateFunction> sideEffectList)
         {
-            sideEffectStates.Add(new Tuple<string, IAggregateFunction>(key, sideEffect));
+            sideEffectStates.Add(new Tuple<string, List<IAggregateFunction>>(key, sideEffectList));
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -255,18 +249,41 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            var map = new Dictionary<FieldObject, FieldObject>();
-
-            foreach (var tuple in sideEffectStates)
+            if (sideEffectStates.Count == 1)
             {
-                var key = tuple.Item1;
-                var sideEffectState = tuple.Item2;
-                var capResult = sideEffectState.Terminate();
-                if (capResult != null)
-                    map.Add(new StringField(key), capResult);
-            }
+                List<FieldObject> collection = new List<FieldObject>();
 
-            return new MapField(map);
+                Tuple<string, List<IAggregateFunction>> tuple = sideEffectStates[0];
+                string key = tuple.Item1;
+                List<IAggregateFunction> sideEffectStateList = tuple.Item2;
+
+                foreach (var sideEffectState in sideEffectStateList)
+                {
+                    FieldObject capResult = sideEffectState.Terminate();
+                    if (capResult != null)
+                        collection.Add(capResult);
+                }
+
+                return new CollectionField(collection);
+            }
+            else
+            {
+                Dictionary<FieldObject, FieldObject> map = new Dictionary<FieldObject, FieldObject>();
+
+                foreach (var tuple in sideEffectStates)
+                {
+                    string key = tuple.Item1;
+                    List<IAggregateFunction> sideEffectStateList = tuple.Item2;
+                    foreach (var sideEffectState in sideEffectStateList)
+                    {
+                        FieldObject capResult = sideEffectState.Terminate();
+                        if (capResult != null)
+                            map.Add(new StringField(key), capResult);
+                    }
+                }
+
+                return new MapField(map);
+            }
         }
     }
 
