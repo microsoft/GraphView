@@ -81,6 +81,7 @@
     <Compile Include="GraphViewMarvelTest2.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
     <Compile Include="IoTTest.cs" />
+    <Compile Include="TestLarge.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>

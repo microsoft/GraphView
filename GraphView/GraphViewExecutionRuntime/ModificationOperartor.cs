@@ -9,43 +9,6 @@ using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
-    internal class DataModificationUtils
-    {
-        internal static async Task ReplaceDocument(GraphViewConnection dbConnection, string documentId, string documentString)
-        {
-            var newDocument = JObject.Parse(documentString);
-            await
-                dbConnection.DocDBclient.ReplaceDocumentAsync(
-                    UriFactory.CreateDocumentUri(dbConnection.DocDB_DatabaseId, dbConnection.DocDB_CollectionId,
-                        documentId), newDocument);
-        }
-
-        //internal static int InsertEdge(Dictionary<string, string> map, string Edge, string sourceid, string sinkid)
-        //{
-        //    string source_str = map[sourceid];
-        //    string sink_str = map[sinkid];
-        //    var source_edge_num = GraphViewJsonCommand.get_edge_num(source_str);
-        //    var sink_reverse_edge_num = GraphViewJsonCommand.get_reverse_edge_num(sink_str);
-
-        //    Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_ID").ToString();
-        //    Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_reverse_ID").ToString();
-        //    Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sinkid + '\"', "_sink").ToString();
-        //    map[sourceid] = GraphViewJsonCommand.insert_edge(source_str, Edge, source_edge_num).ToString();
-        //    //var new_source = JObject.Parse(source_str);
-
-        //    Edge = GraphViewJsonCommand.insert_property(Edge, sink_reverse_edge_num.ToString(), "_ID").ToString();
-        //    Edge = GraphViewJsonCommand.insert_property(Edge, source_edge_num.ToString(), "_reverse_ID").ToString();
-        //    Edge = GraphViewJsonCommand.insert_property(Edge, '\"' + sourceid + '\"', "_sink").ToString();
-        //    map[sinkid] = GraphViewJsonCommand.insert_reverse_edge(map[sinkid], Edge, sink_reverse_edge_num).ToString();
-
-        //    return source_edge_num;
-        //    //var new_sink = JObject.Parse(sink_str);
-
-        //    //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sourceid), new_source);
-        //    //await conn.client.ReplaceDocumentAsync(UriFactory.CreateDocumentUri(conn.DocDB_DatabaseId, conn.DocDB_CollectionId, sinkid), new_sink);
-        //}
-    }
-
     //internal abstract class ModificationBaseOpertaor : GraphViewExecutionOperator
     //{
     //    public GraphViewConnection dbConnection;
@@ -378,7 +341,7 @@ namespace GraphView
 
     //    public async Task CreateDocument(JObject obj)
     //    {
-    //        _createdDocument = await dbConnection.DocDBclient.CreateDocumentAsync("dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId, obj)
+    //        _createdDocument = await dbConnection.DocDBClient.CreateDocumentAsync("dbs/" + dbConnection.DocDBDatabaseId + "/colls/" + dbConnection.DocDBCollectionId, obj)
     //            .ConfigureAwait(continueOnCapturedContext: false);
     //    }
     //}
@@ -402,7 +365,7 @@ namespace GraphView
     //    /// </summary>
     //    internal void DeleteNodes()
     //    {
-    //        var collectionLink = "dbs/" + dbConnection.DocDB_DatabaseId + "/colls/" + dbConnection.DocDB_CollectionId;
+    //        var collectionLink = "dbs/" + dbConnection.DocDBDatabaseId + "/colls/" + dbConnection.DocDBCollectionId;
     //        var toBeDeletedNodes = SendQuery(Selectstr, dbConnection);
 
     //        foreach (var node in toBeDeletedNodes)
@@ -430,7 +393,7 @@ namespace GraphView
 
     //    public async Task DeleteDocument(string docLink)
     //    {
-    //        await dbConnection.DocDBclient.DeleteDocumentAsync(docLink).ConfigureAwait(continueOnCapturedContext: false);
+    //        await dbConnection.DocDBClient.DeleteDocumentAsync(docLink).ConfigureAwait(continueOnCapturedContext: false);
     //    }
     //}
 }

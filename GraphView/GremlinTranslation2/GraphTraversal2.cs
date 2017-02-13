@@ -1112,10 +1112,10 @@ namespace GraphView
         private string getConnectionInfo()
         {
             List<string> connectionList = new List<string>();
-            connectionList.Add(addDoubleQuotes(Connection.DocDB_Url));
-            connectionList.Add(addDoubleQuotes(Connection.DocDB_PrimaryKey));
-            connectionList.Add(addDoubleQuotes(Connection.DocDB_DatabaseId));
-            connectionList.Add(addDoubleQuotes(Connection.DocDB_CollectionId));
+            connectionList.Add(addDoubleQuotes(Connection.DocDBUrl));
+            connectionList.Add(addDoubleQuotes(Connection.DocDBPrimaryKey));
+            connectionList.Add(addDoubleQuotes(Connection.DocDBDatabaseId));
+            connectionList.Add(addDoubleQuotes(Connection.DocDBCollectionId));
             return string.Join(",", connectionList);
         }
     }

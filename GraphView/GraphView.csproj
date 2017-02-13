@@ -65,6 +65,7 @@
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
+    <Compile Include="GraphViewExecutionRuntime\EdgeDocumentHelper.cs" />
     <Compile Include="GraphViewExecutionRuntime\ModificationOperators.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScriptOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\SelectOperators.cs" />
@@ -347,6 +348,9 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="GremlinTranslation2\variables\special\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="GraphViewExecutionRuntime\Schema.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Microsoft.Azure.DocumentDB.1.9.5\build\Microsoft.Azure.DocumentDB.targets" Condition="Exists('..\packages\Microsoft.Azure.DocumentDB.1.9.5\build\Microsoft.Azure.DocumentDB.targets')" />
