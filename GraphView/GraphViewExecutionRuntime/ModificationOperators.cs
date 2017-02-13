@@ -182,17 +182,37 @@ namespace GraphView
             _edgeProperties = pProjectedFieldList;
         }
 
+        // TODO: If the scalarSubquery yields a vertex field, we could skip the RetrieveDocument from server
+        // TODO: and that means we need a function which can translate a VertexField back to a Json string for uploading to the server
         internal override RawRecord DataModify(RawRecord record)
         {
-            VertexField srcVertexField = _srcFunction.Evaluate(record) as VertexField;
-            VertexField sinkVertexField = _sinkFunction.Evaluate(record) as VertexField;
+            FieldObject srcFieldObject = _srcFunction.Evaluate(record);
+            FieldObject sinkFieldObject = _sinkFunction.Evaluate(record);
 
-            if (srcVertexField == null || sinkVertexField == null) return null;
+            if (srcFieldObject == null || sinkFieldObject == null) return null;
 
-            string srcId = srcVertexField["id"].ToValue;
-            string sinkId = sinkVertexField["id"].ToValue;
-            string srcJsonDocument = srcVertexField.JsonDocument;
-            string sinkJsonDocument = sinkVertexField.JsonDocument;
+            string srcId;
+            string sinkId;
+
+            // TODO: Just a hack, need to modify the translation code
+            if (srcFieldObject is StringField) srcId = (srcFieldObject as StringField).Value;
+            else if (srcFieldObject is PropertyField) srcId = (srcFieldObject as PropertyField).PropertyValue;
+            else if (srcFieldObject is VertexField) srcId = (srcFieldObject as VertexField)["id"].ToValue;
+            else srcId = srcFieldObject.ToString();
+
+            // TODO: Just a hack, need to modify the translation code
+            if (sinkFieldObject is StringField) sinkId = (sinkFieldObject as StringField).Value;
+            else if (sinkFieldObject is PropertyField) sinkId = (sinkFieldObject as PropertyField).PropertyValue;
+            else if (sinkFieldObject is VertexField) sinkId = (sinkFieldObject as VertexField)["id"].ToValue;
+            else sinkId = sinkFieldObject.ToString();
+
+            string srcJsonDocument = this.Connection.RetrieveDocumentById(srcId).ToString();
+            string sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : this.Connection.RetrieveDocumentById(sinkId).ToString();
+
+            VertexField srcVertexField = (srcFieldObject as VertexField)
+                                          ?? Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
+            VertexField sinkVertexField = (sinkFieldObject as VertexField)
+                                           ?? Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
 
             //
             // Interact with DocDB and add the edge
