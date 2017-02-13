@@ -52,6 +52,7 @@ namespace GraphView
             if (ProjectedProperties.Contains(property)) return;
             base.Populate(property);
 
+            InputVariable.Populate(property);
             if (SelectedVariableList.Exists(p => p.Item1 != property))
             {
                 RepeatContext.Populate(property);
@@ -65,6 +66,7 @@ namespace GraphView
         internal override void PopulateGremlinPath()
         {
             RepeatContext.PopulateGremlinPath();
+            RepeatContext.CurrentContextPath.IsInRepeatContext = true;
         }
 
         internal override bool ContainsLabel(string label)
@@ -151,8 +153,28 @@ namespace GraphView
             {
                 foreach (var property in ProjectedProperties)
                 {
-                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.GetVariableProperty(property).ToScalarExpression(), property));
-                    selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                    if (InputVariable.ProjectedProperties.Contains(property))
+                    {
+                        firstQueryExpr.SelectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(
+                                InputVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                    }
+                    else
+                    {
+                        firstQueryExpr.SelectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), property));
+                    }
+                    if (RepeatContext.PivotVariable.ProjectedProperties.Contains(property))
+                    {
+                        selectQueryBlock.SelectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(
+                                RepeatContext.PivotVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                    }
+                    else
+                    {
+                        selectQueryBlock.SelectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), property));
+                    }
                 }
             }
 
@@ -164,20 +186,20 @@ namespace GraphView
                     var selectedVariable = selectedVariableTuple.Item2;
                     firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
 
-                    List<WScalarExpression> compose1Paramters = new List<WScalarExpression>();
-                    foreach (var property in selectedVariable.ProjectedProperties)
-                    {
-                        compose1Paramters.Add(selectedVariable.RealVariable.GetVariableProperty(property).ToScalarExpression());
-                        compose1Paramters.Add(SqlUtil.GetValueExpr(property));
-                    }
-                    WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Paramters);
-
                     List<WScalarExpression> compose2Paramters = new List<WScalarExpression>();
-                    compose2Paramters.Add(compose1);
+                    compose2Paramters.Add(selectedVariable.RealVariable.ToCompose1());
                     compose2Paramters.Add(SqlUtil.GetColumnReferenceExpr("R", columnName));
                     WFunctionCall compose2 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose2, compose2Paramters);
                     selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(compose2, columnName));
                 }
+            }
+
+            if (RepeatContext.IsPopulateGremlinPath)
+            {
+                var columnName = GremlinKeyword.Path;
+                var pathVariable = RepeatContext.CurrentContextPath;
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
+                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(pathVariable.DefaultProjection().ToScalarExpression(), columnName));
             }
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);

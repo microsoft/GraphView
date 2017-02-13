@@ -22,7 +22,7 @@ namespace GraphView
         internal List<Tuple<GremlinVariableProperty, string>> ProjectVariablePropertiesList { get; set; }
         internal List<string> ProjectedProperties { get; set; }
 
-        private bool isPopulateGremlinPath;
+        internal bool IsPopulateGremlinPath;
 
         internal GremlinToSqlContext()
         {
@@ -31,7 +31,7 @@ namespace GraphView
             PathList = new List<GremlinMatchPath>();
             MatchList = new List<GremlinMatchPath>();
             StepList = new List<GremlinVariable>();
-            isPopulateGremlinPath = false;
+            IsPopulateGremlinPath = false;
             ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>();
             ProjectedProperties = new List<string>();
         }
@@ -47,7 +47,7 @@ namespace GraphView
                 MatchList = new List<GremlinMatchPath>(this.MatchList),
                 Predicates = this.Predicates,
                 StepList = new List<GremlinVariable>(this.StepList),
-                isPopulateGremlinPath = this.isPopulateGremlinPath,
+                IsPopulateGremlinPath = this.IsPopulateGremlinPath,
                 CurrentContextPath = this.CurrentContextPath,
                 ProjectVariablePropertiesList = new List<Tuple<GremlinVariableProperty, string>>(this.ProjectVariablePropertiesList),
                 ProjectedProperties = new List<string>(this.ProjectedProperties)
@@ -63,7 +63,7 @@ namespace GraphView
             PathList.Clear();
             MatchList.Clear();
             StepList.Clear();
-            isPopulateGremlinPath = false;
+            IsPopulateGremlinPath = false;
             CurrentContextPath = null;
             ProjectVariablePropertiesList.Clear();
             ProjectedProperties.Clear();
@@ -201,24 +201,19 @@ namespace GraphView
 
         internal void PopulateGremlinPath()
         {
-            if (isPopulateGremlinPath) return;
+            if (IsPopulateGremlinPath) return;
 
             GremlinPathVariable newVariable = new GremlinPathVariable(GetGremlinStepList());
             VariableList.Add(newVariable);
             TableReferences.Add(newVariable);
             CurrentContextPath = newVariable;
 
-            isPopulateGremlinPath = true;
+            IsPopulateGremlinPath = true;
         }
 
         internal void SetPivotVariable(GremlinVariable newPivotVariable)
         {
             PivotVariable = newPivotVariable;
-            //if (PivotVariable is GremlinContextVariable)
-            //{
-            //    //Ignore the inherited variable
-            //    if (!(PivotVariable as GremlinContextVariable).IsFromSelect) return;
-            //}
             StepList.Add(newPivotVariable);
             newPivotVariable.HomeContext = this;
         }
@@ -375,7 +370,7 @@ namespace GraphView
                     }
                 }
             }
-            if (isPopulateGremlinPath)
+            if (IsPopulateGremlinPath)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(CurrentContextPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));
             }

@@ -8,19 +8,25 @@ namespace GraphView
 {
     internal class GremlinPathVariable: GremlinScalarTableVariable
     {
-        private List<GremlinVariableProperty> pathList;
+        public List<GremlinVariableProperty> PathList { get; set; }
+        public bool IsInRepeatContext { get; set; }
 
         public GremlinPathVariable(List<GremlinVariableProperty> pathList)
         {
-            this.pathList = pathList;
+            this.PathList = pathList;
+            IsInRepeatContext = false;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            foreach (var path in pathList)
+            foreach (var path in PathList)
             {
                 parameters.Add(path.ToScalarExpression());    
+            }
+            if (IsInRepeatContext)
+            {
+                parameters.Add(SqlUtil.GetColumnReferenceExpr("R", GremlinKeyword.Path));
             }
 
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, this, GetVariableName());

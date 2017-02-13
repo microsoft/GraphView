@@ -142,6 +142,17 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal virtual WFunctionCall ToCompose1()
+        {
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());
+                parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+            }
+            return SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, parameters);
+        }
+
         internal virtual void AddE(GremlinToSqlContext currentContext, string edgeLabel)
         {
             GremlinAddETableVariable newTableVariable = new GremlinAddETableVariable(this, edgeLabel);
@@ -225,18 +236,11 @@ namespace GraphView
 
         internal virtual void Cap(GremlinToSqlContext currentContext, List<string> sideEffectKeys)
         {
-            //currentContext.ProjectedVariables.Clear();
-
-            //foreach (string key in keys)
-            //{
-            //    if (!currentContext.TaggedVariables.ContainsKey(key))
-            //    {
-            //        throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", key));
-            //    }
-
-            //    GremlinVariable var = currentContext.TaggedVariables[key].Item1;
-            //    currentContext.ProjectedVariables.Add(var.DefaultVariableProperty());
-            //}
+            GremlinCapVariable newVariable = new GremlinCapVariable(currentContext.Duplicate(), sideEffectKeys);
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         //internal virtual void Choose(Function<E, M> choiceFunction)
@@ -288,6 +292,7 @@ namespace GraphView
         //internal virtual void count(GremlinToSqlContext currentContext, Scope scope)
         //internal virtual void cyclicPath(GremlinToSqlContext currentContext)
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
+
         internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels)
         {
             //GremlinTableVariable newVariable = GremlinDedupVariable.Create(this, dedupLabels);
@@ -306,32 +311,10 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        //internal virtual void emit(GremlinToSqlContext currentContext)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //internal virtual void emit(Predicate emitPredicate)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //internal virtual void emit(GremlinToSqlContext emitContext)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
         internal virtual void FlatMap(GremlinToSqlContext currentContext, GremlinToSqlContext flatMapContext)
         {
             GremlinTableVariable flatMapVariable = GremlinFlatMapVariable.Create(flatMapContext);
             currentContext.VariableList.Add(flatMapVariable);
-            
-            //It's used for repeat step, we should propagate all the variable to the main context
-            //Then we can check the variableList to know if the sub context used the main context variable when
-            //the variable is GremlinContextVariable and the value of IsFromSelect is True
-            //
-            //currentContext.VariableList.AddRange(flatMapContext.VariableList);
-
             currentContext.TableReferences.Add(flatMapVariable);
             currentContext.SetPivotVariable(flatMapVariable);
         }
@@ -825,7 +808,7 @@ namespace GraphView
         //internal virtual void SimplePath()
         internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey)
         {
-            GremlinStoreVariable newVariable = new GremlinStoreVariable(sideEffectKey);
+            GremlinStoreVariable newVariable = new GremlinStoreVariable(this, sideEffectKey);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }

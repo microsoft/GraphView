@@ -42,14 +42,7 @@ namespace GraphView
                 }
                 else
                 {
-                    List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
-                    foreach (var property in ProjectedProperties)
-                    {
-                        compose1Parameters.Add(variable.GetVariableProperty(property).ToScalarExpression());
-                        compose1Parameters.Add(SqlUtil.GetValueExpr(property));
-                    }
-                    WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
-                    parameters.Add(compose1);
+                    parameters.Add(variable.ToCompose1());
                 }
             }
             return SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose2, parameters);

@@ -621,16 +621,6 @@ namespace GraphView
 
     }
 
-    public partial class WCapTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WStoreTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
     public partial class WJoinParenthesisTableReference : WTableReference
     {
         internal WTableReference Join { get; set; }

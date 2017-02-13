@@ -44,17 +44,12 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            List<WScalarExpression> compose1Parameters = new List<WScalarExpression>();
-            //TODO
-            //SubqueryContext.PivotVariable.Populate(SubqueryContext.PivotVariable.DefaultVariableProperty().VariableProperty);
-            foreach (var projectProperty in SubqueryContext.PivotVariable.ProjectedProperties)
+            if (SubqueryContext.PivotVariable.ProjectedProperties.Count == 0)
             {
-                compose1Parameters.Add(FoldVariable.GetVariableProperty(projectProperty).ToScalarExpression());
-                compose1Parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+                SubqueryContext.PivotVariable.ProjectedProperties.Add(GetProjectKey());
             }
-            WFunctionCall compose1 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, compose1Parameters);
 
-            List<WScalarExpression> foldParameters = new List<WScalarExpression> { compose1 };
+            List<WScalarExpression> foldParameters = new List<WScalarExpression> { SubqueryContext.PivotVariable.ToCompose1() };
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
@@ -96,6 +91,37 @@ namespace GraphView
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()), GremlinKeyword.ScalarValue));
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
+        }
+    }
+
+    internal class GremlinCapVariable : GremlinDerivedTableVariable
+    {
+        public List<string> SideEffectKeys { get; set; }
+
+        public GremlinCapVariable(GremlinToSqlContext subqueryContext, List<string> sideEffectKeys)
+            : base(subqueryContext)
+        {
+            SideEffectKeys = sideEffectKeys;
+        }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            List<WValueExpression> columnListExpr = new List<WValueExpression>();
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                columnListExpr.Add(SqlUtil.GetValueExpr(projectProperty));
+            }
+            List<WScalarExpression> capParameters = new List<WScalarExpression>();
+            foreach (var sideEffectKey in SideEffectKeys)
+            {
+                capParameters.Add(new WColumnNameList(columnListExpr));
+                capParameters.Add(SqlUtil.GetValueExpr(sideEffectKey));
+            }
+
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Cap, capParameters), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }
