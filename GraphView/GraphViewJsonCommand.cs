@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -15,27 +16,29 @@ namespace GraphView
         {
             string key = fieldName.Value;
 
-            bool bool_value;
-            JToken value;
-
-            if (!fieldValue.SingleQuoted && fieldValue.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
-            {
-                var property = jsonObject.Property(key);
-                property?.Remove();
+            //
+            // Special treat when fieldValue indicates null (that is, to remove a property)
+            // NOTE: fieldValue itself != null
+            //
+            if (!fieldValue.SingleQuoted && fieldValue.Value.Equals("null", StringComparison.OrdinalIgnoreCase)) {
+                jsonObject.Property(key)?.Remove();
                 return null;
             }
 
+            //
             // JSON requires a lower case string if it is a boolean value
-            if (!fieldValue.SingleQuoted && bool.TryParse(fieldValue.Value, out bool_value))
-                value = JToken.Parse(bool_value.ToString().ToLowerInvariant());
-            else
-                value = JToken.Parse(fieldValue.ToString());
-
-            jsonObject[key] = value;
-
+            //
+            bool boolValue;
+            if (!fieldValue.SingleQuoted && bool.TryParse(fieldValue.Value, out boolValue)) {
+                jsonObject[key] = (JToken)boolValue;
+            }
+            else {
+                jsonObject[key] = JToken.Parse(fieldValue.ToString());
+            }
             return jsonObject.Property(key);
         }
 
+        [DebuggerStepThrough]
         public static void UpdateEdgeMetaProperty(JObject edgeJObject, long edgeOffset, long reverseEdgeOffset, string sinkId, string sinkNodeLabel)
         {
             edgeJObject["_ID"] = edgeOffset;

@@ -70,43 +70,43 @@ namespace GraphView
             return g().EvalGremlinTraversal(CommandText);
         }
 
-        public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)
-        {
-            StoredProcedure check =
-                GraphViewConnection.DocDBclient.CreateStoredProcedureQuery(collectionLink)
-                    .Where(s => s.Id == sproc.Id)
-                    .AsEnumerable()
-                    .FirstOrDefault();
+        //public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)
+        //{
+        //    StoredProcedure check =
+        //        GraphViewConnection.DocDBClient.CreateStoredProcedureQuery(collectionLink)
+        //            .Where(s => s.Id == sproc.Id)
+        //            .AsEnumerable()
+        //            .FirstOrDefault();
 
-            if (check != null) return check;
+        //    if (check != null) return check;
 
-            Console.WriteLine("BulkInsert proc doesn't exist, try to create a new one.");
-            sproc = await GraphViewConnection.DocDBclient.CreateStoredProcedureAsync(collectionLink, sproc);
-            return sproc;
-        }
+        //    Console.WriteLine("BulkInsert proc doesn't exist, try to create a new one.");
+        //    sproc = await GraphViewConnection.DocDBClient.CreateStoredProcedureAsync(collectionLink, sproc);
+        //    return sproc;
+        //}
 
-        public async Task<int> BulkInsertAsync(string sprocLink, dynamic[] objs)
-        {
-            StoredProcedureResponse<int> scriptResult =
-                await
-                    GraphViewConnection.DocDBclient.ExecuteStoredProcedureAsync<int>(sprocLink, objs);
-            return scriptResult.Response;
-        }
+        //public async Task<int> BulkInsertAsync(string sprocLink, dynamic[] objs)
+        //{
+        //    StoredProcedureResponse<int> scriptResult =
+        //        await
+        //            GraphViewConnection.DocDBClient.ExecuteStoredProcedureAsync<int>(sprocLink, objs);
+        //    return scriptResult.Response;
+        //}
 
-        public static string GenerateNodesJsonString(List<string> nodes, int currentIndex, int maxJsonSize)
-        {
-            var jsonDocArr = new StringBuilder();
-            jsonDocArr.Append("[");
+        //public static string GenerateNodesJsonString(List<string> nodes, int currentIndex, int maxJsonSize)
+        //{
+        //    var jsonDocArr = new StringBuilder();
+        //    jsonDocArr.Append("[");
 
-            jsonDocArr.Append(GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
+        //    jsonDocArr.Append(GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
 
-            while (jsonDocArr.Length < maxJsonSize && ++currentIndex < nodes.Count)
-                jsonDocArr.Append(", " + GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
+        //    while (jsonDocArr.Length < maxJsonSize && ++currentIndex < nodes.Count)
+        //        jsonDocArr.Append(", " + GraphViewJsonCommand.ConstructNodeJsonString(nodes[currentIndex]));
 
-            jsonDocArr.Append("]");
+        //    jsonDocArr.Append("]");
 
-            return jsonDocArr.ToString();
-        }
+        //    return jsonDocArr.ToString();
+        //}
 
         public void Dispose()
         {

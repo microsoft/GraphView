@@ -26,16 +26,18 @@ namespace GraphView
 
         public string ToString(DatabaseType dbType)
         {
-            switch (dbType)
-            {
-                case DatabaseType.DocumentDB:
-                    return string.Format("SELECT {0} FROM Node {1} {2} {3} {4}", SelectClause, Alias, JoinClause,
-                        string.IsNullOrEmpty(WhereSearchCondition) ? "" : "WHERE", WhereSearchCondition);
-                case DatabaseType.JsonServer:
-                    return string.Format("FOR {0} IN ('Node') {1} {2} {3}", Alias,
-                        string.IsNullOrEmpty(WhereSearchCondition) ? "" : "WHERE", WhereSearchCondition, SelectClause);
-                default:
-                    throw new NotImplementedException();
+            switch (dbType) {
+            case DatabaseType.DocumentDB:
+                return $"SELECT {this.SelectClause} " +
+                       $"FROM Node {this.Alias} " +
+                       $"{this.JoinClause} " +
+                       $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}";
+            case DatabaseType.JsonServer:
+                return $"FOR {this.Alias} IN ('Node') " +
+                       $"{(string.IsNullOrEmpty(this.WhereSearchCondition) ? "" : $"WHERE {this.WhereSearchCondition}")}" +
+                       $"{this.SelectClause}";
+            default:
+                throw new NotImplementedException();
             }
         }
     }
@@ -58,10 +60,8 @@ namespace GraphView
 
         public override List<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
-            FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
-            List<dynamic> items = Connection.DocDBclient.CreateDocumentQuery(
-                UriFactory.CreateDocumentCollectionUri(Connection.DocDB_DatabaseId, Connection.DocDB_CollectionId),
-                vertexQuery.ToString(DatabaseType.DocumentDB), queryOptions).ToList();
+            List<dynamic> items = this.Connection.ExecuteQuery(
+                vertexQuery.ToString(DatabaseType.DocumentDB));
 
             var properties = vertexQuery.Properties;
             var projectedColumnsType = vertexQuery.ProjectedColumnsType;
@@ -76,8 +76,13 @@ namespace GraphView
                 var item = (JObject) dynamicItem;
                 var vertexJson = item[nodeAlias];
                 var rawRecord = new RawRecord();
-                VertexField vertexObject = Connection.VertexCache.GetVertexField(vertexJson["id"].ToString(),
-                    vertexJson.ToString());
+                //VertexField vertexObject = Connection.VertexCache.GetVertexField(vertexJson["id"].ToString(), vertexJson.ToString());
+                VertexField vertexObject = this.Connection.VertexCache.TryAddVertexField((JObject)vertexJson);
+                if (vertexObject == null) {
+                    // TODO: This is not a vertex-document
+                    // TODO: Filter this condition in JsonQuery's WHERE clause
+                    continue;
+                }
 
                 var endOfNodePropertyIndex = projectedColumnsType.FindIndex(e => e == ColumnGraphType.EdgeSource);
                 if (endOfNodePropertyIndex == -1) endOfNodePropertyIndex = properties.Count;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,10 +15,10 @@ namespace GraphView
         protected GraphViewConnection Connection;
         protected GraphViewExecutionOperator InputOperator;
 
-        protected ModificationBaseOpertaor2(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection)
+        protected ModificationBaseOpertaor2(GraphViewExecutionOperator inputOp, GraphViewConnection connection)
         {
-            InputOperator = pInputOp;
-            Connection = pConnection;
+            InputOperator = inputOp;
+            Connection = connection;
             Open();
         }
 
@@ -47,165 +48,114 @@ namespace GraphView
             InputOperator.ResetState();
             Open();
         }
-
-        protected string RetrieveDocumentById(string id)
-        {
-            var script = string.Format("SELECT * FROM Node WHERE Node.id = '{0}'", id);
-            FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };
-            List<dynamic> result = Connection.DocDBclient.CreateDocumentQuery(
-                UriFactory.CreateDocumentCollectionUri(Connection.DocDB_DatabaseId, Connection.DocDB_CollectionId),
-                script, queryOptions).ToList();
-
-            if (result.Count == 0)
-                return null;
-            return ((JObject)result[0]).ToString();
-        }
-
-        protected void Upload(Dictionary<string, string> documentsMap)
-        {
-            ReplaceDocument(documentsMap).Wait();
-        }
-
-        protected async Task ReplaceDocument(Dictionary<string, string> documentsMap)
-        {
-            foreach (var pair in documentsMap)
-                await DataModificationUtils.ReplaceDocument(Connection, pair.Key, pair.Value)
-                    .ConfigureAwait(continueOnCapturedContext: false);
-        }
+        
 
         /// <summary>
         /// Given a edge's source node document and its offset, return the edge's sink id and reverse edge's offset
         /// </summary>
-        /// <param name="jsonString"></param>
+        /// <param name="edgeJson"></param>
         /// <param name="edgeOffset"></param>
         /// <returns></returns>
-        protected List<string> GetSinkIdAndReverseEdgeOffset(string jsonString, string edgeOffset)
+        protected List<string> GetSinkIdAndReverseEdgeOffset(string edgeJson, string edgeOffset)
         {
-            var document = JObject.Parse(jsonString);
-            var adjList = (JArray)document["_edge"];
+            JObject document = JObject.Parse(edgeJson);
+            JArray adjList = (JArray)document["_edge"];
 
-            foreach (var edge in adjList.Children<JObject>())
-            {
-                if (edge["_ID"].ToString().Equals(edgeOffset))
-                    return new List<string> { edge["_sink"].ToString(), edge["_reverse_ID"].ToString() };
-            }
-
-            return null;
+            return (from edge in adjList.Children<JObject>()
+                    where edge["_ID"].ToString().Equals(edgeOffset)
+                    select new List<string> {
+                        edge["_sink"].ToString(),
+                        edge["_reverse_ID"].ToString()
+                    }).FirstOrDefault();
         }
     }
 
     internal class AddVOperator : ModificationBaseOpertaor2
     {
-        private string _jsonDocument;
-        private Document _createdDocument;
-        private List<string> _projectedFieldList; 
+        private readonly string _vertexDocument;
+        private readonly List<string> _projectedFieldList; 
 
-        public AddVOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, string pJsonDocument, List<string> pProjectedFieldList)
-            : base(pInputOp, pConnection)
+        public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, string vertexDocument, List<string> projectedFieldList)
+            : base(inputOp, connection)
         {
-            _jsonDocument = pJsonDocument;
-            _projectedFieldList = pProjectedFieldList;
+            this._vertexDocument = vertexDocument;
+            this._projectedFieldList = projectedFieldList;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var obj = JObject.Parse(_jsonDocument);
+            JObject vertexObject = JObject.Parse(this._vertexDocument);
 
-            Upload(obj);
+            this.Connection.CreateDocumentAsync(vertexObject).Wait();
 
-            var vertexField = Connection.VertexCache.GetVertexField(_createdDocument.Id, _createdDocument.ToString());
+            VertexField vertexField = Connection.VertexCache.TryAddVertexField(vertexObject);
 
-            var result = new RawRecord();
+            RawRecord result = new RawRecord();
 
-            foreach (var fieldName in _projectedFieldList)
+            foreach (string fieldName in _projectedFieldList)
             {
-                var fieldValue = vertexField[fieldName];
+                FieldObject fieldValue = vertexField[fieldName];
 
                 result.Append(fieldValue);
             }
 
             return result;
         }
-
-        private void Upload(JObject obj)
-        {
-            CreateDocument(obj).Wait();
-        }
-
-        private async Task CreateDocument(JObject obj)
-        {
-            _createdDocument = await Connection.DocDBclient.CreateDocumentAsync("dbs/" + Connection.DocDB_DatabaseId + "/colls/" + Connection.DocDB_CollectionId, obj)
-                .ConfigureAwait(continueOnCapturedContext: false);
-        }
+        
     }
 
     internal class DropNodeOperator : ModificationBaseOpertaor2
     {
         private int _nodeIdIndex;
 
-        public DropNodeOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, int pNodeIdIndex)
-            : base(pInputOp, pConnection)
+        public DropNodeOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection, int pNodeIdIndex)
+            : base(dummyInputOp, connection)
         {
             _nodeIdIndex = pNodeIdIndex;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var targetId = record[_nodeIdIndex].ToValue;
-
-            var targetJson = RetrieveDocumentById(targetId);
-
-            var targetJObject = JObject.Parse(targetJson);
+            string vertexId = record[this._nodeIdIndex].ToValue;
 
             // Temporarily change
-            DropEdgeOperator dropEdgeOp = new DropEdgeOperator(null, Connection, 0, 1);
+            DropEdgeOperator dropEdgeOp = new DropEdgeOperator(null, this.Connection, 0, 1);
             RawRecord temp = new RawRecord(2);
 
-            var adj = (JArray)targetJObject["_edge"];
+            VertexField vertex = this.Connection.VertexCache.GetVertexField(vertexId);
 
-            foreach (var edge in adj.Children<JObject>())
-            {
-                temp.fieldValues[0] = new StringField(targetId);
-                temp.fieldValues[1] = new StringField(edge["_ID"].ToString());
+            // Save a copy of Edges _IDs & drop outgoing edges
+            List<string> outEdgeOffsets = vertex.AdjacencyList.Edges.Keys.ToList();
+            foreach (string outEdgeOffset in outEdgeOffsets) {
+                temp.fieldValues[0] = new StringField(vertexId);
+                temp.fieldValues[1] = new StringField(outEdgeOffset);
                 dropEdgeOp.DataModify(temp);
             }
 
-            var revAdj = (JArray)targetJObject["_reverse_edge"];
-
-            foreach (var revEdge in revAdj.Children<JObject>())
-            {
-                temp.fieldValues[0] = new StringField(revEdge["_sink"].ToString());
-                temp.fieldValues[1] = new StringField(revEdge["_reverse_ID"].ToString());
+            // Save a copy of incoming Edges <srcVertexId, edgeOffsetInSrcVertex> & drop them
+            List<Tuple<string, string>> inEdges = vertex.RevAdjacencyList.Edges.Values.Select(
+                e => new Tuple<string, string>(e.OutV, e.EdgeProperties["_reverse_ID"].PropertyValue)).ToList();
+            foreach (var inEdge in inEdges) {
+                temp.fieldValues[0] = new StringField(inEdge.Item1); // srcVertexId
+                temp.fieldValues[1] = new StringField(inEdge.Item2); // edgeOffsetInSrcVertex
                 dropEdgeOp.DataModify(temp);
             }
 
-            DeleteNode(targetId);
+            // Delete the node-document!
+#if DEBUG
+            JObject vertexObject = this.Connection.RetrieveDocumentById(vertexId);
+            Debug.Assert(vertexObject != null);
+            Debug.Assert(vertexObject["_edge"] is JArray);
+            Debug.Assert(((JArray)vertexObject["_edge"]).Count == 0);
+            Debug.Assert(vertexObject["_reverse_edge"] is JArray);
+            Debug.Assert(((JArray)vertexObject["_reverse_edge"]).Count == 0);
+#endif
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null).Wait();
+
+            // Update VertexCache
+            this.Connection.VertexCache.TryRemoveVertexField(vertexId);
 
             return null;
-        }
-
-        /// <summary>
-        /// Check whether the target node is isolated first. If true, then delete it.
-        /// </summary>
-        private void DeleteNode(string targetId)
-        {
-            var collectionLink = "dbs/" + Connection.DocDB_DatabaseId + "/colls/" + Connection.DocDB_CollectionId;
-            var checkIsolatedScript =
-                string.Format(
-                    "SELECT * FROM Node WHERE Node.id = '{0}' AND ARRAY_LENGTH(Node._edge) = 0 AND ARRAY_LENGTH(Node._reverse_edge) = 0",
-                    targetId);
-            var toBeDeletedNodes = SendQuery(checkIsolatedScript, Connection);
-
-            foreach (var node in toBeDeletedNodes)
-            {
-                var docLink = collectionLink + "/docs/" + node.id;
-                DeleteDocument(docLink).Wait();
-            }
-        }
-
-        private async Task DeleteDocument(string docLink)
-        {
-            await Connection.DocDBclient.DeleteDocumentAsync(docLink).ConfigureAwait(continueOnCapturedContext: false);
         }
     }
 
@@ -219,10 +169,10 @@ namespace GraphView
         private string _edgeJsonDocument;
         private List<string> _edgeProperties;
 
-        public AddEOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, 
+        public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, 
             ScalarFunction pSrcFunction, ScalarFunction pSinkFunction, 
             int otherVTag, string pEdgeJsonDocument, List<string> pProjectedFieldList)
-            : base(pInputOp, pConnection)
+            : base(inputOp, connection)
         {
             _srcFunction = pSrcFunction;
             _sinkFunction = pSinkFunction;
@@ -235,8 +185,8 @@ namespace GraphView
         // TODO: and that means we need a function which can translate a VertexField back to a Json string for uploading to the server
         internal override RawRecord DataModify(RawRecord record)
         {
-            var srcFieldObject = _srcFunction.Evaluate(record);
-            var sinkFieldObject = _sinkFunction.Evaluate(record);
+            FieldObject srcFieldObject = _srcFunction.Evaluate(record);
+            FieldObject sinkFieldObject = _sinkFunction.Evaluate(record);
 
             if (srcFieldObject == null || sinkFieldObject == null) return null;
 
@@ -248,190 +198,208 @@ namespace GraphView
             else if (srcFieldObject is PropertyField) srcId = (srcFieldObject as PropertyField).PropertyValue;
             else if (srcFieldObject is VertexField) srcId = (srcFieldObject as VertexField)["id"].ToValue;
             else srcId = srcFieldObject.ToString();
+
             // TODO: Just a hack, need to modify the translation code
             if (sinkFieldObject is StringField) sinkId = (sinkFieldObject as StringField).Value;
             else if (sinkFieldObject is PropertyField) sinkId = (sinkFieldObject as PropertyField).PropertyValue;
             else if (sinkFieldObject is VertexField) sinkId = (sinkFieldObject as VertexField)["id"].ToValue;
             else sinkId = sinkFieldObject.ToString();
 
-            var srcJsonDocument = RetrieveDocumentById(srcId);
-            var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
+            string srcJsonDocument = this.Connection.RetrieveDocumentById(srcId).ToString();
+            string sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : this.Connection.RetrieveDocumentById(sinkId).ToString();
 
-            var srcVertexField = (srcFieldObject is VertexField) 
-                                    ? srcFieldObject as VertexField 
-                                    : Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
-            var sinkVertexField = (sinkFieldObject is VertexField) 
-                                    ? sinkFieldObject as VertexField 
-                                    : Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
+            VertexField srcVertexField = (srcFieldObject as VertexField)
+                                          ?? Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
+            VertexField sinkVertexField = (sinkFieldObject as VertexField)
+                                           ?? Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
 
-            JObject edgeObject, revEdgeObject;
-            var results = InsertEdge(srcJsonDocument, sinkJsonDocument, _edgeJsonDocument, srcId, sinkId, out edgeObject, out revEdgeObject);
+            //
+            // Interact with DocDB and add the edge
+            // - For a small-degree vertex (now filled into one document), insert the edge in-place
+            //     - If the upload succeeds, done!
+            //     - If the upload fails with size-limit-exceeded(SLE), put either incoming or outgoing edges into a seperate document
+            // - For a large-degree vertex (already spilled)
+            //     - Update either incoming or outgoing edges in the seperate edge-document
+            //     - If the upload fails with SLE, create a new document to store the edge, and update the vertex document
+            //
+            JObject outEdgeObject, inEdgeObject;
+            string outEdgeDocID, inEdgeDocID;
+            EdgeDocumentHelper.InsertEdgeAndUpload(this.Connection,
+                                                   srcId, sinkId,
+                                                   srcVertexField, sinkVertexField, this._edgeJsonDocument,
+                                                   JObject.Parse(srcJsonDocument), JObject.Parse(sinkJsonDocument),
+                                                   out outEdgeObject, out outEdgeDocID,
+                                                   out inEdgeObject, out inEdgeDocID);
 
-            Upload(results);
+            //
+            // Update vertex's adjacency list and reverse adjacency list (in vertex field)
+            //
+            EdgeField outEdgeField = EdgeField.GetForwardEdgeField(srcId, srcVertexField["label"]?.ToValue, outEdgeDocID, outEdgeObject);
+            EdgeField inEdgeField = EdgeField.GetBackwardEdgeField(sinkId, sinkVertexField["label"]?.ToValue, inEdgeDocID, inEdgeObject);
 
-            // Update vertex's adjacency list and reverse adjacency list
-            var edgeField = FieldObject.GetForwardEdgeField(srcId, srcVertexField["label"]?.ToValue, edgeObject);
-            var revEdgeField = FieldObject.GetBackwardEdgeField(sinkId, sinkVertexField["label"]?.ToValue, revEdgeObject);
+            srcVertexField.AdjacencyList.Edges.Add(outEdgeField["_ID"].ToValue, outEdgeField);
+            sinkVertexField.RevAdjacencyList.Edges.Add(inEdgeField["_ID"].ToValue, inEdgeField);
 
-            srcVertexField.AdjacencyList.Edges.Add(edgeField["_ID"].ToValue, edgeField);
-            sinkVertexField.RevAdjacencyList.Edges.Add(revEdgeField["_ID"].ToValue, revEdgeField);
 
-            var result = new RawRecord();
+            RawRecord result = new RawRecord();
 
             // source, sink, other, offset, *
             result.Append(new StringField(srcId));
             result.Append(new StringField(sinkId));
             result.Append(new StringField(_otherVTag == 0 ? srcId : sinkId));
-            result.Append(new StringField(edgeObject["_ID"].ToString()));
-            result.Append(edgeField);
+            result.Append(new StringField(outEdgeObject["_ID"].ToString()));
+            result.Append(outEdgeField);
 
-            //edgeField.Label = edgeField["label"]?.ToValue;
-            //revEdgeField.Label = edgeField.Label;
-            //edgeField.InV = sinkId;
-            //edgeField.OutV = srcId;
-            //edgeField.InVLabel = sinkVertexField["label"]?.ToValue;
-            //edgeField.OutVLabel = srcVertexField["label"]?.ToValue;
-
-            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++)
-            {
-                var fieldValue = edgeField[_edgeProperties[i]];
+            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++) {
+                FieldObject fieldValue = outEdgeField[_edgeProperties[i]];
                 result.Append(fieldValue);
             }
 
             return result;
         }
 
-        private Dictionary<string, string> InsertEdge(string srcJsonDocumentString, string sinkJsonDocumentString, string edgeJsonDocumentString, 
-            string srcId, string sinkId, out JObject edgeObject, out JObject revEdgeObject)
-        {
-            var documentsMap = new Dictionary<string, string>();
+        //private Dictionary<string, string> InsertEdge(
+        //    string srcJsonDocumentString, string sinkJsonDocumentString, string edgeJsonDocumentString, 
+        //    string srcId, string sinkId,
+        //    out string edgeDocID, out string revEdgeDocID, 
+        //    out JObject edgeObject, out JObject revEdgeObject)
+        //{
+        //    var documentsMap = new Dictionary<string, string>();
 
-            var srcJsonDocument = JObject.Parse(srcJsonDocumentString);
-            var sinkJsonDocument = JObject.Parse(sinkJsonDocumentString);
-            var edgeJsonDocument = JObject.Parse(edgeJsonDocumentString);
-            var edgeOffset = srcJsonDocument["_nextEdgeOffset"].ToObject<long>();
-            var reverseEdgeOffset = sinkJsonDocument["_nextReverseEdgeOffset"].ToObject<long>();
+        //    var srcJsonDocument = JObject.Parse(srcJsonDocumentString);
+        //    var sinkJsonDocument = JObject.Parse(sinkJsonDocumentString);
+        //    var edgeJsonDocument = JObject.Parse(edgeJsonDocumentString);
+        //    var edgeOffset = srcJsonDocument["_nextEdgeOffset"].ToObject<long>();
+        //    var reverseEdgeOffset = sinkJsonDocument["_nextReverseEdgeOffset"].ToObject<long>();
 
-            // Construct the edge object for srcNode._edge
-            var sinkNodeLabel = sinkJsonDocument["label"]?.ToString();
-            GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, edgeOffset, reverseEdgeOffset, sinkId, sinkNodeLabel);
+        //    // Construct the edge object for srcNode._edge
+        //    var sinkNodeLabel = sinkJsonDocument["label"]?.ToString();
+        //    GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, edgeOffset, reverseEdgeOffset, sinkId, sinkNodeLabel);
 
-            // Insert the edge object in the srcNode._edge and update the _nextEdgeOffset
-            var srcJsonEdgeArray = (JArray)srcJsonDocument["_edge"];
-            srcJsonEdgeArray.Add(edgeJsonDocument);
-            srcJsonDocument["_nextEdgeOffset"] = edgeOffset + 1;
-            documentsMap[srcId] = srcJsonDocument.ToString();
+        //    // Insert the edge object in the srcNode._edge and update the _nextEdgeOffset
+        //    var srcJsonEdgeArray = (JArray)srcJsonDocument["_edge"];
+        //    srcJsonEdgeArray.Add(edgeJsonDocument);
+        //    srcJsonDocument["_nextEdgeOffset"] = edgeOffset + 1;
+        //    documentsMap[srcId] = srcJsonDocument.ToString();
 
-            edgeObject = JObject.FromObject(edgeJsonDocument);
+        //    edgeObject = JObject.FromObject(edgeJsonDocument);
 
-            // Construct the edge object for sinkNode._reverse_edge
-            edgeJsonDocument = JObject.FromObject(edgeJsonDocument);
-            var srcNodeLabel = srcJsonDocument["label"]?.ToString();
-            GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, reverseEdgeOffset, edgeOffset, srcId, srcNodeLabel);
 
-            // Insert the edge object in the sinkNode._reverse_edge and update the _nextReverseEdgeOffset
-            if (srcId.Equals(sinkId)) sinkJsonDocument = srcJsonDocument;
-            var sinkJsonReverseEdgeArray = (JArray) sinkJsonDocument["_reverse_edge"];
-            sinkJsonReverseEdgeArray.Add(edgeJsonDocument);
-            sinkJsonDocument["_nextReverseEdgeOffset"] = reverseEdgeOffset + 1;
-            documentsMap[sinkId] = sinkJsonDocument.ToString();
+        //    // Construct the edge object for sinkNode._reverse_edge
+        //    edgeJsonDocument = JObject.FromObject(edgeJsonDocument);
+        //    var srcNodeLabel = srcJsonDocument["label"]?.ToString();
+        //    GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, reverseEdgeOffset, edgeOffset, srcId, srcNodeLabel);
 
-            revEdgeObject = JObject.FromObject(edgeJsonDocument);
+        //    // Insert the edge object in the sinkNode._reverse_edge and update the _nextReverseEdgeOffset
+        //    if (srcId.Equals(sinkId)) sinkJsonDocument = srcJsonDocument;
+        //    var sinkJsonReverseEdgeArray = (JArray) sinkJsonDocument["_reverse_edge"];
+        //    sinkJsonReverseEdgeArray.Add(edgeJsonDocument);
+        //    sinkJsonDocument["_nextReverseEdgeOffset"] = reverseEdgeOffset + 1;
+        //    documentsMap[sinkId] = sinkJsonDocument.ToString();
 
-            //var edgeOffset = GraphViewJsonCommand.get_edge_num(srcJsonDocumentString);
-            //var reverseEdgeOffset = GraphViewJsonCommand.get_reverse_edge_num(sinkJsonDocumentString);
+        //    revEdgeObject = JObject.FromObject(edgeJsonDocument);
 
-            //edgeJsonDocumentString = GraphViewJsonCommand.insert_property(edgeJsonDocumentString, edgeOffset.ToString(), "_ID").ToString();
-            //edgeJsonDocumentString = GraphViewJsonCommand.insert_property(edgeJsonDocumentString, reverseEdgeOffset.ToString(), "_reverse_ID").ToString();
-            //edgeJsonDocumentString = GraphViewJsonCommand.insert_property(edgeJsonDocumentString, '\"' + sinkId + '\"', "_sink").ToString();
-            //edgeObjectString = edgeJsonDocumentString;
-            //documentsMap[srcId] = GraphViewJsonCommand.insert_edge(srcJsonDocumentString, edgeJsonDocumentString, edgeOffset).ToString();
+        //    //var edgeOffset = GraphViewJsonCommand.get_edge_num(srcJsonDocumentString);
+        //    //var reverseEdgeOffset = GraphViewJsonCommand.get_reverse_edge_num(sinkJsonDocumentString);
 
-            //edgeJsonDocumentString = GraphViewJsonCommand.insert_property(edgeJsonDocumentString, reverseEdgeOffset.ToString(), "_ID").ToString();
-            //edgeJsonDocumentString = GraphViewJsonCommand.insert_property(edgeJsonDocumentString, edgeOffset.ToString(), "_reverse_ID").ToString();
-            //edgeJsonDocumentString = GraphViewJsonCommand.insert_property(edgeJsonDocumentString, '\"' + srcId + '\"', "_sink").ToString();
-            //documentsMap[sinkId] = GraphViewJsonCommand.insert_reverse_edge(documentsMap[sinkId], edgeJsonDocumentString, reverseEdgeOffset).ToString();
-
-            return documentsMap;
-        }
+        //    return documentsMap;
+        //}
     }
 
     internal class DropEdgeOperator : ModificationBaseOpertaor2
     {
-        private int _srcIdIndex;
-        private int _edgeOffsetIndex;
+        private readonly int _srcIdIndex;
+        private readonly int _edgeOffsetIndex;
 
-        public DropEdgeOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, int pSrcIdIndex, int pEdgeOffsetIndex)
-            : base(pInputOp, pConnection)
+        public DropEdgeOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, int pSrcIdIndex, int pEdgeOffsetIndex)
+            : base(inputOp, connection)
         {
-            _srcIdIndex = pSrcIdIndex;
-            _edgeOffsetIndex = pEdgeOffsetIndex;
+            this._srcIdIndex = pSrcIdIndex;
+            this._edgeOffsetIndex = pEdgeOffsetIndex;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            var srcId = record[_srcIdIndex].ToValue;
-            var edgeOffset = record[_edgeOffsetIndex].ToValue;
+            string srcId = record[this._srcIdIndex].ToValue;
+            long edgeOffset = long.Parse(record[this._edgeOffsetIndex].ToValue);
 
-            var srcJsonDocument = RetrieveDocumentById(srcId);
-            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
+            JObject srcEdgeObject;
+            string srcEdgeDocId, sinkEdgeDocId;
+            JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcId);
+            EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+                this.Connection, srcVertexObject, edgeOffset, false,
+                out srcEdgeObject, out srcEdgeDocId);
+            if (srcEdgeObject == null) {
+                //TODO: Check is this condition alright?
+                return null;
+            }
 
-            if (sinkIdAndReverseEdgeOffset == null) return null;
+            string sinkId = (string)srcEdgeObject["_sink"];
+            long revEdgeOffset = (long)srcEdgeObject["_reverse_ID"];
+            JObject sinkVertexObject;
+            if (!string.Equals(sinkId, srcId)) {
+                sinkVertexObject = this.Connection.RetrieveDocumentById(sinkId);
+                JObject sinkEdgeObject;
+                EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+                    this.Connection, sinkVertexObject, revEdgeOffset, true,
+                    out sinkEdgeObject, out sinkEdgeDocId);
+            }
+            else {
+                sinkVertexObject = srcVertexObject;  // NOTE: Must not use DeepClone() here!
+                sinkEdgeDocId = srcEdgeDocId;
+            }
 
-            var sinkId = sinkIdAndReverseEdgeOffset[0];
-            var revEdgeOffset = sinkIdAndReverseEdgeOffset[1];
+            Dictionary<string, JObject> uploadDocuments = new Dictionary<string, JObject>();
+            EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Connection, srcEdgeDocId, srcVertexObject, false, edgeOffset);
+            EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Connection, sinkEdgeDocId, sinkVertexObject, true, revEdgeOffset);
+            this.Connection.ReplaceOrDeleteDocumentsAsync(uploadDocuments).Wait();
 
-            var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
 
-            var srcVertexField = Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
-            var sinkVertexField = Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
+            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcId, srcVertexObject.ToString());
+            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject.ToString());
 
-            var results = DeleteEdge(srcId, sinkId, edgeOffset, revEdgeOffset, srcJsonDocument, sinkJsonDocument);
-
-            Upload(results);
-
-            srcVertexField.AdjacencyList.Edges.Remove(edgeOffset);
-            sinkVertexField.RevAdjacencyList.Edges.Remove(revEdgeOffset);
+            srcVertexField.AdjacencyList.Edges.Remove(edgeOffset.ToString());
+            sinkVertexField.RevAdjacencyList.Edges.Remove(revEdgeOffset.ToString());
 
             return null;
         }
 
-        private Dictionary<string, string> DeleteEdge(string srcId, string sinkId, string edgeOffset, string reverseEdgeOffset,
-            string srcJsonDocumentString, string sinkJsonDocumentString)
-        {
-            var documentsMap = new Dictionary<string, string>();
+        //private Dictionary<string, string> DeleteEdge(string srcId, string sinkId, string edgeOffset, string reverseEdgeOffset,
+        //    string srcJsonDocumentString, string sinkJsonDocumentString)
+        //{
+        //    var documentsMap = new Dictionary<string, string>();
 
-            // Delete the edge object in the srcNode._edge
-            var srcJsonDocument = JObject.Parse(srcJsonDocumentString);
-            var edgeArray = (JArray)srcJsonDocument["_edge"];
-            foreach (var edgeObject in edgeArray.Children<JObject>())
-            {
-                if (edgeObject["_ID"].ToString().Equals(edgeOffset, StringComparison.OrdinalIgnoreCase))
-                {
-                    edgeObject.Remove();
-                    break;
-                }
-            }
-            documentsMap[srcId] = srcJsonDocument.ToString();
+        //    // Delete the edge object in the srcNode._edge
+        //    var srcJsonDocument = JObject.Parse(srcJsonDocumentString);
+        //    var edgeArray = (JArray)srcJsonDocument["_edge"];
+        //    foreach (var edgeObject in edgeArray.Children<JObject>())
+        //    {
+        //        if (edgeObject["_ID"].ToString().Equals(edgeOffset, StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            edgeObject.Remove();
+        //            break;
+        //        }
+        //    }
+        //    documentsMap[srcId] = srcJsonDocument.ToString();
 
-            // Delete the edge object in the sinkNode._reverse_edge
-            var sinkJsonDocument = srcId.Equals(sinkId, StringComparison.OrdinalIgnoreCase) ? srcJsonDocument : JObject.Parse(sinkJsonDocumentString);
-            var reverseEdgeArry = (JArray) sinkJsonDocument["_reverse_edge"];
-            foreach (var edgeObject in reverseEdgeArry.Children<JObject>())
-            {
-                if (edgeObject["_ID"].ToString().Equals(reverseEdgeOffset, StringComparison.OrdinalIgnoreCase))
-                {
-                    edgeObject.Remove();
-                    break;
-                }
-            }
-            documentsMap[sinkId] = sinkJsonDocument.ToString();
+        //    // Delete the edge object in the sinkNode._reverse_edge
+        //    var sinkJsonDocument = srcId.Equals(sinkId, StringComparison.OrdinalIgnoreCase) ? srcJsonDocument : JObject.Parse(sinkJsonDocumentString);
+        //    var reverseEdgeArry = (JArray) sinkJsonDocument["_reverse_edge"];
+        //    foreach (var edgeObject in reverseEdgeArry.Children<JObject>())
+        //    {
+        //        if (edgeObject["_ID"].ToString().Equals(reverseEdgeOffset, StringComparison.OrdinalIgnoreCase))
+        //        {
+        //            edgeObject.Remove();
+        //            break;
+        //        }
+        //    }
+        //    documentsMap[sinkId] = sinkJsonDocument.ToString();
 
-            //documentsMap[srcId] = GraphViewJsonCommand.Delete_edge(documentsMap[srcId], int.Parse(edgeOffset));
-            //documentsMap[sinkId] = GraphViewJsonCommand.Delete_reverse_edge(documentsMap[sinkId], int.Parse(reverseEdgeOffset));
+        //    //documentsMap[srcId] = GraphViewJsonCommand.Delete_edge(documentsMap[srcId], long.Parse(edgeOffset));
+        //    //documentsMap[sinkId] = GraphViewJsonCommand.Delete_reverse_edge(documentsMap[sinkId], long.Parse(reverseEdgeOffset));
 
-            return documentsMap;
-        }
+        //    return documentsMap;
+        //}
     }
 
     internal abstract class UpdatePropertiesBaseOperator : ModificationBaseOpertaor2
@@ -453,9 +421,9 @@ namespace GraphView
         // TODO: Handle <*, null>
         protected List<Tuple<WValueExpression, WValueExpression, int>> PropertiesToBeUpdated;
 
-        protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,
+        protected UpdatePropertiesBaseOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
             List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesToBeUpdated, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
-            : base(pInputOp, pConnection)
+            : base(inputOp, connection)
         {
             PropertiesToBeUpdated = pPropertiesToBeUpdated;
             Mode = pMode;
@@ -491,149 +459,193 @@ namespace GraphView
     {
         private int _nodeIdIndex;
 
-        public UpdateNodePropertiesOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection,
-            int pNodeIndex, List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
-            : base(pInputOp, pConnection, pPropertiesList, pMode)
+        public UpdateNodePropertiesOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+                                            int pNodeIndex, List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
+            : base(inputOp, connection, pPropertiesList, pMode)
         {
             _nodeIdIndex = pNodeIndex;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            string targetId = record[_nodeIdIndex].ToValue;
+            string vertexId = record[this._nodeIdIndex].ToValue;
 
-            var targetJsonDocument = RetrieveDocumentById(targetId);
+            JObject vertexDocObject = this.Connection.RetrieveDocumentById(vertexId);
 
-            var targetVertexField = Connection.VertexCache.GetVertexField(targetId, targetJsonDocument);
-
-            var results = UpdateNodeProperties(targetId, targetJsonDocument, targetVertexField, PropertiesToBeUpdated, Mode);
-
-            Upload(results);
+            var documentsMap = new Dictionary<string, JObject>();
+            UpdateNodeProperties(documentsMap, vertexId, vertexDocObject, PropertiesToBeUpdated, Mode);
+            this.Connection.ReplaceOrDeleteDocumentsAsync(documentsMap).Wait();
 
             // Drop step, return null
             if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
             return record;
         }
 
-        private Dictionary<string, string> UpdateNodeProperties(string targetId, string documentString, VertexField targetVertexField,
-            List<Tuple<WValueExpression, WValueExpression, int>> propList, UpdatePropertyMode mode)
+        private void UpdateNodeProperties(
+            Dictionary<string, JObject> documentsMap, 
+            string vertexId, 
+            JObject vertexDocObject,
+            List<Tuple<WValueExpression, WValueExpression, int>> propList, 
+            UpdatePropertyMode mode)
         {
-            var document = JObject.Parse(documentString);
+            VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
 
-            foreach (var t in propList)
-            {
-                var keyExpression = t.Item1;
-                var valueExpression = t.Item2;
+            foreach (var t in propList) {
+                WValueExpression keyExpression = t.Item1;
+                WValueExpression valueExpression = t.Item2;
 
-                if (mode == UpdatePropertyMode.Set)
-                {
-                    JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(document, keyExpression, valueExpression);
+                if (mode == UpdatePropertyMode.Set) {
+                    JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(vertexDocObject, keyExpression, valueExpression);
                     if (updatedProperty == null)
-                        targetVertexField.VertexProperties.Remove(keyExpression.Value);
+                        vertexField.VertexProperties.Remove(keyExpression.Value);
                     else
-                        targetVertexField.UpdateVertexProperty(updatedProperty.Name, updatedProperty.Value.ToString());
+                        vertexField.UpdateVertexProperty(updatedProperty.Name, updatedProperty.Value.ToString());
                 }
-                else
-                {
+                else {
                     throw new NotImplementedException();
                 }
             }
 
-            return new Dictionary<string, string> { {targetId, document.ToString()} };
+            documentsMap[vertexId] = vertexDocObject;
         }
     }
 
     internal class UpdateEdgePropertiesOperator : UpdatePropertiesBaseOperator
     {
-        private int _srcIdIndex;
-        private int _edgeOffsetIndex;
+        private readonly int _srcVertexIdIndex;
+        private readonly int _edgeOffsetIndex;
 
-        public UpdateEdgePropertiesOperator(GraphViewExecutionOperator pInputOp, GraphViewConnection pConnection, 
-            int pSrcIdIndex, int pEdgeOffsetIndex, 
-            List<Tuple<WValueExpression, WValueExpression, int>> propertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
-            : base(pInputOp, pConnection, propertiesList, pMode)
+        public UpdateEdgePropertiesOperator(
+            GraphViewExecutionOperator inputOp, GraphViewConnection connection, 
+            int srcVertexIdIndex, int edgeOffsetIndex, 
+            List<Tuple<WValueExpression, WValueExpression, int>> propertiesList, 
+            UpdatePropertyMode pMode = UpdatePropertyMode.Set)
+            : base(inputOp, connection, propertiesList, pMode)
         {
-            _srcIdIndex = pSrcIdIndex;
-            _edgeOffsetIndex = pEdgeOffsetIndex;
+            this._srcVertexIdIndex = srcVertexIdIndex;
+            this._edgeOffsetIndex = edgeOffsetIndex;
         }
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            string srcId = record[_srcIdIndex].ToValue;
-            string edgeOffset = record[_edgeOffsetIndex].ToValue;
+            long edgeOffset = long.Parse(record[this._edgeOffsetIndex].ToValue);
+            string srcVertexId = record[this._srcVertexIdIndex].ToValue;
 
-            var srcJsonDocument = RetrieveDocumentById(srcId);
+            JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcVertexId);
+            string outEdgeDocId;
+            JObject outEdgeObject;
+            EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+                this.Connection, srcVertexObject, edgeOffset, false,
+                out outEdgeObject, out outEdgeDocId);
+            if (outEdgeObject == null) {
+                // TODO: Is there something wrong?
+                Debug.WriteLine($"[UpdateEdgePropertiesOperator] The edge does not exist: vertexId = {srcVertexId}, edgeOffset = {edgeOffset}");
+                return null;
+            }
 
-            var sinkIdAndReverseEdgeOffset = GetSinkIdAndReverseEdgeOffset(srcJsonDocument, edgeOffset);
-            if (sinkIdAndReverseEdgeOffset == null) return record;
+            long revEdgeOffset = (long)outEdgeObject["_reverse_ID"];
+            string sinkVertexId = (string)outEdgeObject["_sink"];
+            JObject sinkVertexObject;
+            string inEdgeDocId;
+            JObject inEdgeObject;
+            if (sinkVertexId.Equals(srcVertexId)) {
+                sinkVertexObject = srcVertexObject;  // NOTE: Must not use DeepClone() here!
+            }
+            else {
+                sinkVertexObject = this.Connection.RetrieveDocumentById(sinkVertexId);
+            }
+            EdgeDocumentHelper.FindEdgeBySourceAndOffset(
+                this.Connection, sinkVertexObject, revEdgeOffset, true,
+                out inEdgeObject, out inEdgeDocId);
 
-            var sinkId = sinkIdAndReverseEdgeOffset[0];
-            var reverseEdgeOffset = sinkIdAndReverseEdgeOffset[1];
+            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcVertexId);
+            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkVertexId);
+            EdgeField outEdgeField = srcVertexField.AdjacencyList.Edges[edgeOffset.ToString()];
+            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.Edges[revEdgeOffset.ToString()];
+            foreach (Tuple<WValueExpression, WValueExpression, int> tuple in this.PropertiesToBeUpdated) {
+                WValueExpression keyExpression = tuple.Item1;
+                WValueExpression valueExpression = tuple.Item2;
 
-            var sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : RetrieveDocumentById(sinkId);
+                if (this.Mode == UpdatePropertyMode.Set) {
+                    // Modify edgeObject (update the edge property)
+                    JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(outEdgeObject, keyExpression, valueExpression);
+                    // Update VertexCache
+                    if (updatedProperty == null)
+                        outEdgeField.EdgeProperties.Remove(keyExpression.Value);
+                    else
+                        outEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString());
 
-            var srcVertexField = Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
-            var sinkVertexField = Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
-            var edgeField = srcVertexField.AdjacencyList.Edges[edgeOffset];
-            var revEdgeField = sinkVertexField.RevAdjacencyList.Edges[reverseEdgeOffset];
+                    // Modify edgeObject (update the edge property)
+                    updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
+                    // Update VertexCache
+                    if (updatedProperty == null)
+                        inEdgeField.EdgeProperties.Remove(keyExpression.Value);
+                    else
+                        inEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString());
+                }
+                else {
+                    throw new NotImplementedException();
+                }
+            }
+            // Interact with DocDB to update the property 
+            EdgeDocumentHelper.UpdateEdgeProperty(this.Connection, srcVertexObject, outEdgeDocId, false, outEdgeObject);
+            EdgeDocumentHelper.UpdateEdgeProperty(this.Connection, sinkVertexObject, inEdgeDocId, true, inEdgeObject);
 
-            var results = UpdateEdgeAndReverseEdgeProperties(srcId, edgeOffset, sinkId, reverseEdgeOffset,
-                srcJsonDocument, sinkJsonDocument, edgeField, revEdgeField, Mode);
 
-            Upload(results);
-
-            // Drop step, return null
-            if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
+            //
+            // Drop edge property
+            //
+            if (this.PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
             return record;
         }
 
-        private Dictionary<string, string> UpdateEdgeAndReverseEdgeProperties(string srcId, string edgeOffset,
-            string sinkId, string revEdgeOffset, string srcJsonDocument, string sinkJsonDocument,
-            EdgeField edgeField, EdgeField revEdgeField, UpdatePropertyMode mode)
-        {
-            var documentsMap = new Dictionary<string, string>();
-            documentsMap.Add(srcId, srcJsonDocument);
-            if (!documentsMap.ContainsKey(sinkId)) documentsMap.Add(sinkId, sinkJsonDocument);
+        //private Dictionary<string, string> UpdateEdgeAndReverseEdgeProperties(string srcId, string edgeOffset,
+        //    string sinkId, string revEdgeOffset, string srcJsonDocument, string sinkJsonDocument,
+        //    EdgeField edgeField, EdgeField revEdgeField, UpdatePropertyMode mode)
+        //{
+        //    var documentsMap = new Dictionary<string, string>();
+        //    documentsMap.Add(srcId, srcJsonDocument);
+        //    if (!documentsMap.ContainsKey(sinkId)) documentsMap.Add(sinkId, sinkJsonDocument);
 
-            UpdateEdgeProperties(documentsMap, PropertiesToBeUpdated, srcId, edgeOffset, false, edgeField, mode);
-            UpdateEdgeProperties(documentsMap, PropertiesToBeUpdated, sinkId, revEdgeOffset, true, revEdgeField, mode);
+        //    UpdateEdgeProperties(documentsMap, PropertiesToBeUpdated, srcId, edgeOffset, false, edgeField, mode);
+        //    UpdateEdgeProperties(documentsMap, PropertiesToBeUpdated, sinkId, revEdgeOffset, true, revEdgeField, mode);
 
-            return documentsMap;
-        }
+        //    return documentsMap;
+        //}
 
-        private void UpdateEdgeProperties(Dictionary<string, string> documentsMap, List<Tuple<WValueExpression, WValueExpression, int>> propList, 
-            string id, string edgeOffset, bool isReverseEdge, EdgeField edgeField, UpdatePropertyMode mode)
-        {
-            var document = JObject.Parse(documentsMap[id]);
-            var adj = isReverseEdge ? (JArray)document["_reverse_edge"] : (JArray)document["_edge"];
-            var edgeId = int.Parse(edgeOffset);
+        //private void UpdateEdgeProperties(Dictionary<string, string> documentsMap, List<Tuple<WValueExpression, WValueExpression, int>> propList, 
+        //    string id, string edgeOffset, bool isReverseEdge, EdgeField edgeField, UpdatePropertyMode mode)
+        //{
+        //    var document = JObject.Parse(documentsMap[id]);
+        //    var adj = isReverseEdge ? (JArray)document["_reverse_edge"] : (JArray)document["_edge"];
+        //    var edgeId = int.Parse(edgeOffset);
 
-            foreach (var edge in adj.Children<JObject>())
-            {
-                if (int.Parse(edge["_ID"].ToString()) != edgeId) continue;
+        //    foreach (var edge in adj.Children<JObject>())
+        //    {
+        //        if (int.Parse(edge["_ID"].ToString()) != edgeId) continue;
 
-                foreach (var t in propList)
-                {
-                    var keyExpression = t.Item1;
-                    var valueExpression = t.Item2;
+        //        foreach (var t in propList)
+        //        {
+        //            var keyExpression = t.Item1;
+        //            var valueExpression = t.Item2;
 
-                    if (mode == UpdatePropertyMode.Set)
-                    {
-                        var updatedProperty = GraphViewJsonCommand.UpdateProperty(edge, keyExpression, valueExpression);
-                        if (updatedProperty == null)
-                            edgeField.EdgeProperties.Remove(keyExpression.Value);
-                        else
-                            edgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString());
-                    }
-                    else
-                    {
-                        throw new NotImplementedException();
-                    }
-                }
-                break;
-            }
+        //            if (mode == UpdatePropertyMode.Set)
+        //            {
+        //                var updatedProperty = GraphViewJsonCommand.UpdateProperty(edge, keyExpression, valueExpression);
+        //                if (updatedProperty == null)
+        //                    edgeField.EdgeProperties.Remove(keyExpression.Value);
+        //                else
+        //                    edgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString());
+        //            }
+        //            else
+        //            {
+        //                throw new NotImplementedException();
+        //            }
+        //        }
+        //        break;
+        //    }
 
-            documentsMap[id] = document.ToString();
-        }
+        //    documentsMap[id] = document.ToString();
+        //}
     }
 }

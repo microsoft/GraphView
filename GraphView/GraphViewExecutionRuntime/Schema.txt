@@ -1,0 +1,61 @@
+﻿
+VertexDocument (Small):
+{
+	"id": ...,
+	"_edge": [
+		<EdgeObject>, ...
+	],
+	"_reverse_edge": [
+		<EdgeObject>, ...
+	],
+
+	// vertex properties
+	"label": ...,  // optional
+	...
+}
+
+
+VertexDocument (Large):
+{
+	"id": ...,
+	"_edge": {
+		"_edges": [
+			{
+				"id": <edge-doucment-id>
+			}, ...
+		]
+	},
+	"_reverse_edge": {
+		"_edges": [
+			{
+				"id": <edge-doucment-id>
+			}, ...
+		]
+	},
+
+	// vertex properties
+	"label": ...,  // optional
+	...
+}
+
+EdgeDocument:
+{
+	"id": ...,
+	"_vertex_id": ...,   // id of current VertexDocument
+	"_is_reverse": true/false,   // indicate whether this vertex is source(false) or sink (true)
+	"_edges": [
+		<EdgeObject>, ...
+	]
+}
+
+
+EdgeObject:
+{
+	"id": ...,
+	"_sink": ...,   // id of otherV (maybe not sink!)
+	"_sinkLabel": ...,   // label of otherV (maybe not sink!)
+
+	// edge properties
+	"label": ...,  // optional
+	...
+}
