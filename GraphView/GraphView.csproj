@@ -161,7 +161,6 @@
     <Compile Include="GremlinTranslation2\GremlinToSqlContext.cs" />
     <Compile Include="GremlinTranslation2\variables\GremlinVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\edge\GremlinFreeEdgeVariable.cs" />
-    <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinCapVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinDedupVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinDropVariable.cs" />
     <Compile Include="GremlinTranslation2\variables\table\tvf\singleType\GremlinExpandVariable.cs" />

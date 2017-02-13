@@ -735,6 +735,45 @@ namespace GraphView
         }
     }
 
+    public class WColumnNameList : WPrimaryExpression
+    {
+        internal List<WValueExpression> ColumnNameList { get; set; }
+
+        public WColumnNameList(List<WValueExpression> columnNameList)
+        {
+            ColumnNameList = columnNameList;
+        }
+
+        internal override bool OneLine()
+        {
+            return true;
+        }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
+
+        internal override string ToString(string indent)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendFormat("{0}(", indent);
+            for (var i = 0; i < ColumnNameList.Count; i++)
+            {
+                if (i == 0)
+                    sb.AppendFormat("{0}", ColumnNameList[i].ToString(""));
+                else
+                    sb.AppendFormat(", {0}", ColumnNameList[i].ToString(""));
+            }
+
+            sb.Append(")");
+
+            return sb.ToString();
+        }
+    }
+
     public enum QuoteType
     {
         NotQuoted = 0,

@@ -256,7 +256,6 @@ namespace GraphView
 
         public GraphTraversal2 By()
         {
-            //AddGremlinOperator(new GremlinByOp());
             ((IGremlinByModulating)GetEndOp()).ModulateBy();
             return this;
         }
@@ -267,14 +266,12 @@ namespace GraphView
 
         public GraphTraversal2 By(GremlinKeyword.Order order)
         {
-            //AddGremlinOperator(new GremlinByOp(order));
             ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
             return this;
         }
 
         public GraphTraversal2 By(string key)
         {
-            //AddGremlinOperator(new GremlinByOp(key));
             ((IGremlinByModulating)GetEndOp()).ModulateBy(key);
             return this;
         }
@@ -283,7 +280,6 @@ namespace GraphView
         //public GraphTraversal2 by(T token)
         public GraphTraversal2 By(GraphTraversal2 traversal)
         {
-            //AddGremlinOperator(new GremlinByOp(traversal));
             ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
             return this;
         }
