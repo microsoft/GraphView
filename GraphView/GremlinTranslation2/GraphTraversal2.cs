@@ -894,12 +894,12 @@ namespace GraphView
             if (GetEndOp() is GremlinRepeatOp)
             {
                 (GetEndOp() as GremlinRepeatOp).TerminationPredicate = untilPredicate;
-                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).TerminationPredicate = untilPredicate;
+                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
             }
             return this;
         }
@@ -909,12 +909,12 @@ namespace GraphView
             if (GetEndOp() is GremlinRepeatOp)
             {
                 (GetEndOp() as GremlinRepeatOp).TerminationTraversal = untilTraversal;
-                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
             }
             else
             {
                 AddGremlinOperator(new GremlinRepeatOp());
                 (GetEndOp() as GremlinRepeatOp).TerminationTraversal = untilTraversal;
+                (GetEndOp() as GremlinRepeatOp).StartFromContext = true;
             }
             return this;
         }

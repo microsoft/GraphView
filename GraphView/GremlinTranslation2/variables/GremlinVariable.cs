@@ -933,13 +933,13 @@ namespace GraphView
             {
                 var compareVar = currentContext.Select(predicate.VariableTag);
                 if (compareVar.Count > 1) throw new Exception();
-                secondExpr = compareVar.First().DefaultVariableProperty().ToScalarExpression();
+                secondExpr = compareVar.First().GetVariableProperty(GetPrimaryKey()).ToScalarExpression();
             }
             else
             {
                 throw new Exception("Predicate.Label can't be null");
             }
-            var firstExpr = DefaultVariableProperty().ToScalarExpression();
+            var firstExpr = GetVariableProperty(GetPrimaryKey()).ToScalarExpression();
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
