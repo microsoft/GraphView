@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 // Add DocumentDB references
@@ -36,6 +38,74 @@ namespace GraphView
                 jsonObject[key] = JToken.Parse(fieldValue.ToString());
             }
             return jsonObject.Property(key);
+        }
+
+        /// <summary>
+        /// Drop a node's all non-reserved properties
+        /// </summary>
+        /// <param name="jsonObject"></param>
+        /// <returns></returns>
+        public static List<string> DropAllNodeProperties(JObject jsonObject)
+        {
+            List<string> toBeDroppedPropertiesName = new List<string>();
+
+            foreach (var property in jsonObject.Properties().ToList())
+            {
+                string name = property.Name;
+                switch (name.ToLower())
+                {
+                    // Reversed properties for meta-data
+                    case "id":
+                    case "label":
+                    case "_edge":
+                    case "_reverse_edge":
+                    case "_nextedgeoffset":
+                    case "_nextreverseedgeoffset":
+                    case "_rid":
+                    case "_self":
+                    case "_etag":
+                    case "_attachments":
+                    case "_ts":
+                        continue;
+                    default:
+                        property.Remove();
+                        toBeDroppedPropertiesName.Add(name);
+                        break;
+                }
+            }
+
+            return toBeDroppedPropertiesName;
+        }
+
+        /// <summary>
+        /// Drop an edge's all non-reserved properties
+        /// </summary>
+        /// <param name="jsonObject"></param>
+        /// <returns></returns>
+        public static List<string> DropAllEdgeProperties(JObject jsonObject)
+        {
+            List<string> toBeDroppedProperties = new List<string>();
+
+            foreach (var property in jsonObject.Properties().ToList())
+            {
+                string name = property.Name;
+                switch (name.ToLower())
+                {
+                    // Reversed properties for meta-data
+                    case "_id":
+                    case "_reverse_id":
+                    case "_sink":
+                    case "_sinklabel":
+                    case "label":
+                        continue;
+                    default:
+                        property.Remove();
+                        toBeDroppedProperties.Add(name);
+                        break;
+                }
+            }
+
+            return toBeDroppedProperties;
         }
 
         [DebuggerStepThrough]
