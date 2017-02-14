@@ -366,7 +366,7 @@ namespace GraphView
 
                 if (i++ > 0)
                     mapStringBuilder.Append(", ");
-                mapStringBuilder.Append(key.ToString()).Append(":[").Append(value.ToString()).Append(']');
+                mapStringBuilder.Append(key.ToString()).Append(":").Append(value.ToString());
             }
 
             mapStringBuilder.Append(']');
@@ -424,6 +424,73 @@ namespace GraphView
         public override int GetHashCode()
         {
             return ToString().GetHashCode();
+        }
+    }
+
+    internal class Compose1Field : FieldObject
+    {
+        public Dictionary<FieldObject, FieldObject> Map { get; set; }
+        public FieldObject DefaultProjectionKey { get; set; }
+
+        public Compose1Field(Dictionary<FieldObject, FieldObject> map, FieldObject defaultProjectionKey)
+        {
+            Map = map;
+            DefaultProjectionKey = defaultProjectionKey;
+        }
+
+        public override string ToString()
+        {
+            return Map[DefaultProjectionKey].ToString();
+        }
+
+        public override string ToGraphSON()
+        {
+            return Map[DefaultProjectionKey].ToGraphSON();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            MapField mapField = obj as MapField;
+            if (mapField == null || Map.Count != mapField.Map.Count)
+            {
+                return false;
+            }
+
+            foreach (var kvp in Map)
+            {
+                var key = kvp.Key;
+                FieldObject value2;
+                if (!mapField.Map.TryGetValue(key, out value2))
+                    return false;
+                if (!kvp.Value.Equals(value2))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            if (Map.Count == 0) return "[]".GetHashCode();
+
+            var mapStringBuilder = new StringBuilder("[");
+            var i = 0;
+
+            foreach (var pair in Map)
+            {
+                var key = pair.Key;
+                var value = pair.Value;
+
+                if (i++ > 0)
+                    mapStringBuilder.Append(", ");
+                mapStringBuilder.Append(key.ToString()).Append(":[").Append(value.ToString()).Append(']');
+            }
+
+            mapStringBuilder.Append(']');
+
+            return mapStringBuilder.ToString().GetHashCode();
         }
     }
 

@@ -354,9 +354,9 @@ namespace GraphView
 
         internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
         {
-            var results = new List<RawRecord>();
+            List<RawRecord> results = new List<RawRecord>();
 
-            var unfoldTarget = _unfoldTarget.Evaluate(record);
+            FieldObject unfoldTarget = _unfoldTarget.Evaluate(record);
 
             if (unfoldTarget.GetType() == typeof (CollectionField))
             {
@@ -365,13 +365,14 @@ namespace GraphView
                 {
                     if (fo == null) continue;
                     RawRecord newRecord = new RawRecord();
-                    // Extract only needed columns from MapField
-                    if (fo.GetType() == typeof (MapField))
+
+                    // Extract only needed columns from Compose1Field
+                    if (fo.GetType() == typeof (Compose1Field))
                     {
-                        var mapField = fo as MapField;
-                        foreach (var unfoldColumn in _unfoldColumns)
+                        Compose1Field compose1Field = fo as Compose1Field;
+                        foreach (string unfoldColumn in _unfoldColumns)
                         {
-                            newRecord.Append(mapField.Map[new StringField(unfoldColumn)]);
+                            newRecord.Append(compose1Field.Map[new StringField(unfoldColumn)]);
                         }
                     }
                     else

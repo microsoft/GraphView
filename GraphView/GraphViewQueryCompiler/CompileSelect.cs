@@ -2348,10 +2348,12 @@ namespace GraphView
             if (!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
                 GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
-                    aggregateFunction, elementPropertyProjectionIndex);
+                    aggregateFunction, elementPropertyProjectionIndex, 
+                    context.CarryOn ? context.RawRecordLayout.Count : -1);
                 context.CurrentExecutionOperator = groupOp;
 
-                context.ClearField();
+                if (!context.CarryOn)
+                    context.ClearField();
                 // Change to correct ColumnGraphType
                 context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 

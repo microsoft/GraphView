@@ -329,10 +329,12 @@ namespace GraphView
     internal class Compose1 : ScalarFunction
     {
         List<Tuple<string, int>> targetFieldsAndTheirNames;
+        string defaultProjectionKey;
         
-        public Compose1(List<Tuple<string, int>> targetFieldsAndTheirNames)
+        public Compose1(List<Tuple<string, int>> targetFieldsAndTheirNames, string defaultProjectionKey)
         {
             this.targetFieldsAndTheirNames = targetFieldsAndTheirNames;
+            this.defaultProjectionKey = defaultProjectionKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -343,7 +345,7 @@ namespace GraphView
                 compositField[new StringField(p.Item1)] = record[p.Item2];
             }
 
-            return new MapField(compositField);
+            return new Compose1Field(compositField, new StringField(defaultProjectionKey));
         }
 
         public override JsonDataType DataType()
@@ -406,55 +408,32 @@ namespace GraphView
     {
         private int _checkFieldIndex;
         private int _arrayFieldIndex;
-        private StringField _targetFieldKey;
 
-        public WithOutArray(int checkFieldIndex, int arrayFieldIndex, StringField targetFieldKey)
+        public WithOutArray(int checkFieldIndex, int arrayFieldIndex)
         {
             _checkFieldIndex = checkFieldIndex;
             _arrayFieldIndex = arrayFieldIndex;
-            _targetFieldKey = targetFieldKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            var checkObject = record[_checkFieldIndex];
-            var arrayObject = record[_arrayFieldIndex] as CollectionField;
+            FieldObject checkObject = record[_checkFieldIndex];
+            CollectionField arrayObject = record[_arrayFieldIndex] as CollectionField;
             if (arrayObject == null)
-                throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
+                throw new GraphViewException("The second paramter of the WithInArray function must be located to a collection field");
             if (checkObject == null) return new StringField("false");
 
-            // TODO: Write a comment
-            if (checkObject is MapField)
+            foreach (FieldObject fieldObject in arrayObject.Collection)
             {
-                foreach (var fieldObject in arrayObject.Collection)
+                if (fieldObject is Compose1Field)
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        StringField targetField = fieldObject as StringField;;
-                        if (checkObject.ToString().Equals(targetField.Value))
-                            return new StringField("false");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
+                    Compose1Field compose1Field = fieldObject as Compose1Field;
+                    if (checkObject.Equals(compose1Field.Map[compose1Field.DefaultProjectionKey]))
                         return new StringField("false");
-                    }
                 }
-            }
-            else
-            {
-                foreach (var fieldObject in arrayObject.Collection)
+                else if (checkObject.Equals(fieldObject))
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        if (checkObject.Equals(fieldObject))
-                            return new StringField("false");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
-                        return new StringField("false");
-                    } 
+                    return new StringField("false");
                 }
             }
 
@@ -471,55 +450,32 @@ namespace GraphView
     {
         private int _checkFieldIndex;
         private int _arrayFieldIndex;
-        private StringField _targetFieldKey;
 
-        public WithInArray(int checkFieldIndex, int arrayFieldIndex, StringField targetFieldKey)
+        public WithInArray(int checkFieldIndex, int arrayFieldIndex)
         {
             _checkFieldIndex = checkFieldIndex;
             _arrayFieldIndex = arrayFieldIndex;
-            _targetFieldKey = targetFieldKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            var checkObject = record[_checkFieldIndex];
-            var arrayObject = record[_arrayFieldIndex] as CollectionField;
+            FieldObject checkObject = record[_checkFieldIndex];
+            CollectionField arrayObject = record[_arrayFieldIndex] as CollectionField;
             if (arrayObject == null)
-                throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
+                throw new GraphViewException("The second paramter of the WithInArray function must be located to a collection field");
             if (checkObject == null) return new StringField("false");
 
-            // TODO: Write a comment
-            if (checkObject is MapField)
+            foreach (FieldObject fieldObject in arrayObject.Collection)
             {
-                foreach (var fieldObject in arrayObject.Collection)
+                if (fieldObject is Compose1Field)
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        StringField targetField = fieldObject as StringField;
-                        if (checkObject.ToString().Equals(targetField.Value))
-                            return new StringField("true");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
+                    Compose1Field compose1Field = fieldObject as Compose1Field;
+                    if (checkObject.Equals(compose1Field.Map[compose1Field.DefaultProjectionKey]))
                         return new StringField("true");
-                    }
                 }
-            }
-            else
-            {
-                foreach (var fieldObject in arrayObject.Collection)
+                else if (checkObject.Equals(fieldObject))
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        if (checkObject.Equals(fieldObject))
-                            return new StringField("true");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
-                        return new StringField("true");
-                    }
+                    return new StringField("true");
                 }
             }
 
