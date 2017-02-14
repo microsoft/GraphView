@@ -154,7 +154,7 @@ namespace GraphView
         internal virtual WFunctionCall ToCompose1()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(GetPrimaryKey()));
+            parameters.Add(SqlUtil.GetValueExpr(GetProjectKey()));
             foreach (var projectProperty in ProjectedProperties)
             {
                 parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());
@@ -943,13 +943,13 @@ namespace GraphView
             {
                 var compareVar = currentContext.Select(predicate.VariableTag);
                 if (compareVar.Count > 1) throw new Exception();
-                secondExpr = compareVar.First().GetVariableProperty(GetPrimaryKey()).ToScalarExpression();
+                secondExpr = compareVar.First().GetVariableProperty(GetProjectKey()).ToScalarExpression();
             }
             else
             {
                 throw new Exception("Predicate.Label can't be null");
             }
-            var firstExpr = GetVariableProperty(GetPrimaryKey()).ToScalarExpression();
+            var firstExpr = GetVariableProperty(GetProjectKey()).ToScalarExpression();
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }
