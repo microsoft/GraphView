@@ -154,6 +154,7 @@ namespace GraphView
         internal virtual WFunctionCall ToCompose1()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(DefaultProjection().ToScalarExpression());
             foreach (var projectProperty in ProjectedProperties)
             {
                 parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());

@@ -207,7 +207,7 @@ namespace GraphView
 
         internal override WEdgeType GetEdgeType()
         {
-            if (UnionContextList.Count <= 1) return (UnionContextList.First().PivotVariable as GremlinEdgeTableVariable).EdgeType;
+            if (UnionContextList.Count <= 1) return UnionContextList.First().PivotVariable.GetEdgeType();
             for (var i = 1; i < UnionContextList.Count; i++)
             {
                 var isSameType = UnionContextList[i - 1].PivotVariable.GetEdgeType()

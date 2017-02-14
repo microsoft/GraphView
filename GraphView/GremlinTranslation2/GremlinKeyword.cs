@@ -134,6 +134,7 @@ namespace GraphView
                 {"out", "Out"},
                 {"outE", "OutE"},
                 {"outV", "OutV"},
+                {"path", "Path"},
                 {"property", "Property"},
                 {"properties", "Properties"},
                 {"project", "Project"},
