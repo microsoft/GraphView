@@ -213,11 +213,13 @@ namespace GraphView
             newPivotVariable.HomeContext = this;
         }
 
-        internal List<GremlinVariableProperty> GetGremlinStepList()
+        internal List<GremlinVariableProperty> GetGremlinStepList(GremlinVariable stopVariable = null)
         {
-            List<GremlinVariableProperty> gremlinStepList = new List<GremlinVariableProperty>();
+            List<GremlinVariableProperty> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
+            if (gremlinStepList == null) gremlinStepList = new List<GremlinVariableProperty>();
             foreach (var step in StepList)
             {
+                if (step == stopVariable) break;
                 step.PopulateGremlinPath();
                 gremlinStepList.Add(step.GetPath());
             }

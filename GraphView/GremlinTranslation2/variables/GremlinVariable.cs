@@ -124,7 +124,7 @@ namespace GraphView
 
         internal virtual GremlinVariableProperty GetPath()
         {
-            return DefaultVariableProperty();
+            return DefaultProjection();
         }
 
         internal virtual GremlinVariableProperty DefaultVariableProperty()

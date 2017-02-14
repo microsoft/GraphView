@@ -32,11 +32,6 @@ namespace GraphView
             FlatMapContext = flatMapContext;
         }
 
-        internal override GremlinVariableProperty GetPath()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.Path);
-        }
-
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
