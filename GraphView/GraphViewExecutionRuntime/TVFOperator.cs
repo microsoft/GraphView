@@ -382,6 +382,19 @@ namespace GraphView
                     results.Add(newRecord);
                 }
             }
+            else if (unfoldTarget.GetType() == typeof(MapField))
+            {
+                MapField mf = unfoldTarget as MapField;
+                foreach (var pair in mf.Map)
+                {
+                    RawRecord newRecord = new RawRecord();
+                    string key = pair.Key.ToString();
+                    string value = pair.Value.ToString();
+
+                    newRecord.Append(new StringField(key + "=" + value));
+                    results.Add(newRecord);
+                }
+            }
             else
             {
                 RawRecord newRecord = new RawRecord();
