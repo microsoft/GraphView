@@ -30,9 +30,10 @@ namespace GraphView
             bool isSameType = true;
             for (var i = 1; i < contextList.Count; i++)
             {
-                isSameType = (contextList[i - 1].PivotVariable.GetVariableType() == contextList[i].PivotVariable.GetVariableType())
-                             || contextList[i - 1].PivotVariable.GetVariableType() == GremlinVariableType.Table
-                             || contextList[i].PivotVariable.GetVariableType() == GremlinVariableType.Table;
+                isSameType = contextList[i - 1].PivotVariable.GetVariableType() ==
+                              contextList[i].PivotVariable.GetVariableType();
+                             //|| contextList[i - 1].PivotVariable.GetVariableType() == GremlinVariableType.Table
+                             //|| contextList[i].PivotVariable.GetVariableType() == GremlinVariableType.Table;
                 if (isSameType == false) return false;
             }
             return isSameType;

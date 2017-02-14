@@ -51,6 +51,11 @@ namespace GraphView
             ProjectedProperties = new List<string>();
         }
 
+        internal virtual GremlinVariableType GetUnfoldVariableType()
+        {
+            return GetVariableType();
+        }
+
         internal virtual GremlinVariableType GetVariableType()
         {
             throw new NotImplementedException();

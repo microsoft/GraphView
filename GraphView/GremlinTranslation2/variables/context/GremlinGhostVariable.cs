@@ -52,11 +52,6 @@ namespace GraphView
             return AttachedVariable.GetVariableName();
         }
 
-        internal override GremlinVariableType GetVariableType()
-        {
-            return RealVariable.GetVariableType();
-        }
-
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
             if (RealVariable is GremlinRepeatSelectedVariable)

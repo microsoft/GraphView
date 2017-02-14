@@ -29,15 +29,9 @@ namespace GraphView
             return RealVariable.GetVariableName();
         }
 
-
         public GremlinContextVariable(GremlinVariable contextVariable)
         {
             RealVariable = contextVariable;
-        }
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return RealVariable.GetVariableType();
         }
 
         internal override GremlinVariableProperty GetVariableProperty(string property)

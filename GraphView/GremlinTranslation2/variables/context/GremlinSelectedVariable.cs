@@ -36,5 +36,15 @@ namespace GraphView {
         {
             return RealVariable.GetProjectKey();
         }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return RealVariable.GetVariableType();
+        }
+
+        internal override GremlinVariableType GetUnfoldVariableType()
+        {
+            return RealVariable.GetUnfoldVariableType();
+        }
     }
 }
