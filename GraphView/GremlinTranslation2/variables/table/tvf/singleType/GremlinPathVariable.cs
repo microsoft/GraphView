@@ -20,15 +20,15 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            if (IsInRepeatContext)
+            {
+                //Must add as the first parameter
+                parameters.Add(SqlUtil.GetColumnReferenceExpr("R", GremlinKeyword.Path));
+            }
             foreach (var path in PathList)
             {
                 parameters.Add(path.ToScalarExpression());    
             }
-            if (IsInRepeatContext)
-            {
-                parameters.Add(SqlUtil.GetColumnReferenceExpr("R", GremlinKeyword.Path));
-            }
-
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
