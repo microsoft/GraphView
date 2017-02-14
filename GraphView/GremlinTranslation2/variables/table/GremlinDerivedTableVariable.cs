@@ -83,19 +83,20 @@ namespace GraphView
 
     internal class GremlinTreeVariable : GremlinDerivedTableVariable
     {
-        private GremlinVariableProperty pathVariableProperty;
+        public GremlinVariable PathVariable { get; set; }
 
-        public GremlinTreeVariable(GremlinToSqlContext subqueryContext, GremlinVariableProperty pathVariableProperty)
+        public GremlinTreeVariable(GremlinToSqlContext subqueryContext, GremlinVariable pathVariable)
             : base(subqueryContext)
         {
-            this.pathVariableProperty = pathVariableProperty;
+            PathVariable = pathVariable;
+            subqueryContext.HomeVariable = this;
         }
 
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, pathVariableProperty.ToScalarExpression()), GremlinKeyword.ScalarValue));
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Tree, PathVariable.DefaultVariableProperty().ToScalarExpression()), GremlinKeyword.ScalarValue));
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
     }

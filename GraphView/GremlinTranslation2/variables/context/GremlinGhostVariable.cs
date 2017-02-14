@@ -73,10 +73,26 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
+            RealVariable.Populate(property);
+
             if (ProjectedProperties.Contains(property)) return;
+            switch (GetVariableType())
+            {
+                case GremlinVariableType.Vertex:
+                    if (GremlinUtil.IsEdgeProperty(property)) return;
+                    break;
+                case GremlinVariableType.Edge:
+                    if (GremlinUtil.IsVertexProperty(property)) return;
+                    break;
+                case GremlinVariableType.Scalar:
+                    if (property != GremlinKeyword.ScalarValue) return;
+                    break;
+                case GremlinVariableType.Property:
+                    if (property != GremlinKeyword.PropertyValue) return;
+                    break;
+            }
             base.Populate(property);
 
-            RealVariable.Populate(property);
             if (!PropertiesMap.ContainsKey(property))
             {
                 string columnName = SelectKey + "_" + property;

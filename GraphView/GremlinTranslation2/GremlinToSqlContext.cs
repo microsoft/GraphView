@@ -198,7 +198,7 @@ namespace GraphView
         {
             if (IsPopulateGremlinPath) return;
 
-            GremlinPathVariable newVariable = new GremlinPathVariable(GetGremlinStepList());
+            GremlinPathVariable newVariable = new GremlinPathVariable(GetCurrAndChildGremlinStepList());
             VariableList.Add(newVariable);
             TableReferences.Add(newVariable);
             CurrentContextPath = newVariable;
@@ -216,7 +216,22 @@ namespace GraphView
         internal List<GremlinVariableProperty> GetGremlinStepList(GremlinVariable stopVariable = null)
         {
             List<GremlinVariableProperty> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
-            if (gremlinStepList == null) gremlinStepList = new List<GremlinVariableProperty>();
+            if (gremlinStepList == null)
+            {
+                gremlinStepList = new List<GremlinVariableProperty>();
+            }
+            foreach (var step in StepList)
+            {
+                if (step == stopVariable) break;
+                step.PopulateGremlinPath();
+                gremlinStepList.Add(step.GetPath());
+            }
+            return gremlinStepList;
+        }
+
+        internal List<GremlinVariableProperty> GetCurrAndChildGremlinStepList(GremlinVariable stopVariable = null)
+        {
+            List<GremlinVariableProperty> gremlinStepList = new List<GremlinVariableProperty>();
             foreach (var step in StepList)
             {
                 if (step == stopVariable) break;
@@ -322,7 +337,7 @@ namespace GraphView
             var newMatchClause = new WMatchClause();
             foreach (var path in PathList)
             {
-                if (path.EdgeVariable is GremlinFreeEdgeTableVariable)
+                if (path.EdgeVariable is GremlinFreeEdgeTableVariable && VariableList.Contains(path.EdgeVariable))
                 {
                     newMatchClause.Paths.Add(path.ToMatchPath());
                 }

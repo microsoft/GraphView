@@ -105,9 +105,6 @@ namespace GraphView
 
         public override WTableReference ToTableReference()
         {
-            List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
-
-            //Set the select Elements
             Dictionary<GremlinVariableProperty, string> map = new Dictionary<GremlinVariableProperty, string>();
             Dictionary<GremlinVariableProperty, string> map2 = new Dictionary<GremlinVariableProperty, string>();
             Dictionary<GremlinVariableProperty, string> map3 = new Dictionary<GremlinVariableProperty, string>();
@@ -115,14 +112,15 @@ namespace GraphView
 
             WRepeatConditionExpression conditionExpr = GetRepeatConditionExpression();
 
-            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(FirstVariable.ProjectedProperties, ref map);
+            List<WSelectScalarExpression> inputSelectList = GetInputSelectList(ref map);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
             List<WSelectScalarExpression> terminateSelectList = GetConditionSelectList(ref map2);
             List<WSelectScalarExpression> repeatPathOuterList = GetRepeatPathOuterVariableList(ref map3);
             List<WSelectScalarExpression> conditionPathOuterList = GetConditionPathOuterVariableList(ref map4);
-            WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
 
+            WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
             selectQueryBlock.SelectElements.Clear();
+
             foreach (var selectElement in inputSelectList)
             {
                 selectQueryBlock.SelectElements.Add(selectElement);
@@ -216,7 +214,6 @@ namespace GraphView
 
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, selectQueryBlock);
 
-            PropertyKeys.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
 
             ModifyColumnNameVisitor newVisitor = new ModifyColumnNameVisitor();
             newVisitor.Invoke(selectQueryBlock, map);
@@ -224,8 +221,10 @@ namespace GraphView
             newVisitor.Invoke(selectQueryBlock, map3);
             newVisitor.Invoke(conditionExpr, map4);
 
-            PropertyKeys.Add(conditionExpr);
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, PropertyKeys, this, GetVariableName());
+            List<WScalarExpression> repeatParameters = new List<WScalarExpression>();
+            repeatParameters.Add(SqlUtil.GetScalarSubquery(WBinaryQueryExpression));
+            repeatParameters.Add(conditionExpr);
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Repeat, repeatParameters, this, GetVariableName());
 
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
@@ -242,10 +241,10 @@ namespace GraphView
             };
         }
 
-        public List<WSelectScalarExpression> GetInputSelectList(List<string> projectProperties, ref Dictionary<GremlinVariableProperty, string> map)
+        public List<WSelectScalarExpression> GetInputSelectList(ref Dictionary<GremlinVariableProperty, string> map)
         {
             List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
-            foreach (var projectProperty in projectProperties)
+            foreach (var projectProperty in FirstVariable.ProjectedProperties)
             {
                 var aliasName = GenerateKey();
                 inputSelectList.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), aliasName));

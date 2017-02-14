@@ -73,6 +73,10 @@ namespace GraphView
 
         internal virtual void Populate(string property)
         {
+            if (_variableName == "R_5")
+            {
+                string stop = "";
+            }
             if (ProjectedProperties.Contains(property)) return;
             ProjectedProperties.Add(property);
         }
@@ -859,11 +863,11 @@ namespace GraphView
         //internal virtual void ToV(GremlinToSqlContext currentContext, Direction direction)
         internal virtual void Tree(GremlinToSqlContext currentContext)
         {
-            currentContext.PopulateGremlinPath();
-            GremlinVariableProperty pathVariableProperty = currentContext.CurrentContextPath.DefaultVariableProperty();
-            GremlinToSqlContext duplicatedContext = currentContext.Duplicate();
-            GremlinTreeVariable newVariable = new GremlinTreeVariable(duplicatedContext, pathVariableProperty);
-            duplicatedContext.HomeVariable = newVariable;
+            GremlinPathVariable pathVariable = new GremlinPathVariable(currentContext.GetGremlinStepList());
+            currentContext.VariableList.Add(pathVariable);
+            currentContext.TableReferences.Add(pathVariable);
+
+            GremlinTreeVariable newVariable = new GremlinTreeVariable(currentContext.Duplicate(), pathVariable);
             currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
