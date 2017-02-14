@@ -105,8 +105,7 @@ namespace GremlinTranslationOperator.Tests
             //test = graph.g().E().Next();
             //test = null;
             
-           
-
+            
             //result = graph.g().V().Repeat(GraphTraversal2.__().In().InE()).Next();
             //var results = graph.g().V().Project("Vertex").By(GraphTraversal2.__().Emit().Repeat(GraphTraversal2.__().OutE("_val").As
             //    ("_").InV())).Next();
