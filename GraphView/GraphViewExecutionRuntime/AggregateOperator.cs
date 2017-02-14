@@ -333,7 +333,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            GroupState.Init();
+            //GroupState.Init();
             inputOp.ResetState();
             Open();
         }

@@ -738,8 +738,12 @@ namespace GraphView
 
                 if (tableReferences.IsSupersetOf(tableRefs))
                 {
-                    childrenProcessor.Add(new FilterOperator(childrenProcessor.Last(),
-                        predicate.CompileToFunction(context, connection)));
+                    childrenProcessor.Add(
+                        new FilterOperator(
+                            childrenProcessor.Count != 0 
+                            ? childrenProcessor.Last() 
+                            : context.OuterContextOp,
+                            predicate.CompileToFunction(context, connection)));
                     remainingPredicatesAndTheirTableReferences.RemoveAt(i);
                     context.CurrentExecutionOperator = childrenProcessor.Last();
                 }
@@ -891,7 +895,13 @@ namespace GraphView
             var rawRecordLayout = context.RawRecordLayout;
 
             if (context.OuterContextOp != null)
+            {
                 context.CurrentExecutionOperator = context.OuterContextOp;
+                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                    new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                    operatorChain);
+            }
+                
 
             foreach (var subGraph in graphPattern.ConnectedSubGraphs)
             {
@@ -2337,6 +2347,18 @@ namespace GraphView
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
             if (!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
+                GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
+                    aggregateFunction, elementPropertyProjectionIndex);
+                context.CurrentExecutionOperator = groupOp;
+
+                context.ClearField();
+                // Change to correct ColumnGraphType
+                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+                return groupOp;
+            }
+            else
+            {
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
                     context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
                     elementPropertyProjectionIndex);
@@ -2351,16 +2373,6 @@ namespace GraphView
                 sideEffectList.Add(groupSideEffectOp.GroupState);
 
                 return groupSideEffectOp;
-            }
-            else
-            {
-                GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
-                    aggregateFunction, elementPropertyProjectionIndex);
-                context.CurrentExecutionOperator = groupOp;
-                // Change to correct ColumnGraphType
-                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
-
-                return groupOp;
             }
         }
     }

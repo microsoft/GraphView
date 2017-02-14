@@ -2085,7 +2085,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            StoreState.Init();
+            //StoreState.Init();
             inputOp.ResetState();
             Open();
         }

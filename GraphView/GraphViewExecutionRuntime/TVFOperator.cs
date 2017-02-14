@@ -310,9 +310,10 @@ namespace GraphView
 
             foreach (var tuple in _pathFieldList)
             {
-                var index = tuple.Item1;
-                var needsUnfold = tuple.Item2;
+                int index = tuple.Item1;
+                bool needsUnfold = tuple.Item2;
 
+                if (record[index] == null) continue;
                 if (needsUnfold)
                 {
                     CollectionField cf = record[index] as CollectionField;
@@ -321,7 +322,7 @@ namespace GraphView
                         pathCollection.Add(fo);
                     }
                 }
-                else if (record[index] != null)
+                else
                 {
                     pathCollection.Add(record[index]);
                 }
