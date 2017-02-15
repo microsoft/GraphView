@@ -383,12 +383,10 @@ namespace GraphView
             return result;
         }
 
-        public VertexField GetVertexField(string vertexId, string vertexJson = null)
+        public VertexField GetVertexField(string vertexId, JObject vertexObject = null)
         {
             return this._cachedVertexField.GetOrAdd(vertexId, dummy => {
-                JObject vertexObject = (vertexJson == null)
-                                           ? this.Connection.RetrieveDocumentById(vertexId)
-                                           : JObject.Parse(vertexJson);
+                vertexObject = vertexObject ?? this.Connection.RetrieveDocumentById(vertexId);
                 return FieldObject.ConstructVertexField(this.Connection, vertexObject);
             });
         }

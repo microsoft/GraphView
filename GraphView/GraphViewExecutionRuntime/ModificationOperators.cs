@@ -31,7 +31,7 @@ namespace GraphView
             while (InputOperator.State() && (srcRecord = InputOperator.Next()) != null)
             {
                 var result = DataModify(srcRecord);
-                if (result == null) continue;;
+                if (result == null) continue; ;
 
                 var resultRecord = new RawRecord(srcRecord);
                 resultRecord.Append(result);
@@ -48,7 +48,7 @@ namespace GraphView
             InputOperator.ResetState();
             Open();
         }
-        
+
 
         /// <summary>
         /// Given a edge's source node document and its offset, return the edge's sink id and reverse edge's offset
@@ -73,7 +73,7 @@ namespace GraphView
     internal class AddVOperator : ModificationBaseOpertaor2
     {
         private readonly string _vertexDocument;
-        private readonly List<string> _projectedFieldList; 
+        private readonly List<string> _projectedFieldList;
 
         public AddVOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, string vertexDocument, List<string> projectedFieldList)
             : base(inputOp, connection)
@@ -88,7 +88,7 @@ namespace GraphView
 
             this.Connection.CreateDocumentAsync(vertexObject).Wait();
 
-            VertexField vertexField = Connection.VertexCache.TryAddVertexField(vertexObject);
+            VertexField vertexField = Connection.VertexCache.GetVertexField((string)vertexObject["id"]);
 
             RawRecord result = new RawRecord();
 
@@ -101,7 +101,7 @@ namespace GraphView
 
             return result;
         }
-        
+
     }
 
     internal class DropNodeOperator : ModificationBaseOpertaor2
@@ -127,7 +127,8 @@ namespace GraphView
 
             // Save a copy of Edges _IDs & drop outgoing edges
             List<string> outEdgeOffsets = vertex.AdjacencyList.Edges.Keys.ToList();
-            foreach (string outEdgeOffset in outEdgeOffsets) {
+            foreach (string outEdgeOffset in outEdgeOffsets)
+            {
                 temp.fieldValues[0] = new StringField(vertexId);
                 temp.fieldValues[1] = new StringField(outEdgeOffset);
                 dropEdgeOp.DataModify(temp);
@@ -136,7 +137,8 @@ namespace GraphView
             // Save a copy of incoming Edges <srcVertexId, edgeOffsetInSrcVertex> & drop them
             List<Tuple<string, string>> inEdges = vertex.RevAdjacencyList.Edges.Values.Select(
                 e => new Tuple<string, string>(e.OutV, e.EdgeProperties["_reverse_ID"].PropertyValue)).ToList();
-            foreach (var inEdge in inEdges) {
+            foreach (var inEdge in inEdges)
+            {
                 temp.fieldValues[0] = new StringField(inEdge.Item1); // srcVertexId
                 temp.fieldValues[1] = new StringField(inEdge.Item2); // edgeOffsetInSrcVertex
                 dropEdgeOp.DataModify(temp);
@@ -170,8 +172,8 @@ namespace GraphView
         private string _edgeJsonDocument;
         private List<string> _edgeProperties;
 
-        public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection, 
-            ScalarFunction pSrcFunction, ScalarFunction pSinkFunction, 
+        public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+            ScalarFunction pSrcFunction, ScalarFunction pSinkFunction,
             int otherVTag, string pEdgeJsonDocument, List<string> pProjectedFieldList)
             : base(inputOp, connection)
         {
@@ -182,37 +184,34 @@ namespace GraphView
             _edgeProperties = pProjectedFieldList;
         }
 
-        // TODO: If the scalarSubquery yields a vertex field, we could skip the RetrieveDocument from server
-        // TODO: and that means we need a function which can translate a VertexField back to a Json string for uploading to the server
         internal override RawRecord DataModify(RawRecord record)
         {
-            FieldObject srcFieldObject = _srcFunction.Evaluate(record);
-            FieldObject sinkFieldObject = _sinkFunction.Evaluate(record);
+            VertexField srcVertexField = _srcFunction.Evaluate(record) as VertexField;
+            VertexField sinkVertexField = _sinkFunction.Evaluate(record) as VertexField;
 
-            if (srcFieldObject == null || sinkFieldObject == null) return null;
+            if (srcVertexField == null || sinkVertexField == null) return null;
 
-            string srcId;
-            string sinkId;
+            string srcId = srcVertexField["id"].ToValue;
+            string sinkId = sinkVertexField["id"].ToValue;
+            //string srcJsonDocument = srcVertexField.JsonDocument;
+            //string sinkJsonDocument = sinkVertexField.JsonDocument;
 
-            // TODO: Just a hack, need to modify the translation code
-            if (srcFieldObject is StringField) srcId = (srcFieldObject as StringField).Value;
-            else if (srcFieldObject is PropertyField) srcId = (srcFieldObject as PropertyField).PropertyValue;
-            else if (srcFieldObject is VertexField) srcId = (srcFieldObject as VertexField)["id"].ToValue;
-            else srcId = srcFieldObject.ToString();
+            JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcId);
+            JObject sinkVertexObject;
+            if (srcId.Equals(sinkId))
+            {
+                // MUST not use JObject.DeepClone() here!
+                sinkVertexObject = srcVertexObject;
+            }
+            else {
+                sinkVertexObject = this.Connection.RetrieveDocumentById(sinkId);
+            }
 
-            // TODO: Just a hack, need to modify the translation code
-            if (sinkFieldObject is StringField) sinkId = (sinkFieldObject as StringField).Value;
-            else if (sinkFieldObject is PropertyField) sinkId = (sinkFieldObject as PropertyField).PropertyValue;
-            else if (sinkFieldObject is VertexField) sinkId = (sinkFieldObject as VertexField)["id"].ToValue;
-            else sinkId = sinkFieldObject.ToString();
+            //VertexField srcVertexField = (srcFieldObject as VertexField)
+            //                              ?? Connection.VertexCache.GetVertexField(srcId, srcVertexObject);
+            //VertexField sinkVertexField = (sinkFieldObject as VertexField)
+            //                               ?? Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject);
 
-            string srcJsonDocument = this.Connection.RetrieveDocumentById(srcId).ToString();
-            string sinkJsonDocument = srcId.Equals(sinkId) ? srcJsonDocument : this.Connection.RetrieveDocumentById(sinkId).ToString();
-
-            VertexField srcVertexField = (srcFieldObject as VertexField)
-                                          ?? Connection.VertexCache.GetVertexField(srcId, srcJsonDocument);
-            VertexField sinkVertexField = (sinkFieldObject as VertexField)
-                                           ?? Connection.VertexCache.GetVertexField(sinkId, sinkJsonDocument);
 
             //
             // Interact with DocDB and add the edge
@@ -228,7 +227,7 @@ namespace GraphView
             EdgeDocumentHelper.InsertEdgeAndUpload(this.Connection,
                                                    srcId, sinkId,
                                                    srcVertexField, sinkVertexField, this._edgeJsonDocument,
-                                                   JObject.Parse(srcJsonDocument), JObject.Parse(sinkJsonDocument),
+                                                   srcVertexObject, sinkVertexObject,
                                                    out outEdgeObject, out outEdgeDocID,
                                                    out inEdgeObject, out inEdgeDocID);
 
@@ -252,7 +251,8 @@ namespace GraphView
             result.Append(new StringField(outEdgeObject["_ID"].ToString()));
             result.Append(outEdgeField);
 
-            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++) {
+            for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++)
+            {
                 FieldObject fieldValue = outEdgeField[_edgeProperties[i]];
                 result.Append(fieldValue);
             }
@@ -331,7 +331,8 @@ namespace GraphView
             EdgeDocumentHelper.FindEdgeBySourceAndOffset(
                 this.Connection, srcVertexObject, edgeOffset, false,
                 out srcEdgeObject, out srcEdgeDocId);
-            if (srcEdgeObject == null) {
+            if (srcEdgeObject == null)
+            {
                 //TODO: Check is this condition alright?
                 return null;
             }
@@ -339,7 +340,8 @@ namespace GraphView
             string sinkId = (string)srcEdgeObject["_sink"];
             long revEdgeOffset = (long)srcEdgeObject["_reverse_ID"];
             JObject sinkVertexObject;
-            if (!string.Equals(sinkId, srcId)) {
+            if (!string.Equals(sinkId, srcId))
+            {
                 sinkVertexObject = this.Connection.RetrieveDocumentById(sinkId);
                 JObject sinkEdgeObject;
                 EdgeDocumentHelper.FindEdgeBySourceAndOffset(
@@ -357,8 +359,8 @@ namespace GraphView
             this.Connection.ReplaceOrDeleteDocumentsAsync(uploadDocuments).Wait();
 
 
-            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcId, srcVertexObject.ToString());
-            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject.ToString());
+            VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcId, srcVertexObject);
+            VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject);
 
             srcVertexField.AdjacencyList.RemoveEdgeField(edgeOffset.ToString());
             sinkVertexField.RevAdjacencyList.RemoveEdgeField(revEdgeOffset.ToString());
@@ -482,10 +484,10 @@ namespace GraphView
         }
 
         private void UpdateNodeProperties(
-            Dictionary<string, JObject> documentsMap, 
-            string vertexId, 
+            Dictionary<string, JObject> documentsMap,
+            string vertexId,
             JObject vertexDocObject,
-            List<Tuple<WValueExpression, WValueExpression, int>> propList, 
+            List<Tuple<WValueExpression, WValueExpression, int>> propList,
             UpdatePropertyMode mode)
         {
             VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
@@ -534,9 +536,9 @@ namespace GraphView
         private readonly int _edgeOffsetIndex;
 
         public UpdateEdgePropertiesOperator(
-            GraphViewExecutionOperator inputOp, GraphViewConnection connection, 
-            int srcVertexIdIndex, int edgeOffsetIndex, 
-            List<Tuple<WValueExpression, WValueExpression, int>> propertiesList, 
+            GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+            int srcVertexIdIndex, int edgeOffsetIndex,
+            List<Tuple<WValueExpression, WValueExpression, int>> propertiesList,
             UpdatePropertyMode pMode = UpdatePropertyMode.Set)
             : base(inputOp, connection, propertiesList, pMode)
         {
@@ -555,7 +557,8 @@ namespace GraphView
             EdgeDocumentHelper.FindEdgeBySourceAndOffset(
                 this.Connection, srcVertexObject, edgeOffset, false,
                 out outEdgeObject, out outEdgeDocId);
-            if (outEdgeObject == null) {
+            if (outEdgeObject == null)
+            {
                 // TODO: Is there something wrong?
                 Debug.WriteLine($"[UpdateEdgePropertiesOperator] The edge does not exist: vertexId = {srcVertexId}, edgeOffset = {edgeOffset}");
                 return null;
@@ -566,7 +569,8 @@ namespace GraphView
             JObject sinkVertexObject;
             string inEdgeDocId;
             JObject inEdgeObject;
-            if (sinkVertexId.Equals(srcVertexId)) {
+            if (sinkVertexId.Equals(srcVertexId))
+            {
                 sinkVertexObject = srcVertexObject;  // NOTE: Must not use DeepClone() here!
             }
             else {
@@ -630,7 +634,7 @@ namespace GraphView
                     }
                 }
             }
-            
+
             // Interact with DocDB to update the property 
             EdgeDocumentHelper.UpdateEdgeProperty(this.Connection, srcVertexObject, outEdgeDocId, false, outEdgeObject);
             EdgeDocumentHelper.UpdateEdgeProperty(this.Connection, sinkVertexObject, inEdgeDocId, true, inEdgeObject);
