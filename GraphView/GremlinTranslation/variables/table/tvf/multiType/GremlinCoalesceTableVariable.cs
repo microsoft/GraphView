@@ -90,7 +90,24 @@ namespace GraphView
 
             foreach (var context in CoalesceContextList)
             {
-                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
+                WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
+                selectQueryBlock.SelectElements.Clear();
+                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(context.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                foreach (var projectProperty in ProjectedProperties)
+                {
+                    if (context.PivotVariable.ProjectedProperties.Contains(projectProperty))
+                    {
+                        selectQueryBlock.SelectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(
+                                context.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                    }
+                    else
+                    {
+                        selectQueryBlock.SelectElements.Add(
+                            SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
+                    }
+                }
+                parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, this, GetVariableName());
 
