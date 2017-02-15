@@ -73,11 +73,8 @@ namespace GraphView
 
         internal virtual void Populate(string property)
         {
-            if (_variableName == "R_5")
-            {
-                string stop = "";
-            }
             if (ProjectedProperties.Contains(property)) return;
+            if (property == GremlinKeyword.TableDefaultColumnName) return;
             ProjectedProperties.Add(property);
         }
 

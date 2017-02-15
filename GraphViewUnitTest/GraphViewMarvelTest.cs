@@ -6,7 +6,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace GraphViewUnitTest
 {
     [TestClass]
-    public class GraphViewMarvelTest2
+    public class GraphViewMarvelTest
     {
         [TestMethod]
         public void SelectMarvelQuery1()
@@ -235,7 +235,7 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
-        public void GraphViewMarvelInsertTest2()
+        public void GraphViewMarvelInsertTest()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
                 "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
