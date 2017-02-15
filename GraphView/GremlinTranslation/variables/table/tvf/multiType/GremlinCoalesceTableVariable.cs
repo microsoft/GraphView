@@ -92,14 +92,20 @@ namespace GraphView
             {
                 WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
                 selectQueryBlock.SelectElements.Clear();
-                selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(context.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                //selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(context.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    if (context.PivotVariable.ProjectedProperties.Contains(projectProperty))
+                    if (projectProperty == GremlinKeyword.TableDefaultColumnName)
+                    {
+                        GremlinVariableProperty defaultProjection = context.PivotVariable.DefaultProjection();
+                        selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(),
+                            GremlinKeyword.TableDefaultColumnName));
+                    }
+                    else if (context.PivotVariable.ProjectedProperties.Contains(projectProperty))
                     {
                         selectQueryBlock.SelectElements.Add(
-                            SqlUtil.GetSelectScalarExpr(
-                                context.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                        SqlUtil.GetSelectScalarExpr(
+                            context.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
                     }
                     else
                     {

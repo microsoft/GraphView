@@ -165,8 +165,8 @@ namespace GraphView
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(item.Key.ToScalarExpression(), item.Value));
             }
 
-            firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(FirstVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
-            selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            //firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(FirstVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            //selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             foreach (var property in ProjectedProperties)
             {
                 if (FirstVariable.ProjectedProperties.Contains(property))

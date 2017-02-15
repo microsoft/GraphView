@@ -49,11 +49,13 @@ namespace GraphView
 
         internal override string GetPrimaryKey()
         {
+            Populate(GremlinKeyword.TableDefaultColumnName);
             return GremlinKeyword.TableDefaultColumnName;
         }
 
         internal override string GetProjectKey()
         {
+            Populate(GremlinKeyword.TableDefaultColumnName);
             return GremlinKeyword.TableDefaultColumnName;
         }
 
@@ -123,11 +125,13 @@ namespace GraphView
 
         internal override string GetPrimaryKey()
         {
-            return GremlinKeyword.NodeID;
+            Populate(GremlinKeyword.ScalarValue);
+            return GremlinKeyword.ScalarValue;
         }
 
         internal override string GetProjectKey()
         {
+            Populate(GremlinKeyword.Star);
             return GremlinKeyword.Star;
         }
     }
@@ -146,11 +150,13 @@ namespace GraphView
 
         internal override string GetPrimaryKey()
         {
+            Populate(GremlinKeyword.EdgeID);
             return GremlinKeyword.EdgeID;
         }
 
         internal override string GetProjectKey()
         {
+            Populate(GremlinKeyword.Star);
             return GremlinKeyword.Star;
         }
     }
@@ -169,11 +175,13 @@ namespace GraphView
 
         internal override string GetPrimaryKey()
         {
+            Populate(GremlinKeyword.ScalarValue);
             return GremlinKeyword.ScalarValue;
         }
 
         internal override string GetProjectKey()
         {
+            Populate(GremlinKeyword.ScalarValue);
             return GremlinKeyword.ScalarValue;
         }
     }
@@ -192,11 +200,13 @@ namespace GraphView
 
         internal override string GetPrimaryKey()
         {
+            Populate(GremlinKeyword.PropertyValue);
             return GremlinKeyword.PropertyValue;
         }
 
         internal override string GetProjectKey()
         {
+            Populate(GremlinKeyword.PropertyValue);
             return GremlinKeyword.PropertyValue;
         }
     }

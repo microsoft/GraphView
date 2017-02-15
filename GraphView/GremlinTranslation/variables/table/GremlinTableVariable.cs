@@ -36,16 +36,16 @@ namespace GraphView
             switch (GetVariableType())
             {
                 case GremlinVariableType.Vertex:
-                    if (GremlinUtil.IsEdgeProperty(property)) return;
+                    if (GremlinUtil.IsEdgeProperty(property) || property == GremlinKeyword.TableDefaultColumnName) return;
                     break;
                 case GremlinVariableType.Edge:
-                    if (GremlinUtil.IsVertexProperty(property)) return;
+                    if (GremlinUtil.IsVertexProperty(property) || property == GremlinKeyword.TableDefaultColumnName) return;
                     break;
                 case GremlinVariableType.Scalar:
-                    if (property != GremlinKeyword.ScalarValue) return;
+                    if (property != GremlinKeyword.ScalarValue || property == GremlinKeyword.TableDefaultColumnName) return;
                     break;
                 case GremlinVariableType.Property:
-                    if (property != GremlinKeyword.PropertyValue) return;
+                    if (property != GremlinKeyword.PropertyValue || property == GremlinKeyword.TableDefaultColumnName) return;
                     break;
             }
             base.Populate(property);
@@ -58,7 +58,7 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            switch (VariableType)
+            switch (GetVariableType())
             {
                 case GremlinVariableType.Edge:
                     return GetVariableProperty(GremlinKeyword.EdgeID);
@@ -69,12 +69,12 @@ namespace GraphView
                 case GremlinVariableType.Property:
                     return GetVariableProperty(GremlinKeyword.PropertyValue);
             }
-            return new GremlinVariableProperty(this, GremlinKeyword.TableDefaultColumnName);
+            return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
         }
 
         internal override GremlinVariableProperty DefaultProjection()
         {
-            switch (VariableType)
+            switch (GetVariableType())
             {
                 case GremlinVariableType.Edge:
                     return GetVariableProperty(GremlinKeyword.Star);
@@ -85,39 +85,57 @@ namespace GraphView
                 case GremlinVariableType.Property:
                     return GetVariableProperty(GremlinKeyword.PropertyValue);
             }
-            return new GremlinVariableProperty(this, GremlinKeyword.TableDefaultColumnName);
+            return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
         }
 
         internal override string GetPrimaryKey()
         {
-            switch (VariableType)
+            var primaryKey = "";
+            switch (GetVariableType())
             {
                 case GremlinVariableType.Edge:
-                    return GremlinKeyword.EdgeID;
+                    primaryKey =  GremlinKeyword.EdgeID;
+                    break;
                 case GremlinVariableType.Scalar:
-                    return GremlinKeyword.ScalarValue;
+                    primaryKey = GremlinKeyword.ScalarValue;
+                    break;
                 case GremlinVariableType.Vertex:
-                    return GremlinKeyword.NodeID;
+                    primaryKey = GremlinKeyword.NodeID;
+                    break;
                 case GremlinVariableType.Property:
-                    return GremlinKeyword.PropertyValue;
+                    primaryKey = GremlinKeyword.PropertyValue;
+                    break;
+                case GremlinVariableType.Table:
+                    primaryKey = GremlinKeyword.TableDefaultColumnName;
+                    break;
             }
-            return GremlinKeyword.TableDefaultColumnName;
+            Populate(primaryKey);
+            return primaryKey;
         }
 
         internal override string GetProjectKey()
         {
-            switch (VariableType)
+            var projectKey = "";
+            switch (GetVariableType())
             {
                 case GremlinVariableType.Edge:
-                    return GremlinKeyword.Star;
+                    projectKey = GremlinKeyword.Star;
+                    break;
                 case GremlinVariableType.Scalar:
-                    return GremlinKeyword.ScalarValue;
+                    projectKey = GremlinKeyword.ScalarValue;
+                    break;
                 case GremlinVariableType.Vertex:
-                    return GremlinKeyword.Star;
+                    projectKey = GremlinKeyword.Star;
+                    break;
                 case GremlinVariableType.Property:
-                    return GremlinKeyword.PropertyValue;
+                    projectKey = GremlinKeyword.PropertyValue;
+                    break;
+                case GremlinVariableType.Table:
+                    projectKey = GremlinKeyword.TableDefaultColumnName;
+                    break;
             }
-            return GremlinKeyword.TableDefaultColumnName;
+            Populate(projectKey);
+            return projectKey;
         }
 
         internal override GremlinVariableType GetVariableType()

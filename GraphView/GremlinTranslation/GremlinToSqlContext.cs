@@ -354,18 +354,16 @@ namespace GraphView
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
             }
-
-            else
-            {
-                GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
-            }
-
-            if (ProjectedProperties != null && ProjectedProperties.Count != 0)
+            else if (ProjectedProperties != null && ProjectedProperties.Count != 0)
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
-                    if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
+                    if (projectProperty == GremlinKeyword.TableDefaultColumnName)
+                    {
+                        GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
+                        selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                    }
+                    else if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
                     {
                         selectElements.Add(
                             SqlUtil.GetSelectScalarExpr(
@@ -373,6 +371,12 @@ namespace GraphView
                     }
                 }
             }
+            else
+            {
+                GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+            }
+
             if (IsPopulateGremlinPath)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(CurrentContextPath.DefaultProjection().ToScalarExpression(), GremlinKeyword.Path));

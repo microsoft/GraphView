@@ -74,7 +74,6 @@ namespace GraphView
         internal virtual void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-            if (property == GremlinKeyword.TableDefaultColumnName) return;
             ProjectedProperties.Add(property);
         }
 
@@ -151,7 +150,14 @@ namespace GraphView
         internal virtual WFunctionCall ToCompose1()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetValueExpr(GetProjectKey()));
+            var projectKey = GetProjectKey();
+            //Populate(projectKey);
+            parameters.Add(SqlUtil.GetValueExpr(projectKey));
+            //if (projectKey == GremlinKeyword.TableDefaultColumnName)
+            //{
+            //    parameters.Add(GetVariableProperty(projectKey).ToScalarExpression());
+            //    parameters.Add(SqlUtil.GetValueExpr(projectKey));
+            //}
             foreach (var projectProperty in ProjectedProperties)
             {
                 parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());
@@ -937,8 +943,8 @@ namespace GraphView
             var compareVar = currentContext.Select(predicate.Value as string);
             if (compareVar.Count > 1) throw new Exception();
 
-            var secondExpr = compareVar.First().GetVariableProperty(GetProjectKey()).ToScalarExpression();
-            var firstExpr = GetVariableProperty(GetProjectKey()).ToScalarExpression();
+            var firstExpr = DefaultProjection().ToScalarExpression();
+            var secondExpr = compareVar.First().DefaultProjection().ToScalarExpression();
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);
         }

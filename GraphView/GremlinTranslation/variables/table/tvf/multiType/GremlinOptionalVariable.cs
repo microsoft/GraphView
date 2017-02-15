@@ -93,11 +93,14 @@ namespace GraphView
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
             WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
             secondQueryExpr.SelectElements.Clear();
-            firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
-            secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(OptionalContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             foreach (var projectProperty in ProjectedProperties)
             {
-                if (InputVariable.ProjectedProperties.Contains(projectProperty))
+                if (projectProperty == GremlinKeyword.TableDefaultColumnName)
+                {
+                    firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(),
+                        GremlinKeyword.TableDefaultColumnName));
+                }
+                else if (InputVariable.ProjectedProperties.Contains(projectProperty))
                 {
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
@@ -108,7 +111,14 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
                 }
-                if (OptionalContext.PivotVariable.ProjectedProperties.Contains(projectProperty))
+
+                if (projectProperty == GremlinKeyword.TableDefaultColumnName)
+                {
+                    GremlinVariableProperty defaultProjection = OptionalContext.PivotVariable.DefaultProjection();
+                    secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(),
+                        GremlinKeyword.TableDefaultColumnName));
+                }
+                else if (OptionalContext.PivotVariable.ProjectedProperties.Contains(projectProperty))
                 {
                     secondQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
