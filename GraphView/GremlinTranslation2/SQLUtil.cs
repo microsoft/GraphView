@@ -84,7 +84,7 @@ namespace GraphView
                             booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
                                 GetComparisonType(PredicateType.eq)));
                         }
-                        return GetBooleanParenthesisExpr(ConcatBooleanExprWithOr(booleanExprList));
+                        return ConcatBooleanExprWithOr(booleanExprList);
                     }
                 case PredicateType.without:
                     if (predicate.VariableTag != null)
@@ -102,7 +102,7 @@ namespace GraphView
                             booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, secondExpr,
                                 GetComparisonType(PredicateType.neq)));
                         }
-                        return GetBooleanParenthesisExpr(ConcatBooleanExprWithAnd(booleanExprList));
+                        return ConcatBooleanExprWithAnd(booleanExprList);
                     }
 
                 case PredicateType.inside:
@@ -188,7 +188,7 @@ namespace GraphView
                 concatExpr = concatExpr == null ? booleanExpr
                                                 : GetBooleanBinaryExpr(booleanExpr, concatExpr, type);
             }
-            return concatExpr;
+            return GetBooleanParenthesisExpr(concatExpr);
         }
 
         internal static WSchemaObjectName GetSchemaObjectName(string value)

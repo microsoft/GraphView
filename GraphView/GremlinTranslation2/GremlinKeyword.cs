@@ -130,6 +130,7 @@ namespace GraphView
                 {"map", "Map"},
                 {"not", "Not"},
                 {"optional", "Optional"},
+                {"or", "Or" },
                 {"otherV", "OtherV"},
                 {"out", "Out"},
                 {"outE", "OutE"},

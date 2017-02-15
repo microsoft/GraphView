@@ -563,7 +563,12 @@ namespace GraphView
 
         internal virtual void Or(GremlinToSqlContext currentContext, List<GremlinToSqlContext> orContexts)
         {
-            throw new NotImplementedException();
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            foreach (var context in orContexts)
+            {
+                booleanExprList.Add(context.ToSqlBoolean());
+            }
+            currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
         internal virtual void Order(GremlinToSqlContext currentContext)

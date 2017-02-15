@@ -9,20 +9,27 @@ namespace GraphView
 {
     internal class GremlinOrOp : GremlinTranslationOperator
     {
-        public IList<GremlinTranslationOperator> ConjunctiveOperators { get; set; }
+        public List<GraphTraversal2> OrTraversals { get; set; }
 
-        public GremlinOrOp(params GraphTraversal2[] andTraversals)
+        public GremlinOrOp(params GraphTraversal2[] orTraversals)
         {
-            ConjunctiveOperators = new List<GremlinTranslationOperator>();
-            foreach (var traversal in andTraversals)
-            {
-                ConjunctiveOperators.Add(traversal.LastGremlinTranslationOp);
-            }
+            OrTraversals = new List<GraphTraversal2>(orTraversals);
         }
+
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = InputOperator.GetContext();
-            throw new NotImplementedException();
+
+            List<GremlinToSqlContext> andContexts = new List<GremlinToSqlContext>();
+            foreach (var orTraversal in OrTraversals)
+            {
+                orTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                andContexts.Add(orTraversal.GetEndOp().GetContext());
+            }
+
+            inputContext.PivotVariable.Or(inputContext, andContexts);
+
+            return inputContext;
         }
     }
 }
