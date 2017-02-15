@@ -116,8 +116,8 @@ namespace GraphView
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
             var str = sqlScript.ToString();
-            Console.WriteLine(str);     // Added temporarily for debugging purpose.
-            Console.WriteLine();
+            //Console.WriteLine(str);     // Added temporarily for debugging purpose.
+            //Console.WriteLine();
 
             var op = sqlScript.Batches[0].Compile(null, Connection);
             var rawRecordResults = new List<RawRecord>();
