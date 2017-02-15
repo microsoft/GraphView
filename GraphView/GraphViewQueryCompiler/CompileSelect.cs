@@ -778,6 +778,7 @@ namespace GraphView
                     edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                     edge.Properties));
+                context.CurrentExecutionOperator = operatorChain.Last();
 
                 // Update edge's context info
                 tableReferences.Add(edge.EdgeAlias, TableGraphType.Edge);
@@ -796,6 +797,7 @@ namespace GraphView
                     };
                     operatorChain.Add(new FilterOperator(operatorChain.Last(),
                         edgeJoinPredicate.CompileToFunction(context, connection)));
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
@@ -967,6 +969,7 @@ namespace GraphView
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
                                 traversalEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
+                            context.CurrentExecutionOperator = operatorChain.Last();
 
                             // Update sinkNode's context info
                             processedNodes.Add(sinkNode);

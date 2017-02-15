@@ -49,6 +49,9 @@ namespace GraphView
             string value1 = firstScalarFunction.Evaluate(record)?.ToValue;
             string value2 = secondScalarFunction.Evaluate(record)?.ToValue;
 
+            if (value1 == null || value2 == null)
+                return false;
+
             switch (targetType)
             {
                 case JsonDataType.Boolean:
