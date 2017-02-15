@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinCoinOp: GremlinTranslationOperator
     {
@@ -16,25 +16,10 @@ namespace GraphView.GremlinTranslation
             Probability = probability;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-                
-            List<WScalarExpression> parameterList = new List<WScalarExpression>()
-            {
-                //GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName),
-                GremlinUtil.GetValueExpr(Probability)
-            };
-            WFunctionCall functionCall = GremlinUtil.GetFunctionCall("coin", parameterList);
-
-            WColumnReferenceExpression trueExpr = GremlinUtil.GetColumnReferenceExpression("true");
-
-            WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(functionCall, trueExpr, BooleanComparisonType.Equals);
-
-            inputContext.AddPredicate(booleanExpr);
-
-            return inputContext;
+            throw new NotImplementedException();
         }
     }
 }

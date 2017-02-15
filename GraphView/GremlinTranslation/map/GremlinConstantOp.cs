@@ -5,28 +5,28 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinConstantOp: GremlinTranslationOperator
     {
         public object Constant { get; set; }
+        public List<object> ConstantList { get; set; }
 
         public GremlinConstantOp(object constant)
         {
             Constant = constant;
         }
 
-        public override GremlinToSqlContext GetContext()
-        { 
+        public GremlinConstantOp(List<object> constantList)
+        {
+            ConstantList = new List<object>(constantList);
+        }
+
+        internal override GremlinToSqlContext GetContext()
+        {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<object> parameter = new List<object>() {Constant};
-
-            var secondTableRef = GremlinUtil.GetSchemaObjectFunctionTableReference("constant", parameter);
-
-            var newVariable = inputContext.CrossApplyToVariable(inputContext.CurrVariable, secondTableRef, Labels);
-            inputContext.SetCurrVariable(newVariable);
-            inputContext.SetDefaultProjection(newVariable);
+            inputContext.PivotVariable.Constant(inputContext, Constant);
 
             return inputContext;
         }

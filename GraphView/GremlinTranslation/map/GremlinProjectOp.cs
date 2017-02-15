@@ -4,65 +4,53 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinProjectOp: GremlinTranslationOperator, IGremlinByModulating
     {
         public List<string> ProjectKeys { get; set; }
-        public List<GraphTraversal2> TraversalList { get; set; }
+        public List<GraphTraversal2> ByGraphTraversal { get; set; }
 
         public GremlinProjectOp(params string[] projectKeys)
         {
-            TraversalList = new List<GraphTraversal2>();
-            ProjectKeys = new List<string>();
-            foreach (var projectKey in projectKeys)
-            {
-                ProjectKeys.Add(projectKey);
-            }
+            ProjectKeys = new List<string>(projectKeys);
+            ByGraphTraversal = new List<GraphTraversal2>();
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>();
-
-            for (var i = 0; i < ProjectKeys.Count; i++)
+            List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
+            foreach (var traversal in ByGraphTraversal)
             {
-                inputContext.SaveCurrentState();
-                GremlinUtil.InheritedVariableFromParent(TraversalList[i % TraversalList.Count], inputContext);
-                WSelectQueryBlock selectQueryBlock = TraversalList[i % TraversalList.Count].GetEndOp().GetContext().ToSelectQueryBlock();
-                inputContext.ResetSavedState();
-
-                WScalarExpression scalarExpr = new WScalarSubquery()
-                {
-                    SubQueryExpr = selectQueryBlock
-                };
-                parameterList.Add(scalarExpr);
-                parameterList.Add(GremlinUtil.GetValueExpr(ProjectKeys[i]));
+                traversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                byContexts.Add(traversal.GetEndOp().GetContext());
             }
-            WFunctionCall projectFunctionCall = GremlinUtil.GetFunctionCall("project", parameterList);
 
-            FunctionCallProjection newFunctionCallProjection = new FunctionCallProjection(projectFunctionCall);
-            inputContext.SetCurrProjection(newFunctionCallProjection);
+            inputContext.PivotVariable.Project(inputContext, ProjectKeys, byContexts);
 
             return inputContext;
         }
+
         public void ModulateBy()
         {
-
+            throw new NotImplementedException();
         }
+
         public void ModulateBy(GraphTraversal2 traversal)
         {
-            TraversalList.Add(traversal);
+            ByGraphTraversal.Add(traversal);
         }
 
         public void ModulateBy(string key)
         {
+            throw new NotImplementedException();
         }
 
         public void ModulateBy(GremlinKeyword.Order order)
         {
+            throw new NotImplementedException();
         }
     }
 }

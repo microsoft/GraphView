@@ -4,18 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
-        public Dictionary<string, object> Properties { get; set; }
         public string VertexLabel { get; set; }
 
-        public GremlinAddVOp() { }
+        public GremlinAddVOp() {}
 
-        public GremlinAddVOp(params Object[] propertyKeyValues)
+        public GremlinAddVOp(params object[] propertyKeyValues)
         {
-            
+            throw new NotImplementedException();
         }
 
         public GremlinAddVOp(string vertexLabel)
@@ -23,20 +22,21 @@ namespace GraphView.GremlinTranslation
             VertexLabel = vertexLabel;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinAddVVariable newAddVVar = new GremlinAddVVariable(VertexLabel);
-            inputContext.CurrVariable = newAddVVar;
-            inputContext.SaveCurrentState();
-            WSetVariableStatement statement = inputContext.ToSetVariableStatement();
-            inputContext.ResetSavedState();
-            inputContext.Statements.Add(statement);
-            var newVar = new GremlinVariableReference(statement);
-            inputContext.AddNewVariable(newVar);
-            inputContext.SetCurrVariable(newVar);
-            inputContext.SetDefaultProjection(newVar);
+            if (inputContext.PivotVariable == null)
+            {
+                GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel, true);
+                inputContext.VariableList.Add(newVariable);
+                inputContext.TableReferences.Add(newVariable);
+                inputContext.SetPivotVariable(newVariable);
+            }
+            else
+            {
+                inputContext.PivotVariable.AddV(inputContext, VertexLabel);
+            }
 
             return inputContext;
         }

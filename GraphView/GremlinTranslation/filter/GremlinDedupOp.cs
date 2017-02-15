@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinDedupOp: GremlinTranslationOperator
     {
@@ -13,20 +13,14 @@ namespace GraphView.GremlinTranslation
 
         public GremlinDedupOp(params string[] dedupLabels)
         {
-            DedupLabels = new List<string>();
-            foreach (var dedupLabel in dedupLabels)
-            {
-                DedupLabels.Add(dedupLabel);
-            }
+            DedupLabels = new List<string>(dedupLabels);
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() }; //TODO
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "dedup", parameterList);
+            inputContext.PivotVariable.Dedup(inputContext, DedupLabels);
 
             return inputContext;
         }

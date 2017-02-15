@@ -4,22 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinTreeOp: GremlinTranslationOperator
     {
-        public GremlinTreeOp()
-        {
-            
-        }
-
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() }; //TODO
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "tree", parameterList);
+            inputContext.PivotVariable.Tree(inputContext);
 
             return inputContext;
         }

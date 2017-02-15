@@ -4,19 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinCountOp: GremlinTranslationOperator
     {
         public GremlinCountOp() { }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() }; //TODO
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "count", parameterList);
+            inputContext.PivotVariable.Count(inputContext);
 
             return inputContext;
         }

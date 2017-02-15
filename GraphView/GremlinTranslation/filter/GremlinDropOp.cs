@@ -4,22 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinDropOp: GremlinTranslationOperator
     {
-        public GremlinDropOp() { }
-
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
-            GremlinToSqlContext inputContext = GetContext();
+            GremlinToSqlContext inputContext = GetInputContext();
 
-            //remove element and properties from the graph
-            return new GremlinToSqlContext();
+            inputContext.PivotVariable.Drop(inputContext);
+
+            return inputContext;
         }
-        //public override WSqlScript ToSqlScript()
-        //{
-        //    return GetInputContext().ToSqlDelete();
-        //}
     }
 }

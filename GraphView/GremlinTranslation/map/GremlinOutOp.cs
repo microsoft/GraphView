@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinOutOp: GremlinTranslationOperator
     {
@@ -20,21 +20,11 @@ namespace GraphView.GremlinTranslation
             }
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //GremlinUtil.CheckIsGremlinVertexVariable(inputContext.CurrVariable);
-
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(inputContext.CurrVariable, WEdgeType.OutEdge);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.AddLabelsPredicatesToEdge(EdgeLabels, newEdgeVar);
-
-            GremlinVertexVariable sinkVar = new GremlinVertexVariable();
-            inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, sinkVar);
-            inputContext.AddNewVariable(sinkVar);
-            inputContext.SetDefaultProjection(sinkVar);
-            inputContext.SetCurrVariable(sinkVar);
+            inputContext.PivotVariable.Out(inputContext, EdgeLabels);
 
             return inputContext;
         }

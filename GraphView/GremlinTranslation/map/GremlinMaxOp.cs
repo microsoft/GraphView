@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinMaxOp: GremlinTranslationOperator
     {
@@ -17,15 +17,11 @@ namespace GraphView.GremlinTranslation
             Scope = scope;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() };
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "max", parameterList);
-
-            return inputContext;
+            throw new NotImplementedException();
         }
     }
 }
