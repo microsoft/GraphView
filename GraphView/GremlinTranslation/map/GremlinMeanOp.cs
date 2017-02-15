@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinMeanOp: GremlinTranslationOperator
     {
@@ -16,15 +16,10 @@ namespace GraphView.GremlinTranslation
         {
             Scope = scope;
         }
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() }; //TODO
-
-            inputContext.ProcessProjectWithFunctionCall(Labels, "mean", parameterList);
-
-            return inputContext;
+            throw new NotImplementedException();
         }
     }
 }

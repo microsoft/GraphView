@@ -4,30 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinOtherVOp: GremlinTranslationOperator
     {
-        public GremlinOtherVOp()
-        {
-            
-        }
-
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            var existInPath = inputContext.NewPathList.Find(p => p.SourceVariable.VariableName == inputContext.CurrVariable.VariableName || p.SinkVariable.VariableName == inputContext.CurrVariable.VariableName);
+            inputContext.PivotVariable.OtherV(inputContext);
 
-            if (existInPath.SourceVariable == inputContext.CurrVariable)
-            {
-                inputContext.SetCurrVariable(existInPath.SinkVariable);
-            }
-            if (existInPath.SinkVariable == inputContext.CurrVariable)
-            {
-                inputContext.SetCurrVariable(existInPath.SourceVariable);
-            }
-            
             return inputContext;
         }
     }

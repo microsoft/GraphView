@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinWhereOp: GremlinTranslationOperator
     {
@@ -15,11 +15,13 @@ namespace GraphView.GremlinTranslation
         public GremlinWhereOp(Predicate predicate)
         {
             Predicate = predicate;
+            Predicate.IsTag = true;
         }
         public GremlinWhereOp(string startKey, Predicate predicate)
         {
             StartKey = startKey;
             Predicate = predicate;
+            Predicate.IsTag = true;
         }
 
         public GremlinWhereOp(GraphTraversal2 whereTraversal)
@@ -27,45 +29,29 @@ namespace GraphView.GremlinTranslation
             WhereTraversal = whereTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVariable currVar = inputContext.CurrVariable;
-
-            if (Predicate != null && Predicate.IsAliasValue)
-            {
-                var compareVar = inputContext.AliasToGremlinVariableList[Predicate.Value as string].Last();
-                Predicate.VariableName = compareVar.VariableName;
-                Predicate.CompareString = GremlinUtil.GetCompareString(compareVar);
-            }
 
             if (WhereTraversal == null && StartKey == null)
             {
                 //where(Predicate)
                 //use Predicates
-                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(currVar.VariableName, GremlinUtil.GetCompareString(currVar));
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
-                inputContext.AddPredicate(booleanExpr);
+                inputContext.PivotVariable.Where(inputContext, Predicate);
             }
             else if (WhereTraversal == null && StartKey != null)
             {
                 //where(StartKey, Predicate)
-                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(currVar.VariableName, StartKey);
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, Predicate);
-                inputContext.AddPredicate(booleanExpr);
+                throw new NotImplementedException();
             }
             else
             {
                 //where(whereTraversal)
                 //use Exist
-                GremlinUtil.InheritedVariableFromParent(WhereTraversal, inputContext);
-
-                GremlinToSqlContext subQueryContext = WhereTraversal.GetEndOp().GetContext();
-                WBooleanExpression existPredicate = subQueryContext.ToSqlBoolean();
-
-                inputContext.AddPredicate(existPredicate);
+                WhereTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                GremlinToSqlContext whereContext = WhereTraversal.GetEndOp().GetContext();
+                inputContext.PivotVariable.Where(inputContext, whereContext);
             }
-
             return inputContext;
         }
     }

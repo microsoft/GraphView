@@ -5,36 +5,32 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinInjectOp: GremlinTranslationOperator
     {
-        public object[] Injections { get; set; }
+        public List<object> Injections { get; set; }
 
         public GremlinInjectOp(params object[] injections)
         {
-            Injections = injections;
+            Injections = new List<object>(injections);
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            if (inputContext.NewVariableList.Count == 0)
+            if (inputContext.VariableList.Count == 0)
             {
-                WSqlStatement statement = GremlinUtil.GetInjectStatement(Injections);
-                GremlinDerivedVariable newVariable = new GremlinDerivedVariable(statement, "inject");
-
-                inputContext.AddNewVariable(newVariable);
-                inputContext.SetCurrVariable(newVariable);
-                inputContext.SetDefaultProjection(newVariable);
+                GremlinInjectVariable injectVar = new GremlinInjectVariable(Injections);
+                inputContext.VariableList.Add(injectVar);
+                inputContext.TableReferences.Add(injectVar);
+                inputContext.SetPivotVariable(injectVar);
             }
             else
             {
-                //TODO
-                throw new NotImplementedException();
+                inputContext.PivotVariable.Inject(inputContext, Injections);
             }
-
             return inputContext;
         }
     }

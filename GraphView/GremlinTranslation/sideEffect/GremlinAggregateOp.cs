@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinAggregateOp: GremlinTranslationOperator
     {
@@ -15,10 +15,10 @@ namespace GraphView.GremlinTranslation
             SideEffectKey = sideEffectKey;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            return inputContext;
+            throw new NotImplementedException();
         }
     }
 }

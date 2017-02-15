@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinBothEOp: GremlinTranslationOperator
     {
@@ -19,25 +19,11 @@ namespace GraphView.GremlinTranslation
             }
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinVertexVariable newVertexVar = new GremlinVertexVariable();
-            GremlinEdgeVariable newEdgeVar = new GremlinEdgeVariable(newVertexVar,  WEdgeType.BothEdge);
-            inputContext.AddNewVariable(newVertexVar);
-            inputContext.AddNewVariable(newEdgeVar);
-            inputContext.AddPaths(inputContext.CurrVariable, newEdgeVar, newVertexVar);
-
-            foreach (var edgeLabel in EdgeLabels)
-            {
-                WScalarExpression key = GremlinUtil.GetColumnReferenceExpression(newEdgeVar.VariableName, "label");
-                WBooleanComparisonExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(key, edgeLabel);
-                inputContext.AddPredicate(booleanExpr);
-            }
-
-            inputContext.SetCurrVariable(newEdgeVar);
-            inputContext.SetDefaultProjection(newEdgeVar);
+            inputContext.PivotVariable.BothE(inputContext, EdgeLabels);
 
             return inputContext;
         }

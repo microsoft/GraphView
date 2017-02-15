@@ -4,31 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinFoldOp: GremlinTranslationOperator
     {
         public GremlinFoldOp() { }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            //Hack for union variable
-            if (inputContext.CurrVariable is GremlinDerivedVariable
-                &&
-                (inputContext.CurrVariable as GremlinDerivedVariable).Type == GremlinDerivedVariable.DerivedType.UNION)
-            {
-                WSetVariableStatement statement = inputContext.GetOrCreateSetVariableStatement();
-                inputContext.ClearAndCreateNewContextInfo();
-                GremlinVariableReference newCurrVar = new GremlinVariableReference(statement);
-                inputContext.AddNewVariable(newCurrVar);
-                inputContext.SetCurrVariable(newCurrVar);
-                inputContext.SetDefaultProjection(newCurrVar);
-            }
-
-            List<WScalarExpression> parameterList = new List<WScalarExpression>() { GremlinUtil.GetStarColumnReferenceExpr() }; //TODO
-            inputContext.ProcessProjectWithFunctionCall(Labels, "fold", parameterList);
+            inputContext.PivotVariable.Fold(inputContext);
 
             return inputContext;
         }

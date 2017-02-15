@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal enum HasOpType
     {
@@ -23,151 +23,126 @@ namespace GraphView.GremlinTranslation
     }
     internal class GremlinHasOp: GremlinTranslationOperator
     {
-        public string Key { get; set; }
+        public string PropertyKey { get; set; }
         public object Value { get; set; }
         public List<object> Values { get; set; }
+        public List<string> Keys { get; set; }
         public string Label { get; set; }
         public Predicate Predicate { get; set; }
         public GraphTraversal2 Traversal { get; set; }
         public HasOpType OpType { get; set; }
 
-        public GremlinHasOp(string key)
+        public GremlinHasOp(string propertyKey)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             OpType = HasOpType.HasKey;
         }
 
-        public GremlinHasOp(string key, object value)
+        public GremlinHasOp(string propertyKey, object value)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             Value = value;
             OpType = HasOpType.HasKeyValue;
         }
 
-        public GremlinHasOp(string label, string key, object value)
+        public GremlinHasOp(string label, string propertyKey, object value)
         {
             Label = label;
-            Key = key;
+            PropertyKey = propertyKey;
             Value = value;
             OpType = HasOpType.HasLabelKeyValue;
         }
 
-        public GremlinHasOp(string key, Predicate predicate)
+        public GremlinHasOp(string propertyKey, Predicate predicate)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             Predicate = predicate;
             OpType = HasOpType.HasKeyPredicate;
         }
 
 
-        public GremlinHasOp(string key, GraphTraversal2 traversal)
+        public GremlinHasOp(string propertyKey, GraphTraversal2 traversal)
         {
-            Key = key;
+            PropertyKey = propertyKey;
             Traversal = traversal;
             OpType = HasOpType.HasKeyTraversal;
         }
 
         public GremlinHasOp(HasOpType type, params object[] values)
         {
-            Values = new List<object>();
-            foreach (var value in values)
-            {
-                Values.Add(value);
-            }
+            Values = new List<object>(values);
+            OpType = type;
+        }
+
+        public GremlinHasOp(HasOpType type, params string[] keys)
+        {
+            Keys = new List<string>(keys);
             OpType = type;
         }
 
         public GremlinHasOp(string label, string propertyKey, Predicate predicate)
         {
             Label = label;
-            Key = propertyKey;
+            PropertyKey = propertyKey;
             Predicate = predicate;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            GremlinVariable currVar = inputContext.CurrVariable;
 
-            if (OpType == HasOpType.HasKey)
+            switch (OpType)
             {
                 //has(key)
-                WBooleanExpression booleanExpr = GremlinUtil.GetHasKeyBooleanExpression(currVar, Key);
+                case HasOpType.HasKey:
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey);
+                    break;
 
-                inputContext.AddPredicate(booleanExpr);
-            }
-            else if (OpType == HasOpType.HasKeyValue)
-            {
                 //has(key, value)
-                WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, Key);
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(keyExpr, Value);
-                inputContext.AddPredicate(booleanExpr);
-            }
-            else if (OpType == HasOpType.HasKeyPredicate)
-            {
+                case HasOpType.HasKeyValue:
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, Value);
+                    break;
+
                 //has(key, predicate)
-                WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, Key);
-                WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(keyExpr, Predicate);
-                inputContext.AddPredicate(booleanExpr);
-            }
-            else if (OpType == HasOpType.HasLabelKeyValue)
-            {
+                case HasOpType.HasKeyPredicate:
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, Predicate);
+                    break;
+
                 //has(label, key, value)
-                WScalarExpression keyExpr1 = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "label");
-                WScalarExpression keyExpr2 = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, Key);
-                WBooleanExpression booleanExpr1 = GremlinUtil.GetBooleanComparisonExpr(keyExpr1, Label);
-                WBooleanExpression booleanExpr2 = GremlinUtil.GetBooleanComparisonExpr(keyExpr2, Value);
-                WBooleanExpression booleanExprBoth = GremlinUtil.GetAndBooleanBinaryExpr(booleanExpr1, booleanExpr2);
-                inputContext.AddPredicate(booleanExprBoth);
-            }
-            else if (OpType == HasOpType.HasKeyTraversal)
-            {
-                //has(key, traversal)
-                GremlinUtil.InheritedVariableFromParent(Traversal, inputContext);
+                case HasOpType.HasLabelKeyValue:
+                    inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Value);
+                    break;
 
-                GremlinToSqlContext booleanContext = Traversal.GetEndOp().GetContext();
-                WBooleanExpression booleanSql = booleanContext.ToSqlBoolean();
+                //has(label, key, predicate)
+                case HasOpType.HasLabelKeyPredicate:
+                    inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Predicate);
+                    break;
 
-                inputContext.AddPredicate(booleanSql);
-            }
-            else if (OpType == HasOpType.HasId)
-            {
-                List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-                foreach (var value in Values)
-                {
-                    WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "id");
-                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(keyExpr, value));
-                }
-                WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
-                inputContext.AddPredicate(concatSql);
-            }
-            else if (OpType == HasOpType.HasKeys)
-            {
-                foreach (var key in Values)
-                {
-                    WBooleanExpression booleanExpr = GremlinUtil.GetHasKeyBooleanExpression(currVar, key as string);
-                    inputContext.AddPredicate(booleanExpr);
-                }
-            }
-            else if (OpType == HasOpType.HasLabel)
-            {
-                List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-                foreach (var value in Values)
-                {
-                    WScalarExpression keyExpr = GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName, "label");
-                    booleanExprList.Add(GremlinUtil.GetBooleanComparisonExpr(keyExpr, value));
-                }
-                WBooleanExpression concatSql = GremlinUtil.ConcatBooleanExpressionListWithOr(booleanExprList);
-                inputContext.AddPredicate(concatSql);
-            }
-            else if (OpType == HasOpType.HasValue)
-            {
+                case HasOpType.HasKeyTraversal:
+                    throw new NotImplementedException();
+
+                //hasId(values)
+                case HasOpType.HasId:
+                    inputContext.PivotVariable.HasId(inputContext, Values);
+                    break;
+
+                //hasKey(values)
+                case HasOpType.HasKeys:
+                    inputContext.PivotVariable.HasKey(inputContext, Keys);
+                    break;
+
+                //hasLabel(values)
+                case HasOpType.HasLabel:
+                    inputContext.PivotVariable.HasLabel(inputContext, Values);
+                    break;
+
+                //hasValue(values)
+                case HasOpType.HasValue:
+                    inputContext.PivotVariable.HasValue(inputContext, Values);
+                    break;
 
             }
-            else if (OpType == HasOpType.HasLabelKeyPredicate)
-            {
-                
-            }
+
             return inputContext;
         }
 

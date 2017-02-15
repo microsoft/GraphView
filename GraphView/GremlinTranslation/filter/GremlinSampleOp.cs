@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinSampleOp: GremlinTranslationOperator
     {
@@ -16,24 +16,12 @@ namespace GraphView.GremlinTranslation
             AmountToSample = amountToSample;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            List<WScalarExpression> parameterList = new List<WScalarExpression>()
-            {
-                //GremlinUtil.GetColumnReferenceExpression(inputContext.CurrVariable.VariableName),
-                GremlinUtil.GetValueExpr(AmountToSample)
-            };
-            WFunctionCall functionCall = GremlinUtil.GetFunctionCall("sample", parameterList);
+            throw new NotImplementedException();
 
-            WColumnReferenceExpression trueExpr = GremlinUtil.GetColumnReferenceExpression("true");
-
-            WBooleanExpression booleanExpr = GremlinUtil.GetBooleanComparisonExpr(functionCall, trueExpr, BooleanComparisonType.Equals);
-
-            inputContext.AddPredicate(booleanExpr);
-
-            return inputContext;
         }
     }
 }
