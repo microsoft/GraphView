@@ -130,13 +130,6 @@ namespace GraphView
             List<string> results = new List<string>();
             foreach (var record in rawRecordResults)
             {
-                //var recordString = "";
-                //foreach (var fieldValue in record.fieldValues)
-                //{
-                //    recordString += fieldValue + "  ";
-                //}
-                //results.Add(recordString);
-
                 FieldObject field = record[0];
                 switch(outputFormat)
                 {
@@ -176,8 +169,6 @@ namespace GraphView
             return LastGremlinTranslationOp;
         }
 
-        //public GraphTraversal addE(Direction direction, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
-
         public GraphTraversal2 AddE()
         {
             AddGremlinOperator(new GremlinAddEOp());
@@ -189,9 +180,6 @@ namespace GraphView
             AddGremlinOperator(new GremlinAddEOp(edgeLabel));
             return this;
         }
-
-        //public GraphTraversal2 addInE(string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
-        //public GraphTraversal2 addOutE(string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
 
         public GraphTraversal2 AddV()
         {
@@ -250,9 +238,6 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 branch(Function<Traversal<E>, M> function)
-        //public GraphTraversal2 branch(Traversal<?, M> branchTraversal)
-
         public GraphTraversal2 By()
         {
             ((IGremlinByModulating)GetEndOp()).ModulateBy();
@@ -277,6 +262,7 @@ namespace GraphView
 
         //public GraphTraversal2 by(string key, Comparator<V> comparator)
         //public GraphTraversal2 by(T token)
+
         public GraphTraversal2 By(GraphTraversal2 traversal)
         {
             ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
@@ -404,8 +390,6 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 filter(Predicate<Traversal<E>> predicate)
-        //public GraphTraversal2 filter(Traversal<?, ?> filterTraversal)
         //public GraphTraversal2 flatMap(Funtion<Traversal<E>, Iterator<E>> funtion)
 
         public GraphTraversal2 FlatMap(GraphTraversal2 flatMapTraversal)
@@ -419,8 +403,6 @@ namespace GraphView
             AddGremlinOperator(new GremlinFoldOp());
             return this;
         }
-
-        //public GraphTraversal2 fold(E2 seed, BiFuntion<E2, E, E2> foldFunction)
 
         public GraphTraversal2 From(string fromGremlinTranslationOperatorLabel)
         {
@@ -511,7 +493,7 @@ namespace GraphView
 
         public GraphTraversal2 HasNot(string propertyKey)
         {
-            return this;
+            throw new NotImplementedException();
         }
 
         public GraphTraversal2 Id()
@@ -560,11 +542,6 @@ namespace GraphView
             AddGremlinOperator(new GremlinIsOp(predicate));
             return this;
         }
-
-        //public GraphTraversal2 iterate()
-        //{
-        //    return this;
-        //}
 
         public GraphTraversal2 Key()
         {
@@ -646,7 +623,6 @@ namespace GraphView
             return this;
         }
 
-
         public GraphTraversal2 Not(GraphTraversal2 notTraversal)
         {
            AddGremlinOperator(new GremlinNotOp(notTraversal));
@@ -664,6 +640,7 @@ namespace GraphView
                 throw new Exception("Option step only can follow by choose step.");
             }
         }
+
         //public GraphTraversal2 option(Traversal<E, E2 tarversalOption>
 
         public GraphTraversal2 Optional(GraphTraversal2 traversalOption)
@@ -742,8 +719,6 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 property(VertexProperty.Cardinality cardinality, string key, string value, params string[] keyValues)
-
         public GraphTraversal2 PropertyMap(params string[] propertyKeys)
         {
             throw new NotImplementedException();
@@ -787,14 +762,13 @@ namespace GraphView
             AddGremlinOperator(new GremlinSelectOp(pop, selectKeys));
             return this;
         }
-        //public GraphTraversal2 Select(string selectKey)
+
         public GraphTraversal2 Select(params string[] selectKeys)
         {
             AddGremlinOperator(new GremlinSelectOp(selectKeys));
             return this;
         }
 
-        //public GraphTraversal2 sideEffect(Consumer<Traverser<E>> consumer)
 
         public GraphTraversal2 SideEffect(GraphTraversal2 sideEffectTraversal)
         {
@@ -809,6 +783,7 @@ namespace GraphView
             AddGremlinOperator(new GremlinStoreOp(sideEffectKey));
             return this;
         }
+
         //public GraphTraversal2 subgraph(string sideEffectKey)
 
         public GraphTraversal2 Sum()
@@ -853,8 +828,6 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 To(Direction direction, params string[] edgeLabels)
-
         public GraphTraversal2 To(string toGremlinTranslationOperatorLabel)
         {
             AddGremlinOperator(new GremlinToOp(toGremlinTranslationOperatorLabel));
@@ -867,14 +840,12 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 toE(Direction direction, params string[] edgeLabels)
-        //public GraphTraversal2 toV(Direction direction)
-
         public GraphTraversal2 Tree()
         {
             AddGremlinOperator(new GremlinTreeOp());
             return this;
         }
+
         //public GraphTraversal2 tree(string sideEffectKey)
 
         public GraphTraversal2 Unfold()
@@ -936,11 +907,6 @@ namespace GraphView
             AddGremlinOperator(new GremlinValueOp());
             return this;
         }
-
-        //public GraphTraversal2 ValueMap(Boolean includeTokens, params string[] propertyKeys)
-        //{
-        //    throw new NotImplementedException();
-        //}
 
         public GraphTraversal2 ValueMap(params string[] propertyKeys)
         {
@@ -1071,16 +1037,12 @@ namespace GraphView
                 case OutputFormat.GraphSON:
                     sb.Append("graph.OutputFormat = OutputFormat.GraphSON;\r\n");
                     break;
-                default:
-                    break;
             }
             sb.Append("return " + sCSCode + ";\n");
             sb.Append("}\n");
             sb.Append("}\n");
             sb.Append("}\n");
 
-            //CSharpCodeProvider c = new CSharpCodeProvider();
-            //ICodeCompiler icc = c.CreateCompiler();
             CodeDomProvider icc = CodeDomProvider.CreateProvider("CSharp");
             CompilerResults cr = icc.CompileAssemblyFromSource(cp, sb.ToString());
             if (cr.Errors.Count > 0)

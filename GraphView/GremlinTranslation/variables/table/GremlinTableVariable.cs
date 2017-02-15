@@ -32,10 +32,6 @@ namespace GraphView
 
         internal override void Populate(string property)
         {
-            if (property == "_t")
-            {
-                string stop = "";
-            }
             if (ProjectedProperties.Contains(property)) return;
             switch (GetVariableType())
             {

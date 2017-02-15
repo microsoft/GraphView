@@ -74,13 +74,11 @@
   </Choose>
   <ItemGroup>
     <Compile Include="DocDBQueryPerfTest.cs" />
-    <Compile Include="GraphviewGremlinParserTest.cs" />
     <Compile Include="GremlinFunctionalTestSuite.cs" />
     <Compile Include="GremlinTranslationOperator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="GraphViewMarvelTest2.cs" />
+    <Compile Include="GraphViewMarvelTest.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
-    <Compile Include="IoTTest.cs" />
     <Compile Include="TestLarge.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
