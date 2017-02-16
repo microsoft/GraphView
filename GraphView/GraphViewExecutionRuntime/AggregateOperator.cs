@@ -176,9 +176,10 @@ namespace GraphView
                     {
                         return null;
                     }
-                    CollectionField cf = new CollectionField();
-                    cf.Collection.Add(aggregateResult);
-                    resultCollection[key] = cf;
+                    //CollectionField cf = new CollectionField();
+                    //cf.Collection.Add(aggregateResult);
+                    //resultCollection[key] = cf;
+                    resultCollection[key] = aggregateResult;
                 }
             }
 
