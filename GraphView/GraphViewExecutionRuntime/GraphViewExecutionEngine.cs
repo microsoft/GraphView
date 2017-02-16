@@ -15,12 +15,14 @@ namespace GraphView
     {
         public static VertexPropertyField GetVertexPropertyField(JProperty property)
         {
-            return new VertexPropertyField(property.Name, property.Value.ToString());
+            return new VertexPropertyField(property.Name, property.Value.ToString(),
+                JsonDataTypeHelper.GetJsonDataType(property.Value.Type));
         }
 
         public static EdgePropertyField GetEdgePropertyField(JProperty property)
         {
-            return new EdgePropertyField(property.Name, property.Value.ToString());
+            return new EdgePropertyField(property.Name, property.Value.ToString(),
+                JsonDataTypeHelper.GetJsonDataType(property.Value.Type));
         }
 
         public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject)
@@ -41,7 +43,7 @@ namespace GraphView
             JToken forwardAdjList = null;
             JToken backwardAdjList = null;
 
-            foreach (var property in vertexObject.Properties()) {
+            foreach (JProperty property in vertexObject.Properties()) {
                 switch (property.Name.ToLower()) {
                 // DocumentDB-reserved JSON properties
                 case "_rid":
@@ -498,11 +500,13 @@ namespace GraphView
     {
         public string PropertyName { get; private set; }
         public string PropertyValue { get; set; }
+        public JsonDataType JsonDataType { get; set; }
 
-        public PropertyField(string propertyName, string propertyValue)
+        public PropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
         {
             PropertyName = propertyName;
             PropertyValue = propertyValue;
+            JsonDataType = jsonDataType;
         }
 
         public override string ToString()
@@ -544,8 +548,8 @@ namespace GraphView
 
     internal class VertexPropertyField : PropertyField
     {
-        public VertexPropertyField(string propertyName, string propertyValue) 
-            : base(propertyName, propertyValue)
+        public VertexPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType) 
+            : base(propertyName, propertyValue, jsonDataType)
         {
         }
 
@@ -557,8 +561,8 @@ namespace GraphView
 
     internal class EdgePropertyField : PropertyField
     {
-        public EdgePropertyField(string propertyName, string propertyValue) 
-            : base(propertyName, propertyValue)
+        public EdgePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType) 
+            : base(propertyName, propertyValue, jsonDataType)
         {
         }
 
@@ -602,13 +606,17 @@ namespace GraphView
 
         //TODO: Refactor this code! not elegant!
         //TODO: Move all vertex/edge cache operations into VertexCache
-        public void UpdateEdgeProperty(string propertyName, string propertyValue)
+        public void UpdateEdgeProperty(string propertyName, string propertyValue, JsonDataType jsonDataType)
         {
             EdgePropertyField propertyField;
             if (this.EdgeProperties.TryGetValue(propertyName, out propertyField))
+            {
                 propertyField.PropertyValue = propertyValue;
+                propertyField.JsonDataType = jsonDataType;
+            }
+                
             else
-                this.EdgeProperties.Add(propertyName, new EdgePropertyField(propertyName, propertyValue));
+                this.EdgeProperties.Add(propertyName, new EdgePropertyField(propertyName, propertyValue, jsonDataType));
         }
 
         public override string ToString()
@@ -834,13 +842,16 @@ namespace GraphView
             }
         }
 
-        public void UpdateVertexProperty(string propertyName, string propertyValue)
+        public void UpdateVertexProperty(string propertyName, string propertyValue, JsonDataType jsonDataType)
         {
             VertexPropertyField propertyField;
             if (VertexProperties.TryGetValue(propertyName, out propertyField))
+            {
                 propertyField.PropertyValue = propertyValue;
+                propertyField.JsonDataType = jsonDataType;
+            }
             else
-                VertexProperties.Add(propertyName, new VertexPropertyField(propertyName, propertyValue));
+                VertexProperties.Add(propertyName, new VertexPropertyField(propertyName, propertyValue, jsonDataType));
         }
 
         public VertexField()

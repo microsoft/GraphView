@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -25,6 +26,36 @@ namespace GraphView
         Null,
         Object,
         Array
+    }
+
+    internal class JsonDataTypeHelper
+    {
+        internal static JsonDataType GetJsonDataType(JTokenType jTokenType)
+        {
+            switch (jTokenType)
+            {
+                case JTokenType.Bytes:
+                    return JsonDataType.Bytes;
+                case JTokenType.String:
+                    return JsonDataType.String;
+                case JTokenType.Boolean:
+                    return JsonDataType.Boolean;
+                case JTokenType.Integer:
+                    return JsonDataType.Int;
+                case JTokenType.Float:
+                    return JsonDataType.Float;
+                case JTokenType.Date:
+                    return JsonDataType.Date;
+                case JTokenType.Null:
+                    return JsonDataType.Null;
+                case JTokenType.Object:
+                    return JsonDataType.Object;
+                case JTokenType.Array:
+                    return JsonDataType.Array;
+                default:
+                    return JsonDataType.String;
+            }
+        }
     }
 
     /// <summary>
@@ -91,6 +122,7 @@ namespace GraphView
     internal class FieldValue : ScalarFunction
     {
         private int fieldIndex;
+        private JsonDataType dataType;
 
         public FieldValue(int fieldIndex)
         {
@@ -100,7 +132,19 @@ namespace GraphView
         public override FieldObject Evaluate(RawRecord record)
         {
             //return record[fieldIndex]?.ToString();
-            return record[fieldIndex];
+            FieldObject fo = record[fieldIndex];
+
+            if (fo is PropertyField)
+                dataType = (fo as PropertyField).JsonDataType;
+            else
+                dataType = JsonDataType.String;
+
+            return fo;
+        }
+
+        public override JsonDataType DataType()
+        {
+            return dataType;
         }
     }
 

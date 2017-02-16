@@ -518,7 +518,8 @@ namespace GraphView
                         if (updatedProperty == null)
                             vertexField.VertexProperties.Remove(keyExpression.Value);
                         else
-                            vertexField.UpdateVertexProperty(updatedProperty.Name, updatedProperty.Value.ToString());
+                            vertexField.UpdateVertexProperty(updatedProperty.Name, updatedProperty.Value.ToString(),
+                                JsonDataTypeHelper.GetJsonDataType(updatedProperty.Value.Type));
                     }
                     else {
                         throw new NotImplementedException();
@@ -619,7 +620,8 @@ namespace GraphView
                         if (updatedProperty == null)
                             outEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            outEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString());
+                            outEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString(),
+                                JsonDataTypeHelper.GetJsonDataType(updatedProperty.Value.Type));
 
                         // Modify edgeObject (update the edge property)
                         updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
@@ -627,7 +629,8 @@ namespace GraphView
                         if (updatedProperty == null)
                             inEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            inEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString());
+                            inEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString(),
+                                JsonDataTypeHelper.GetJsonDataType(updatedProperty.Value.Type));
                     }
                     else {
                         throw new NotImplementedException();
