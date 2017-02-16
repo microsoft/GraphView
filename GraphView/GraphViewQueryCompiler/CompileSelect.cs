@@ -1552,17 +1552,28 @@ namespace GraphView
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            bool isCarryOnMode = false;
+            if (HasAggregateFunctionInTheOptionalSelectQuery(optionalSelect))
+            {
+                isCarryOnMode = true;
+                ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+                subcontext.CarryOn = true;
+                subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
+            }
+
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
 
-            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
+            //OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
+            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes,
+                optionalTraversalOp, subcontext.OuterContextOp, isCarryOnMode);
             context.CurrentExecutionOperator = optionalOp;
 
             // Updates the raw record layout. The columns of this table-valued function 
             // are specified by the select elements of the input subqueries.
-            foreach (var tuple in columnList)
+            foreach (Tuple<WColumnReferenceExpression, string> tuple in columnList)
             {
-                var columnRef = tuple.Item1;
-                var selectElementAlias = tuple.Item2;
+                WColumnReferenceExpression columnRef = tuple.Item1;
+                string selectElementAlias = tuple.Item2;
                 context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 

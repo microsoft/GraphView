@@ -158,12 +158,12 @@ namespace GraphView
             {
                 foreach (FieldObject key in aggregateState.Keys)
                 {
-                    List<FieldObject> fo = new List<FieldObject>();
+                    List<FieldObject> projectFields = new List<FieldObject>();
                     foreach (var rawRecord in aggregateState[key])
                     {
-                        fo.Add(rawRecord[elementPropertyProjectionIndex]);
+                        projectFields.Add(rawRecord[elementPropertyProjectionIndex]);
                     }
-                    resultCollection[key] = new CollectionField(fo);
+                    resultCollection[key] = new CollectionField(projectFields);
                 }
             }
             else
@@ -432,12 +432,12 @@ namespace GraphView
             {
                 foreach (FieldObject key in aggregatedState.Keys)
                 {
-                    List<FieldObject> fo = new List<FieldObject>();
+                    List<FieldObject> projectFields = new List<FieldObject>();
                     foreach (var rawRecord in aggregatedState[key])
                     {
-                        fo.Add(rawRecord[elementPropertyProjectionIndex]);
+                        projectFields.Add(rawRecord[elementPropertyProjectionIndex]);
                     }
-                    resultCollection[key] = new CollectionField(fo);
+                    resultCollection[key] = new CollectionField(projectFields);
                 }
             }
             else
@@ -452,9 +452,10 @@ namespace GraphView
                         return null;
                     }
 
-                    CollectionField cf = new CollectionField();
-                    cf.Collection.Add(aggregateResult);
-                    resultCollection[key] = cf;
+                    //CollectionField cf = new CollectionField();
+                    //cf.Collection.Add(aggregateResult);
+                    //resultCollection[key] = cf;
+                    resultCollection[key] = aggregateResult;
                 }
             }
 

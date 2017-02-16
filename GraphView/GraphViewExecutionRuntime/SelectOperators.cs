@@ -1392,19 +1392,28 @@ namespace GraphView
         private GraphViewExecutionOperator optionalTraversal;
         private ConstantSourceOperator contextOp;
 
-        RawRecord currentRecord = null;
+        private RawRecord currentRecord = null;
         private Queue<RawRecord> outputBuffer;
+
+        private bool isCarryOnMode;
+        private bool optionalTraversalHasResults;
+        private bool hasReset;
 
         public OptionalOperator(
             GraphViewExecutionOperator inputOp,
             List<int> inputIndexes,
-            GraphViewExecutionOperator optionalTraversal, 
-            ConstantSourceOperator contextOp)
+            GraphViewExecutionOperator optionalTraversal,
+            ConstantSourceOperator contextOp,
+            bool isCarryOnMode)
         {
             this.inputOp = inputOp;
             this.inputIndexes = inputIndexes;
             this.optionalTraversal = optionalTraversal;
             this.contextOp = contextOp;
+
+            this.isCarryOnMode = isCarryOnMode;
+            this.optionalTraversalHasResults = false;
+            this.hasReset = false;
 
             outputBuffer = new Queue<RawRecord>();
             Open();
@@ -1412,32 +1421,53 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (outputBuffer.Count > 0)
+            if (isCarryOnMode)
             {
-                RawRecord r = new RawRecord(currentRecord);
-                RawRecord toAppend = outputBuffer.Dequeue();
-                r.Append(toAppend);
+                RawRecord traversalRecord;
+                while (optionalTraversal.State() && (traversalRecord = optionalTraversal.Next()) != null)
+                {
+                    optionalTraversalHasResults = true;
+                    return traversalRecord;
+                }
 
-                return r;
-            }
-
-            while (inputOp.State())
-            {
-                currentRecord = inputOp.Next();
-                if (currentRecord == null)
+                if (optionalTraversalHasResults)
                 {
                     Close();
                     return null;
                 }
-
-                contextOp.ConstantSource = currentRecord;
-                optionalTraversal.ResetState();
-                RawRecord optionalRec = null;
-                while ((optionalRec = optionalTraversal.Next()) != null)
+                else
                 {
-                    outputBuffer.Enqueue(optionalRec);
-                }
+                    if (!hasReset)
+                    {
+                        hasReset = true;
+                        contextOp.ResetState();
+                    }
+                        
+                    RawRecord inputRecord = null;
+                    while (contextOp.State() && (inputRecord = contextOp.Next()) != null)
+                    {
+                        RawRecord r = new RawRecord(inputRecord);
+                        foreach (int index in inputIndexes)
+                        {
+                            if (index < 0)
+                            {
+                                r.Append((FieldObject)null);
+                            }
+                            else
+                            {
+                                r.Append(inputRecord[index]);
+                            }
+                        }
 
+                        return r;
+                    }
+
+                    Close();
+                    return null;
+                }
+            }
+            else
+            {
                 if (outputBuffer.Count > 0)
                 {
                     RawRecord r = new RawRecord(currentRecord);
@@ -1446,27 +1476,54 @@ namespace GraphView
 
                     return r;
                 }
-                else
+
+                while (inputOp.State())
                 {
-                    RawRecord r = new RawRecord(currentRecord);
-                    foreach (int index in inputIndexes)
+                    currentRecord = inputOp.Next();
+                    if (currentRecord == null)
                     {
-                        if (index < 0)
-                        {
-                            r.Append((FieldObject)null);
-                        }
-                        else
-                        {
-                            r.Append(currentRecord[index]);
-                        }
+                        Close();
+                        return null;
                     }
 
-                    return r;
-                }
-            }
+                    contextOp.ConstantSource = currentRecord;
+                    optionalTraversal.ResetState();
+                    RawRecord optionalRec = null;
+                    while ((optionalRec = optionalTraversal.Next()) != null)
+                    {
+                        outputBuffer.Enqueue(optionalRec);
+                    }
 
-            Close();
-            return null;
+                    if (outputBuffer.Count > 0)
+                    {
+                        RawRecord r = new RawRecord(currentRecord);
+                        RawRecord toAppend = outputBuffer.Dequeue();
+                        r.Append(toAppend);
+
+                        return r;
+                    }
+                    else
+                    {
+                        RawRecord r = new RawRecord(currentRecord);
+                        foreach (int index in inputIndexes)
+                        {
+                            if (index < 0)
+                            {
+                                r.Append((FieldObject)null);
+                            }
+                            else
+                            {
+                                r.Append(currentRecord[index]);
+                            }
+                        }
+
+                        return r;
+                    }
+                }
+
+                Close();
+                return null;
+            }
         }
 
         public override void ResetState()
