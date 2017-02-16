@@ -128,18 +128,36 @@ namespace GraphView
             }
 
             List<string> results = new List<string>();
-            foreach (var record in rawRecordResults)
+
+            switch (outputFormat)
             {
-                FieldObject field = record[0];
-                switch(outputFormat)
-                {
-                    case OutputFormat.GraphSON:
-                        results.Add(field.ToGraphSON());
-                        break;
-                    default:
+
+                case OutputFormat.GraphSON:
+                    string result = "[";
+                    bool firstEntry = true;
+                    foreach (var record in rawRecordResults)
+                    {
+                        if (firstEntry)
+                        {
+                            firstEntry = false;
+                        }
+                        else
+                        {
+                            result += ", ";
+                        }
+                        FieldObject field = record[0];
+                        result += field.ToGraphSON();
+                    }
+                    result += "]";
+                    results.Add(result);
+                    break;
+                default:
+                    foreach (var record in rawRecordResults)
+                    {
+                        FieldObject field = record[0];
                         results.Add(field.ToString());
-                        break;
-                }
+                    }
+                    break;
             }
 
             return results;

@@ -233,7 +233,7 @@ namespace GraphView
 
         public override string ToString()
         {
-            return Value;
+            return "\"" + Value + "\"";
         }
 
         public override int GetHashCode()
@@ -377,7 +377,7 @@ namespace GraphView
         public override string ToGraphSON()
         {
             StringBuilder sb = new StringBuilder();
-            sb.Append("[");
+            sb.Append("{");
 
             bool firstEntry = true;
             foreach (var entry in Map)
@@ -391,10 +391,10 @@ namespace GraphView
                     sb.Append(", ");
                 }
 
-                sb.AppendFormat("{0}: [{1}]", entry.Key.ToGraphSON(), entry.Value.ToGraphSON());
+                sb.AppendFormat("{0}: {1}", entry.Key.ToGraphSON(), entry.Value.ToGraphSON());
             }
 
-            sb.Append("]");
+            sb.Append("}");
             return sb.ToString();
         }
 
