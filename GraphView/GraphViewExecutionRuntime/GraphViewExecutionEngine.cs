@@ -672,7 +672,24 @@ namespace GraphView
             return sb.ToString();
         }
 
-        
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            EdgeField ef = obj as EdgeField;
+            if (ef == null)
+            {
+                return false;
+            }
+
+            // TODO: Refactor
+            return this.ToString().Equals(ef.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
+        }
 
         public static EdgeField GetForwardEdgeField(string outVId, string outVLabel, string edgeDocID, JObject edgeObject)
         {
@@ -1076,7 +1093,96 @@ namespace GraphView
 
             return sb.ToString();
         }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            VertexField vf = obj as VertexField;
+            if (vf == null)
+            {
+                return false;
+            }
+
+            return this["id"].ToValue.Equals(vf["id"].ToValue, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override int GetHashCode()
+        {
+            return this["id"].ToValue.GetHashCode();
+        }
     }
+
+    internal class TreeField : FieldObject
+    {
+        private FieldObject nodeObject;
+        internal Dictionary<FieldObject, TreeField> Children;
+
+        internal TreeField(FieldObject pNodeObject)
+        {
+            nodeObject = pNodeObject;
+            Children = new Dictionary<FieldObject, TreeField>();
+        }
+
+        public override string ToGraphSON()
+        {
+            // Don't print the dummy root
+            StringBuilder strBuilder = new StringBuilder();
+            strBuilder.Append("[");
+            int cnt = 0;
+            foreach (KeyValuePair<FieldObject, TreeField> child in Children)
+            {
+                if (cnt++ != 0)
+                    strBuilder.Append(", ");
+                child.Value.ToGraphSON(strBuilder);
+            }
+            strBuilder.Append("]");
+            return strBuilder.ToString();
+        }
+
+        public void ToGraphSON(StringBuilder strBuilder)
+        {
+            strBuilder.Append(nodeObject.ToGraphSON()).Append(":[");
+            int cnt = 0;
+            foreach (KeyValuePair<FieldObject, TreeField> child in Children)
+            {
+                if (cnt++ != 0)
+                    strBuilder.Append(", ");
+                child.Value.ToGraphSON(strBuilder);
+            }
+            strBuilder.Append("]");
+        }
+
+        public override string ToString()
+        {
+            // Don't print the dummy root
+            StringBuilder strBuilder = new StringBuilder();
+            strBuilder.Append("[");
+            int cnt = 0;
+            foreach (KeyValuePair<FieldObject, TreeField> child in Children)
+            {
+                if (cnt++ != 0)
+                    strBuilder.Append(", ");
+                child.Value.ToString(strBuilder);
+            }
+            strBuilder.Append("]");
+            return strBuilder.ToString();
+        }
+
+        private void ToString(StringBuilder strBuilder)
+        {
+            strBuilder.Append(nodeObject.ToString()).Append(":[");
+            var cnt = 0;
+            foreach (var child in Children)
+            {
+                if (cnt++ != 0)
+                    strBuilder.Append(", ");
+                child.Value.ToString(strBuilder);
+            }
+            strBuilder.Append("]");
+        }
+    }
+
 
     /// <summary>
     /// RawRecord is a data sturcture representing data records flowing from one execution operator to another. 
