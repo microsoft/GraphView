@@ -870,11 +870,15 @@ namespace GraphView
             sb.Append("{");
             sb.AppendFormat("\"id\": \"{0}\"", VertexProperties["id"].PropertyValue);
 
+
             if (VertexProperties.ContainsKey("label"))
             {
                 sb.Append(", ");
                 sb.AppendFormat("\"label\": \"{0}\"", VertexProperties["label"].PropertyValue);
             }
+
+            sb.Append(", ");
+            sb.Append("\"type\": \"vertex\"");
 
             if (RevAdjacencyList != null && RevAdjacencyList.Edges.Count > 0)
             {
