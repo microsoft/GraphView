@@ -1061,7 +1061,7 @@ namespace GraphView
                 }
 
                 VertexPropertyField vp = VertexProperties[propertyName];
-                sb.AppendFormat("\"{0}\": [{{\"value\": \"{0}\"}}]", propertyName, vp.PropertyValue);
+                sb.AppendFormat("\"{0}\": [{{\"value\": \"{1}\"}}]", propertyName, vp.PropertyValue);
             }
             if (!firstVertexProperty)
             {
