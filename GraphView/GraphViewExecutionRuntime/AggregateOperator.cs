@@ -117,13 +117,20 @@ namespace GraphView
     internal class GroupFunction : IAggregateFunction
     {
         Dictionary<FieldObject, List<RawRecord>> aggregateState;
-        ScalarFunction aggregateTargetFunction;
+        GraphViewExecutionOperator aggregateOp;
+        ConstantSourceOperator tempSource;
+        ContainerOperator aggregatedSourceOp;
         int elementPropertyProjectionIndex;
 
-        public GroupFunction(ScalarFunction aggregateTargetFunction, int elementPropertyProjectionIndex)
+        public GroupFunction(ConstantSourceOperator tempSource,
+            ContainerOperator aggregatedSourceOp,
+            GraphViewExecutionOperator aggregateOp,
+            int elementPropertyProjectionIndex)
         {
             aggregateState = new Dictionary<FieldObject, List<RawRecord>>();
-            this.aggregateTargetFunction = aggregateTargetFunction;
+            this.tempSource = tempSource;
+            this.aggregatedSourceOp = aggregatedSourceOp;
+            this.aggregateOp = aggregateOp;
             this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
         }
 
@@ -168,17 +175,27 @@ namespace GraphView
             }
             else
             {
-                foreach (FieldObject key in aggregateState.Keys)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in aggregateState)
                 {
-                    RawRecord rc = aggregateState[key][0];
-                    FieldObject aggregateResult = aggregateTargetFunction.Evaluate(rc);
+                    FieldObject key = pair.Key;
+                    List<RawRecord> aggregatedRecords = pair.Value;
+                    aggregatedSourceOp.ResetState();
+                    aggregateOp.ResetState();
+
+                    foreach (RawRecord record in aggregatedRecords)
+                    {
+                        tempSource.ConstantSource = record;
+                        aggregatedSourceOp.Next();
+                    }
+
+                    RawRecord aggregateTraversalRecord = aggregateOp.Next();
+
+                    FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null)
                     {
                         return null;
                     }
-                    //CollectionField cf = new CollectionField();
-                    //cf.Collection.Add(aggregateResult);
-                    //resultCollection[key] = cf;
+
                     resultCollection[key] = aggregateResult;
                 }
             }
@@ -344,13 +361,15 @@ namespace GraphView
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ScalarFunction aggregateTargetFunction,
+            ConstantSourceOperator tempSource,
+            ContainerOperator aggregatedSourceOp,
+            GraphViewExecutionOperator aggregateOp,
             int elementPropertyProjectionIndex)
         {
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
 
-            GroupState = new GroupFunction(aggregateTargetFunction, elementPropertyProjectionIndex);
+            GroupState = new GroupFunction(tempSource, aggregatedSourceOp, aggregateOp, elementPropertyProjectionIndex);
             Open();
         }
 
@@ -391,7 +410,11 @@ namespace GraphView
     {
         GraphViewExecutionOperator inputOp;
         ScalarFunction groupByKeyFunction;
-        ScalarFunction aggregateTargetFunction;
+
+        GraphViewExecutionOperator aggregateOp;
+        ConstantSourceOperator tempSource;
+        ContainerOperator aggregatedSourceOp;
+
         int elementPropertyProjectionIndex;
         int carryOnCount;
 
@@ -400,13 +423,19 @@ namespace GraphView
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ScalarFunction aggregateTargetFunction,
+            ConstantSourceOperator tempSource,
+            ContainerOperator aggregatedSourceOp,
+            GraphViewExecutionOperator aggregateOp,
             int elementPropertyProjectionIndex,
             int carryOnCount)
         {
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
-            this.aggregateTargetFunction = aggregateTargetFunction;
+
+            this.tempSource = tempSource;
+            this.aggregatedSourceOp = aggregatedSourceOp;
+            this.aggregateOp = aggregateOp;
+
             this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
             this.carryOnCount = carryOnCount;
 
@@ -443,19 +472,28 @@ namespace GraphView
             }
             else
             {
-                foreach (FieldObject key in aggregatedState.Keys)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in aggregatedState)
                 {
-                    RawRecord rc = aggregatedState[key][0];
-                    FieldObject aggregateResult = aggregateTargetFunction.Evaluate(rc);
+                    FieldObject key = pair.Key;
+                    List<RawRecord> aggregatedRecords = pair.Value;
+                    aggregatedSourceOp.ResetState();
+                    aggregateOp.ResetState();
+
+                    foreach (RawRecord record in aggregatedRecords)
+                    {
+                        tempSource.ConstantSource = record;
+                        aggregatedSourceOp.Next();
+                    }
+
+                    RawRecord aggregateTraversalRecord = aggregateOp.Next();
+
+                    FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null)
                     {
                         Close();
                         return null;
                     }
 
-                    //CollectionField cf = new CollectionField();
-                    //cf.Collection.Add(aggregateResult);
-                    //resultCollection[key] = cf;
                     resultCollection[key] = aggregateResult;
                 }
             }

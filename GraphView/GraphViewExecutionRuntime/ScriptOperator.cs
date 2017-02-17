@@ -73,6 +73,7 @@ namespace GraphView
         {
             TableInput = input;
             tableCache = new List<RawRecord>();
+            Open();
         }
 
         public override RawRecord Next()
@@ -102,6 +103,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            Open();
             tableCache.Clear();
             TableInput.ResetState();
         }

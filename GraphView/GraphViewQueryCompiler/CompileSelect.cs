@@ -2344,26 +2344,35 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var groupKeySubQuery = Parameters[1] as WScalarSubquery;
-            var aggregateSubQuery = Parameters[2] as WScalarSubquery;
-            var elementPropertyProjection = Parameters[2] as WColumnReferenceExpression;
+            WScalarSubquery groupKeySubQuery = Parameters[1] as WScalarSubquery;
+            WScalarSubquery aggregateSubQuery = Parameters[2] as WScalarSubquery;
+            WColumnReferenceExpression elementPropertyProjection = Parameters[2] as WColumnReferenceExpression;
             if (groupKeySubQuery == null)
                 throw new SyntaxErrorException("The group key parameter of group table can only be WScalarSubquery.");
             if (aggregateSubQuery == null && elementPropertyProjection == null)
                 throw new SyntaxErrorException("The group value parameter of group table can only be WScalarSubquery or WColumnReference.");
 
-            var elementPropertyProjectionIndex = elementPropertyProjection == null 
+            int elementPropertyProjectionIndex = elementPropertyProjection == null 
                                                  ? -1 
                                                  : context.LocateColumnReference(elementPropertyProjection);
-            var groupKeyFunction = groupKeySubQuery.CompileToFunction(context, dbConnection);
-            var aggregateFunction = aggregateSubQuery?.CompileToFunction(context, dbConnection);
+            ScalarFunction groupKeyFunction = groupKeySubQuery.CompileToFunction(context, dbConnection);
+
+            QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
+            ContainerOperator aggregatedSourceOp = new ContainerOperator(tempSourceOp);
+            GraphViewExecutionOperator aggregateOp = aggregateSubQuery?.SubQueryExpr.Compile(subcontext, dbConnection);
+            subcontext.OuterContextOp.SourceEnumerator = aggregatedSourceOp.GetEnumerator();
 
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
             if (!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
-                GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
-                    aggregateFunction, elementPropertyProjectionIndex, 
-                    context.CarryOn ? context.RawRecordLayout.Count : -1);
+                GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction, 
+                    tempSourceOp, aggregatedSourceOp, aggregateOp, 
+                    elementPropertyProjectionIndex, context.CarryOn ? context.RawRecordLayout.Count : -1);
+
+                //GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
+                //    aggregateFunction, elementPropertyProjectionIndex, 
+                //    context.CarryOn ? context.RawRecordLayout.Count : -1);
                 context.CurrentExecutionOperator = groupOp;
 
                 if (!context.CarryOn)
@@ -2376,8 +2385,13 @@ namespace GraphView
             else
             {
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
-                    context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
+                    context.CurrentExecutionOperator, groupKeyFunction, 
+                    tempSourceOp, aggregatedSourceOp, aggregateOp,
                     elementPropertyProjectionIndex);
+
+                //GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
+                //    context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
+                //    elementPropertyProjectionIndex);
                 context.CurrentExecutionOperator = groupSideEffectOp;
 
                 List<IAggregateFunction> sideEffectList;
