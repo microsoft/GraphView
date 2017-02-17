@@ -118,32 +118,31 @@ namespace GraphView
                 case "withinarray":
                     var checkField = Parameters[0] as WColumnReferenceExpression;
                     var arrayField = Parameters[1] as WColumnReferenceExpression;
-                    string targetFieldKey = checkField.ColumnName;
-                    return new WithInArray(context.LocateColumnReference(checkField), 
-                        context.LocateColumnReference(arrayField), new StringField(targetFieldKey));
+                    return new WithInArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
                 case "withoutarray":
                     checkField = Parameters[0] as WColumnReferenceExpression;
                     arrayField = Parameters[1] as WColumnReferenceExpression;
-                    targetFieldKey = checkField.ColumnName;
-                    return new WithOutArray(context.LocateColumnReference(checkField),
-                        context.LocateColumnReference(arrayField), new StringField(targetFieldKey));
+                    return new WithOutArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
                 case "compose1":
-                    var targetFieldsAndTheirNames = new List<Tuple<string, int>>();
+                    List<Tuple<string, int>> targetFieldsAndTheirNames = new List<Tuple<string, int>>();
+                    WValueExpression defaultProjectionKey = Parameters[0] as WValueExpression;
+                    if (defaultProjectionKey == null)
+                        throw new SyntaxErrorException("The first parameter of Compose1 has to be a WValueExpression.");
 
-                    for (var i = 0; i < Parameters.Count; i += 2)
+                    for (int i = 1; i < Parameters.Count; i += 2)
                     {
-                        var columnRef = Parameters[i] as WColumnReferenceExpression;
-                        var name = Parameters[i+1] as WValueExpression;
+                        WColumnReferenceExpression columnRef = Parameters[i] as WColumnReferenceExpression;
+                        WValueExpression name = Parameters[i+1] as WValueExpression;
 
                         if (name == null)
-                            throw new SyntaxErrorException("The parameter of Compose1 at an even position has to be a WValueExpression.");
+                            throw new SyntaxErrorException("The parameter of Compose1 at an odd position has to be a WValueExpression.");
                         if (columnRef == null)
-                            throw new SyntaxErrorException("The parameter of Compose1 at an odd position has to be a WColumnReference.");
+                            throw new SyntaxErrorException("The parameter of Compose1 at an even position has to be a WColumnReference.");
 
                         targetFieldsAndTheirNames.Add(new Tuple<string, int>(name.Value, context.LocateColumnReference(columnRef)));
                     }
 
-                    return new Compose1(targetFieldsAndTheirNames);
+                    return new Compose1(targetFieldsAndTheirNames, defaultProjectionKey.Value);
                 case "compose2":
                     var inputOfCompose2 = new List<ScalarFunction>();
 

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinNotOp: GremlinTranslationOperator
     {
@@ -16,15 +16,14 @@ namespace GraphView.GremlinTranslation
             NotTraversal = notTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedVariableFromParent(NotTraversal, inputContext);
+            NotTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext notContext = NotTraversal.GetEndOp().GetContext();
 
-            WBooleanExpression booleanExpr = GremlinUtil.GetNotExistPredicate(NotTraversal.GetEndOp().GetContext().ToSelectQueryBlock());
-
-            inputContext.AddPredicate(booleanExpr);
+            inputContext.PivotVariable.Not(inputContext, notContext);
 
             return inputContext;
         }

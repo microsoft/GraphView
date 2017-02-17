@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinSelectOp: GremlinTranslationOperator
     {
@@ -13,54 +13,44 @@ namespace GraphView.GremlinTranslation
 
         public GremlinSelectOp(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
-            SelectKeys = new List<string>();
-            foreach (var key in selectKeys)
-            {
-                SelectKeys.Add(key);
-            }
+            SelectKeys = new List<string>(selectKeys);
             Pop = pop;
         }
 
         public GremlinSelectOp(params string[] selectKeys)
         {
-            SelectKeys = new List<string>();
-            foreach (var key in selectKeys)
-            {
-                SelectKeys.Add(key);
-            }
+            SelectKeys = new List<string>(selectKeys);
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            if (SelectKeys.Count == 0)
+            if (SelectKeys.Count == 1)
             {
-
-            }
-            else if (SelectKeys.Count == 1)
-            {
-                if (Pop == GremlinKeyword.Pop.first)
+                switch (Pop)
                 {
-                    inputContext.SetCurrVariable(inputContext.AliasToGremlinVariableList[SelectKeys.First()].First());
-                }
-                else if (Pop == GremlinKeyword.Pop.last)
-                {
-                    inputContext.SetCurrVariable(inputContext.AliasToGremlinVariableList[SelectKeys.First()].Last());
-                }
-                else
-                {
-                    throw new NotImplementedException();
+                    case GremlinKeyword.Pop.Default:
+                        inputContext.PivotVariable.Select(inputContext, SelectKeys.First());
+                        break;
+                    default:
+                        inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys.First());
+                        break;
                 }
             }
             else
             {
-                foreach (var selectKey in SelectKeys)
+                switch (Pop)
                 {
-
+                    case GremlinKeyword.Pop.Default:
+                        inputContext.PivotVariable.Select(inputContext, SelectKeys);
+                        break;
+                    default:
+                        inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys);
+                        break;
                 }
             }
-            
+
             return inputContext;
         }
     }

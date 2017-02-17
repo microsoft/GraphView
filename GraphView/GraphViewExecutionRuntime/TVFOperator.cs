@@ -11,49 +11,60 @@ namespace GraphView
     {
         protected GraphViewExecutionOperator inputOperator;
         protected Queue<RawRecord> outputBuffer;
-        protected int outputBufferSize;
 
-        internal TableValuedFunction(
-            GraphViewExecutionOperator pInputOperator, 
-            int pOutputBufferSize = 1000)
+        protected RawRecord currentRecord = null;
+
+        internal TableValuedFunction(GraphViewExecutionOperator pInputOperator)
         {
             inputOperator = pInputOperator;
-            outputBufferSize = pOutputBufferSize;
-            outputBuffer = new Queue<RawRecord>(outputBufferSize);
+            outputBuffer = new Queue<RawRecord>();
             this.Open();
         }
 
-        internal abstract IEnumerable<RawRecord> CrossApply(RawRecord record);
+        internal abstract List<RawRecord> CrossApply(RawRecord record);
 
         public override RawRecord Next()
         {
-            if (outputBuffer.Count != 0)
+            if (outputBuffer.Count > 0)
             {
-                return outputBuffer.Dequeue();
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
             }
 
-            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
+            while (inputOperator.State())
             {
-                var srcRecord = inputOperator.Next();
-                if (srcRecord == null)
-                    break;
-
-                var results = CrossApply(srcRecord);
-                foreach (var rec in results)
+                currentRecord = inputOperator.Next();
+                if (currentRecord == null)
                 {
-                    var resultRecord = new RawRecord(srcRecord);
-                    resultRecord.Append(rec);
-                    outputBuffer.Enqueue(resultRecord);
+                    Close();
+                    return null;
+                }
+
+                List<RawRecord> results = CrossApply(currentRecord);
+
+                foreach (RawRecord rec in results)
+                    outputBuffer.Enqueue(rec);
+
+                if (outputBuffer.Count > 0)
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    RawRecord toAppend = outputBuffer.Dequeue();
+                    r.Append(toAppend);
+
+                    return r;
                 }
             }
 
-            if (outputBuffer.Count <= 1) this.Close();
-            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            Close();
             return null;
         }
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOperator.ResetState();
             outputBuffer.Clear();
             this.Open();
@@ -68,15 +79,13 @@ namespace GraphView
         public PropertiesOperator(
             GraphViewExecutionOperator pInputOperator, 
             List<Tuple<string, int>> pPropertiesList,
-            int pAllPropertyIndex,
-            int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+            int pAllPropertyIndex) : base(pInputOperator)
         {
             propertyList = pPropertiesList;
             allPropertyIndex = pAllPropertyIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
 
@@ -171,14 +180,14 @@ namespace GraphView
         internal List<int> ValuesIdxList;
         int allValuesIndex;
 
-        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pAllValuesIndex, int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pAllValuesIndex)
+            : base(pInputOperator)
         {
             ValuesIdxList = pValuesIdxList;
             allValuesIndex = pAllValuesIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
 
@@ -208,7 +217,7 @@ namespace GraphView
                                 continue;
                             default:
                                 RawRecord r = new RawRecord();
-                                r.Append(new StringField(propertyField.ToValue));
+                                r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
                                 results.Add(r);
                                 break;
                         }
@@ -236,7 +245,7 @@ namespace GraphView
                                 continue;
                             default:
                                 RawRecord r = new RawRecord();
-                                r.Append(new StringField(propertyField.ToValue));
+                                r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
                                 results.Add(r);
                                 break;
                         }
@@ -247,14 +256,14 @@ namespace GraphView
             {
                 foreach (var propIdx in ValuesIdxList)
                 {
-                    var propertyValue = record[propIdx];
+                    PropertyField propertyValue = record[propIdx] as PropertyField;
                     if (propertyValue == null)
                     {
                         continue;
                     }
 
                     var result = new RawRecord();
-                    result.Append(new StringField(propertyValue.ToValue));
+                    result.Append(new StringField(propertyValue.ToValue, propertyValue.JsonDataType));
                     results.Add(result);
                 }
             }
@@ -267,13 +276,13 @@ namespace GraphView
     {
         private List<string> _constantValues;
 
-        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, List<string> pConstantValues, int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, List<string> pConstantValues)
+            : base(pInputOperator)
         {
             _constantValues = pConstantValues;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             var result = new RawRecord(1);
             if (_constantValues.Count == 1)
@@ -299,22 +308,21 @@ namespace GraphView
         private List<Tuple<int, bool>> _pathFieldList;
 
         public PathOperator(GraphViewExecutionOperator pInputOperator,
-            List<Tuple<int, bool>> pStepFieldList,
-            int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+            List<Tuple<int, bool>> pStepFieldList) : base(pInputOperator)
         {
             this._pathFieldList = pStepFieldList;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<FieldObject> pathCollection = new List<FieldObject>();
 
             foreach (var tuple in _pathFieldList)
             {
-                var index = tuple.Item1;
-                var needsUnfold = tuple.Item2;
+                int index = tuple.Item1;
+                bool needsUnfold = tuple.Item2;
 
+                if (record[index] == null) continue;
                 if (needsUnfold)
                 {
                     CollectionField cf = record[index] as CollectionField;
@@ -323,7 +331,7 @@ namespace GraphView
                         pathCollection.Add(fo);
                     }
                 }
-                else if (record[index] != null)
+                else
                 {
                     pathCollection.Add(record[index]);
                 }
@@ -345,19 +353,18 @@ namespace GraphView
         internal UnfoldOperator(
             GraphViewExecutionOperator pInputOperator,
             ScalarFunction pUnfoldTarget,
-            List<string> pUnfoldColumns,
-            int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+            List<string> pUnfoldColumns)
+            : base(pInputOperator)
         {
             this._unfoldTarget = pUnfoldTarget;
             this._unfoldColumns = pUnfoldColumns;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
-            var results = new List<RawRecord>();
+            List<RawRecord> results = new List<RawRecord>();
 
-            var unfoldTarget = _unfoldTarget.Evaluate(record);
+            FieldObject unfoldTarget = _unfoldTarget.Evaluate(record);
 
             if (unfoldTarget.GetType() == typeof (CollectionField))
             {
@@ -366,19 +373,33 @@ namespace GraphView
                 {
                     if (fo == null) continue;
                     RawRecord newRecord = new RawRecord();
-                    // Extract only needed columns from MapField
-                    if (fo.GetType() == typeof (MapField))
+
+                    // Extract only needed columns from Compose1Field
+                    if (fo.GetType() == typeof (Compose1Field))
                     {
-                        var mapField = fo as MapField;
-                        foreach (var unfoldColumn in _unfoldColumns)
+                        Compose1Field compose1Field = fo as Compose1Field;
+                        foreach (string unfoldColumn in _unfoldColumns)
                         {
-                            newRecord.Append(mapField.Map[new StringField(unfoldColumn)]);
+                            newRecord.Append(compose1Field.Map[new StringField(unfoldColumn)]);
                         }
                     }
                     else
                     {
                         newRecord.Append(fo);
                     }
+                    results.Add(newRecord);
+                }
+            }
+            else if (unfoldTarget.GetType() == typeof(MapField))
+            {
+                MapField mf = unfoldTarget as MapField;
+                foreach (var pair in mf.Map)
+                {
+                    RawRecord newRecord = new RawRecord();
+                    string key = pair.Key.ToString();
+                    string value = pair.Value.ToString();
+
+                    newRecord.Append(new StringField(key + "=" + value));
                     results.Add(newRecord);
                 }
             }

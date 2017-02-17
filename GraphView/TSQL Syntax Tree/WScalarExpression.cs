@@ -186,6 +186,7 @@ namespace GraphView
 
     public enum WEdgeType
     {
+        Undefined,
         InEdge,
         OutEdge,
         BothEdge

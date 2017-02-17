@@ -163,4 +163,46 @@ namespace GraphView
                 valueExpression.Value = bool_value.ToString().ToLowerInvariant();
         }
     }
+
+    /// <summary>
+    /// Return how many times have aggregate functions appeared in a SelectQueryBlock
+    /// </summary>
+    internal class AggregateFunctionCountVisitor : WSqlFragmentVisitor
+    {
+        private int aggregateFunctionCount;
+
+        public int Invoke(
+            WSelectQueryBlock selectQueryBlock)
+        {
+            aggregateFunctionCount = 0;
+
+            if (selectQueryBlock != null)
+                selectQueryBlock.Accept(this);
+
+            return aggregateFunctionCount;
+        }
+
+        public override void Visit(WFunctionCall fcall)
+        {
+            switch (fcall.FunctionName.Value.ToUpper())
+            {
+                case "COUNT":
+                case "FOLD":
+                case "TREE":
+                case "CAP":
+                    aggregateFunctionCount++;
+                    break;
+            }
+        }
+
+        public override void Visit(WSchemaObjectFunctionTableReference tableReference)
+        {
+            if (tableReference is WGroupTableReference)
+            {
+                aggregateFunctionCount++;
+            }
+
+            tableReference.AcceptChildren(this);
+        }
+    }
 }

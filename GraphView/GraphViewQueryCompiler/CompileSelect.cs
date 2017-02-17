@@ -738,8 +738,12 @@ namespace GraphView
 
                 if (tableReferences.IsSupersetOf(tableRefs))
                 {
-                    childrenProcessor.Add(new FilterOperator(childrenProcessor.Last(),
-                        predicate.CompileToFunction(context, connection)));
+                    childrenProcessor.Add(
+                        new FilterOperator(
+                            childrenProcessor.Count != 0 
+                            ? childrenProcessor.Last() 
+                            : context.OuterContextOp,
+                            predicate.CompileToFunction(context, connection)));
                     remainingPredicatesAndTheirTableReferences.RemoveAt(i);
                     context.CurrentExecutionOperator = childrenProcessor.Last();
                 }
@@ -774,6 +778,7 @@ namespace GraphView
                     edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                     edge.Properties));
+                context.CurrentExecutionOperator = operatorChain.Last();
 
                 // Update edge's context info
                 tableReferences.Add(edge.EdgeAlias, TableGraphType.Edge);
@@ -792,6 +797,7 @@ namespace GraphView
                     };
                     operatorChain.Add(new FilterOperator(operatorChain.Last(),
                         edgeJoinPredicate.CompileToFunction(context, connection)));
+                    context.CurrentExecutionOperator = operatorChain.Last();
                 }
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
@@ -891,7 +897,13 @@ namespace GraphView
             var rawRecordLayout = context.RawRecordLayout;
 
             if (context.OuterContextOp != null)
+            {
                 context.CurrentExecutionOperator = context.OuterContextOp;
+                CheckRemainingPredicatesAndAppendFilterOp(context, connection,
+                    new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
+                    operatorChain);
+            }
+                
 
             foreach (var subGraph in graphPattern.ConnectedSubGraphs)
             {
@@ -957,6 +969,7 @@ namespace GraphView
 
                             operatorChain.Add(new TraversalOperator2(operatorChain.Last(), connection,
                                 traversalEdgeSinkIndex, sinkNode.AttachedJsonQuery, matchingIndexes));
+                            context.CurrentExecutionOperator = operatorChain.Last();
 
                             // Update sinkNode's context info
                             processedNodes.Add(sinkNode);
@@ -995,7 +1008,6 @@ namespace GraphView
 
             foreach (var tableReference in nonVertexTableReferences)
             {
-                // TODO: New Compilation of QueryDerivedTable
                 if (tableReference is WQueryDerivedTable)
                 {
                     var derivedTableOp = tableReference.Compile(context, connection);
@@ -1200,16 +1212,18 @@ namespace GraphView
                                 new List<ScalarFunction>() { new FieldValue(pathFieldIndex) });
                             break;
                         case "CAP":
-                            var capAggregate = new CapAggregate();
-                            foreach (var expression in fcall.Parameters)
+                            CapAggregate capAggregate = new CapAggregate();
+                            for (int i = 0; i < fcall.Parameters.Count; i += 2)
                             {
-                                var capName = expression as WValueExpression;
-                                IAggregateFunction sideEffectState;
-                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectState))
+                                WColumnNameList columnNameList = fcall.Parameters[i] as WColumnNameList;
+                                WValueExpression capName = fcall.Parameters[i+1] as WValueExpression;
+
+                                List<IAggregateFunction> sideEffectStateList;
+                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectStateList))
                                     throw new GraphViewException("SideEffect state " + capName + " doesn't exist in the context");
-                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectState);
+                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectStateList);
                             }
-                            projectAggregationOp.AddAggregateSpec(new CapAggregate(), new List<ScalarFunction>());
+                            projectAggregationOp.AddAggregateSpec(capAggregate, new List<ScalarFunction>());
                             break;
                         default:
                             projectAggregationOp.AddAggregateSpec(null, null);
@@ -1219,14 +1233,13 @@ namespace GraphView
 
                 // Rebuilds the output layout of the context
                 context.ClearField();
-                int i = 0;
+
                 if (context.CarryOn)
                 {
                     foreach (var parentFieldPair in context.ParentContextRawRecordLayout)
                     {
                         context.RawRecordLayout.Add(parentFieldPair.Key, parentFieldPair.Value);
                     }
-                    i = context.ParentContextRawRecordLayout.Count;
                 }
 
                 foreach (var expr in selectScalarExprList)
@@ -1327,7 +1340,8 @@ namespace GraphView
             GraphViewExecutionOperator op = null;
             foreach (WSqlStatement st in Statements)
             {
-                QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection);
+                QueryCompilationContext statementContext = new QueryCompilationContext(priorContext.TemporaryTableCollection, 
+                    priorContext.SideEffectStates);
                 op = st.Compile(statementContext, dbConnection);
                 priorContext = statementContext;
             }
@@ -1538,17 +1552,28 @@ namespace GraphView
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            bool isCarryOnMode = false;
+            if (HasAggregateFunctionInTheOptionalSelectQuery(optionalSelect))
+            {
+                isCarryOnMode = true;
+                ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+                subcontext.CarryOn = true;
+                subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
+            }
+
             GraphViewExecutionOperator optionalTraversalOp = optionalSelect.Compile(subcontext, dbConnection);
 
-            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
+            //OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
+            OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes,
+                optionalTraversalOp, subcontext.OuterContextOp, isCarryOnMode);
             context.CurrentExecutionOperator = optionalOp;
 
             // Updates the raw record layout. The columns of this table-valued function 
             // are specified by the select elements of the input subqueries.
-            foreach (var tuple in columnList)
+            foreach (Tuple<WColumnReferenceExpression, string> tuple in columnList)
             {
-                var columnRef = tuple.Item1;
-                var selectElementAlias = tuple.Item2;
+                WColumnReferenceExpression columnRef = tuple.Item1;
+                string selectElementAlias = tuple.Item2;
                 context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
@@ -2187,13 +2212,22 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var targetFieldParameter = Parameters[0] as WColumnReferenceExpression;
-            var targetFieldIndex = context.LocateColumnReference(targetFieldParameter);
+            WFunctionCall targetFieldParameter = Parameters[0] as WFunctionCall;
+            if (targetFieldParameter == null)
+                throw new SyntaxErrorException("The first parameter of a Store function must be a Compose1 function.");
+            ScalarFunction getTargetFieldFunction = targetFieldParameter.CompileToFunction(context, dbConnection);
 
-            var storedName = (Parameters[1] as WValueExpression).Value;
-            var storeOp = new StoreOperator(context.CurrentExecutionOperator, targetFieldIndex);
+            string storedName = (Parameters[1] as WValueExpression).Value;
+            StoreOperator storeOp = new StoreOperator(context.CurrentExecutionOperator, getTargetFieldFunction);
             context.CurrentExecutionOperator = storeOp;
-            context.SideEffectStates.Add(storedName, storeOp.StoreState);
+
+            List<IAggregateFunction> sideEffectList;
+            if (!context.SideEffectStates.TryGetValue(storedName, out sideEffectList))
+            {
+                sideEffectList = new List<IAggregateFunction>();
+                context.SideEffectStates.Add(storedName, sideEffectList);
+            }
+            sideEffectList.Add(storeOp.StoreState);
 
             return storeOp;
         }
@@ -2327,23 +2361,34 @@ namespace GraphView
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
             if (!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
-                GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
-                    context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
-                    elementPropertyProjectionIndex);
-                context.CurrentExecutionOperator = groupSideEffectOp;
-                context.SideEffectStates.Add(groupParameter.Value, groupSideEffectOp.GroupState);
-
-                return groupSideEffectOp;
-            }
-            else
-            {
                 GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
-                    aggregateFunction, elementPropertyProjectionIndex);
+                    aggregateFunction, elementPropertyProjectionIndex, 
+                    context.CarryOn ? context.RawRecordLayout.Count : -1);
                 context.CurrentExecutionOperator = groupOp;
+
+                if (!context.CarryOn)
+                    context.ClearField();
                 // Change to correct ColumnGraphType
                 context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
                 return groupOp;
+            }
+            else
+            {
+                GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
+                    context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
+                    elementPropertyProjectionIndex);
+                context.CurrentExecutionOperator = groupSideEffectOp;
+
+                List<IAggregateFunction> sideEffectList;
+                if (!context.SideEffectStates.TryGetValue(groupParameter.Value, out sideEffectList))
+                {
+                    sideEffectList = new List<IAggregateFunction>();
+                    context.SideEffectStates.Add(groupParameter.Value, sideEffectList);
+                }
+                sideEffectList.Add(groupSideEffectOp.GroupState);
+
+                return groupSideEffectOp;
             }
         }
     }

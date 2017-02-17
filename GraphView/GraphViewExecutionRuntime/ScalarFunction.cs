@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -25,6 +26,36 @@ namespace GraphView
         Null,
         Object,
         Array
+    }
+
+    internal class JsonDataTypeHelper
+    {
+        internal static JsonDataType GetJsonDataType(JTokenType jTokenType)
+        {
+            switch (jTokenType)
+            {
+                case JTokenType.Bytes:
+                    return JsonDataType.Bytes;
+                case JTokenType.String:
+                    return JsonDataType.String;
+                case JTokenType.Boolean:
+                    return JsonDataType.Boolean;
+                case JTokenType.Integer:
+                    return JsonDataType.Int;
+                case JTokenType.Float:
+                    return JsonDataType.Float;
+                case JTokenType.Date:
+                    return JsonDataType.Date;
+                case JTokenType.Null:
+                    return JsonDataType.Null;
+                case JTokenType.Object:
+                    return JsonDataType.Object;
+                case JTokenType.Array:
+                    return JsonDataType.Array;
+                default:
+                    return JsonDataType.String;
+            }
+        }
     }
 
     /// <summary>
@@ -79,7 +110,7 @@ namespace GraphView
         public override FieldObject Evaluate(RawRecord record)
         {
             //return value;
-            return new StringField(value);
+            return new StringField(value, dataType);
         }
 
         public override JsonDataType DataType()
@@ -91,6 +122,7 @@ namespace GraphView
     internal class FieldValue : ScalarFunction
     {
         private int fieldIndex;
+        private JsonDataType dataType;
 
         public FieldValue(int fieldIndex)
         {
@@ -100,7 +132,19 @@ namespace GraphView
         public override FieldObject Evaluate(RawRecord record)
         {
             //return record[fieldIndex]?.ToString();
-            return record[fieldIndex];
+            FieldObject fo = record[fieldIndex];
+
+            if (fo is PropertyField)
+                dataType = (fo as PropertyField).JsonDataType;
+            else
+                dataType = JsonDataType.String;
+
+            return fo;
+        }
+
+        public override JsonDataType DataType()
+        {
+            return dataType;
         }
     }
 
@@ -142,13 +186,13 @@ namespace GraphView
                         {
                             case BinaryExpressionType.BitwiseAnd:
                                 //return (bool_value1 ^ bool_value2).ToString();
-                                return new StringField((bool_value1 ^ bool_value2).ToString());
+                                return new StringField((bool_value1 ^ bool_value2).ToString(), JsonDataType.Boolean);
                             case BinaryExpressionType.BitwiseOr:
                                 //return (bool_value1 | bool_value2).ToString();
-                                return new StringField((bool_value1 | bool_value2).ToString());
+                                return new StringField((bool_value1 | bool_value2).ToString(), JsonDataType.Boolean);
                             case BinaryExpressionType.BitwiseXor:
                                 //return (bool_value1 ^ bool_value2).ToString();
-                                return new StringField((bool_value1 ^ bool_value2).ToString());
+                                return new StringField((bool_value1 ^ bool_value2).ToString(), JsonDataType.Boolean);
                             default:
                                 throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"boolean\".");
                         }
@@ -163,7 +207,7 @@ namespace GraphView
                     {
                         case BinaryExpressionType.Add:
                             //return value1 + value2.Substring(2);    // A binary string starts with 0x
-                            return new StringField(value1 + value2.Substring(2));
+                            return new StringField(value1 + value2.Substring(2), JsonDataType.Bytes);
                         default:
                             throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type \"bytes\".");
                     }
@@ -175,28 +219,28 @@ namespace GraphView
                         {
                             case BinaryExpressionType.Add:
                                 //return (int_value1 + int_value2).ToString();
-                                return new StringField((int_value1 + int_value2).ToString());
+                                return new StringField((int_value1 + int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.BitwiseAnd:
                                 //return (int_value1 & int_value2).ToString();
-                                return new StringField((int_value1 & int_value2).ToString());
+                                return new StringField((int_value1 & int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.BitwiseOr:
                                 //return (int_value1 | int_value2).ToString();
-                                return new StringField((int_value1 | int_value2).ToString());
+                                return new StringField((int_value1 | int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.BitwiseXor:
                                 //return (int_value1 ^ int_value2).ToString();
-                                return new StringField((int_value1 ^ int_value2).ToString());
+                                return new StringField((int_value1 ^ int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Divide:
                                 //return (int_value1 / int_value2).ToString();
-                                return new StringField((int_value1 / int_value2).ToString());
+                                return new StringField((int_value1 / int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Modulo:
                                 //return (int_value1 % int_value2).ToString();
-                                return new StringField((int_value1 % int_value2).ToString());
+                                return new StringField((int_value1 % int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Multiply:
                                 //return (int_value1 * int_value2).ToString();
-                                return new StringField((int_value1 * int_value2).ToString());
+                                return new StringField((int_value1 * int_value2).ToString(), JsonDataType.Int);
                             case BinaryExpressionType.Subtract:
                                 //return (int_value1 - int_value2).ToString();
-                                return new StringField((int_value1 - int_value2).ToString());
+                                return new StringField((int_value1 - int_value2).ToString(), JsonDataType.Int);
                             default:
                                 //return "";
                                 return new StringField("");
@@ -215,28 +259,28 @@ namespace GraphView
                         {
                             case BinaryExpressionType.Add:
                                 //return (long_value1 + long_value2).ToString();
-                                return new StringField((long_value1 + long_value2).ToString());
+                                return new StringField((long_value1 + long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.BitwiseAnd:
                                 //return (long_value1 & long_value2).ToString();
-                                return new StringField((long_value1 & long_value2).ToString());
+                                return new StringField((long_value1 & long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.BitwiseOr:
                                 //return (long_value1 | long_value2).ToString();
-                                return new StringField((long_value1 | long_value2).ToString());
+                                return new StringField((long_value1 | long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.BitwiseXor:
                                 //return (long_value1 ^ long_value2).ToString();
-                                return new StringField((long_value1 ^ long_value2).ToString());
+                                return new StringField((long_value1 ^ long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Divide:
                                 //return (long_value1 / long_value2).ToString();
-                                return new StringField((long_value1 / long_value2).ToString());
+                                return new StringField((long_value1 / long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Modulo:
                                 //return (long_value1 % long_value2).ToString();
-                                return new StringField((long_value1 % long_value2).ToString());
+                                return new StringField((long_value1 % long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Multiply:
                                 //return (long_value1 * long_value2).ToString();
-                                return new StringField((long_value1 * long_value2).ToString());
+                                return new StringField((long_value1 * long_value2).ToString(), JsonDataType.Long);
                             case BinaryExpressionType.Subtract:
                                 //return (long_value1 - long_value2).ToString();
-                                return new StringField((long_value1 - long_value2).ToString());
+                                return new StringField((long_value1 - long_value2).ToString(), JsonDataType.Long);
                             default:
                                 //return "";
                                 return new StringField("");
@@ -255,19 +299,19 @@ namespace GraphView
                         {
                             case BinaryExpressionType.Add:
                                 //return (double_value1 + double_value2).ToString();
-                                return new StringField((double_value1 + double_value2).ToString());
+                                return new StringField((double_value1 + double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Divide:
                                 //return (double_value1 / double_value2).ToString();
-                                return new StringField((double_value1 / double_value2).ToString());
+                                return new StringField((double_value1 / double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Modulo:
                                 //return (double_value1 % double_value2).ToString();
-                                return new StringField((double_value1 % double_value2).ToString());
+                                return new StringField((double_value1 % double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Multiply:
                                 //return (double_value1 * double_value2).ToString();
-                                return new StringField((double_value1 * double_value2).ToString());
+                                return new StringField((double_value1 * double_value2).ToString(), JsonDataType.Double);
                             case BinaryExpressionType.Subtract:
                                 //return (double_value1 - double_value2).ToString();
-                                return new StringField((double_value1 - double_value2).ToString());
+                                return new StringField((double_value1 - double_value2).ToString(), JsonDataType.Double);
                             default:
                                 throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type 'double'.");
                         }
@@ -285,19 +329,19 @@ namespace GraphView
                         {
                             case BinaryExpressionType.Add:
                                 //return (float_value1 + float_value2).ToString();
-                                return new StringField((float_value1 + float_value2).ToString());
+                                return new StringField((float_value1 + float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Divide:
                                 //return (float_value1 / float_value2).ToString();
-                                return new StringField((float_value1 / float_value2).ToString());
+                                return new StringField((float_value1 / float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Modulo:
                                 //return (float_value1 % float_value2).ToString();
-                                return new StringField((float_value1 % float_value2).ToString());
+                                return new StringField((float_value1 % float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Multiply:
                                 //return (float_value1 * float_value2).ToString();
-                                return new StringField((float_value1 * float_value2).ToString());
+                                return new StringField((float_value1 * float_value2).ToString(), JsonDataType.Float);
                             case BinaryExpressionType.Subtract:
                                 //return (float_value1 - float_value2).ToString();
-                                return new StringField((float_value1 - float_value2).ToString());
+                                return new StringField((float_value1 - float_value2).ToString(), JsonDataType.Float);
                             default:
                                 throw new QueryCompilationException("Operator " + binaryType.ToString() + " cannot be applied to operands of type 'float'.");
                         }
@@ -329,10 +373,12 @@ namespace GraphView
     internal class Compose1 : ScalarFunction
     {
         List<Tuple<string, int>> targetFieldsAndTheirNames;
+        string defaultProjectionKey;
         
-        public Compose1(List<Tuple<string, int>> targetFieldsAndTheirNames)
+        public Compose1(List<Tuple<string, int>> targetFieldsAndTheirNames, string defaultProjectionKey)
         {
             this.targetFieldsAndTheirNames = targetFieldsAndTheirNames;
+            this.defaultProjectionKey = defaultProjectionKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -343,7 +389,7 @@ namespace GraphView
                 compositField[new StringField(p.Item1)] = record[p.Item2];
             }
 
-            return new MapField(compositField);
+            return new Compose1Field(compositField, new StringField(defaultProjectionKey));
         }
 
         public override JsonDataType DataType()
@@ -406,59 +452,36 @@ namespace GraphView
     {
         private int _checkFieldIndex;
         private int _arrayFieldIndex;
-        private StringField _targetFieldKey;
 
-        public WithOutArray(int checkFieldIndex, int arrayFieldIndex, StringField targetFieldKey)
+        public WithOutArray(int checkFieldIndex, int arrayFieldIndex)
         {
             _checkFieldIndex = checkFieldIndex;
             _arrayFieldIndex = arrayFieldIndex;
-            _targetFieldKey = targetFieldKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            var checkObject = record[_checkFieldIndex];
-            var arrayObject = record[_arrayFieldIndex] as CollectionField;
+            FieldObject checkObject = record[_checkFieldIndex];
+            CollectionField arrayObject = record[_arrayFieldIndex] as CollectionField;
             if (arrayObject == null)
-                throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
-            if (checkObject == null) return new StringField("false");
+                throw new GraphViewException("The second paramter of the WithInArray function must be located to a collection field");
+            if (checkObject == null) return new StringField("false", JsonDataType.Boolean);
 
-            // TODO: Write a comment
-            if (checkObject is MapField)
+            foreach (FieldObject fieldObject in arrayObject.Collection)
             {
-                foreach (var fieldObject in arrayObject.Collection)
+                if (fieldObject is Compose1Field)
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        StringField targetField = fieldObject as StringField;;
-                        if (checkObject.ToString().Equals(targetField.Value))
-                            return new StringField("false");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
-                        return new StringField("false");
-                    }
+                    Compose1Field compose1Field = fieldObject as Compose1Field;
+                    if (checkObject.Equals(compose1Field.Map[compose1Field.DefaultProjectionKey]))
+                        return new StringField("false", JsonDataType.Boolean);
                 }
-            }
-            else
-            {
-                foreach (var fieldObject in arrayObject.Collection)
+                else if (checkObject.Equals(fieldObject))
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        if (checkObject.Equals(fieldObject))
-                            return new StringField("false");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
-                        return new StringField("false");
-                    } 
+                    return new StringField("false", JsonDataType.Boolean);
                 }
             }
 
-            return new StringField("true");
+            return new StringField("true", JsonDataType.Boolean);
         }
 
         public override JsonDataType DataType()
@@ -471,59 +494,36 @@ namespace GraphView
     {
         private int _checkFieldIndex;
         private int _arrayFieldIndex;
-        private StringField _targetFieldKey;
 
-        public WithInArray(int checkFieldIndex, int arrayFieldIndex, StringField targetFieldKey)
+        public WithInArray(int checkFieldIndex, int arrayFieldIndex)
         {
             _checkFieldIndex = checkFieldIndex;
             _arrayFieldIndex = arrayFieldIndex;
-            _targetFieldKey = targetFieldKey;
         }
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            var checkObject = record[_checkFieldIndex];
-            var arrayObject = record[_arrayFieldIndex] as CollectionField;
+            FieldObject checkObject = record[_checkFieldIndex];
+            CollectionField arrayObject = record[_arrayFieldIndex] as CollectionField;
             if (arrayObject == null)
-                throw new GraphViewException("The second paramter of the WithInArray function must be a collection field");
-            if (checkObject == null) return new StringField("false");
+                throw new GraphViewException("The second paramter of the WithInArray function must be located to a collection field");
+            if (checkObject == null) return new StringField("false", JsonDataType.Boolean);
 
-            // TODO: Write a comment
-            if (checkObject is MapField)
+            foreach (FieldObject fieldObject in arrayObject.Collection)
             {
-                foreach (var fieldObject in arrayObject.Collection)
+                if (fieldObject is Compose1Field)
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        StringField targetField = fieldObject as StringField;
-                        if (checkObject.ToString().Equals(targetField.Value))
-                            return new StringField("true");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
-                        return new StringField("true");
-                    }
+                    Compose1Field compose1Field = fieldObject as Compose1Field;
+                    if (checkObject.Equals(compose1Field.Map[compose1Field.DefaultProjectionKey]))
+                        return new StringField("true", JsonDataType.Boolean);
                 }
-            }
-            else
-            {
-                foreach (var fieldObject in arrayObject.Collection)
+                else if (checkObject.Equals(fieldObject))
                 {
-                    MapField mf = fieldObject as MapField;
-                    if (mf == null)
-                    {
-                        if (checkObject.Equals(fieldObject))
-                            return new StringField("true");
-                    }
-                    else if (checkObject.Equals(mf.Map[_targetFieldKey]))
-                    {
-                        return new StringField("true");
-                    }
+                    return new StringField("true", JsonDataType.Boolean);
                 }
             }
 
-            return new StringField("false");
+            return new StringField("false", JsonDataType.Boolean);
         }
 
         public override JsonDataType DataType()

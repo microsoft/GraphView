@@ -4,46 +4,65 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinGroupOp: GremlinTranslationOperator, IGremlinByModulating
     {
-        public List<object> ByList { get; set; }
         public string SideEffect { get; set; }
+        public List<object> ByParameters { get; set; }
 
         public GremlinGroupOp()
         {
-            ByList = new List<object>();
+            ByParameters = new List<object>();
         }
 
         public GremlinGroupOp(string sideEffect)
         {
-            ByList = new List<object>();
             SideEffect = sideEffect;
+            ByParameters = new List<object>();
         }
 
-        public void ModulateBy() { }
-
-        public void ModulateBy(GraphTraversal2 paramOp) { }
-
-        public void ModulateBy(string key)
-        {
-            ByList.Add(key);
-        }
-        public void ModulateBy(GremlinKeyword.Order order) { }
-
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            inputContext.GroupByVariable = new Tuple<GremlinVariable, GroupByRecord>(inputContext.CurrVariable, new GroupByRecord());
-
-            foreach (var key in ByList)
+            List<object> byParameters = new List<object>();
+            foreach (var parameter in ByParameters)
             {
-                inputContext.GroupByVariable.Item2.GroupingSpecList.Add(GremlinUtil.GetGroupingSpecification(key as string));
+                if (parameter is GraphTraversal2)
+                {
+                    (parameter as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
+                    byParameters.Add((parameter as GraphTraversal2).GetEndOp().GetContext());
+                }
+                else
+                {
+                    byParameters.Add(parameter);
+                }
             }
 
+            inputContext.PivotVariable.Group(inputContext, SideEffect, byParameters);
+
             return inputContext;
+        }
+
+        public void ModulateBy()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ModulateBy(GraphTraversal2 paramOp)
+        {
+            ByParameters.Add(paramOp);
+        }
+
+        public void ModulateBy(string key)
+        {
+            ByParameters.Add(key);
+        }
+
+        public void ModulateBy(GremlinKeyword.Order order)
+        {
+            throw new NotImplementedException();
         }
     }
 }

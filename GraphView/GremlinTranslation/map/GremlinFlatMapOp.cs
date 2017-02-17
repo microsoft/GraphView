@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinFlatMapOp: GremlinTranslationOperator
     {
@@ -15,14 +15,14 @@ namespace GraphView.GremlinTranslation
             FlatMapTraversal = flatMapTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedContextFromParent(FlatMapTraversal, inputContext);
+            FlatMapTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext flatMapContext = FlatMapTraversal.GetEndOp().GetContext();
+            inputContext.PivotVariable.FlatMap(inputContext, flatMapContext);
 
-            inputContext = FlatMapTraversal.GetEndOp().GetContext();
-            inputContext.SetLabelsToCurrentVariable(Labels);
             return inputContext;
         }
     }

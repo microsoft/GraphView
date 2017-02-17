@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GraphView.GremlinTranslation
+namespace GraphView
 {
     internal class GremlinSideEffectOp: GremlinTranslationOperator
     {
@@ -15,21 +15,13 @@ namespace GraphView.GremlinTranslation
             SideEffectTraversal = sideEffectTraversal;
         }
 
-        public override GremlinToSqlContext GetContext()
+        internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            GremlinUtil.InheritedContextFromParent(SideEffectTraversal, inputContext);
-
-            inputContext.SaveCurrentState();
-            GremlinToSqlContext context = SideEffectTraversal.GetEndOp().GetContext();
-            WSqlStatement statement = context.ToSqlStatement();
-            //add statement if it's not a selectqueryblock, skip this statement if it's a selectqueryblock statement
-            if (!(statement is WSelectQueryBlock))
-            {
-                inputContext.Statements.Add(statement);
-            }
-            inputContext.ResetSavedState();
+            SideEffectTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext sideEffectContext = SideEffectTraversal.GetEndOp().GetContext();
+            inputContext.PivotVariable.SideEffect(inputContext, sideEffectContext);
 
             return inputContext;
 

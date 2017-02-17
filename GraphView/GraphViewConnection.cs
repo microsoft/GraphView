@@ -53,6 +53,7 @@ namespace GraphView
         public string DocDBPrimaryKey { get; }
         public string DocDBDatabaseId { get; }
         public string DocDBCollectionId { get; }
+
         internal VertexObjectCache VertexCache { get; }
 
         internal string Identifier { get; }
