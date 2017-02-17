@@ -90,78 +90,69 @@ namespace GraphView
             var results = new List<RawRecord>();
 
             // Extract all properties if allPropertyIndex >= 0
-            if (allPropertyIndex >= 0 && record[allPropertyIndex] != null)
-            {
+            if (allPropertyIndex >= 0 && record[allPropertyIndex] != null) {
                 VertexField vertexField = record[allPropertyIndex] as VertexField;
-                if (vertexField != null)
-                {
-                    foreach (var propertyPair in vertexField.VertexProperties)
-                    {
+                if (vertexField != null) {
+                    foreach (var propertyPair in vertexField.VertexProperties) {
                         string propertyName = propertyPair.Key;
                         VertexPropertyField propertyField = propertyPair.Value;
 
-                        switch (propertyName.ToLower())
-                        {
-                            // Reversed properties for meta-data
-                            case "_edge":
-                            case "_reverse_edge":
-                            case "_nextedgeoffset":
-                            //case "_nextreverseedgeoffset":
-                            case "_rid":
-                            case "_self":
-                            case "_etag":
-                            case "_attachments":
-                            case "_ts":
-                                continue;
-                            default:
-                                RawRecord r = new RawRecord();
-                                r.Append(propertyField);
-                                results.Add(r);
-                                break;
+                        switch (propertyName) {
+                        // Reversed properties for meta-data
+                        case "_edge":
+                        case "_partition":
+                        case "_reverse_edge":
+                        case "_nextEdgeOffset":
+
+                        case "_rid":
+                        case "_self":
+                        case "_etag":
+                        case "_attachments":
+                        case "_ts":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(propertyField);
+                            results.Add(r);
+                            break;
                         }
                     }
                 }
-                else
-                {
+                else {
                     EdgeField edgeField = record[allPropertyIndex] as EdgeField;
                     if (edgeField == null)
                         throw new GraphViewException(
                             string.Format("The FieldObject record[{0}] should be a VertexField or EdgeField but now it is {1}.",
-                                allPropertyIndex, record[allPropertyIndex].ToString()));
+                                          allPropertyIndex, record[allPropertyIndex].ToString()));
 
-                    foreach (var propertyPair in edgeField.EdgeProperties)
-                    {
+                    foreach (var propertyPair in edgeField.EdgeProperties) {
                         string propertyName = propertyPair.Key;
                         EdgePropertyField propertyField = propertyPair.Value;
 
-                        switch (propertyName)
-                        {
-                            // Reversed properties for meta-data
-                            case "_offset":
-                            case "_srcV":
-                            case "_sinkV":
-                            case "_srcVLabel":
-                            case "_sinkVLabel":
-                                continue;
-                            default:
-                                RawRecord r = new RawRecord();
-                                r.Append(propertyField);
-                                results.Add(r);
-                                break;
+                        switch (propertyName) {
+                        // Reversed properties for meta-data
+                        case "_offset":
+                        case "_srcV":
+                        case "_sinkV":
+                        case "_srcVLabel":
+                        case "_sinkVLabel":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(propertyField);
+                            results.Add(r);
+                            break;
                         }
                     }
                 }
             }
-            else
-            {
+            else {
                 // TODO: Now translation code needn't to generate the key name for the operator
-                foreach (var pair in propertyList)
-                {
+                foreach (var pair in propertyList) {
                     //string propertyName = pair.Item1;
                     int propertyValueIndex = pair.Item2;
                     var propertyValue = record[propertyValueIndex];
-                    if (propertyValue == null)
-                    {
+                    if (propertyValue == null) {
                         continue;
                     }
 
@@ -195,59 +186,56 @@ namespace GraphView
             if (allValuesIndex >= 0 && record[allValuesIndex] != null)
             {
                 VertexField vertexField = record[allValuesIndex] as VertexField;
-                if (vertexField != null)
-                {
-                    foreach (var propertyPair in vertexField.VertexProperties)
-                    {
+                if (vertexField != null) {
+                    foreach (var propertyPair in vertexField.VertexProperties) {
                         string propertyName = propertyPair.Key;
                         VertexPropertyField propertyField = propertyPair.Value;
 
-                        switch (propertyName.ToLower())
-                        {
-                            // Reversed properties for meta-data
-                            case "_edge":
-                            case "_reverse_edge":
-                            case "_nextedgeoffset":
-                            //case "_nextreverseedgeoffset":
-                            case "_rid":
-                            case "_self":
-                            case "_etag":
-                            case "_attachments":
-                            case "_ts":
-                                continue;
-                            default:
-                                RawRecord r = new RawRecord();
-                                r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
-                                results.Add(r);
-                                break;
+                        switch (propertyName) {
+                        // Reversed properties for meta-data
+                        case "_edge":
+                        case "_partition":
+                        case "_reverse_edge":
+                        case "_nextEdgeOffset":
+
+                        case "_rid":
+                        case "_self":
+                        case "_etag":
+                        case "_attachments":
+                        case "_ts":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
+                            results.Add(r);
+                            break;
                         }
                     }
                 }
-                else
-                {
+                else {
                     EdgeField edgeField = record[allValuesIndex] as EdgeField;
                     if (edgeField == null)
                         throw new GraphViewException(
                             string.Format("The FieldObject record[{0}] should be a VertexField or EdgeField but now it is {1}.",
-                                allValuesIndex, record[allValuesIndex].ToString()));
+                                          allValuesIndex, record[allValuesIndex].ToString()));
 
-                    foreach (var propertyPair in edgeField.EdgeProperties)
-                    {
+                    foreach (var propertyPair in edgeField.EdgeProperties) {
                         string propertyName = propertyPair.Key;
                         EdgePropertyField propertyField = propertyPair.Value;
 
-                        switch (propertyName)
-                        {
-                            // Reversed properties for meta-data
-                            case "_offset":
-                            case "_otherV":
-                            case "_otherVLabel":
-                                continue;
-                            default:
-                                RawRecord r = new RawRecord();
-                                r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
-                                results.Add(r);
-                                break;
+                        switch (propertyName) {
+                        // Reversed properties for meta-data
+                        case "_offset":
+                        case "_srcV":
+                        case "_srcVLabel":
+                        case "_sinkV":
+                        case "_sinkVLabel":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
+                            results.Add(r);
+                            break;
                         }
                     }
                 }

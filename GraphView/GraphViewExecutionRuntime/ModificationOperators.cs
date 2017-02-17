@@ -216,22 +216,6 @@ namespace GraphView
             //                               ?? Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject);
 
 
-            JObject srcVertexObject = this.Connection.RetrieveDocumentById(srcId);
-            JObject sinkVertexObject;
-            if (srcId.Equals(sinkId))
-            {
-                // MUST not use JObject.DeepClone() here!
-                sinkVertexObject = srcVertexObject;
-            }
-            else {
-                sinkVertexObject = this.Connection.RetrieveDocumentById(sinkId);
-            }
-
-            //VertexField srcVertexField = (srcFieldObject as VertexField)
-            //                              ?? Connection.VertexCache.GetVertexField(srcId, srcVertexObject);
-            //VertexField sinkVertexField = (sinkFieldObject as VertexField)
-            //                               ?? Connection.VertexCache.GetVertexField(sinkId, sinkVertexObject);
-
 
             //
             // Interact with DocDB and add the edge
@@ -601,8 +585,8 @@ namespace GraphView
 
             VertexField srcVertexField = this.Connection.VertexCache.GetVertexField(srcVertexId);
             VertexField sinkVertexField = this.Connection.VertexCache.GetVertexField(sinkVertexId);
-            EdgeField outEdgeField = srcVertexField.AdjacencyList.Edges[edgeOffset.ToString()];
-            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.Edges[revEdgeOffset.ToString()];
+            EdgeField outEdgeField = srcVertexField.AdjacencyList.GetEdgeField(srcVertexId, edgeOffset);
+            EdgeField inEdgeField = sinkVertexField.RevAdjacencyList.GetEdgeField(srcVertexId, edgeOffset);
 
             // Drop all non-reserved properties
             if (this.PropertiesToBeUpdated.Count == 1 &&

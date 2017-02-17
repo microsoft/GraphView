@@ -640,13 +640,13 @@ namespace GraphView
 
         public override string ToString()
         {
-            return String.Format("e[{0}]{1}({2})-{3}->{4}({5})", this.EdgeProperties[GremlinKeyword.EdgeID].ToValue, this.OutV, this.OutVLabel, this.Label, this.InV, this.InVLabel);
+            return String.Format("e[{0}]{1}({2})-{3}->{4}({5})", this.EdgeProperties["_offset"].ToValue, this.OutV, this.OutVLabel, this.Label, this.InV, this.InVLabel);
         }
 
         public override string ToGraphSON()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{{\"id\": {0}", this.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
+            sb.AppendFormat("{{\"id\": {0}", this.EdgeProperties["_offset"].ToValue);
             if (this.Label != null) {
                 sb.AppendFormat(", \"label\": \"{0}\"", this.Label);
             }
@@ -669,13 +669,16 @@ namespace GraphView
             bool firstProperty = true;
             foreach (string propertyName in this.EdgeProperties.Keys) {
                 switch (propertyName) {
-                case GremlinKeyword.Label:
-                case GremlinKeyword.SinkLabel:
-                case GremlinKeyword.EdgeID:
-                //case GremlinKeyword.EdgeReverseID:
-                case GremlinKeyword.EdgeSourceV:
-                case GremlinKeyword.EdgeSinkV:
-                case GremlinKeyword.EdgeOtherV:
+                case "label":
+                case "_offset":
+                case "_srcV":
+                case "_srcVLabel":
+                case "_sinkV":
+                case "_sinkVLabel":
+
+                //case GremlinKeyword.EdgeSourceV:
+                //case GremlinKeyword.EdgeSinkV:
+                //case GremlinKeyword.EdgeOtherV:
                     continue;
                 default:
                     break;
@@ -708,7 +711,7 @@ namespace GraphView
 
         public override bool Equals(object obj)
         {
-            if (Object.ReferenceEquals(this, obj)) return true;
+            if (ReferenceEquals(this, obj)) return true;
 
             EdgeField ef = obj as EdgeField;
             if (ef == null)
@@ -725,7 +728,7 @@ namespace GraphView
             return ToString().GetHashCode();
         }
 
-        public static EdgeField GetForwardEdgeField(string outVId, string outVLabel, string edgeDocID, JObject edgeObject)
+        public static EdgeField ConstructForwardEdgeField(string outVId, string outVLabel, string edgeDocID, JObject edgeObject)
         {
             EdgeField edgeField = new EdgeField {
                 OutV = outVId,
@@ -945,7 +948,7 @@ namespace GraphView
             sb.Append(", ");
             sb.Append("\"type\": \"vertex\"");
 
-            if (RevAdjacencyList != null && RevAdjacencyList.Edges.Count > 0)
+            if (RevAdjacencyList != null && RevAdjacencyList.AllEdges.Any())
             {
                 sb.Append(", inE: {");
                 // Groups incoming edges by their labels
@@ -979,7 +982,7 @@ namespace GraphView
 
                         sb.Append("{");
                         sb.AppendFormat("\"id\": {0}, ", 
-                            edgeField.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
+                            edgeField.EdgeProperties["_offset"].ToValue);
                         sb.AppendFormat("\"outV\": \"{0}\"", edgeField.OutV);
 
                         bool firstInEProperty = true;
@@ -987,13 +990,12 @@ namespace GraphView
                         {
                             switch(propertyName)
                             {
-                                case GremlinKeyword.EdgeID:
-                                //case GremlinKeyword.EdgeReverseID:
-                                //case GremlinKeyword.EdgeSourceV:
-                                case GremlinKeyword.EdgeSinkV:
-                                case GremlinKeyword.EdgeOtherV:
-                                case GremlinKeyword.Label:
-                                case GremlinKeyword.SinkLabel:
+                            case "label":
+                            case "_offset":
+                            case "_srcV":
+                            case "_sinkV":
+                            case "_srcVLabel":
+                            case "_sinkVLabel":
                                     continue;
                                 default:
                                     break;
@@ -1066,7 +1068,7 @@ namespace GraphView
 
                         sb.Append("{");
                         sb.AppendFormat("\"id\": {0}, ", 
-                            edgeField.EdgeProperties[GremlinKeyword.EdgeID].ToValue);
+                            edgeField.EdgeProperties["_offset"].ToValue);
                         sb.AppendFormat("\"inV\": \"{0}\"", edgeField.InV);
 
                         bool firstOutEProperty = true;
@@ -1074,14 +1076,13 @@ namespace GraphView
                         {
                             switch (propertyName)
                             {
-                                case GremlinKeyword.EdgeID:
-                                //case GremlinKeyword.EdgeReverseID:
-                                case GremlinKeyword.EdgeSourceV:
-                                case GremlinKeyword.EdgeSinkV:
-                                case GremlinKeyword.EdgeOtherV:
-                                case GremlinKeyword.Label:
-                                case GremlinKeyword.SinkLabel:
-                                    continue;
+                            case "label":
+                            case "_offset":
+                            case "_srcV":
+                            case "_sinkV":
+                            case "_srcVLabel":
+                            case "_sinkVLabel":
+                                continue;
                                 default:
                                     break;
                             }
@@ -1122,17 +1123,16 @@ namespace GraphView
             bool firstVertexProperty = true;
             foreach (string propertyName in VertexProperties.Keys)
             {
-                switch (propertyName)
-                {
-                    case GremlinKeyword.EdgeAdj:
-                    case GremlinKeyword.ReverseEdgeAdj:
-                    case "_nextEdgeOffset":
-                    //case "_nextReverseEdgeOffset":
-                    case "id":
-                    case "label":
-                        continue;
-                    default:
-                        break;
+                switch (propertyName) {
+                case "id":
+                case "label":
+                case "_partition":
+                case "_edge":
+                case "_reverse_edge":
+                case "_nextEdgeOffset":
+                    continue;
+                default:
+                    break;
                 }
 
                 if (firstVertexProperty)
