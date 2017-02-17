@@ -542,7 +542,11 @@ namespace GraphView
 
         public override string ToGraphSON()
         {
-            return string.Format("{{\"{0}\": \"{1}\"}}", PropertyName, PropertyValue);
+            if (JsonDataType == JsonDataType.String)
+            {
+                return string.Format("{{\"{0}\": \"{1}\"}}", PropertyName, PropertyValue);
+            }
+            return string.Format("{{\"{0}\": {1}}}", PropertyName, PropertyValue.ToLower());
         }
     }
 
@@ -670,7 +674,14 @@ namespace GraphView
                     sb.Append(", ");
                 }
 
-                sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, this.EdgeProperties[propertyName].PropertyValue);
+                if (this.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
+                {
+                    sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, this.EdgeProperties[propertyName].PropertyValue);
+                }
+                else
+                {
+                    sb.AppendFormat("\"{0}\": {1}", propertyName, this.EdgeProperties[propertyName].PropertyValue.ToLower());
+                }
             }
             if (!firstProperty) {
                 sb.Append("}");
@@ -972,9 +983,17 @@ namespace GraphView
                                 sb.Append(", ");
                             }
 
-                            sb.AppendFormat("\"{0}\": \"{1}\"", 
-                                propertyName, 
+                            if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
+                            {
+                                sb.AppendFormat("\"{0}\": \"{1}\"",
+                                propertyName,
                                 edgeField.EdgeProperties[propertyName].PropertyValue);
+                            } else
+                            {
+                                sb.AppendFormat("\"{0}\": {1}",
+                                propertyName,
+                                edgeField.EdgeProperties[propertyName].PropertyValue.ToLower());
+                            }
                         }
                         if (!firstInEProperty)
                         {
@@ -1051,9 +1070,17 @@ namespace GraphView
                                 sb.Append(", ");
                             }
 
-                            sb.AppendFormat("\"{0}\": \"{1}\"",
+                            if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
+                            {
+                                sb.AppendFormat("\"{0}\": \"{1}\"",
                                 propertyName,
                                 edgeField.EdgeProperties[propertyName].PropertyValue);
+                            } else
+                            {
+                                sb.AppendFormat("\"{0}\": {1}",
+                                propertyName,
+                                edgeField.EdgeProperties[propertyName].PropertyValue.ToLower());
+                            }
                         }
                         if (!firstOutEProperty)
                         {
@@ -1069,7 +1096,7 @@ namespace GraphView
             bool firstVertexProperty = true;
             foreach (string propertyName in VertexProperties.Keys)
             {
-                switch(propertyName)
+                switch (propertyName)
                 {
                     case GremlinKeyword.EdgeAdj:
                     case GremlinKeyword.ReverseEdgeAdj:
@@ -1093,7 +1120,16 @@ namespace GraphView
                 }
 
                 VertexPropertyField vp = VertexProperties[propertyName];
-                sb.AppendFormat("\"{0}\": [{{\"value\": \"{1}\"}}]", propertyName, vp.PropertyValue);
+
+                if (vp.JsonDataType == JsonDataType.String)
+                {
+                    sb.AppendFormat("\"{0}\": [{{\"value\": \"{1}\"}}]", propertyName, vp.PropertyValue);
+
+                }
+                else
+                {
+                    sb.AppendFormat("\"{0}\": [{{\"value\": {1}}}]", propertyName, vp.PropertyValue.ToLower());
+                }
             }
             if (!firstVertexProperty)
             {
@@ -1139,29 +1175,34 @@ namespace GraphView
         {
             // Don't print the dummy root
             StringBuilder strBuilder = new StringBuilder();
-            strBuilder.Append("[");
             int cnt = 0;
+            strBuilder.Append("{");
             foreach (KeyValuePair<FieldObject, TreeField> child in Children)
             {
                 if (cnt++ != 0)
                     strBuilder.Append(", ");
+
                 child.Value.ToGraphSON(strBuilder);
             }
-            strBuilder.Append("]");
+            strBuilder.Append("}");
             return strBuilder.ToString();
         }
 
         public void ToGraphSON(StringBuilder strBuilder)
         {
-            strBuilder.Append(nodeObject.ToGraphSON()).Append(":[");
             int cnt = 0;
+            strBuilder.Append("\"" + nodeObject.ToValue + "\":{\"key\":");
+            strBuilder.Append(nodeObject.ToGraphSON());
+            strBuilder.Append(", \"value\": ");
+            strBuilder.Append("{");
             foreach (KeyValuePair<FieldObject, TreeField> child in Children)
             {
                 if (cnt++ != 0)
                     strBuilder.Append(", ");
+
                 child.Value.ToGraphSON(strBuilder);
             }
-            strBuilder.Append("]");
+            strBuilder.Append("}}");
         }
 
         public override string ToString()
