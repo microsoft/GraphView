@@ -62,8 +62,13 @@ namespace GraphView
                 try {
                     this._lock.EnterWriteLock();
 
-                    JObject vertexObject = currVertexObject ?? this.Connection.RetrieveDocumentById(vertexId);
-                    return (this._cachedVertexField[vertexId] = FieldObject.ConstructVertexField(this.Connection, vertexObject));
+                    VertexField result;
+                    if (!_cachedVertexField.TryGetValue(vertexId, out result)) {
+                        JObject vertexObject = currVertexObject ?? this.Connection.RetrieveDocumentById(vertexId);
+                        result = FieldObject.ConstructVertexField(this.Connection, vertexObject);
+                        _cachedVertexField.Add(vertexId, result);
+                    }
+                    return result;
                 }
                 finally {
                     if (this._lock.IsWriteLockHeld) {
