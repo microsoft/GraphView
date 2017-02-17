@@ -80,50 +80,31 @@ namespace GraphView
         private JsonQuery vertexQuery;
         private GraphViewConnection connection;
 
+        private IEnumerator<RawRecord> verticesEnumerator;
+
         public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, int outputBufferSize = 1000)
         {
             Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
             this.outputBufferSize = outputBufferSize;
+            verticesEnumerator = connection.CreateDatabasePortal().GetVertices2(vertexQuery);
         }
 
         public override RawRecord Next()
         {
-            if (outputBuffer == null)
-                outputBuffer = new Queue<RawRecord>(outputBufferSize);
-
-            if (State() && outputBuffer.Count == 0)
+            if (verticesEnumerator.MoveNext())
             {
-                // If the output buffer is empty, sends a query to the underlying system 
-                // retrieving all the vertices satisfying the query.
-                using (DbPortal databasePortal = connection.CreateDatabasePortal())
-                {
-                    foreach (RawRecord rec in databasePortal.GetVertices(vertexQuery))
-                    {
-                        outputBuffer.Enqueue(rec);
-                    }
-                }
+                return verticesEnumerator.Current;
             }
 
-            if (outputBuffer.Count == 0)
-            {
-                Close();
-                return null;
-            }
-            else if (outputBuffer.Count == 1)
-            {
-                Close();
-                return outputBuffer.Dequeue();
-            }
-            else
-            {
-                return outputBuffer.Dequeue();
-            }
+            Close();
+            return null;
         }
 
         public override void ResetState()
         {
+            verticesEnumerator = connection.CreateDatabasePortal().GetVertices2(vertexQuery);
             outputBuffer?.Clear();
             Open();
         }

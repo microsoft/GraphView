@@ -257,7 +257,7 @@ namespace GraphView
         }
 
 
-        internal List<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
+        internal IQueryable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
             if (queryOptions == null) {
                 queryOptions = new FeedOptions { MaxItemCount = -1 };
@@ -266,12 +266,12 @@ namespace GraphView
             return this.DocDBClient.CreateDocumentQuery(
                 this._docDBCollectionUri,
                 queryScript,
-                queryOptions).ToList();
+                queryOptions);
         }
 
         internal JObject ExecuteQueryUnique(string queryScript, FeedOptions queryOptions = null)
         {
-            List<dynamic> result = ExecuteQuery(queryScript, queryOptions);
+            List<dynamic> result = ExecuteQuery(queryScript, queryOptions).ToList();
 
             Debug.Assert(result.Count <= 1, "A unique query should have at most 1 result");
             return (result.Count == 0)
