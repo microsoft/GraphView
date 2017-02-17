@@ -169,11 +169,11 @@ namespace GraphView
             //selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             foreach (var property in ProjectedProperties)
             {
-                if (FirstVariable.ProjectedProperties.Contains(property))
+                if (InputVariable.ProjectedProperties.Contains(property))
                 {
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
-                            FirstVariable.GetVariableProperty(property).ToScalarExpression(), property));
+                            InputVariable.GetVariableProperty(property).ToScalarExpression(), property));
                 }
                 else
                 {
