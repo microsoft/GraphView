@@ -10,9 +10,11 @@ namespace GraphView
     {
         public List<object> Parameters { get; set; }
         public string SideEffectKey { get; set; }
+        public GremlinVariable PrimaryVariable { get; set; }
 
-        public GremlinGroupVariable(string sideEffectKey, List<object> parameters)
+        public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, List<object> parameters)
         {
+            PrimaryVariable = primaryVariable;
             SideEffectKey = sideEffectKey;
             Parameters = new List<object>(parameters);
             foreach (var parameter in parameters)
@@ -28,15 +30,24 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            foreach (var parameter in Parameters)
+            for (var i = 0; i < Parameters.Count; i++)
             {
-                if (parameter is GremlinToSqlContext)
+                if (Parameters[i] is GremlinToSqlContext)
                 {
-                    parameters.Add(SqlUtil.GetScalarSubquery((parameter as GremlinToSqlContext).ToSelectQueryBlock()));
+                    parameters.Add(SqlUtil.GetScalarSubquery((Parameters[i] as GremlinToSqlContext).ToSelectQueryBlock()));
                 }
                 else
                 {
-                    parameters.Add(SqlUtil.GetValueExpr(parameter));
+                    if (i == 0)
+                    {
+                        parameters.Add(SqlUtil.GetScalarSubquery(
+                            SqlUtil.GetSimpleSelectQueryBlock(
+                                PrimaryVariable.GetVariableProperty(Parameters[i] as string))));
+                    }
+                    else
+                    {
+                        parameters.Add(PrimaryVariable.GetVariableProperty(Parameters[i] as string).ToScalarExpression());
+                    }
                 }
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, GetVariableName());

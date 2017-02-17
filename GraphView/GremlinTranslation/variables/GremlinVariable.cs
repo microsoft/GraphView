@@ -354,7 +354,7 @@ namespace GraphView
 
         internal virtual void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
         {
-            GremlinGroupVariable newVariable = new GremlinGroupVariable(sideEffectKey, parameters);
+            GremlinGroupVariable newVariable = new GremlinGroupVariable(this, sideEffectKey, parameters);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             if (sideEffectKey == null)
