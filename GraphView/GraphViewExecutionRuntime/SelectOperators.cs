@@ -743,9 +743,8 @@ namespace GraphView
 
         public AdjacencyListDecoder2(GraphViewExecutionOperator input,
             int startVertexIndex, int startVertexLabelIndex, int adjacencyListIndex, int revAdjacencyListIndex, bool isStartVertexTheOriginVertex,
-            BooleanFunction edgePredicate, List<string> projectedFields, 
-            int outputBufferSize = 1000)
-            : base(input, outputBufferSize)
+            BooleanFunction edgePredicate, List<string> projectedFields)
+            : base(input)
         {
             this.startVertexIndex = startVertexIndex;
             this.startVertexLabelIndex = startVertexLabelIndex;
@@ -846,7 +845,7 @@ namespace GraphView
             return results;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
@@ -857,46 +856,50 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (outputBuffer == null)
-                outputBuffer = new Queue<RawRecord>();
-
-            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
+            if (outputBuffer.Count > 0)
             {
-                RawRecord srcRecord = inputOperator.Next();
-                if (srcRecord == null)
-                    break;
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
 
-                var results = CrossApply(srcRecord);
-                foreach (var edgeRecord in results)
+                return r;
+            }
+
+            while (inputOperator.State())
+            {
+                currentRecord = inputOperator.Next();
+                if (currentRecord == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                List<RawRecord> results = CrossApply(currentRecord);
+
+                foreach (RawRecord edgeRecord in results)
                 {
                     if (EdgePredicate != null && !EdgePredicate.Evaluate(edgeRecord))
                         continue;
+                    outputBuffer.Enqueue(edgeRecord);
+                }
 
-                    var resultRecord = new RawRecord(srcRecord);
-                    resultRecord.Append(edgeRecord);
-                    outputBuffer.Enqueue(resultRecord);
+                if (outputBuffer.Count > 0)
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    RawRecord toAppend = outputBuffer.Dequeue();
+                    r.Append(toAppend);
+
+                    return r;
                 }
             }
 
-            if (outputBuffer.Count == 0)
-            {
-                if (!inputOperator.State())
-                    Close();
-                return null;
-            }
-            else if (outputBuffer.Count == 1)
-            {
-                Close();
-                return outputBuffer.Dequeue();
-            }
-            else
-            {
-                return outputBuffer.Dequeue();
-            }
+            Close();
+            return null;
         }
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOperator.ResetState();
             outputBuffer?.Clear();
             Open();
@@ -1088,6 +1091,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOp.ResetState();
             Open();
         }
@@ -1294,6 +1298,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOp.ResetState();
             contextOp.ResetState();
             flatMapTraversal.ResetState();
@@ -1370,6 +1375,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOp.ResetState();
             contextOp.ResetState();
             localTraversal.ResetState();
@@ -1528,6 +1534,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOp.ResetState();
             contextOp.ResetState();
             optionalTraversal.ResetState();
@@ -1660,6 +1667,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOp.ResetState();
             traversalOutputBuffer?.Clear();
             Open();
@@ -1901,6 +1909,7 @@ namespace GraphView
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOp.ResetState();
             innerOp.ResetState();
             innerContextOp.ResetState();
