@@ -11,49 +11,60 @@ namespace GraphView
     {
         protected GraphViewExecutionOperator inputOperator;
         protected Queue<RawRecord> outputBuffer;
-        protected int outputBufferSize;
 
-        internal TableValuedFunction(
-            GraphViewExecutionOperator pInputOperator, 
-            int pOutputBufferSize = 1000)
+        protected RawRecord currentRecord = null;
+
+        internal TableValuedFunction(GraphViewExecutionOperator pInputOperator)
         {
             inputOperator = pInputOperator;
-            outputBufferSize = pOutputBufferSize;
-            outputBuffer = new Queue<RawRecord>(outputBufferSize);
+            outputBuffer = new Queue<RawRecord>();
             this.Open();
         }
 
-        internal abstract IEnumerable<RawRecord> CrossApply(RawRecord record);
+        internal abstract List<RawRecord> CrossApply(RawRecord record);
 
         public override RawRecord Next()
         {
-            if (outputBuffer.Count != 0)
+            if (outputBuffer.Count > 0)
             {
-                return outputBuffer.Dequeue();
+                RawRecord r = new RawRecord(currentRecord);
+                RawRecord toAppend = outputBuffer.Dequeue();
+                r.Append(toAppend);
+
+                return r;
             }
 
-            while (outputBuffer.Count < outputBufferSize && inputOperator.State())
+            while (inputOperator.State())
             {
-                var srcRecord = inputOperator.Next();
-                if (srcRecord == null)
-                    break;
-
-                var results = CrossApply(srcRecord);
-                foreach (var rec in results)
+                currentRecord = inputOperator.Next();
+                if (currentRecord == null)
                 {
-                    var resultRecord = new RawRecord(srcRecord);
-                    resultRecord.Append(rec);
-                    outputBuffer.Enqueue(resultRecord);
+                    Close();
+                    return null;
+                }
+
+                List<RawRecord> results = CrossApply(currentRecord);
+
+                foreach (RawRecord rec in results)
+                    outputBuffer.Enqueue(rec);
+
+                if (outputBuffer.Count > 0)
+                {
+                    RawRecord r = new RawRecord(currentRecord);
+                    RawRecord toAppend = outputBuffer.Dequeue();
+                    r.Append(toAppend);
+
+                    return r;
                 }
             }
 
-            if (outputBuffer.Count <= 1) this.Close();
-            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            Close();
             return null;
         }
 
         public override void ResetState()
         {
+            currentRecord = null;
             inputOperator.ResetState();
             outputBuffer.Clear();
             this.Open();
@@ -68,15 +79,13 @@ namespace GraphView
         public PropertiesOperator(
             GraphViewExecutionOperator pInputOperator, 
             List<Tuple<string, int>> pPropertiesList,
-            int pAllPropertyIndex,
-            int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+            int pAllPropertyIndex) : base(pInputOperator)
         {
             propertyList = pPropertiesList;
             allPropertyIndex = pAllPropertyIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
 
@@ -169,14 +178,14 @@ namespace GraphView
         internal List<int> ValuesIdxList;
         int allValuesIndex;
 
-        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pAllValuesIndex, int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pAllValuesIndex)
+            : base(pInputOperator)
         {
             ValuesIdxList = pValuesIdxList;
             allValuesIndex = pAllValuesIndex;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             var results = new List<RawRecord>();
 
@@ -265,13 +274,13 @@ namespace GraphView
     {
         private List<string> _constantValues;
 
-        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, List<string> pConstantValues, int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, List<string> pConstantValues)
+            : base(pInputOperator)
         {
             _constantValues = pConstantValues;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             var result = new RawRecord(1);
             if (_constantValues.Count == 1)
@@ -297,14 +306,12 @@ namespace GraphView
         private List<Tuple<int, bool>> _pathFieldList;
 
         public PathOperator(GraphViewExecutionOperator pInputOperator,
-            List<Tuple<int, bool>> pStepFieldList,
-            int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+            List<Tuple<int, bool>> pStepFieldList) : base(pInputOperator)
         {
             this._pathFieldList = pStepFieldList;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<FieldObject> pathCollection = new List<FieldObject>();
 
@@ -344,15 +351,14 @@ namespace GraphView
         internal UnfoldOperator(
             GraphViewExecutionOperator pInputOperator,
             ScalarFunction pUnfoldTarget,
-            List<string> pUnfoldColumns,
-            int pOutputBufferSize = 1000)
-            : base(pInputOperator, pOutputBufferSize)
+            List<string> pUnfoldColumns)
+            : base(pInputOperator)
         {
             this._unfoldTarget = pUnfoldTarget;
             this._unfoldColumns = pUnfoldColumns;
         }
 
-        internal override IEnumerable<RawRecord> CrossApply(RawRecord record)
+        internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
