@@ -227,6 +227,7 @@ namespace GraphView
     internal class StringField : FieldObject
     {
         public string Value { get; set; }
+        public JsonDataType JsonDataType { get; set; }
 
         public StringField(string value)
         {
@@ -235,7 +236,14 @@ namespace GraphView
 
         public override string ToString()
         {
-            return "\"" + Value + "\"";
+            return Value;
+        }
+
+        public override string ToGraphSON()
+        {
+            if (JsonDataType == JsonDataType.String) 
+               return "\"" + Value + "\"";
+            return Value;
         }
 
         public override int GetHashCode()
