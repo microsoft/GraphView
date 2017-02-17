@@ -237,7 +237,14 @@ namespace GraphView
 
         public override string ToString()
         {
-            return "\"" + Value + "\"";
+            return Value;
+        }
+
+        public override string ToGraphSON()
+        {
+            if (JsonDataType == JsonDataType.String) 
+               return "\"" + Value + "\"";
+            return Value;
         }
 
         public override int GetHashCode()
