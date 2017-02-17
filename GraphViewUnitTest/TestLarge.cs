@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define LOCALTEST
+
+using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -10,10 +12,15 @@ namespace GraphViewUnitTest
     [TestClass]
     public class TestLarge
     {
+#if LOCALTEST
+        private const string DOCDB_URL = "https://localhost:8081/";
+        private const string DOCDB_AUTHKEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
+        private const string DOCDB_DATABASE = "Wenbin";
+#else
         private const string DOCDB_URL = "https://graphview.documents.azure.com:443/";
         private const string DOCDB_AUTHKEY = "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==";
         private const string DOCDB_DATABASE = "Temperary";
-
+#endif
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static GraphViewConnection CreateConnection(string tips = null)
@@ -112,15 +119,16 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestAddAndDropEdges_Small()
         {
-            GraphViewConnection connection = CreateConnection("AddAndDropEdges E=3");
+            const int EDGE_COUNT = 10;
+            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("SourceV").Next();
             graph.g().AddV("SinkV").Next();
-            for (int i = 0; i <= 10; i++) {
+            for (int i = 0; i < EDGE_COUNT; i++) {
                 graph.g().V().HasLabel("SourceV").AddE(edgeLabel: "Dummy").To(graph.g().V().HasLabel("SinkV")).Next();
             }
-            graph.g().V().E().HasLabel("Dummy").Drop().Next();
+            graph.g().E().HasLabel("Dummy").Drop().Next();
         }
 
 
@@ -297,5 +305,16 @@ namespace GraphViewUnitTest
             }
         }
 
+
+        [TestMethod]
+        public void TestSelfLoop_Small()
+        {
+            GraphViewConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name}");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            graph.g().AddV("Self").AddE("SelfLoop1").To(graph.g().V().HasLabel("Self")).Next();
+            graph.g().V().HasLabel("Self").AddE("SelfLoop2").Next();
+            //graph.g().AddV("Self").AddE("SelfLoop===").Next();
+        }
     }
 }

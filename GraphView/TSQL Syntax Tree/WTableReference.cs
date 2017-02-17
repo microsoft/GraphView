@@ -509,14 +509,8 @@ namespace GraphView
     {
         public string ConstructEdgeJsonDocument(out List<string> projectedFieldList)
         {
-            JObject edgeJsonDocument = JObject.Parse("{}");
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
-            //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_ID").ToString();
-            //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_reverse_ID").ToString();
-            //edgeJsonDocument = GraphViewJsonCommand.insert_property(edgeJsonDocument, "", "_sink").ToString();
-            edgeJsonDocument.Add("_ID", "");
-            edgeJsonDocument.Add("_reverse_ID", "");
-            edgeJsonDocument.Add("_sink", "");
+            JObject edgeJsonDocument = new JObject();
 
             // Skip edgeSourceScalarFunction, edgeSinkScalarFunction, otherVTag
             for (var i = 3; i < Parameters.Count; i += 2)
@@ -538,9 +532,9 @@ namespace GraphView
 
     public partial class WAddVTableReference : WSchemaObjectFunctionTableReference
     {
-        public string ConstructNodeJsonDocument(out List<string> projectedFieldList)
+        public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
         {
-            JObject nodeJsonDocument = JObject.Parse("{}");
+            JObject nodeJsonDocument = new JObject();
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
 
             for (var i = 0; i < Parameters.Count; i += 2)
@@ -560,9 +554,8 @@ namespace GraphView
             nodeJsonDocument["_edge"] = new JArray();
             nodeJsonDocument["_reverse_edge"] = new JArray();
             nodeJsonDocument["_nextEdgeOffset"] = 0;
-            nodeJsonDocument["_nextReverseEdgeOffset"] = 0;
 
-            return nodeJsonDocument.ToString();
+            return nodeJsonDocument;
         }
     }
 

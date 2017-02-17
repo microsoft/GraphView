@@ -4,8 +4,14 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
+
     internal abstract class BooleanFunction
     {
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="r"></param>
+        /// <returns></returns>
         //internal List<string> header { get; set; }      // To be removed.
         public abstract bool Evaluate(RawRecord r);
     }

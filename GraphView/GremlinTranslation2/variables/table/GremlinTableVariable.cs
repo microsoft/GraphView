@@ -23,10 +23,10 @@ namespace GraphView
 
         internal override WEdgeType GetEdgeType()
         {
-            if (EdgeType == null) throw new QueryCompilationException("EdgeType can't be null");
+            //if (EdgeType == null) throw new QueryCompilationException("EdgeType can't be null");
             return EdgeType;
         }
-
+        
         public void SetVariableTypeAndGenerateName(GremlinVariableType variableType)
         {
             VariableType = variableType;

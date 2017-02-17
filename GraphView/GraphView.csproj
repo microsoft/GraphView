@@ -23,6 +23,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>false</RunCodeAnalysis>
+    <NoWarn>3008,0162,0169,0219,0414,0649</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -314,6 +315,7 @@
     <Compile Include="TSQL Syntax Tree\WIdentifierOrValueExpression.cs" />
     <Compile Include="TSQL Syntax Tree\WTableHint.cs" />
     <Compile Include="TSQL Syntax Tree\WTransactionStatement.cs" />
+    <Compile Include="VertexObjectCache.cs" />
     <Compile Include="WSqlFragmentVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WGraphTableColumn.cs" />
     <Compile Include="TSQL Syntax Tree\WDataTypeReference.cs" />
@@ -350,6 +352,13 @@
     <Folder Include="GremlinTranslation2\variables\special\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\DocDBWrapperScript.js" />
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\Generated\sproc_AddE.js" />
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\Generated\sproc_AddV.js" />
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\Snippet\Common.snippet.js" />
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\Snippet\RetrieveDocument.snippet.js" />
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\Template\sproc_AddE.template.js" />
+    <Content Include="GraphViewExecutionRuntime\DocDBServerScript\Template\sproc_AddV.template.js" />
     <Content Include="GraphViewExecutionRuntime\Schema.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
@@ -360,6 +369,13 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Microsoft.Azure.DocumentDB.1.9.5\build\Microsoft.Azure.DocumentDB.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Azure.DocumentDB.1.9.5\build\Microsoft.Azure.DocumentDB.targets'))" />
   </Target>
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>$(SolutionDir)_Utility\Binary\JsMix.exe "$(ProjectDir)GraphViewExecutionRuntime\DocDBServerScript"</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

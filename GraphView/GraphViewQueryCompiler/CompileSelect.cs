@@ -194,29 +194,29 @@ namespace GraphView
         /// </summary>
         /// <param name="edge"></param>
         /// <returns></returns>
+        [Obsolete]
         internal static string ConstructMetaFieldSelectClauseOfEdge(MatchEdge edge)
         {
-            var metaFieldSelectStringBuilder = new StringBuilder();
-            var isStartVertexTheOriginVertex = edge.IsReversed;
-            var isReversedAdjList = IsTraversalThroughPhysicalReverseEdge(edge);
-            var nodeId = edge.SourceNode.NodeAlias + ".id";
-            var edgeSink = edge.EdgeAlias + "._sink";
-            var edgeId = edge.EdgeAlias + "._ID";
-            var edgeReverseId = edge.EdgeAlias + "._reverse_ID";
+            StringBuilder metaFieldSelectStringBuilder = new StringBuilder();
+            bool isStartVertexTheOriginVertex = edge.IsReversed;
+            bool isReversedAdjList = IsTraversalThroughPhysicalReverseEdge(edge);
+            string nodeId = edge.SourceNode.NodeAlias + ".id";
+            string edgeSink = edge.EdgeAlias + "._otherV";
+            string edgeId = edge.EdgeAlias + "._offset";
+            string edgeReverseId = edge.EdgeAlias + "._reverse_ID";
 
+            string sourceValue = isReversedAdjList ? edgeSink : nodeId;
+            string sinkValue = isReversedAdjList ? nodeId : edgeSink;
+            string otherValue = isStartVertexTheOriginVertex ? edgeSink : nodeId;
+            string edgeIdValue = isReversedAdjList ? edgeReverseId : edgeId;
 
-            var sourceValue = isReversedAdjList ? edgeSink : nodeId;
-            var sinkValue = isReversedAdjList ? nodeId : edgeSink;
-            var otherValue = isStartVertexTheOriginVertex ? edgeSink : nodeId;
-            var edgeIdValue = isReversedAdjList ? edgeReverseId : edgeId;
-
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", sourceValue, edge.EdgeAlias + "_source"));
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", sinkValue, edge.EdgeAlias + "_sink"));
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", otherValue, edge.EdgeAlias + "_other"));
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", edgeIdValue, edge.EdgeAlias + "_ID"));
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", edgeId, edge.EdgeAlias + "_physical_ID"));
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS adjType", isReversedAdjList ? "_reverse_edge" : "_edge"));
-            metaFieldSelectStringBuilder.Append(", ").Append(string.Format("{0} AS {1}", edge.EdgeAlias, edge.EdgeAlias));
+            metaFieldSelectStringBuilder.Append(", ").Append($"{sourceValue} AS {edge.EdgeAlias}_source");
+            metaFieldSelectStringBuilder.Append(", ").Append($"{sinkValue} AS {edge.EdgeAlias}_sink");
+            metaFieldSelectStringBuilder.Append(", ").Append($"{otherValue} AS {edge.EdgeAlias}_other");
+            metaFieldSelectStringBuilder.Append(", ").Append($"{edgeIdValue} AS {edge.EdgeAlias}_ID");
+            metaFieldSelectStringBuilder.Append(", ").Append($"{edgeId} AS {edge.EdgeAlias}_physical_ID");
+            metaFieldSelectStringBuilder.Append(", ").Append($"{(isReversedAdjList ? "_reverse_edge" : "_edge")} AS adjType");
+            metaFieldSelectStringBuilder.Append(", ").Append($"{edge.EdgeAlias} AS {edge.EdgeAlias}");
 
             return metaFieldSelectStringBuilder.ToString();
         }
@@ -866,7 +866,7 @@ namespace GraphView
             context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_ID", ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
             context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < properties.Count; i++)
             {
@@ -1778,7 +1778,7 @@ namespace GraphView
             context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_ID", ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
             context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {
@@ -1819,7 +1819,7 @@ namespace GraphView
             context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_ID", ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
             context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {
@@ -1862,7 +1862,7 @@ namespace GraphView
             context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
             context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
             context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_ID", ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
             context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {

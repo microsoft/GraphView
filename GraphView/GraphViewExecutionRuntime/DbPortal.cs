@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -60,8 +61,16 @@ namespace GraphView
 
         public override List<RawRecord> GetVertices(JsonQuery vertexQuery)
         {
-            List<dynamic> items = this.Connection.ExecuteQuery(
-                vertexQuery.ToString(DatabaseType.DocumentDB));
+            if (string.IsNullOrEmpty(vertexQuery.WhereSearchCondition)) {
+                vertexQuery.WhereSearchCondition = $"{vertexQuery.Alias}.id = {vertexQuery.Alias}._partition";
+            }
+            else {
+                vertexQuery.WhereSearchCondition = $"({vertexQuery.WhereSearchCondition}) AND ({vertexQuery.Alias}.id = {vertexQuery.Alias}._partition)";
+            }
+
+
+            string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
+            List<dynamic> items = this.Connection.ExecuteQuery(queryScript);
 
             var properties = vertexQuery.Properties;
             var projectedColumnsType = vertexQuery.ProjectedColumnsType;
@@ -77,12 +86,8 @@ namespace GraphView
                 var vertexJson = item[nodeAlias];
                 var rawRecord = new RawRecord();
                 //VertexField vertexObject = Connection.VertexCache.GetVertexField(vertexJson["id"].ToString(), vertexJson.ToString());
-                VertexField vertexObject = this.Connection.VertexCache.TryAddVertexField((JObject)vertexJson);
-                if (vertexObject == null) {
-                    // TODO: This is not a vertex-document
-                    // TODO: Filter this condition in JsonQuery's WHERE clause
-                    continue;
-                }
+                VertexField vertexObject = this.Connection.VertexCache.GetVertexField((string)vertexJson["id"],(JObject)vertexJson);
+                Debug.Assert(vertexObject != null);
 
                 var endOfNodePropertyIndex = projectedColumnsType.FindIndex(e => e == ColumnGraphType.EdgeSource);
                 if (endOfNodePropertyIndex == -1) endOfNodePropertyIndex = properties.Count;
@@ -100,18 +105,19 @@ namespace GraphView
                 var endOfEdgeIndex = projectedColumnsType.FindIndex(startOfEdgeIndex,
                     e => e == ColumnGraphType.EdgeSource);
                 if (endOfEdgeIndex == -1) endOfEdgeIndex = properties.Count;
-                for (var i = startOfEdgeIndex; i < properties.Count;)
+                for (var i = startOfEdgeIndex; i < properties.Count;)  // TODO: ASK: i < endOfEdgeIndex?
                 {
                     // These are corresponding meta fields generated in the ConstructMetaFieldSelectClauseOfEdge()
                     var source = item[properties[i++]].ToString();
                     var sink = item[properties[i++]].ToString();
                     var other = item[properties[i++]].ToString();
                     var edgeOffset = item[properties[i++]].ToString();
-                    var physicalOffset = item[properties[i++]].ToString();
+                    var physicalOffset = (long)item[properties[i++]];
                     var adjType = item[properties[i++]].ToString();
                     //var isReversedAdjList = adjType.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase);
 
-                    var edgeField = (vertexObject[adjType] as AdjacencyListField).GetEdgeFieldByOffset(physicalOffset);
+                    // TODO: What does physicalOffset mean?
+                    var edgeField = (vertexObject[adjType] as AdjacencyListField).GetEdgeField(source, physicalOffset);
 
                     rawRecord.Append(new StringField(source));
                     rawRecord.Append(new StringField(sink));

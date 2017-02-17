@@ -447,14 +447,9 @@ namespace GraphView
                 //var compareVar = currentContext.TaggedVariables[predicate.VariableTag].Last();
                 //secondExpr = compareVar.DefaultVariableProperty().ToScalarExpression();
             }
-            else if (predicate.Number != null)
-            {
-                secondExpr = SqlUtil.GetValueExpr(predicate.Number);
-            }
-            else
-            {
-                throw new Exception();
-            }
+
+            secondExpr = SqlUtil.GetValueExpr(predicate.Number);
+
             var firstExpr = DefaultVariableProperty().ToScalarExpression();
             var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
             currentContext.AddPredicate(booleanExpr);

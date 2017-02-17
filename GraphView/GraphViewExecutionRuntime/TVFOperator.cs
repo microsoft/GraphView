@@ -97,7 +97,7 @@ namespace GraphView
                             case "_edge":
                             case "_reverse_edge":
                             case "_nextedgeoffset":
-                            case "_nextreverseedgeoffset":
+                            //case "_nextreverseedgeoffset":
                             case "_rid":
                             case "_self":
                             case "_etag":
@@ -125,12 +125,14 @@ namespace GraphView
                         string propertyName = propertyPair.Key;
                         EdgePropertyField propertyField = propertyPair.Value;
 
-                        switch (propertyName.ToLower())
+                        switch (propertyName)
                         {
                             // Reversed properties for meta-data
-                            case "_reverse_id":
-                            case "_sink":
-                            case "_sinklabel":
+                            case "_offset":
+                            case "_srcV":
+                            case "_sinkV":
+                            case "_srcVLabel":
+                            case "_sinkVLabel":
                                 continue;
                             default:
                                 RawRecord r = new RawRecord();
@@ -197,7 +199,7 @@ namespace GraphView
                             case "_edge":
                             case "_reverse_edge":
                             case "_nextedgeoffset":
-                            case "_nextreverseedgeoffset":
+                            //case "_nextreverseedgeoffset":
                             case "_rid":
                             case "_self":
                             case "_etag":
@@ -225,12 +227,12 @@ namespace GraphView
                         string propertyName = propertyPair.Key;
                         EdgePropertyField propertyField = propertyPair.Value;
 
-                        switch (propertyName.ToLower())
+                        switch (propertyName)
                         {
                             // Reversed properties for meta-data
-                            case "_reverse_id":
-                            case "_sink":
-                            case "_sinklabel":
+                            case "_offset":
+                            case "_otherV":
+                            case "_otherVLabel":
                                 continue;
                             default:
                                 RawRecord r = new RawRecord();

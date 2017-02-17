@@ -129,6 +129,7 @@ namespace GraphView
         }
     }
 
+
     /// <summary>
     /// The operator that takes a list of records as source vertexes and 
     /// traverses to their one-hop or multi-hop neighbors. One-hop neighbors
@@ -757,7 +758,7 @@ namespace GraphView
         }
 
         /// <summary>
-        /// Fill edge's _source, _sink, _other, _ID, * meta fields
+        /// Fill edge's {_source, _sink, _other, _offset, *} meta fields
         /// </summary>
         /// <param name="record"></param>
         /// <param name="edge"></param>
@@ -765,17 +766,23 @@ namespace GraphView
         /// <param name="isReversedAdjList"></param>
         private void FillMetaField(RawRecord record, EdgeField edge, string startVertexId, string startVertexLabel, bool isReversedAdjList)
         {
-            var sourceValue = isReversedAdjList ? edge["_sink"].ToValue : startVertexId;
-            var sinkValue = isReversedAdjList ? startVertexId : edge["_sink"].ToValue;
-            var otherValue = isStartVertexTheOriginVertex ? edge["_sink"].ToValue : startVertexId;
-            var edgeIdValue = isReversedAdjList ? edge["_reverse_ID"].ToValue : edge["_ID"].ToValue;
-            var sourceLabel = isReversedAdjList ? edge["_sinkLabel"]?.ToValue : startVertexLabel;
-            var sinkLabel = isReversedAdjList ? startVertexLabel : edge["_sinkLabel"]?.ToValue;
+            string otherValue;
+            if (this.isStartVertexTheOriginVertex) {
+                if (isReversedAdjList) {
+                    otherValue = edge["_srcV"].ToValue;
+                }
+                else {
+                    otherValue = edge["_sinkV"].ToValue;
+                }
+            }
+            else {
+                otherValue = startVertexId;
+            }
 
-            record.fieldValues[0] = new StringField(sourceValue);
-            record.fieldValues[1] = new StringField(sinkValue);
+            record.fieldValues[0] = new StringField(edge.OutV);
+            record.fieldValues[1] = new StringField(edge.InV);
             record.fieldValues[2] = new StringField(otherValue);
-            record.fieldValues[3] = new StringField(edgeIdValue);
+            record.fieldValues[3] = new StringField(edge.Offset.ToString());
             record.fieldValues[4] = edge;
 
             //edge.Label = edge["label"]?.ToValue;
@@ -811,7 +818,7 @@ namespace GraphView
                     throw new GraphViewException(string.Format("The FieldObject at {0} is not a adjacency list but {1}", 
                         adjacencyListIndex, record[adjacencyListIndex] != null ? record[adjacencyListIndex].ToString() : "null"));
 
-                foreach (var edge in adj.Edges.Values)
+                foreach (var edge in adj.AllEdges)
                 {
                     // Construct new record
                     var result = new RawRecord(ProjectedFields.Count);
@@ -830,7 +837,7 @@ namespace GraphView
                     throw new GraphViewException(string.Format("The FieldObject at {0} is not a reverse adjacency list but {1}",
                         adjacencyListIndex, record[revAdjacencyListIndex] != null ? record[revAdjacencyListIndex].ToString() : "null"));
 
-                foreach (var edge in adj.Edges.Values)
+                foreach (var edge in adj.AllEdges)
                 {
                     // Construct new record
                     var result = new RawRecord(ProjectedFields.Count);

@@ -513,7 +513,7 @@ namespace GraphView
             int pIdentifier = ParseIdentifier();
             bool pEqual = ParseEqual();
             WFragment pFragment = ParseFragment();
-            if (pIdentifier != null && pEqual && pFragment != null)
+            if (/*pIdentifier != null && */pEqual && pFragment != null)
             {
                 int LT = NextToken;
                 return new WPath() { Fragment = pFragment, IdentifierIndex = pIdentifier, FirstToken = FT, LastToken = LT };
@@ -563,7 +563,7 @@ namespace GraphView
             if (pIdentifier != -1)
             {
                 WFragment pFragment = ParseFragment();
-                if (pIdentifier != null && pFullStop && pFragment != null)
+                if (/*pIdentifier != null && */pFullStop && pFragment != null)
                 {
                     int LT = NextToken;
                     return new WFragment()

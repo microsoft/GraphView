@@ -39,12 +39,18 @@ namespace GraphView
         }
 
         [DebuggerStepThrough]
-        public static void UpdateEdgeMetaProperty(JObject edgeJObject, long edgeOffset, long reverseEdgeOffset, string sinkId, string sinkNodeLabel)
+        public static void UpdateEdgeMetaProperty(
+            JObject edgeJObject, long edgeOffset, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel)
         {
-            edgeJObject["_ID"] = edgeOffset;
-            edgeJObject["_reverse_ID"] = reverseEdgeOffset;
-            edgeJObject["_sink"] = sinkId;
-            if (sinkNodeLabel != null) edgeJObject["_sinkLabel"] = sinkNodeLabel;
+            edgeJObject["_offset"] = edgeOffset;
+            if (isReverseEdge) {
+                edgeJObject["_srcV"] = srcOrSinkVId;
+                edgeJObject["_srcVLabel"] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+            }
+            else {
+                edgeJObject["_sinkV"] = srcOrSinkVId;
+                edgeJObject["_sinkVLabel"] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+            }
         }
 
 
