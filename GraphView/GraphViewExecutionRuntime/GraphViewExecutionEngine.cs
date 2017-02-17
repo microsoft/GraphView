@@ -227,10 +227,12 @@ namespace GraphView
     internal class StringField : FieldObject
     {
         public string Value { get; set; }
+        public JsonDataType JsonDataType { get; set; }
 
-        public StringField(string value)
+        public StringField(string value, JsonDataType jsonDataType = JsonDataType.String)
         {
             Value = value;
+            JsonDataType = jsonDataType;
         }
 
         public override string ToString()

@@ -39,15 +39,15 @@ namespace GraphView
 
         public override bool Evaluate(RawRecord record)
         {
-            JsonDataType type1 = firstScalarFunction.DataType();
-            JsonDataType type2 = secondScalarFunction.DataType();
-
-            JsonDataType targetType = type1 > type2 ? type1 : type2;
-
             //string value1 = firstScalarFunction.Evaluate(record);
             //string value2 = secondScalarFunction.Evaluate(record);
             string value1 = firstScalarFunction.Evaluate(record)?.ToValue;
             string value2 = secondScalarFunction.Evaluate(record)?.ToValue;
+
+            JsonDataType type1 = firstScalarFunction.DataType();
+            JsonDataType type2 = secondScalarFunction.DataType();
+
+            JsonDataType targetType = type1 > type2 ? type1 : type2;
 
             if (value1 == null || value2 == null)
                 return false;

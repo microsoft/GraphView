@@ -45,7 +45,7 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            return new StringField(count.ToString());
+            return new StringField(count.ToString(), JsonDataType.Int);
         }
     }
 

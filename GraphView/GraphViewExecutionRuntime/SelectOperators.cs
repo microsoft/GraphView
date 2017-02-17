@@ -2306,7 +2306,7 @@ namespace GraphView
                     throw new GraphViewException("The input of the value step should be a property");
 
                 RawRecord result = new RawRecord(currentRecord);
-                result.Append(new StringField(p.PropertyValue));
+                result.Append(new StringField(p.PropertyValue, p.JsonDataType));
 
                 return result;
             }

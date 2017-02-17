@@ -206,7 +206,7 @@ namespace GraphView
                                 continue;
                             default:
                                 RawRecord r = new RawRecord();
-                                r.Append(new StringField(propertyField.ToValue));
+                                r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
                                 results.Add(r);
                                 break;
                         }
@@ -234,7 +234,7 @@ namespace GraphView
                                 continue;
                             default:
                                 RawRecord r = new RawRecord();
-                                r.Append(new StringField(propertyField.ToValue));
+                                r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
                                 results.Add(r);
                                 break;
                         }
@@ -245,14 +245,14 @@ namespace GraphView
             {
                 foreach (var propIdx in ValuesIdxList)
                 {
-                    var propertyValue = record[propIdx];
+                    PropertyField propertyValue = record[propIdx] as PropertyField;
                     if (propertyValue == null)
                     {
                         continue;
                     }
 
                     var result = new RawRecord();
-                    result.Append(new StringField(propertyValue.ToValue));
+                    result.Append(new StringField(propertyValue.ToValue, propertyValue.JsonDataType));
                     results.Add(result);
                 }
             }
