@@ -10,9 +10,11 @@ namespace GraphView
     {
         public List<object> Parameters { get; set; }
         public string SideEffectKey { get; set; }
+        public GremlinVariable PrimaryVariable { get; set; }
 
-        public GremlinGroupVariable(string sideEffectKey, List<object> parameters)
+        public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, List<object> parameters)
         {
+            PrimaryVariable = primaryVariable;
             SideEffectKey = sideEffectKey;
             Parameters = new List<object>(parameters);
             foreach (var parameter in parameters)
@@ -36,7 +38,8 @@ namespace GraphView
                 }
                 else
                 {
-                    parameters.Add(SqlUtil.GetValueExpr(parameter));
+                    parameters.Add(SqlUtil.GetScalarSubquery(
+                        SqlUtil.GetSimpleSelectQueryBlock(PrimaryVariable.GetVariableProperty(parameter as string))));
                 }
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, GetVariableName());
