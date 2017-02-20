@@ -116,27 +116,27 @@ namespace GraphView
 
     internal class GroupFunction : IAggregateFunction
     {
-        Dictionary<FieldObject, List<RawRecord>> aggregateState;
+        Dictionary<FieldObject, List<RawRecord>> groupedStates;
         GraphViewExecutionOperator aggregateOp;
-        ConstantSourceOperator tempSource;
-        ContainerOperator aggregatedSourceOp;
+        ConstantSourceOperator tempSourceOp;
+        ContainerOperator groupedSourceOp;
         int elementPropertyProjectionIndex;
 
-        public GroupFunction(ConstantSourceOperator tempSource,
-            ContainerOperator aggregatedSourceOp,
+        public GroupFunction(ConstantSourceOperator tempSourceOp,
+            ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
             int elementPropertyProjectionIndex)
         {
-            aggregateState = new Dictionary<FieldObject, List<RawRecord>>();
-            this.tempSource = tempSource;
-            this.aggregatedSourceOp = aggregatedSourceOp;
+            groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+            this.tempSourceOp = tempSourceOp;
+            this.groupedSourceOp = groupedSourceOp;
             this.aggregateOp = aggregateOp;
             this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
         }
 
         public void Init()
         {
-            aggregateState = new Dictionary<FieldObject, List<RawRecord>>();
+            groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -149,43 +149,43 @@ namespace GraphView
             var groupByKey = values[0] as FieldObject;
             var groupByValue = values[1] as RawRecord;
 
-            if (!aggregateState.ContainsKey(groupByKey))
+            if (!groupedStates.ContainsKey(groupByKey))
             {
-                aggregateState.Add(groupByKey, new List<RawRecord>());
+                groupedStates.Add(groupByKey, new List<RawRecord>());
             }
 
-            aggregateState[groupByKey].Add(groupByValue);
+            groupedStates[groupByKey].Add(groupByValue);
         }
 
         public FieldObject Terminate()
         {
-            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(aggregateState.Count);
+            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(groupedStates.Count);
 
             if (elementPropertyProjectionIndex >= 0)
             {
-                foreach (FieldObject key in aggregateState.Keys)
+                foreach (FieldObject key in groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (var rawRecord in aggregateState[key])
+                    foreach (var rawRecord in groupedStates[key])
                     {
-                        projectFields.Add(rawRecord[elementPropertyProjectionIndex]);
+                        projectFields.Add(new StringField(rawRecord[elementPropertyProjectionIndex].ToValue));
                     }
                     resultCollection[key] = new CollectionField(projectFields);
                 }
             }
             else
             {
-                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in aggregateState)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in groupedStates)
                 {
                     FieldObject key = pair.Key;
                     List<RawRecord> aggregatedRecords = pair.Value;
-                    aggregatedSourceOp.ResetState();
+                    groupedSourceOp.ResetState();
                     aggregateOp.ResetState();
 
                     foreach (RawRecord record in aggregatedRecords)
                     {
-                        tempSource.ConstantSource = record;
-                        aggregatedSourceOp.Next();
+                        tempSourceOp.ConstantSource = record;
+                        groupedSourceOp.Next();
                     }
 
                     RawRecord aggregateTraversalRecord = aggregateOp.Next();
@@ -361,15 +361,15 @@ namespace GraphView
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ConstantSourceOperator tempSource,
-            ContainerOperator aggregatedSourceOp,
+            ConstantSourceOperator tempSourceOp,
+            ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
             int elementPropertyProjectionIndex)
         {
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
 
-            GroupState = new GroupFunction(tempSource, aggregatedSourceOp, aggregateOp, elementPropertyProjectionIndex);
+            GroupState = new GroupFunction(tempSourceOp, groupedSourceOp, aggregateOp, elementPropertyProjectionIndex);
             Open();
         }
 
@@ -412,19 +412,19 @@ namespace GraphView
         ScalarFunction groupByKeyFunction;
 
         GraphViewExecutionOperator aggregateOp;
-        ConstantSourceOperator tempSource;
-        ContainerOperator aggregatedSourceOp;
+        ConstantSourceOperator tempSourceOp;
+        ContainerOperator groupedSourceOp;
 
         int elementPropertyProjectionIndex;
         int carryOnCount;
 
-        Dictionary<FieldObject, List<RawRecord>> aggregatedState;
+        Dictionary<FieldObject, List<RawRecord>> groupedStates;
 
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            ConstantSourceOperator tempSource,
-            ContainerOperator aggregatedSourceOp,
+            ConstantSourceOperator tempSourceOp,
+            ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
             int elementPropertyProjectionIndex,
             int carryOnCount)
@@ -432,16 +432,16 @@ namespace GraphView
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
 
-            this.tempSource = tempSource;
-            this.aggregatedSourceOp = aggregatedSourceOp;
+            this.tempSourceOp = tempSourceOp;
+            this.groupedSourceOp = groupedSourceOp;
             this.aggregateOp = aggregateOp;
 
             this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
             this.carryOnCount = carryOnCount;
 
-            aggregatedState = new Dictionary<FieldObject, List<RawRecord>>();
+            groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
             Open();
-            //aggregatedState.Clear();
+            //groupedStates.Clear();
         }
 
         public override RawRecord Next()
@@ -450,39 +450,39 @@ namespace GraphView
             while (inputOp.State() && (r = inputOp.Next()) != null)
             {
                 FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
-                if (!aggregatedState.ContainsKey(groupByKey))
+                if (!groupedStates.ContainsKey(groupByKey))
                 {
-                    aggregatedState.Add(groupByKey, new List<RawRecord>());
+                    groupedStates.Add(groupByKey, new List<RawRecord>());
                 }
-                aggregatedState[groupByKey].Add(r);
+                groupedStates[groupByKey].Add(r);
             }
 
-            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(aggregatedState.Count);
+            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(groupedStates.Count);
             if (elementPropertyProjectionIndex >= 0)
             {
-                foreach (FieldObject key in aggregatedState.Keys)
+                foreach (FieldObject key in groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (var rawRecord in aggregatedState[key])
+                    foreach (var rawRecord in groupedStates[key])
                     {
-                        projectFields.Add(rawRecord[elementPropertyProjectionIndex]);
+                        projectFields.Add(new StringField(rawRecord[elementPropertyProjectionIndex].ToValue));
                     }
                     resultCollection[key] = new CollectionField(projectFields);
                 }
             }
             else
             {
-                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in aggregatedState)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in groupedStates)
                 {
                     FieldObject key = pair.Key;
                     List<RawRecord> aggregatedRecords = pair.Value;
-                    aggregatedSourceOp.ResetState();
+                    groupedSourceOp.ResetState();
                     aggregateOp.ResetState();
 
                     foreach (RawRecord record in aggregatedRecords)
                     {
-                        tempSource.ConstantSource = record;
-                        aggregatedSourceOp.Next();
+                        tempSourceOp.ConstantSource = record;
+                        groupedSourceOp.Next();
                     }
 
                     RawRecord aggregateTraversalRecord = aggregateOp.Next();
@@ -512,7 +512,7 @@ namespace GraphView
         public override void ResetState()
         {
             inputOp.ResetState();
-            aggregatedState.Clear();
+            groupedStates.Clear();
             Open();
         }
     }
