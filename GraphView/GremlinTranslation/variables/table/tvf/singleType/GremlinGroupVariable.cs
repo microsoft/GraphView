@@ -38,16 +38,7 @@ namespace GraphView
                 }
                 else
                 {
-                    if (i == 0)
-                    {
-                        parameters.Add(SqlUtil.GetScalarSubquery(
-                            SqlUtil.GetSimpleSelectQueryBlock(
-                                PrimaryVariable.GetVariableProperty(Parameters[i] as string))));
-                    }
-                    else
-                    {
-                        parameters.Add(PrimaryVariable.GetVariableProperty(Parameters[i] as string).ToScalarExpression());
-                    }
+                    parameters.Add(PrimaryVariable.GetVariableProperty(Parameters[i] as string).ToScalarExpression());
                 }
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, GetVariableName());
