@@ -357,10 +357,12 @@ namespace GraphView
         public GroupFunction GroupState { get; private set; }
         GraphViewExecutionOperator inputOp;
         ScalarFunction groupByKeyFunction;
+        int groupByKeyFieldIndex;
 
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
+            int groupByKeyFieldIndex,
             ConstantSourceOperator tempSourceOp,
             ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
@@ -368,6 +370,7 @@ namespace GraphView
         {
             this.inputOp = inputOp;
             this.groupByKeyFunction = groupByKeyFunction;
+            this.groupByKeyFieldIndex = groupByKeyFieldIndex;
 
             GroupState = new GroupFunction(tempSourceOp, groupedSourceOp, aggregateOp, elementPropertyProjectionIndex);
             Open();
@@ -384,7 +387,9 @@ namespace GraphView
                     return null;
                 }
 
-                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
+                FieldObject groupByKey = groupByKeyFieldIndex >= 0 
+                    ? new StringField(r[groupByKeyFieldIndex].ToValue) 
+                    : groupByKeyFunction.Evaluate(r);
 
                 GroupState.Accumulate(new Object[]{ groupByKey, r });
 
@@ -409,7 +414,9 @@ namespace GraphView
     internal class GroupOperator : GraphViewExecutionOperator
     {
         GraphViewExecutionOperator inputOp;
+
         ScalarFunction groupByKeyFunction;
+        int groupByKeyFieldIndex;
 
         GraphViewExecutionOperator aggregateOp;
         ConstantSourceOperator tempSourceOp;
@@ -423,6 +430,7 @@ namespace GraphView
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
+            int groupByKeyFieldIndex,
             ConstantSourceOperator tempSourceOp,
             ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
@@ -430,7 +438,9 @@ namespace GraphView
             int carryOnCount)
         {
             this.inputOp = inputOp;
+
             this.groupByKeyFunction = groupByKeyFunction;
+            this.groupByKeyFieldIndex = groupByKeyFieldIndex;
 
             this.tempSourceOp = tempSourceOp;
             this.groupedSourceOp = groupedSourceOp;
@@ -449,7 +459,10 @@ namespace GraphView
             RawRecord r = null;
             while (inputOp.State() && (r = inputOp.Next()) != null)
             {
-                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
+                FieldObject groupByKey = groupByKeyFieldIndex >= 0 
+                    ? new StringField(r[groupByKeyFieldIndex].ToValue) 
+                    : groupByKeyFunction.Evaluate(r);
+
                 if (!groupedStates.ContainsKey(groupByKey))
                 {
                     groupedStates.Add(groupByKey, new List<RawRecord>());

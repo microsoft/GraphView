@@ -2345,17 +2345,24 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             WScalarSubquery groupKeySubQuery = Parameters[1] as WScalarSubquery;
+            WColumnReferenceExpression groupKeyColumnReference = Parameters[1] as WColumnReferenceExpression;
             WScalarSubquery aggregateSubQuery = Parameters[2] as WScalarSubquery;
             WColumnReferenceExpression elementPropertyProjection = Parameters[2] as WColumnReferenceExpression;
-            if (groupKeySubQuery == null)
-                throw new SyntaxErrorException("The group key parameter of group table can only be WScalarSubquery.");
+
+            if (groupKeySubQuery == null && groupKeyColumnReference == null)
+                throw new SyntaxErrorException("The group key parameter of group table can only be WScalarSubquery or WColumnReferenceExpression.");
             if (aggregateSubQuery == null && elementPropertyProjection == null)
-                throw new SyntaxErrorException("The group value parameter of group table can only be WScalarSubquery or WColumnReference.");
+                throw new SyntaxErrorException("The group value parameter of group table can only be WScalarSubquery or WColumnReferenceExpression.");
+
+            int groupKeyFieldIndex = groupKeyColumnReference == null
+                                     ? -1
+                                     : context.LocateColumnReference(groupKeyColumnReference);
 
             int elementPropertyProjectionIndex = elementPropertyProjection == null 
                                                  ? -1 
                                                  : context.LocateColumnReference(elementPropertyProjection);
-            ScalarFunction groupKeyFunction = groupKeySubQuery.CompileToFunction(context, dbConnection);
+
+            ScalarFunction groupKeyFunction = groupKeySubQuery?.CompileToFunction(context, dbConnection);
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
@@ -2366,13 +2373,13 @@ namespace GraphView
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
             if (!groupParameter.SingleQuoted && groupParameter.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
             {
-                GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction, 
+                GroupOperator groupOp = new GroupOperator(
+                    context.CurrentExecutionOperator, 
+                    groupKeyFunction, groupKeyFieldIndex,
                     tempSourceOp, aggregatedSourceOp, aggregateOp, 
-                    elementPropertyProjectionIndex, context.CarryOn ? context.RawRecordLayout.Count : -1);
+                    elementPropertyProjectionIndex, 
+                    context.CarryOn ? context.RawRecordLayout.Count : -1);
 
-                //GroupOperator groupOp = new GroupOperator(context.CurrentExecutionOperator, groupKeyFunction,
-                //    aggregateFunction, elementPropertyProjectionIndex, 
-                //    context.CarryOn ? context.RawRecordLayout.Count : -1);
                 context.CurrentExecutionOperator = groupOp;
 
                 if (!context.CarryOn)
@@ -2385,13 +2392,11 @@ namespace GraphView
             else
             {
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
-                    context.CurrentExecutionOperator, groupKeyFunction, 
+                    context.CurrentExecutionOperator, 
+                    groupKeyFunction, groupKeyFieldIndex,
                     tempSourceOp, aggregatedSourceOp, aggregateOp,
                     elementPropertyProjectionIndex);
 
-                //GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
-                //    context.CurrentExecutionOperator, groupKeyFunction, aggregateFunction,
-                //    elementPropertyProjectionIndex);
                 context.CurrentExecutionOperator = groupSideEffectOp;
 
                 List<IAggregateFunction> sideEffectList;
