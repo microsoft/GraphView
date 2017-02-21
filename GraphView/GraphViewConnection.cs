@@ -56,6 +56,9 @@ namespace GraphView
 
         internal VertexObjectCache VertexCache { get; }
 
+        internal string Identifier { get; }
+
+
         private readonly Uri _docDBDatabaseUri, _docDBCollectionUri;
         private bool _disposed;        
 
@@ -95,7 +98,8 @@ namespace GraphView
                                                   });
             this.DocDBClient.OpenAsync().Wait();
 
-            this.VertexCache = new VertexObjectCache(this);
+            this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
+            this.VertexCache = VertexObjectCache.FromConnection(this);
         }
 
         internal DbPortal CreateDatabasePortal()
@@ -174,7 +178,7 @@ namespace GraphView
         internal async Task<string> CreateDocumentAsync(JObject docObject)
         {
             Debug.Assert(docObject != null, "The newly created document should not be null");
-            Debug.Assert(docObject["id"] == null, "The newly created document should not contains 'id' field");
+            Debug.Assert(docObject["id"] != null, "The newly created document should specify 'id' field");
 
             Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
             docObject["id"] = createdDocument.Id;
@@ -253,7 +257,7 @@ namespace GraphView
         }
 
 
-        internal List<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
+        internal IQueryable<dynamic> ExecuteQuery(string queryScript, FeedOptions queryOptions = null)
         {
             if (queryOptions == null) {
                 queryOptions = new FeedOptions { MaxItemCount = -1 };
@@ -262,12 +266,12 @@ namespace GraphView
             return this.DocDBClient.CreateDocumentQuery(
                 this._docDBCollectionUri,
                 queryScript,
-                queryOptions).ToList();
+                queryOptions);
         }
 
         internal JObject ExecuteQueryUnique(string queryScript, FeedOptions queryOptions = null)
         {
-            List<dynamic> result = ExecuteQuery(queryScript, queryOptions);
+            List<dynamic> result = ExecuteQuery(queryScript, queryOptions).ToList();
 
             Debug.Assert(result.Count <= 1, "A unique query should have at most 1 result");
             return (result.Count == 0)
@@ -276,185 +280,12 @@ namespace GraphView
 
         }
 
-
-
-        //public void BulkInsertNodes(List<string> nodes)
-        //{
-        //    if (!nodes.Any()) return;
-
-        //    string collectionLink = "dbs/" + DocDBDatabaseId + "/colls/" + DocDBCollectionId;
-
-        //    // Each batch size is determined by maxJsonSize.
-        //    // maxJsonSize should be so that:
-        //    // -- it fits into one request (MAX request size is ???).
-        //    // -- it doesn't cause the script to time out, so the batch number can be minimzed.
-        //    const int maxJsonSize = 50000;
-
-        //    // Prepare the BulkInsert stored procedure
-        //    string jsBody = File.ReadAllText(@"..\..\BulkInsert.js");
-        //    StoredProcedure sproc = new StoredProcedure
-        //    {
-        //        Id = "BulkInsert",
-        //        Body = jsBody,
-        //    };
-
-        //    var bulkInsertCommand = new GraphViewCommand(this);
-        //    //Create the BulkInsert stored procedure if it doesn't exist
-        //    Task<StoredProcedure> spTask = bulkInsertCommand.TryCreatedStoredProcedureAsync(collectionLink, sproc);
-        //    spTask.Wait();
-        //    sproc = spTask.Result;
-        //    var sprocLink = sproc.SelfLink;
-
-        //    // If you are sure that the proc already exist on the server side, 
-        //    // you can comment out the TryCreatedStoredProcude code above and use the URI directly instead
-        //    //var sprocLink = "dbs/" + DocDBDatabaseId + "/colls/" + DocDBCollectionId + "/sprocs/" + sproc.Id;
-
-        //    int currentCount = 0;
-        //    while (currentCount < nodes.Count)
-        //    {
-        //        // Get the batch json string whose size won't exceed the maxJsonSize
-        //        string json_arr = GraphViewCommand.GenerateNodesJsonString(nodes, currentCount, maxJsonSize);
-        //        var objs = new dynamic[] { JsonConvert.DeserializeObject<dynamic>(json_arr) };
-
-        //        // Execute the batch
-        //        Task<int> insertTask = bulkInsertCommand.BulkInsertAsync(sprocLink, objs);
-        //        insertTask.Wait();
-
-        //        // Prepare for next batch
-        //        currentCount += insertTask.Result;
-        //        Console.WriteLine(insertTask.Result + " nodes has already been inserted.");
-        //    }
-        //}
-    }
-
-
-    internal sealed class VertexObjectCache
-    {
-        public GraphViewConnection Connection { get; }
-
-        /// <summary>
-        /// NOTE: VertexCache is per-connection! (cross-connection may lead to unpredictable errors)
-        /// </summary>
-        /// <param name="dbConnection"></param>
-        public VertexObjectCache(GraphViewConnection dbConnection)
+        
+        public static string GenerateDocumentId()
         {
-            this.Connection = dbConnection;
-        }
-
-        //
-        // NOTE: _cachedVertex is ALWAYS up-to-date with DocDB!
-        // Every query operation could be directly done with the cache
-        // Every vertex/edge modification MUST be synchonized with the cache
-        //
-        private readonly ConcurrentDictionary<string, VertexField> _cachedVertexField = new ConcurrentDictionary<string, VertexField>();
-
-
-        /// <summary>
-        /// Everytime when retrieving vertexes from DocDB, we attempt to add the vertexes into cache,
-        /// although they might already be in the cache. (for debugging perpose, we check to make sure
-        /// the newly retrieved vertex is just identical to the cached one)
-        /// </summary>
-        /// <param name="vertexObject"></param>
-        /// <returns></returns>
-        public VertexField TryAddVertexField(JObject vertexObject)
-        {
-            string vertexId = (string)vertexObject["id"];
-            Debug.Assert(!string.IsNullOrEmpty(vertexId), "Vertex Id should exist (not null nor empty)");
-
-            // Make sure this is a vertex-document
-            // TODO: Fix this in DocDB query (Don't obtain non-vertex-documents)
-            if (vertexObject["_edge"] == null || vertexObject["_reverse_edge"] == null) {
-                Debug.WriteLine($"[AddVertexField] Try to add a non-vertex object! id = {vertexId}");
-                return null;
-            }
-
-            // Try to get or add the VertexField
-            bool[] isAdd = {false};
-            VertexField result = this._cachedVertexField.GetOrAdd(vertexId, (dummy) => {
-                isAdd[0] = true;
-                return FieldObject.ConstructVertexField(this.Connection, vertexObject);
-            });
-#if DEBUG
-            if (!isAdd[0]) {
-                //TODO: Check the retrieved vertexfield is identical to the added one
-            }
-#endif
-
-            return result;
-        }
-
-        public VertexField GetVertexField(string vertexId, JObject vertexObject = null)
-        {
-            return this._cachedVertexField.GetOrAdd(vertexId, dummy => {
-                vertexObject = vertexObject ?? this.Connection.RetrieveDocumentById(vertexId);
-                return FieldObject.ConstructVertexField(this.Connection, vertexObject);
-            });
-        }
-
-        public bool TryRemoveVertexField(string vertexId)
-        {
-            VertexField vertexField;
-            bool found = this._cachedVertexField.TryRemove(vertexId, out vertexField);
-            if (found) {
-                Debug.Assert(vertexField.AdjacencyList.Edges.Count == 0, "The deleted edge's should contain no outgoing edges");
-                Debug.Assert(vertexField.RevAdjacencyList.Edges.Count == 0, "The deleted edge's should contain no incoming edges");
-            }
-            return found;
+            // TODO: Implement a stronger Id generation
+            Guid guid = Guid.NewGuid();
+            return guid.ToString("D");
         }
     }
-
-
-    //internal sealed class VertexObjectCache
-    //{
-    //    public GraphViewConnection Connection { get; }
-
-    //    /// <summary>
-    //    /// NOTE: VertexCache is per-connection! (cross-connection may lead to unpredictable errors)
-    //    /// </summary>
-    //    /// <param name="dbConnection"></param>
-    //    public VertexObjectCache(GraphViewConnection dbConnection)
-    //    {
-    //        this.Connection = dbConnection;
-    //    }
-
-    //    //
-    //    // Can we use ConcurrentDictionary<string, VertexField> here?
-    //    // Yes, I reckon...
-    //    //
-    //    private readonly Dictionary<string, VertexField> _cachedVertexCollection = new Dictionary<string, VertexField>();
-    //    private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
-
-    //    public VertexField GetVertexField(string vertexId, string vertexJson)
-    //    {
-    //        try {
-    //            this._lock.EnterUpgradeableReadLock();
-
-    //            // Try to retrieve vertexObject from the cache
-    //            VertexField vertexField;
-    //            if (this._cachedVertexCollection.TryGetValue(vertexId, out vertexField)) {
-    //                return vertexField;
-    //            }
-
-    //            // Cache miss: parse vertexJson, and add the result to cache
-    //            try {
-    //                this._lock.EnterWriteLock();
-
-    //                JObject vertexObject = JObject.Parse(vertexJson);
-    //                vertexField = FieldObject.ConstructVertexField(this.Connection, vertexObject);
-    //                this._cachedVertexCollection.Add(vertexId, vertexField);
-    //            }
-    //            finally {
-    //                if (this._lock.IsWriteLockHeld) {
-    //                    this._lock.ExitWriteLock();
-    //                }
-    //            }
-    //            return vertexField;
-    //        }
-    //        finally {
-    //            if (this._lock.IsUpgradeableReadLockHeld) {
-    //                this._lock.ExitUpgradeableReadLock();
-    //            }
-    //        }
-    //    }
-    //}
 }

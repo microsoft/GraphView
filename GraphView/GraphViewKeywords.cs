@@ -28,14 +28,9 @@ using System.Collections.Generic;
 
 namespace GraphView
 {
-    /// <summary>
-    /// A list of keywords reversed by GraphView but not reserved by T-SQL.
-    /// The list is checked against after the T-SQL parser parses GraphView statements.
-    /// </summary>
     internal static class GraphViewKeywords
     {
-        public static readonly HashSet<string> _keywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
+        public static HashSet<string> _keywords { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
 #if !DEBUG
                 "globalnodeid",
                 "sink",
@@ -44,6 +39,6 @@ namespace GraphView
                 "indegree",
                 "outdegree"
 #endif
-            };
+        };
     }
 }

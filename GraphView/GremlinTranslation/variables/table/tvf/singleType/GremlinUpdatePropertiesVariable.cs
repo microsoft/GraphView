@@ -6,7 +6,8 @@ using System.Text;
 using System.Threading.Tasks;
 using GraphView;
 
-namespace GraphView {
+namespace GraphView
+{
     internal class GremlinUpdatePropertiesVariable: GremlinDropVariable
     {
         public Dictionary<string, object> UpdateProperties { get; set; }

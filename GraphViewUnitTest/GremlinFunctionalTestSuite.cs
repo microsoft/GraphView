@@ -14,17 +14,25 @@ namespace GraphViewUnitTest
     [TestClass]
     public class GremlinFunctionalTestSuite
     {
+        static GraphViewConnection GetGraphViewConnection()
+        {
+            return new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "GremlinFunctionalTestSuite");
+
+            //return new GraphViewConnection("https://localhost:8081/",
+            //    "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
+            //    "GroupMatch", "GremlinFunctionalTestSuite");
+        }
+
         [TestMethod]
         public void Test1CreateApplication()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
-            //connection.ResetCollection();
+            GraphViewConnection connection = GetGraphViewConnection();
+            connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
 
-            //graph.g().V().OutE().Drop().Next();
             //graph.g().V().Drop().Next();
 
             var results =
@@ -57,9 +65,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test2ImportModels()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
@@ -527,9 +533,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test3ImportInstances()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
@@ -1478,9 +1482,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void Test4ListAllProducts()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
@@ -1624,11 +1626,351 @@ namespace GraphViewUnitTest
         }
 
         [TestMethod]
+        public void Test5GetProduct()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g()
+                    .V()
+                    .Has("_app", "test-app")
+                    .Has("__id", "test-app")
+                    .HasLabel("application")
+                    .Coalesce(
+                        GraphTraversal2.__().Union(GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 0)
+                                .Constant("~1"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 2)
+                                .Constant("~2"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_deleted", true)
+                                .Constant("~3")),
+                        GraphTraversal2.__()
+                            .FlatMap(
+                                GraphTraversal2.__()
+                                    .V()
+                                    .Has("_app", "test-app")
+                                    .Has("__id", "uber-product:soda-machine:shop-3")
+                                    .HasLabel("product")
+                                    .Range(0, 100)
+                                    .Union(
+                                        GraphTraversal2.__()
+                                            .Identity()
+                                            .SideEffect(GraphTraversal2.__().Id().Store("^ids")),
+                                        GraphTraversal2.__()
+                                            .As("@v")
+                                            .FlatMap(
+                                                GraphTraversal2.__()
+                                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                                    .OutE("ref"))
+                                            .Repeat(
+                                                GraphTraversal2.__()
+                                                    .As("@e")
+                                                    .FlatMap(
+                                                        GraphTraversal2
+                                                            .__()
+                                                            .InV()
+                                                            .As("mdl")
+                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Both()
+                                                            .Dedup()
+                                                            .And(
+                                                                GraphTraversal2.__()
+                                                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                                                    .Where(Predicate.eq("mdl"))))
+                                                    .As("@v")
+                                                    .Optional(GraphTraversal2.__().FlatMap(
+                                                        GraphTraversal2.__()
+                                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                                            .Values("_ref")
+                                                            .As("key")
+                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                                            .OutE("ref")
+                                                            .And(
+                                                                GraphTraversal2.__()
+                                                                    .Values("_key")
+                                                                    .Where(Predicate.eq("key"))))))
+                                            .Until(GraphTraversal2.__().FlatMap(
+                                                GraphTraversal2.__()
+                                                    .As("res")
+                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Where(Predicate.eq("res"))))
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Project("data", "info")
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@e")
+                                                        .Unfold()
+                                                        .Project("key", "ref")
+                                                        .By(GraphTraversal2.__().Values("_key"))
+                                                        .By(GraphTraversal2.__().Values("_ref"))
+                                                        .Fold())
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@v")
+                                                        .Unfold()
+                                                        .Project("_id", "type", "etag")
+                                                        .By(GraphTraversal2.__().Values("__id"))
+                                                        .By(GraphTraversal2.__().Label())
+                                                        .By(GraphTraversal2.__().Values("__etag"))
+                                                        .Fold())
+                                                    .Store("^refs")))
+                                    .Dedup()
+                                    .Union(GraphTraversal2.__().Identity().SideEffect(
+                                        GraphTraversal2.__()
+                                            .Group("^mdls")
+                                            .By(GraphTraversal2.__().Id())
+                                            .By(GraphTraversal2.__().Coalesce(
+                                                GraphTraversal2.__().Out("mdl").Values("__id"),
+                                                GraphTraversal2.__().Constant("")))),
+                                        GraphTraversal2.__().Out("mdl"))
+                                    .Dedup())
+                            .Union(GraphTraversal2.__()
+                                .Emit()
+                                .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+                                .Tree(),
+                                GraphTraversal2.__().Cap("^ids"),
+                                GraphTraversal2.__().Cap("^mdls"),
+                                GraphTraversal2.__().Cap("^refs"))
+                            .Fold()).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test6GetProductModel()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g()
+                    .V()
+                    .Has("_app", "test-app")
+                    .Has("__id", "test-app")
+                    .HasLabel("application")
+                    .Coalesce(
+                        GraphTraversal2.__().Union(GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 0)
+                                .Constant("~1"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 2)
+                                .Constant("~2"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_deleted", true)
+                                .Constant("~3")),
+                        GraphTraversal2.__()
+                            .FlatMap(
+                                GraphTraversal2.__()
+                                    .V()
+                                    .Has("_app", "test-app")
+                                    .Has("__id", "uber-product:soda-machine")
+                                    .HasLabel("product-model")
+                                    .Range(0, 100)
+                                    .Union(
+                                        GraphTraversal2.__()
+                                            .Identity()
+                                            .SideEffect(GraphTraversal2.__().Id().Store("^ids")),
+                                        GraphTraversal2.__()
+                                            .As("@v")
+                                            .FlatMap(
+                                                GraphTraversal2.__()
+                                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                                    .OutE("ref"))
+                                            .Repeat(
+                                                GraphTraversal2.__()
+                                                    .As("@e")
+                                                    .FlatMap(
+                                                        GraphTraversal2
+                                                            .__()
+                                                            .InV()
+                                                            .As("mdl")
+                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Both()
+                                                            .Dedup()
+                                                            .And(
+                                                                GraphTraversal2.__()
+                                                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                                                    .Where(Predicate.eq("mdl"))))
+                                                    .As("@v")
+                                                    .Optional(GraphTraversal2.__().FlatMap(
+                                                        GraphTraversal2.__()
+                                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                                            .Values("_ref")
+                                                            .As("key")
+                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                                            .OutE("ref")
+                                                            .And(
+                                                                GraphTraversal2.__()
+                                                                    .Values("_key")
+                                                                    .Where(Predicate.eq("key"))))))
+                                            .Until(GraphTraversal2.__().FlatMap(
+                                                GraphTraversal2.__()
+                                                    .As("res")
+                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Where(Predicate.eq("res"))))
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Project("data", "info")
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@e")
+                                                        .Unfold()
+                                                        .Project("key", "ref")
+                                                        .By(GraphTraversal2.__().Values("_key"))
+                                                        .By(GraphTraversal2.__().Values("_ref"))
+                                                        .Fold())
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@v")
+                                                        .Unfold()
+                                                        .Project("id", "type", "etag")
+                                                        .By(GraphTraversal2.__().Values("__id"))
+                                                        .By(GraphTraversal2.__().Label())
+                                                        .By(GraphTraversal2.__().Values("__etag"))
+                                                        .Fold())
+                                                    .Store("^refs")))
+                                    .Dedup()
+                                    .Union(GraphTraversal2.__().Identity().SideEffect(
+                                        GraphTraversal2.__()
+                                            .Group("^mdls")
+                                            .By(GraphTraversal2.__().Id())
+                                            .By(GraphTraversal2.__().Coalesce(
+                                                GraphTraversal2.__().Out("mdl").Values("__id"),
+                                                GraphTraversal2.__().Constant("")))),
+                                        GraphTraversal2.__().Out("mdl"))
+                                    .Dedup())
+                            .Union(GraphTraversal2.__()
+                                .Emit()
+                                .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+                                .Tree(),
+                                GraphTraversal2.__().Cap("^ids"),
+                                GraphTraversal2.__().Cap("^mdls"),
+                                GraphTraversal2.__().Cap("^refs"))
+                            .Fold()).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test7GetDevicesforProduct()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g()
+                    .V()
+                    .Has("_app", "test-app")
+                    .Has("__id", "test-app")
+                    .HasLabel("application")
+                    .Coalesce(
+                        GraphTraversal2.__().Union(
+                            GraphTraversal2.__()
+                                .Not(GraphTraversal2.__()
+                                    .V()
+                                    .Has("_app", "test-app")
+                                    .Has("__id", "test-app")
+                                    .HasLabel("application"))
+                                .Constant("~0"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 0)
+                                .Constant("~1"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 2)
+                                .Constant("~2"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_deleted", true)
+                                .Constant("~3")),
+                        GraphTraversal2.__()
+                            .FlatMap(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "product:soda-machine:shop-2")
+                                .HasLabel("product")
+                                .InE("device-product")
+                                .As("_")
+                                .OutV()
+                                .Dedup()
+                                .Range(0, 100)
+                            )
+                            .Tree()
+                            .Fold()
+                    ).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
         public void Test8UpdateProductModel_AddRefProperty()
         {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                "GroupMatch", "GremlinFunctionalTestSuite");
+            GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
             GraphViewCommand graph = new GraphViewCommand(connection);
@@ -2503,6 +2845,1836 @@ namespace GraphViewUnitTest
                 Console.WriteLine(result);
             }
 
+        }
+
+        [TestMethod]
+        public void Test9LinkProducttoDevice()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g().Inject(0).Coalesce(
+                    GraphTraversal2.__().Union(
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 0)
+                            .Constant("~1"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 2)
+                            .Constant("~2"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_deleted", true)
+                            .Constant("~3"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:soda-mixer:shop-1")
+                                .HasLabel("device"))
+                            .Constant("~4"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "product:soda-machine:shop-2")
+                                .HasLabel("product"))
+                            .Constant("~5")),
+                    GraphTraversal2.__()
+                        .Project("#v0", "#v1")
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "device:soda-mixer:shop-1")
+                            .HasLabel("device")
+                            .Property("__etag", "LmyeSEx1RL+cIZRKKvFPvA=="))
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "product:soda-machine:shop-2")
+                            .HasLabel("product")
+                            .Property("__etag", "2dGQ3DDwSUKY2Jv+9K9t3A=="))
+                        .As("#v")
+                        .Project("#e0")
+                        .By(GraphTraversal2.__().Select("#v0").FlatMap(
+                            GraphTraversal2.__()
+                                .As("src")
+                                .FlatMap(GraphTraversal2.__().Select("#v").Select("#v1"))
+                                .As("tgt")
+                                .Select("src")
+                                .Coalesce(
+                                    GraphTraversal2.__()
+                                        .OutE("device-product")
+                                        .And(GraphTraversal2.__().InV().Where(Predicate.eq("tgt"))),
+                                    GraphTraversal2.__().AddE("device-product").To("tgt"))))
+                        .As("#e")
+                        .Union(
+                            GraphTraversal2.__()
+                                .Select("#e")
+                                .Union(GraphTraversal2.__().Select("#e0"))
+                                .As("#f")
+                                .Union(GraphTraversal2.__().InV().As("#a").Select("#f").OutV(),
+                                    GraphTraversal2.__().OutV().As("#a").Select("#f").InV())
+                                .Map(GraphTraversal2.__()
+                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                    .As("#m")
+                                    .Select("#a")
+                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                    .InE("ref")
+                                    .And(GraphTraversal2.__().OutV().Where(Predicate.eq("#m")))
+                                    .Values("_key")
+                                    .Fold())
+                                .As("#p"))
+                        .Select("#a")
+                        .Union(
+                            GraphTraversal2.__().Identity(),
+                            GraphTraversal2.__()
+                                .As("@v")
+                                .FlatMap(GraphTraversal2.__()
+                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                    .InE("ref")
+                                    .And(GraphTraversal2.__().Values("_key").Where(Predicate.within("#p"))))
+                                .Repeat(GraphTraversal2.__()
+                                    .As("@e")
+                                    .FlatMap(GraphTraversal2.__()
+                                        .OutV()
+                                        .As("mdl")
+                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Both()
+                                        .Dedup()
+                                        .And(GraphTraversal2.__()
+                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                            .Where(Predicate.eq("mdl"))))
+                                    .As("@v")
+                                    .Optional(GraphTraversal2.__().FlatMap(
+                                        GraphTraversal2.__()
+                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                            .Values("_key")
+                                            .As("key")
+                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                            .InE("ref")
+                                            .And(GraphTraversal2.__().Values("_ref").Where(Predicate.eq("key"))))))
+                                .Until(GraphTraversal2.__().FlatMap(
+                                    GraphTraversal2.__()
+                                        .As("res")
+                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Where(Predicate.eq("res"))))
+                                .Select("@v")
+                                .Unfold())
+                        .Dedup()
+                        .Project("id", "type", "etag")
+                        .By(GraphTraversal2.__().Values("__id"))
+                        .By(GraphTraversal2.__().Label())
+                        .By(GraphTraversal2.__().Values("__etag"))).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test10UpdateProductProperty()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g().Inject(0).Coalesce(
+                    GraphTraversal2.__().Union(
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 0)
+                            .Constant("~1"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 2)
+                            .Constant("~2"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_deleted", true)
+                            .Constant("~3"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "uber-product:soda-machine:shop-3")
+                                .HasLabel("product")
+                                .Has("__etag", "TMaJk/CGRyurJIle/FncMA=="))
+                            .Constant("~4"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "uber-product:soda-machine")
+                                .HasLabel("product-model")
+                                .Has("__etag", "0Ro9MX91RYWT3ZWuot53FA=="))
+                            .Constant("~5"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:cola-mixer:shop-3.2")
+                                .HasLabel("device")
+                                .Has("__etag", "G1lCXUnhRSCqohWUaZza8w=="))
+                            .Constant("~6"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:kool-aid-mixer:shop-3.2")
+                                .HasLabel("device")
+                                .Has("__etag", "E5h6wBBpRjuDWkVaJ/Ud+Q=="))
+                            .Constant("~7"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:soda-mixer:shop-3.1")
+                                .HasLabel("device")
+                                .Has("__etag", "yOXsJu84SJW6Amtm9FF9ug=="))
+                            .Constant("~8"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:ice-machine:shop-3.2")
+                                .HasLabel("device")
+                                .Has("__etag", "XTb4lY83SLes2c+gZZ6vfA=="))
+                            .Constant("~9"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:ice-machine:shop-3.1")
+                                .HasLabel("device")
+                                .Has("__etag", "cWI7zlmBSNei70b7zoqghw=="))
+                            .Constant("~10")),
+                    GraphTraversal2.__()
+                        .Project("#v0")
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "uber-product:soda-machine:shop-3")
+                            .HasLabel("product")
+                            .Property("__etag", "lunRO6wJQg6WMNq/CGr7QA==")
+                            .SideEffect(GraphTraversal2.__().Union(
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "name")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("name", "Uber Soda Machine #3 - New Name"))))
+                        .As("#v")
+                        .Union(GraphTraversal2.__()
+                            .Select("#v")
+                            .Union(GraphTraversal2.__().Select("#v0").As("#a").Constant(
+                                new List<string>() {"name"}))
+                            .As("#p"))
+                        .Select("#a")
+                        .Union(
+                            GraphTraversal2.__().Identity(),
+                            GraphTraversal2.__()
+                                .As("@v")
+                                .FlatMap(GraphTraversal2.__()
+                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                    .InE("ref")
+                                    .And(GraphTraversal2.__().Values("_key").Where(
+                                        Predicate.within("#p"))))
+                                .Repeat(GraphTraversal2.__()
+                                    .As("@e")
+                                    .FlatMap(GraphTraversal2.__()
+                                        .OutV()
+                                        .As("mdl")
+                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Both()
+                                        .Dedup()
+                                        .And(GraphTraversal2.__()
+                                            .Optional(GraphTraversal2.__()
+                                                .Out("mdl"))
+                                            .Where(Predicate.eq("mdl"))))
+                                    .As("@v")
+                                    .Optional(GraphTraversal2.__().FlatMap(
+                                        GraphTraversal2.__()
+                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                            .Values("_key")
+                                            .As("key")
+                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                            .InE("ref")
+                                            .And(GraphTraversal2.__()
+                                                .Values("_ref")
+                                                .Where(Predicate.eq("key"))))))
+                                .Until(GraphTraversal2.__().FlatMap(
+                                    GraphTraversal2.__()
+                                        .As("res")
+                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Where(Predicate.eq("res"))))
+                                .Select("@v")
+                                .Unfold())
+                        .Dedup()
+                        .Project("id", "type", "etag")
+                        .By(GraphTraversal2.__().Values("__id"))
+                        .By(GraphTraversal2.__().Label())
+                        .By(GraphTraversal2.__().Values("__etag"))).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test11UpdateProductrefProperty()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g().Inject(0).Coalesce(
+                    GraphTraversal2.__().Union(
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 0)
+                            .Constant("~1"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 2)
+                            .Constant("~2"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_deleted", true)
+                            .Constant("~3"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "uber-product:soda-machine:shop-3")
+                                .HasLabel("product")
+                                .Has("__etag", "lunRO6wJQg6WMNq/CGr7QA=="))
+                            .Constant("~4"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "uber-product:soda-machine")
+                                .HasLabel("product-model")
+                                .Has("__etag", "0Ro9MX91RYWT3ZWuot53FA=="))
+                            .Constant("~5"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:cola-mixer:shop-3.2")
+                                .HasLabel("device")
+                                .Has("__etag", "G1lCXUnhRSCqohWUaZza8w=="))
+                            .Constant("~6"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:kool-aid-mixer:shop-3.2")
+                                .HasLabel("device")
+                                .Has("__etag", "E5h6wBBpRjuDWkVaJ/Ud+Q=="))
+                            .Constant("~7"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:soda-mixer:shop-3.1")
+                                .HasLabel("device")
+                                .Has("__etag", "yOXsJu84SJW6Amtm9FF9ug=="))
+                            .Constant("~8"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:ice-machine:shop-3.2")
+                                .HasLabel("device")
+                                .Has("__etag", "XTb4lY83SLes2c+gZZ6vfA=="))
+                            .Constant("~9"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:ice-machine:shop-3.1")
+                                .HasLabel("device")
+                                .Has("__etag", "cWI7zlmBSNei70b7zoqghw=="))
+                            .Constant("~10"),
+                        GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "device:soda-mixer")
+                                .HasLabel("device-model")
+                                .Has("__etag", "lsRrd7JWSBqW9kiBVPS7aQ=="))
+                            .Constant("~11")),
+                    GraphTraversal2.__()
+                        .Project("#v0", "#v1", "#v2", "#v3")
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "uber-product:soda-machine:shop-3")
+                            .HasLabel("product")
+                            .Property("__etag", "yzm2GRluTOim/fvMmuxh2g=="))
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "device:cola-mixer:shop-3.2")
+                            .HasLabel("device")
+                            .Property("__etag", "aj+sec3TRnCF1mwWDErzqA==")
+                            .SideEffect(GraphTraversal2.__().Union(
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__().Properties("_twin").Drop())
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .Coalesce(
+                                                GraphTraversal2.__()
+                                                    .OutE("_val")
+                                                    .Has("_key", "_twin")
+                                                    .Has("_ary", false),
+                                                GraphTraversal2.__()
+                                                    .SideEffect(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "_twin")
+                                                            .InV()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__().Union(
+                                                                    GraphTraversal2.__()
+                                                                        .Properties()
+                                                                        .Drop(),
+                                                                    GraphTraversal2.__()
+                                                                        .Repeat(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Out(
+                                                                                    "_val"))
+                                                                        .Emit()
+                                                                        .Barrier()
+                                                                        .Drop()))
+                                                            .Drop())
+                                                    .AddE("_val")
+                                                    .To(GraphTraversal2.__()
+                                                        .AddV("_val")
+                                                        .Property("_app", "test-app"))
+                                                    .Property("_key", "_twin")
+                                                    .Property("_ary", false))
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__()
+                                                .Properties("reported")
+                                                .Drop())
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Coalesce(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "reported")
+                                                            .Has("_ary", false),
+                                                        GraphTraversal2.__()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__()
+                                                                    .OutE("_val")
+                                                                    .Has("_key", "reported")
+                                                                    .InV()
+                                                                    .SideEffect(
+                                                                        GraphTraversal2.__().Union(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Properties()
+                                                                                .Drop(),
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Repeat(
+                                                                                    GraphTraversal2
+                                                                                        .__()
+                                                                                        .Out(
+                                                                                            "_val"))
+                                                                                .Emit()
+                                                                                .Barrier()
+                                                                                .Drop()))
+                                                                    .Drop())
+                                                            .AddE("_val")
+                                                            .To(GraphTraversal2.__()
+                                                                .AddV("_val")
+                                                                .Property("_app",
+                                                                    "test-app"))
+                                                            .Property("_key", "reported")
+                                                            .Property("_ary", false))
+                                                    .InV()
+                                                    .SideEffect(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "syrup_level")
+                                                            .InV()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__().Union(
+                                                                    GraphTraversal2.__()
+                                                                        .Properties()
+                                                                        .Drop(),
+                                                                    GraphTraversal2.__()
+                                                                        .Repeat(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Out(
+                                                                                    "_val"))
+                                                                        .Emit()
+                                                                        .Barrier()
+                                                                        .Drop()))
+                                                            .Drop())
+                                                    .Property("syrup_level", 2.3))),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "co2_level")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("co2_level", 0.6),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "name")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("name", "Cola Mixer #111222"),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "serial_number")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("serial_number", "4444-111222"),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "firmware_version")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("firmware_version", "1.0.0"),
+                                GraphTraversal2.__()
+                                    .SideEffect(GraphTraversal2.__().OutE("mdl").Drop())
+                                    .AddE("mdl")
+                                    .To(GraphTraversal2.__()
+                                        .V()
+                                        .Has("_app", "test-app")
+                                        .Has("__id", "device:soda-mixer")
+                                        .HasLabel("device-model")))))
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "device:kool-aid-mixer:shop-3.2")
+                            .HasLabel("device")
+                            .Property("__etag", "k0maOZ1/QF+d9fn7WR8YWQ==")
+                            .SideEffect(GraphTraversal2.__().Union(
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__().Properties("_twin").Drop())
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .Coalesce(
+                                                GraphTraversal2.__()
+                                                    .OutE("_val")
+                                                    .Has("_key", "_twin")
+                                                    .Has("_ary", false),
+                                                GraphTraversal2.__()
+                                                    .SideEffect(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "_twin")
+                                                            .InV()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__().Union(
+                                                                    GraphTraversal2.__()
+                                                                        .Properties()
+                                                                        .Drop(),
+                                                                    GraphTraversal2.__()
+                                                                        .Repeat(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Out(
+                                                                                    "_val"))
+                                                                        .Emit()
+                                                                        .Barrier()
+                                                                        .Drop()))
+                                                            .Drop())
+                                                    .AddE("_val")
+                                                    .To(GraphTraversal2.__()
+                                                        .AddV("_val")
+                                                        .Property("_app", "test-app"))
+                                                    .Property("_key", "_twin")
+                                                    .Property("_ary", false))
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__()
+                                                .Properties("reported")
+                                                .Drop())
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Coalesce(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "reported")
+                                                            .Has("_ary", false),
+                                                        GraphTraversal2.__()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__()
+                                                                    .OutE("_val")
+                                                                    .Has("_key", "reported")
+                                                                    .InV()
+                                                                    .SideEffect(
+                                                                        GraphTraversal2.__().Union(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Properties()
+                                                                                .Drop(),
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Repeat(
+                                                                                    GraphTraversal2
+                                                                                        .__()
+                                                                                        .Out(
+                                                                                            "_val"))
+                                                                                .Emit()
+                                                                                .Barrier()
+                                                                                .Drop()))
+                                                                    .Drop())
+                                                            .AddE("_val")
+                                                            .To(GraphTraversal2.__()
+                                                                .AddV("_val")
+                                                                .Property("_app",
+                                                                    "test-app"))
+                                                            .Property("_key", "reported")
+                                                            .Property("_ary", false))
+                                                    .InV()
+                                                    .SideEffect(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "syrup_level")
+                                                            .InV()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__().Union(
+                                                                    GraphTraversal2.__()
+                                                                        .Properties()
+                                                                        .Drop(),
+                                                                    GraphTraversal2.__()
+                                                                        .Repeat(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Out(
+                                                                                    "_val"))
+                                                                        .Emit()
+                                                                        .Barrier()
+                                                                        .Drop()))
+                                                            .Drop())
+                                                    .Property("syrup_level", 2.3))),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "co2_level")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("co2_level", 0.7),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "name")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("name", "Kool Aid Mixer #999888"),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "serial_number")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("serial_number", "4444-999888"),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "firmware_version")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("firmware_version", "1.0.2"),
+                                GraphTraversal2.__()
+                                    .SideEffect(GraphTraversal2.__().OutE("mdl").Drop())
+                                    .AddE("mdl")
+                                    .To(GraphTraversal2.__()
+                                        .V()
+                                        .Has("_app", "test-app")
+                                        .Has("__id", "device:soda-mixer")
+                                        .HasLabel("device-model")))))
+                        .By(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "device:soda-mixer:shop-3.1")
+                            .HasLabel("device")
+                            .Property("__etag", "OP8/P5nKSUyWscCtNgGstw==")
+                            .SideEffect(GraphTraversal2.__().Union(
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__().Properties("_twin").Drop())
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .Coalesce(
+                                                GraphTraversal2.__()
+                                                    .OutE("_val")
+                                                    .Has("_key", "_twin")
+                                                    .Has("_ary", false),
+                                                GraphTraversal2.__()
+                                                    .SideEffect(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "_twin")
+                                                            .InV()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__().Union(
+                                                                    GraphTraversal2.__()
+                                                                        .Properties()
+                                                                        .Drop(),
+                                                                    GraphTraversal2.__()
+                                                                        .Repeat(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Out(
+                                                                                    "_val"))
+                                                                        .Emit()
+                                                                        .Barrier()
+                                                                        .Drop()))
+                                                            .Drop())
+                                                    .AddE("_val")
+                                                    .To(GraphTraversal2.__()
+                                                        .AddV("_val")
+                                                        .Property("_app", "test-app"))
+                                                    .Property("_key", "_twin")
+                                                    .Property("_ary", false))
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__()
+                                                .Properties("reported")
+                                                .Drop())
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Coalesce(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "reported")
+                                                            .Has("_ary", false),
+                                                        GraphTraversal2.__()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__()
+                                                                    .OutE("_val")
+                                                                    .Has("_key", "reported")
+                                                                    .InV()
+                                                                    .SideEffect(
+                                                                        GraphTraversal2.__().Union(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Properties()
+                                                                                .Drop(),
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Repeat(
+                                                                                    GraphTraversal2
+                                                                                        .__()
+                                                                                        .Out(
+                                                                                            "_val"))
+                                                                                .Emit()
+                                                                                .Barrier()
+                                                                                .Drop()))
+                                                                    .Drop())
+                                                            .AddE("_val")
+                                                            .To(GraphTraversal2.__()
+                                                                .AddV("_val")
+                                                                .Property("_app",
+                                                                    "test-app"))
+                                                            .Property("_key", "reported")
+                                                            .Property("_ary", false))
+                                                    .InV()
+                                                    .SideEffect(
+                                                        GraphTraversal2.__()
+                                                            .OutE("_val")
+                                                            .Has("_key", "syrup_level")
+                                                            .InV()
+                                                            .SideEffect(
+                                                                GraphTraversal2.__().Union(
+                                                                    GraphTraversal2.__()
+                                                                        .Properties()
+                                                                        .Drop(),
+                                                                    GraphTraversal2.__()
+                                                                        .Repeat(
+                                                                            GraphTraversal2
+                                                                                .__()
+                                                                                .Out(
+                                                                                    "_val"))
+                                                                        .Emit()
+                                                                        .Barrier()
+                                                                        .Drop()))
+                                                            .Drop())
+                                                    .Property("syrup_level", 2.3))),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "co2_level")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("co2_level", 0.5),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "name")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("name", "Soda Mixer #987456"),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "serial_number")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("serial_number", "4444-987456"),
+                                GraphTraversal2.__()
+                                    .SideEffect(
+                                        GraphTraversal2.__()
+                                            .OutE("_val")
+                                            .Has("_key", "firmware_version")
+                                            .InV()
+                                            .SideEffect(GraphTraversal2.__().Union(
+                                                GraphTraversal2.__().Properties().Drop(),
+                                                GraphTraversal2.__()
+                                                    .Repeat(
+                                                        GraphTraversal2.__().Out("_val"))
+                                                    .Emit()
+                                                    .Barrier()
+                                                    .Drop()))
+                                            .Drop())
+                                    .Property("firmware_version", "1.1.2"),
+                                GraphTraversal2.__()
+                                    .SideEffect(GraphTraversal2.__().OutE("mdl").Drop())
+                                    .AddE("mdl")
+                                    .To(GraphTraversal2.__()
+                                        .V()
+                                        .Has("_app", "test-app")
+                                        .Has("__id", "device:soda-mixer")
+                                        .HasLabel("device-model")))))
+                        .As("#v")
+                        .Union(GraphTraversal2.__()
+                            .Select("#v")
+                            .Union(GraphTraversal2.__().Select("#v0").As("#a").Constant(
+                                new List<string>() {"syrup_level"}),
+                                GraphTraversal2.__().Select("#v1").As("#a").Constant(
+                                    new List<string>()
+                                    {
+                                        "syrup_level",
+                                        "co2_level",
+                                        "name",
+                                        "serial_number",
+                                        "firmware_version"
+                                    }),
+                                GraphTraversal2.__().Select("#v2").As("#a").Constant(
+                                    new List<string>()
+                                    {
+                                        "syrup_level",
+                                        "co2_level",
+                                        "name",
+                                        "serial_number",
+                                        "firmware_version"
+                                    }),
+                                GraphTraversal2.__().Select("#v3").As("#a").Constant(
+                                    new List<string>()
+                                    {
+                                        "syrup_level",
+                                        "co2_level",
+                                        "name",
+                                        "serial_number",
+                                        "firmware_version"
+                                    }))
+                            .As("#p"))
+                        .Select("#a")
+                        .Union(
+                            GraphTraversal2.__().Identity(),
+                            GraphTraversal2.__()
+                                .As("@v")
+                                .FlatMap(GraphTraversal2.__()
+                                    .Optional(GraphTraversal2.__().Out("mdl"))
+                                    .InE("ref")
+                                    .And(GraphTraversal2.__().Values("_key").Where(
+                                        Predicate.within("#p"))))
+                                .Repeat(GraphTraversal2.__()
+                                    .As("@e")
+                                    .FlatMap(GraphTraversal2.__()
+                                        .OutV()
+                                        .As("mdl")
+                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Both()
+                                        .Dedup()
+                                        .And(GraphTraversal2.__()
+                                            .Optional(GraphTraversal2.__()
+                                                .Out("mdl"))
+                                            .Where(Predicate.eq("mdl"))))
+                                    .As("@v")
+                                    .Optional(GraphTraversal2.__().FlatMap(
+                                        GraphTraversal2.__()
+                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                            .Values("_key")
+                                            .As("key")
+                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                            .InE("ref")
+                                            .And(GraphTraversal2.__()
+                                                .Values("_ref")
+                                                .Where(Predicate.eq("key"))))))
+                                .Until(GraphTraversal2.__().FlatMap(
+                                    GraphTraversal2.__()
+                                        .As("res")
+                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Where(Predicate.eq("res"))))
+                                .Select("@v")
+                                .Unfold())
+                        .Dedup()
+                        .Project("id", "type", "etag")
+                        .By(GraphTraversal2.__().Values("__id"))
+                        .By(GraphTraversal2.__().Label())
+                        .By(GraphTraversal2.__().Values("__etag"))).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test12DeleteProductProperty_validation_error()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            //connection.ResetCollection();
+
+            //var pre_fetch =
+            //    graph.g()
+            //        .V()
+            //        .Has("_app", "test-app")
+            //        .Has("__id", "test-app")
+            //        .HasLabel("application")
+            //        .Coalesce(
+            //            GraphTraversal2.__().Union(GraphTraversal2.__()
+            //                .Not(GraphTraversal2.__()
+            //                    .V()
+            //                    .Has("_app", "test-app")
+            //                    .Has("__id", "test-app")
+            //                    .HasLabel("application"))
+            //                .Constant("~0"),
+            //                GraphTraversal2.__()
+            //                    .V()
+            //                    .Has("_app", "test-app")
+            //                    .Has("__id", "test-app")
+            //                    .HasLabel("application")
+            //                    .Has("_provisioningState", 0)
+            //                    .Constant("~1"),
+            //                GraphTraversal2.__()
+            //                    .V()
+            //                    .Has("_app", "test-app")
+            //                    .Has("__id", "test-app")
+            //                    .HasLabel("application")
+            //                    .Has("_provisioningState", 2)
+            //                    .Constant("~2"),
+            //                GraphTraversal2.__()
+            //                    .V()
+            //                    .Has("_app", "test-app")
+            //                    .Has("__id", "test-app")
+            //                    .HasLabel("application")
+            //                    .Has("_deleted", true)
+            //                    .Constant("~3")),
+            //            GraphTraversal2.__()
+            //                .FlatMap(
+            //                    GraphTraversal2.__()
+            //                        .Project("nodes", "edges")
+            //                        .By(GraphTraversal2.__()
+            //                            .Union(GraphTraversal2.__()
+            //                                .V()
+            //                                .Has("_app", "test-app")
+            //                                .Has("__id",
+            //                                    "uber-product:soda-machine:shop-3")
+            //                                .HasLabel("product"))
+            //                            .Fold())
+            //                        .By(GraphTraversal2.__().Union().Fold())
+            //                        .SideEffect(
+            //                            GraphTraversal2.__()
+            //                                .Select("edges")
+            //                                .Unfold()
+            //                                .Project("name", "source", "target", "properties")
+            //                                .By(GraphTraversal2.__().Label())
+            //                                .By(GraphTraversal2.__()
+            //                                    .OutV()
+            //                                    .Project("id", "type", "etag")
+            //                                    .By(GraphTraversal2.__().Values("__id"))
+            //                                    .By(GraphTraversal2.__().Label())
+            //                                    .By(GraphTraversal2.__().Values("__etag")))
+            //                                .By(GraphTraversal2.__()
+            //                                    .InV()
+            //                                    .Project("id", "type", "etag")
+            //                                    .By(GraphTraversal2.__().Values("__id"))
+            //                                    .By(GraphTraversal2.__().Label())
+            //                                    .By(GraphTraversal2.__().Values("__etag")))
+            //                                .By(GraphTraversal2.__()
+            //                                    .Properties()
+            //                                    .Group()
+            //                                    .By(GraphTraversal2.__().Key())
+            //                                    .By(GraphTraversal2.__().Value()))
+            //                                .Store("^edges"))
+            //                        .Select("nodes")
+            //                        .Unfold()
+            //                        .Union(GraphTraversal2.__().Identity().SideEffect(
+            //                            GraphTraversal2.__().Id().Store("^ids")),
+            //                            GraphTraversal2.__()
+            //                                .As("@v")
+            //                                .FlatMap(GraphTraversal2.__()
+            //                                    .Optional(
+            //                                        GraphTraversal2.__().Out("mdl"))
+            //                                    .OutE("ref"))
+            //                                .Repeat(
+            //                                    GraphTraversal2.__()
+            //                                        .As("@e")
+            //                                        .FlatMap(
+            //                                            GraphTraversal2.__()
+            //                                                .InV()
+            //                                                .As("mdl")
+            //                                                .Select(GremlinKeyword.Pop.last,
+            //                                                    "@v")
+            //                                                .Both()
+            //                                                .Dedup()
+            //                                                .And(GraphTraversal2.__()
+            //                                                    .Optional(
+            //                                                        GraphTraversal2.__()
+            //                                                            .Out("mdl"))
+            //                                                    .Where(Predicate.eq(
+            //                                                        "mdl"))))
+            //                                        .As("@v")
+            //                                        .Optional(GraphTraversal2.__().FlatMap(
+            //                                            GraphTraversal2.__()
+            //                                                .Select(GremlinKeyword.Pop.last,
+            //                                                    "@e")
+            //                                                .Values("_ref")
+            //                                                .As("key")
+            //                                                .Select(GremlinKeyword.Pop.last,
+            //                                                    "@v")
+            //                                                .Optional(GraphTraversal2.__()
+            //                                                    .Out("mdl"))
+            //                                                .OutE("ref")
+            //                                                .And(GraphTraversal2.__()
+            //                                                    .Values("_key")
+            //                                                    .Where(Predicate.eq(
+            //                                                        "key"))))))
+            //                                .Until(GraphTraversal2.__().FlatMap(
+            //                                    GraphTraversal2.__()
+            //                                        .As("res")
+            //                                        .Select(GremlinKeyword.Pop.last, "@v")
+            //                                        .Where(Predicate.eq("res"))))
+            //                                .SideEffect(
+            //                                    GraphTraversal2.__()
+            //                                        .Project("data", "info")
+            //                                        .By(GraphTraversal2.__()
+            //                                            .Select("@e")
+            //                                            .Unfold()
+            //                                            .Project("key", "ref")
+            //                                            .By(GraphTraversal2.__().Values(
+            //                                                "_key"))
+            //                                            .By(GraphTraversal2.__().Values(
+            //                                                "_ref"))
+            //                                            .Fold())
+            //                                        .By(GraphTraversal2.__()
+            //                                            .Select("@v")
+            //                                            .Unfold()
+            //                                            .Project("id", "type", "etag")
+            //                                            .By(GraphTraversal2.__().Values(
+            //                                                "__id"))
+            //                                            .By(GraphTraversal2.__().Label())
+            //                                            .By(GraphTraversal2.__().Values(
+            //                                                "__etag"))
+            //                                            .Fold())
+            //                                        .Store("^refs")))
+            //                        .Dedup()
+            //                        .Union(GraphTraversal2.__().Identity().SideEffect(
+            //                            GraphTraversal2.__()
+            //                                .Group("^mdls")
+            //                                .By(GraphTraversal2.__().Id())
+            //                                .By(GraphTraversal2.__().Coalesce(
+            //                                    GraphTraversal2.__().Out("mdl").Values(
+            //                                        "__id"),
+            //                                    GraphTraversal2.__().Constant("")))),
+            //                            GraphTraversal2.__().Out("mdl"))
+            //                        .Dedup())
+            //                .Union(GraphTraversal2.__()
+            //                    .Emit()
+            //                    .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+            //                    .Tree(),
+            //                    GraphTraversal2.__().Cap("^ids"),
+            //                    GraphTraversal2.__().Cap("^mdls"),
+            //                    GraphTraversal2.__().Cap("^refs"))
+            //                .Fold()
+            //                .Union(GraphTraversal2.__().Identity(),
+            //                    GraphTraversal2.__().Cap("^edges"))).Next();
+
+            //foreach (var result in pre_fetch)
+            //{
+            //    Console.WriteLine(result);
+            //}
+        }
+
+        [TestMethod]
+        public void Test13GetProduct_format_resolved()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g()
+                    .V()
+                    .Has("_app", "test-app")
+                    .Has("__id", "test-app")
+                    .HasLabel("application")
+                    .Coalesce(
+                        GraphTraversal2.__().Union(GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 0)
+                                .Constant("~1"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 2)
+                                .Constant("~2"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_deleted", true)
+                                .Constant("~3")),
+                        GraphTraversal2.__()
+                            .FlatMap(
+                                GraphTraversal2.__()
+                                    .V()
+                                    .Has("_app", "test-app")
+                                    .Has("__id", "uber-product:soda-machine:shop-3")
+                                    .HasLabel("product")
+                                    .Range(0, 100)
+                                    .Union(GraphTraversal2.__().Identity().SideEffect(
+                                        GraphTraversal2.__().Id().Store("^ids")),
+                                        GraphTraversal2.__()
+                                            .As("@v")
+                                            .FlatMap(GraphTraversal2.__()
+                                                .Optional(
+                                                    GraphTraversal2.__().Out("mdl"))
+                                                .OutE("ref"))
+                                            .Repeat(
+                                                GraphTraversal2.__()
+                                                    .As("@e")
+                                                    .FlatMap(
+                                                        GraphTraversal2
+                                                            .__()
+                                                            .InV()
+                                                            .As("mdl")
+                                                            .Select(GremlinKeyword.Pop.last,
+                                                                "@v")
+                                                            .Both()
+                                                            .Dedup()
+                                                            .And(GraphTraversal2.__()
+                                                                .Optional(
+                                                                    GraphTraversal2.__()
+                                                                        .Out("mdl"))
+                                                                .Where(Predicate.eq(
+                                                                    "mdl"))))
+                                                    .As("@v")
+                                                    .Optional(GraphTraversal2.__().FlatMap(
+                                                        GraphTraversal2.__()
+                                                            .Select(GremlinKeyword.Pop.last,
+                                                                "@e")
+                                                            .Values("_ref")
+                                                            .As("key")
+                                                            .Select(GremlinKeyword.Pop.last,
+                                                                "@v")
+                                                            .Optional(GraphTraversal2.__()
+                                                                .Out("mdl"))
+                                                            .OutE("ref")
+                                                            .And(GraphTraversal2.__()
+                                                                .Values("_key")
+                                                                .Where(Predicate.eq(
+                                                                    "key"))))))
+                                            .Until(GraphTraversal2.__().FlatMap(
+                                                GraphTraversal2.__()
+                                                    .As("res")
+                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Where(Predicate.eq("res"))))
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Project("data", "info")
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@e")
+                                                        .Unfold()
+                                                        .Project("key", "ref")
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "_key"))
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "_ref"))
+                                                        .Fold())
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@v")
+                                                        .Unfold()
+                                                        .Project("id", "type", "etag")
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "__id"))
+                                                        .By(GraphTraversal2.__().Label())
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "__etag"))
+                                                        .Fold())
+                                                    .Store("^refs")))
+                                    .Dedup()
+                                    .Union(GraphTraversal2.__().Identity().SideEffect(
+                                        GraphTraversal2.__()
+                                            .Group("^mdls")
+                                            .By(GraphTraversal2.__().Id())
+                                            .By(GraphTraversal2.__().Coalesce(
+                                                GraphTraversal2.__().Out("mdl").Values(
+                                                    "__id"),
+                                                GraphTraversal2.__().Constant("")))),
+                                        GraphTraversal2.__().Out("mdl"))
+                                    .Dedup())
+                            .Union(GraphTraversal2.__()
+                                .Emit()
+                                .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+                                .Tree(),
+                                GraphTraversal2.__().Cap("^ids"),
+                                GraphTraversal2.__().Cap("^mdls"),
+                                GraphTraversal2.__().Cap("^refs"))
+                            .Fold()).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test14DeleteProduct()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g().Inject(0).Coalesce(
+                    GraphTraversal2.__().Union(GraphTraversal2.__()
+                        .Not(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application"))
+                        .Constant("~0"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 0)
+                            .Constant("~1"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 2)
+                            .Constant("~2"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_deleted", true)
+                            .Constant("~3")),
+                    GraphTraversal2.__()
+                        .Project("#v0")
+                        .By(GraphTraversal2.__().Coalesce(
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "uber-product:soda-machine:shop-3")
+                                .HasLabel("product")
+                                .SideEffect(GraphTraversal2.__().Union(
+                                    GraphTraversal2.__().Properties().Drop(),
+                                    GraphTraversal2.__()
+                                        .Repeat(GraphTraversal2.__().Out("_val"))
+                                        .Emit()
+                                        .Barrier()
+                                        .Drop())),
+                            GraphTraversal2.__().Constant("")))
+                        .As("#v")
+                        .Map(
+                            GraphTraversal2.__()
+                                .Union(GraphTraversal2.__()
+                                    .Select("#v")
+                                    .Union(GraphTraversal2.__()
+                                        .Select("#v0")
+                                        .Is(Predicate.neq(""))
+                                        .As("#a")
+                                        .Constant(""))
+                                    .As("#p"))
+                                .Select("#a")
+                                .Union(
+                                    GraphTraversal2.__().Identity(),
+                                    GraphTraversal2.__()
+                                        .As("@v")
+                                        .FlatMap(GraphTraversal2.__()
+                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                            .InE("ref")
+                                            .Or
+                                            (GraphTraversal2.__().Select("#p").Is(""),
+                                                GraphTraversal2.__().Values("_key").Where(
+                                                    Predicate.within("#p"))))
+                                        .Repeat(
+                                            GraphTraversal2.__()
+                                                .As("@e")
+                                                .FlatMap(
+                                                    GraphTraversal2.__()
+                                                        .OutV()
+                                                        .As("mdl")
+                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Both()
+                                                        .Dedup()
+                                                        .And(GraphTraversal2.__()
+                                                            .Optional(GraphTraversal2.__()
+                                                                .Out("mdl"))
+                                                            .Where(Predicate.eq("mdl"))))
+                                                .As("@v")
+                                                .Optional(GraphTraversal2.__().FlatMap(
+                                                    GraphTraversal2.__()
+                                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                                        .Values("_key")
+                                                        .As("key")
+                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Optional(
+                                                            GraphTraversal2.__().Out("mdl"))
+                                                        .InE("ref")
+                                                        .And(GraphTraversal2.__()
+                                                            .Values("_ref")
+                                                            .Where(Predicate.eq("key"))))))
+                                        .Until(GraphTraversal2.__().FlatMap(
+                                            GraphTraversal2.__()
+                                                .As("res")
+                                                .Select(GremlinKeyword.Pop.last, "@v")
+                                                .Where(Predicate.eq("res"))))
+                                        .Select("@v")
+                                        .Unfold())
+                                .Dedup()
+                                .Fold())
+                        .As("#r")
+                        .Map(GraphTraversal2.__()
+                            .Union(GraphTraversal2.__().Select("#v").Union(
+                                GraphTraversal2.__().Select("#v0").Is(Predicate.neq(""))))
+                            .Fold())
+                        .As("#d")
+                        .Map(GraphTraversal2.__()
+                            .Select("#r")
+                            .Unfold()
+                            .Where(Predicate.without("#d"))
+                            .Fold())
+                        .SideEffect(GraphTraversal2.__().Select("#d").Unfold().Drop())
+                        .Unfold()
+                        .Project("id", "type", "etag")
+                        .By(GraphTraversal2.__().Values("__id"))
+                        .By(GraphTraversal2.__().Label())
+                        .By(GraphTraversal2.__().Values("__etag"))).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test15DeleteProductModel()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g().Inject(0).Coalesce(
+                    GraphTraversal2.__().Union(GraphTraversal2.__()
+                        .Not(GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application"))
+                        .Constant("~0"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 0)
+                            .Constant("~1"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_provisioningState", 2)
+                            .Constant("~2"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "test-app")
+                            .HasLabel("application")
+                            .Has("_deleted", true)
+                            .Constant("~3"),
+                        GraphTraversal2.__()
+                            .V()
+                            .Has("_app", "test-app")
+                            .Has("__id", "uber-product:soda-machine")
+                            .HasLabel("product-model")
+                            .In("mdl")
+                            .Constant("~4")),
+                    GraphTraversal2.__()
+                        .Project("#v0")
+                        .By(GraphTraversal2.__().Coalesce(
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "uber-product:soda-machine")
+                                .HasLabel("product-model")
+                                .SideEffect(GraphTraversal2.__().Union(
+                                    GraphTraversal2.__().Properties().Drop(),
+                                    GraphTraversal2.__()
+                                        .Repeat(GraphTraversal2.__().Out("_val"))
+                                        .Emit()
+                                        .Barrier()
+                                        .Drop())),
+                            GraphTraversal2.__().Constant("")))
+                        .As("#v")
+                        .Map(
+                            GraphTraversal2.__()
+                                .Union(GraphTraversal2.__()
+                                    .Select("#v")
+                                    .Union(GraphTraversal2.__()
+                                        .Select("#v0")
+                                        .Is(Predicate.neq(""))
+                                        .As("#a")
+                                        .Constant(""))
+                                    .As("#p"))
+                                .Select("#a")
+                                .Union(
+                                    GraphTraversal2.__().Identity(),
+                                    GraphTraversal2.__()
+                                        .As("@v")
+                                        .FlatMap(GraphTraversal2.__()
+                                            .Optional(GraphTraversal2.__().Out("mdl"))
+                                            .InE("ref")
+                                            .Or(GraphTraversal2.__().Select("#p").Is(""),
+                                                GraphTraversal2.__().Values("_key").Where(
+                                                    Predicate.within("#p"))))
+                                        .Repeat(
+                                            GraphTraversal2.__()
+                                                .As("@e")
+                                                .FlatMap(
+                                                    GraphTraversal2.__()
+                                                        .OutV()
+                                                        .As("mdl")
+                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Both()
+                                                        .Dedup()
+                                                        .And(GraphTraversal2.__()
+                                                            .Optional(GraphTraversal2.__()
+                                                                .Out("mdl"))
+                                                            .Where(Predicate.eq("mdl"))))
+                                                .As("@v")
+                                                .Optional(GraphTraversal2.__().FlatMap(
+                                                    GraphTraversal2.__()
+                                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                                        .Values("_key")
+                                                        .As("key")
+                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Optional(
+                                                            GraphTraversal2.__().Out("mdl"))
+                                                        .InE("ref")
+                                                        .And(GraphTraversal2.__()
+                                                            .Values("_ref")
+                                                            .Where(Predicate.eq("key"))))))
+                                        .Until(GraphTraversal2.__().FlatMap(
+                                            GraphTraversal2.__()
+                                                .As("res")
+                                                .Select(GremlinKeyword.Pop.last, "@v")
+                                                .Where(Predicate.eq("res"))))
+                                        .Select("@v")
+                                        .Unfold())
+                                .Dedup()
+                                .Fold())
+                        .As("#r")
+                        .Map(GraphTraversal2.__()
+                            .Union(GraphTraversal2.__().Select("#v").Union(
+                                GraphTraversal2.__().Select("#v0").Is(Predicate.neq(""))))
+                            .Fold())
+                        .As("#d")
+                        .Map(GraphTraversal2.__()
+                            .Select("#r")
+                            .Unfold()
+                            .Where(Predicate.without("#d"))
+                            .Fold())
+                        .SideEffect(GraphTraversal2.__().Select("#d").Unfold().Drop())
+                        .Unfold()
+                        .Project("id", "type", "etag")
+                        .By(GraphTraversal2.__().Values("__id"))
+                        .By(GraphTraversal2.__().Label())
+                        .By(GraphTraversal2.__().Values("__etag"))).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test16GetProduct_notfound()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g()
+                    .V()
+                    .Has("_app", "test-app")
+                    .Has("__id", "test-app")
+                    .HasLabel("application")
+                    .Coalesce(
+                        GraphTraversal2.__().Union(GraphTraversal2.__()
+                            .Not(GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application"))
+                            .Constant("~0"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 0)
+                                .Constant("~1"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_provisioningState", 2)
+                                .Constant("~2"),
+                            GraphTraversal2.__()
+                                .V()
+                                .Has("_app", "test-app")
+                                .Has("__id", "test-app")
+                                .HasLabel("application")
+                                .Has("_deleted", true)
+                                .Constant("~3")),
+                        GraphTraversal2.__()
+                            .FlatMap(
+                                GraphTraversal2.__()
+                                    .V()
+                                    .Has("_app", "test-app")
+                                    .Has("__id", "uber-product:soda-machine:shop-3")
+                                    .HasLabel("product")
+                                    .Range(0, 100)
+                                    .Union(GraphTraversal2.__().Identity().SideEffect(
+                                        GraphTraversal2.__().Id().Store("^ids")),
+                                        GraphTraversal2.__()
+                                            .As("@v")
+                                            .FlatMap(GraphTraversal2.__()
+                                                .Optional(
+                                                    GraphTraversal2.__().Out("mdl"))
+                                                .OutE("ref"))
+                                            .Repeat(
+                                                GraphTraversal2.__()
+                                                    .As("@e")
+                                                    .FlatMap(
+                                                        GraphTraversal2
+                                                            .__()
+                                                            .InV()
+                                                            .As("mdl")
+                                                            .Select(GremlinKeyword.Pop.last,
+                                                                "@v")
+                                                            .Both()
+                                                            .Dedup()
+                                                            .And(GraphTraversal2.__()
+                                                                .Optional(
+                                                                    GraphTraversal2.__()
+                                                                        .Out("mdl"))
+                                                                .Where(Predicate.eq(
+                                                                    "mdl"))))
+                                                    .As("@v")
+                                                    .Optional(GraphTraversal2.__().FlatMap(
+                                                        GraphTraversal2.__()
+                                                            .Select(GremlinKeyword.Pop.last,
+                                                                "@e")
+                                                            .Values("_ref")
+                                                            .As("key")
+                                                            .Select(GremlinKeyword.Pop.last,
+                                                                "@v")
+                                                            .Optional(GraphTraversal2.__()
+                                                                .Out("mdl"))
+                                                            .OutE("ref")
+                                                            .And(GraphTraversal2.__()
+                                                                .Values("_key")
+                                                                .Where(Predicate.eq(
+                                                                    "key"))))))
+                                            .Until(GraphTraversal2.__().FlatMap(
+                                                GraphTraversal2.__()
+                                                    .As("res")
+                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Where(Predicate.eq("res"))))
+                                            .SideEffect(
+                                                GraphTraversal2.__()
+                                                    .Project("data", "info")
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@e")
+                                                        .Unfold()
+                                                        .Project("key", "ref")
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "_key"))
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "_ref"))
+                                                        .Fold())
+                                                    .By(GraphTraversal2.__()
+                                                        .Select("@v")
+                                                        .Unfold()
+                                                        .Project("id", "type", "etag")
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "__id"))
+                                                        .By(GraphTraversal2.__().Label())
+                                                        .By(GraphTraversal2.__().Values(
+                                                            "__etag"))
+                                                        .Fold())
+                                                    .Store("^refs")))
+                                    .Dedup()
+                                    .Union(GraphTraversal2.__().Identity().SideEffect(
+                                        GraphTraversal2.__()
+                                            .Group("^mdls")
+                                            .By(GraphTraversal2.__().Id())
+                                            .By(GraphTraversal2.__().Coalesce(
+                                                GraphTraversal2.__().Out("mdl").Values(
+                                                    "__id"),
+                                                GraphTraversal2.__().Constant("")))),
+                                        GraphTraversal2.__().Out("mdl"))
+                                    .Dedup())
+                            .Union(GraphTraversal2.__()
+                                .Emit()
+                                .Repeat(GraphTraversal2.__().OutE("_val").As("_").InV())
+                                .Tree(),
+                                GraphTraversal2.__().Cap("^ids"),
+                                GraphTraversal2.__().Cap("^mdls"),
+                                GraphTraversal2.__().Cap("^refs"))
+                            .Fold()).Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void Test17DeleteApp()
+        {
+            GraphViewConnection connection = GetGraphViewConnection();
+            //connection.ResetCollection();
+
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            var results =
+                graph.g().V().Has("_app", "test-app").Drop().Next();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
         }
     }
 }

@@ -49,28 +49,27 @@ namespace GraphView
         {
             List<string> toBeDroppedPropertiesName = new List<string>();
 
-            foreach (var property in jsonObject.Properties().ToList())
-            {
+            foreach (var property in jsonObject.Properties().ToList()) {
                 string name = property.Name;
-                switch (name.ToLower())
-                {
-                    // Reversed properties for meta-data
-                    case "id":
-                    case "label":
-                    case "_edge":
-                    case "_reverse_edge":
-                    case "_nextedgeoffset":
-                    case "_nextreverseedgeoffset":
-                    case "_rid":
-                    case "_self":
-                    case "_etag":
-                    case "_attachments":
-                    case "_ts":
-                        continue;
-                    default:
-                        property.Remove();
-                        toBeDroppedPropertiesName.Add(name);
-                        break;
+                switch (name) {
+                // Reversed properties for meta-data
+                case "id":
+                case "_partition":
+                case "_edge":
+                case "_reverse_edge":
+                case "label":
+                case "_nextEdgeOffset":
+
+                case "_rid":
+                case "_self":
+                case "_etag":
+                case "_attachments":
+                case "_ts":
+                    continue;
+                default:
+                    property.Remove();
+                    toBeDroppedPropertiesName.Add(name);
+                    break;
                 }
             }
 
@@ -86,22 +85,21 @@ namespace GraphView
         {
             List<string> toBeDroppedProperties = new List<string>();
 
-            foreach (var property in jsonObject.Properties().ToList())
-            {
+            foreach (var property in jsonObject.Properties().ToList()) {
                 string name = property.Name;
-                switch (name.ToLower())
-                {
-                    // Reversed properties for meta-data
-                    case "_id":
-                    case "_reverse_id":
-                    case "_sink":
-                    case "_sinklabel":
-                    case "label":
-                        continue;
-                    default:
-                        property.Remove();
-                        toBeDroppedProperties.Add(name);
-                        break;
+                switch (name) {
+                // Reversed properties for meta-data
+                case "_offset":
+                case "_srcV":
+                case "_srcVLabel":
+                case "_sinkV":
+                case "_sinkVLabel":
+                case "label":
+                    continue;
+                default:
+                    property.Remove();
+                    toBeDroppedProperties.Add(name);
+                    break;
                 }
             }
 
@@ -109,12 +107,18 @@ namespace GraphView
         }
 
         [DebuggerStepThrough]
-        public static void UpdateEdgeMetaProperty(JObject edgeJObject, long edgeOffset, long reverseEdgeOffset, string sinkId, string sinkNodeLabel)
+        public static void UpdateEdgeMetaProperty(
+            JObject edgeJObject, long edgeOffset, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel)
         {
-            edgeJObject["_ID"] = edgeOffset;
-            edgeJObject["_reverse_ID"] = reverseEdgeOffset;
-            edgeJObject["_sink"] = sinkId;
-            if (sinkNodeLabel != null) edgeJObject["_sinkLabel"] = sinkNodeLabel;
+            edgeJObject["_offset"] = edgeOffset;
+            if (isReverseEdge) {
+                edgeJObject["_srcV"] = srcOrSinkVId;
+                edgeJObject["_srcVLabel"] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+            }
+            else {
+                edgeJObject["_sinkV"] = srcOrSinkVId;
+                edgeJObject["_sinkVLabel"] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+            }
         }
 
 

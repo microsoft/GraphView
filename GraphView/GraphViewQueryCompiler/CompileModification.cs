@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Newtonsoft.Json.Linq;
 
 namespace GraphView
 {
@@ -12,7 +12,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<string> projectedField;
-            var nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
+            JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
 
             GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
             context.CurrentExecutionOperator = addVOp;
@@ -36,7 +36,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<string> projectedField;
-            var edgeJsonDocument = ConstructEdgeJsonDocument(out projectedField);
+            var edgeJsonDocument = ConstructEdgeJsonDocument(out projectedField);  // metadata remains missing
 
             var srcSubQuery = Parameters[0] as WScalarSubquery;
             var sinkSubQuery = Parameters[1] as WScalarSubquery;
@@ -56,7 +56,7 @@ namespace GraphView
             context.AddField(Alias.Value, "_source", ColumnGraphType.EdgeSource);
             context.AddField(Alias.Value, "_sink", ColumnGraphType.EdgeSink);
             context.AddField(Alias.Value, "_other", ColumnGraphType.Value);
-            context.AddField(Alias.Value, "_ID", ColumnGraphType.EdgeOffset);
+            context.AddField(Alias.Value, "_offset", ColumnGraphType.EdgeOffset);
             context.AddField(Alias.Value, "*", ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedField.Count; i++)
             {
