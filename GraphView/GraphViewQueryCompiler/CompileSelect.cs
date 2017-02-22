@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -227,11 +228,11 @@ namespace GraphView
 
         internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         {
-            var nodeAlias = node.NodeAlias;
-            var selectStrBuilder = new StringBuilder();
-            var joinStrBuilder = new StringBuilder();
-            var properties = new List<string> { nodeAlias };
-            var projectedColumnsType = new List<ColumnGraphType>();
+            string nodeAlias = node.NodeAlias;
+            StringBuilder selectStrBuilder = new StringBuilder();
+            StringBuilder joinStrBuilder = new StringBuilder();
+            List<string> properties = new List<string> { nodeAlias };
+            List<ColumnGraphType> projectedColumnsType = new List<ColumnGraphType>();
            
             WBooleanExpression searchCondition = null;
 
@@ -254,21 +255,24 @@ namespace GraphView
 
             selectStrBuilder.Append(nodeAlias);
 
-            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < node.Properties.Count; i++)
+            for (int i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < node.Properties.Count; i++)
             {
-                var selectName = nodeAlias + "." + node.Properties[i];
+                string selectName = nodeAlias + "." + node.Properties[i];
                 properties.Add(node.Properties[i]);
                 projectedColumnsType.Add(ColumnGraphType.Value);
                 //selectStrBuilder.Append(", ").Append(selectName);
             }
                 
-            foreach (var predicate in node.Predicates)
+            foreach (WBooleanExpression predicate in node.Predicates)
                 searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
 
             if (backwardMatchingEdges == null)
                 backwardMatchingEdges = new List<MatchEdge>();
 
-            foreach (var edge in backwardMatchingEdges)
+            //
+            // Currently, no backwardMatchingEdges will be produced
+            //
+            foreach (MatchEdge edge in backwardMatchingEdges)
             {
                 joinStrBuilder.Append(" Join ")
                     .Append(edge.EdgeAlias)
@@ -295,9 +299,9 @@ namespace GraphView
                 properties.Add(edge.EdgeAlias);
                 projectedColumnsType.Add(ColumnGraphType.EdgeObject);
 
-                for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edge.Properties.Count; i++)
+                for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edge.Properties.Count; i++)
                 {
-                    var property = edge.Properties[i];
+                    string property = edge.Properties[i];
                     //var selectName = edge.EdgeAlias + "." + property;
                     //var selectAlias = edge.EdgeAlias + "_" + property;
 
@@ -307,14 +311,14 @@ namespace GraphView
                     properties.Add(property);
                 }   
 
-                foreach (var predicate in edge.Predicates)
+                foreach (WBooleanExpression predicate in edge.Predicates)
                     searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
             }
 
-            var booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
+            BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
             booleanWValueExpressionVisitor.Invoke(searchCondition);
 
-            var jsonQuery = new JsonQuery
+            JsonQuery jsonQuery = new JsonQuery
             {
                 Alias = nodeAlias,
                 JoinClause = joinStrBuilder.ToString(),
@@ -781,7 +785,7 @@ namespace GraphView
                     context.LocateColumnReference(edge.SourceNode.NodeAlias, "label"),
                     edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
-                    edge.Properties));
+                    edge.Properties, connection));
                 context.CurrentExecutionOperator = operatorChain.Last();
 
                 // Update edge's context info
@@ -1800,7 +1804,7 @@ namespace GraphView
             }
 
             var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex, startVertexLabelIndex,
-                adjListIndex, -1, true, null, projectFields);
+                adjListIndex, -1, true, null, projectFields, dbConnection);
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
@@ -1841,7 +1845,7 @@ namespace GraphView
             }
 
             var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex, startVertexLabelIndex,
-               - 1, revAdjListIndex, true, null, projectFields);
+               - 1, revAdjListIndex, true, null, projectFields, dbConnection);
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
@@ -1884,7 +1888,7 @@ namespace GraphView
             }
 
             var adjListDecoder = new AdjacencyListDecoder2(context.CurrentExecutionOperator, startVertexIndex, startVertexLabelIndex,
-                adjListIndex, revAdjListIndex, true, null, projectFields);
+                adjListIndex, revAdjListIndex, true, null, projectFields, dbConnection);
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout

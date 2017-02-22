@@ -676,7 +676,7 @@ namespace GraphView
     //            var results = CrossApply(srcRecord);
     //            foreach (var edgeRecord in results)
     //            {
-    //                if (EdgePredicate != null && !EdgePredicate.Evaluate(edgeRecord))
+    //                if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
     //                    continue;
 
     //                var resultRecord = new RawRecord(srcRecord);
@@ -718,14 +718,18 @@ namespace GraphView
         private int adjacencyListIndex;
         private int revAdjacencyListIndex;
 
-        protected BooleanFunction EdgePredicate;
-        protected List<string> ProjectedFields;
+        private BooleanFunction edgePredicate;
+        private List<string> projectedFields;
 
         private bool isStartVertexTheOriginVertex;
 
+        private GraphViewConnection connection;
+
         public AdjacencyListDecoder2(GraphViewExecutionOperator input,
-            int startVertexIndex, int startVertexLabelIndex, int adjacencyListIndex, int revAdjacencyListIndex, bool isStartVertexTheOriginVertex,
-            BooleanFunction edgePredicate, List<string> projectedFields)
+            int startVertexIndex, int startVertexLabelIndex, int adjacencyListIndex, int revAdjacencyListIndex, 
+            bool isStartVertexTheOriginVertex,
+            BooleanFunction edgePredicate, List<string> projectedFields,
+            GraphViewConnection connection)
             : base(input)
         {
             this.startVertexIndex = startVertexIndex;
@@ -733,8 +737,9 @@ namespace GraphView
             this.adjacencyListIndex = adjacencyListIndex;
             this.revAdjacencyListIndex = revAdjacencyListIndex;
             this.isStartVertexTheOriginVertex = isStartVertexTheOriginVertex;
-            this.EdgePredicate = edgePredicate;
-            this.ProjectedFields = projectedFields;
+            this.edgePredicate = edgePredicate;
+            this.projectedFields = projectedFields;
+            this.connection = connection;
         }
 
         /// <summary>
@@ -779,9 +784,9 @@ namespace GraphView
         /// <param name="edge"></param>
         private void FillPropertyField(RawRecord record, EdgeField edge)
         {
-            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < ProjectedFields.Count; i++)
+            for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedFields.Count; i++)
             {
-                record.fieldValues[i] = edge[ProjectedFields[i]];
+                record.fieldValues[i] = edge[projectedFields[i]];
             }
         }
 
@@ -793,15 +798,15 @@ namespace GraphView
 
             if (adjacencyListIndex >= 0)
             {
-                var adj = record[adjacencyListIndex] as AdjacencyListField;
+                AdjacencyListField adj = record[adjacencyListIndex] as AdjacencyListField;
                 if (adj == null)
                     throw new GraphViewException(string.Format("The FieldObject at {0} is not a adjacency list but {1}", 
                         adjacencyListIndex, record[adjacencyListIndex] != null ? record[adjacencyListIndex].ToString() : "null"));
 
-                foreach (var edge in adj.AllEdges)
+                foreach (EdgeField edge in adj.AllEdges)
                 {
                     // Construct new record
-                    var result = new RawRecord(ProjectedFields.Count);
+                    RawRecord result = new RawRecord(projectedFields.Count);
 
                     FillMetaField(result, edge, startVertexId, startVertexLabel, false);
                     FillPropertyField(result, edge);
@@ -812,15 +817,18 @@ namespace GraphView
 
             if (revAdjacencyListIndex >= 0)
             {
-                var adj = record[revAdjacencyListIndex] as AdjacencyListField;
+                AdjacencyListField adj = connection.UseReverseEdges 
+                                         ? record[revAdjacencyListIndex] as AdjacencyListField
+                                         : EdgeDocumentHelper.GetReverseAdjacencyListOfVertex(connection, startVertexId);
+
                 if (adj == null)
                     throw new GraphViewException(string.Format("The FieldObject at {0} is not a reverse adjacency list but {1}",
                         adjacencyListIndex, record[revAdjacencyListIndex] != null ? record[revAdjacencyListIndex].ToString() : "null"));
 
-                foreach (var edge in adj.AllEdges)
+                foreach (EdgeField edge in adj.AllEdges)
                 {
                     // Construct new record
-                    var result = new RawRecord(ProjectedFields.Count);
+                    RawRecord result = new RawRecord(projectedFields.Count);
 
                     FillMetaField(result, edge, startVertexId, startVertexLabel, true);
                     // Fill the field of selected edge's properties
@@ -866,7 +874,7 @@ namespace GraphView
 
                 foreach (RawRecord edgeRecord in results)
                 {
-                    if (EdgePredicate != null && !EdgePredicate.Evaluate(edgeRecord))
+                    if (edgePredicate != null && !edgePredicate.Evaluate(edgeRecord))
                         continue;
                     outputBuffer.Enqueue(edgeRecord);
                 }

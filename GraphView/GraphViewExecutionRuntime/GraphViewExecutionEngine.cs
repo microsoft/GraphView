@@ -27,7 +27,7 @@ namespace GraphView
 
         public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject)
         {
-            VertexField vertexField = new VertexField();
+            VertexField vertexField = new VertexField(connection);
             vertexField.JsonDocument = vertexObject;
 
             string vertexId = null;
@@ -775,7 +775,7 @@ namespace GraphView
                 case "_srcVLabel":
                     edgeField.OutVLabel = property.Value.ToString();
                     break;
-                case GremlinKeyword.Label: // "label"
+                case "label":
                     edgeField.Label = property.Value.ToString();
                     break;
                 }
@@ -862,6 +862,7 @@ namespace GraphView
 
         public JObject JsonDocument { get; set; }
 
+        private GraphViewConnection connection;
 
         public FieldObject this[string propertyName]
         {
@@ -894,11 +895,13 @@ namespace GraphView
                 VertexProperties.Add(propertyName, new VertexPropertyField(propertyName, propertyValue, jsonDataType));
         }
 
-        public VertexField()
+        public VertexField(GraphViewConnection connection)
         {
             VertexProperties = new Dictionary<string, VertexPropertyField>();
             AdjacencyList = new AdjacencyListField();
             RevAdjacencyList = new AdjacencyListField();
+
+            this.connection = connection;
         }
 
         public override string ToString()
@@ -947,6 +950,12 @@ namespace GraphView
 
             sb.Append(", ");
             sb.Append("\"type\": \"vertex\"");
+
+            if (!connection.UseReverseEdges)
+            {
+                RevAdjacencyList = EdgeDocumentHelper.GetReverseAdjacencyListOfVertex(connection,
+                    VertexProperties["id"].PropertyValue);
+            }
 
             if (RevAdjacencyList != null && RevAdjacencyList.AllEdges.Any())
             {

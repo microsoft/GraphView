@@ -58,6 +58,8 @@ namespace GraphView
         public string DocDBDatabaseId { get; }
         public string DocDBCollectionId { get; }
 
+        public bool UseReverseEdges { get; set; }
+
         internal VertexObjectCache VertexCache { get; }
 
         internal string Identifier { get; }
@@ -104,6 +106,8 @@ namespace GraphView
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
             this.VertexCache = VertexObjectCache.FromConnection(this);
+
+            this.UseReverseEdges = true;
         }
 
         internal DbPortal CreateDatabasePortal()

@@ -30,10 +30,10 @@ namespace GraphView
 
             while (InputOperator.State() && (srcRecord = InputOperator.Next()) != null)
             {
-                var result = DataModify(srcRecord);
+                RawRecord result = DataModify(srcRecord);
                 if (result == null) continue;
 
-                var resultRecord = new RawRecord(srcRecord);
+                RawRecord resultRecord = new RawRecord(srcRecord);
                 resultRecord.Append(result);
 
                 return resultRecord;

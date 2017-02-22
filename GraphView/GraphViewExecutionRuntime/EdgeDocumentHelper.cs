@@ -450,5 +450,36 @@ namespace GraphView
                 }
             }
         }
+
+        public static AdjacencyListField GetReverseAdjacencyListOfVertex(GraphViewConnection connection, string vertexId)
+        {
+            AdjacencyListField result = new AdjacencyListField();
+
+            string query = $"SELECT {{\"edge\": edge, " +
+                           $"\"_srcV\": doc.id, " +
+                           $"\"_srcVLabel\": doc.label}} AS incomingEdgeMetadata\n" +
+                           $"FROM doc\n" +
+                           $"JOIN edge IN doc._edge\n" +
+                           $"WHERE edge._sinkV = '{vertexId}'\n";
+
+            foreach (JObject edgeDocument in connection.ExecuteQuery(query))
+            {
+                JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
+                JObject edgeObject = (JObject)edgeMetadata["edge"];
+                string srcV = edgeMetadata["_srcV"].ToString();
+                string srcVLabel = edgeMetadata["_srcVLabel"]?.ToString();
+
+                EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
+                edgeField.EdgeProperties.Add("_srcV", new EdgePropertyField("_srcV", srcV, JsonDataType.String));
+                if (srcVLabel != null) {
+                    edgeField.EdgeProperties.Add("_srcVLabel",
+                        new EdgePropertyField("_srcVLabel", srcVLabel, JsonDataType.String));
+                }
+
+                result.AddEdgeField(srcV, (long)edgeObject["_offset"], edgeField);
+            }
+
+            return result;
+        }
     }
 }
