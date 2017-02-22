@@ -154,7 +154,7 @@ namespace GraphView
 
                 //
                 // Retreive edges from DocDB: "id" == edgeDocID
-                // Check: the metadata is right, and the "_edges" should not be null or empty 
+                // Check: the metadata is right, and the "_edge" should not be null or empty 
                 // (otherwise this edge-document should have been removed)
                 //
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocID);
@@ -162,7 +162,7 @@ namespace GraphView
                 Debug.Assert((bool)edgeDocObject["_is_reverse"] == false, "(bool)edgeDocObject['_is_reverse'] == false");
                 Debug.Assert(((string)edgeDocObject["_vertex_id"]).Equals(outVId), "((string)edgeDocObject['_vertex_id']).Equals(outVId)");
 
-                JArray edgesArray = (JArray)edgeDocObject["_edges"];
+                JArray edgesArray = (JArray)edgeDocObject["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
@@ -200,7 +200,7 @@ namespace GraphView
 
                 //
                 // Retreive edges from DocDB: "id" == edgeDocID
-                // Check: the metadata is right, and the "_edges" should not be null or empty 
+                // Check: the metadata is right, and the "_edge" should not be null or empty 
                 // (otherwise this edge-document should have been removed)
                 //
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocID);
@@ -208,7 +208,7 @@ namespace GraphView
                 Debug.Assert((bool)edgeDocObject["_is_reverse"] == true, "(bool)edgeDocObject['_is_reverse'] == true");
                 Debug.Assert(((string)edgeDocObject["_vertex_id"]).Equals(inVId), "((string)edgeDocObject['_vertex_id']).Equals(outVId)");
 
-                JArray edgesArray = (JArray)edgeDocObject["_edges"];
+                JArray edgesArray = (JArray)edgeDocObject["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 foreach (JObject edgeObject in edgesArray.Children<JObject>()) {

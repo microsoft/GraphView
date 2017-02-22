@@ -114,7 +114,7 @@ namespace GraphView
                 Debug.Assert((bool)edgeDocument["_is_reverse"] == isReverse, "(bool)edgeDocument['_is_reverse'] == isReverse");
                 Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
 
-                JArray edgesArray = (JArray)edgeDocument["_edges"];
+                JArray edgesArray = (JArray)edgeDocument["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 edgesArray.Add(edgeObject);
@@ -128,7 +128,7 @@ namespace GraphView
                         ["_partition"] = vertexObject["_partition"],
                         ["_is_reverse"] = isReverse,
                         ["_vertex_id"] = (string)vertexObject["id"],
-                        ["_edges"] = new JArray(edgeObject)
+                        ["_edge"] = new JArray(edgeObject)
                     };
                     lastEdgeDocId = connection.CreateDocumentAsync(edgeDocObject).Result;
 
@@ -219,7 +219,7 @@ namespace GraphView
                 ["_is_reverse"] = targetEdgeIsReverse,
                 ["_is_reverse"] = targetEdgeIsReverse,
                 ["_vertex_id"] = (string)vertexObject["id"],
-                ["_edges"] = new JArray(targetEdgeArray.Last),
+                ["_edge"] = new JArray(targetEdgeArray.Last),
             };
             newEdgeDocId = connection.CreateDocumentAsync(newEdgeDocObject).Result;
             targetEdgeArray.Last.Remove();  // Remove the currently create edge appended just now
@@ -230,7 +230,7 @@ namespace GraphView
                 ["_partition"] = vertexObject["_partition"],
                 ["_is_reverse"] = targetEdgeIsReverse,
                 ["_vertex_id"] = (string)vertexObject["id"],
-                ["_edges"] = targetEdgeArray,
+                ["_edge"] = targetEdgeArray,
             };
             existEdgeDocId = connection.CreateDocumentAsync(existEdgeDocObject).Result;
 
@@ -293,14 +293,14 @@ namespace GraphView
                 if (isReverseEdge) {
                     query = $"SELECT doc.id, edge\n" +
                             $"FROM doc\n" +
-                            $"JOIN edge IN doc._edges\n" +
+                            $"JOIN edge IN doc._edge\n" +
                             $"WHERE doc.id IN ({edgeIdList})\n" +
                             $"  AND (edge._offset = {edgeOffset})\n";
                 }
                 else {
                     query = $"SELECT doc.id, edge\n" +
                             $"FROM doc\n" +
-                            $"JOIN edge IN doc._edges\n" +
+                            $"JOIN edge IN doc._edge\n" +
                             $"WHERE doc.id IN ({edgeIdList})\n" +
                             $"  AND (edge._srcV = '{srcVertexId}')\n" +
                             $"  AND (edge._offset = {edgeOffset})\n";
@@ -338,7 +338,7 @@ namespace GraphView
                 Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
 
                 // The edge to be removed must exist! (garanteed by caller)
-                JArray edgesArray = (JArray)edgeDocument["_edges"];
+                JArray edgesArray = (JArray)edgeDocument["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
@@ -358,7 +358,7 @@ namespace GraphView
 
                     //
                     // If the vertex-document contains no (incoming or outgoing) edges now, set edgeContainer 
-                    // ("_edges" or "_reverse_edges") to an empry JArray! Anyway, we ensure that if edgeContainer 
+                    // ("_edge" or "_reverse_edge") to an empry JArray! Anyway, we ensure that if edgeContainer 
                     // is JObject, it contains at least one edge-document
                     //
                     if (edgeDocumentsArray.Count == 0) {
@@ -432,16 +432,16 @@ namespace GraphView
             }
             else {
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId);
-                edgeDocObject["_edges"].Children<JObject>().First(
+                edgeDocObject["_edge"].Children<JObject>().First(
                     e => (long)e["_offset"] == (long)newEdgeObject["_offset"] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
-                ((JArray)edgeDocObject["_edges"]).Add(newEdgeObject);
+                ((JArray)edgeDocObject["_edge"]).Add(newEdgeObject);
                 UploadOne(connection, edgeDocId, edgeDocObject, out tooLarge);
                 if (tooLarge) {
                     // Handle this situation: The modified edge is too large to be filled into the original edge-document
                     // Remove the edgeObject added just now, and upload the original edge-document
-                    ((JArray)edgeDocObject["_edges"]).Last.Remove();
+                    ((JArray)edgeDocObject["_edge"]).Last.Remove();
                     UploadOne(connection, edgeDocId, edgeDocObject, out tooLarge);
                     Debug.Assert(!tooLarge);
 

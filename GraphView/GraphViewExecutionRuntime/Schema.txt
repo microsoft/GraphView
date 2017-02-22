@@ -48,7 +48,7 @@ EdgeDocument:
 	"_vertex_id": ...,   // id of current VertexDocument
 	"_partition": ...,   // = _partition of the vertex = _vertex_id (tricky!)
 	"_is_reverse": true/false,   // indicate whether this vertex is source(false) or sink (true)
-	"_edges": [
+	"_edge": [
 		<EdgeObject/RevEdgeObject>, ...
 	]
 }
