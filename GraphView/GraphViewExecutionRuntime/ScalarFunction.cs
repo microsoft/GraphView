@@ -531,4 +531,50 @@ namespace GraphView
             return JsonDataType.Boolean;
         }
     }
+
+    internal class HasProperty : ScalarFunction
+    {
+        private int _checkFieldIndex;
+        private string _propertyName;
+
+        public HasProperty(int checkFieldIndex, string propertyName)
+        {
+            _checkFieldIndex = checkFieldIndex;
+            _propertyName = propertyName;
+        }
+
+        public override FieldObject Evaluate(RawRecord record)
+        {
+            FieldObject checkObject = record[_checkFieldIndex];
+
+            VertexField vertexField = checkObject as VertexField;
+            EdgeField edgeField = checkObject as EdgeField;
+
+            if (vertexField != null)
+            {
+                if (vertexField.VertexProperties.ContainsKey(_propertyName))
+                    return new StringField("true", JsonDataType.Boolean);
+                else
+                    return new StringField("false", JsonDataType.Boolean);
+            }
+            else if (edgeField != null)
+            {
+                if (edgeField.EdgeProperties.ContainsKey(_propertyName))
+                    return new StringField("true", JsonDataType.Boolean);
+                else
+                    return new StringField("false", JsonDataType.Boolean);
+            }
+            else
+            {
+                throw new GraphViewException(
+                    "HasProperty() function can only be applied to a VertexField or EdgeField but now the object is " +
+                    checkObject.GetType());
+            }
+        }
+
+        public override JsonDataType DataType()
+        {
+            return JsonDataType.Boolean;
+        }
+    }
 }

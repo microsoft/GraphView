@@ -68,7 +68,8 @@ namespace GraphView
         Dictionary<string, HashSet<string>> accessedColumns;
         private bool _isOnlyTargetTableReferenced;
 
-        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> targetTableReferences, out bool isOnlyTargetTableReferecend)
+        public Dictionary<string, HashSet<string>> Invoke(WSqlFragment sqlFragment, List<string> targetTableReferences, 
+            out bool isOnlyTargetTableReferecend)
         {
             _isOnlyTargetTableReferenced = true;
             accessedColumns = new Dictionary<string, HashSet<string>>(targetTableReferences.Count);
@@ -161,6 +162,37 @@ namespace GraphView
             // JSON requires a lower case string if it is a boolean value
             if (!valueExpression.SingleQuoted && bool.TryParse(valueExpression.Value, out bool_value))
                 valueExpression.Value = bool_value.ToString().ToLowerInvariant();
+        }
+    }
+
+    /// <summary>
+    /// Return how many times have GraphView runtime functions appeared in a BooleanExpression
+    /// </summary>
+    internal class GraphviewRuntimeFunctionCountVisitor : WSqlFragmentVisitor
+    {
+        private int runtimeFunctionCount;
+
+        public int Invoke(
+            WBooleanExpression booleanExpression)
+        {
+            runtimeFunctionCount = 0;
+
+            if (booleanExpression != null)
+                booleanExpression.Accept(this);
+
+            return runtimeFunctionCount;
+        }
+
+        public override void Visit(WFunctionCall fcall)
+        {
+            switch (fcall.FunctionName.Value.ToLowerInvariant())
+            {
+                case "withinarray":
+                case "withoutarray":
+                case "hasproperty":
+                    runtimeFunctionCount++;
+                    break;
+            }
         }
     }
 

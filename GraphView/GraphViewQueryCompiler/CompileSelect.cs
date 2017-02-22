@@ -37,14 +37,18 @@ namespace GraphView
             List<Tuple<WBooleanExpression, HashSet<string>>>
                 predicatesAccessedTableReferences = new List<Tuple<WBooleanExpression, HashSet<string>>>();
             AccessedTableColumnVisitor columnVisitor = new AccessedTableColumnVisitor();
+            GraphviewRuntimeFunctionCountVisitor runtimeFunctionCountVisitor = new GraphviewRuntimeFunctionCountVisitor();
 
             foreach (WBooleanExpression predicate in conjunctivePredicates)
             {
                 bool isOnlyTargetTableReferenced;
+                bool useGraphViewRuntimeFunction = runtimeFunctionCountVisitor.Invoke(predicate) > 0;
                 Dictionary<string, HashSet<string>> tableColumnReferences = columnVisitor.Invoke(predicate,
                     vertexAndEdgeAliases, out isOnlyTargetTableReferenced);
 
-                if (!isOnlyTargetTableReferenced || !TryAttachPredicate(graphPattern, predicate, tableColumnReferences))
+                if (useGraphViewRuntimeFunction 
+                    || !isOnlyTargetTableReferenced 
+                    || !TryAttachPredicate(graphPattern, predicate, tableColumnReferences))
                 {
                     // Attach cross-table predicate's referencing properties for later runtime evaluation
                     AttachProperties(graphPattern, tableColumnReferences);

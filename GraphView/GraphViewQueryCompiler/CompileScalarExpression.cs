@@ -116,13 +116,17 @@ namespace GraphView
             switch (funcName)
             {
                 case "withinarray":
-                    var checkField = Parameters[0] as WColumnReferenceExpression;
-                    var arrayField = Parameters[1] as WColumnReferenceExpression;
+                    WColumnReferenceExpression checkField = Parameters[0] as WColumnReferenceExpression;
+                    WColumnReferenceExpression arrayField = Parameters[1] as WColumnReferenceExpression;
                     return new WithInArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
                 case "withoutarray":
                     checkField = Parameters[0] as WColumnReferenceExpression;
                     arrayField = Parameters[1] as WColumnReferenceExpression;
                     return new WithOutArray(context.LocateColumnReference(checkField), context.LocateColumnReference(arrayField));
+                case "hasproperty":
+                    checkField = Parameters[0] as WColumnReferenceExpression;
+                    WValueExpression propertyName = Parameters[1] as WValueExpression;
+                    return new HasProperty(context.LocateColumnReference(checkField), propertyName.Value);
                 case "compose1":
                     List<Tuple<string, int>> targetFieldsAndTheirNames = new List<Tuple<string, int>>();
                     WValueExpression defaultProjectionKey = Parameters[0] as WValueExpression;
@@ -144,7 +148,7 @@ namespace GraphView
 
                     return new Compose1(targetFieldsAndTheirNames, defaultProjectionKey.Value);
                 case "compose2":
-                    var inputOfCompose2 = new List<ScalarFunction>();
+                    List<ScalarFunction> inputOfCompose2 = new List<ScalarFunction>();
 
                     foreach (var parameter in Parameters)
                     {
