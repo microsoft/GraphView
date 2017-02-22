@@ -701,6 +701,11 @@ namespace GraphView
             SetPivotVariable(dropVariable);
         }
 
+        internal void Has(GremlinVariable lastVariable, string propertyKey)
+        {
+            throw new QueryCompilationException("The Has(propertyKey) step only applies to vertices and edges.");
+        }
+
         internal void Has(GremlinVariable lastVariable, string propertyKey, object value)
         {
             WScalarExpression firstExpr = lastVariable.GetVariableProperty(propertyKey).ToScalarExpression();
@@ -717,13 +722,19 @@ namespace GraphView
         internal void Has(GremlinVariable lastVariable, string propertyKey, Predicate predicate)
         {
             WScalarExpression firstExpr = lastVariable.GetVariableProperty(propertyKey).ToScalarExpression();
-            AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, null, predicate));
+            WScalarExpression secondExpr = SqlUtil.GetValueExpr(predicate.Value);
+            AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate));
         }
 
         internal void Has(GremlinVariable lastVariable, string label, string propertyKey, Predicate predicate)
         {
             Has(lastVariable, GremlinKeyword.Label, label);
             Has(lastVariable, propertyKey, predicate);
+        }
+
+        internal void Has(GremlinVariable lastVariable, string propertyKey, GremlinToSqlContext propertyContext)
+        {
+            throw new QueryCompilationException("The Has(propertyKey, traversal) step only applies to vertices and edges.");
         }
 
         internal void HasId(GremlinVariable lastVariable, List<object> values)
@@ -739,6 +750,11 @@ namespace GraphView
             AddPredicate(SqlUtil.GetBooleanParenthesisExpr(concatSql));
         }
 
+        internal void HasKey(GremlinVariable lastVariable, List<string> values)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
         internal void HasLabel(GremlinVariable lastVariable, List<object> values)
         {
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
@@ -750,6 +766,16 @@ namespace GraphView
             }
             WBooleanExpression concatSql = SqlUtil.ConcatBooleanExprWithOr(booleanExprList);
             AddPredicate(SqlUtil.GetBooleanParenthesisExpr(concatSql));
+        }
+
+        internal virtual void HasValue(GremlinToSqlContext currentContext, List<object> values)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
+        internal virtual void HasNot(GremlinToSqlContext currentContext, string propertyKey)
+        {
+            throw new QueryCompilationException("The HasNot(propertyKey) step only applies to vertices and edges.");
         }
 
         internal void Properties(GremlinVariable lastVariable, List<string> propertyKeys)

@@ -368,7 +368,7 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey)
         {
-            throw new NotImplementedException();
+            throw new QueryCompilationException("The Has(propertyKey) step only applies to vertices and edges.");
         }
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
@@ -393,7 +393,7 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
         {
-            throw new NotImplementedException();
+            throw new QueryCompilationException("The Has(propertyKey, traversal) step only applies to vertices and edges.");
         }
 
         internal virtual void HasId(GremlinToSqlContext currentContext, List<object> values)
@@ -418,7 +418,7 @@ namespace GraphView
 
         internal virtual void HasNot(GremlinToSqlContext currentContext, string propertyKey)
         {
-            throw new NotImplementedException();
+            throw new QueryCompilationException("The HasNot(propertyKey) step only applies to vertices and edges.");
         }
 
         internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)

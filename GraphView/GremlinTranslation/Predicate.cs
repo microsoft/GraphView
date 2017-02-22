@@ -11,8 +11,8 @@ namespace GraphView
         public bool IsTag { get; set; }
         public object Value { get; set; }
         public List<object> Values { get; set; }
-        public long Low { get; set; }
-        public long High { get; set; }
+        public double Low { get; set; }
+        public double High { get; set; }
         public PredicateType PredicateType { get; set; }
 
         public Predicate(PredicateType type, object value)
@@ -21,7 +21,7 @@ namespace GraphView
             PredicateType = type;
         }
 
-        public Predicate(PredicateType type, int low, int high)
+        public Predicate(PredicateType type, double low, double high)
         {
             Low = low;
             High = high;
@@ -43,7 +43,7 @@ namespace GraphView
             return new Predicate(PredicateType.eq, value);
         }
 
-        public static Predicate eq(long number)
+        public static Predicate eq(double number)
         {
             return new Predicate(PredicateType.eq, number);
         }
@@ -58,37 +58,42 @@ namespace GraphView
             return new Predicate(PredicateType.neq, label);
         }
 
-        public static Predicate neq(long number)
+        public static Predicate neq(double number)
         {
             return new Predicate(PredicateType.neq, number);
         }
 
-        public static Predicate lt(long value)
+        public static Predicate lt(double value)
         {
             return new Predicate(PredicateType.lt, value);
         }
 
-        public static Predicate gt(long value)
+        public static Predicate lte(double value)
+        {
+            return new Predicate(PredicateType.lte, value);
+        }
+
+        public static Predicate gt(double value)
         {
             return new Predicate(PredicateType.gt, value);
         }
 
-        public static Predicate gte(long value)
+        public static Predicate gte(double value)
         {
             return new Predicate(PredicateType.gte, value);
         }
 
-        public static Predicate inside(long low, long high)
+        public static Predicate inside(double low, double high)
         {
             return new Predicate(PredicateType.inside, low, high);
         }
 
-        public static Predicate outside(long low, long high)
+        public static Predicate outside(double low, double high)
         {
             return new Predicate(PredicateType.outside, low, high);
         }
 
-        public static Predicate between(long low, long high)
+        public static Predicate between(double low, double high)
         {
             return new Predicate(PredicateType.between, low, high);
         }

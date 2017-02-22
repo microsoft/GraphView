@@ -65,7 +65,9 @@ namespace GraphView
 
         internal static WBooleanExpression GetBooleanComparisonExpr(WScalarExpression firstExpr, WScalarExpression secondExpr, Predicate predicate)
         {
-            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();     
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            WScalarExpression lowExpr = null;
+            WScalarExpression highExpr = null;
             switch (predicate.PredicateType)
             {
                 case PredicateType.within:
@@ -105,11 +107,23 @@ namespace GraphView
                     }
 
                 case PredicateType.inside:
-                    throw new NotImplementedException();
+                    lowExpr = GetValueExpr(predicate.Low);
+                    highExpr = GetValueExpr(predicate.High);
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gt)));
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lt))); ;
+                    return ConcatBooleanExprWithAnd(booleanExprList);
                 case PredicateType.outside:
-                    throw new NotImplementedException();
+                    lowExpr = GetValueExpr(predicate.Low);
+                    highExpr = GetValueExpr(predicate.High);
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.lt)));
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.gt))); ;
+                    return ConcatBooleanExprWithOr(booleanExprList);
                 case PredicateType.between:
-                    throw new NotImplementedException();
+                    lowExpr = GetValueExpr(predicate.Low);
+                    highExpr = GetValueExpr(predicate.High);
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gte)));
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lte))); ;
+                    return ConcatBooleanExprWithAnd(booleanExprList);
                 default:
                     return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(predicate.PredicateType));
             }
