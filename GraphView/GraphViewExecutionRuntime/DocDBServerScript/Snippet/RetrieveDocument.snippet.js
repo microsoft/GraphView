@@ -17,7 +17,7 @@ function RetrieveDocumentById(id, callback) {
         }
     );
     if (!isAccepted) {
-        throw Error("[RetrieveDocumentById] not accepted");
+        throw new Error("[RetrieveDocumentById] not accepted");
     }
 }
 
@@ -40,6 +40,6 @@ function RetrieveDocumentsByIds(ids, callback) {
         }
     );
     if (!isAccepted) {
-        throw Error("[RetrieveDocumentsByIds] not accepted");
+        throw new Error("[RetrieveDocumentsByIds] not accepted");
     }
 }

@@ -1,8 +1,7 @@
 ﻿
-function AddE(srcVertexId, edgeObject, isReverse) {
+function AddE(srcVertexId, sinkVertexId, edgeObject, isReverse) {
 
     "use strict";
-
 
     //++++++++++++++++ BEGIN: Common.snippet.js ++++++++++++++++
     /**
@@ -64,7 +63,7 @@ function AddE(srcVertexId, edgeObject, isReverse) {
     
         // __respObject.Message
         if (typeof (message) === "undefined") {
-            __respObject.Message = "Unknown error";
+            __respObject.Message = "No message";
         }
         else if (typeof (message) === "object") {
             __respObject.Message = JSON.stringify(message);
@@ -75,6 +74,13 @@ function AddE(srcVertexId, edgeObject, isReverse) {
     
         response.setBody(JSON.stringify(__respObject));
         throw new Error(JSON.stringify(__respObject));
+    }
+    
+    function ERROR_RETURN(error) {
+        if (__respObject.Status >= 0) {
+            __respObject.Status = Status.InternalError;
+            __respObject.Message = "Unexpected error";
+        }
     }
     
     /**
@@ -107,6 +113,7 @@ function AddE(srcVertexId, edgeObject, isReverse) {
     //---------------- END: Common.snippet.js ----------------
 
 
+
     //++++++++++++++++ BEGIN: RetrieveDocument.snippet.js ++++++++++++++++
     
     function RetrieveDocumentById(id, callback) {
@@ -127,7 +134,7 @@ function AddE(srcVertexId, edgeObject, isReverse) {
             }
         );
         if (!isAccepted) {
-            throw Error("[RetrieveDocumentById] not accepted");
+            throw new Error("[RetrieveDocumentById] not accepted");
         }
     }
     
@@ -150,13 +157,21 @@ function AddE(srcVertexId, edgeObject, isReverse) {
             }
         );
         if (!isAccepted) {
-            throw Error("[RetrieveDocumentsByIds] not accepted");
+            throw new Error("[RetrieveDocumentsByIds] not accepted");
         }
     }
     
     //---------------- END: RetrieveDocument.snippet.js ----------------
 
 
-    RetrieveDocumentById(srcVertexId, callback);
+    RetrieveDocumentById(srcVertexId, retrvCallback);
+
+    function retrvCallback(error, resources, options) {
+        if (error) {
+            ERROR(error);
+        }
+
+        SUCCESS(resources);
+    }
 }
 

@@ -1,9 +1,4 @@
 ﻿
-/**
- * 
- * @param {string} rid 
- * @returns {} 
- */
 function AddV(vertexObject) {
 
     "use strict";
@@ -69,7 +64,7 @@ function AddV(vertexObject) {
     
         // __respObject.Message
         if (typeof (message) === "undefined") {
-            __respObject.Message = "Unknown error";
+            __respObject.Message = "No message";
         }
         else if (typeof (message) === "object") {
             __respObject.Message = JSON.stringify(message);
@@ -80,6 +75,13 @@ function AddV(vertexObject) {
     
         response.setBody(JSON.stringify(__respObject));
         throw new Error(JSON.stringify(__respObject));
+    }
+    
+    function ERROR_RETURN(error) {
+        if (__respObject.Status >= 0) {
+            __respObject.Status = Status.InternalError;
+            __respObject.Message = "Unexpected error";
+        }
     }
     
     /**
@@ -111,28 +113,29 @@ function AddV(vertexObject) {
     
     //---------------- END: Common.snippet.js ----------------
 
-    
+
     ASSERT(vertexObject && typeof (vertexObject) === "object",
-           "[AddV] vertexObject should be a json object");
+            "[AddV] vertexObject should be a json object");
     ASSERT(typeof (vertexObject.id) === "string" && vertexObject.id.length > 0,
-           "[AddV] vertexObject.id should be a non-empty string");
+            "[AddV] vertexObject.id should be a non-empty string");
     ASSERT(typeof (vertexObject._partition) === "string" && vertexObject._partition.length > 0,
-           "[AddV] vertexObject._partition should be a non-empty string");
+            "[AddV] vertexObject._partition should be a non-empty string");
     ASSERT(vertexObject.id === vertexObject._partition,
-           "[AddV] Expecting id(\"" + vertexObject.id + "\") equivalent to _partition(\"" + vertexObject._partition + "\")");
+            "[AddV] Expecting id(\"" + vertexObject.id + "\") equivalent to _partition(\"" + vertexObject._partition + "\")");
+    ASSERT(vertexObject._nextEdgeOffset === 0,
+            "[AddV] vertexObject._nextEdgeOffset should be 0");
 
     var isAccepted = collection.createDocument(
         collection.getSelfLink(), // collectionLink: string
         vertexObject, // body: object
-        { }, // options: CreateOptionsRequestCallback
-        function(error, resources, options) {
+        {}, // options: CreateOptionsRequestCallback
+        function (error, resources, options) {
             if (error) {
-                ERROR(error);
+                ERROR(error, "[AddV] createDocument() error");
             }
         } // callback: RequestCallback
     );
-
-    isAccepted || ERROR(Status.NotAccepted, "[AddV] createDocument() not accepted");
+    if (!isAccepted) ERROR(Status.NotAccepted, "[AddV] createDocument() not accepted");
 
     SUCCESS();
 }

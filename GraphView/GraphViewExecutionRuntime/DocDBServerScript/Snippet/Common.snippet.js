@@ -57,7 +57,7 @@ function ERROR(e, message) {
 
     // __respObject.Message
     if (typeof (message) === "undefined") {
-        __respObject.Message = "Unknown error";
+        __respObject.Message = "No message";
     }
     else if (typeof (message) === "object") {
         __respObject.Message = JSON.stringify(message);
@@ -68,6 +68,13 @@ function ERROR(e, message) {
 
     response.setBody(JSON.stringify(__respObject));
     throw new Error(JSON.stringify(__respObject));
+}
+
+function ERROR_RETURN(error) {
+    if (__respObject.Status >= 0) {
+        __respObject.Status = Status.InternalError;
+        __respObject.Message = "Unexpected error";
+    }
 }
 
 /**

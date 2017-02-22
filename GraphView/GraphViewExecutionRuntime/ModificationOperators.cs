@@ -92,7 +92,8 @@ namespace GraphView
             vertexObject["id"] = vertexId;
             vertexObject["_partition"] = vertexId;
 
-            this.Connection.CreateDocumentAsync(vertexObject).Wait();
+            //this.Connection.CreateDocumentAsync(vertexObject).Wait();
+            this.Connection.SP_AddV(vertexObject);
 
             VertexField vertexField = Connection.VertexCache.GetVertexField(vertexId, vertexObject);
 

@@ -32,12 +32,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json;
 using System.Threading;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 // For debugging
 
@@ -138,9 +142,8 @@ namespace GraphView
         {
             EnsureDatabaseExist();
 
-            DocumentCollection docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(
-                                                         UriFactory.CreateDatabaseUri(this.DocDBDatabaseId)
-                                                     ).Where(c => c.Id == this.DocDBCollectionId)
+            DocumentCollection docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
+                                                     .Where(c => c.Id == this.DocDBCollectionId)
                                                      .AsEnumerable()
                                                      .FirstOrDefault();
 
@@ -150,8 +153,14 @@ namespace GraphView
             }
             CreateCollection();
 
-            Trace.WriteLine($"Database/Collection {this.DocDBDatabaseId}/{this.DocDBCollectionId} has been reset.");
+            // Upload the stored procedures
+            UpsertStoredProcedure(STORED_PROCEDURE_ADDE, GraphView.Properties.Resources.sproc_AddE);
+            UpsertStoredProcedure(STORED_PROCEDURE_ADDV, GraphView.Properties.Resources.sproc_AddV);
+
+            Trace.WriteLine($"[ResetCollection] Database/Collection {this.DocDBDatabaseId}/{this.DocDBCollectionId} has been reset.");
         }
+
+
 
         private void CreateCollection()
         {
@@ -281,11 +290,132 @@ namespace GraphView
         }
 
         
-        public static string GenerateDocumentId()
+        internal static string GenerateDocumentId()
         {
             // TODO: Implement a stronger Id generation
             Guid guid = Guid.NewGuid();
             return guid.ToString("D");
         }
+    }
+
+    public partial class GraphViewConnection
+    {
+        private const string STORED_PROCEDURE_ADDE = "sproc_AddE";
+        private const string STORED_PROCEDURE_ADDV = "sproc_AddV";
+        
+        private void UpsertStoredProcedure(string name, string body)
+        {
+            StoredProcedure sp = new StoredProcedure {
+                Id = name,
+                Body = body,
+            };
+            ResourceResponse<StoredProcedure> resp = this.DocDBClient.CreateStoredProcedureAsync(this._docDBCollectionUri, sp).Result;
+            if (resp.StatusCode != HttpStatusCode.Created) {
+                Trace.WriteLine($"[UpsertStoredProcedure({name})] Error: " +
+                                $"Response status code = {resp.StatusCode}({(int)resp.StatusCode})");
+            }
+            else {
+                Trace.WriteLine($"[UpsertStoredProcedure] Upserted: {name}");
+            }
+        }
+
+        private DocDBStoredProcedureResult ExecuteStoredProcedure(string name, params dynamic[] parameters)
+        {
+            try {
+                StoredProcedureResponse<string> resp = this.DocDBClient.ExecuteStoredProcedureAsync<string>(
+                    UriFactory.CreateStoredProcedureUri(this.DocDBDatabaseId, this.DocDBCollectionId, name),
+                    parameters).Result;
+                return JsonConvert.DeserializeObject<DocDBStoredProcedureResult>(resp.Response);
+            }
+            catch (AggregateException aggex) when (aggex.InnerExceptions.Count == 1) {
+                DocumentClientException ex = aggex.InnerException as DocumentClientException;
+                string exMsg = ex.Message;
+
+                //
+                // exMsg looks like:
+                //   Message: {"Errors":["Encountered exception while executing function. Exception = Error: {\"Status\":-1,\"Message\":\"Unknown error\",\"DocDBError\":{\"message\":\"{\\\"Errors\\\":[\\\"Resource with specified id or name already exists\\\"]}\",\"number\":409},\"Content\":null}\r\nStack trace: Error: {\"Status\":-1,\"Message\":\"Unknown error\",\"DocDBError\":{\"message\":\"{\\\"Errors\\\":[\\\"Resource with specified id or name already exists\\\"]}\",\"number\":409},\"Content\":null}\n   at ERROR (sproc_AddV.js:77:9)\n   at Anonymous function (sproc_AddV.js:145:21)\n   at Anonymous"]}
+                //   ActivityId: ff47cb4c-90e7-4387-bc1a-551ed29d0747, Request URI: rntbd://10.172.142.46:10253/apps/DocDbApp/services/DocDbServer5/partitions/a4cb4951-38c8-11e6-8106-8cdcd42c33be/replicas/1p/
+                // TODO: A HACK!
+                //
+                string line = exMsg.Split('\n')[0].Trim();
+                if (line.StartsWith("Message:")) {
+                    line = "{\"Message\":" + line.Substring("Message:".Length) + "}";
+                }
+                JObject root = JObject.Parse(line);
+                string errMsg = (string)((JArray)root["Message"]["Errors"])[0];
+                string errMsgLine = errMsg.Split('\n')[0].Trim();
+                string resultJson = errMsgLine.Substring(
+                    errMsgLine.IndexOf("Exception = Error:", StringComparison.OrdinalIgnoreCase) + "Exception = Error:".Length);
+                return JsonConvert.DeserializeObject<DocDBStoredProcedureResult>(resultJson);
+            }
+        }
+
+        internal DocDBStoredProcedureResult SP_AddV(JObject vertexObject)
+        {
+            Debug.Assert((string)vertexObject["id"] != null, "The vertexObject should have 'id' field");
+            Debug.Assert((string)vertexObject["_partition"] != null, "The vertexObject should have '_partition' field");
+            Debug.Assert((string)vertexObject["id"] == (string)vertexObject["_partition"], "The vertexObject's id != _partition");
+
+            Debug.Assert((long)vertexObject["_nextEdgeOffset"] == 0, "The vertexObject's _nextEdgeOffset should be 0");
+
+            DocDBStoredProcedureResult result = ExecuteStoredProcedure(STORED_PROCEDURE_ADDV, vertexObject);
+            Debug.WriteLine($"[SP_AddV({vertexObject["id"]})] Response: {JsonConvert.SerializeObject(result)}");
+            return result;
+        }
+
+
+        internal DocDBStoredProcedureResult SP_AddE(string srcVertexId, string sinkVertexId, JObject edgeObject, bool isReverse)
+        {
+            Debug.Assert(edgeObject["_offset"] == null, "The edgeObject should NOT specify '_offset' field");
+            if (isReverse) {
+                Debug.Assert((string)edgeObject["_srcV"] == srcVertexId);
+            }
+            else {
+                Debug.Assert((string)edgeObject["_sinkV"] == sinkVertexId);
+            }
+
+            DocDBStoredProcedureResult result = ExecuteStoredProcedure(STORED_PROCEDURE_ADDE, srcVertexId, sinkVertexId, edgeObject, isReverse);
+            Debug.WriteLine($"[SP_AddE({srcVertexId}->{sinkVertexId})] Response: {JsonConvert.SerializeObject(result)}");
+            return result;
+        }
+
+    }
+
+
+    internal enum DocDBStoredProcedureStatus
+    {
+        Success = 0,
+
+        DBError = -1,
+        NotAccepted = -2,
+        AssertionFailed = -3,
+        InternalError = -4,
+    }
+
+    internal class DocDBStoredProcedureResult
+    {
+        internal class DocDBErrorObject
+        {
+            [JsonProperty("number", Required = Required.Always)]
+            [JsonConverter(typeof(StringEnumConverter))]
+            public HttpStatusCode ErrorCode { get; private set; }
+
+            //[JsonProperty("body", Required = Required.Always)]
+            [JsonProperty("message", Required = Required.Always)]
+            public string MessageBody { get; private set; }
+        }
+
+        [JsonProperty("Status", Required = Required.Always)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public DocDBStoredProcedureStatus Status { get; private set; }
+
+        [JsonProperty("Message", Required = Required.Always)]
+        public string Message { get; private set; }
+
+        [JsonProperty("DocDBError", Required = Required.AllowNull)]
+        public DocDBErrorObject DocDBError { get; private set; }
+
+        [JsonProperty("Content", Required = Required.AllowNull)]
+        public JObject Content { get; private set; }
     }
 }

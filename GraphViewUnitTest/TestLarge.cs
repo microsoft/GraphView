@@ -32,6 +32,7 @@ namespace GraphViewUnitTest
             string collectionName = $"[{frame.GetMethod().Name}]{tips}";
 
             GraphViewConnection connection = new GraphViewConnection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName);
+            connection.EnsureDatabaseExist();
             connection.ResetCollection();
             return connection;
         }
