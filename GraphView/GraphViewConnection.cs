@@ -154,8 +154,8 @@ namespace GraphView
             CreateCollection();
 
             // Upload the stored procedures
-            UpsertStoredProcedure(STORED_PROCEDURE_ADDE, GraphView.Properties.Resources.sproc_AddE);
-            UpsertStoredProcedure(STORED_PROCEDURE_ADDV, GraphView.Properties.Resources.sproc_AddV);
+            //UpsertStoredProcedure(STORED_PROCEDURE_ADDE, GraphView.Properties.Resources.sproc_AddE);
+            //UpsertStoredProcedure(STORED_PROCEDURE_ADDV, GraphView.Properties.Resources.sproc_AddV);
 
             Trace.WriteLine($"[ResetCollection] Database/Collection {this.DocDBDatabaseId}/{this.DocDBCollectionId} has been reset.");
         }
@@ -364,6 +364,15 @@ namespace GraphView
         }
 
 
+        /// <summary>
+        /// TODO: This is not done!
+        /// TODO: MUST NOT use this function to insert edges
+        /// </summary>
+        /// <param name="srcVertexId"></param>
+        /// <param name="sinkVertexId"></param>
+        /// <param name="edgeObject"></param>
+        /// <param name="isReverse"></param>
+        /// <returns></returns>
         internal DocDBStoredProcedureResult SP_AddE(string srcVertexId, string sinkVertexId, JObject edgeObject, bool isReverse)
         {
             Debug.Assert(edgeObject["_offset"] == null, "The edgeObject should NOT specify '_offset' field");
