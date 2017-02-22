@@ -401,9 +401,9 @@ namespace GraphView
             throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
         }
 
-        internal virtual void HasKey(GremlinToSqlContext currentContext, List<string> values)
+        internal virtual void HasId(GremlinToSqlContext currentContext, Predicate predicate)
         {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
         }
 
         internal virtual void HasLabel(GremlinToSqlContext currentContext, List<object> values)
@@ -411,7 +411,27 @@ namespace GraphView
             throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
         }
 
+        internal virtual void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
+        }
+
+        internal virtual void HasKey(GremlinToSqlContext currentContext, List<string> values)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
+        internal virtual void HasKey(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
         internal virtual void HasValue(GremlinToSqlContext currentContext, List<object> values)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
+        internal virtual void HasValue(GremlinToSqlContext currentContext, Predicate predicate)
         {
             throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
         }

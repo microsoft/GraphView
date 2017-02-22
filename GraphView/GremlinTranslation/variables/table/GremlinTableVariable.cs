@@ -223,7 +223,17 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            throw new NotImplementedException();
+        }
+
         internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
         {
             throw new NotImplementedException();
         }
@@ -288,7 +298,17 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            throw new NotImplementedException();
+        }
+
         internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
         {
             throw new NotImplementedException();
         }

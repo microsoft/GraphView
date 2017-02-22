@@ -750,9 +750,11 @@ namespace GraphView
             AddPredicate(SqlUtil.GetBooleanParenthesisExpr(concatSql));
         }
 
-        internal void HasKey(GremlinVariable lastVariable, List<string> values)
+        internal void HasId(GremlinVariable lastVariable, Predicate predicate)
         {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+            WScalarExpression firstExpr = lastVariable.GetVariableProperty(lastVariable.GetPrimaryKey()).ToScalarExpression();
+            WScalarExpression secondExpr = SqlUtil.GetValueExpr(predicate.Value);
+            AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals));
         }
 
         internal void HasLabel(GremlinVariable lastVariable, List<object> values)
@@ -768,12 +770,32 @@ namespace GraphView
             AddPredicate(SqlUtil.GetBooleanParenthesisExpr(concatSql));
         }
 
-        internal virtual void HasValue(GremlinToSqlContext currentContext, List<object> values)
+        internal void HasLabel(GremlinVariable lastVariable, Predicate predicate)
+        {
+            throw new QueryCompilationException("The Has(propertyKey, traversal) step only applies to vertices and edges.");
+        }
+
+        internal void HasKey(GremlinVariable lastVariable, List<string> values)
         {
             throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
         }
 
-        internal virtual void HasNot(GremlinToSqlContext currentContext, string propertyKey)
+        internal void HasKey(GremlinVariable lastVariable, Predicate predicate)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
+        internal void HasValue(GremlinToSqlContext currentContext, List<object> values)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
+        internal void HasValue(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+        }
+
+        internal void HasNot(GremlinToSqlContext currentContext, string propertyKey)
         {
             throw new QueryCompilationException("The HasNot(propertyKey) step only applies to vertices and edges.");
         }

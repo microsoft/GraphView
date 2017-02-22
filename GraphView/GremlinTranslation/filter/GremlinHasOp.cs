@@ -9,17 +9,21 @@ namespace GraphView
 {
     internal enum HasOpType
     {
-        HasKey,
-        HasKeyValue,
-        HasLabelKeyValue,
-        HasLabelKeyPredicate,
-        HasKeyPredicate,
-        HasKeyTraversal,
+        HasProperty,
+        HasPropertyValue,
+        HasPropertyPredicate,
+        HasPropertyTraversal,
+        HasLabelPropertyValue,
+        HasLabelPropertyPredicate,
 
         HasId,
-        HasKeys,
+        HasIdPredicate,
+        HasKey,
+        HasKeyPredicate,
         HasLabel,
-        HasValue
+        HasLabelPredicate,
+        HasValue,
+        HasValuePredicate
     }
     internal class GremlinHasOp: GremlinTranslationOperator
     {
@@ -35,14 +39,14 @@ namespace GraphView
         public GremlinHasOp(string propertyKey)
         {
             PropertyKey = propertyKey;
-            OpType = HasOpType.HasKey;
+            OpType = HasOpType.HasProperty;
         }
 
         public GremlinHasOp(string propertyKey, object value)
         {
             PropertyKey = propertyKey;
             Value = value;
-            OpType = HasOpType.HasKeyValue;
+            OpType = HasOpType.HasPropertyValue;
         }
 
         public GremlinHasOp(string label, string propertyKey, object value)
@@ -50,27 +54,32 @@ namespace GraphView
             Label = label;
             PropertyKey = propertyKey;
             Value = value;
-            OpType = HasOpType.HasLabelKeyValue;
+            OpType = HasOpType.HasLabelPropertyValue;
         }
 
         public GremlinHasOp(string propertyKey, Predicate predicate)
         {
             PropertyKey = propertyKey;
             Predicate = predicate;
-            OpType = HasOpType.HasKeyPredicate;
+            OpType = HasOpType.HasPropertyPredicate;
         }
-
 
         public GremlinHasOp(string propertyKey, GraphTraversal2 traversal)
         {
             PropertyKey = propertyKey;
             Traversal = traversal;
-            OpType = HasOpType.HasKeyTraversal;
+            OpType = HasOpType.HasPropertyTraversal;
         }
 
         public GremlinHasOp(HasOpType type, params object[] values)
         {
             Values = new List<object>(values);
+            OpType = type;
+        }
+
+        public GremlinHasOp(HasOpType type, Predicate predicate)
+        {
+            Predicate = predicate;
             OpType = type;
         }
 
@@ -94,41 +103,54 @@ namespace GraphView
             switch (OpType)
             {
                 //has(key)
-                case HasOpType.HasKey:
+                case HasOpType.HasProperty:
                     inputContext.PivotVariable.Has(inputContext, PropertyKey);
                     break;
 
                 //has(key, value)
-                case HasOpType.HasKeyValue:
+                case HasOpType.HasPropertyValue:
                     inputContext.PivotVariable.Has(inputContext, PropertyKey, Value);
                     break;
 
                 //has(key, predicate)
-                case HasOpType.HasKeyPredicate:
+                case HasOpType.HasPropertyPredicate:
                     inputContext.PivotVariable.Has(inputContext, PropertyKey, Predicate);
                     break;
 
                 //has(label, key, value)
-                case HasOpType.HasLabelKeyValue:
+                case HasOpType.HasLabelPropertyValue:
                     inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Value);
                     break;
 
                 //has(label, key, predicate)
-                case HasOpType.HasLabelKeyPredicate:
+                case HasOpType.HasLabelPropertyPredicate:
                     inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Predicate);
                     break;
 
-                case HasOpType.HasKeyTraversal:
-                    throw new NotImplementedException();
+                case HasOpType.HasPropertyTraversal:
+                    Traversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                    GremlinToSqlContext hasContext = Traversal.GetEndOp().GetContext();
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, hasContext);
+                    break;
 
                 //hasId(values)
                 case HasOpType.HasId:
                     inputContext.PivotVariable.HasId(inputContext, Values);
                     break;
 
+                //hasId(predicate)
+                case HasOpType.HasIdPredicate:
+                    inputContext.PivotVariable.HasId(inputContext, Predicate);
+                    break;
+
                 //hasKey(values)
-                case HasOpType.HasKeys:
+                case HasOpType.HasKey:
                     inputContext.PivotVariable.HasKey(inputContext, Keys);
+                    break;
+
+                //hasKey(predicate)
+                case HasOpType.HasKeyPredicate:
+                    inputContext.PivotVariable.HasKey(inputContext, Predicate);
                     break;
 
                 //hasLabel(values)
@@ -136,9 +158,19 @@ namespace GraphView
                     inputContext.PivotVariable.HasLabel(inputContext, Values);
                     break;
 
+                //hasLabel(predicate)
+                case HasOpType.HasLabelPredicate:
+                    inputContext.PivotVariable.HasLabel(inputContext, Predicate);
+                    break;
+
                 //hasValue(values)
                 case HasOpType.HasValue:
                     inputContext.PivotVariable.HasValue(inputContext, Values);
+                    break;
+
+                //hasValue(predicate)
+                case HasOpType.HasValuePredicate:
+                    inputContext.PivotVariable.HasValue(inputContext, Predicate);
                     break;
 
             }

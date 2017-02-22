@@ -138,9 +138,19 @@ namespace GraphView
             currentContext.HasId(this, values);
         }
 
+        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            currentContext.HasId(this, predicate);
+        }
+
         internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
         {
             currentContext.HasLabel(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            currentContext.HasLabel(this, predicate);
         }
 
         internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
@@ -206,9 +216,19 @@ namespace GraphView
             currentContext.HasId(this, values);
         }
 
+        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            currentContext.HasId(this, predicate);
+        }
+
         internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
         {
             currentContext.HasLabel(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            currentContext.HasLabel(this, predicate);
         }
 
         internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
@@ -320,9 +340,19 @@ namespace GraphView
             currentContext.HasId(this, values);
         }
 
+        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            currentContext.HasId(this, predicate);
+        }
+
         internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
         {
             currentContext.HasLabel(this, values);
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+            currentContext.HasLabel(this, predicate);
         }
 
         internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
