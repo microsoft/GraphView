@@ -26,7 +26,7 @@ namespace GraphView
             
             foreach (var id in VertexIdsOrElements)
             {
-                if (id is int)
+                if (id is int || id is string)
                 {
                     WScalarExpression firstExpr = newVariable.GetVariableProperty(GremlinKeyword.NodeID).ToScalarExpression();
                     WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);
