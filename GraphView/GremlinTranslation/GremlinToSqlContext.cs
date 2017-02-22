@@ -703,7 +703,10 @@ namespace GraphView
 
         internal void Has(GremlinVariable lastVariable, string propertyKey)
         {
-            throw new QueryCompilationException("The Has(propertyKey) step only applies to vertices and edges.");
+            List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(lastVariable.DefaultProjection().ToScalarExpression());
+            parameters.Add(SqlUtil.GetValueExpr(propertyKey));
+            AddPredicate(SqlUtil.GetFunctionBooleanExpression("hasProperty", parameters));
         }
 
         internal void Has(GremlinVariable lastVariable, string propertyKey, object value)

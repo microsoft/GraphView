@@ -198,6 +198,11 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
+        {
+            throw new NotImplementedException();
+        }
+
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
         {
             throw new NotImplementedException();
@@ -269,6 +274,11 @@ namespace GraphView
         }
 
         internal override void Drop(GremlinToSqlContext currentContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
         {
             throw new NotImplementedException();
         }
