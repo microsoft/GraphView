@@ -25,13 +25,21 @@ namespace GraphViewUnitTest
             //    "GroupMatch", "GremlinFunctionalTestSuite");
         }
 
+        static GraphViewCommand GetGraphViewCommand(GraphViewConnection connection)
+        {
+            GraphViewCommand command = new GraphViewCommand(connection);
+            //command.UseReverseEdges = false;
+
+            return command;
+        }
+
         [TestMethod]
         public void Test1CreateApplication()
         {
             GraphViewConnection connection = GetGraphViewConnection();
             connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             //graph.g().V().Drop().Next();
 
@@ -68,7 +76,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results = graph.g().Inject(0).Coalesce(
                 GraphTraversal2.__().Union(
@@ -536,7 +544,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             //var pre_fetch = graph.g()
             //    .V()
@@ -1485,7 +1493,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results = graph.g()
                 .V()
@@ -1631,7 +1639,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g()
@@ -1769,7 +1777,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g()
@@ -1907,7 +1915,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g()
@@ -1973,7 +1981,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results = graph.g().Inject(0).Coalesce(
                 GraphTraversal2.__().Union(
@@ -2853,7 +2861,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g().Inject(0).Coalesce(
@@ -3000,7 +3008,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g().Inject(0).Coalesce(
@@ -3179,7 +3187,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g().Inject(0).Coalesce(
@@ -3911,7 +3919,7 @@ namespace GraphViewUnitTest
         public void Test12DeleteProductProperty_validation_error()
         {
             GraphViewConnection connection = GetGraphViewConnection();
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             //connection.ResetCollection();
 
@@ -4092,7 +4100,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g()
@@ -4239,7 +4247,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g().Inject(0).Coalesce(
@@ -4376,7 +4384,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g().Inject(0).Coalesce(
@@ -4519,7 +4527,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g()
@@ -4666,7 +4674,7 @@ namespace GraphViewUnitTest
             GraphViewConnection connection = GetGraphViewConnection();
             //connection.ResetCollection();
 
-            GraphViewCommand graph = new GraphViewCommand(connection);
+            GraphViewCommand graph = GetGraphViewCommand(connection);
 
             var results =
                 graph.g().V().Has("_app", "test-app").Drop().Next();
