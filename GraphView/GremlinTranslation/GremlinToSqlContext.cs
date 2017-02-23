@@ -349,8 +349,8 @@ namespace GraphView
         {
             var selectElements = new List<WSelectElement>();
 
-            if (PivotVariable is GremlinDropVariable
-                || (PivotVariable is GremlinUnionVariable && HomeVariable is GremlinSideEffectVariable))
+            if ((PivotVariable is GremlinUnionVariable && HomeVariable is GremlinSideEffectVariable)
+                || PivotVariable.GetVariableType() == GremlinVariableType.NULL)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
             }

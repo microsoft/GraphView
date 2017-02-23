@@ -90,7 +90,7 @@ namespace GraphView
 
         internal override string GetPrimaryKey()
         {
-            var primaryKey = "";
+            var primaryKey = "*";
             switch (GetVariableType())
             {
                 case GremlinVariableType.Edge:
@@ -115,7 +115,7 @@ namespace GraphView
 
         internal override string GetProjectKey()
         {
-            var projectKey = "";
+            var projectKey = "*";
             switch (GetVariableType())
             {
                 case GremlinVariableType.Edge:

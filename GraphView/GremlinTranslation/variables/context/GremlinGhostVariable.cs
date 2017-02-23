@@ -307,6 +307,21 @@ namespace GraphView
         public GremlinGhostTableVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label)
             : base(ghostVariable, attachedVariable, label) { }
 
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
+        }
+
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             currentContext.Both(this, edgeLabels);

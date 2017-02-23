@@ -11,6 +11,10 @@ namespace GraphView
     {
         public static GremlinUnionVariable Create(List<GremlinToSqlContext> unionContextList)
         {
+            if (unionContextList.Count == 0)
+            {
+                return new GremlinUnionNullVariable(unionContextList);
+            }
             if (GremlinUtil.IsTheSameOutputType(unionContextList))
             {
                 switch (unionContextList.First().PivotVariable.GetVariableType())
@@ -111,6 +115,13 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            if (UnionContextList.Count == 0)
+            {
+                foreach (var property in ProjectedProperties)
+                {
+                    parameters.Add(SqlUtil.GetValueExpr(property));
+                }
+            }
             foreach (var context in UnionContextList)
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
@@ -351,6 +362,94 @@ namespace GraphView
             : base(unionContextList, GremlinVariableType.NULL)
         {
         }
+
+        internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+        }
+
+        internal override void BothE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+        }
+
+        internal override void BothV(GremlinToSqlContext currentContext)
+        {
+        }
+
+        internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+        }
+
+        internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+        }
+
+        internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+        }
+
+        internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
+        {
+        }
+
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+        }
+
+        internal override void Drop(GremlinToSqlContext currentContext)
+        {
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
+        {
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
+        {
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
+        {
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
+        {
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
+        {
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
+        {
+        }
+
+        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
+        {
+        }
+
+        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
+        {
+        }
+
+        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+        }
+
+        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
+        {
+        }
     }
 
     internal class GremlinUnionTableVariable : GremlinUnionVariable
@@ -358,6 +457,21 @@ namespace GraphView
         public GremlinUnionTableVariable(List<GremlinToSqlContext> unionContextList)
             : base(unionContextList, GremlinVariableType.Table)
         {
+        }
+
+        internal override void InV(GremlinToSqlContext currentContext)
+        {
+            currentContext.InV(this);
+        }
+
+        internal override void OutV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OutV(this);
+        }
+
+        internal override void OtherV(GremlinToSqlContext currentContext)
+        {
+            currentContext.OtherV(this);
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
