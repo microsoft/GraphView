@@ -295,6 +295,7 @@ namespace GraphView
                             $"FROM doc\n" +
                             $"JOIN edge IN doc._edge\n" +
                             $"WHERE doc.id IN ({edgeIdList})\n" +
+                            $"  AND (edge._srcV = '{srcVertexId}')\n" +
                             $"  AND (edge._offset = {edgeOffset})\n";
                 }
                 else {
@@ -302,7 +303,6 @@ namespace GraphView
                             $"FROM doc\n" +
                             $"JOIN edge IN doc._edge\n" +
                             $"WHERE doc.id IN ({edgeIdList})\n" +
-                            $"  AND (edge._srcV = '{srcVertexId}')\n" +
                             $"  AND (edge._offset = {edgeOffset})\n";
                 }
                 JObject result = connection.ExecuteQueryUnique(query);
