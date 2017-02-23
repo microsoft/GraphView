@@ -23,10 +23,12 @@ namespace GraphView
         {
             private string CurrentRecord;
             private GraphViewExecutionOperator CurrentOperator;
+            OutputFormat outputFormat;
 
-            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator)
+            internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator,OutputFormat outputFormat)
             {
                 CurrentOperator = pCurrentOperator;
+                this.outputFormat = outputFormat;
             }
 
             public bool MoveNext()
@@ -36,10 +38,18 @@ namespace GraphView
                 RawRecord outputRec = null;
                 if ((outputRec = CurrentOperator.Next()) != null)
                 {
-                    var recordString = "";
-                    foreach (var fieldValue in outputRec.fieldValues)
+                    string recordString = "";
+                    switch (outputFormat)
                     {
-                        recordString += fieldValue + "  ";
+
+                        case OutputFormat.GraphSON:
+                            recordString = "[";
+                            recordString += outputRec[0].ToGraphSON();
+                            recordString += "]";
+                            break;
+                        default:
+                            recordString = outputRec[0].ToString();
+                            break;
                     }
                     CurrentRecord = recordString;
                     if (CurrentRecord != null)
@@ -77,7 +87,7 @@ namespace GraphView
 
         public IEnumerator<string> GetEnumerator()
         {
-            it = new GraphTraversalIterator(LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection));
+            it = new GraphTraversalIterator(LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection), outputFormat);
             return it;
         }
 
