@@ -23,7 +23,7 @@ namespace GraphViewUnitTest
 #endif
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static GraphViewConnection CreateConnection(string tips = null)
+        private static GraphViewConnection CreateConnection(string tips = null, int? edgeSpillThreshold = null)
         {
             StackFrame frame = new StackFrame(1);
             if (!string.IsNullOrEmpty(tips)) {
@@ -33,7 +33,7 @@ namespace GraphViewUnitTest
 
             GraphViewConnection connection = new GraphViewConnection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName);
             connection.EnsureDatabaseExist();
-            connection.ResetCollection();
+            connection.ResetCollection(edgeSpillThreshold);
             return connection;
         }
 
@@ -283,7 +283,7 @@ namespace GraphViewUnitTest
         public void TestChangeEdgeProperties_Large2Larger()
         {
             const int EDGE_COUNT = 4;
-            GraphViewConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name} E={EDGE_COUNT}");
+            GraphViewConnection connection = CreateConnection($"E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = new string('_', 1024 * 900);  // 900 KB
             string suffix2 = new string('_', 1024 * 1900);  // nearly 2MB
@@ -310,12 +310,46 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestSelfLoop_Small()
         {
-            GraphViewConnection connection = CreateConnection($"{MethodBase.GetCurrentMethod().Name}");
+            GraphViewConnection connection = CreateConnection($"");
             GraphViewCommand graph = new GraphViewCommand(connection);
 
             graph.g().AddV("Self").AddE("SelfLoop1").To(graph.g().V().HasLabel("Self")).Next();
             graph.g().V().HasLabel("Self").AddE("SelfLoop2").Next();
             //graph.g().AddV("Self").AddE("SelfLoop===").Next();
+        }
+
+        [TestMethod]
+        public void TestSpillThreshold_Small()
+        {
+            const int EDGE_COUNT = 20;
+            const int THRESHOLD = 6;
+            GraphViewConnection connection = CreateConnection($"Threshold={THRESHOLD},E={EDGE_COUNT}", THRESHOLD);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+
+            Console.WriteLine($"EdgeSpillThreashold: {connection.EdgeSpillThreshold}");
+            graph.g().AddV("SourceV").Next();
+            graph.g().AddV("SinkV").Next();
+            for (int i = 0; i < EDGE_COUNT; i++) {
+                graph.g().V().HasLabel("SourceV").AddE($"...E{i}...").Property($"E{i} Property", $"E{i} PropValue").To(graph.g().V().HasLabel("SinkV")).Next();
+            }
+        }
+
+
+        [TestMethod]
+        public void TestSpillThreshold_Large()
+        {
+            const int EDGE_COUNT = 7;
+            const int THRESHOLD = 2;
+            string prefix = new string('_', 1024 * 600);
+            GraphViewConnection connection = CreateConnection($"Threshold={THRESHOLD},E={EDGE_COUNT}", THRESHOLD);
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            Console.WriteLine($"EdgeSpillThreashold: {connection.EdgeSpillThreshold}");
+
+            graph.g().AddV("SourceV").Next();
+            graph.g().AddV("SinkV").Next();
+            for (int i = 0; i < EDGE_COUNT; i++) {
+                graph.g().V().HasLabel("SourceV").AddE($"...E{i}..{prefix}.").Property($"E{i} Property", $"E{i} PropValue").To(graph.g().V().HasLabel("SinkV")).Next();
+            }
         }
     }
 }

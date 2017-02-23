@@ -60,6 +60,11 @@ namespace GraphView
 
         public bool UseReverseEdges { get; set; }
 
+        /// <summary>
+        /// Spill if how many edges are in a edge-document?
+        /// </summary>
+        public int EdgeSpillThreshold { get; private set; } = 0;
+
         internal VertexObjectCache VertexCache { get; }
 
         internal string Identifier { get; }
@@ -108,6 +113,13 @@ namespace GraphView
             this.VertexCache = VertexObjectCache.FromConnection(this);
 
             this.UseReverseEdges = true;
+
+            // Retrieve metadata from DocDB
+            JObject metaObject = RetrieveDocumentById("metadata");
+            if (metaObject != null) {
+                this.EdgeSpillThreshold = (int)metaObject["_edgeSpillThreshold"];
+            }
+            Debug.Assert(this.EdgeSpillThreshold >= 0, "The edge-spill threshold should >= 0");
         }
 
         internal DbPortal CreateDatabasePortal()
@@ -142,7 +154,7 @@ namespace GraphView
         }
 
 
-        public void ResetCollection()
+        public void ResetCollection(int? edgeSpillThreshold = null)
         {
             EnsureDatabaseExist();
 
@@ -157,9 +169,29 @@ namespace GraphView
             }
             CreateCollection();
 
-            // Upload the stored procedures
-            //UpsertStoredProcedure(STORED_PROCEDURE_ADDE, GraphView.Properties.Resources.sproc_AddE);
-            //UpsertStoredProcedure(STORED_PROCEDURE_ADDV, GraphView.Properties.Resources.sproc_AddV);
+            //
+            // Create a meta-data document!
+            // Here we just store the "edgeSpillThreshold" in it
+            //
+            JValue jEdgeSpillThreshold;
+            if (edgeSpillThreshold == null) {
+                jEdgeSpillThreshold = JValue.CreateNull();
+                this.EdgeSpillThreshold = 0;
+            }
+            else if (edgeSpillThreshold <= 0) {
+                jEdgeSpillThreshold = (JValue)0;
+                this.EdgeSpillThreshold = 0;
+            }
+            else {  // edgeSpillThreshold > 0
+                jEdgeSpillThreshold = (JValue)edgeSpillThreshold;
+                this.EdgeSpillThreshold = (int)edgeSpillThreshold;
+            }
+            JObject metaObject = new JObject {
+                ["id"] = "metadata",
+                ["_partition"] = "metapartition",
+                ["_edgeSpillThreshold"] = jEdgeSpillThreshold
+            };
+            CreateDocumentAsync(metaObject).Wait();
 
             Trace.WriteLine($"[ResetCollection] Database/Collection {this.DocDBDatabaseId}/{this.DocDBCollectionId} has been reset.");
         }
@@ -250,23 +282,32 @@ namespace GraphView
             }
         }
 
-        
+
 
 
         internal JObject RetrieveDocumentById(string docId)
         {
             Debug.Assert(!string.IsNullOrEmpty(docId), "'docId' should not be null or empty");
 
-            string script = $"SELECT * FROM Doc WHERE Doc.id = '{docId}'";
-            FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 };  // dynamic paging
-            List<dynamic> result = this.DocDBClient.CreateDocumentQuery(
-                UriFactory.CreateDocumentCollectionUri(this.DocDBDatabaseId, this.DocDBCollectionId),
-                script,
-                queryOptions
-            ).ToList();
+            try {
+                //
+                // It seems that DocDB won't return an empty result, but throw an exception instead!
+                // 
+                string script = $"SELECT * FROM Doc WHERE Doc.id = '{docId}'";
+                FeedOptions queryOptions = new FeedOptions { MaxItemCount = -1 }; // dynamic paging
+                List<dynamic> result = this.DocDBClient.CreateDocumentQuery(
+                    UriFactory.CreateDocumentCollectionUri(this.DocDBDatabaseId, this.DocDBCollectionId),
+                    script,
+                    queryOptions
+                ).ToList();
 
-            Debug.Assert(result.Count <= 1, $"BUG: Found multiple documents sharing the same docId: {docId}");
-            return (result.Count == 0) ? null : (JObject)result[0];
+                Debug.Assert(result.Count <= 1, $"BUG: Found multiple documents sharing the same docId: {docId}");
+                return (result.Count == 0) ? null : (JObject)result[0];
+            }
+            catch (AggregateException aggex)
+                when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound") {  // HACK
+                return null;
+            }
         }
 
 

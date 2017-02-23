@@ -117,11 +117,34 @@ namespace GraphView
                 JArray edgesArray = (JArray)edgeDocument["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
-                edgesArray.Add(edgeObject);
 
-                UploadOne(connection, lastEdgeDocId, edgeDocument, out tooLarge);
+                if (connection.EdgeSpillThreshold == 0) {
+                    // Don't spill an edge-document until it is too large
+                    edgesArray.Add(edgeObject);
+                    tooLarge = false;
+                }
+                else {
+                    // Explicitly specified a threshold
+                    Debug.Assert(connection.EdgeSpillThreshold > 0, "connection.EdgeSpillThreshold > 0");
+                    if (edgesArray.Count >= connection.EdgeSpillThreshold) {
+                        // The threshold is reached!
+                        tooLarge = true;
+                    }
+                    else {
+                        // The threshold is not reached
+                        edgesArray.Add(edgeObject);
+                        tooLarge = false;
+                    }
+                }
+
+                // If the edge-document is not too large (reach the threshold), try to
+                //   upload the edge into the document
+                if (!tooLarge) {
+                    UploadOne(connection, lastEdgeDocId, edgeDocument, out tooLarge);
+                }
                 if (tooLarge) {
                     // The edge is too large to be filled into the last edge-document
+                    // or the threashold is reached:
                     // Create a new edge-document to store the edge.
                     JObject edgeDocObject = new JObject {
                         ["id"] = GraphViewConnection.GenerateDocumentId(),
@@ -145,8 +168,21 @@ namespace GraphView
                 Debug.Assert(!dummyTooLarge);
             }
             else if (edgeContainer is JArray) {
+
                 ((JArray)edgeContainer).Add(edgeObject);
-                UploadOne(connection, (string)vertexObject["id"], vertexObject, out tooLarge);
+                if (connection.EdgeSpillThreshold == 0) {
+                    // Don't spill an edge-document until it is too large
+                    tooLarge = false;
+                }
+                else {
+                    // Explicitly specified a threshold
+                    Debug.Assert(connection.EdgeSpillThreshold > 0, "connection.EdgeSpillThreshold > 0");
+                    tooLarge = (((JArray)edgeContainer).Count >= connection.EdgeSpillThreshold);
+                }
+
+                if (!tooLarge) {
+                    UploadOne(connection, (string)vertexObject["id"], vertexObject, out tooLarge);
+                }
                 if (tooLarge) {
                     string existEdgeDocId;
                     SpillVertexEdgesToDocument(connection, vertexObject, out existEdgeDocId, out newEdgeDocId);

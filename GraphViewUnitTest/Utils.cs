@@ -24,13 +24,16 @@ namespace GraphViewUnitTest
             return ret;
         }
 
-        public static void ResetCollection(string collection)
-        {
-            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
-                    "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
-                    "GroupMatch", collection);
+        //
+        // [Obsolete] Use GraphViewConnection.ResetCollection() instead
+        //
+        //public static void ResetCollection(string collection)
+        //{
+        //    GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+        //            "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+        //            "GroupMatch", collection);
 
-            connection.ResetCollection();
-        }
+        //    connection.ResetCollection();
+        //}
     }
 }
