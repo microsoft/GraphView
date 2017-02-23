@@ -51,6 +51,16 @@ namespace GraphView
             LocalContext.PopulateGremlinPath();
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            return LocalContext.FetchVarsFromCurrAndChildContext();
+        }
+
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            return LocalContext.SelectVarsFromCurrAndChildContext(label);
+        }
+
         internal override GremlinVariableType GetUnfoldVariableType()
         {
             return LocalContext.PivotVariable.GetUnfoldVariableType();

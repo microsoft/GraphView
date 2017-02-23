@@ -26,11 +26,6 @@ namespace GraphView
             return new GremlinMapTableVariable(MapContext);
         }
 
-        internal override GremlinVariableProperty GetPath()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.Path);
-        }
-
         public GremlinMapVariable(GremlinToSqlContext mapContext, GremlinVariableType variableType)
             : base(variableType)
         {

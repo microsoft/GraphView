@@ -62,6 +62,11 @@ namespace GraphView
             }
         }
 
+        internal override GremlinVariableProperty GetPath()
+        {
+            return new GremlinVariableProperty(this, GremlinKeyword.Path);
+        }
+
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>();

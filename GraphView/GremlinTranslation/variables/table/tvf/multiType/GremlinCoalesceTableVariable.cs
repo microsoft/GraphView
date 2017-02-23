@@ -39,11 +39,6 @@ namespace GraphView
             }
         }
 
-        internal override GremlinVariableProperty GetPath()
-        {
-           return new GremlinVariableProperty(this, GremlinKeyword.Path);
-        }
-
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
@@ -52,14 +47,6 @@ namespace GraphView
             foreach (var context in CoalesceContextList)
             {
                 context.Populate(property);
-            }
-        }
-
-        internal override void PopulateGremlinPath()
-        {
-            foreach (var context in CoalesceContextList)
-            {
-                context.PopulateGremlinPath();
             }
         }
 
@@ -90,30 +77,7 @@ namespace GraphView
 
             foreach (var context in CoalesceContextList)
             {
-                WSelectQueryBlock selectQueryBlock = context.ToSelectQueryBlock();
-                selectQueryBlock.SelectElements.Clear();
-                //selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(context.PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
-                foreach (var projectProperty in ProjectedProperties)
-                {
-                    if (projectProperty == GremlinKeyword.TableDefaultColumnName)
-                    {
-                        GremlinVariableProperty defaultProjection = context.PivotVariable.DefaultProjection();
-                        selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(),
-                            GremlinKeyword.TableDefaultColumnName));
-                    }
-                    else if (context.PivotVariable.ProjectedProperties.Contains(projectProperty))
-                    {
-                        selectQueryBlock.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(
-                            context.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
-                    }
-                    else
-                    {
-                        selectQueryBlock.SelectElements.Add(
-                            SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
-                    }
-                }
-                parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
+                parameters.Add(SqlUtil.GetScalarSubquery(context.ToSelectQueryBlock(ProjectedProperties)));
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coalesce, parameters, this, GetVariableName());
 

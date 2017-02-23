@@ -358,16 +358,28 @@ namespace GraphView
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
+                    WSelectScalarExpression selectScalarExpr;
                     if (projectProperty == GremlinKeyword.TableDefaultColumnName)
                     {
                         GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                        selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                        selectScalarExpr = SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName);
+                        selectElements.Add(selectScalarExpr);
                     }
                     else if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
                     {
-                        selectElements.Add(
-                            SqlUtil.GetSelectScalarExpr(
-                                PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
+                        
+                        if (PivotVariable.ProjectedProperties.Contains(projectProperty))
+                        {
+                            WScalarExpression columnExpr =
+                                PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression();
+                            selectScalarExpr = SqlUtil.GetSelectScalarExpr(columnExpr, projectProperty);
+                            selectElements.Add(selectScalarExpr);
+                        }
+                        else
+                        {
+                            selectScalarExpr = SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty);
+                            selectElements.Add(selectScalarExpr);
+                        }
                     }
                 }
             }

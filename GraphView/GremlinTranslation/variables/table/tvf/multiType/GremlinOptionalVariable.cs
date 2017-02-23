@@ -74,7 +74,6 @@ namespace GraphView
             OptionalContext.PopulateGremlinPath();
         }
 
-
         internal override bool ContainsLabel(string label)
         {
             if (base.ContainsLabel(label)) return true;
@@ -91,8 +90,6 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
-            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock();
-            secondQueryExpr.SelectElements.Clear();
             foreach (var projectProperty in ProjectedProperties)
             {
                 if (projectProperty == GremlinKeyword.TableDefaultColumnName)
@@ -111,26 +108,13 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
                 }
-
-                if (projectProperty == GremlinKeyword.TableDefaultColumnName)
-                {
-                    GremlinVariableProperty defaultProjection = OptionalContext.PivotVariable.DefaultProjection();
-                    secondQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(),
-                        GremlinKeyword.TableDefaultColumnName));
-                }
-                else if (OptionalContext.PivotVariable.ProjectedProperties.Contains(projectProperty))
-                {
-                    secondQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(
-                            OptionalContext.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), projectProperty));
-                }
-                else
-                {
-                    secondQueryExpr.SelectElements.Add(
-                        SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
-                }
+            }
+            if (OptionalContext.IsPopulateGremlinPath)
+            {
+                firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.Path));
             }
 
+            WSelectQueryBlock secondQueryExpr = OptionalContext.ToSelectQueryBlock(ProjectedProperties);
             var WBinaryQueryExpression = SqlUtil.GetBinaryQueryExpr(firstQueryExpr, secondQueryExpr);
 
             List<WScalarExpression> parameters = new List<WScalarExpression>();
