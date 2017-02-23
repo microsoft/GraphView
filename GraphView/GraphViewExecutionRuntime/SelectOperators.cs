@@ -1548,8 +1548,14 @@ namespace GraphView
         private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>> traversalList;
         private int activeTraversalIndex;
 
-        public UnionOperator()
+        //
+        // Only for union()
+        //
+        private GraphViewExecutionOperator inputOp;
+
+        public UnionOperator(GraphViewExecutionOperator inputOp)
         {
+            this.inputOp = inputOp;
             traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
             Open();
             activeTraversalIndex = 0;
@@ -1562,6 +1568,20 @@ namespace GraphView
 
         public override RawRecord Next()
         {
+            //
+            // Even the union() has no parameter, the input still needs to be drained for cases like g.V().addV().union()
+            //
+            if (traversalList.Count == 0)
+            {
+                while (inputOp.State())
+                {
+                    inputOp.Next();
+                }
+
+                Close();
+                return null;
+            }
+
             RawRecord traversalRecord = null;
             while (traversalRecord == null && activeTraversalIndex < traversalList.Count)
             {
@@ -1589,7 +1609,12 @@ namespace GraphView
 
         public override void ResetState()
         {
-            foreach (var tuple in traversalList)
+            if (traversalList.Count == 0)
+            {
+                inputOp.ResetState();
+            }
+
+            foreach (Tuple<ConstantSourceOperator, GraphViewExecutionOperator> tuple in traversalList)
             {
                 tuple.Item2.ResetState();
             }

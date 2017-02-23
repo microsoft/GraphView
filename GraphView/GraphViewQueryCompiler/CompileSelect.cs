@@ -1409,7 +1409,7 @@ namespace GraphView
         {
             ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
 
-            UnionOperator unionOp = new UnionOperator();
+            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
 
             WSelectQueryBlock firstSelectQuery = null;
             foreach (WScalarExpression parameter in Parameters)
@@ -1438,22 +1438,25 @@ namespace GraphView
 
             // Updates the raw record layout. The columns of this table-valued function 
             // are specified by the select elements of the input subqueries.
-            foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
+            if (firstSelectQuery != null)
             {
-                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null)
+                foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
                 {
-                    throw new SyntaxErrorException("The input subquery of a union table reference can only select scalar elements.");
+                    WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                    if (selectScalar == null)
+                    {
+                        throw new SyntaxErrorException("The input subquery of a union table reference can only select scalar elements.");
+                    }
+                    WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                    if (columnRef == null)
+                    {
+                        throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
+                    }
+                    if (columnRef.ColumnType == ColumnType.Wildcard)
+                        continue;
+                    string selectElementAlias = selectScalar.ColumnName;
+                    context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
                 }
-                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef == null)
-                {
-                    throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
-                }
-                if (columnRef.ColumnType == ColumnType.Wildcard)
-                    continue;
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
             }
 
             context.CurrentExecutionOperator = unionOp;
