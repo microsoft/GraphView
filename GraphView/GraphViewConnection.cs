@@ -117,7 +117,11 @@ namespace GraphView
             // Retrieve metadata from DocDB
             JObject metaObject = RetrieveDocumentById("metadata");
             if (metaObject != null) {
-                this.EdgeSpillThreshold = (int)metaObject["_edgeSpillThreshold"];
+                if (metaObject["_edgeSpillThreshold"] == null) {
+                    this.EdgeSpillThreshold = 0;
+                } else {
+                    this.EdgeSpillThreshold = (int)metaObject["_edgeSpillThreshold"];
+                }
             }
             Debug.Assert(this.EdgeSpillThreshold >= 0, "The edge-spill threshold should >= 0");
         }
