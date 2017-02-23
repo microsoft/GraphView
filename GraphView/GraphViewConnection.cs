@@ -117,6 +117,7 @@ namespace GraphView
             // Retrieve metadata from DocDB
             JObject metaObject = RetrieveDocumentById("metadata");
             if (metaObject != null) {
+                Debug.Assert((int?)metaObject["_edgeSpillThreshold"] != null);
                 this.EdgeSpillThreshold = (int)metaObject["_edgeSpillThreshold"];
             }
             Debug.Assert(this.EdgeSpillThreshold >= 0, "The edge-spill threshold should >= 0");
@@ -174,11 +175,7 @@ namespace GraphView
             // Here we just store the "edgeSpillThreshold" in it
             //
             JValue jEdgeSpillThreshold;
-            if (edgeSpillThreshold == null) {
-                jEdgeSpillThreshold = JValue.CreateNull();
-                this.EdgeSpillThreshold = 0;
-            }
-            else if (edgeSpillThreshold <= 0) {
+            if (edgeSpillThreshold == null || edgeSpillThreshold <= 0) {
                 jEdgeSpillThreshold = (JValue)0;
                 this.EdgeSpillThreshold = 0;
             }
