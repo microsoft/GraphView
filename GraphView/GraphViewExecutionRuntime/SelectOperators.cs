@@ -1549,7 +1549,7 @@ namespace GraphView
         private int activeTraversalIndex;
 
         //
-        // Only for union()
+        // Only for union() without any branch
         //
         private GraphViewExecutionOperator inputOp;
 
@@ -1569,7 +1569,7 @@ namespace GraphView
         public override RawRecord Next()
         {
             //
-            // Even the union() has no parameter, the input still needs to be drained for cases like g.V().addV().union()
+            // Even the union() has no branch, the input still needs to be drained for cases like g.V().addV().union()
             //
             if (traversalList.Count == 0)
             {

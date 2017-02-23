@@ -1411,34 +1411,39 @@ namespace GraphView
 
             UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
 
-            WSelectQueryBlock firstSelectQuery = null;
-            foreach (WScalarExpression parameter in Parameters)
-            {
-                WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
-                if (scalarSubquery == null)
-                {
-                    throw new SyntaxErrorException("The input of a union table reference must be one or more scalar subqueries.");
-                }
+            bool isUnionWithoutAnyBranch = Parameters[0] is WValueExpression;
 
-                if (firstSelectQuery == null)
+            WSelectQueryBlock firstSelectQuery = null;
+            if (!isUnionWithoutAnyBranch)
+            {
+                foreach (WScalarExpression parameter in Parameters)
                 {
-                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
+                    if (scalarSubquery == null)
+                    {
+                        throw new SyntaxErrorException("The input of a union table reference must be one or more scalar subqueries.");
+                    }
+
                     if (firstSelectQuery == null)
                     {
-                        throw new SyntaxErrorException("The input of a union table reference must be one or more select query blocks.");
+                        firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                        if (firstSelectQuery == null)
+                        {
+                            throw new SyntaxErrorException("The input of a union table reference must be one or more select query blocks.");
+                        }
                     }
-                }
 
-                QueryCompilationContext subcontext = new QueryCompilationContext(context);
-                subcontext.CarryOn = true;
-                GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
-                subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
-                unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+                    QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                    subcontext.CarryOn = true;
+                    GraphViewExecutionOperator traversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                    subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
+                    unionOp.AddTraversal(subcontext.OuterContextOp, traversalOp);
+                }
             }
 
             // Updates the raw record layout. The columns of this table-valued function 
             // are specified by the select elements of the input subqueries.
-            if (firstSelectQuery != null)
+            if (!isUnionWithoutAnyBranch)
             {
                 foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
                 {
@@ -1456,6 +1461,14 @@ namespace GraphView
                         continue;
                     string selectElementAlias = selectScalar.ColumnName;
                     context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                }
+            }
+            else
+            {
+                foreach (WScalarExpression parameter in Parameters)
+                {
+                    WValueExpression columnName = parameter as WValueExpression;
+                    context.AddField(Alias.Value, columnName.Value, ColumnGraphType.Value);
                 }
             }
 
