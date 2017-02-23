@@ -114,7 +114,7 @@ namespace GraphView
         internal virtual List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {
             if (Labels.Contains(label)) return new List<GremlinVariable>() {this};
-            return null;
+            return new List<GremlinVariable>();
         }
 
         internal virtual List<GremlinVariable> FetchVarsFromCurrAndChildContext()
@@ -151,13 +151,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             var projectKey = GetProjectKey();
-            //Populate(projectKey);
             parameters.Add(SqlUtil.GetValueExpr(projectKey));
-            //if (projectKey == GremlinKeyword.TableDefaultColumnName)
-            //{
-            //    parameters.Add(GetVariableProperty(projectKey).ToScalarExpression());
-            //    parameters.Add(SqlUtil.GetValueExpr(projectKey));
-            //}
             foreach (var projectProperty in ProjectedProperties)
             {
                 parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());
@@ -787,7 +781,8 @@ namespace GraphView
             if (taggedVariableList.Count == 0)
             {
                 throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", label));
-            } else if (taggedVariableList.Count == 1)
+            }
+            else if (taggedVariableList.Count == 1)
             {
                 selectedVariable = taggedVariableList[0];
                 selectedVariable.HomeContext = currentContext;
