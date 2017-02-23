@@ -76,19 +76,17 @@ namespace GraphView
     internal class FetchNodeOperator2 : GraphViewExecutionOperator
     {
         private Queue<RawRecord> outputBuffer;
-        private int outputBufferSize;
         private JsonQuery vertexQuery;
         private GraphViewConnection connection;
 
         private IEnumerator<RawRecord> verticesEnumerator;
 
-        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery, int outputBufferSize = 1000)
+        public FetchNodeOperator2(GraphViewConnection connection, JsonQuery vertexQuery)
         {
             Open();
             this.connection = connection;
             this.vertexQuery = vertexQuery;
-            this.outputBufferSize = outputBufferSize;
-            verticesEnumerator = connection.CreateDatabasePortal().GetVertices2(vertexQuery);
+            verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
         }
 
         public override RawRecord Next()
@@ -104,7 +102,7 @@ namespace GraphView
 
         public override void ResetState()
         {
-            verticesEnumerator = connection.CreateDatabasePortal().GetVertices2(vertexQuery);
+            verticesEnumerator = connection.CreateDatabasePortal().GetVertices(vertexQuery);
             outputBuffer?.Clear();
             Open();
         }
@@ -256,8 +254,11 @@ namespace GraphView
 
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
-                        foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
+                        IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
+
+                        while (verticesEnumerator.MoveNext())
                         {
+                            RawRecord rec = verticesEnumerator.Current;
                             if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
                             {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
@@ -463,8 +464,11 @@ namespace GraphView
 
                     using (DbPortal databasePortal = connection.CreateDatabasePortal())
                     {
-                        foreach (RawRecord rec in databasePortal.GetVertices(toSendQuery))
+                        IEnumerator<RawRecord> verticesEnumerator = databasePortal.GetVertices(toSendQuery);
+
+                        while (verticesEnumerator.MoveNext())
                         {
+                            RawRecord rec = verticesEnumerator.Current;
                             if (!sinkVertexCollection.ContainsKey(rec[0].ToValue))
                             {
                                 sinkVertexCollection.Add(rec[0].ToValue, new List<RawRecord>());
