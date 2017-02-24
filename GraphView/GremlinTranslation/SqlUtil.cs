@@ -122,7 +122,7 @@ namespace GraphView
                     lowExpr = GetValueExpr(predicate.Low);
                     highExpr = GetValueExpr(predicate.High);
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gte)));
-                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lte))); ;
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lt))); ;
                     return ConcatBooleanExprWithAnd(booleanExprList);
                 default:
                     return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(predicate.PredicateType));

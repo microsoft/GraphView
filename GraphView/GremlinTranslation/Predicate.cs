@@ -117,6 +117,63 @@ namespace GraphView
         {
             return new Predicate(PredicateType.without, label);
         }
+
+        public static Predicate not(Predicate predicate)
+        {
+            if (predicate.PredicateType == PredicateType.eq)
+            {
+                predicate.PredicateType = PredicateType.neq;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.neq)
+            {
+                predicate.PredicateType = PredicateType.eq;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.lt)
+            {
+                predicate.PredicateType = PredicateType.gte;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.lte)
+            {
+                predicate.PredicateType = PredicateType.gt;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.gt)
+            {
+                predicate.PredicateType = PredicateType.lte;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.gte)
+            {
+                predicate.PredicateType = PredicateType.lt;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.inside)
+            {
+                throw new NotImplementedException();
+            }
+            if (predicate.PredicateType == PredicateType.outside)
+            {
+                throw new NotImplementedException();
+            }
+            if (predicate.PredicateType == PredicateType.between)
+            {
+                throw new NotImplementedException();
+            }
+            if (predicate.PredicateType == PredicateType.within)
+            {
+                predicate.PredicateType = PredicateType.without;
+                return predicate;
+            }
+            if (predicate.PredicateType == PredicateType.without)
+            {
+                predicate.PredicateType = PredicateType.within;
+                return predicate;
+            }
+            throw new QueryCompilationException();
+        }
     }
 
     public enum PredicateType
