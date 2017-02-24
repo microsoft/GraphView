@@ -139,10 +139,14 @@ namespace GraphView
                 dropEdgeOp.DataModify(temp);
             }
 
+            AdjacencyListField revAdjacencyListField = Connection.UseReverseEdges
+                                                       ? vertex.RevAdjacencyList
+                                                       : EdgeDocumentHelper.GetReverseAdjacencyListOfVertex(Connection, vertexId);
             // Save a copy of incoming Edges <srcVertexId, edgeOffsetInSrcVertex> & drop them
-            List<Tuple<string, long>> inEdges = vertex.RevAdjacencyList.AllEdges.Select(
+            List<Tuple<string, long>> inEdges = revAdjacencyListField.AllEdges.Select(
                 e => new Tuple<string, long>(e.OutV, e.Offset)).ToList();
-            foreach (var inEdge in inEdges) {
+            foreach (var inEdge in inEdges)
+            {
                 temp.fieldValues[0] = new StringField(inEdge.Item1); // srcVertexId
                 temp.fieldValues[1] = new StringField(inEdge.Item2.ToString()); // edgeOffsetInSrcVertex
                 dropEdgeOp.DataModify(temp);
