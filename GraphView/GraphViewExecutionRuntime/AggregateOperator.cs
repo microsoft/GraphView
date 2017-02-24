@@ -456,6 +456,8 @@ namespace GraphView
 
         public override RawRecord Next()
         {
+            if (!State()) return null;
+
             RawRecord r = null;
             while (inputOp.State() && (r = inputOp.Next()) != null)
             {

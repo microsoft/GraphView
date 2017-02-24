@@ -2316,6 +2316,12 @@ namespace GraphView
             Close();
             return null;
         }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
     }
 
     internal class PropertyValueOperator : GraphViewExecutionOperator
@@ -2347,6 +2353,12 @@ namespace GraphView
 
             Close();
             return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
         }
     }
 

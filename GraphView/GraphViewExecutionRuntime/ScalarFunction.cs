@@ -127,6 +127,7 @@ namespace GraphView
         public FieldValue(int fieldIndex)
         {
             this.fieldIndex = fieldIndex;
+            dataType = JsonDataType.String;
         }
 
         public override FieldObject Evaluate(RawRecord record)
@@ -136,8 +137,6 @@ namespace GraphView
 
             if (fo is PropertyField)
                 dataType = (fo as PropertyField).JsonDataType;
-            else
-                dataType = JsonDataType.String;
 
             return fo;
         }
