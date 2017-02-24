@@ -749,7 +749,8 @@ namespace GraphView
 
         internal void Has(GremlinVariable lastVariable, string propertyKey, GremlinToSqlContext propertyContext)
         {
-            throw new QueryCompilationException("The Has(propertyKey, traversal) step only applies to vertices and edges.");
+            Has(lastVariable, propertyKey);
+            AddPredicate(propertyContext.ToSqlBoolean());
         }
 
         internal void HasId(GremlinVariable lastVariable, List<object> values)

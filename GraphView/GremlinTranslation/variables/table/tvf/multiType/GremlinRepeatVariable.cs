@@ -452,6 +452,11 @@ namespace GraphView
             currentContext.Has(this, propertyKey);
         }
 
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
+        {
+            currentContext.Has(this, propertyKey, propertyContext);
+        }
+
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
         {
             currentContext.Has(this, propertyKey, value);
@@ -535,6 +540,11 @@ namespace GraphView
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
         {
             currentContext.Has(this, propertyKey);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
+        {
+            currentContext.Has(this, propertyKey, propertyContext);
         }
 
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
@@ -685,6 +695,11 @@ namespace GraphView
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
         {
             currentContext.Has(this, propertyKey);
+        }
+
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
+        {
+            currentContext.Has(this, propertyKey, propertyContext);
         }
 
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)

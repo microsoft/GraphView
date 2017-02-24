@@ -173,6 +173,18 @@ namespace GraphView
             return results;
         }
 
+        internal void InsertGremlinOperator(int index, GremlinTranslationOperator newGremlinTranslationOp)
+        {
+            if (index >= GremlinTranslationOpList.Count || index == 0) 
+                throw new QueryCompilationException();
+            GremlinTranslationOpList.Insert(index, newGremlinTranslationOp);
+            newGremlinTranslationOp.InputOperator = GremlinTranslationOpList[index-1];
+            if (index + 1 < GremlinTranslationOpList.Count())
+            {
+                GremlinTranslationOpList[index + 1].InputOperator = newGremlinTranslationOp;
+            }
+        }
+
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
         {
             GremlinTranslationOpList.Add(newGremlinTranslationOp);

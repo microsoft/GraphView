@@ -50,6 +50,11 @@ namespace GraphView
             currentContext.Has(this, propertyKey);
         }
 
+        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
+        {
+            currentContext.Has(this, propertyKey, propertyContext);
+        }
+
         internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
         {
             currentContext.Has(this, propertyKey, value);

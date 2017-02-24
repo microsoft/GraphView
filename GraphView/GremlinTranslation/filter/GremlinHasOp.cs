@@ -129,6 +129,17 @@ namespace GraphView
 
                 case HasOpType.HasPropertyTraversal:
                     Traversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                    if (Traversal.GetStartOp() is GremlinParentContextOp)
+                    {
+                        if (Traversal.GremlinTranslationOpList.Count > 1)
+                        {
+                            Traversal.InsertGremlinOperator(1,  new GremlinValuesOp(PropertyKey));
+                        }
+                        else
+                        {
+                            Traversal.AddGremlinOperator(new GremlinValuesOp(PropertyKey));
+                        }
+                    }
                     GremlinToSqlContext hasContext = Traversal.GetEndOp().GetContext();
                     inputContext.PivotVariable.Has(inputContext, PropertyKey, hasContext);
                     break;
