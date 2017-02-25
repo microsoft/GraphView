@@ -517,5 +517,51 @@ namespace GraphView
 
             return result;
         }
+
+        public static Dictionary<string, AdjacencyListField> GetReverseAdjacencyListsOfVertexCollection(GraphViewConnection connection, HashSet<string> vertexIdSet)
+        {
+            Dictionary<string, AdjacencyListField> revAdjacencyListCollection = new Dictionary<string, AdjacencyListField>();
+
+            StringBuilder vertexIdList = new StringBuilder();
+
+            foreach (string vertexId in vertexIdSet)
+            {
+                if (vertexIdList.Length > 0) {
+                    vertexIdList.Append(", ");
+                }
+                vertexIdList.AppendFormat("'{0}'", vertexId);
+
+                revAdjacencyListCollection[vertexId] = new AdjacencyListField();
+            }
+
+            string query = $"SELECT {{\"edge\": edge, " +
+                           $"\"vertexId\": edge._sinkV, "+
+                           $"\"_srcV\": doc.id, " +
+                           $"\"_srcVLabel\": doc.label}} AS incomingEdgeMetadata\n" +
+                           $"FROM doc\n" +
+                           $"JOIN edge IN doc._edge\n" +
+                           $"WHERE edge._sinkV IN ({vertexIdList.ToString()})\n";
+
+            foreach (JObject edgeDocument in connection.ExecuteQuery(query))
+            {
+                JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
+                JObject edgeObject = (JObject)edgeMetadata["edge"];
+                string vertexId = edgeMetadata["vertexId"].ToString();
+                string srcV = edgeMetadata["_srcV"].ToString();
+                string srcVLabel = edgeMetadata["_srcVLabel"]?.ToString();
+
+                EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
+                edgeField.EdgeProperties.Add("_srcV", new EdgePropertyField("_srcV", srcV, JsonDataType.String));
+                if (srcVLabel != null) {
+                    edgeField.EdgeProperties.Add("_srcVLabel",
+                        new EdgePropertyField("_srcVLabel", srcVLabel, JsonDataType.String));
+                }
+
+                AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
+                revAdjList.AddEdgeField(srcV, (long)edgeObject["_offset"], edgeField);
+            }
+
+            return revAdjacencyListCollection;
+        }
     }
 }
