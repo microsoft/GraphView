@@ -124,6 +124,24 @@ namespace GraphView
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gte)));
                     booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lt))); ;
                     return ConcatBooleanExprWithAnd(booleanExprList);
+                case PredicateType.lteAndgte:
+                    lowExpr = GetValueExpr(predicate.Low);
+                    highExpr = GetValueExpr(predicate.High);
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.lte)));
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.gte))); ;
+                    return ConcatBooleanExprWithAnd(booleanExprList);
+                case PredicateType.gteAndlte:
+                    lowExpr = GetValueExpr(predicate.Low);
+                    highExpr = GetValueExpr(predicate.High);
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.gte)));
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.lte))); ;
+                    return ConcatBooleanExprWithAnd(booleanExprList);
+                case PredicateType.ltAndgte:
+                    lowExpr = GetValueExpr(predicate.Low);
+                    highExpr = GetValueExpr(predicate.High);
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, lowExpr, GetComparisonType(PredicateType.lt)));
+                    booleanExprList.Add(GetBooleanComparisonExpr(firstExpr, highExpr, GetComparisonType(PredicateType.gte))); ;
+                    return ConcatBooleanExprWithAnd(booleanExprList);
                 default:
                     return GetBooleanComparisonExpr(firstExpr, secondExpr, GetComparisonType(predicate.PredicateType));
             }

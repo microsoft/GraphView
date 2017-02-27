@@ -152,15 +152,18 @@ namespace GraphView
             }
             if (predicate.PredicateType == PredicateType.inside)
             {
-                throw new NotImplementedException();
+                predicate.PredicateType = PredicateType.lteAndgte;
+                return predicate;
             }
             if (predicate.PredicateType == PredicateType.outside)
             {
-                throw new NotImplementedException();
+                predicate.PredicateType = PredicateType.gteAndlte;
+                return predicate;
             }
             if (predicate.PredicateType == PredicateType.between)
             {
-                throw new NotImplementedException();
+                predicate.PredicateType = PredicateType.ltAndgte;
+                return predicate;
             }
             if (predicate.PredicateType == PredicateType.within)
             {
@@ -188,6 +191,10 @@ namespace GraphView
         outside,
         between,
         within,
-        without
+        without,
+
+        lteAndgte,
+        gteAndlte,
+        ltAndgte
     }
 }
