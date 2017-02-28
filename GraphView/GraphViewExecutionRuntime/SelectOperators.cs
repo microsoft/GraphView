@@ -123,7 +123,6 @@ namespace GraphView
     {
         private int outputBufferSize;
         private int batchSize = 100;
-        private int inClauseLimit = 1000;
         private Queue<RawRecord> outputBuffer;
         private GraphViewConnection connection;
         private GraphViewExecutionOperator inputOp;
@@ -199,7 +198,7 @@ namespace GraphView
                 }
 
                 // Groups records returned by sinkVertexQuery by sink vertices' references
-                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(inClauseLimit);
+                Dictionary<string, List<RawRecord>> sinkVertexCollection = new Dictionary<string, List<RawRecord>>(GraphViewConnection.InClauseLimit);
 
                 HashSet<string> sinkReferenceSet = new HashSet<string>();
                 StringBuilder sinkReferenceList = new StringBuilder();
@@ -215,7 +214,7 @@ namespace GraphView
                     sinkReferenceSet.Clear();
 
                     //TODO: Verify whether DocumentDB still has inClauseLimit
-                    while (sinkReferenceSet.Count < inClauseLimit && j < inputSequence.Count)
+                    while (sinkReferenceSet.Count < GraphViewConnection.InClauseLimit && j < inputSequence.Count)
                     {
                         sinkReferenceSet.Add(inputSequence[j].Item2);
                         j++;

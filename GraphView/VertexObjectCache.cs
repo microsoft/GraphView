@@ -54,7 +54,7 @@ namespace GraphView
         }
 
         
-        public VertexField GetVertexField(string vertexId, JObject currVertexObject = null)
+        public VertexField GetVertexField(string vertexId, JObject currVertexObject = null, Dictionary<string, JObject> edgeDocSet = null)
         {
             try {
                 this._lock.EnterUpgradeableReadLock();
@@ -65,7 +65,7 @@ namespace GraphView
                     VertexField result;
                     if (!_cachedVertexField.TryGetValue(vertexId, out result)) {
                         JObject vertexObject = currVertexObject ?? this.Connection.RetrieveDocumentById(vertexId);
-                        result = FieldObject.ConstructVertexField(this.Connection, vertexObject);
+                        result = FieldObject.ConstructVertexField(this.Connection, vertexObject, edgeDocSet);
                         _cachedVertexField.Add(vertexId, result);
                     }
                     return result;

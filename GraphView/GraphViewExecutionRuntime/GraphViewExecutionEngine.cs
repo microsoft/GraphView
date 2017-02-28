@@ -25,7 +25,7 @@ namespace GraphView
                 JsonDataTypeHelper.GetJsonDataType(property.Value.Type));
         }
 
-        public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject)
+        public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject, Dictionary<string, JObject> edgeDocDict)
         {
             VertexField vertexField = new VertexField(connection);
             vertexField.JsonDocument = vertexObject;
@@ -74,11 +74,12 @@ namespace GraphView
 
             Debug.Assert(forwardAdjList != null);
             if (forwardAdjList is JArray) {
+                Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
                 vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, (JArray)forwardAdjList);
             }
             else if (forwardAdjList is JObject) {
-                // TODO: Lazy these queries! Don't query until any of the vertex's edge is accessed
-                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, connection, (JObject)forwardAdjList);
+                Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
+                vertexField.AdjacencyList = GetForwardAdjacencyListField(vertexId, vertexLabel, connection, (JObject)forwardAdjList, edgeDocDict);
             }
             else {
                 Debug.Assert(false, $"Should not get here! forwardAdjList is: {forwardAdjList.GetType()}");
@@ -87,11 +88,12 @@ namespace GraphView
 
             Debug.Assert(backwardAdjList != null);
             if (backwardAdjList is JArray) {
+                Debug.Assert(edgeDocDict == null, "Small vertexes should not have spilled edge-document");
                 vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, (JArray)backwardAdjList);
             }
             else if (backwardAdjList is JObject) {
-                // TODO: Lazy these queries! Don't query until any of the vertex's edge is accessed
-                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, connection, (JObject)backwardAdjList);
+                Debug.Assert(edgeDocDict != null, "Large vertexes must have spilled edge-document");
+                vertexField.RevAdjacencyList = GetBackwardAdjacencyListField(vertexId, vertexLabel, connection, (JObject)backwardAdjList, edgeDocDict);
             }
             else {
                 Debug.Assert(false, $"Should not get here! backwardAdjList is: {backwardAdjList.GetType()}");
@@ -141,7 +143,7 @@ namespace GraphView
         /// <param name="edgeContainer"></param>
         /// <returns></returns>
         public static AdjacencyListField GetForwardAdjacencyListField(
-            string outVId, string outVLabel, GraphViewConnection connection, JObject edgeContainer)
+            string outVId, string outVLabel, GraphViewConnection connection, JObject edgeContainer, Dictionary<string, JObject> edgeDocDict)
         {
             AdjacencyListField result = new AdjacencyListField();
 
@@ -153,11 +155,11 @@ namespace GraphView
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocID), "!string.IsNullOrEmpty(edgeDocID)");
 
                 //
-                // Retreive edges from DocDB: "id" == edgeDocID
+                // Retreive edges from input dictionary: "id" == edgeDocID
                 // Check: the metadata is right, and the "_edge" should not be null or empty 
                 // (otherwise this edge-document should have been removed)
                 //
-                JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocID);
+                JObject edgeDocObject = edgeDocDict[edgeDocID];
                 Debug.Assert(edgeDocObject != null, "edgeDocObject != null");
                 Debug.Assert((bool)edgeDocObject["_is_reverse"] == false, "(bool)edgeDocObject['_is_reverse'] == false");
                 Debug.Assert(((string)edgeDocObject["_vertex_id"]).Equals(outVId), "((string)edgeDocObject['_vertex_id']).Equals(outVId)");
@@ -185,9 +187,10 @@ namespace GraphView
         /// <param name="inVLabel"></param>
         /// <param name="connection"></param>
         /// <param name="edgeContainer"></param>
+        /// <param name="edgeDocDict">Set of reverse-edge-documents for spilled vertexes</param>
         /// <returns></returns>
         public static AdjacencyListField GetBackwardAdjacencyListField(
-            string inVId, string inVLabel, GraphViewConnection connection, JObject edgeContainer)
+            string inVId, string inVLabel, GraphViewConnection connection, JObject edgeContainer, Dictionary<string, JObject> edgeDocDict)
         {
             AdjacencyListField result = new AdjacencyListField();
 
@@ -199,11 +202,11 @@ namespace GraphView
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocID), "!string.IsNullOrEmpty(edgeDocID)");
 
                 //
-                // Retreive edges from DocDB: "id" == edgeDocID
+                // Retreive edges from input dictionary: "id" == edgeDocID
                 // Check: the metadata is right, and the "_edge" should not be null or empty 
                 // (otherwise this edge-document should have been removed)
                 //
-                JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocID);
+                JObject edgeDocObject = edgeDocDict[edgeDocID];
                 Debug.Assert(edgeDocObject != null, "edgeDocObject != null");
                 Debug.Assert((bool)edgeDocObject["_is_reverse"] == true, "(bool)edgeDocObject['_is_reverse'] == true");
                 Debug.Assert(((string)edgeDocObject["_vertex_id"]).Equals(inVId), "((string)edgeDocObject['_vertex_id']).Equals(outVId)");

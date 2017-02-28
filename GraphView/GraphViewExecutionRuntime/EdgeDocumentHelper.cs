@@ -13,6 +13,30 @@ namespace GraphView
     internal static class EdgeDocumentHelper
     {
         /// <summary>
+        /// To check whether the vertex has spilled edge-document
+        /// </summary>
+        /// <param name="vertexObject"></param>
+        /// <param name="checkReverse">true if check the incoming edges, false if check the outgoing edges</param>
+        /// <returns></returns>
+        public static bool IsSpilledVertex(JObject vertexObject, bool checkReverse)
+        {
+            Debug.Assert(vertexObject != null);
+
+            JToken edgeContainer = vertexObject[checkReverse ? "_reverse_edge" : "_edge"];
+            if (edgeContainer is JObject) {
+                Debug.Assert(edgeContainer["_edges"] is JArray);
+                return true;
+            }
+            else if (edgeContainer is JArray) {
+                return false;
+            }
+            else {
+                throw new Exception("Should not get here!");
+            }
+        }
+
+
+        /// <summary>
         /// Try to upload one document. 
         /// If the operation fails because document is too large, nothing is changed and "tooLarge" is set true.
         /// If the operation fails due to other reasons, nothing is changed and an exception is thrown

@@ -53,6 +53,9 @@ namespace GraphView
     /// </summary>
     public partial class GraphViewConnection : IDisposable
     {
+        internal static int InClauseLimit { get; } = 1000;
+
+
         public string DocDBUrl { get; }
         public string DocDBPrimaryKey { get; }
         public string DocDBDatabaseId { get; }

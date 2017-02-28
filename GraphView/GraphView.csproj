@@ -64,6 +64,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
+    <Compile Include="GraphViewExecutionRuntime\DBOperationHelper.cs" />
     <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\EdgeDocumentHelper.cs" />
@@ -194,7 +195,6 @@
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinBoundVertexVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\vertex\GremlinFreeVertexVariable.cs" />
     <Compile Include="GraphViewExecutionRuntime\TVFOperator.cs" />
-    <Compile Include="GraphViewExecutionRuntime\Decoder.cs" />
     <Compile Include="GraphViewQueryCompiler\GraphOptimizer.cs" />
     <Compile Include="GraphViewExecutionRuntime\GraphViewExecutionEngine.cs" />
     <Compile Include="GraphLoaderFactory.cs" />
@@ -202,13 +202,11 @@
     <Compile Include="JsonAuxiliaryFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\MatchComponent.cs" />
     <Compile Include="ObjectExtensions.cs" />
-    <Compile Include="GraphViewExecutionRuntime\SelectOperator.cs" />
     <Compile Include="GraphViewQueryCompiler\CompileSelect.cs" />
     <Compile Include="GraphViewQueryCompiler\Statistics.cs" />
     <Compile Include="ConvertGraphModificationStatementVisitor.cs" />
     <Compile Include="GraphViewCommand.cs" />
     <Compile Include="GraphViewKeywords.cs" />
-    <Compile Include="GraphViewExecutionRuntime\ModificationOperartor.cs" />
     <Compile Include="TranslateMatchClauseVisitor.cs" />
     <Compile Include="TSQL Syntax Tree\WControlFlow.cs" />
     <Compile Include="TSQL Syntax Tree\WCreateViewStatement.cs" />
