@@ -276,8 +276,7 @@ namespace GraphView
 
         internal WBooleanExpression ToSqlBoolean()
         {
-            return TableReferences.Count == 0 ? (WBooleanExpression) SqlUtil.GetBooleanParenthesisExpr(Predicates)
-                                              : SqlUtil.GetExistPredicate(ToSelectQueryBlock());
+            return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
         }
 
         internal WSqlScript ToSqlScript()
