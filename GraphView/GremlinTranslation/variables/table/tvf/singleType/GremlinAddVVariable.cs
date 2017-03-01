@@ -115,11 +115,8 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            if (VertexLabel != null)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
-                parameters.Add(SqlUtil.GetValueExpr(VertexLabel));
-            }
+            parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
+            parameters.Add(VertexLabel == null ? SqlUtil.GetValueExpr("vertex") : SqlUtil.GetValueExpr(VertexLabel));
             foreach (var property in VertexProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(property.Key));
