@@ -176,9 +176,9 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey)
+        internal virtual void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
-            GremlinAggregateVariable newVariable = new GremlinAggregateVariable(this, sideEffectKey);
+            GremlinAggregateVariable newVariable = new GremlinAggregateVariable(projectContext, sideEffectKey);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }

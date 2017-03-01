@@ -9,18 +9,29 @@ namespace GraphView
     internal class GremlinAggregateVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
-        public GremlinVariable AggregateVariable { get; set; }
+        //public GremlinVariable AggregateVariable { get; set; }
+        public GremlinToSqlContext ProjectContext { get; set; }
 
-        public GremlinAggregateVariable(GremlinVariable aggregateVariable, string sideEffectKey)
+        //public GremlinAggregateVariable(GremlinVariable aggregateVariable, string sideEffectKey)
+        //{
+        //    AggregateVariable = aggregateVariable;
+        //    SideEffectKey = sideEffectKey;
+        //}
+
+        public GremlinAggregateVariable(GremlinToSqlContext projectContext, string sideEffectKey)
         {
-            AggregateVariable = aggregateVariable;
+            ProjectContext = projectContext;
             SideEffectKey = sideEffectKey;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(AggregateVariable.ToCompose1());
+            //TODO: refactor
+            WSelectQueryBlock selectQueryBlock = ProjectContext.ToSelectQueryBlock();
+            selectQueryBlock.SelectElements.Clear();
+            selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ProjectContext.PivotVariable.ToCompose1()));
+            parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Aggregate, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
