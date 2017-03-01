@@ -10,7 +10,6 @@ namespace GraphView
     {
         public GremlinKeyword.Scope Scope { get; set; }
 
-
         public GremlinMinOp(GremlinKeyword.Scope scope)
         {
             Scope = scope;

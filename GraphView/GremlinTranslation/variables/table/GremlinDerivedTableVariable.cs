@@ -120,6 +120,19 @@ namespace GraphView
         }
     }
 
+    internal class GremlinSumVariable : GremlinDerivedTableVariable
+    {
+        public GremlinSumVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) { }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Sum, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
+        }
+    }
+
     internal class GremlinTreeVariable : GremlinDerivedTableVariable
     {
         public GremlinVariable PathVariable { get; set; }

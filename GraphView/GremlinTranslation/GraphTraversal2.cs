@@ -876,11 +876,15 @@ namespace GraphView
 
         public GraphTraversal2 Sum()
         {
-            AddGremlinOperator(new GremlinSumOp());
+            AddGremlinOperator(new GremlinSumOp(GremlinKeyword.Scope.global));
             return this;
         }
 
-        //public GraphTraversal2 sum(Scope scope)
+        public GraphTraversal2 Sum(GremlinKeyword.Scope scope)
+        {
+            AddGremlinOperator(new GremlinSumOp(scope));
+            return this;
+        }
 
         public GraphTraversal2 Tail()
         {

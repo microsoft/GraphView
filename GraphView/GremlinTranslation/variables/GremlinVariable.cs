@@ -827,8 +827,7 @@ namespace GraphView
         {
             throw new NotImplementedException();
         }
-
-        //internal virtual void SideEffect(Consumer<Traverser<E>> consumer)
+        
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
@@ -837,6 +836,7 @@ namespace GraphView
         }
 
         //internal virtual void SimplePath()
+
         internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
             GremlinStoreVariable newVariable = new GremlinStoreVariable(projectContext, sideEffectKey);
@@ -848,10 +848,20 @@ namespace GraphView
 
         internal virtual void Sum(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinSumVariable newVariable = new GremlinSumVariable(currentContext.Duplicate());
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
-        //internal virtual void Sum(Scope scope)
+        internal virtual void SumLocal(GremlinToSqlContext currentContext)
+        {
+            GremlinSumLocalVariable newVariable = new GremlinSumLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
 
         internal virtual void TimeLimit(GremlinToSqlContext currentContext, long timeLimit)
         {

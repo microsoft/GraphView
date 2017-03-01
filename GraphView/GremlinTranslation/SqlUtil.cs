@@ -450,6 +450,9 @@ namespace GraphView
                 case GremlinKeyword.func.MeanLocal:
                     funcTableRef = new WMeanLocalTableReference();
                     break;
+                case GremlinKeyword.func.SumLocal:
+                    funcTableRef = new WSumLocalTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

@@ -8,12 +8,27 @@ namespace GraphView
 {
     internal class GremlinSumOp: GremlinTranslationOperator
     {
-        public GremlinSumOp() { }
+        public GremlinKeyword.Scope Scope { get; set; }
+
+        public GremlinSumOp(GremlinKeyword.Scope scope)
+        {
+            Scope = scope;
+        }
 
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            if (Scope == GremlinKeyword.Scope.global)
+            {
+                inputContext.PivotVariable.Sum(inputContext);
+            }
+            else
+            {
+                inputContext.PivotVariable.SumLocal(inputContext);
+            }
+
+            return inputContext;
         }
     }
 }
