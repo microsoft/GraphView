@@ -1104,6 +1104,10 @@ namespace GraphView
                         case "FOLD":
                         case "TREE":
                         case "CAP":
+                        case "SUM":
+                        case "MAX":
+                        case "MIN":
+                        case "MEAN":
                             aggregateCount++;
                             break;
                         default:
@@ -1206,18 +1210,17 @@ namespace GraphView
                             projectAggregationOp.AddAggregateSpec(new CountFunction(), new List<ScalarFunction>());
                             break;
                         case "FOLD":
-                            var foldedFunction = fcall.Parameters[0] as WFunctionCall;
+                            WFunctionCall foldedFunction = fcall.Parameters[0] as WFunctionCall;
                             if (foldedFunction == null)
                                 throw new SyntaxErrorException("The parameter of a Fold function must be a Compose1 function.");
                             projectAggregationOp.AddAggregateSpec(new FoldFunction(), 
                                 new List<ScalarFunction> { foldedFunction.CompileToFunction(context, connection), });
                             break;
                         case "TREE":
-                            var pathField = fcall.Parameters[0] as WColumnReferenceExpression;
-                            var pathFieldIndex = context.LocateColumnReference(pathField);
+                            WColumnReferenceExpression pathField = fcall.Parameters[0] as WColumnReferenceExpression;
                             projectAggregationOp.AddAggregateSpec(
                                 new TreeFunction(), 
-                                new List<ScalarFunction>() { new FieldValue(pathFieldIndex) });
+                                new List<ScalarFunction>() { pathField.CompileToFunction(context, connection) });
                             break;
                         case "CAP":
                             CapAggregate capAggregate = new CapAggregate();
@@ -1226,12 +1229,36 @@ namespace GraphView
                                 WColumnNameList columnNameList = fcall.Parameters[i] as WColumnNameList;
                                 WValueExpression capName = fcall.Parameters[i+1] as WValueExpression;
 
-                                List<IAggregateFunction> sideEffectStateList;
-                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectStateList))
+                                IAggregateFunction sideEffectState;
+                                if (!context.SideEffectStates.TryGetValue(capName.Value, out sideEffectState))
                                     throw new GraphViewException("SideEffect state " + capName + " doesn't exist in the context");
-                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectStateList);
+                                capAggregate.AddCapatureSideEffectState(capName.Value, sideEffectState);
                             }
                             projectAggregationOp.AddAggregateSpec(capAggregate, new List<ScalarFunction>());
+                            break;
+                        case "SUM":
+                            WColumnReferenceExpression targetField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            projectAggregationOp.AddAggregateSpec(
+                                new SumFunction(), 
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                            break;
+                        case "MAX":
+                            targetField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            projectAggregationOp.AddAggregateSpec(
+                                new MaxFunction(),
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                            break;
+                        case "MIN":
+                            targetField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            projectAggregationOp.AddAggregateSpec(
+                                new MinFunction(), 
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
+                            break;
+                        case "MEAN":
+                            targetField = fcall.Parameters[0] as WColumnReferenceExpression;
+                            projectAggregationOp.AddAggregateSpec(
+                                new MeanFunction(),
+                                new List<ScalarFunction> { targetField.CompileToFunction(context, connection) });
                             break;
                         default:
                             projectAggregationOp.AddAggregateSpec(null, null);
@@ -2498,6 +2525,66 @@ namespace GraphView
             context.CurrentExecutionOperator = queryDerivedTableOp;
 
             return queryDerivedTableOp;
+        }
+    }
+
+    partial class WSumLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
+
+            SumLocalOperator sumLocalOp = new SumLocalOperator(context.CurrentExecutionOperator,
+                context.LocateColumnReference(targetField));
+            context.CurrentExecutionOperator = sumLocalOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return sumLocalOp;
+        }
+    }
+
+    partial class WMaxLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
+
+            MaxLocalOperator maxLocalOp = new MaxLocalOperator(context.CurrentExecutionOperator,
+                context.LocateColumnReference(targetField));
+            context.CurrentExecutionOperator = maxLocalOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return maxLocalOp;
+        }
+    }
+
+    partial class WMinLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
+
+            MinLocalOperator minLocalOp = new MinLocalOperator(context.CurrentExecutionOperator,
+                context.LocateColumnReference(targetField));
+            context.CurrentExecutionOperator = minLocalOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return minLocalOp;
+        }
+    }
+
+    partial class WMeanLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression targetField = Parameters[0] as WColumnReferenceExpression;
+
+            MeanLocalOperator meanLocalOp = new MeanLocalOperator(context.CurrentExecutionOperator,
+                context.LocateColumnReference(targetField));
+            context.CurrentExecutionOperator = meanLocalOp;
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return meanLocalOp;
         }
     }
 }

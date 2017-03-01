@@ -222,6 +222,10 @@ namespace GraphView
                 case "FOLD":
                 case "TREE":
                 case "CAP":
+                case "SUM":
+                case "MAX":
+                case "MIN":
+                case "MEAN":
                     aggregateFunctionCount++;
                     break;
             }

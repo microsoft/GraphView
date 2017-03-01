@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -122,7 +124,7 @@ namespace GraphView
     internal class TraversalOperator2 : GraphViewExecutionOperator
     {
         private int outputBufferSize;
-        private int batchSize = 100;
+        private int batchSize = 1100;
         private Queue<RawRecord> outputBuffer;
         private GraphViewConnection connection;
         private GraphViewExecutionOperator inputOp;
@@ -2392,6 +2394,7 @@ namespace GraphView
         {
             _inputOp = pInputOp;
             _propertyFieldIndex = pPropertyFieldIndex;
+            Open();
         }
 
 
@@ -2431,6 +2434,7 @@ namespace GraphView
         {
             _inputOp = pInputOp;
             _propertyFieldIndex = pPropertyFieldIndex;
+            Open();
         }
 
         public override RawRecord Next()

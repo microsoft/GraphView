@@ -45,7 +45,108 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            return new StringField(count.ToString(), JsonDataType.Int);
+            return new StringField(count.ToString(), JsonDataType.Long);
+        }
+    }
+
+    internal class SumFunction : IAggregateFunction
+    {
+        double sum;
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            double current;
+            if (!double.TryParse(values[0].ToValue, out current))
+                throw new GraphViewException("The input of Sum cannot be cast to a number");
+
+            sum += current;
+        }
+
+        public void Init()
+        {
+            sum = 0.0;
+        }
+
+        public FieldObject Terminate()
+        {
+            return new StringField(sum.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+        }
+    }
+
+    internal class MaxFunction : IAggregateFunction
+    {
+        double max;
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            double current;
+            if (!double.TryParse(values[0].ToValue, out current))
+                throw new GraphViewException("The input of Max cannot be cast to a number");
+
+            if (max < current)
+                max = current;
+        }
+
+        public void Init()
+        {
+            max = double.MinValue;
+        }
+
+        public FieldObject Terminate()
+        {
+            return new StringField(max.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+        }
+    }
+
+    internal class MinFunction : IAggregateFunction
+    {
+        double min;
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            double current;
+            if (!double.TryParse(values[0].ToValue, out current))
+                throw new GraphViewException("The input of Min cannot be cast to a number");
+
+            if (current < min)
+                min = current;
+        }
+
+        public void Init()
+        {
+            min = double.MaxValue;
+        }
+
+        public FieldObject Terminate()
+        {
+            return new StringField(min.ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
+        }
+    }
+
+    internal class MeanFunction : IAggregateFunction
+    {
+        double sum;
+        long count;
+
+        public void Accumulate(params FieldObject[] values)
+        {
+            double current;
+            if (!double.TryParse(values[0].ToValue, out current))
+                throw new GraphViewException("The input of Mean cannot be cast to a number");
+
+            sum += current;
+            count++;
+        }
+
+        public void Init()
+        {
+            sum = 0.0;
+            count = 0;
+        }
+
+        public FieldObject Terminate()
+        {
+            return new StringField((sum / count).ToString(CultureInfo.InvariantCulture), JsonDataType.Double);
         }
     }
 
