@@ -2579,6 +2579,277 @@ namespace GraphView
         }
     }
 
+    internal class CountLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _objectIndex;
+
+        public CountLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
+        {
+            _inputOp = inputOp;
+            _objectIndex = objectIndex;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                RawRecord result = new RawRecord(currentRecord);
+                FieldObject obj = currentRecord[_objectIndex];
+                Debug.Assert(obj != null, "The input of the CountLocalOperator should not be null.");
+
+                if (obj is CollectionField)
+                    result.Append(new StringField(((CollectionField)obj).Collection.Count.ToString(), JsonDataType.Long));
+                else if (obj is MapField)
+                    result.Append(new StringField(((MapField)obj).Map.Count.ToString(), JsonDataType.Long));
+                else if (obj is TreeField)
+                    result.Append(new StringField(((TreeField)obj).Children.Count.ToString(), JsonDataType.Long));
+                else
+                    result.Append(new StringField("1", JsonDataType.Int));
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class SumLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _objectIndex;
+
+        public SumLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
+        {
+            _inputOp = inputOp;
+            _objectIndex = objectIndex;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                FieldObject obj = currentRecord[_objectIndex];
+                Debug.Assert(obj != null, "The input of the SumLocalOperator should not be null.");
+
+                double sum = 0.0;
+                double current;
+
+                if (obj is CollectionField)
+                {
+                    foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        sum += current;
+                    }
+                }
+                else {
+                    sum = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
+                }
+
+                RawRecord result = new RawRecord(currentRecord);
+                result.Append(new StringField(sum.ToString(CultureInfo.InvariantCulture), JsonDataType.Double));
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class MaxLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _objectIndex;
+
+        public MaxLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
+        {
+            _inputOp = inputOp;
+            _objectIndex = objectIndex;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                FieldObject obj = currentRecord[_objectIndex];
+                Debug.Assert(obj != null, "The input of the MaxLocalOperator should not be null.");
+
+                double max = double.MinValue;
+                double current;
+
+                if (obj is CollectionField)
+                {
+                    foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        if (max < current)
+                            max = current;
+                    }
+                }
+                else {
+                    max = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
+                }
+
+                RawRecord result = new RawRecord(currentRecord);
+                result.Append(new StringField(max.ToString(CultureInfo.InvariantCulture), JsonDataType.Double));
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class MinLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _objectIndex;
+
+        public MinLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
+        {
+            _inputOp = inputOp;
+            _objectIndex = objectIndex;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                FieldObject obj = currentRecord[_objectIndex];
+                Debug.Assert(obj != null, "The input of the MinLocalOperator should not be null.");
+
+                double min = double.MaxValue;
+                double current;
+
+                if (obj is CollectionField)
+                {
+                    foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        if (current < min)
+                            min = current;
+                    }
+                }
+                else {
+                    min = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
+                }
+
+                RawRecord result = new RawRecord(currentRecord);
+                result.Append(new StringField(min.ToString(CultureInfo.InvariantCulture), JsonDataType.Double));
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
+    }
+
+    internal class MeanLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private int _objectIndex;
+
+        public MeanLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
+        {
+            _inputOp = inputOp;
+            _objectIndex = objectIndex;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                FieldObject obj = currentRecord[_objectIndex];
+                Debug.Assert(obj != null, "The input of the MeanLocalOperator should not be null.");
+
+                double sum = 0.0;
+                long count = 0;
+                double current;
+
+                if (obj is CollectionField)
+                {
+                    foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        sum += current;
+                        count++;
+                    }
+                }
+                else
+                {
+                    count = 1;
+                    sum = double.TryParse(obj.ToValue, out current) ? current : double.NaN;
+                }
+
+                RawRecord result = new RawRecord(currentRecord);
+                result.Append(new StringField((sum / count).ToString(CultureInfo.InvariantCulture), JsonDataType.Double));
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
+    }
+
     internal class SimplePathOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator _inputOp;
