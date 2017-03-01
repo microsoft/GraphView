@@ -9,14 +9,7 @@ namespace GraphView
     internal class GremlinAggregateVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
-        //public GremlinVariable AggregateVariable { get; set; }
         public GremlinToSqlContext ProjectContext { get; set; }
-
-        //public GremlinAggregateVariable(GremlinVariable aggregateVariable, string sideEffectKey)
-        //{
-        //    AggregateVariable = aggregateVariable;
-        //    SideEffectKey = sideEffectKey;
-        //}
 
         public GremlinAggregateVariable(GremlinToSqlContext projectContext, string sideEffectKey)
         {

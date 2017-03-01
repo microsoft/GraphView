@@ -837,9 +837,9 @@ namespace GraphView
         }
 
         //internal virtual void SimplePath()
-        internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey)
+        internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
-            GremlinStoreVariable newVariable = new GremlinStoreVariable(this, sideEffectKey);
+            GremlinStoreVariable newVariable = new GremlinStoreVariable(projectContext, sideEffectKey);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
