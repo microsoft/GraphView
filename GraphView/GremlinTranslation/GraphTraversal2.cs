@@ -241,7 +241,8 @@ namespace GraphView
 
         public GraphTraversal2 Aggregate(string sideEffectKey)
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinAggregateOp(sideEffectKey));
+            return this;
         }
 
         public GraphTraversal2 And(params GraphTraversal2[] andTraversals)

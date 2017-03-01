@@ -178,7 +178,9 @@ namespace GraphView
 
         internal virtual void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey)
         {
-            throw new NotImplementedException();
+            GremlinAggregateVariable newVariable = new GremlinAggregateVariable(this, sideEffectKey);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal virtual void And(GremlinToSqlContext currentContext, List<GremlinToSqlContext> andContexts)

@@ -537,6 +537,14 @@ namespace GraphView
         }
     }
 
+    public class WVertexPropertyExpression: WPrimaryExpression
+    {
+        public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
+        public WValueExpression Key { get; set; }
+        public WValueExpression Value { get; set; }
+        public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+    }
+
     public partial class WAddVTableReference : WSchemaObjectFunctionTableReference
     {
         public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
@@ -604,6 +612,11 @@ namespace GraphView
     public partial class WStoreTableReference : WSchemaObjectFunctionTableReference
     {
 
+    }
+
+    public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference
+    {
+        
     }
 
     public partial class WBarrierTableReference : WSchemaObjectFunctionTableReference
