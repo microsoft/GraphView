@@ -10,8 +10,6 @@ namespace GraphView
     {
         public GremlinKeyword.Scope Scope { get; set; }
 
-        public GremlinMaxOp() { }
-
         public GremlinMaxOp(GremlinKeyword.Scope scope)
         {
             Scope = scope;
@@ -21,7 +19,15 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            throw new NotImplementedException();
+            if (Scope == GremlinKeyword.Scope.global)
+            {
+                inputContext.PivotVariable.Max(inputContext);
+            }
+            else
+            {
+                inputContext.PivotVariable.MaxLocal(inputContext);
+            }
+            return inputContext;
         }
     }
 }

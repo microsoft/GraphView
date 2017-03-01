@@ -76,6 +76,9 @@ namespace GraphView
             public const string MinLocal = "MinLocal";
             public const string MaxLocal = "MaxLocal";
             public const string MeanLocal = "MeanLocal";
+            public const string Min = "Min";
+            public const string Max = "Max";
+            public const string Mean = "Mean";
         }
 
         public enum Pop

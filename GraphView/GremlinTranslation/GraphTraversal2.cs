@@ -671,7 +671,7 @@ namespace GraphView
 
         public GraphTraversal2 Max()
         {
-            AddGremlinOperator(new GremlinMaxOp());
+            AddGremlinOperator(new GremlinMaxOp(GremlinKeyword.Scope.global));
             return this;
         }
 
@@ -683,7 +683,7 @@ namespace GraphView
 
         public GraphTraversal2 Mean()
         {
-            AddGremlinOperator(new GremlinMeanOp());
+            AddGremlinOperator(new GremlinMeanOp(GremlinKeyword.Scope.global));
             return this;
         }
 
@@ -695,7 +695,7 @@ namespace GraphView
 
         public GraphTraversal2 Min()
         {
-            AddGremlinOperator(new GremlinMinOp());
+            AddGremlinOperator(new GremlinMinOp(GremlinKeyword.Scope.global));
             return this;
         }
 

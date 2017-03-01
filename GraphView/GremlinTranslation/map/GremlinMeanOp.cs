@@ -10,8 +10,6 @@ namespace GraphView
     {
         public GremlinKeyword.Scope Scope { get; set; }
 
-        public GremlinMeanOp() { }
-
         public GremlinMeanOp(GremlinKeyword.Scope scope)
         {
             Scope = scope;
@@ -19,7 +17,17 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            if (Scope == GremlinKeyword.Scope.global)
+            {
+                inputContext.PivotVariable.Mean(inputContext);
+            }
+            else
+            {
+                inputContext.PivotVariable.MeanLocal(inputContext);
+            }
+
+            return inputContext;
         }
     }
 }
