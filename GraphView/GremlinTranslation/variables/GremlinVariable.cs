@@ -265,7 +265,9 @@ namespace GraphView
 
         internal virtual void Coin(GremlinToSqlContext currentContext, double probability)
         {
-            throw new NotImplementedException();
+            GremlinCoinVariable newVariable = new GremlinCoinVariable(probability);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal virtual void Constant(GremlinToSqlContext currentContext, object value)

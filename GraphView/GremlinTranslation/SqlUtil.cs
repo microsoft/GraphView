@@ -433,6 +433,9 @@ namespace GraphView
                 case GremlinKeyword.func.Aggregate:
                     funcTableRef = new WAggregateTableReference();
                     break;
+                case GremlinKeyword.func.Coin:
+                    funcTableRef = new WCoinTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

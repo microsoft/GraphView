@@ -70,6 +70,7 @@ namespace GraphView
             public const string Cap = "Cap";
             public const string Store = "Store";
             public const string Aggregate = "Aggregate";
+            public const string Coin = "Coin";
         }
 
         public enum Pop
