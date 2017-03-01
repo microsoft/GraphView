@@ -9,17 +9,24 @@ namespace GraphView
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
         public string VertexLabel { get; set; }
+        public List<object> PropertyKeyValues { get; set; }
 
-        public GremlinAddVOp() {}
+        public GremlinAddVOp()
+        {
+            PropertyKeyValues = new List<object>();
+            VertexLabel = "vertex";
+        }
 
         public GremlinAddVOp(params object[] propertyKeyValues)
         {
-            throw new NotImplementedException();
+            PropertyKeyValues = new List<object>(propertyKeyValues);
+            VertexLabel = "vertex";
         }
 
         public GremlinAddVOp(string vertexLabel)
         {
             VertexLabel = vertexLabel;
+            PropertyKeyValues = new List<object>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -28,14 +35,14 @@ namespace GraphView
 
             if (inputContext.PivotVariable == null)
             {
-                GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel, true);
+                GremlinAddVVariable newVariable = new GremlinAddVVariable(VertexLabel, PropertyKeyValues, true);
                 inputContext.VariableList.Add(newVariable);
                 inputContext.TableReferences.Add(newVariable);
                 inputContext.SetPivotVariable(newVariable);
             }
             else
             {
-                inputContext.PivotVariable.AddV(inputContext, VertexLabel);
+                inputContext.PivotVariable.AddV(inputContext, VertexLabel, PropertyKeyValues);
             }
 
             return inputContext;

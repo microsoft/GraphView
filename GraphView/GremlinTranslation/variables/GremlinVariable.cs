@@ -168,22 +168,9 @@ namespace GraphView
             currentContext.SetPivotVariable(newTableVariable);
         }
 
-        //internal virtual void addInE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
-        //internal virtual void addOutE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
-
-        internal virtual void AddV(GremlinToSqlContext currentContext)
+        internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel, List<object> propertyKeyValues)
         {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void AddV(GremlinToSqlContext currentContext, params object[] propertyKeyValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel)
-        {
-            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel);
+            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel, propertyKeyValues);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
@@ -636,7 +623,7 @@ namespace GraphView
             throw new QueryCompilationException("The OutV() step can only be applied to edges or vertex.");
         }
 
-        internal virtual void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        internal virtual void Property(GremlinToSqlContext currentContext, List<object> properties)
         {
             GremlinUpdatePropertiesVariable updateVariable;
             switch (GetVariableType())

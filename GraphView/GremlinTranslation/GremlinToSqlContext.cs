@@ -667,14 +667,16 @@ namespace GraphView
 
         internal void DropProperties(GremlinVariable belongToVariable, List<string> PropertyKeys)
         {
-            Dictionary<string, object> properties = new Dictionary<string, object>();
+            List<object> properties = new List<object>();
             foreach (var propertyKey in PropertyKeys)
             {
-                properties[propertyKey] = null;
+                properties.Add(propertyKey);
+                properties.Add(null);
             }
             if (PropertyKeys.Count == 0)
             {
-                properties["*"] = null;
+                properties.Add(GremlinKeyword.Star);
+                properties.Add(null);
             }
 
             GremlinUpdatePropertiesVariable dropVariable = null;

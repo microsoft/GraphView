@@ -9,17 +9,13 @@ namespace GraphView
 {
     internal class GremlinPropertyOp: GremlinTranslationOperator
     {
-        public Dictionary<string, object> Properties { get; set; }
+        public List<object> Properties { get; set; }
 
         public GremlinPropertyOp(params object[] properties)
         {
             if (properties.Length % 2 != 0) throw new Exception("The parameter of property should be even");
             if (properties.Length < 2) throw new Exception("The number of parameter of property should be larger than 2");
-            Properties = new Dictionary<string, object>();
-            for (int i = 0; i < properties.Length; i += 2)
-            {
-                Properties[properties[i] as string] = properties[i + 1];
-            }
+            Properties = new List <object>(properties);
         }
 
         internal override GremlinToSqlContext GetContext()

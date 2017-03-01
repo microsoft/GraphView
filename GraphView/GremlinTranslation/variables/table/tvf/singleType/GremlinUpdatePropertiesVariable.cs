@@ -10,19 +10,16 @@ namespace GraphView
 {
     internal class GremlinUpdatePropertiesVariable: GremlinDropVariable
     {
-        public Dictionary<string, object> UpdateProperties { get; set; }
+        public List<object> UpdateProperties { get; set; }
 
-        public GremlinUpdatePropertiesVariable(Dictionary<string, object> properties)
+        public GremlinUpdatePropertiesVariable(List<object> properties)
         {
-            UpdateProperties = new Dictionary<string, object>(properties);
+            UpdateProperties = new List<object>(properties);
         }
 
-        internal override void Property(GremlinToSqlContext currenct, Dictionary<string, object> properties)
+        internal override void Property(GremlinToSqlContext currenct, List<object> properties)
         {
-            foreach (var property in properties)
-            {
-                UpdateProperties[property.Key] = property.Value;
-            }
+            UpdateProperties.AddRange(properties);
         }
     }
 
@@ -31,7 +28,7 @@ namespace GraphView
         public GremlinVariable VertexVariable { get; set; }
 
         public GremlinUpdateVertexPropertiesVariable(GremlinVariable vertexVariable,
-            Dictionary<string, object> properties) : base(properties)
+            List<object> properties) : base(properties)
         {
             VertexVariable = vertexVariable;
         }
@@ -41,10 +38,10 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
             parameters.Add(VertexVariable.DefaultVariableProperty().ToScalarExpression());
-            foreach (var property in UpdateProperties)
+            for (var i = 0; i < UpdateProperties.Count; i += 2)
             {
-                parameters.Add(SqlUtil.GetValueExpr(property.Key));
-                parameters.Add(SqlUtil.GetValueExpr(property.Value));
+                parameters.Add(SqlUtil.GetValueExpr(UpdateProperties[i]));
+                parameters.Add(SqlUtil.GetValueExpr(UpdateProperties[i+1]));
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateNodeProperties, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
@@ -56,7 +53,7 @@ namespace GraphView
         public GremlinVariable EdgeVariable { get; set; }
 
         public GremlinUpdateEdgePropertiesVariable(GremlinVariable edgeVariable,
-                                                    Dictionary<string, object> properties)
+                                                    List<object> properties)
             : base(properties)
         {
             EdgeVariable = edgeVariable;
@@ -69,10 +66,10 @@ namespace GraphView
             parameters.Add(EdgeVariable.GetVariableProperty(GremlinKeyword.EdgeSourceV).ToScalarExpression());
             parameters.Add(EdgeVariable.GetVariableProperty(GremlinKeyword.EdgeID).ToScalarExpression());
 
-            foreach (var property in UpdateProperties)
+            for (var i = 0; i < UpdateProperties.Count; i += 2)
             {
-                parameters.Add(SqlUtil.GetValueExpr(property.Key));
-                parameters.Add(SqlUtil.GetValueExpr(property.Value));
+                parameters.Add(SqlUtil.GetValueExpr(UpdateProperties[i]));
+                parameters.Add(SqlUtil.GetValueExpr(UpdateProperties[i + 1]));
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.UpdateEdgeProperties, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
