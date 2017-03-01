@@ -21,42 +21,71 @@ namespace GraphView
     {
         public class GraphTraversalIterator : IEnumerator<string>
         {
-            private string CurrentRecord;
-            private GraphViewExecutionOperator CurrentOperator;
+            private string currentRecord;
+            private GraphViewExecutionOperator currentOperator;
             OutputFormat outputFormat;
+            bool firstCall;
 
             internal GraphTraversalIterator(GraphViewExecutionOperator pCurrentOperator,OutputFormat outputFormat)
             {
-                CurrentOperator = pCurrentOperator;
+                currentOperator = pCurrentOperator;
                 this.outputFormat = outputFormat;
+                this.firstCall = true;
             }
 
             public bool MoveNext()
             {
-                if (CurrentOperator == null) Reset();
+                if (currentOperator == null) return false;
 
-                RawRecord outputRec = null;
-                if ((outputRec = CurrentOperator.Next()) != null)
+                if (outputFormat == OutputFormat.GraphSON)
                 {
-                    string recordString = "";
-                    switch (outputFormat)
+                    RawRecord outputRec = null;
+                    StringBuilder graphsonBuilder = new StringBuilder();
+                    graphsonBuilder.Append("[");
+                    bool firstEntry = true;
+                    while ((outputRec = currentOperator.Next()) != null)
                     {
-
-                        case OutputFormat.GraphSON:
-                            recordString = "[";
-                            recordString += outputRec[0].ToGraphSON();
-                            recordString += "]";
-                            break;
-                        default:
-                            recordString = outputRec[0].ToString();
-                            break;
+                        if (firstEntry)
+                        {
+                            firstEntry = false;
+                        }
+                        else
+                        {
+                            graphsonBuilder.Append(", ");
+                        }
+                        graphsonBuilder.Append(outputRec[0].ToGraphSON());
                     }
-                    CurrentRecord = recordString;
-                    if (CurrentRecord != null)
+                    graphsonBuilder.Append("]");
+
+                    if (firstEntry && !firstCall)     // No results are pulled from the execution operator
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        firstCall = false;
+                        currentRecord = graphsonBuilder.ToString();
                         return true;
+                    }
+                }
+                else
+                {
+                    RawRecord outputRec = null;
+                    if ((outputRec = currentOperator.Next()) != null)
+                    {
+                        switch (outputFormat)
+                        {
+                            case OutputFormat.GraphSON:
+                                currentRecord = outputRec[0].ToGraphSON();
+                                break;
+                            default:
+                                currentRecord = outputRec[0].ToString();
+                                break;
+                        }
+                        return currentRecord != null;
+                    }
                     else return false;
                 }
-                else return false;
             }
 
             public void Reset()
@@ -67,7 +96,7 @@ namespace GraphView
             {
                 get
                 {
-                    return CurrentRecord;
+                    return currentRecord;
                 }
             }
 
@@ -75,7 +104,7 @@ namespace GraphView
             {
                 get
                 {
-                    return CurrentRecord;
+                    return currentRecord;
                 }
             }
 
