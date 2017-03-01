@@ -633,13 +633,17 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 Limit(long limit)
+        public GraphTraversal2 Limit(int limit)
         {
-            AddGremlinOperator(new GremlinLimitOp(limit));
+            AddGremlinOperator(new GremlinRangeOp(0, limit, GremlinKeyword.Scope.global));
             return this;
         }
 
-        //public GraphTraversal2 limit(Scope scope, long limit)
+        public GraphTraversal2 limit(GremlinKeyword.Scope scope, int limit)
+        {
+            AddGremlinOperator(new GremlinRangeOp(0, limit, scope));
+            return this;
+        }
 
         public GraphTraversal2 Local(GraphTraversal2 localTraversal)
         {
@@ -804,7 +808,13 @@ namespace GraphView
 
         public GraphTraversal2 Range(int low, int high)
         {
-            AddGremlinOperator(new GremlinRangeOp(low, high));
+            AddGremlinOperator(new GremlinRangeOp(low, high, GremlinKeyword.Scope.global));
+            return this;
+        }
+
+        public GraphTraversal2 Range(GremlinKeyword.Scope scope, int low, int high)
+        {
+            AddGremlinOperator(new GremlinRangeOp(low, high, scope));
             return this;
         }
 
@@ -874,18 +884,27 @@ namespace GraphView
 
         public GraphTraversal2 Tail()
         {
-            AddGremlinOperator(new GremlinTailOp());
+            AddGremlinOperator(new GremlinRangeOp(0, 1, GremlinKeyword.Scope.global, true));
             return this;
         }
 
-        public GraphTraversal2 Tail(long limit)
+        public GraphTraversal2 Tail(int limit)
         {
-            AddGremlinOperator(new GremlinTailOp(limit));
+            AddGremlinOperator(new GremlinRangeOp(0, limit, GremlinKeyword.Scope.global, true));
             return this;
         }
 
-        //public GraphTraversal2 tail(Scope scope)
-        //public GraphTraversal2 tail(Scope scope, long limit)
+        public GraphTraversal2 tail(GremlinKeyword.Scope scope)
+        {
+            AddGremlinOperator(new GremlinRangeOp(0, 1, scope, true));
+            return this;
+        }
+
+        public GraphTraversal2 tail(GremlinKeyword.Scope scope, int limit)
+        {
+            AddGremlinOperator(new GremlinRangeOp(0, limit, scope, true));
+            return this;
+        }
 
         public GraphTraversal2 TimeLimit(long timeLimit)
         {

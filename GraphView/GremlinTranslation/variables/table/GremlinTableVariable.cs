@@ -142,12 +142,6 @@ namespace GraphView
         {
             return VariableType;
         }
-
-        internal override void Range(GremlinToSqlContext currentContext, int low, int high)
-        {
-            Low = low;
-            High = high;
-        }
     }
 
     internal abstract class GremlinScalarTableVariable : GremlinTableVariable

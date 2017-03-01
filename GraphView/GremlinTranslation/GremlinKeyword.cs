@@ -72,6 +72,10 @@ namespace GraphView
             public const string Aggregate = "Aggregate";
             public const string Coin = "Coin";
             public const string CountLocal = "CountLocal";
+            public const string RangeLocal = "RangeLocal";
+            public const string MinLocal = "MinLocal";
+            public const string MaxLocal = "MaxLocal";
+            public const string MeanLocal = "MeanLocal";
         }
 
         public enum Pop

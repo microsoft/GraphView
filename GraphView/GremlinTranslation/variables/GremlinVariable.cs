@@ -39,6 +39,8 @@ namespace GraphView
         protected string _variableName;
         public int Low { get; set; }
         public int High { get; set; }
+        public bool IsReverse { get; set; }
+        public bool IsLocal { get; set; }
         public List<string> Labels { get; set; }
         public GremlinToSqlContext HomeContext { get; set; }
         public List<string> ProjectedProperties { get; set; }
@@ -47,6 +49,8 @@ namespace GraphView
         {
             Low = Int32.MinValue;
             High = Int32.MaxValue;
+            IsReverse = false;
+            IsLocal = false;
             Labels = new List<string>();
             ProjectedProperties = new List<string>();
         }
@@ -481,13 +485,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Limit(GremlinToSqlContext currentContext, long limit)
-        {
-            throw new NotImplementedException();
-        }
-
-        //internal virtual void Limit(Scope scope, long limit)
-
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
             GremlinTableVariable localMapVariable = GremlinLocalVariable.Create(localContext);
@@ -511,13 +508,6 @@ namespace GraphView
 
             GremlinTableVariable mapVariable = GremlinMapVariable.Create(mapContext);
             currentContext.VariableList.Add(mapVariable);
-            
-            //It's used for repeat step, we should propagate all the variable to the main context
-            //Then we can check the variableList to know if the sub context used the main context variable when
-            //the variable is GremlinContextVariable and the value of IsFromSelect is True
-            //
-            //currentContext.VariableList.AddRange(mapContext.VariableList);
-
             currentContext.TableReferences.Add(mapVariable);
             currentContext.SetPivotVariable(mapVariable);
         }
@@ -686,9 +676,12 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Range(GremlinToSqlContext currentContext, int low, int high)
+        internal virtual void Range(GremlinToSqlContext currentContext, int low, int high, GremlinKeyword.Scope scope, bool isReverse)
         {
-            throw new NotImplementedException();
+            Low = low;
+            High = high;
+            IsLocal = scope == GremlinKeyword.Scope.local;
+            IsReverse = isReverse;
         }
 
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
@@ -838,22 +831,6 @@ namespace GraphView
         }
 
         //internal virtual void Sum(Scope scope)
-
-
-        internal virtual void Tail(GremlinToSqlContext currentContext)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void Tail(GremlinToSqlContext currentContext, long limit)
-        {
-            throw new NotImplementedException();
-        }
-
-        //internal virtual void Tail(GremlinToSqlContext currentContext, Scope scope)
-
-
-        //internal virtual void Tail(GremlinToSqlContext currentContext, Scope scope, long limit)
 
         internal virtual void TimeLimit(GremlinToSqlContext currentContext, long timeLimit)
         {
