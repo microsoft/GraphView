@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinStoreVariable : GremlinTableVariable
+    internal class GremlinAggregateVariable : GremlinTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinToSqlContext ProjectContext { get; set; }
 
-        public GremlinStoreVariable(GremlinToSqlContext projectContext, string sideEffectKey)
+        public GremlinAggregateVariable(GremlinToSqlContext projectContext, string sideEffectKey)
         {
             ProjectContext = projectContext;
             SideEffectKey = sideEffectKey;
@@ -26,7 +26,7 @@ namespace GraphView
             selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ProjectContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Store, parameters, this, GetVariableName());
+            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Aggregate, parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }

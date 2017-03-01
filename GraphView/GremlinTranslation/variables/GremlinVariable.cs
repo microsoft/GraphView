@@ -39,6 +39,8 @@ namespace GraphView
         protected string _variableName;
         public int Low { get; set; }
         public int High { get; set; }
+        public bool IsReverse { get; set; }
+        public bool IsLocal { get; set; }
         public List<string> Labels { get; set; }
         public GremlinToSqlContext HomeContext { get; set; }
         public List<string> ProjectedProperties { get; set; }
@@ -47,6 +49,8 @@ namespace GraphView
         {
             Low = Int32.MinValue;
             High = Int32.MaxValue;
+            IsReverse = false;
+            IsLocal = false;
             Labels = new List<string>();
             ProjectedProperties = new List<string>();
         }
@@ -168,30 +172,19 @@ namespace GraphView
             currentContext.SetPivotVariable(newTableVariable);
         }
 
-        //internal virtual void addInE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
-        //internal virtual void addOutE(GremlinToSqlContext currentContext, string firstVertexKeyOrEdgeLabel, string edgeLabelOrSecondVertexKey, params Object[] propertyKeyValues)
-
-        internal virtual void AddV(GremlinToSqlContext currentContext)
+        internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel, List<object> propertyKeyValues)
         {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void AddV(GremlinToSqlContext currentContext, params object[] propertyKeyValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void AddV(GremlinToSqlContext currentContext, string vertexLabel)
-        {
-            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel);
+            GremlinAddVVariable newVariable = new GremlinAddVVariable(vertexLabel, propertyKeyValues);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey)
+        internal virtual void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
-            throw new NotImplementedException();
+            GremlinAggregateVariable newVariable = new GremlinAggregateVariable(projectContext, sideEffectKey);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal virtual void And(GremlinToSqlContext currentContext, List<GremlinToSqlContext> andContexts)
@@ -276,7 +269,9 @@ namespace GraphView
 
         internal virtual void Coin(GremlinToSqlContext currentContext, double probability)
         {
-            throw new NotImplementedException();
+            GremlinCoinVariable newVariable = new GremlinCoinVariable(probability);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal virtual void Constant(GremlinToSqlContext currentContext, object value)
@@ -296,7 +291,15 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        //internal virtual void count(GremlinToSqlContext currentContext, Scope scope)
+        internal virtual void CountLocal(GremlinToSqlContext currentContext)
+        {
+            GremlinCountLocalVariable newVariable = new GremlinCountLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
+
         //internal virtual void cyclicPath(GremlinToSqlContext currentContext)
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
 
@@ -482,13 +485,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Limit(GremlinToSqlContext currentContext, long limit)
-        {
-            throw new NotImplementedException();
-        }
-
-        //internal virtual void Limit(Scope scope, long limit)
-
         internal virtual void Local(GremlinToSqlContext currentContext, GremlinToSqlContext localContext)
         {
             GremlinTableVariable localMapVariable = GremlinLocalVariable.Create(localContext);
@@ -512,45 +508,59 @@ namespace GraphView
 
             GremlinTableVariable mapVariable = GremlinMapVariable.Create(mapContext);
             currentContext.VariableList.Add(mapVariable);
-            
-            //It's used for repeat step, we should propagate all the variable to the main context
-            //Then we can check the variableList to know if the sub context used the main context variable when
-            //the variable is GremlinContextVariable and the value of IsFromSelect is True
-            //
-            //currentContext.VariableList.AddRange(mapContext.VariableList);
-
             currentContext.TableReferences.Add(mapVariable);
             currentContext.SetPivotVariable(mapVariable);
         }
 
         internal virtual void Max(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinMaxVariable newVariable = new GremlinMaxVariable(currentContext.Duplicate());
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Max(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope)
+        internal virtual void MaxLocal(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinMaxLocalVariable newVariable = new GremlinMaxLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Mean(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinMeanVariable newVariable = new GremlinMeanVariable(currentContext.Duplicate());
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Mean(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope)
+        internal virtual void MeanLocal(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinMeanLocalVariable newVariable = new GremlinMeanLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Min(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinMinVariable newVariable = new GremlinMinVariable(currentContext.Duplicate());
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Min(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope)
+        internal virtual void MinLocal(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinMinLocalVariable newVariable = new GremlinMinLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Not(GremlinToSqlContext currentContext, GremlinToSqlContext notContext)
@@ -636,7 +646,7 @@ namespace GraphView
             throw new QueryCompilationException("The OutV() step can only be applied to edges or vertex.");
         }
 
-        internal virtual void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        internal virtual void Property(GremlinToSqlContext currentContext, List<object> properties)
         {
             GremlinUpdatePropertiesVariable updateVariable;
             switch (GetVariableType())
@@ -687,9 +697,12 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Range(GremlinToSqlContext currentContext, int low, int high)
+        internal virtual void Range(GremlinToSqlContext currentContext, int low, int high, GremlinKeyword.Scope scope, bool isReverse)
         {
-            throw new NotImplementedException();
+            Low = low;
+            High = high;
+            IsLocal = scope == GremlinKeyword.Scope.local;
+            IsReverse = isReverse;
         }
 
         internal virtual void Repeat(GremlinToSqlContext currentContext, GremlinToSqlContext repeatContext,
@@ -814,8 +827,7 @@ namespace GraphView
         {
             throw new NotImplementedException();
         }
-
-        //internal virtual void SideEffect(Consumer<Traverser<E>> consumer)
+        
         internal virtual void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
             GremlinSideEffectVariable newVariable = new GremlinSideEffectVariable(sideEffectContext);
@@ -824,9 +836,10 @@ namespace GraphView
         }
 
         //internal virtual void SimplePath()
-        internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey)
+
+        internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
-            GremlinStoreVariable newVariable = new GremlinStoreVariable(this, sideEffectKey);
+            GremlinStoreVariable newVariable = new GremlinStoreVariable(projectContext, sideEffectKey);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
@@ -835,26 +848,20 @@ namespace GraphView
 
         internal virtual void Sum(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinSumVariable newVariable = new GremlinSumVariable(currentContext.Duplicate());
+            currentContext.Reset();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
-        //internal virtual void Sum(Scope scope)
-
-
-        internal virtual void Tail(GremlinToSqlContext currentContext)
+        internal virtual void SumLocal(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinSumLocalVariable newVariable = new GremlinSumLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
-
-        internal virtual void Tail(GremlinToSqlContext currentContext, long limit)
-        {
-            throw new NotImplementedException();
-        }
-
-        //internal virtual void Tail(GremlinToSqlContext currentContext, Scope scope)
-
-
-        //internal virtual void Tail(GremlinToSqlContext currentContext, Scope scope, long limit)
 
         internal virtual void TimeLimit(GremlinToSqlContext currentContext, long timeLimit)
         {

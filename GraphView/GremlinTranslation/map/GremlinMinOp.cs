@@ -10,8 +10,6 @@ namespace GraphView
     {
         public GremlinKeyword.Scope Scope { get; set; }
 
-        public GremlinMinOp() { }
-
         public GremlinMinOp(GremlinKeyword.Scope scope)
         {
             Scope = scope;
@@ -20,7 +18,17 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-            throw new NotImplementedException();
+
+            if (Scope == GremlinKeyword.Scope.global)
+            {
+                inputContext.PivotVariable.Min(inputContext);
+            }
+            else
+            {
+                inputContext.PivotVariable.MinLocal(inputContext);
+            }
+
+            return inputContext;
         }
     }
 }

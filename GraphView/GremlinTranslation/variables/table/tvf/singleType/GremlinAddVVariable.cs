@@ -8,7 +8,7 @@ namespace GraphView
 {
     internal class GremlinAddVVariable: GremlinVertexTableVariable
     {
-        public Dictionary<string, object> VertexProperties { get; set; }
+        public List<object> VertexProperties { get; set; }
         public string VertexLabel { get; set; }
         public bool IsFirstTableReference { get; set; }
 
@@ -115,15 +115,12 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            if (VertexLabel != null)
+            parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
+            parameters.Add(SqlUtil.GetValueExpr(VertexLabel));
+            for (var i = 0; i < VertexProperties.Count; i += 2)
             {
-                parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
-                parameters.Add(SqlUtil.GetValueExpr(VertexLabel));
-            }
-            foreach (var property in VertexProperties)
-            {
-                parameters.Add(SqlUtil.GetValueExpr(property.Key));
-                parameters.Add(SqlUtil.GetValueExpr(property.Value));
+                parameters.Add(SqlUtil.GetValueExpr(VertexProperties[i]));
+                parameters.Add(SqlUtil.GetValueExpr(VertexProperties[i+1]));
             }
             var firstTableRef = IsFirstTableReference ? SqlUtil.GetDerivedTable(SqlUtil.GetSimpleSelectQueryBlock("1"), "_") : null;
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddV, parameters, this, GetVariableName());
@@ -131,24 +128,16 @@ namespace GraphView
             return SqlUtil.GetCrossApplyTableReference(firstTableRef, secondTableRef);
         }
 
-        public GremlinAddVVariable(string vertexLabel, bool isFirstTableReference = false)
+        public GremlinAddVVariable(string vertexLabel, List<object> vertexProperties, bool isFirstTableReference = false)
         {
-            VertexProperties = new Dictionary<string, object>();
+            VertexProperties = new List<object>(vertexProperties);
             VertexLabel = vertexLabel;
             IsFirstTableReference = isFirstTableReference;
         }
 
-        public GremlinAddVVariable()
+        internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
         {
-            VertexProperties = new Dictionary<string, object>();
-        }
-
-        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
-        {
-            foreach (var pair in properties)
-            {
-                VertexProperties[pair.Key] = pair.Value;
-            }
+            VertexProperties.AddRange(properties);
         }
     }
 }

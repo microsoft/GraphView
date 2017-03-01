@@ -107,7 +107,7 @@ namespace GraphView
         public GremlinGhostVertexVariable(GremlinVariable ghostVariable, GremlinVariable attachedVariable, string label)
             : base(ghostVariable, attachedVariable, label) { }
 
-        internal override void Property(GremlinToSqlContext currentContext, Dictionary<string, object> properties)
+        internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
         {
             RealVariable.Property(currentContext, properties);
         }

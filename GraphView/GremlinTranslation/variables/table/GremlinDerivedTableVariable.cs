@@ -81,6 +81,58 @@ namespace GraphView
         }
     }
 
+    internal class GremlinMinVariable : GremlinDerivedTableVariable
+    {
+        public GremlinMinVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) { }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Min, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
+        }
+    }
+
+    internal class GremlinMaxVariable : GremlinDerivedTableVariable
+    {
+        public GremlinMaxVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) { }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Max, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
+        }
+    }
+
+    internal class GremlinMeanVariable : GremlinDerivedTableVariable
+    {
+        public GremlinMeanVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) { }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Mean, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
+        }
+    }
+
+    internal class GremlinSumVariable : GremlinDerivedTableVariable
+    {
+        public GremlinSumVariable(GremlinToSqlContext subqueryContext) : base(subqueryContext) { }
+
+        public override WTableReference ToTableReference()
+        {
+            WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
+            queryBlock.SelectElements.Clear();
+            queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Sum, SubqueryContext.PivotVariable.DefaultProjection().ToScalarExpression()), GremlinKeyword.ScalarValue));
+            return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
+        }
+    }
+
     internal class GremlinTreeVariable : GremlinDerivedTableVariable
     {
         public GremlinVariable PathVariable { get; set; }

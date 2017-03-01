@@ -29,89 +29,53 @@ namespace GraphView
 
     internal class GremlinFromOp : GremlinTranslationOperator
     {
-        public FromType Type { get; set; }
-        public string StepLabel { get; set; }
         public GraphTraversal2 FromVertexTraversal { get; set; }
 
         public GremlinFromOp(string stepLabel)
         {
-            StepLabel = stepLabel;
-            Type = FromType.FromStepLabel;
+            FromVertexTraversal = GraphTraversal2.__().Select(GremlinKeyword.Pop.last, stepLabel);
         }
 
         public GremlinFromOp(GraphTraversal2 fromVertexTraversal)
         {
             FromVertexTraversal = fromVertexTraversal;
-            Type = FromType.FromVertexTraversal;
         }
 
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            switch (Type)
-            {
-                case FromType.FromStepLabel:
-                    inputContext.PivotVariable.From(inputContext, StepLabel);
-                    break;
-                case FromType.FromVertexTraversal:
-                    FromVertexTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
-                    GremlinToSqlContext fromVertexContext = FromVertexTraversal.GetEndOp().GetContext();
-                    inputContext.PivotVariable.From(inputContext, fromVertexContext);
-                    break;
-            }
+            FromVertexTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext fromVertexContext = FromVertexTraversal.GetEndOp().GetContext();
+            inputContext.PivotVariable.From(inputContext, fromVertexContext);
 
             return inputContext;
-        }
-
-        public enum FromType
-        {
-            FromStepLabel,
-            FromVertexTraversal
         }
     }
 
     internal class GremlinToOp : GremlinTranslationOperator
     {
-        public string StepLabel { get; set; }
         public GraphTraversal2 ToVertexTraversal { get; set; }
-        public ToType Type { get; set; }
 
         public GremlinToOp(string stepLabel)
         {
-            StepLabel = stepLabel;
-            Type = ToType.ToStepLabel; 
+            ToVertexTraversal = GraphTraversal2.__().Select(stepLabel);
         }
 
         public GremlinToOp(GraphTraversal2 toVertexTraversal)
         {
             ToVertexTraversal = toVertexTraversal;
-            Type = ToType.ToVertexTraversal;
         }
 
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            switch (Type)
-            {
-                case ToType.ToStepLabel:
-                    inputContext.PivotVariable.To(inputContext, StepLabel);
-                    break;
-                case ToType.ToVertexTraversal:
-                    ToVertexTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
-                    GremlinToSqlContext toVertexContext = ToVertexTraversal.GetEndOp().GetContext();
-                    inputContext.PivotVariable.To(inputContext, toVertexContext);
-                    break;
-            }
+            ToVertexTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext toVertexContext = ToVertexTraversal.GetEndOp().GetContext();
+            inputContext.PivotVariable.To(inputContext, toVertexContext);
 
             return inputContext;
-        }
-
-        public enum ToType 
-        {
-            ToStepLabel,
-            ToVertexTraversal
         }
     }
 }

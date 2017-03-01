@@ -25,6 +25,7 @@ namespace GraphView
         public const string PropertyValue = "_value";
         public const string Star = "*";
 
+
         public static class func
         {
             public const string Coalesce = "Coalesce";
@@ -68,6 +69,18 @@ namespace GraphView
             public const string Group = "Group";
             public const string Cap = "Cap";
             public const string Store = "Store";
+            public const string Aggregate = "Aggregate";
+            public const string Coin = "Coin";
+            public const string CountLocal = "CountLocal";
+            public const string RangeLocal = "RangeLocal";
+            public const string MinLocal = "MinLocal";
+            public const string MaxLocal = "MaxLocal";
+            public const string MeanLocal = "MeanLocal";
+            public const string Min = "Min";
+            public const string Max = "Max";
+            public const string Mean = "Mean";
+            public const string Sum = "Sum";
+            public const string SumLocal = "SumLocal";
         }
 
         public enum Pop
@@ -94,6 +107,13 @@ namespace GraphView
             Shuffle,
             Desr,
             Incr
+        }
+
+        public enum VertexPropertyCardinality
+        {
+            single,
+            list,
+            //set
         }
 
         public static readonly Dictionary<string, string> GremlinStepToGraphTraversalDict = new Dictionary

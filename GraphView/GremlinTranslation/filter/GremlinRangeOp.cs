@@ -10,16 +10,21 @@ namespace GraphView
     {
         public int Low { get; set; }
         public int High { get; set; }
-        public GremlinRangeOp(int low, int high)
+        public GremlinKeyword.Scope Scope { get; set; }
+        public bool IsReverse { get; set; }
+
+        public GremlinRangeOp(int low, int high, GremlinKeyword.Scope scope, bool isReverse = false)
         {
             Low = low;
             High = high;
+            Scope = scope;
+            IsReverse = isReverse;
         }
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            inputContext.PivotVariable.Range(inputContext, Low, High);
+            inputContext.PivotVariable.Range(inputContext, Low, High, Scope, IsReverse);
 
             return inputContext;
         }

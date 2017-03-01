@@ -73,6 +73,8 @@ namespace GraphView
         internal Identifier Alias { set; get; }
         internal int Low { get; set; }
         internal int High { get; set; }
+        internal bool IsLocal { get; set; }
+        internal bool IsReverse { get; set; }
     }
 
     public abstract partial class WTableReferenceWithAliasAndColumns : WTableReferenceWithAlias
@@ -537,6 +539,14 @@ namespace GraphView
         }
     }
 
+    public class WVertexPropertyExpression: WPrimaryExpression
+    {
+        public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
+        public WValueExpression Key { get; set; }
+        public WValueExpression Value { get; set; }
+        public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+    }
+
     public partial class WAddVTableReference : WSchemaObjectFunctionTableReference
     {
         public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
@@ -606,6 +616,11 @@ namespace GraphView
 
     }
 
+    public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference
+    {
+        
+    }
+
     public partial class WBarrierTableReference : WSchemaObjectFunctionTableReference
     {
 
@@ -617,6 +632,36 @@ namespace GraphView
     }
 
     public partial class WMapTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WCoinTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WCountLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WMaxLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WMinLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WMeanLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WSumLocalTableReference : WSchemaObjectFunctionTableReference
     {
 
     }
