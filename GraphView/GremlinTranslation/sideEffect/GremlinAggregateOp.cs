@@ -39,7 +39,7 @@ namespace GraphView
 
         public void ModulateBy(string key)
         {
-            ByTraversal = GraphTraversal2.__().Values("key");
+            ByTraversal = GraphTraversal2.__().Values(key);
         }
 
         public void ModulateBy(GremlinKeyword.Order order)
