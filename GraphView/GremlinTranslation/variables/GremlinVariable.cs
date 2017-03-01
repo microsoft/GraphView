@@ -287,7 +287,15 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        //internal virtual void count(GremlinToSqlContext currentContext, Scope scope)
+        internal virtual void CountLocal(GremlinToSqlContext currentContext)
+        {
+            GremlinCountLocalVariable newVariable = new GremlinCountLocalVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
+
         //internal virtual void cyclicPath(GremlinToSqlContext currentContext)
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
 

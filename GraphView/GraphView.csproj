@@ -164,6 +164,7 @@
     <Compile Include="GremlinTranslation\variables\table\edge\GremlinFreeEdgeVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinAggregateVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinCoinVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinCountLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinDedupVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinDropVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinExpandVariable.cs" />

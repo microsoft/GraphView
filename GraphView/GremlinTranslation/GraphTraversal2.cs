@@ -356,11 +356,23 @@ namespace GraphView
         }
         public GraphTraversal2 Count()
         {
-            AddGremlinOperator(new GremlinCountOp());
+            AddGremlinOperator(new GremlinCountOp(GremlinKeyword.Scope.global));
             return this;
         }
 
-        //public GraphTraversal2 count(Scope scope)
+        public GraphTraversal2 Count(GremlinKeyword.Scope scope)
+        {
+            if (scope == GremlinKeyword.Scope.global)
+            {
+                AddGremlinOperator(new GremlinCountOp(scope));
+            }
+            else
+            {
+                AddGremlinOperator(new GremlinCountOp(scope));
+            }
+            return this;
+        }
+
         //public GraphTraversal2 cyclicPath()
         //public GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
 

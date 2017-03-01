@@ -436,6 +436,9 @@ namespace GraphView
                 case GremlinKeyword.func.Coin:
                     funcTableRef = new WCoinTableReference();
                     break;
+                case GremlinKeyword.func.CountLocal:
+                    funcTableRef = new WCountLocalTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

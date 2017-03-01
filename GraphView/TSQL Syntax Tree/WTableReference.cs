@@ -639,6 +639,11 @@ namespace GraphView
 
     }
 
+    public partial class WCountLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WJoinParenthesisTableReference : WTableReference
     {
         internal WTableReference Join { get; set; }
