@@ -2259,26 +2259,66 @@ namespace GraphView
         }
     }
 
+    partial class WAggregateTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery getAggregateObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
+            if (getAggregateObjectSubqueryParameter == null)
+                throw new SyntaxErrorException("The first parameter of an Aggregate function must be a WScalarSubquery.");
+            ScalarFunction getAggregateObjectFunction = getAggregateObjectSubqueryParameter.CompileToFunction(context, dbConnection);
+
+            string storedName = (Parameters[1] as WValueExpression).Value;
+
+            IAggregateFunction sideEffectState;
+            if (!context.SideEffectStates.TryGetValue(storedName, out sideEffectState))
+            {
+                sideEffectState = new CollectionFunction();
+                context.SideEffectStates.Add(storedName, sideEffectState);
+            }
+            else if (!(sideEffectState is CollectionFunction))
+            {
+                throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and a store(string) step!");
+            }
+
+            AggregateOperator aggregateOp = new AggregateOperator(context.CurrentExecutionOperator, getAggregateObjectFunction,
+                (CollectionFunction)sideEffectState);
+            context.CurrentExecutionOperator = aggregateOp;
+            // TODO: Change to correct ColumnGraphType
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
+            return aggregateOp;
+        }
+    }
+
     partial class WStoreTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WFunctionCall targetFieldParameter = Parameters[0] as WFunctionCall;
-            if (targetFieldParameter == null)
-                throw new SyntaxErrorException("The first parameter of a Store function must be a Compose1 function.");
-            ScalarFunction getTargetFieldFunction = targetFieldParameter.CompileToFunction(context, dbConnection);
+            WScalarSubquery getStoreObjectSubqueryParameter = Parameters[0] as WScalarSubquery;
+            if (getStoreObjectSubqueryParameter == null)
+                throw new SyntaxErrorException("The first parameter of a Store function must be a WScalarSubquery.");
+            ScalarFunction getStoreObjectFunction = getStoreObjectSubqueryParameter.CompileToFunction(context, dbConnection);
 
             string storedName = (Parameters[1] as WValueExpression).Value;
-            StoreOperator storeOp = new StoreOperator(context.CurrentExecutionOperator, getTargetFieldFunction);
-            context.CurrentExecutionOperator = storeOp;
-
-            List<IAggregateFunction> sideEffectList;
-            if (!context.SideEffectStates.TryGetValue(storedName, out sideEffectList))
+            
+            IAggregateFunction sideEffectState;
+            if (!context.SideEffectStates.TryGetValue(storedName, out sideEffectState))
             {
-                sideEffectList = new List<IAggregateFunction>();
-                context.SideEffectStates.Add(storedName, sideEffectList);
+                sideEffectState = new CollectionFunction();
+                context.SideEffectStates.Add(storedName, sideEffectState);
             }
-            sideEffectList.Add(storeOp.StoreState);
+            else if (!(sideEffectState is CollectionFunction))
+            {
+                throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and a store(string) step!");
+            }
+
+            StoreOperator storeOp = new StoreOperator(context.CurrentExecutionOperator, getStoreObjectFunction,
+                (CollectionFunction) sideEffectState);
+            context.CurrentExecutionOperator = storeOp;
+            // TODO: Change to correct ColumnGraphType
+            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+
 
             return storeOp;
         }
@@ -2442,21 +2482,26 @@ namespace GraphView
             }
             else
             {
+                IAggregateFunction sideEffectState;
+                if (!context.SideEffectStates.TryGetValue(groupParameter.Value, out sideEffectState))
+                {
+                    sideEffectState = new GroupFunction(tempSourceOp, aggregatedSourceOp, aggregateOp,
+                        elementPropertyProjectionIndex);
+                    context.SideEffectStates.Add(groupParameter.Value, sideEffectState);
+                }
+                else if (sideEffectState is GroupFunction) {
+                    throw new QueryCompilationException("Multi group with same sideEffect key is an undefined behavior in Gremlin and hence not supported.");
+                }
+                else {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and a store(string) step!");
+                }
+
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
-                    context.CurrentExecutionOperator, 
-                    groupKeyFunction, groupKeyFieldIndex,
-                    tempSourceOp, aggregatedSourceOp, aggregateOp,
-                    elementPropertyProjectionIndex);
+                    context.CurrentExecutionOperator,
+                    (GroupFunction)sideEffectState,
+                    groupKeyFunction, groupKeyFieldIndex);
 
                 context.CurrentExecutionOperator = groupSideEffectOp;
-
-                List<IAggregateFunction> sideEffectList;
-                if (!context.SideEffectStates.TryGetValue(groupParameter.Value, out sideEffectList))
-                {
-                    sideEffectList = new List<IAggregateFunction>();
-                    context.SideEffectStates.Add(groupParameter.Value, sideEffectList);
-                }
-                sideEffectList.Add(groupSideEffectOp.GroupState);
 
                 return groupSideEffectOp;
             }

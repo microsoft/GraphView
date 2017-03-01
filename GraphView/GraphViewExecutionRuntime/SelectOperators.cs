@@ -2237,17 +2237,71 @@ namespace GraphView
         }
     }
 
+    internal class AggregateOperator : GraphViewExecutionOperator
+    {
+        CollectionFunction aggregateState;
+        GraphViewExecutionOperator inputOp;
+        ScalarFunction getAggregateObjectFunction;
+
+        public AggregateOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction aggregateState)
+        {
+            this.aggregateState = aggregateState;
+            this.inputOp = inputOp;
+            this.getAggregateObjectFunction = getTargetFieldFunction;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            while (inputOp.State())
+            {
+                RawRecord r = inputOp.Next();
+                if (r == null)
+                {
+                    Close();
+                    return null;
+                }
+
+                RawRecord result = new RawRecord(r);
+
+                FieldObject aggregateObject = getAggregateObjectFunction.Evaluate(r);
+
+                if (aggregateObject == null)
+                    throw new GraphViewException("The provided traversal or property name in Aggregate does not map to a value.");
+
+                aggregateState.Accumulate(aggregateObject);
+
+                result.Append(aggregateState.CollectionField);
+
+                if (!inputOp.State())
+                {
+                    Close();
+                }
+                return result;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            //aggregateState.Init();
+            inputOp.ResetState();
+            Open();
+        }
+    }
+
     internal class StoreOperator : GraphViewExecutionOperator
     {
-        public StoreStateFunction StoreState { get; private set; }
+        CollectionFunction storeState;
         GraphViewExecutionOperator inputOp;
-        ScalarFunction getTargetFieldFunction;
+        ScalarFunction getStoreObjectFunction;
 
-        public StoreOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction)
+        public StoreOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction storeState)
         {
-            StoreState = new StoreStateFunction();
+            this.storeState = storeState;
             this.inputOp = inputOp;
-            this.getTargetFieldFunction = getTargetFieldFunction;
+            this.getStoreObjectFunction = getTargetFieldFunction;
             Open();
         }
 
@@ -2262,13 +2316,22 @@ namespace GraphView
                     return null;
                 }
 
-                StoreState.Accumulate(getTargetFieldFunction.Evaluate(r));
+                RawRecord result = new RawRecord(r);
+
+                FieldObject storeObject = getStoreObjectFunction.Evaluate(r);
+
+                if (storeObject == null)
+                    throw new GraphViewException("The provided traversal or property name in Store does not map to a value.");
+
+                storeState.Accumulate(storeObject);
+
+                result.Append(storeState.CollectionField);
 
                 if (!inputOp.State())
                 {
                     Close();
                 }
-                return r;
+                return result;
             }
 
             return null;
@@ -2276,35 +2339,42 @@ namespace GraphView
 
         public override void ResetState()
         {
-            //StoreState.Init();
+            //storeState.Init();
             inputOp.ResetState();
             Open();
         }
     }
 
+
+    //
+    // Note: our BarrierOperator's semantics is not the same the one's in Gremlin
+    //
     internal class BarrierOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator _inputOp;
         private Queue<RawRecord> _outputBuffer;
+        private int _outputBufferSize;
 
-        public BarrierOperator(GraphViewExecutionOperator inputOp)
+        public BarrierOperator(GraphViewExecutionOperator inputOp, int outputBufferSize = -1)
         {
             _inputOp = inputOp;
-            _outputBuffer = null;
+            _outputBuffer = new Queue<RawRecord>();
+            _outputBufferSize = outputBufferSize;
             Open();
         }
           
         public override RawRecord Next()
         {
-            if (_outputBuffer == null)
-            {
-                _outputBuffer = new Queue<RawRecord>();
-                RawRecord record;
+            while (_outputBuffer.Any()) {
+                return _outputBuffer.Dequeue();
+            }
 
-                while (_inputOp.State() && (record = _inputOp.Next()) != null)
-                {
-                    _outputBuffer.Enqueue(record);
-                }
+            RawRecord record;
+            while ((_outputBufferSize == -1 || _outputBuffer.Count <= _outputBufferSize) 
+                    && _inputOp.State() 
+                    && (record = _inputOp.Next()) != null)
+            {
+                _outputBuffer.Enqueue(record);
             }
 
             if (_outputBuffer.Count <= 1) Close();
@@ -2315,7 +2385,7 @@ namespace GraphView
         public override void ResetState()
         {
             _inputOp.ResetState();
-            _outputBuffer = null;
+            _outputBuffer.Clear();
             Open();
         }
     }

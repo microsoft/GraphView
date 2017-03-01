@@ -121,7 +121,7 @@ namespace GraphView
         /// implements interfaces of aggregation functions, as each record passes through
         /// the function, the function's state is updated.
         /// </summary>
-        public Dictionary<string, List<IAggregateFunction>> SideEffectStates { get; private set; }
+        public Dictionary<string, IAggregateFunction> SideEffectStates { get; private set; }
 
         public bool CarryOn { get; set; }
         public Dictionary<WColumnReferenceExpression, int> ParentContextRawRecordLayout { get; private set; }
@@ -131,7 +131,7 @@ namespace GraphView
             TemporaryTableCollection = new Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>>();
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());
             TableReferences = new Dictionary<string, TableGraphType>();
-            SideEffectStates = new Dictionary<string, List<IAggregateFunction>>();
+            SideEffectStates = new Dictionary<string, IAggregateFunction>();
 
             CarryOn = false;
         }
@@ -152,7 +152,7 @@ namespace GraphView
         }
 
         public QueryCompilationContext(Dictionary<string, Tuple<TemporaryTableHeader, GraphViewExecutionOperator>> priorTemporaryTables,
-             Dictionary<string, List<IAggregateFunction>> priorSideEffectStates)
+             Dictionary<string, IAggregateFunction> priorSideEffectStates)
         {
             TemporaryTableCollection = priorTemporaryTables;
             RawRecordLayout = new Dictionary<WColumnReferenceExpression, int>(new WColumnReferenceExpressionComparer());

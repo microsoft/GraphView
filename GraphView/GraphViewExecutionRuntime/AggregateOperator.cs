@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace GraphView
@@ -190,28 +191,28 @@ namespace GraphView
         }
     }
 
-    internal class StoreStateFunction : IAggregateFunction
+    internal class CollectionFunction : IAggregateFunction
     {
-        List<FieldObject> aggregateState;
+        public CollectionField CollectionField { get; private set; }
 
-        public StoreStateFunction()
+        public CollectionFunction()
         {
-            aggregateState = new List<FieldObject>();
+            CollectionField = new CollectionField();
         }
 
         public void Init()
         {
-            aggregateState = new List<FieldObject>();
+            CollectionField = new CollectionField();
         }
 
         public void Accumulate(params FieldObject[] values)
         {
-            aggregateState.Add(values[0]);
+            CollectionField.Collection.Add(values[0]);
         }
 
         public FieldObject Terminate()
         {
-            return new CollectionField(aggregateState);
+            return CollectionField;
         }
     }
 
@@ -247,8 +248,8 @@ namespace GraphView
 
         public void Accumulate(params Object[] values)
         {
-            var groupByKey = values[0] as FieldObject;
-            var groupByValue = values[1] as RawRecord;
+            FieldObject groupByKey = values[0] as FieldObject;
+            RawRecord groupByValue = values[1] as RawRecord;
 
             if (!groupedStates.ContainsKey(groupByKey))
             {
@@ -307,16 +308,16 @@ namespace GraphView
 
     internal class CapAggregate : IAggregateFunction
     {
-        List<Tuple<string, List<IAggregateFunction>>> sideEffectStates;
+        List<Tuple<string, IAggregateFunction>> sideEffectStates;
 
         public CapAggregate()
         {
-            sideEffectStates = new List<Tuple<string, List<IAggregateFunction>>>();
+            sideEffectStates = new List<Tuple<string, IAggregateFunction>>();
         }
 
-        public void AddCapatureSideEffectState(string key, List<IAggregateFunction> sideEffectList)
+        public void AddCapatureSideEffectState(string key, IAggregateFunction sideEffectState)
         {
-            sideEffectStates.Add(new Tuple<string, List<IAggregateFunction>>(key, sideEffectList));
+            sideEffectStates.Add(new Tuple<string, IAggregateFunction>(key, sideEffectState));
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -333,119 +334,21 @@ namespace GraphView
         {
             if (sideEffectStates.Count == 1)
             {
-                List<FieldObject> collection = new List<FieldObject>();
+                Tuple<string, IAggregateFunction> tuple = sideEffectStates[0];
+                IAggregateFunction sideEffectState = tuple.Item2;
 
-                Tuple<string, List<IAggregateFunction>> tuple = sideEffectStates[0];
-                List<IAggregateFunction> sideEffectStateList = tuple.Item2;
-
-                int capturedStoreCount = 0;
-                int capturedGroupCount = 0;
-                MapField mergedMapField = null;
-                foreach (var sideEffectState in sideEffectStateList)
-                {
-                    FieldObject capResult = sideEffectState.Terminate();
-
-                    if (capResult is CollectionField)
-                    {
-                        if (capturedGroupCount > 0)
-                            throw new GraphViewException("It's illegal to use the same parameter of a group(string) step and a store(string) step!");
-                        capturedStoreCount++;
-                        collection.AddRange((capResult as CollectionField).Collection);
-                    }
-                    else if (capResult is MapField)
-                    {
-                        if (capturedStoreCount > 0)
-                            throw new GraphViewException("It's illegal to use the same parameter of a group(string) step and a store(string) step!");
-                        capturedGroupCount++;
-
-                        if (mergedMapField == null)
-                            mergedMapField = capResult as MapField;
-                        else
-                        {
-                            foreach (var pair in (capResult as MapField).Map)
-                            {
-                                FieldObject mapKey = pair.Key;
-                                FieldObject value = pair.Value;
-
-                                FieldObject cf;
-                                if (!mergedMapField.Map.TryGetValue(mapKey, out cf))
-                                {
-                                    mergedMapField.Map.Add(mapKey, value);
-                                }
-                                else
-                                {
-                                    Debug.Assert(cf is CollectionField && value is CollectionField, "Group() should yield a MapField with value as CollectionField.");
-                                    (cf as CollectionField).Collection.AddRange((value as CollectionField).Collection);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (capturedStoreCount > 0)
-                    return new CollectionField(collection);
-                else
-                    return mergedMapField;
+                return sideEffectState.Terminate();
             }
             else
             {
                 Dictionary<FieldObject, FieldObject> map = new Dictionary<FieldObject, FieldObject>();
 
-                foreach (var tuple in sideEffectStates)
+                foreach (Tuple<string, IAggregateFunction> tuple in sideEffectStates)
                 {
-                    List<FieldObject> collection = new List<FieldObject>();
-
                     string key = tuple.Item1;
-                    List<IAggregateFunction> sideEffectStateList = tuple.Item2;
+                    IAggregateFunction sideEffectState = tuple.Item2;
 
-                    int capturedStoreCount = 0;
-                    int capturedGroupCount = 0;
-                    MapField mergedMapField = null;
-                    foreach (var sideEffectState in sideEffectStateList)
-                    {
-                        FieldObject capResult = sideEffectState.Terminate();
-
-                        if (capResult is CollectionField)
-                        {
-                            if (capturedGroupCount > 0)
-                                throw new GraphViewException("It's illegal to use the same parameter of a group(string) step and a store(string) step!");
-                            capturedStoreCount++;
-                            collection.AddRange((capResult as CollectionField).Collection);
-                        }
-                        else if (capResult is MapField)
-                        {
-                            if (capturedStoreCount > 0)
-                                throw new GraphViewException("It's illegal to use the same parameter of a group(string) step and a store(string) step!");
-                            capturedGroupCount++;
-
-                            if (mergedMapField == null)
-                                mergedMapField = capResult as MapField;
-                            else
-                            {
-                                foreach (var pair in (capResult as MapField).Map)
-                                {
-                                    FieldObject mapKey = pair.Key;
-                                    FieldObject value = pair.Value;
-
-                                    FieldObject cf;
-                                    if (!mergedMapField.Map.TryGetValue(mapKey, out cf))
-                                    {
-                                        mergedMapField.Map.Add(mapKey, value);
-                                    }
-                                    else
-                                    {
-                                        Debug.Assert(cf is CollectionField && value is CollectionField, "Group() should yield a MapField with value as CollectionField.");
-                                        (cf as CollectionField).Collection.AddRange((value as CollectionField).Collection);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (capturedStoreCount > 0)
-                        map.Add(new StringField(key), new CollectionField(collection));
-                    else
-                        map.Add(new StringField(key), mergedMapField);
+                    map.Add(new StringField(key), sideEffectState.Terminate());
                 }
 
                 return new MapField(map);
@@ -462,18 +365,15 @@ namespace GraphView
 
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
+            GroupFunction groupState,
             ScalarFunction groupByKeyFunction,
-            int groupByKeyFieldIndex,
-            ConstantSourceOperator tempSourceOp,
-            ContainerOperator groupedSourceOp,
-            GraphViewExecutionOperator aggregateOp,
-            int elementPropertyProjectionIndex)
+            int groupByKeyFieldIndex)
         {
             this.inputOp = inputOp;
+            this.GroupState = groupState;
             this.groupByKeyFunction = groupByKeyFunction;
             this.groupByKeyFieldIndex = groupByKeyFieldIndex;
 
-            GroupState = new GroupFunction(tempSourceOp, groupedSourceOp, aggregateOp, elementPropertyProjectionIndex);
             Open();
         }
 
@@ -552,7 +452,6 @@ namespace GraphView
 
             groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
             Open();
-            //groupedStates.Clear();
         }
 
         public override RawRecord Next()
