@@ -2046,14 +2046,14 @@ namespace GraphView
     internal class DeduplicateOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator _inputOp;
-        private HashSet<FieldObject> _fieldValueSet;
-        private int _targetFieldIndex;
+        private HashSet<string> _dedupStringSet;
+        private List<ScalarFunction> _targetValueFunctionList;
 
-        internal DeduplicateOperator(GraphViewExecutionOperator pInputOperator, int pTargetFieldIndex)
+        internal DeduplicateOperator(GraphViewExecutionOperator inputOperator, List<ScalarFunction> targetValueFunctionList)
         {
-            _inputOp = pInputOperator;
-            _targetFieldIndex = pTargetFieldIndex;
-            _fieldValueSet = new HashSet<FieldObject>();
+            _inputOp = inputOperator;
+            _targetValueFunctionList = targetValueFunctionList;
+            _dedupStringSet = new HashSet<string>();
             this.Open();
         }
 
@@ -2063,9 +2063,22 @@ namespace GraphView
 
             while (_inputOp.State() && (srcRecord = _inputOp.Next()) != null)
             {
-                if (_fieldValueSet.Contains(srcRecord[_targetFieldIndex])) continue;
+                StringBuilder compositeDeduplicateStringBuilder = new StringBuilder();
 
-                _fieldValueSet.Add(srcRecord[_targetFieldIndex]);
+                foreach (ScalarFunction func in _targetValueFunctionList)
+                {
+                    string deduplicateString = func.Evaluate(srcRecord)?.ToValue;
+                    if (deduplicateString == null)
+                        throw new GraphViewException("The provided traversal or property name of Dedup does not map to a value.");
+
+                    compositeDeduplicateStringBuilder.Append(deduplicateString);
+                }
+
+                string compositeDedupString = compositeDeduplicateStringBuilder.ToString();
+                if (_dedupStringSet.Contains(compositeDedupString))
+                    continue;
+
+                _dedupStringSet.Add(compositeDedupString);
                 return srcRecord;
             }
 
@@ -2076,7 +2089,7 @@ namespace GraphView
         public override void ResetState()
         {
             _inputOp.ResetState();
-            _fieldValueSet?.Clear();
+            _dedupStringSet?.Clear();
             Open();
         }
     }

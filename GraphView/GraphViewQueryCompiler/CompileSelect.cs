@@ -2014,12 +2014,10 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var targetField = Parameters[0] as WColumnReferenceExpression;
-            if (targetField == null)
-                throw new SyntaxErrorException("The parameter of Dedup function can only be a WColumnReference");
+            List<ScalarFunction> targetValueFunctionList =
+                Parameters.Select(expression => expression.CompileToFunction(context, dbConnection)).ToList();
 
-            var targetFieldIndex = context.LocateColumnReference(targetField);
-            var dedupOp = new DeduplicateOperator(context.CurrentExecutionOperator, targetFieldIndex);
+            DeduplicateOperator dedupOp = new DeduplicateOperator(context.CurrentExecutionOperator, targetValueFunctionList);
             context.CurrentExecutionOperator = dedupOp;
 
             return dedupOp;
