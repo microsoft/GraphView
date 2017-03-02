@@ -1709,16 +1709,15 @@ namespace GraphView
 
         public override void ResetState()
         {
-            if (traversalList.Count == 0)
-            {
+            if (traversalList.Count == 0) {
                 inputOp.ResetState();
             }
 
-            foreach (Tuple<ConstantSourceOperator, GraphViewExecutionOperator> tuple in traversalList)
-            {
+            foreach (Tuple<ConstantSourceOperator, GraphViewExecutionOperator> tuple in traversalList) {
                 tuple.Item2.ResetState();
             }
 
+            activeTraversalIndex = 0;
             Open();
         }
     }
