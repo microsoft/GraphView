@@ -2964,4 +2964,226 @@ namespace GraphView
             Open();
         }
     }
+
+    internal class ChooseOperator : GraphViewExecutionOperator
+    {
+        GraphViewExecutionOperator inputOp;
+
+        ScalarFunction scalarSubQueryFunc;
+
+        ConstantSourceOperator tempSourceOp;
+        ContainerOperator trueBranchSourceOp;
+        ContainerOperator falseBranchSourceOp;
+
+        Queue<RawRecord> evaluatedTrueRecords;
+        Queue<RawRecord> evaluatedFalseRecords;
+
+        GraphViewExecutionOperator trueBranchTraversalOp;
+        GraphViewExecutionOperator falseBranchTraversalOp;
+
+        public ChooseOperator(
+            GraphViewExecutionOperator inputOp,
+            ScalarFunction scalarSubQueryFunc,
+            ConstantSourceOperator tempSourceOp,
+            ContainerOperator trueBranchSourceOp,
+            GraphViewExecutionOperator trueBranchTraversalOp,
+            ContainerOperator falseBranchSourceOp,
+            GraphViewExecutionOperator falseBranchTraversalOp
+            )
+        {
+            this.inputOp = inputOp;
+            this.scalarSubQueryFunc = scalarSubQueryFunc;
+            this.tempSourceOp = tempSourceOp;
+            this.trueBranchSourceOp = trueBranchSourceOp;
+            this.trueBranchTraversalOp = trueBranchTraversalOp;
+            this.falseBranchSourceOp = falseBranchSourceOp;
+            this.falseBranchTraversalOp = falseBranchTraversalOp;
+
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord = null;
+            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
+            {
+                if (scalarSubQueryFunc.Evaluate(currentRecord) != null)
+                    evaluatedTrueRecords.Enqueue(currentRecord);
+                else
+                    evaluatedFalseRecords.Enqueue(currentRecord);
+            }
+
+            while (evaluatedTrueRecords.Any())
+            {
+                tempSourceOp.ConstantSource = evaluatedTrueRecords.Dequeue();
+                trueBranchSourceOp.Next();
+            }
+
+            RawRecord trueBranchTraversalRecord;
+            while (trueBranchTraversalOp.State() && (trueBranchTraversalRecord = trueBranchTraversalOp.Next()) != null) {
+                return trueBranchTraversalRecord;
+            }
+
+            while (evaluatedFalseRecords.Any())
+            {
+                tempSourceOp.ConstantSource = evaluatedTrueRecords.Dequeue();
+                falseBranchSourceOp.Next();
+            }
+
+            RawRecord falseBranchTraversalRecord;
+            while (falseBranchTraversalOp.State() && (falseBranchTraversalRecord = falseBranchTraversalOp.Next()) != null) {
+                return falseBranchTraversalRecord;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            evaluatedTrueRecords.Clear();
+            evaluatedFalseRecords.Clear();
+            trueBranchSourceOp.ResetState();
+            falseBranchSourceOp.ResetState();
+            trueBranchTraversalOp.ResetState();
+            falseBranchTraversalOp.ResetState();
+
+            Open();
+        }
+    }
+
+    internal class ChooseWithOptionsOperator : GraphViewExecutionOperator
+    {
+        GraphViewExecutionOperator inputOp;
+
+        ScalarFunction scalarSubQueryFunc;
+
+        ConstantSourceOperator tempSourceOp;
+        ContainerOperator optionSourceOp;
+
+        int activeOptionTraversalIndex;
+        bool needsOptionSourceInit;
+        List<Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator>> traversalList;
+
+        Queue<RawRecord> noneRawRecords;
+        GraphViewExecutionOperator optionNoneTraversalOp;
+
+        public ChooseWithOptionsOperator(
+            GraphViewExecutionOperator inputOp,
+            ScalarFunction scalarSubQueryFunc,
+            ConstantSourceOperator tempSourceOp,
+            ContainerOperator optionSourceOp,
+            GraphViewExecutionOperator optionNoneTraversalOp
+            )
+        {
+            this.inputOp = inputOp;
+            this.scalarSubQueryFunc = scalarSubQueryFunc;
+            this.tempSourceOp = tempSourceOp;
+            this.optionSourceOp = optionSourceOp;
+            this.activeOptionTraversalIndex = 0;
+            this.noneRawRecords = new Queue<RawRecord>();
+            this.optionNoneTraversalOp = optionNoneTraversalOp;
+            this.needsOptionSourceInit = true;
+
+            Open();
+        }
+
+        public void AddOptionTraversal(object value, GraphViewExecutionOperator optionTraversalOp)
+        {
+            traversalList.Add(new Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator>(value,
+                new Queue<RawRecord>(), optionTraversalOp));
+        }
+
+        private void PrepareOptionTraversalSource(int index)
+        {
+            optionSourceOp.ResetState();
+            Queue<RawRecord> chosenRecords = index != -1 ? traversalList[index].Item2 : noneRawRecords;
+            while (chosenRecords.Any())
+            {
+                tempSourceOp.ConstantSource = chosenRecords.Dequeue();
+                optionSourceOp.Next();
+            }
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord = null;
+            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
+            {
+                FieldObject evaluatedValue = scalarSubQueryFunc.Evaluate(currentRecord);
+                if (evaluatedValue == null) {
+                    throw new GraphViewException("The provided traversal of choose() does not map to a value.");
+                }
+
+                bool hasBeenChosen = false;
+                foreach (Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator> tuple in traversalList)
+                {
+                    if (evaluatedValue.ToValue.Equals(tuple.Item1.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        tuple.Item2.Enqueue(currentRecord);
+                        hasBeenChosen = true;
+                        break;
+                    }
+                }
+
+                if (!hasBeenChosen && optionNoneTraversalOp != null) {
+                    noneRawRecords.Enqueue(currentRecord);
+                }
+            }
+
+            RawRecord traversalRecord = null;
+            while (activeOptionTraversalIndex < traversalList.Count)
+            {
+                if (needsOptionSourceInit)
+                {
+                    PrepareOptionTraversalSource(activeOptionTraversalIndex);
+                    needsOptionSourceInit = false;
+                }
+
+                GraphViewExecutionOperator optionTraversalOp = traversalList[activeOptionTraversalIndex].Item3;
+                
+                while (optionTraversalOp.State() && (traversalRecord = optionTraversalOp.Next()) != null) {
+                    return traversalRecord;
+                }
+
+                activeOptionTraversalIndex++;
+                needsOptionSourceInit = true;
+            }
+
+            if (optionNoneTraversalOp != null)
+            {
+                if (needsOptionSourceInit)
+                {
+                    PrepareOptionTraversalSource(-1);
+                    needsOptionSourceInit = false;
+                }
+
+                while (optionNoneTraversalOp.State() && (traversalRecord = optionNoneTraversalOp.Next()) != null) {
+                    return traversalRecord;
+                }
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            inputOp.ResetState();
+            optionSourceOp.ResetState();
+            needsOptionSourceInit = true;
+            activeOptionTraversalIndex = 0;
+            noneRawRecords.Clear();
+            optionNoneTraversalOp?.ResetState();
+
+            foreach (Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator> tuple in traversalList)
+            {
+                tuple.Item2.Clear();
+                tuple.Item3.ResetState();
+            }
+
+            Open();
+        }
+    }
 }
