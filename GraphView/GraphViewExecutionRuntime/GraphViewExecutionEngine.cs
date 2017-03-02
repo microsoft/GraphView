@@ -678,6 +678,7 @@ namespace GraphView
                 case "_srcVLabel":
                 case "_sinkV":
                 case "_sinkVLabel":
+                case "_edgeId":
 
                 //case GremlinKeyword.EdgeSourceV:
                 //case GremlinKeyword.EdgeSinkV:
