@@ -49,6 +49,7 @@
       <HintPath>..\packages\Microsoft.Azure.DocumentDB.1.9.5\lib\net45\Microsoft.Azure.Documents.Client.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL" />
     <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -76,10 +77,20 @@
     <Compile Include="DocDBQueryPerfTest.cs" />
     <Compile Include="GremlinFunctionalTestSuite.cs" />
     <Compile Include="GremlinTranslationOperator.cs" />
+    <Compile Include="Gremlin\AbstractGremlinTest.cs" />
+    <Compile Include="Gremlin\GraphData.cs" />
+    <Compile Include="Gremlin\GraphDataLoader.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\UnionTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\AndTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\DedupTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\HasTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\CoalesceTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\ConstantTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GraphViewMarvelTest.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
     <Compile Include="TestLarge.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\AddEdgeTest.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
