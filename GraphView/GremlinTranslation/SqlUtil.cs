@@ -220,7 +220,7 @@ namespace GraphView
                 concatExpr = concatExpr == null ? booleanExpr
                                                 : GetBooleanBinaryExpr(booleanExpr, concatExpr, type);
             }
-            return GetBooleanParenthesisExpr(concatExpr);
+            return concatExpr == null ? null: GetBooleanParenthesisExpr(concatExpr);
         }
 
         internal static WSchemaObjectName GetSchemaObjectName(string value)

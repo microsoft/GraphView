@@ -12,6 +12,14 @@ namespace GraphView
         public string VertexLabel { get; set; }
         public bool IsFirstTableReference { get; set; }
 
+        internal override void Populate(string property)
+        {
+            if (ProjectedProperties.Contains(property)) return;
+            VertexProperties.Add(property);
+            VertexProperties.Add(null);
+            base.Populate(property);
+        }
+
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             currentContext.Both(this, edgeLabels);
@@ -133,10 +141,12 @@ namespace GraphView
             VertexProperties = new List<object>(vertexProperties);
             VertexLabel = vertexLabel;
             IsFirstTableReference = isFirstTableReference;
+            ProjectedProperties.Add(GremlinKeyword.Label);
         }
 
         internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
         {
+            ProjectedProperties.Add(properties.First() as string);
             VertexProperties.AddRange(properties);
         }
     }

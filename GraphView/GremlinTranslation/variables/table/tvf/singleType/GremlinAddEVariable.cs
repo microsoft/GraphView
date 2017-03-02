@@ -23,6 +23,15 @@ namespace GraphView
             InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
             OtherVIndex = 1;
+            ProjectedProperties.Add(GremlinKeyword.Label);
+        }
+
+        internal override void Populate(string property)
+        {
+            if (ProjectedProperties.Contains(property)) return;
+            EdgeProperties.Add(property);
+            EdgeProperties.Add(null);
+            base.Populate(property);
         }
 
         internal override void InV(GremlinToSqlContext currentContext)
@@ -166,6 +175,7 @@ namespace GraphView
 
         internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
         {
+             ProjectedProperties.Add(properties.First() as string);
              EdgeProperties.AddRange(properties);
         }
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinStoreVariable : GremlinTableVariable
+    internal class GremlinStoreVariable : GremlinScalarTableVariable
     {
         public string SideEffectKey { get; set; }
         public GremlinToSqlContext ProjectContext { get; set; }
@@ -15,6 +15,12 @@ namespace GraphView
         {
             ProjectContext = projectContext;
             SideEffectKey = sideEffectKey;
+            Labels.Add(sideEffectKey);
+        }
+
+        internal override GremlinVariableType GetUnfoldVariableType()
+        {
+            return ProjectContext.PivotVariable.GetVariableType();
         }
 
         public override WTableReference ToTableReference()
