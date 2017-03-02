@@ -64,6 +64,11 @@ namespace GraphView
         public bool UseReverseEdges { get; set; }
 
         /// <summary>
+        /// Whether to generate "_edgeId" for edgeObject
+        /// </summary>
+        public bool GenerateEdgeId { get; } = true;
+
+        /// <summary>
         /// Spill if how many edges are in a edge-document?
         /// </summary>
         public int EdgeSpillThreshold { get; private set; } = 0;

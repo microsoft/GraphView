@@ -516,7 +516,7 @@ namespace GraphView
 
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
-        public string ConstructEdgeJsonDocument(out List<string> projectedFieldList)
+        public JObject ConstructEdgeJsonObject(out List<string> projectedFieldList)
         {
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedEdgeProperties);
             JObject edgeJsonDocument = new JObject();
@@ -535,7 +535,7 @@ namespace GraphView
                     projectedFieldList.Add(key);
             }
 
-            return edgeJsonDocument.ToString();
+            return edgeJsonDocument;
         }
     }
 

@@ -36,7 +36,7 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<string> projectedField;
-            var edgeJsonDocument = ConstructEdgeJsonDocument(out projectedField);  // metadata remains missing
+            var edgeJsonObject = ConstructEdgeJsonObject(out projectedField);  // metadata remains missing
 
             var srcSubQuery = Parameters[0] as WScalarSubquery;
             var sinkSubQuery = Parameters[1] as WScalarSubquery;
@@ -49,7 +49,7 @@ namespace GraphView
             var sinkSubQueryFunction = sinkSubQuery.CompileToFunction(context, dbConnection);
 
             GraphViewExecutionOperator addEOp = new AddEOperator(context.CurrentExecutionOperator,
-                dbConnection, srcSubQueryFunction, sinkSubQueryFunction, otherVTag, edgeJsonDocument, projectedField);
+                dbConnection, srcSubQueryFunction, sinkSubQueryFunction, otherVTag, edgeJsonObject, projectedField);
             context.CurrentExecutionOperator = addEOp;
 
             // Update context's record layout

@@ -177,18 +177,18 @@ namespace GraphView
         private ScalarFunction _srcFunction;
         private ScalarFunction _sinkFunction;
         // The initial json object string of to-be-inserted edge, waiting to update the edgeOffset field
-        private string _edgeJsonDocument;
+        private JObject _edgeJsonObject;
         private List<string> _edgeProperties;
 
         public AddEOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
             ScalarFunction pSrcFunction, ScalarFunction pSinkFunction,
-            int otherVTag, string pEdgeJsonDocument, List<string> pProjectedFieldList)
+            int otherVTag, JObject pEdgeJsonObject, List<string> pProjectedFieldList)
             : base(inputOp, connection)
         {
             _srcFunction = pSrcFunction;
             _sinkFunction = pSinkFunction;
             _otherVTag = otherVTag;
-            _edgeJsonDocument = pEdgeJsonDocument;
+            _edgeJsonObject = pEdgeJsonObject;
             _edgeProperties = pProjectedFieldList;
         }
 
@@ -234,7 +234,7 @@ namespace GraphView
             string outEdgeDocID, inEdgeDocID;
             EdgeDocumentHelper.InsertEdgeAndUpload(this.Connection,
                                                    srcId, sinkId,
-                                                   srcVertexField, sinkVertexField, this._edgeJsonDocument,
+                                                   srcVertexField, sinkVertexField, this._edgeJsonObject,
                                                    srcVertexObject, sinkVertexObject,
                                                    out outEdgeObject, out outEdgeDocID,
                                                    out inEdgeObject, out inEdgeDocID);
