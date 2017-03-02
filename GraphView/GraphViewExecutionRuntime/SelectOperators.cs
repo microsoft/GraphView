@@ -2255,26 +2255,23 @@ namespace GraphView
         CollectionFunction aggregateState;
         GraphViewExecutionOperator inputOp;
         ScalarFunction getAggregateObjectFunction;
+        Queue<RawRecord> outputBuffer;
 
         public AggregateOperator(GraphViewExecutionOperator inputOp, ScalarFunction getTargetFieldFunction, CollectionFunction aggregateState)
         {
             this.aggregateState = aggregateState;
             this.inputOp = inputOp;
             this.getAggregateObjectFunction = getTargetFieldFunction;
+            this.outputBuffer = new Queue<RawRecord>();
+
             Open();
         }
 
         public override RawRecord Next()
         {
-            while (inputOp.State())
+            RawRecord r = null;
+            while (inputOp.State() && (r = inputOp.Next()) != null)
             {
-                RawRecord r = inputOp.Next();
-                if (r == null)
-                {
-                    Close();
-                    return null;
-                }
-
                 RawRecord result = new RawRecord(r);
 
                 FieldObject aggregateObject = getAggregateObjectFunction.Evaluate(r);
@@ -2286,13 +2283,11 @@ namespace GraphView
 
                 result.Append(aggregateState.CollectionField);
 
-                if (!inputOp.State())
-                {
-                    Close();
-                }
-                return result;
+                outputBuffer.Enqueue(result);
             }
 
+            if (outputBuffer.Count <= 1) Close();
+            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
             return null;
         }
 
