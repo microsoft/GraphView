@@ -96,7 +96,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Bug 36111: And(Select(), Select()) throws exception
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36510
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void AndWithSelect()
         {

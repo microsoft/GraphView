@@ -13,8 +13,10 @@ namespace GraphViewUnitTest.Gremlin
     public class AbstractGremlinTest
     {
         protected static GraphViewConnection graphConnection = new GraphViewConnection(
-                ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBKey"],
+                //ConfigurationManager.AppSettings["DocDBEndPoint"],
+                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
+                //ConfigurationManager.AppSettings["DocDBKey"],
+                ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionModern"]);
 
@@ -43,7 +45,7 @@ namespace GraphViewUnitTest.Gremlin
 
         public string ConvertToEdgeId(GraphViewCommand GraphViewCommand, string outVertexName, string edgeLabel, string inVertexName)
         {
-            return GraphViewCommand.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Id().Next().FirstOrDefault();
+            return GraphViewCommand.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("_edgeId").Next().FirstOrDefault();
         }
 
         public static void CheckUnOrderedResults<T>(IEnumerable<T> expected, IEnumerable<T> actual)

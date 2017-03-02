@@ -121,6 +121,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Path().By("name") does not work
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36753
         /// </remarks>
+
         [Ignore]
         [TestMethod]
         public void CoalesceWithPath()

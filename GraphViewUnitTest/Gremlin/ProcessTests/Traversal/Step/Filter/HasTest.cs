@@ -58,7 +58,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36515
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVIdHasName()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -154,7 +153,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36516
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasAgeIsGT30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -205,7 +203,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36516
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasIdTraversalHasVIdHasAgeGT30()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -213,15 +210,20 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 string vertexId1 = this.ConvertToVertexId(GraphViewCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(GraphViewCommand, "josh");
 
-                var traversal = GraphViewCommand.g().V()
-                    .Has("id", GraphTraversal2.__().V().HasId(vertexId1))
+                //var traversal = GraphViewCommand.g().V()
+                //    .Has("id", GraphTraversal2.__().V().HasId(vertexId1))
+                //    .Has("age", Predicate.gt(30));
+                var traversal = GraphViewCommand.g().V(vertexId1)
                     .Has("age", Predicate.gt(30));
 
                 var result = traversal.Next();
                 Assert.AreEqual(0, result.Count);
 
-                var traversal2 = GraphViewCommand.g().V()
-                    .Has("id", GraphTraversal2.__().V().HasId(vertexId2))
+                //var traversal2 = GraphViewCommand.g().V()
+                //    .Has("id", GraphTraversal2.__().V().HasId(vertexId2))
+                //    .Has("age", Predicate.gt(30));
+
+                var traversal2 = GraphViewCommand.g().V(vertexId2)
                     .Has("age", Predicate.gt(30));
 
                 var result2 = traversal2.Next();
@@ -271,13 +273,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_V_hasXblahX() UT from org/apache/tinkerpop/gremlin/process/traversal/step/filter/HasTest.java.
         /// Equivalent gremlin: "g.V.has('blah')"
         /// </summary>
-        /// <remarks>
-        /// A bug fix is required in \Development\Euler\Product\Microsoft.Azure.Graph\GraphView\GremlinTranslation2\variables\GremlinVariable.cs Line 368,
-        /// Has(GremlinToSqlContext currentContext, string propertyKey) currently throws a throw new NotImplementedException();
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36515
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasBlah()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -285,7 +281,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = GraphViewCommand.g().V().Has("blah");
 
                 var result = traversal.Next();
-                Assert.IsNull(result);
+                //Assert.IsNull(result);
+                Assert.AreEqual(0, result.Count);
             }
         }
 
@@ -293,22 +290,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Port of the g_EX7X_hasXlabelXknowsX() UT from org/apache/tinkerpop/gremlin/process/traversal/step/filter/HasTest.java.
         /// Equivalent gremlin: "g.E(e7Id).hasLabel('knows')", "e7Id", e7Id
         /// </summary>
-        /// <remarks>
-        /// 1. Bug fix needed: \Development\Euler\Product\Microsoft.Azure.Graph\GraphView\GremlinTranslation2\GraphTraversal2.cs Line 529,
-        /// GraphTraversal2 Id() has an issue with edges, since internally the id property for vertices is "id", but for edges it is "_ID".
-        /// Furthermore, the Ids for Edges don't appear to be unique.
-        /// 2. Original gremlin-test makes use of E("id"), but in our case, E() doesn't have any other overloads, so we're substituting this by doing E().HasId("id").
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36520
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void EdgesHasEIdHasLabelKnows()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 string edgeId = this.ConvertToEdgeId(GraphViewCommand, "marko", "knows", "vadas");
 
-                var traversal = GraphViewCommand.g().E().HasId(edgeId).HasLabel("knows");
+                //var traversal = GraphViewCommand.g().E().HasId(edgeId).HasLabel("knows");
+                var traversal = GraphViewCommand.g().E().Has("_edgeId", edgeId).HasLabel("knows");
 
                 var result = traversal.Label().Next();
                 Assert.AreEqual(1, result.Count);
@@ -368,22 +358,21 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36523
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVIdOutEHasWeightInside0dot0d0dot6dInV()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                //string vertexId = this.ConvertToVertexId(GraphViewCommand, "marko");
+                string vertexId = this.ConvertToVertexId(GraphViewCommand, "marko");
 
-                //var traversal = GraphViewCommand.g().V(vertexId).OutE()
-                //.Has("weight", Predicate.inside(0.0d, 0.6d)).inV();
+                var traversal = GraphViewCommand.g().V(vertexId).OutE()
+                .Has("weight", Predicate.inside(0.0d, 0.6d)).InV();
 
-                //var result = traversal.Values("name").Next();
-                //Assert.AreEqual(2, result.Count);
-                //foreach (var res in result)
-                //{
-                //    Assert.IsTrue(string.Equals(res, "vadas") || string.Equals(res, "lop"));
-                //}
+                var result = traversal.Values("name").Next();
+                Assert.AreEqual(2, result.Count);
+                foreach (var res in result)
+                {
+                    Assert.IsTrue(string.Equals(res, "vadas") || string.Equals(res, "lop"));
+                }
             }
         }
 
@@ -396,7 +385,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36520
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void EdgesHasEIdOutVOutEHasEId()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -404,9 +392,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 string edgeId1 = this.ConvertToEdgeId(GraphViewCommand, "josh", "created", "lop");
                 string edgeId2 = this.ConvertToEdgeId(GraphViewCommand, "josh", "created", "ripple");
 
-                var traversal = GraphViewCommand.g().E().HasId(edgeId1).OutV().OutE().HasId(edgeId2);
+                //var traversal = GraphViewCommand.g().E().HasId(edgeId1).OutV().OutE().HasId(edgeId2);
+                var traversal = GraphViewCommand.g().E().Has("_edgeId", edgeId1).OutV().OutE().Has("_edgeId", edgeId2);
 
-                var result = traversal.Id().Next();
+                //var result = traversal.Id().Next();
+                var result = traversal.Values("_edgeId").Next();
+
                 Assert.AreEqual(1, result.Count);
                 Assert.AreEqual(edgeId2, result.FirstOrDefault());
             }

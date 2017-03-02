@@ -37,8 +37,8 @@ namespace GraphViewUnitTest.Gremlin
                 }
 
                 Assert.AreEqual(1, result.Count);
-                Assert.AreEqual(7, GraphViewCommand.g().E().Next());
-                Assert.AreEqual(6, GraphViewCommand.g().V().Next());
+                Assert.AreEqual(7, GraphViewCommand.g().E().Next().Count);
+                Assert.AreEqual(6, GraphViewCommand.g().V().Next().Count);
             }
         }
 
@@ -85,7 +85,6 @@ namespace GraphViewUnitTest.Gremlin
         /// Aggregate(sideEffectKey) is not implemented
         /// Bug item: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36616
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void AddMultipleEdges()
         {
@@ -99,14 +98,14 @@ namespace GraphViewUnitTest.Gremlin
                     .Unfold()
                     .AddE("existsWith")
                     .To("a")
-                    .Properties("time", "now");
+                    .Property("time", "now");
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
                 GraphViewCommand.OutputFormat = OutputFormat.Regular;
 
                 foreach (dynamic edge in result)
                 {
                     Assert.AreEqual("existsWith", (string)edge.label);
-                    Assert.AreEqual("now", (int)edge.properties.time);
+                    Assert.AreEqual("now", (string)edge.properties.time);
                     Assert.AreEqual(1, ((JObject)edge.properties).Count);
                 }
 
@@ -218,7 +217,6 @@ namespace GraphViewUnitTest.Gremlin
         /// Add edge then Label() does not work
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36546
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void AddEdgeThenGetLabel()
         {

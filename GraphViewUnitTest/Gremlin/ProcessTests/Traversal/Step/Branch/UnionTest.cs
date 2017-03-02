@@ -39,7 +39,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36529
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVertexIdUnionOutAndOutRepeatTimes2()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

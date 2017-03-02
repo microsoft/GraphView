@@ -64,8 +64,10 @@ namespace GraphViewUnitTest.Gremlin
         private static void LoadClassicGraphData()
         {
             GraphViewConnection connection = new GraphViewConnection(
-                ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBKey"],
+                //ConfigurationManager.AppSettings["DocDBEndPoint"],
+                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
+                //ConfigurationManager.AppSettings["DocDBKey"],
+                ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionClassic"]);
             connection.ResetCollection();
@@ -92,8 +94,10 @@ namespace GraphViewUnitTest.Gremlin
         private static void LoadModernGraphData()
         {
             GraphViewConnection connection = new GraphViewConnection(
-                ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBKey"],
+                //ConfigurationManager.AppSettings["DocDBEndPoint"],
+                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
+                //ConfigurationManager.AppSettings["DocDBKey"],
+                ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 ConfigurationManager.AppSettings["DocDBCollectionModern"]);
             connection.ResetCollection();
@@ -120,8 +124,10 @@ namespace GraphViewUnitTest.Gremlin
         private static void ClearGraphData(string CollectionName)
         {
             GraphViewConnection connection = new GraphViewConnection(
-                ConfigurationManager.AppSettings["DocDBEndPoint"],
-                ConfigurationManager.AppSettings["DocDBKey"],
+                //ConfigurationManager.AppSettings["DocDBEndPoint"],
+                ConfigurationManager.AppSettings["DocDBEndPointLocal"],
+                //ConfigurationManager.AppSettings["DocDBKey"],
+                ConfigurationManager.AppSettings["DocDBKeyLocal"],
                 ConfigurationManager.AppSettings["DocDBDatabaseGremlin"],
                 CollectionName);
             connection.ResetCollection();
