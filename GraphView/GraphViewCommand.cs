@@ -76,6 +76,16 @@ namespace GraphView
             return g().EvalGremlinTraversal(CommandText);
         }
 
+        public List<string> ExecuteAndGetResults()
+        {
+            List<string> results = new List<string>();
+            foreach (var result in Execute())
+            {
+                results.Add(result);
+            }
+            return results;
+        }
+
         //public async Task<StoredProcedure> TryCreatedStoredProcedureAsync(string collectionLink, StoredProcedure sproc)
         //{
         //    StoredProcedure check =
