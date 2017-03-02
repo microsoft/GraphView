@@ -1436,7 +1436,7 @@ namespace GraphView
         {
             ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
 
-            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator);
+            UnionOperator unionOp = new UnionOperator(context.CurrentExecutionOperator, containerOp);
 
             bool isUnionWithoutAnyBranch = Parameters[0] is WValueExpression;
 
@@ -1603,11 +1603,12 @@ namespace GraphView
             }
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
+            ContainerOperator containerOp = null;
             bool isCarryOnMode = false;
             if (HasAggregateFunctionInTheOptionalSelectQuery(optionalSelect))
             {
                 isCarryOnMode = true;
-                ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+                containerOp = new ContainerOperator(context.CurrentExecutionOperator);
                 subcontext.CarryOn = true;
                 subcontext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
             }
@@ -1616,7 +1617,7 @@ namespace GraphView
 
             //OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes, optionalTraversalOp, subcontext.OuterContextOp);
             OptionalOperator optionalOp = new OptionalOperator(context.CurrentExecutionOperator, inputIndexes,
-                optionalTraversalOp, subcontext.OuterContextOp, isCarryOnMode);
+                optionalTraversalOp, subcontext.OuterContextOp, containerOp, isCarryOnMode);
             context.CurrentExecutionOperator = optionalOp;
 
             // Updates the raw record layout. The columns of this table-valued function 
@@ -2515,7 +2516,7 @@ namespace GraphView
                 throw new SyntaxErrorException("The QueryExpr of a WQueryDerviedTable must be one select query block.");
 
             QueryCompilationContext derivedTableContext = new QueryCompilationContext(context);
-
+            ContainerOperator containerOp = null;
             // If QueryDerivedTable is the first table in the whole script
             if (context.CurrentExecutionOperator == null)
                 derivedTableContext.OuterContextOp = null;
@@ -2526,7 +2527,7 @@ namespace GraphView
                 // For Union and Optional's semantics, e.g. g.V().union(__.count())
                 if (context.CarryOn)
                 {
-                    ContainerOperator containerOp = new ContainerOperator(context.CurrentExecutionOperator);
+                    containerOp = new ContainerOperator(context.CurrentExecutionOperator);
                     derivedTableContext.OuterContextOp.SourceEnumerator = containerOp.GetEnumerator();
                 }
                 // e.g. g.V().coalesce(__.count())
@@ -2538,7 +2539,7 @@ namespace GraphView
 
             GraphViewExecutionOperator subQueryOp = derivedSelectQueryBlock.Compile(derivedTableContext, dbConnection);
 
-            QueryDerivedTableOperator queryDerivedTableOp = new QueryDerivedTableOperator(subQueryOp);
+            QueryDerivedTableOperator queryDerivedTableOp = new QueryDerivedTableOperator(subQueryOp, containerOp);
 
             foreach (var selectElement in derivedSelectQueryBlock.SelectElements)
             {

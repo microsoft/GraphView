@@ -1497,6 +1497,7 @@ namespace GraphView
         // as the records drawn from the input operator, i.e., inputIndexes.Count 
         private GraphViewExecutionOperator optionalTraversal;
         private ConstantSourceOperator contextOp;
+        private ContainerOperator rootContainerOp;
 
         private RawRecord currentRecord = null;
         private Queue<RawRecord> outputBuffer;
@@ -1510,12 +1511,14 @@ namespace GraphView
             List<int> inputIndexes,
             GraphViewExecutionOperator optionalTraversal,
             ConstantSourceOperator contextOp,
+            ContainerOperator containerOp,
             bool isCarryOnMode)
         {
             this.inputOp = inputOp;
             this.inputIndexes = inputIndexes;
             this.optionalTraversal = optionalTraversal;
             this.contextOp = contextOp;
+            this.rootContainerOp = containerOp;
 
             this.isCarryOnMode = isCarryOnMode;
             this.optionalTraversalHasResults = false;
@@ -1637,6 +1640,7 @@ namespace GraphView
             currentRecord = null;
             inputOp.ResetState();
             contextOp.ResetState();
+            rootContainerOp?.ResetState();
             optionalTraversal.ResetState();
             outputBuffer?.Clear();
             Open();
@@ -1647,15 +1651,16 @@ namespace GraphView
     {
         private List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>> traversalList;
         private int activeTraversalIndex;
-
+        private ContainerOperator rootContainerOp;
         //
         // Only for union() without any branch
         //
         private GraphViewExecutionOperator inputOp;
 
-        public UnionOperator(GraphViewExecutionOperator inputOp)
+        public UnionOperator(GraphViewExecutionOperator inputOp, ContainerOperator containerOp)
         {
             this.inputOp = inputOp;
+            this.rootContainerOp = containerOp;
             traversalList = new List<Tuple<ConstantSourceOperator, GraphViewExecutionOperator>>();
             Open();
             activeTraversalIndex = 0;
@@ -1717,6 +1722,7 @@ namespace GraphView
                 tuple.Item2.ResetState();
             }
 
+            rootContainerOp.ResetState();
             activeTraversalIndex = 0;
             Open();
         }
@@ -2544,10 +2550,12 @@ namespace GraphView
     internal class QueryDerivedTableOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator _queryOp;
+        private ContainerOperator _rootContainerOp;
 
-        public QueryDerivedTableOperator(GraphViewExecutionOperator queryOp)
+        public QueryDerivedTableOperator(GraphViewExecutionOperator queryOp, ContainerOperator containerOp)
         {
             _queryOp = queryOp;
+            _rootContainerOp = containerOp;
 
             Open();
         }
@@ -2568,6 +2576,7 @@ namespace GraphView
         public override void ResetState()
         {
             _queryOp.ResetState();
+            _rootContainerOp?.ResetState();
 
             Open();
         }
