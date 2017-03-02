@@ -216,6 +216,7 @@ namespace GraphView
             WBooleanExpression concatExpr = null;
             foreach (var booleanExpr in booleanExprList)
             {
+                if (booleanExpr == null) continue;
                 concatExpr = concatExpr == null ? booleanExpr
                                                 : GetBooleanBinaryExpr(booleanExpr, concatExpr, type);
             }

@@ -258,6 +258,7 @@ namespace GraphView
 
         internal void AddPredicate(WBooleanExpression newPredicate)
         {
+            if (newPredicate == null) return;
             Predicates = Predicates == null ? newPredicate : SqlUtil.GetAndBooleanBinaryExpr(Predicates, newPredicate);
         }
 
@@ -276,7 +277,18 @@ namespace GraphView
 
         internal WBooleanExpression ToSqlBoolean()
         {
-            return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
+            if (TableReferences.Count == 0)
+            {
+                if (Predicates != null)
+                {
+                    return SqlUtil.GetBooleanParenthesisExpr(Predicates);
+                }
+                return null;
+            }
+            else
+            {
+                 return SqlUtil.GetExistPredicate(ToSelectQueryBlock());
+            }
         }
 
         internal WSqlScript ToSqlScript()
