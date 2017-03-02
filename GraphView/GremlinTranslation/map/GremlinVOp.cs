@@ -23,16 +23,21 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
 
             GremlinFreeVertexVariable newVariable = new GremlinFreeVertexVariable();
-            
-            foreach (var id in VertexIdsOrElements)
+
+            if (VertexIdsOrElements.Count > 0)
             {
-                if (id is int || id is string)
+                List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+                foreach (var id in VertexIdsOrElements)
                 {
-                    WScalarExpression firstExpr = newVariable.GetVariableProperty(GremlinKeyword.NodeID).ToScalarExpression();
-                    WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);
-                    WBooleanComparisonExpression booleanExpr = SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
-                    inputContext.AddPredicate(booleanExpr);
+                    if (id is int || id is string)
+                    {
+                        WScalarExpression firstExpr = newVariable.GetVariableProperty(GremlinKeyword.NodeID).ToScalarExpression();
+                        WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);
+                        WBooleanComparisonExpression booleanExpr = SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+                        booleanExprList.Add(booleanExpr);
+                    }
                 }
+                inputContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
             }
 
             inputContext.VariableList.Add(newVariable);
