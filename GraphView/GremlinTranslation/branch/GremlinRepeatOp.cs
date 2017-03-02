@@ -22,10 +22,12 @@ namespace GraphView
         public GremlinRepeatOp(GraphTraversal2 repeatTraversal)
         {
             RepeatTraversal = repeatTraversal;
+            RepeatTimes = -1;
         }
 
         public GremlinRepeatOp()
         {
+            RepeatTimes = -1;
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -61,6 +63,10 @@ namespace GraphView
             {
                 EmitTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
                 repeatCondition.EmitContext = EmitTraversal.GetEndOp().GetContext();
+            }
+            if (RepeatTimes != -1)
+            {
+                repeatCondition.RepeatTimes = RepeatTimes;
             }
 
             inputContext.PivotVariable.Repeat(inputContext, repeatContext, repeatCondition);
