@@ -3004,6 +3004,9 @@ namespace GraphView
             this.falseBranchSourceOp = falseBranchSourceOp;
             this.falseBranchTraversalOp = falseBranchTraversalOp;
 
+            this.evaluatedTrueRecords = new Queue<RawRecord>();
+            this.evaluatedFalseRecords = new Queue<RawRecord>();
+
             Open();
         }
 
