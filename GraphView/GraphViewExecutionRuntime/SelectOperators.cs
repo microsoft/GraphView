@@ -3253,4 +3253,80 @@ namespace GraphView
         }
     }
 
+    internal class SampleOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator _inputOp;
+        private readonly long _amountToSample;
+        private readonly ScalarFunction _byFunction;  // Can be null if no "by" step
+        private readonly Random _random;
+
+        private readonly List<RawRecord> _inputRecords;
+        private readonly List<double> _inputProperties;
+        private int _nextIndex;
+
+        public SampleOperator(
+            GraphViewExecutionOperator inputOp,
+            long amoutToSample,
+            ScalarFunction byFunction)
+        {
+            this._inputOp = inputOp;
+            this._amountToSample = amoutToSample;
+            this._byFunction = byFunction;  // Can be null if no "by" step
+            this._random = new Random();
+
+            this._inputRecords = new List<RawRecord>();
+            this._inputProperties = new List<double>();
+            this._nextIndex = 0;
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            if (this._nextIndex == 0) {
+                while (this._inputOp.State()) {
+                    RawRecord current = this._inputOp.Next();
+                    if (current == null) break;
+
+                    this._inputRecords.Add(current);
+                    if (this._byFunction != null) {
+                        this._inputProperties.Add(double.Parse(this._byFunction.Evaluate(current).ToValue));
+                    }
+                }
+            }
+
+            // Return nothing if sample amount <= 0
+            if (this._amountToSample <= 0) {
+                Close();
+                return null;
+            }
+
+            // Return all if sample amount > amount of inputs
+            if (this._amountToSample >= this._inputRecords.Count) {
+                if (this._nextIndex == this._inputRecords.Count - 1) {
+                    Close();
+                }
+                return this._inputRecords[this._nextIndex++];
+            }
+
+            // Sample!
+            if (this._nextIndex < this._amountToSample) {
+                
+                // TODO: Implement the sampling algorithm!
+                return this._inputRecords[this._nextIndex++];
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this._inputOp.ResetState();
+
+            this._inputRecords.Clear();
+            this._inputProperties.Clear();
+            this._nextIndex = 0;
+            Open();
+        }
+    }
 }
