@@ -140,7 +140,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Dedup().By() does not work
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37139
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void DedupBy()
         {
@@ -248,7 +247,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Dedup().By() does not work
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37139
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void DedupByLabel()
         {
@@ -276,7 +274,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Deserialize fold() result
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37155
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void DedupInsideBy()
         {
@@ -310,7 +307,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Dedup().By() does not work
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37139
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void DedupMultipleLabels()
         {

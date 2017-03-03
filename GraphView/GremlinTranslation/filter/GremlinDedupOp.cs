@@ -7,9 +7,10 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal class GremlinDedupOp: GremlinTranslationOperator
+    internal class GremlinDedupOp: GremlinTranslationOperator, IGremlinByModulating
     {
         public List<string> DedupLabels { get; set; }
+        public GraphTraversal2 ByTraversal { get; set; }
 
         public GremlinDedupOp(params string[] dedupLabels)
         {
@@ -20,9 +21,36 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
-            inputContext.PivotVariable.Dedup(inputContext, DedupLabels);
+            GremlinToSqlContext dedupContext = null;
+            if (ByTraversal != null)
+            {
+                ByTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                dedupContext = ByTraversal.GetEndOp().GetContext();
+            }
+
+            inputContext.PivotVariable.Dedup(inputContext, DedupLabels, dedupContext);
 
             return inputContext;
+        }
+
+        public void ModulateBy()
+        {
+            ByTraversal = GraphTraversal2.__();
+        }
+
+        public void ModulateBy(GraphTraversal2 traversal)
+        {
+            ByTraversal = traversal;
+        }
+
+        public void ModulateBy(string key)
+        {
+            ByTraversal = GraphTraversal2.__().Values(key);
+        }
+
+        public void ModulateBy(GremlinKeyword.Order order)
+        {
+            throw new NotImplementedException();
         }
     }
 }
