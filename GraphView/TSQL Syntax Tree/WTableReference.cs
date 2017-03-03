@@ -25,6 +25,7 @@
 // 
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -461,7 +462,7 @@ namespace GraphView
 
     public partial class WOrderLocalTableReference : WSchemaObjectFunctionTableReference
     {
-
+        public List<Tuple<WScalarExpression, IComparer>> Parameters { get; set; }
     }
 
     public partial class WOrderGlobalTableReference : WSchemaObjectFunctionTableReference
