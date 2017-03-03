@@ -63,6 +63,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GraphViewDebugHelper.cs" />
     <Compile Include="GraphViewExecutionRuntime\CollectionOperator.cs" />
     <Compile Include="GraphViewExecutionRuntime\DbPortal.cs" />
     <Compile Include="GraphViewExecutionRuntime\AggregateOperator.cs" />
