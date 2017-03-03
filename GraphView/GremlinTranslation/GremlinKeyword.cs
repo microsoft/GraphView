@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -50,7 +51,8 @@ namespace GraphView
             public const string AddV = "AddV";
             public const string AddE = "AddE";
             public const string SideEffect = "SideEffect";
-            public const string Dedup = "Dedup";
+            public const string DedupGlobal = "DedupGlobal";
+            public const string DedupLocal = "DedupLocal";
             public const string Fold = "fold";
             public const string Count = "count";
             public const string DropNode = "DropNode";
@@ -81,6 +83,8 @@ namespace GraphView
             public const string Mean = "Mean";
             public const string Sum = "Sum";
             public const string SumLocal = "SumLocal";
+            public const string OrderGlobal = "OrderGlobal";
+            public const string OrderLocal = "OrderLocal";
         }
 
         public enum Pop
@@ -102,6 +106,8 @@ namespace GraphView
             local,
             global
         }
+
+
         public enum Order
         {
             Shuffle,
