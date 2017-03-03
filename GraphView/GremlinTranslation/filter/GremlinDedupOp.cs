@@ -30,6 +30,9 @@ namespace GraphView
                 dedupContext = ByTraversal.GetEndOp().GetContext();
             }
 
+            // Dedup(local, "x", "y"), the dedupLabels should be ignored
+            if (Scope == GremlinKeyword.Scope.local) DedupLabels.Clear();
+
             inputContext.PivotVariable.Dedup(inputContext, DedupLabels, dedupContext, Scope);
 
             return inputContext;

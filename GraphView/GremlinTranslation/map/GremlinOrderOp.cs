@@ -125,7 +125,10 @@ namespace GraphView
         {
             public int Compare(object x, object y)
             {
-                return ((IComparable)x).CompareTo((IComparable)y);
+                if (x is string)
+                    return ((IComparable) x).CompareTo((IComparable) y);
+                else
+                    return ((IComparable) Convert.ToDouble(x)).CompareTo(Convert.ToDouble(y));
             }
         }
 
@@ -133,7 +136,10 @@ namespace GraphView
         {
             public int Compare(object x, object y)
             {
-                return ((IComparable)y).CompareTo((IComparable)x);
+                if (x is string)
+                    return ((IComparable)y).CompareTo((IComparable)x);
+                else
+                    return ((IComparable)Convert.ToDouble(y)).CompareTo(Convert.ToDouble(x));
             }
         }
 
