@@ -2619,6 +2619,18 @@ namespace GraphView
         }
     }
 
+    partial class WSampleTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            GraphViewExecutionOperator inputOp = context.CurrentExecutionOperator;
+            long amountToSample = long.Parse(((WValueExpression)this.Parameters[0]).Value);
+            ScalarFunction byFunction = this.Parameters[1]?.CompileToFunction(context, dbConnection);  // Can be null if no "by" step
+
+            return new SampleOperator(inputOp, amountToSample, byFunction);
+        }
+    }
+
     partial class WOrderGlobalTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
