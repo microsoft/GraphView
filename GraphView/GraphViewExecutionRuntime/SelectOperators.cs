@@ -1068,19 +1068,15 @@ namespace GraphView
     //    }
     //}
 
-    /// <summary>
-    /// Orderby operator is used for orderby clause. It will takes all the output of its child operator and sort them by a giving key.
-    /// </summary>
-    internal class OrderbyOperator2 : GraphViewExecutionOperator
+    internal class OrderOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
-        private List<RawRecord> results;
+        private List<RawRecord> inputBuffer;
         private Queue<RawRecord> outputBuffer;
 
-        // <index, order>
-        private List<Tuple<int, SortOrder>> orderByElements;
+        private List<Tuple<ScalarFunction, IComparer>> orderByElements;
 
-        public OrderbyOperator2(GraphViewExecutionOperator inputOp, List<Tuple<int, SortOrder>> orderByElements)
+        public OrderOperator(GraphViewExecutionOperator inputOp, List<Tuple<ScalarFunction, IComparer>> orderByElements)
         {
             this.Open();
             this.inputOp = inputOp;
@@ -1090,34 +1086,41 @@ namespace GraphView
 
         public override RawRecord Next()
         {
-            if (results == null)
+            if (inputBuffer == null)
             {
-                results = new List<RawRecord>();
+                inputBuffer = new List<RawRecord>();
+
                 RawRecord inputRec = null;
-                while ((inputRec = inputOp.Next()) != null)
-                {
-                    results.Add(inputRec);
+                while (inputOp.State() && (inputRec = inputOp.Next()) != null) {
+                    inputBuffer.Add(inputRec);
                 }
 
-                results.Sort((x, y) =>
+                inputBuffer.Sort((x, y) =>
                 {
-                    var ret = 0;
-                    foreach (var orderByElement in orderByElements)
+                    int ret = 0;
+                    foreach (Tuple<ScalarFunction, IComparer> orderByElement in orderByElements)
                     {
-                        var index = orderByElement.Item1;
-                        var sortOrder = orderByElement.Item2;
-                        if (sortOrder == SortOrder.Ascending || sortOrder == SortOrder.NotSpecified)
-                            ret = string.Compare(x[index].ToValue, y[index].ToValue,
-                                StringComparison.OrdinalIgnoreCase);
-                        else if (sortOrder == SortOrder.Descending)
-                            ret = string.Compare(y[index].ToValue, x[index].ToValue,
-                                StringComparison.OrdinalIgnoreCase);
+                        ScalarFunction byFunction = orderByElement.Item1;
+
+                        FieldObject xKey = byFunction.Evaluate(x);
+                        if (xKey == null) {
+                            throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
+                        }
+
+                        FieldObject yKey = byFunction.Evaluate(x);
+                        if (yKey == null) {
+                            throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
+                        }
+
+                        IComparer comparer = orderByElement.Item2;
+                        ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
+                            
                         if (ret != 0) break;
                     }
                     return ret;
                 });
 
-                foreach (var x in results)
+                foreach (RawRecord x in inputBuffer)
                     outputBuffer.Enqueue(x);
             }
 
@@ -1128,9 +1131,11 @@ namespace GraphView
 
         public override void ResetState()
         {
+            inputBuffer = null;
             inputOp.ResetState();
-            outputBuffer?.Clear();
-            results?.Clear();
+            outputBuffer.Clear();
+
+            Open();
         }
     }
 
@@ -2998,6 +3003,9 @@ namespace GraphView
             this.trueBranchTraversalOp = trueBranchTraversalOp;
             this.falseBranchSourceOp = falseBranchSourceOp;
             this.falseBranchTraversalOp = falseBranchTraversalOp;
+
+            this.evaluatedTrueRecords = new Queue<RawRecord>();
+            this.evaluatedFalseRecords = new Queue<RawRecord>();
 
             Open();
         }
