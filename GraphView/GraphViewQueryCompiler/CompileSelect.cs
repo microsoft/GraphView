@@ -2002,6 +2002,18 @@ namespace GraphView
         }
     }
 
+    partial class WDedupLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            DeduplicateLocalOperator dedupLocalOp = new DeduplicateLocalOperator(context.CurrentExecutionOperator,
+                Parameters[0].CompileToFunction(context, dbConnection));
+            context.CurrentExecutionOperator = dedupLocalOp;
+
+            return dedupLocalOp;
+        }
+    }
+
     partial class WConstantReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)

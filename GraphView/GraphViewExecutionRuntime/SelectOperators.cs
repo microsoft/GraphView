@@ -1108,7 +1108,7 @@ namespace GraphView
                             throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
                         }
 
-                        FieldObject yKey = byFunction.Evaluate(x);
+                        FieldObject yKey = byFunction.Evaluate(y);
                         if (yKey == null) {
                             throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
                         }
@@ -2123,6 +2123,62 @@ namespace GraphView
             Open();
         }
     }
+
+    internal class DeduplicateLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator _inputOp;
+        private ScalarFunction _targetValueFunction;
+
+        internal DeduplicateLocalOperator(GraphViewExecutionOperator inputOperator, ScalarFunction targetValueFunction)
+        {
+            _inputOp = inputOperator;
+            _targetValueFunction = targetValueFunction;
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord currentRecord;
+
+            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            {
+                RawRecord result = new RawRecord(currentRecord);
+                FieldObject obj = _targetValueFunction.Evaluate(currentRecord);
+
+                HashSet<string> localDedupStringSet = new HashSet<string>();
+
+                if (!(obj is CollectionField))
+                    throw new GraphViewException("Dedup(local) can only be applied to a list.");
+
+                CollectionField cf = (CollectionField) obj;
+
+                for (int i = cf.Collection.Count - 1; i >= 0; i--)
+                {
+                    string dedupString = cf.Collection[i].ToValue;
+                    if (localDedupStringSet.Contains(dedupString))
+                    {
+                        cf.Collection.RemoveAt(i);
+                        continue;
+                    }
+
+                    localDedupStringSet.Add(dedupString);
+                }
+
+                return result;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            _inputOp.ResetState();
+            Open();
+        }
+    }
+
 
     internal class RangeOperator : GraphViewExecutionOperator
     {
