@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal abstract class GremlinTranslationOperator
+    internal abstract class GremlinTranslationOperator: IGremlinByModulating
     {
         public GremlinTranslationOperator InputOperator { get; set; }
 
@@ -40,6 +41,46 @@ namespace GraphView
         internal GremlinToSqlContext GetInputContext()
         {
             return InputOperator != null ? InputOperator.GetContext() : new GremlinToSqlContext();
+        }
+
+        public virtual void ModulateBy()
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GraphTraversal2 traversal)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(string key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GremlinKeyword.Order order)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(string paramOp, GremlinKeyword.Order order)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GraphTraversal2 paramOp, GremlinKeyword.Order order)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(string paramOp, IComparer order)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GraphTraversal2 paramOp, IComparer order)
+        {
+            throw new NotImplementedException();
         }
     }
     

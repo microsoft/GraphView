@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinSelectOp: GremlinTranslationOperator
+    internal class GremlinSelectOp: GremlinTranslationOperator, IGremlinByModulating
     {
         public List<string> SelectKeys { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }

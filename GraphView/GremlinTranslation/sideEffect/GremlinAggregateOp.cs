@@ -27,24 +27,19 @@ namespace GraphView
             return inputContext;
         }
 
-        public void ModulateBy()
+        public override void ModulateBy()
         {
             throw new NotImplementedException();
         }
 
-        public void ModulateBy(GraphTraversal2 traversal)
+        public override void ModulateBy(GraphTraversal2 traversal)
         {
             ByTraversal = traversal;
         }
 
-        public void ModulateBy(string key)
+        public override void ModulateBy(string key)
         {
             ByTraversal = GraphTraversal2.__().Values(key);
-        }
-
-        public void ModulateBy(GremlinKeyword.Order order)
-        {
-            throw new NotImplementedException();
         }
     }
 }

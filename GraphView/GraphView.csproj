@@ -143,7 +143,6 @@
     <Compile Include="GremlinTranslation\map\GremlinValuesOp.cs" />
     <Compile Include="GremlinTranslation\Predicate.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinAggregateOp.cs" />
-    <Compile Include="GremlinTranslation\sideEffect\GremlinByOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinInjectOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinPropertyOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinSideEffectOp.cs" />

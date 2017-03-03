@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinGroupOp: GremlinTranslationOperator, IGremlinByModulating
+    internal class GremlinGroupOp: GremlinTranslationOperator
     {
         public string SideEffect { get; set; }
         public object GroupBy { get; set; }
@@ -62,7 +63,7 @@ namespace GraphView
             return inputContext;
         }
 
-        public void ModulateBy()
+        public override void ModulateBy()
         {
             if (GroupBy == null)
             {
@@ -78,7 +79,7 @@ namespace GraphView
             }
         }
 
-        public void ModulateBy(GraphTraversal2 paramOp)
+        public override void ModulateBy(GraphTraversal2 paramOp)
         {
             if (GroupBy == null)
             {
@@ -94,7 +95,7 @@ namespace GraphView
             }
         }
 
-        public void ModulateBy(string key)
+        public override void ModulateBy(string key)
         {
             if (GroupBy == null)
             {
@@ -108,11 +109,6 @@ namespace GraphView
             {
                 throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
             }
-        }
-
-        public void ModulateBy(GremlinKeyword.Order order)
-        {
-            throw new NotImplementedException();
         }
     }
 }
