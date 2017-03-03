@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -598,11 +599,13 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal virtual void Order(GremlinToSqlContext currentContext)
+        internal virtual void Order(GremlinToSqlContext currentContext, List<object> byList,
+            List<IComparer> orderList, GremlinKeyword.Scope scope)
         {
-            throw new NotImplementedException();
+            GremlinOrderVariable newVariable = new GremlinOrderVariable(this, byList, orderList, scope);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
-        //internal virtual void order(Scope scope)
 
         internal virtual void OtherV(GremlinToSqlContext currentContext)
         {

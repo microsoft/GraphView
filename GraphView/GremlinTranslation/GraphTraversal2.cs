@@ -798,11 +798,15 @@ namespace GraphView
 
         public GraphTraversal2 Order()
         {
-            AddGremlinOperator(new GremlinOrderOp());
+            AddGremlinOperator(new GremlinOrderOp(GremlinKeyword.Scope.global));
             return this;
         }
 
-        //public GraphTraversal2 order(Scope scope)
+        public GraphTraversal2 Order(GremlinKeyword.Scope scope)
+        {
+            AddGremlinOperator(new GremlinOrderOp(scope));
+            return this;
+        }
 
         public GraphTraversal2 OtherV()
         {
