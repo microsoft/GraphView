@@ -313,35 +313,58 @@ namespace GraphView
 
         public GraphTraversal2 By()
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy();
-            return this;
-        }
-
-        //public GraphTraversal2 by(Comparator<E> comparator)
-        //public GraphTraversal2 by(Function<U, Object> function, Comparator comparator)
-        //public GraphTraversal2 by(Function<V, Object> function)
-
-        public GraphTraversal2 By(GremlinKeyword.Order order)
-        {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(order);
+            GetEndOp().ModulateBy();
             return this;
         }
 
         public GraphTraversal2 By(string key)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(key);
+            GetEndOp().ModulateBy(key);
             return this;
         }
 
-        //public GraphTraversal2 by(string key, Comparator<V> comparator)
-        //public GraphTraversal2 by(T token)
+        public GraphTraversal2 By(string key, GremlinKeyword.Order order)
+        {
+            GetEndOp().ModulateBy(key, order);
+            return this;
+        }
+
+        public GraphTraversal2 By(string key, IComparer order)
+        {
+            GetEndOp().ModulateBy(key, order);
+            return this;
+        }
 
         public GraphTraversal2 By(GraphTraversal2 traversal)
         {
-            ((IGremlinByModulating)GetEndOp()).ModulateBy(traversal);
+            GetEndOp().ModulateBy(traversal);
             return this;
         }
-        //public GraphTraversal2 by(Traversal<?, ?> traversal, Comparator comparator)
+
+        public GraphTraversal2 By(GraphTraversal2 traversal, GremlinKeyword.Order order)
+        {
+            GetEndOp().ModulateBy(traversal, order);
+            return this;
+        }
+
+        public GraphTraversal2 By(GraphTraversal2 traversal, IComparer order)
+        {
+            GetEndOp().ModulateBy(traversal, order);
+            return this;
+        }
+
+
+        public GraphTraversal2 By(GremlinKeyword.Order order)
+        {
+            GetEndOp().ModulateBy(order);
+            return this;
+        }
+
+        public GraphTraversal2 By(IComparer order)
+        {
+            GetEndOp().ModulateBy(order);
+            return this;
+        }
 
         public GraphTraversal2 Cap(params string[] sideEffectKeys)
         {
