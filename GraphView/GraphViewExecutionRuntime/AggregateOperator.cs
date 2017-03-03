@@ -270,7 +270,14 @@ namespace GraphView
                     List<FieldObject> projectFields = new List<FieldObject>();
                     foreach (var rawRecord in groupedStates[key])
                     {
-                        projectFields.Add(new StringField(rawRecord[elementPropertyProjectionIndex].ToValue));
+                        FieldObject fo = rawRecord[elementPropertyProjectionIndex];
+                        if (fo is PropertyField)
+                        {
+                            PropertyField pf = fo as PropertyField;
+                            projectFields.Add(new StringField(pf.PropertyValue, pf.JsonDataType));
+                        } else {
+                            projectFields.Add(fo);
+                        }
                     }
                     resultCollection[key] = new CollectionField(projectFields);
                 }
@@ -480,7 +487,14 @@ namespace GraphView
                     List<FieldObject> projectFields = new List<FieldObject>();
                     foreach (var rawRecord in groupedStates[key])
                     {
-                        projectFields.Add(new StringField(rawRecord[elementPropertyProjectionIndex].ToValue));
+                        FieldObject fo = rawRecord[elementPropertyProjectionIndex];
+                        if (fo is PropertyField)
+                        {
+                            PropertyField pf = fo as PropertyField;
+                            projectFields.Add(new StringField(pf.PropertyValue, pf.JsonDataType));
+                        } else {
+                            projectFields.Add(fo);
+                        }
                     }
                     resultCollection[key] = new CollectionField(projectFields);
                 }

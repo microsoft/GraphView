@@ -410,7 +410,7 @@ namespace GraphView
                     sb.Append(", ");
                 }
 
-                sb.AppendFormat("{0}: {1}", entry.Key.ToGraphSON(), entry.Value.ToGraphSON());
+                sb.AppendFormat("\"{0}\": {1}", entry.Key.ToValue, entry.Value.ToGraphSON());
             }
 
             sb.Append("}");
@@ -461,6 +461,8 @@ namespace GraphView
         {
             return Map[DefaultProjectionKey].ToString();
         }
+
+        public override string ToValue => Map[DefaultProjectionKey].ToValue;
 
         public override string ToGraphSON()
         {
