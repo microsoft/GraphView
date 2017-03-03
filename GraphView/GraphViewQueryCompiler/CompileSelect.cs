@@ -2631,5 +2631,15 @@ namespace GraphView
             return meanLocalOp;
         }
     }
+
+    partial class WCoinTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            GraphViewExecutionOperator inputOp = context.CurrentExecutionOperator;
+            double probability = double.Parse(((WValueExpression)this.Parameters[0]).Value);
+            return new CoinOperator(inputOp, probability);
+        }
+    }
 }
 

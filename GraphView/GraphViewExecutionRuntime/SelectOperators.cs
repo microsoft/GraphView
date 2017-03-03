@@ -3186,4 +3186,43 @@ namespace GraphView
             Open();
         }
     }
+
+
+    internal class CoinOperator : GraphViewExecutionOperator
+    {
+        private readonly double _probability;
+        private readonly GraphViewExecutionOperator _inputOp;
+        private readonly Random _random;
+
+        public CoinOperator(
+            GraphViewExecutionOperator inputOp,
+            double probability)
+        {
+            this._inputOp = inputOp;
+            this._probability = probability;
+            this._random = new Random();
+
+            Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord current = null;
+            while (this._inputOp.State() && (current = this._inputOp.Next()) != null) {
+                if (this._random.NextDouble() <= this._probability) {
+                    return current;
+                }
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this._inputOp.ResetState();
+            Open();
+        }
+    }
+
 }

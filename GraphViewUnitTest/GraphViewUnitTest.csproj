@@ -82,6 +82,7 @@
     <Compile Include="Gremlin\GraphDataLoader.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\UnionTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\AndTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\CoinTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\DedupTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\HasTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\CoalesceTest.cs" />
