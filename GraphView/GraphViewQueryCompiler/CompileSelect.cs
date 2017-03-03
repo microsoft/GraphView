@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -1406,30 +1407,6 @@ namespace GraphView
         }
     }
 
-    partial class WOrderByClause
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-
-            var orderByElements = new List<Tuple<int, SortOrder>>();
-            if (OrderByElements != null)
-            {
-                foreach (var element in OrderByElements)
-                {
-                    var expr = element.ScalarExpr as WColumnReferenceExpression;
-                    if (expr == null)
-                        throw new SyntaxErrorException("The order by elements can only be WColumnReferenceExpression.");
-
-                    orderByElements.Add(new Tuple<int, SortOrder>(context.LocateColumnReference(expr), element.SortOrder));
-                }
-            }
-
-            var orderByOp = new OrderbyOperator2(context.CurrentExecutionOperator, orderByElements);
-            context.CurrentExecutionOperator = orderByOp;
-            return orderByOp;
-        }
-    }
-
     partial class WUnionTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
@@ -2631,5 +2608,55 @@ namespace GraphView
             return meanLocalOp;
         }
     }
+
+    partial class WOrderGlobalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
+
+            foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
+            {
+                WScalarExpression byParameter = tuple.Item1;
+                Debug.Assert(byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery,
+                    "byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery");
+
+                ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
+                IComparer comparer = tuple.Item2;
+
+                orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
+            }
+
+            OrderOperator orderOp = new OrderOperator(context.CurrentExecutionOperator, orderByElements);
+            context.CurrentExecutionOperator = orderOp;
+
+            return orderOp;
+        }
+    }
+
+    //partial class WOrderLocalTableReference
+    //{
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+    //    {
+    //        List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
+
+    //        foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
+    //        {
+    //            WScalarExpression byParameter = tuple.Item1;
+    //            Debug.Assert(byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery,
+    //                "byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery");
+
+    //            ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
+    //            IComparer comparer = tuple.Item2;
+
+    //            orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
+    //        }
+
+    //        OrderLocalOperator orderLocalOp = new OrderLocalOperator(context.CurrentExecutionOperator, orderByElements);
+    //        context.CurrentExecutionOperator = orderLocalOp;
+
+    //        return orderLocalOp;
+    //    }
+    //}
 }
 

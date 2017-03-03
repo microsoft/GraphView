@@ -224,11 +224,11 @@ namespace GraphView
             return result;
         }
 
-
-
         public virtual string ToGraphSON() => ToString();
 
         public virtual string ToValue => ToString();
+
+        public virtual Object ToObject() { return this; }
 
     }
 
@@ -253,6 +253,28 @@ namespace GraphView
             if (JsonDataType == JsonDataType.String) 
                return "\"" + Value + "\"";
             return Value;
+        }
+
+        public override object ToObject()
+        {
+            switch (JsonDataType)
+            {
+                case JsonDataType.Boolean:
+                    return bool.Parse(Value);
+                case JsonDataType.Int:
+                    return int.Parse(Value);
+                case JsonDataType.Long:
+                    return long.Parse(Value);
+                case JsonDataType.Double:
+                    return double.Parse(Value);
+                case JsonDataType.Float:
+                    return float.Parse(Value);
+                case JsonDataType.Null:
+                    return null;
+                default:
+                    return Value;
+            }
+            return base.ToObject();
         }
 
         public override int GetHashCode()
