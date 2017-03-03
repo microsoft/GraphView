@@ -274,7 +274,6 @@ namespace GraphView
                 default:
                     return Value;
             }
-            return base.ToObject();
         }
 
         public override int GetHashCode()
@@ -548,6 +547,27 @@ namespace GraphView
             PropertyName = propertyName;
             PropertyValue = propertyValue;
             JsonDataType = jsonDataType;
+        }
+
+        public object ToPropertyValueObject()
+        {
+            switch (JsonDataType)
+            {
+                case JsonDataType.Boolean:
+                    return bool.Parse(PropertyValue);
+                case JsonDataType.Int:
+                    return int.Parse(PropertyValue);
+                case JsonDataType.Long:
+                    return long.Parse(PropertyValue);
+                case JsonDataType.Double:
+                    return double.Parse(PropertyValue);
+                case JsonDataType.Float:
+                    return float.Parse(PropertyValue);
+                case JsonDataType.Null:
+                    return null;
+                default:
+                    return PropertyValue;
+            }
         }
 
         public override string ToString()

@@ -1074,9 +1074,9 @@ namespace GraphView
         private List<RawRecord> inputBuffer;
         private Queue<RawRecord> outputBuffer;
 
-        private List<Tuple<ScalarFunction, IComparer>> orderByElements;
+        private List<Tuple<bool, ScalarFunction, IComparer>> orderByElements;
 
-        public OrderOperator(GraphViewExecutionOperator inputOp, List<Tuple<ScalarFunction, IComparer>> orderByElements)
+        public OrderOperator(GraphViewExecutionOperator inputOp, List<Tuple<bool, ScalarFunction, IComparer>> orderByElements)
         {
             this.Open();
             this.inputOp = inputOp;
@@ -1098,9 +1098,10 @@ namespace GraphView
                 inputBuffer.Sort((x, y) =>
                 {
                     int ret = 0;
-                    foreach (Tuple<ScalarFunction, IComparer> orderByElement in orderByElements)
+                    foreach (Tuple<bool, ScalarFunction, IComparer> orderByElement in orderByElements)
                     {
-                        ScalarFunction byFunction = orderByElement.Item1;
+                        bool isByString = orderByElement.Item1;
+                        ScalarFunction byFunction = orderByElement.Item2;
 
                         FieldObject xKey = byFunction.Evaluate(x);
                         if (xKey == null) {
@@ -1112,9 +1113,28 @@ namespace GraphView
                             throw new GraphViewException("The provided traversal or property name of Order does not map to a value.");
                         }
 
-                        IComparer comparer = orderByElement.Item2;
-                        ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
+                        IComparer comparer = orderByElement.Item3;
+                        Object xObj, yObj;
+                        if (isByString)
+                        {
+                            if (xKey is PropertyField)
+                                xObj = ((PropertyField) xKey).ToPropertyValueObject();
+                            else
+                                xObj = xKey.ToObject();
                             
+                            if (yKey is PropertyField)
+                                yObj = ((PropertyField) yKey).ToPropertyValueObject();
+                            else
+                                yObj = yKey.ToObject();
+                        }
+                        else
+                        {
+                            xObj = xKey.ToObject();
+                            yObj = yKey.ToObject();
+                        }
+
+                        ret = comparer.Compare(xObj, yObj);
+
                         if (ret != 0) break;
                     }
                     return ret;

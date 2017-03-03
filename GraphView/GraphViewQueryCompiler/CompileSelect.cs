@@ -2623,7 +2623,7 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
+            List<Tuple<bool, ScalarFunction, IComparer>> orderByElements = new List<Tuple<bool, ScalarFunction, IComparer>>();
 
             foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
             {
@@ -2634,7 +2634,8 @@ namespace GraphView
                 ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
                 IComparer comparer = tuple.Item2;
 
-                orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
+                orderByElements.Add(new Tuple<bool, ScalarFunction, IComparer>(
+                    byParameter is WColumnReferenceExpression, byFunction, comparer));
             }
 
             OrderOperator orderOp = new OrderOperator(context.CurrentExecutionOperator, orderByElements);
