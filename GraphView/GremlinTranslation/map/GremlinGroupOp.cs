@@ -9,17 +9,16 @@ namespace GraphView
     internal class GremlinGroupOp: GremlinTranslationOperator, IGremlinByModulating
     {
         public string SideEffect { get; set; }
-        public List<object> ByParameters { get; set; }
+        public object GroupBy { get; set; }
+        public object ProjectBy { get; set; }
 
         public GremlinGroupOp()
         {
-            ByParameters = new List<object>();
         }
 
         public GremlinGroupOp(string sideEffect)
         {
             SideEffect = sideEffect;
-            ByParameters = new List<object>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -27,17 +26,35 @@ namespace GraphView
             GremlinToSqlContext inputContext = GetInputContext();
 
             List<object> byParameters = new List<object>();
-            foreach (var parameter in ByParameters)
+
+            if (GroupBy == null || GroupBy as string == "")
             {
-                if (parameter is GraphTraversal2)
-                {
-                    (parameter as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
-                    byParameters.Add((parameter as GraphTraversal2).GetEndOp().GetContext());
-                }
-                else
-                {
-                    byParameters.Add(parameter);
-                }
+                GroupBy = inputContext.PivotVariable.GetProjectKey();
+            }
+
+            if (ProjectBy == null || ProjectBy as string == "")
+            {
+                ProjectBy = inputContext.PivotVariable.GetProjectKey();
+            }
+
+            if (GroupBy is GraphTraversal2)
+            {
+                (GroupBy as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
+                byParameters.Add((GroupBy as GraphTraversal2).GetEndOp().GetContext());
+            }
+            else
+            {
+                byParameters.Add(GroupBy);
+            }
+
+            if (ProjectBy is GraphTraversal2)
+            {
+                (ProjectBy as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
+                byParameters.Add((ProjectBy as GraphTraversal2).GetEndOp().GetContext());
+            }
+            else
+            {
+                byParameters.Add(ProjectBy);
             }
 
             inputContext.PivotVariable.Group(inputContext, SideEffect, byParameters);
@@ -47,17 +64,50 @@ namespace GraphView
 
         public void ModulateBy()
         {
-            throw new NotImplementedException();
+            if (GroupBy == null)
+            {
+                GroupBy = "";
+            }
+            else if (ProjectBy == null)
+            {
+                ProjectBy = "";
+            }
+            else
+            {
+                throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
+            }
         }
 
         public void ModulateBy(GraphTraversal2 paramOp)
         {
-            ByParameters.Add(paramOp);
+            if (GroupBy == null)
+            {
+                GroupBy = paramOp;
+            }
+            else if (ProjectBy == null)
+            {
+                ProjectBy = paramOp;
+            }
+            else
+            {
+                throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
+            }
         }
 
         public void ModulateBy(string key)
         {
-            ByParameters.Add(key);
+            if (GroupBy == null)
+            {
+                GroupBy = key;
+            }
+            else if (ProjectBy == null)
+            {
+                ProjectBy = key;
+            }
+            else
+            {
+                throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
+            }
         }
 
         public void ModulateBy(GremlinKeyword.Order order)
