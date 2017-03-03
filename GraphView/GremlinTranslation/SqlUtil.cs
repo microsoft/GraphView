@@ -397,8 +397,11 @@ namespace GraphView
                 case GremlinKeyword.func.SideEffect:
                     funcTableRef = new WSideEffectTableReference();
                     break;
-                case GremlinKeyword.func.Dedup:
-                    funcTableRef = new WDedupTableReference();
+                case GremlinKeyword.func.DedupGlobal:
+                    funcTableRef = new WDedupGlobalTableReference();
+                    break;
+                case GremlinKeyword.func.DedupLocal:
+                    funcTableRef = new WDedupLocalTableReference();
                     break;
                 case GremlinKeyword.func.DropNode:
                     funcTableRef = new WDropNodeTableReference();
@@ -453,6 +456,12 @@ namespace GraphView
                     break;
                 case GremlinKeyword.func.SumLocal:
                     funcTableRef = new WSumLocalTableReference();
+                    break;
+                case GremlinKeyword.func.OrderGlobal:
+                    funcTableRef = new WOrderGlobalTableReference();
+                    break;
+                case GremlinKeyword.func.OrderLocal:
+                    funcTableRef = new WOrderLocalTableReference();
                     break;
                 default:
                     throw new NotImplementedException();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -303,7 +304,7 @@ namespace GraphView
         //internal virtual void cyclicPath(GremlinToSqlContext currentContext)
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
 
-        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext)
+        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
         {
             List<GremlinVariable> dedupVariables = new List<GremlinVariable>();
             foreach (var dedupLabel in dedupLabels)
@@ -311,7 +312,7 @@ namespace GraphView
                 dedupVariables.Add(currentContext.Select(dedupLabel).Last());
             }
 
-            GremlinDedupVariable newVariable = new GremlinDedupVariable(this, dedupVariables, dedupContext);
+            GremlinDedupVariable newVariable = new GremlinDedupVariable(this, dedupVariables, dedupContext, scope);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
@@ -598,11 +599,13 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal virtual void Order(GremlinToSqlContext currentContext)
+        internal virtual void Order(GremlinToSqlContext currentContext, List<object> byList,
+            List<IComparer> orderList, GremlinKeyword.Scope scope)
         {
-            throw new NotImplementedException();
+            GremlinOrderVariable newVariable = new GremlinOrderVariable(this, byList, orderList, scope);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
-        //internal virtual void order(Scope scope)
 
         internal virtual void OtherV(GremlinToSqlContext currentContext)
         {

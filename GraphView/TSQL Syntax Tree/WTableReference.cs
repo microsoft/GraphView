@@ -600,7 +600,12 @@ namespace GraphView
 
     }
 
-    public partial class WDedupTableReference : WSchemaObjectFunctionTableReference
+    public partial class WDedupGlobalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WDedupLocalTableReference : WSchemaObjectFunctionTableReference
     {
 
     }

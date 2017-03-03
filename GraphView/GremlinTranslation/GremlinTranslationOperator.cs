@@ -63,6 +63,11 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        public virtual void ModulateBy(IComparer order)
+        {
+            throw new NotImplementedException();
+        }
+
         public virtual void ModulateBy(string paramOp, GremlinKeyword.Order order)
         {
             throw new NotImplementedException();

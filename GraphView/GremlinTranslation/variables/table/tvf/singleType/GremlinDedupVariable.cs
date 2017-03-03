@@ -11,12 +11,17 @@ namespace GraphView
         public GremlinVariable InputVariable { get; set; }
         public List<GremlinVariable> DedupVariables { get; set; }
         public GremlinToSqlContext DedupContext { get; set; }
+        public GremlinKeyword.Scope Scope { get; set; }
 
-        public GremlinDedupVariable(GremlinVariable inputVariable, List<GremlinVariable> dedupVariables, GremlinToSqlContext dedupContext)
+        public GremlinDedupVariable(GremlinVariable inputVariable, 
+                                    List<GremlinVariable> dedupVariables, 
+                                    GremlinToSqlContext dedupContext,
+                                    GremlinKeyword.Scope scope)
         {
             InputVariable = inputVariable;
             DedupVariables = new List<GremlinVariable>(dedupVariables);
             DedupContext = dedupContext;
+            Scope = scope;
         }
 
         public override WTableReference ToTableReference()
@@ -38,7 +43,9 @@ namespace GraphView
                 parameters.Add(InputVariable.DefaultVariableProperty().ToScalarExpression());
             }
 
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Dedup, parameters, this, GetVariableName());
+            var secondTableRef = SqlUtil.GetFunctionTableReference(
+                Scope == GremlinKeyword.Scope.global ? GremlinKeyword.func.DedupGlobal : GremlinKeyword.func.DedupLocal,
+                parameters, this, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
         }
     }
