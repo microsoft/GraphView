@@ -116,6 +116,8 @@ namespace GraphView
 
         public IEnumerator<string> GetEnumerator()
         {
+            var sqlScript = LastGremlinTranslationOp.ToSqlScript();
+            var str = sqlScript.ToString();
             it = new GraphTraversalIterator(LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection), outputFormat);
             return it;
         }
@@ -125,6 +127,7 @@ namespace GraphView
             return GetEnumerator();
         }
 
+        public string SqlScript { get; set; }
         private GraphTraversalIterator it;
         public GraphViewConnection Connection { get; set; }
         internal List<GremlinTranslationOperator> GremlinTranslationOpList { get; set; }
@@ -154,7 +157,7 @@ namespace GraphView
         public List<string> Next()
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
-            var str = sqlScript.ToString();
+            SqlScript = sqlScript.ToString();
             //Console.WriteLine(str);     // Added temporarily for debugging purpose.
             //Console.WriteLine();
 
