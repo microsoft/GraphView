@@ -303,7 +303,7 @@ namespace GraphView
         //internal virtual void cyclicPath(GremlinToSqlContext currentContext)
         //internal virtual void dedup(GremlinToSqlContext currentContext, Scope scope, params string[] dedupLabels)
 
-        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext)
+        internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
         {
             List<GremlinVariable> dedupVariables = new List<GremlinVariable>();
             foreach (var dedupLabel in dedupLabels)
@@ -311,7 +311,7 @@ namespace GraphView
                 dedupVariables.Add(currentContext.Select(dedupLabel).Last());
             }
 
-            GremlinDedupVariable newVariable = new GremlinDedupVariable(this, dedupVariables, dedupContext);
+            GremlinDedupVariable newVariable = new GremlinDedupVariable(this, dedupVariables, dedupContext, scope);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }

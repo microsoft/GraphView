@@ -1988,7 +1988,7 @@ namespace GraphView
         }
     }
 
-    partial class WDedupTableReference
+    partial class WDedupGlobalTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {

@@ -406,11 +406,15 @@ namespace GraphView
         }
 
         //public GraphTraversal2 cyclicPath()
-        //public GraphTraversal2 dedup(Scope scope, params string[] dedupLabels)
+        public GraphTraversal2 Dedup(GremlinKeyword.Scope scope, params string[] dedupLabels)
+        {
+            AddGremlinOperator(new GremlinDedupOp(scope, dedupLabels));
+            return this;
+        }
 
         public GraphTraversal2 Dedup(params string[] dedupLabels)
         {
-            AddGremlinOperator(new GremlinDedupOp(dedupLabels));
+            AddGremlinOperator(new GremlinDedupOp(GremlinKeyword.Scope.global, dedupLabels));
             return this;
         }
 
