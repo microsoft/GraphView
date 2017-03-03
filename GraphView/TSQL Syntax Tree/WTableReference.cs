@@ -459,6 +459,16 @@ namespace GraphView
 
     }
 
+    public partial class WOrderLocalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
+    public partial class WOrderGlobalTableReference : WSchemaObjectFunctionTableReference
+    {
+
+    }
+
     public partial class WRepeatTableReference : WSchemaObjectFunctionTableReference
     {
         internal void Split(out WSelectQueryBlock contextSelect, out WSelectQueryBlock repeatSelectQuery)
