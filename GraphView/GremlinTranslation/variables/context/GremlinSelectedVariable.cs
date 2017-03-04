@@ -49,10 +49,10 @@ namespace GraphView {
             return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
         }
 
-        internal override string GetPrimaryKey()
-        {
-            return RealVariable.GetPrimaryKey();
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    return RealVariable.GetPrimaryKey();
+        //}
 
         internal override string GetProjectKey()
         {

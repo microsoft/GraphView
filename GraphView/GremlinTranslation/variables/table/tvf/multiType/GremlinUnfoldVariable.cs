@@ -61,6 +61,10 @@ namespace GraphView
             {
                 parameters.Add(UnfoldVariable.DefaultVariableProperty().ToScalarExpression());
             }
+            if (ProjectedProperties.Count == 0)
+            {
+                parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
+            }
             foreach (var projectProperty in ProjectedProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(projectProperty));

@@ -251,11 +251,12 @@ namespace GraphView
             List<WSelectScalarExpression> inputSelectList = new List<WSelectScalarExpression>();
             foreach (var projectProperty in FirstVariable.ProjectedProperties)
             {
-                var aliasName = GenerateKey();
-                inputSelectList.Add(SqlUtil.GetSelectScalarExpr(RepeatContext.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), aliasName));
+                string aliasName = GenerateKey();
+                inputSelectList.Add(
+                    SqlUtil.GetSelectScalarExpr(
+                        RepeatContext.PivotVariable.GetVariableProperty(projectProperty).ToScalarExpression(), aliasName));
                 map[FirstVariable.GetVariableProperty(projectProperty)] = aliasName;
             }
-
             return inputSelectList;
         }
 

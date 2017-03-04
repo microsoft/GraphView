@@ -49,10 +49,10 @@ namespace GraphView
         {
             WSelectQueryBlock queryBlock = SubqueryContext.ToSelectQueryBlock();
             queryBlock.SelectElements.Clear();
-            if (SubqueryContext.PivotVariable.ProjectedProperties.Count == 0)
-            {
-                SubqueryContext.PivotVariable.ProjectedProperties.Add(GetProjectKey());
-            }
+            //if (SubqueryContext.PivotVariable.ProjectedProperties.Count == 0)
+            //{
+            //    SubqueryContext.PivotVariable.ProjectedProperties.Add(GetProjectKey());
+            //}
 
             List<WScalarExpression> foldParameters = new List<WScalarExpression> { SubqueryContext.PivotVariable.ToCompose1() };
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.ScalarValue));

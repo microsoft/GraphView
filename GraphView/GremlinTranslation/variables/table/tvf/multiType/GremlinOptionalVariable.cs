@@ -90,6 +90,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             WSelectQueryBlock firstQueryExpr = new WSelectQueryBlock();
+
             foreach (var projectProperty in ProjectedProperties)
             {
                 if (projectProperty == GremlinKeyword.TableDefaultColumnName)
@@ -97,7 +98,8 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(InputVariable.DefaultProjection().ToScalarExpression(),
                         GremlinKeyword.TableDefaultColumnName));
                 }
-                else if (InputVariable.ProjectedProperties.Contains(projectProperty))
+                else
+                if (InputVariable.ProjectedProperties.Contains(projectProperty))
                 {
                     firstQueryExpr.SelectElements.Add(
                         SqlUtil.GetSelectScalarExpr(
@@ -109,6 +111,7 @@ namespace GraphView
                         SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), projectProperty));
                 }
             }
+
             if (OptionalContext.IsPopulateGremlinPath)
             {
                 firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), GremlinKeyword.Path));

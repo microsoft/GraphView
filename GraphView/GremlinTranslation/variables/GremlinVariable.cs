@@ -37,7 +37,7 @@ namespace GraphView
      
     internal abstract class GremlinVariable
     {
-        protected string _variableName;
+        protected string variableName;
         public int Low { get; set; }
         public int High { get; set; }
         public bool IsReverse { get; set; }
@@ -95,8 +95,8 @@ namespace GraphView
 
         internal virtual string GetVariableName()
         {
-            if (_variableName == null) throw new Exception("_variable can't be null");
-            return _variableName;
+            if (variableName == null) throw new Exception("_variable can't be null");
+            return variableName;
         }
 
         internal virtual void BottomUpPopulate(GremlinVariable terminateVariable, string property, string columnName)
@@ -137,10 +137,10 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual string GetPrimaryKey()
-        {
-            throw new NotImplementedException();
-        }
+        //internal virtual string GetPrimaryKey()
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         internal virtual string GetProjectKey()
         {
@@ -155,12 +155,19 @@ namespace GraphView
         internal virtual WFunctionCall ToCompose1()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            var projectKey = GetProjectKey();
-            parameters.Add(SqlUtil.GetValueExpr(projectKey));
+            parameters.Add(SqlUtil.GetValueExpr(GetProjectKey()));
             foreach (var projectProperty in ProjectedProperties)
             {
-                parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());
-                parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+                if (projectProperty == GremlinKeyword.TableDefaultColumnName)
+                {
+                    parameters.Add(DefaultProjection().ToScalarExpression());
+                    parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.TableDefaultColumnName));
+                }
+                else
+                {
+                    parameters.Add(GetVariableProperty(projectProperty).ToScalarExpression());
+                    parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+                }
             }
             return SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose1, parameters);
         }

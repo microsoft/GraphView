@@ -47,11 +47,11 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
-        internal override string GetPrimaryKey()
-        {
-            Populate(GremlinKeyword.TableDefaultColumnName);
-            return GremlinKeyword.TableDefaultColumnName;
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    Populate(GremlinKeyword.TableDefaultColumnName);
+        //    return GremlinKeyword.TableDefaultColumnName;
+        //}
 
         internal override string GetProjectKey()
         {
@@ -81,7 +81,21 @@ namespace GraphView
 
         internal override GremlinVariableProperty DefaultVariableProperty()
         {
-            return GetVariableProperty(GetPrimaryKey());
+            string primaryKey;
+            switch (GetVariableType())
+            {
+                case GremlinVariableType.Edge:
+                    primaryKey = GremlinKeyword.EdgeID;
+                    break;
+                case GremlinVariableType.Vertex:
+                    primaryKey = GremlinKeyword.NodeID;
+                    break;
+                default:
+                    primaryKey = GremlinKeyword.TableDefaultColumnName;
+                    break;
+            }
+            return GetVariableProperty(primaryKey);
+            //return GetVariableProperty(GetPrimaryKey());
         }
 
         internal override GremlinVariableProperty DefaultProjection()
@@ -123,11 +137,11 @@ namespace GraphView
             return GremlinVariableType.Vertex;
         }
 
-        internal override string GetPrimaryKey()
-        {
-            Populate(GremlinKeyword.ScalarValue);
-            return GremlinKeyword.ScalarValue;
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    Populate(GremlinKeyword.ScalarValue);
+        //    return GremlinKeyword.ScalarValue;
+        //}
 
         internal override string GetProjectKey()
         {
@@ -148,11 +162,11 @@ namespace GraphView
             return GremlinVariableType.Edge;
         }
 
-        internal override string GetPrimaryKey()
-        {
-            Populate(GremlinKeyword.EdgeID);
-            return GremlinKeyword.EdgeID;
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    Populate(GremlinKeyword.EdgeID);
+        //    return GremlinKeyword.EdgeID;
+        //}
 
         internal override string GetProjectKey()
         {
@@ -173,11 +187,11 @@ namespace GraphView
             return GremlinVariableType.Scalar;
         }
 
-        internal override string GetPrimaryKey()
-        {
-            Populate(GremlinKeyword.ScalarValue);
-            return GremlinKeyword.ScalarValue;
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    Populate(GremlinKeyword.ScalarValue);
+        //    return GremlinKeyword.ScalarValue;
+        //}
 
         internal override string GetProjectKey()
         {
@@ -198,11 +212,11 @@ namespace GraphView
             return GremlinVariableType.Property;
         }
 
-        internal override string GetPrimaryKey()
-        {
-            Populate(GremlinKeyword.PropertyValue);
-            return GremlinKeyword.PropertyValue;
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    Populate(GremlinKeyword.PropertyValue);
+        //    return GremlinKeyword.PropertyValue;
+        //}
 
         internal override string GetProjectKey()
         {

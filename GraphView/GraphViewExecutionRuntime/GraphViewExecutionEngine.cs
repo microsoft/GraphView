@@ -872,7 +872,7 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e)))
+            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e.Substring(e.IndexOf(".")+1))))
             {
                 if (sb.Length > 0)
                 {

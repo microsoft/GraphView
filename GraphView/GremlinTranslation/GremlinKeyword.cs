@@ -19,9 +19,8 @@ namespace GraphView
         public const string NodeID = "id";
         public const string EdgeAdj = "_edge";
         public const string ReverseEdgeAdj = "_reverse_edge";
-        public const string TableDefaultColumnName = "_t";
+        public const string TableDefaultColumnName = "_value";
         public const string Path = "_path";
-        public const string DefaultProject = "_result";
         public const string ScalarValue = "_value";
         public const string PropertyValue = "_value";
         public const string Star = "*";
@@ -215,14 +214,5 @@ namespace GraphView
             {"last", "GremlinKeyword.Pop.last"},
             {"first", "GremlinKeyword.Pop.first"},
         };
-    }
-
-    public enum GremlinEdgeType
-    {
-        BothE,
-        BothForwardE,
-        InE,
-        InForwardE,
-        OutE
     }
 }

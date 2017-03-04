@@ -118,7 +118,7 @@ namespace GraphView
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
             var str = sqlScript.ToString();
-            it = new GraphTraversalIterator(LastGremlinTranslationOp.ToSqlScript().Batches[0].Compile(null, Connection), outputFormat);
+            it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, Connection), outputFormat);
             return it;
         }
 
