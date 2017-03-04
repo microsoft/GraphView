@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Threading;
 using GraphViewUnitTest.Gremlin;
 
 namespace GraphViewUnitTest
@@ -33,6 +34,7 @@ namespace GraphViewUnitTest
 
         public int GetEdgeCount()
         {
+            var results = graph.g().E().Count().Next();
             return JsonConvert.DeserializeObject<dynamic>(graph.g().E().FirstOrDefault()).Count;
         }
 
@@ -275,7 +277,7 @@ namespace GraphViewUnitTest
             output = Get_IoT_test_12();
             //===========================================
             output = Get_IoT_test_13();
-
+            //results = graph.g().E().Count().Next();
             //===========================================
             output = Get_IoT_test_14();
             //Assert.AreEqual(49, GetVertexCount());
@@ -283,13 +285,13 @@ namespace GraphViewUnitTest
 
             //===========================================
             output = Get_IoT_test_15();
-            //Assert.AreEqual(41, GetVertexCount());
-            //Assert.AreEqual(53, GetEdgeCount());
+            Assert.AreEqual(41, GetVertexCount());
+            Assert.AreEqual(53, GetEdgeCount());
 
             ////===========================================
-            //output = Get_IoT_test_16();
+            output = Get_IoT_test_16();
             ////===========================================
-            //output = Get_IoT_test_17();
+            output = Get_IoT_test_17();
             //===========================================
         }
 

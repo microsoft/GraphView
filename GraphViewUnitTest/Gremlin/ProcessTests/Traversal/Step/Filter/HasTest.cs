@@ -36,11 +36,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36514
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void OutCreatedHasNameLengthGT3()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                Assert.Fail();
                 //var traversal = GraphViewCommand.g().V().Out("created").Has("name", Predicate.gt(3));
                 //var result = traversal.Values("name").Next();
                 //Assert.AreEqual(1, result.Count);
@@ -420,11 +420,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36527
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasLabelPersonHasAgeNotLTE10AndNotBetween11n20ANDLT29OrEQ35()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                Assert.Fail();
                 //var traversal = GraphViewCommand.g().V().HasLabel("person")
                 //    .Has("age", 
                 //        Predicate.not(

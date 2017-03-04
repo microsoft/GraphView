@@ -67,11 +67,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36531
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabel()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                Assert.Fail();
                 var traversal = GraphViewCommand.g().V().Choose(
                     GraphTraversal2.__().Label().Is("person"),
                     GraphTraversal2.__().Union(
@@ -97,11 +97,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36609
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabelGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                Assert.Fail();
                 var traversal = GraphViewCommand.g().V().Choose(
                     GraphTraversal2.__().Label().Is("person"),
                     GraphTraversal2.__().Union(
@@ -127,6 +127,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// 2. This Test seems to throw an exception during compilation, more details on the error in the below work item:
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36710
         /// </remarks>
+        
         [TestMethod]
         [Ignore]
         public void UnionRepeatUnionOutCreatedInCreatedTimes2RepeatUnionInCreatedOutCreatedTimes2LabelGroupCount()
