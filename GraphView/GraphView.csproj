@@ -170,6 +170,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinMaxLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinMeanLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinMinLocalVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinPath2Variable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\sideEffect\GremlinStoreVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\multiType\GremlinUnfoldVariable.cs" />

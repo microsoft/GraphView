@@ -463,6 +463,9 @@ namespace GraphView
                 case GremlinKeyword.func.OrderLocal:
                     funcTableRef = new WOrderLocalTableReference();
                     break;
+                case GremlinKeyword.func.Path2:
+                    funcTableRef = new WPath2TableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

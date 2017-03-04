@@ -627,8 +627,6 @@ namespace GraphView
             throw new QueryCompilationException("The OutV() step can only be applied to edges.");
         }
 
-        //internal virtual void PageRank()
-        //internal virtual void PageRank(double alpha)
         internal virtual void Path(GremlinToSqlContext currentContext)
         {
             GremlinPathVariable newVariable = new GremlinPathVariable(currentContext.GetGremlinStepList());
@@ -637,10 +635,13 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        //internal virtual void PeerPressure()
-        //internal virtual void Profile()
-        //internal virtual void Profile(string sideEffectKey)
-        //internal virtual void Program(VertexProgram<?> vertexProgram)
+        internal virtual void Path2(GremlinToSqlContext currentContext, List<object> byList)
+        {
+            GremlinPath2Variable newVariable = new GremlinPath2Variable(currentContext.GetGremlinStepList(), byList);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
 
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys, List<GremlinToSqlContext> byContexts)
         {

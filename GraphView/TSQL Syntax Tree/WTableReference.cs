@@ -396,82 +396,40 @@ namespace GraphView
         }
     }
 
-    public partial class WCoalesceTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WCoalesceTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WConstantReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WConstantReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WBoundBothEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WBoundOutEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WBoundBothEdgeTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WBoundInEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WBoundOutEdgeTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WKeyTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WBoundInEdgeTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WBoundBothNodeTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WBoundOutNodeTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
-    public partial class WKeyTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WPathTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
-
-    public partial class WLocalTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WBoundBothNodeTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WBoundOutNodeTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WPropertiesTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WPathTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WInjectTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
+    public partial class WInjectTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WOrderTableReference : WSchemaObjectFunctionTableReference
     {
         public List<Tuple<WScalarExpression, IComparer>> OrderParameters { get; set; }
     }
 
-    public partial class WOrderLocalTableReference : WOrderTableReference
-    {
-    }
+    public partial class WOrderLocalTableReference : WOrderTableReference {}
 
-    public partial class WOrderGlobalTableReference : WOrderTableReference
-    {
-    }
+    public partial class WOrderGlobalTableReference : WOrderTableReference {}
 
     public partial class WRepeatTableReference : WSchemaObjectFunctionTableReference
     {
@@ -498,40 +456,19 @@ namespace GraphView
         }
     }
 
-    public partial class WSampleTableReference : WSchemaObjectFunctionTableReference
-    {
-        
-    }
+    public partial class WSampleTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WValuesTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WValuesTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WValueTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WValueTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WUnfoldTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WUnionTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUnfoldTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WProjectTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
-
-    public partial class WUnionTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WProjectTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WGroupTableReference : WSchemaObjectFunctionTableReference
-    {
-        
-    }
+    public partial class WGroupTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
@@ -595,100 +532,45 @@ namespace GraphView
         }
     }
 
-    public partial class WSideEffectTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WSideEffectTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WDedupGlobalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDedupGlobalTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WDedupLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDedupLocalTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WUpdateNodePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WStoreTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WBarrierTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WExpandTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUpdateNodePropertiesTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WMapTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WCoinTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WCountLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WMaxLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WStoreTableReference : WSchemaObjectFunctionTableReference
-    {
+    public partial class WMinLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    }
+    public partial class WMeanLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference
-    {
-        
-    }
+    public partial class WSumLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WBarrierTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WExpandTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WMapTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WCoinTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WCountLocalTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WMaxLocalTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WMinLocalTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WMeanLocalTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
-
-    public partial class WSumLocalTableReference : WSchemaObjectFunctionTableReference
-    {
-
-    }
+    public partial class WPath2TableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WJoinParenthesisTableReference : WTableReference
     {
