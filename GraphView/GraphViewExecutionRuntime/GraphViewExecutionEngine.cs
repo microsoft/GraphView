@@ -535,42 +535,47 @@ namespace GraphView
 
     internal class Compose1Field : FieldObject
     {
-        public Dictionary<FieldObject, FieldObject> Map { get; set; }
-        public FieldObject DefaultProjectionKey { get; set; }
+        public Dictionary<string, FieldObject> CompositeFieldObject { get; set; }
+        public string DefaultProjectionKey { get; set; }
 
-        public Compose1Field(Dictionary<FieldObject, FieldObject> map, FieldObject defaultProjectionKey)
+        public Compose1Field(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
         {
-            Map = map;
+            CompositeFieldObject = compositeFieldObject;
             DefaultProjectionKey = defaultProjectionKey;
+        }
+
+        public bool TryGetFieldObject(string key, out FieldObject fieldObject)
+        {
+            return CompositeFieldObject.TryGetValue(key, out fieldObject);
         }
 
         public override string ToString()
         {
-            return Map[DefaultProjectionKey].ToString();
+            return CompositeFieldObject[DefaultProjectionKey].ToString();
         }
 
-        public override string ToValue => Map[DefaultProjectionKey].ToValue;
+        public override string ToValue => CompositeFieldObject[DefaultProjectionKey].ToValue;
 
         public override string ToGraphSON()
         {
-            return Map[DefaultProjectionKey].ToGraphSON();
+            return CompositeFieldObject[DefaultProjectionKey].ToGraphSON();
         }
 
         public override bool Equals(object obj)
         {
             if (Object.ReferenceEquals(this, obj)) return true;
 
-            MapField mapField = obj as MapField;
-            if (mapField == null || Map.Count != mapField.Map.Count)
+            Compose1Field compose1Field = obj as Compose1Field;
+            if (compose1Field == null || CompositeFieldObject.Count != compose1Field.CompositeFieldObject.Count)
             {
                 return false;
             }
 
-            foreach (var kvp in Map)
+            foreach (KeyValuePair<string, FieldObject> kvp in CompositeFieldObject)
             {
-                var key = kvp.Key;
+                string key = kvp.Key;
                 FieldObject value2;
-                if (!mapField.Map.TryGetValue(key, out value2))
+                if (!compose1Field.CompositeFieldObject.TryGetValue(key, out value2))
                     return false;
                 if (!kvp.Value.Equals(value2))
                     return false;
@@ -581,15 +586,15 @@ namespace GraphView
 
         public override int GetHashCode()
         {
-            if (Map.Count == 0) return "[]".GetHashCode();
+            if (CompositeFieldObject.Count == 0) return "[]".GetHashCode();
 
-            var mapStringBuilder = new StringBuilder("[");
-            var i = 0;
+            StringBuilder mapStringBuilder = new StringBuilder("[");
+            int i = 0;
 
-            foreach (var pair in Map)
+            foreach (KeyValuePair<string, FieldObject> pair in CompositeFieldObject)
             {
-                var key = pair.Key;
-                var value = pair.Value;
+                string key = pair.Key;
+                FieldObject value = pair.Value;
 
                 if (i++ > 0)
                     mapStringBuilder.Append(", ");
