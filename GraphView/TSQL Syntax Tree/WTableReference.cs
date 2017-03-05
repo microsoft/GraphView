@@ -551,7 +551,9 @@ namespace GraphView
 
     public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUpdateNodePropertiesTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WUpdateVertexPropertiesTableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WUpdateMetaPropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
