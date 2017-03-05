@@ -502,12 +502,32 @@ namespace GraphView
         }
     }
 
-    public class WVertexPropertyExpression: WPrimaryExpression
+    public class WVertexPropertyExpression : WPrimaryExpression
     {
         public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
         public WValueExpression Key { get; set; }
         public WValueExpression Value { get; set; }
         public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+
+        internal override string ToString(string indent)
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("{0}({1}, {2}, {3}",
+                indent,
+                Cardinality == GremlinKeyword.VertexPropertyCardinality.list ? "list" : "singe",
+                Key.ToString(), Value.ToString());
+            if (MetaProperties.Count > 0)
+            {
+                sb.Append(", Meta: (");
+                foreach (var metaProperty in MetaProperties)
+                {
+                    sb.AppendFormat("{0}:{1}", metaProperty.Key.ToString(), metaProperty.Value.ToString());
+                }
+                sb.Append(")");
+            }
+            sb.Append(")");
+            return sb.ToString();
+        }
     }
 
     public partial class WAddVTableReference : WSchemaObjectFunctionTableReference

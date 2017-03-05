@@ -76,4 +76,37 @@ namespace GraphView
             return false;
         }
     }
+
+    public class GremlinVertexProperty
+    {
+        public GremlinVertexProperty(GremlinKeyword.VertexPropertyCardinality cardinality,
+            string key, object value, Dictionary<string, object> metaProperties)
+        {
+            Cardinality = cardinality;
+            Key = key;
+            Value = value;
+            MetaProperties = metaProperties ?? new Dictionary<string, object>();
+        }
+
+        public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
+        public string Key { get; set; }
+        public object Value { get; set; }
+        public Dictionary<string, object> MetaProperties { get; set; }
+
+        public WVertexPropertyExpression ToVertexPropertyExpr()
+        {
+            Dictionary<WValueExpression, WValueExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WValueExpression>();
+            foreach (var property in MetaProperties)
+            {
+                metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = SqlUtil.GetValueExpr(property.Value);
+            }
+            return new WVertexPropertyExpression()
+            {
+                Cardinality = Cardinality,
+                Key = SqlUtil.GetValueExpr(Key),
+                Value = SqlUtil.GetValueExpr(Value),
+                MetaProperties = metaPropertiesExpr
+            };
+        }
+    }
 }

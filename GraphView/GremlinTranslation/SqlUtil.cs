@@ -398,11 +398,14 @@ namespace GraphView
                 case GremlinKeyword.func.DropProperties:
                     funcTableRef = new WDropPropertiesTableReference();
                     break;
-                case GremlinKeyword.func.UpdateNodeProperties:
-                    funcTableRef = new WUpdateNodePropertiesTableReference();
+                case GremlinKeyword.func.UpdateVertexProperties:
+                    funcTableRef = new WUpdateVertexPropertiesTableReference();
                     break;
                 case GremlinKeyword.func.UpdateEdgeProperties:
                     funcTableRef = new WUpdateEdgePropertiesTableReference();
+                    break;
+                case GremlinKeyword.func.UpdateMetaProperties:
+                    funcTableRef = new WUpdateMetaPropertiesTableReference();
                     break;
                 case GremlinKeyword.func.Inject:
                     funcTableRef = new WInjectTableReference();
