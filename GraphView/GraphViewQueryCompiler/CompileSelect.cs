@@ -1262,7 +1262,7 @@ namespace GraphView
                 {
                     var alias = expr.ColumnName;
                     // TODO: Change to Addfield with correct ColumnGraphType
-                    context.AddField("", alias ?? "_value", ColumnGraphType.Value);
+                    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
                 }
 
                 operatorChain.Add(projectAggregationOp);
@@ -1929,7 +1929,7 @@ namespace GraphView
 
             GraphViewExecutionOperator valuesOperator = new ValuesOperator(context.CurrentExecutionOperator, valuesIdxList, allValuesIndex);
             context.CurrentExecutionOperator = valuesOperator;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             
             return valuesOperator;
         }
@@ -1962,7 +1962,7 @@ namespace GraphView
 
             GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, propertiesList, allPropertyIndex);
             context.CurrentExecutionOperator = propertiesOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return propertiesOp;
         }
@@ -2009,7 +2009,7 @@ namespace GraphView
 
             var constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues);
             context.CurrentExecutionOperator = constantOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return constantOp;
         }
@@ -2037,7 +2037,7 @@ namespace GraphView
             }
 
             context.CurrentExecutionOperator = projectByOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             for (var i = 0; i < Parameters.Count; i += 2)
             {
@@ -2196,7 +2196,7 @@ namespace GraphView
 
             var pathOp = new PathOperator(context.CurrentExecutionOperator, pathFieldList);
             context.CurrentExecutionOperator = pathOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return pathOp;
         }
@@ -2225,7 +2225,7 @@ namespace GraphView
 
             // In g.Inject() case, the inject() step creates a new column in RawRecord
             if (context.RawRecordLayout.Count == 0)
-                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+                context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return injectOp;
         }
@@ -2257,7 +2257,7 @@ namespace GraphView
                 (CollectionFunction)sideEffectState);
             context.CurrentExecutionOperator = aggregateOp;
             // TODO: Change to correct ColumnGraphType
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return aggregateOp;
         }
@@ -2289,7 +2289,7 @@ namespace GraphView
                 (CollectionFunction) sideEffectState);
             context.CurrentExecutionOperator = storeOp;
             // TODO: Change to correct ColumnGraphType
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
 
             return storeOp;
@@ -2382,7 +2382,7 @@ namespace GraphView
             PropertyKeyOperator keyOp = new PropertyKeyOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(propertyField));
             context.CurrentExecutionOperator = keyOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return keyOp;
         }
@@ -2397,7 +2397,7 @@ namespace GraphView
             PropertyValueOperator valueOp = new PropertyValueOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(propertyField));
             context.CurrentExecutionOperator = valueOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return valueOp;
         }
@@ -2448,7 +2448,7 @@ namespace GraphView
                 if (!context.CarryOn)
                     context.ClearField();
                 // Change to correct ColumnGraphType
-                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+                context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
                 return groupOp;
             }
@@ -2554,7 +2554,7 @@ namespace GraphView
             SumLocalOperator sumLocalOp = new SumLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = sumLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return sumLocalOp;
         }
@@ -2569,7 +2569,7 @@ namespace GraphView
             MaxLocalOperator maxLocalOp = new MaxLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = maxLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return maxLocalOp;
         }
@@ -2584,7 +2584,7 @@ namespace GraphView
             MinLocalOperator minLocalOp = new MinLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = minLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return minLocalOp;
         }
@@ -2599,7 +2599,7 @@ namespace GraphView
             MeanLocalOperator meanLocalOp = new MeanLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = meanLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return meanLocalOp;
         }

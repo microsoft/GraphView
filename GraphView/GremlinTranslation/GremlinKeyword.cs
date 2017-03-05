@@ -19,11 +19,11 @@ namespace GraphView
         public const string NodeID = "id";
         public const string EdgeAdj = "_edge";
         public const string ReverseEdgeAdj = "_reverse_edge";
-        public const string TableDefaultColumnName = "_value";
         public const string Path = "_path";
         //public const string ScalarValue = "_value";
         //public const string PropertyValue = "_value";
         public const string Star = "*";
+        public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);
 
 
         public static class func
