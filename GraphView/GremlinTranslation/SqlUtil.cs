@@ -228,20 +228,6 @@ namespace GraphView
             return new WSchemaObjectName(GetIdentifier(value));
         }
 
-        internal static WNamedTableReference GetNamedTableReference(GremlinVariable gremlinVar)
-        {
-            return new WNamedTableReference()
-            {
-                Alias = GetIdentifier(gremlinVar.GetVariableName()),
-                TableObjectString = "node",
-                TableObjectName = GetSchemaObjectName("node"),
-                Low = gremlinVar.Low,
-                High = gremlinVar.High,
-                IsLocal =  gremlinVar.IsLocal,
-                IsReverse =  gremlinVar.IsReverse
-            };
-        }
-
         internal static WBooleanExpression GetHaskeyBooleanExpr(GremlinVariable currVar, string key)
         {
             var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.GetVariableName(), key));
@@ -466,16 +452,19 @@ namespace GraphView
                 case GremlinKeyword.func.Path2:
                     funcTableRef = new WPath2TableReference();
                     break;
+                case GremlinKeyword.func.Range:
+                    funcTableRef = new WRangeTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }
             funcTableRef.SchemaObject = GetSchemaObjectName(functionName);
             funcTableRef.Parameters = parameterList;
             funcTableRef.Alias = GetIdentifier(alias);
-            funcTableRef.Low = gremlinvariable.Low;
-            funcTableRef.High = gremlinvariable.High;
-            funcTableRef.IsLocal = gremlinvariable.IsLocal;
-            funcTableRef.IsReverse = gremlinvariable.IsReverse;
+            //funcTableRef.Low = gremlinvariable.Low;
+            //funcTableRef.High = gremlinvariable.High;
+            //funcTableRef.IsLocal = gremlinvariable.IsLocal;
+            //funcTableRef.IsReverse = gremlinvariable.IsReverse;
             return funcTableRef;
         }
 
@@ -505,8 +494,8 @@ namespace GraphView
             {
                 QueryExpr = selectQueryBlock,
                 Alias = GetIdentifier(alias),
-                Low = Int32.MinValue,
-                High = Int32.MaxValue
+                //Low = Int32.MinValue,
+                //High = Int32.MaxValue
             };
         }
 

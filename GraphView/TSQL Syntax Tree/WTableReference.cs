@@ -72,10 +72,10 @@ namespace GraphView
     public abstract partial class WTableReferenceWithAlias : WTableReference 
     {
         internal Identifier Alias { set; get; }
-        internal int Low { get; set; }
-        internal int High { get; set; }
-        internal bool IsLocal { get; set; }
-        internal bool IsReverse { get; set; }
+        //internal int Low { get; set; }
+        //internal int High { get; set; }
+        //internal bool IsLocal { get; set; }
+        //internal bool IsReverse { get; set; }
     }
 
     public abstract partial class WTableReferenceWithAliasAndColumns : WTableReferenceWithAlias

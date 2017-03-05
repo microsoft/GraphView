@@ -1,5 +1,6 @@
 ﻿using Microsoft.SqlServer.TransactSql.ScriptDom;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,8 @@ namespace GraphView
 {
     internal class GremlinFreeVertexVariable : GremlinVertexTableVariable
     {
+        private bool isTraversalToBound;
+
         public override WTableReference ToTableReference()
         {
             return new WNamedTableReference()
@@ -21,6 +24,11 @@ namespace GraphView
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            if (this.isTraversalToBound)
+            {
+                base.Both(currentContext, edgeLabels);
+                return;
+            }
             GremlinFreeEdgeTableVariable bothEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.BothEdge);
             currentContext.VariableList.Add(bothEdgeTable);
             currentContext.AddLabelPredicateForEdge(bothEdgeTable, edgeLabels);
@@ -37,6 +45,11 @@ namespace GraphView
 
         internal override void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            if (this.isTraversalToBound)
+            {
+                base.In(currentContext, edgeLabels);
+                return;
+            }
             GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
             currentContext.VariableList.Add(inEdgeTable);
             currentContext.AddLabelPredicateForEdge(inEdgeTable, edgeLabels);
@@ -50,6 +63,11 @@ namespace GraphView
 
         internal override void InE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            if (this.isTraversalToBound)
+            {
+                base.InE(currentContext, edgeLabels);
+                return;
+            }
             GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
             currentContext.VariableList.Add(inEdgeTable);
             currentContext.AddLabelPredicateForEdge(inEdgeTable, edgeLabels);
@@ -59,6 +77,11 @@ namespace GraphView
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            if (this.isTraversalToBound)
+            {
+                base.Out(currentContext, edgeLabels);
+                return;
+            }
             GremlinFreeEdgeTableVariable outEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
             currentContext.VariableList.Add(outEdgeTable);
             currentContext.AddLabelPredicateForEdge(outEdgeTable, edgeLabels);
@@ -71,6 +94,11 @@ namespace GraphView
         }
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
+            if (this.isTraversalToBound)
+            {
+                base.OutE(currentContext, edgeLabels);
+                return;
+            }
             GremlinFreeEdgeTableVariable outEdgeTableVar = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
             currentContext.VariableList.Add(outEdgeTableVar);
             currentContext.AddLabelPredicateForEdge(outEdgeTableVar, edgeLabels);
@@ -141,6 +169,75 @@ namespace GraphView
         internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
             currentContext.Values(this, propertyKeys);
+        }
+
+        internal override void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
+        {
+            this.isTraversalToBound = true;
+            base.Aggregate(currentContext, sideEffectKey, projectContext);
+        }
+        
+        internal override void Coin(GremlinToSqlContext currentContext, double probability)
+        {
+            this.isTraversalToBound = true;
+            base.Coin(currentContext, probability);
+        }
+        
+
+        internal override void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
+        {
+            this.isTraversalToBound = true;
+            base.Dedup(currentContext, dedupLabels, dedupContext, scope);
+        }
+
+        internal override void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
+        {
+            if (sideEffectKey != null) this.isTraversalToBound = true;
+            base.Group(currentContext, sideEffectKey, parameters);
+        }
+
+        internal override void Inject(GremlinToSqlContext currentContext, List<object> values)
+        {
+            this.isTraversalToBound = true;
+            base.Inject(currentContext, values);
+        }
+
+        internal override void Order(GremlinToSqlContext currentContext, List<object> byList,
+            List<IComparer> orderList, GremlinKeyword.Scope scope)
+        {
+            this.isTraversalToBound = true;
+            base.Order(currentContext, byList, orderList, scope);
+        }
+
+        internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
+        {
+            this.isTraversalToBound = true;
+            base.Property(currentContext, properties);
+        }
+
+        internal override void Range(GremlinToSqlContext currentContext, int low, int high, GremlinKeyword.Scope scope, bool isReverse)
+        {
+            this.isTraversalToBound = true;
+            base.Range(currentContext, low, high, scope, isReverse);
+        }
+
+        internal override void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
+        {
+            this.isTraversalToBound = true;
+            base.SideEffect(currentContext, sideEffectContext);
+        }
+
+        internal override void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
+        {
+            this.isTraversalToBound = true;
+            base.Store(currentContext, sideEffectKey, projectContext);
+        }
+
+       
+        internal override void Tree(GremlinToSqlContext currentContext, string sideEffectKey)
+        {
+            this.isTraversalToBound = true;
+            base.Tree(currentContext, sideEffectKey);
         }
     }
 }
