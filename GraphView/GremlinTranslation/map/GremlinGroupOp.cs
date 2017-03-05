@@ -36,10 +36,18 @@ namespace GraphView
             {
                 GroupBy = inputContext.PivotVariable.DefaultProjection();
             }
+            else
+            {
+                GroupBy = inputContext.PivotVariable.GetVariableProperty(GroupBy as string);
+            }
 
             if (ProjectBy == null || ProjectBy as string == "")
             {
                 ProjectBy = inputContext.PivotVariable.DefaultProjection();
+            }
+            else
+            {
+                ProjectBy = inputContext.PivotVariable.GetVariableProperty(ProjectBy as string);
             }
 
             if (GroupBy is GraphTraversal2)

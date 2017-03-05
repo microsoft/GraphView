@@ -42,7 +42,7 @@ namespace GraphView
                 }
                 else if (item is string)
                 {
-                    byList.Add(item);
+                    byList.Add(inputContext.PivotVariable.GetVariableProperty(item as string));
                 }
                 else
                 {
