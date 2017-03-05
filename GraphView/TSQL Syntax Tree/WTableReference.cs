@@ -454,6 +454,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The input of a repeat table reference must be a UNION ALL binary query and the two sub-queries must be a select query block.");
             }
         }
+
+        internal bool HasAggregateFunctionInTheRepeatSelectQuery(WSelectQueryBlock repeatSelectQuery)
+        {
+            AggregateFunctionCountVisitor aggregateCountVisitor = new AggregateFunctionCountVisitor();
+
+            return aggregateCountVisitor.Invoke(repeatSelectQuery) > 0;
+        }
     }
 
     public partial class WSampleTableReference : WSchemaObjectFunctionTableReference {}
