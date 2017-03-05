@@ -88,11 +88,6 @@ namespace GraphView
             return new GremlinVariableProperty(this, property);
         }
 
-        internal virtual GremlinTableVariable CreateAdjVertex(GremlinVariableProperty propertyVariable)
-        {
-            return new GremlinBoundVertexVariable(GetEdgeType(), propertyVariable);
-        }
-
         internal virtual string GetVariableName()
         {
             if (variableName == null) throw new Exception("_variable can't be null");
@@ -340,15 +335,15 @@ namespace GraphView
 
         //internal virtual void fold(E2 seed, BiFuntion<E2, E, E2> foldFunction)
 
-        internal virtual void From(GremlinToSqlContext currentContext, string fromGremlinTranslationOperatorLabel)
-        {
-            throw new NotImplementedException();
-        }
+        //internal virtual void From(GremlinToSqlContext currentContext, string fromGremlinTranslationOperatorLabel)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
-        internal virtual void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
-        {
-            throw new NotImplementedException();
-        }
+        //internal virtual void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         internal virtual void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
         {
@@ -865,15 +860,15 @@ namespace GraphView
 
         //internal virtual void To(GremlinToSqlContext currentContext, Direction direction, params string[] edgeLabels)
 
-        internal virtual void To(GremlinToSqlContext currentContext, string toGremlinTranslationOperatorLabel)
-        {
-            throw new NotImplementedException();
-        }
+        //internal virtual void To(GremlinToSqlContext currentContext, string toGremlinTranslationOperatorLabel)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
-        internal virtual void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertex)
-        {
-            throw new NotImplementedException();
-        }
+        //internal virtual void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertex)
+        //{
+        //    throw new NotImplementedException();
+        //}
         //internal virtual void ToE(GremlinToSqlContext currentContext, Direction direction, params string[] edgeLabels)
         //internal virtual void ToV(GremlinToSqlContext currentContext, Direction direction)
         internal virtual void Tree(GremlinToSqlContext currentContext)

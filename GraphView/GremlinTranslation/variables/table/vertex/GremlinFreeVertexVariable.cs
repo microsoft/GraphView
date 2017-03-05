@@ -26,7 +26,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                base.Both(currentContext, edgeLabels);
+                currentContext.Both(this, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable bothEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.BothEdge);
@@ -47,7 +47,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                base.In(currentContext, edgeLabels);
+                currentContext.In(this, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
@@ -65,7 +65,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                base.InE(currentContext, edgeLabels);
+                currentContext.InE(this, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
@@ -79,7 +79,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                base.Out(currentContext, edgeLabels);
+                currentContext.Out(this, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable outEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
@@ -96,7 +96,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                base.OutE(currentContext, edgeLabels);
+                currentContext.OutE(this, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable outEdgeTableVar = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);

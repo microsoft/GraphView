@@ -583,7 +583,7 @@ namespace GraphView
                 else
                 {
                     GremlinVariableProperty sinkProperty = lastVariable.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-                    GremlinTableVariable inVertex = lastVariable.CreateAdjVertex(sinkProperty);
+                    GremlinTableVariable inVertex = new GremlinBoundVertexVariable(lastVariable.GetEdgeType(), sinkProperty);
                     if (path != null) path.SetSinkVariable(inVertex);
 
                     VariableList.Add(inVertex);
@@ -623,7 +623,7 @@ namespace GraphView
                 else
                 {
                     GremlinVariableProperty sourceProperty = lastVariable.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-                    GremlinTableVariable outVertex = lastVariable.CreateAdjVertex(sourceProperty);
+                    GremlinTableVariable outVertex = new GremlinBoundVertexVariable(lastVariable.GetEdgeType(), sourceProperty);
                     if (path != null) path.SetSourceVariable(outVertex);
 
                     VariableList.Add(outVertex);
