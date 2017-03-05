@@ -570,7 +570,9 @@ namespace GraphView
 
     public partial class WSumLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WPath2TableReference : WSchemaObjectFunctionTableReference { }
+    public partial class WPath2TableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WRangeTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WJoinParenthesisTableReference : WTableReference
     {
