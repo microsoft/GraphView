@@ -382,7 +382,7 @@ namespace GraphView
     internal class MapField : FieldObject, IEnumerable<KeyValuePair<FieldObject, FieldObject>>
     {
         private Dictionary<FieldObject, FieldObject> map;
-        public List<FieldObject> Order { get; } 
+        public List<FieldObject> Order { get; set; } 
 
         public int Count { get { return map.Count; } }
 
@@ -412,6 +412,17 @@ namespace GraphView
             }
 
             return isRemoved;
+        }
+
+        public bool RemoveAt(int index)
+        {
+            if (Order.Count == 0 || index >= Order.Count || index < 0) {
+                return false;
+            }
+
+            this.map.Remove(this.Order[index]);
+            this.Order.RemoveAt(index);
+            return true;
         }
 
         public FieldObject this[FieldObject key]

@@ -2179,23 +2179,22 @@ namespace GraphView
         }
     }
 
-
     internal class RangeOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
-        private long lowEnd;
+        private int startIndex;
         //
-        // if highEnd is -1, return all the records starting from lowEnd
+        // if count is -1, return all the records starting from startIndex
         //
-        private long highEnd;
-        private long count;
+        private int highEnd;
+        private int index;
 
-        internal RangeOperator(GraphViewExecutionOperator inputOp, long lowEnd, long highEnd)
+        internal RangeOperator(GraphViewExecutionOperator inputOp, int startIndex, int count)
         {
             this.inputOp = inputOp;
-            this.lowEnd = lowEnd;
-            this.highEnd = highEnd;
-            this.count = 0;
+            this.startIndex = startIndex;
+            this.highEnd = count == -1 ? -1 : startIndex + count;
+            this.index = 0;
             this.Open();
         }
 
@@ -2203,15 +2202,18 @@ namespace GraphView
         {
             RawRecord srcRecord = null;
 
+            //
+            // Return records in the [startIndex, highEnd)
+            //
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
-                if (this.count < this.lowEnd || (this.highEnd != -1 && this.count >= this.highEnd))
+                if (this.index < this.startIndex || (this.highEnd != -1 && this.index >= this.highEnd))
                 {
-                    this.count++;
+                    this.index++;
                     continue;
                 }
 
-                this.count++;
+                this.index++;
                 return srcRecord;
             }
 
@@ -2222,7 +2224,198 @@ namespace GraphView
         public override void ResetState()
         {
             this.inputOp.ResetState();
+            this.index = 0;
+            this.Open();
+        }
+    }
+
+    internal class RangeLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        private int startIndex;
+        //
+        // if count is -1, return all the records starting from startIndex
+        //
+        private int count;
+        private int inputCollectionIndex;
+
+        internal RangeLocalOperator(GraphViewExecutionOperator inputOp, int inputCollectionIndex, int startIndex, int count)
+        {
+            this.inputOp = inputOp;
+            this.startIndex = startIndex;
+            this.count = count;
+            this.inputCollectionIndex = inputCollectionIndex;
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+            {
+                //
+                // Return records in the [runtimeStartIndex, runtimeStartIndex + runtimeCount)
+                //
+                FieldObject inputObject = srcRecord[inputCollectionIndex];
+                if (inputObject is CollectionField)
+                {
+                    CollectionField inputCollection = inputObject as CollectionField;
+
+                    int runtimeStartIndex = startIndex > inputCollection.Collection.Count ? inputCollection.Collection.Count : startIndex;
+                    int runtimeCount = this.count == -1 ? inputCollection.Collection.Count - runtimeStartIndex : this.count;
+                    if (runtimeStartIndex + runtimeCount > inputCollection.Collection.Count) {
+                        runtimeCount = inputCollection.Collection.Count - runtimeStartIndex;
+                    }
+
+                    inputCollection.Collection = inputCollection.Collection.GetRange(runtimeStartIndex, runtimeCount);
+                }
+                //
+                // Return records in the [low, high)
+                //
+                else if (inputObject is MapField)
+                {
+                    MapField inputMap = inputObject as MapField;
+                    List<FieldObject> order = inputMap.Order;
+                    int low = startIndex;
+                    int high = this.count == -1 ? order.Count : low + this.count;
+
+                    int index = order.Count - 1;
+                    for (; index >= low; index--)
+                    {
+                        if (index >= high) {
+                            inputMap.RemoveAt(index);
+                        }
+                    }
+                    while (index >= 0) {
+                        inputMap.RemoveAt(index--);
+                    }
+                }
+
+                return srcRecord;
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
+
+    internal class TailOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        private int lastN;
+        private int count;
+        private List<RawRecord> buffer; 
+
+        internal TailOperator(GraphViewExecutionOperator inputOp, int lastN)
+        {
+            this.inputOp = inputOp;
+            this.lastN = lastN;
             this.count = 0;
+            this.buffer = new List<RawRecord>();
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null) {
+                buffer.Add(srcRecord);
+            }
+
+            //
+            // Reutn records from [buffer.Count - lastN, buffer.Count)
+            //
+
+            int startIndex = buffer.Count < lastN ? 0 : buffer.Count - lastN;
+            int index = startIndex + this.count++;
+            while (index < buffer.Count) {
+                return buffer[index];
+            } 
+
+            this.Close();
+            this.buffer.Clear();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.count = 0;
+            this.buffer.Clear();
+            this.Open();
+        }
+    }
+
+    internal class TailLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        private int lastN;
+        private int inputCollectionIndex;
+
+        internal TailLocalOperator(GraphViewExecutionOperator inputOp, int inputCollectionIndex, int lastN)
+        {
+            this.inputOp = inputOp;
+            this.inputCollectionIndex = inputCollectionIndex;
+            this.lastN = lastN;
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+            {
+                //
+                // Return records in the [localCollection.Count - lastN, localCollection.Count)
+                //
+                FieldObject inputObject = srcRecord[inputCollectionIndex];
+                if (inputObject is CollectionField)
+                {
+                    CollectionField inputCollection = inputObject as CollectionField;
+
+                    int startIndex = inputCollection.Collection.Count < lastN 
+                                     ? 0 
+                                     : inputCollection.Collection.Count - lastN;
+                    int count = startIndex + lastN > inputCollection.Collection.Count
+                                     ? inputCollection.Collection.Count - startIndex
+                                     : lastN;
+                    inputCollection.Collection = inputCollection.Collection.GetRange(startIndex, count);
+                }
+                //
+                // Return records in the [low, inputMap.Count)
+                //
+                else if (inputObject is MapField)
+                {
+                    MapField inputMap = inputObject as MapField;
+                    int low = inputMap.Count - lastN;
+
+                    int index = low - 1;
+                    while (index >= 0) {
+                        inputMap.RemoveAt(index--);
+                    }
+                }
+
+                return srcRecord;
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
             this.Open();
         }
     }

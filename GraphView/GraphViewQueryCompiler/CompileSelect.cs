@@ -2680,20 +2680,77 @@ namespace GraphView
 
     partial class WRangeTableReference
     {
-        // TODO: Unfinished
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            long lowEnd = long.Parse((Parameters[0] as WValueExpression).Value);
-            long highEnd = long.Parse((Parameters[1] as WValueExpression).Value);
-            int localFlag = int.Parse((Parameters[2] as WValueExpression).Value);
-            int tailFlag = int.Parse((Parameters[3] as WValueExpression).Value);
+            //
+            // The first parameter is used only when isLocal = true
+            //
+            WColumnReferenceExpression inputCollection = Parameters[0] as WColumnReferenceExpression;
+            int lowEnd = int.Parse((Parameters[1] as WValueExpression).Value);
+            int highEnd = int.Parse((Parameters[2] as WValueExpression).Value);
+            int localFlag = int.Parse((Parameters[3] as WValueExpression).Value);
+            int tailFlag = int.Parse((Parameters[4] as WValueExpression).Value);
             bool isLocal = localFlag > 0;
             bool isTail = tailFlag > 0;
 
-            RangeOperator rangeOp = new RangeOperator(context.CurrentExecutionOperator, lowEnd, highEnd);
-            context.CurrentExecutionOperator = rangeOp;
+            //
+            // Compilation of Tail op, which returns lastN elements
+            //
+            if (isTail)
+            {
+                int lastN = highEnd < 0 ? 1 : highEnd;
 
-            return rangeOp;
+                if (isLocal)
+                {
+                    TailLocalOperator tailLocalOp = new TailLocalOperator(context.CurrentExecutionOperator,
+                        context.LocateColumnReference(inputCollection), lastN);
+                    context.CurrentExecutionOperator = tailLocalOp;
+                    return tailLocalOp;
+                }
+                else
+                {
+                    TailOperator tailOp = new TailOperator(context.CurrentExecutionOperator, lastN);
+                    context.CurrentExecutionOperator = tailOp;
+
+                    return tailOp;
+                }
+            }
+            //
+            // Compilation of Range op, which return elements from [startIndex, startIndex + count)
+            // If count == -1, return all elements starting from startIndex 
+            //
+            else
+            {
+                if ((lowEnd > highEnd && highEnd >= 0) || (lowEnd >= 0 && highEnd < -1)) {
+                    throw new QueryCompilationException(string.Format("Not a legal range: [{0}, {1}]", lowEnd, highEnd));
+                }
+
+                int startIndex = lowEnd < 0 ? 0 : lowEnd;
+                int count;
+                if (highEnd == -1) {
+                    count = -1;
+                }
+                else if ((count = highEnd - startIndex) < 0) {
+                    count = 0;
+                }
+
+                if (isLocal)
+                {
+                    RangeLocalOperator rangeLocalOp = new RangeLocalOperator(context.CurrentExecutionOperator,
+                        context.LocateColumnReference(inputCollection), startIndex, count);
+                    context.CurrentExecutionOperator = rangeLocalOp;
+
+                    return rangeLocalOp;;
+                }
+                else
+                {
+
+                    RangeOperator rangeOp = new RangeOperator(context.CurrentExecutionOperator, startIndex, count);
+                    context.CurrentExecutionOperator = rangeOp;
+
+                    return rangeOp;
+                }
+            }
         }
     }
 }
