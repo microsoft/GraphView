@@ -57,6 +57,7 @@ namespace GraphView
             public const string DropNode = "DropNode";
             public const string DropEdge = "DropEdge";
             public const string DropProperties = "DropProperties";
+            public const string UpdateNodeProperties = "UpdateVertexProperties";
             public const string UpdateVertexProperties = "UpdateVertexProperties";
             public const string UpdateMetaProperties = "UpdateMetaProperties";
             public const string UpdateEdgeProperties = "UpdateEdgeProperties";
