@@ -12,9 +12,11 @@ namespace GraphView
         public int High { get; set; }
         public bool IsReverse { get; set; }
         public bool IsLocal { get; set; }
+        public GremlinVariable InputVaribale;
 
-        public GremlinRangeVariable(int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(GremlinVariableType.Table)
+        public GremlinRangeVariable(GremlinVariable inputVariable, int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(GremlinVariableType.Table)
         {
+            InputVaribale = inputVariable;
             Low = low;
             High = high;
             IsLocal = scope != GremlinKeyword.Scope.global;
@@ -24,6 +26,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            parameters.Add(InputVaribale.DefaultProjection().ToScalarExpression());
             parameters.Add(SqlUtil.GetValueExpr(Low));
             parameters.Add(SqlUtil.GetValueExpr(High));
             parameters.Add(IsLocal ? SqlUtil.GetValueExpr(1) : SqlUtil.GetValueExpr(-1));

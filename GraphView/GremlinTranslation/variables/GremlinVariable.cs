@@ -683,7 +683,7 @@ namespace GraphView
 
         internal virtual void Range(GremlinToSqlContext currentContext, int low, int high, GremlinKeyword.Scope scope, bool isReverse)
         {
-            GremlinRangeVariable newVariable = new GremlinRangeVariable(low, high, scope, isReverse);
+            GremlinRangeVariable newVariable = new GremlinRangeVariable(this, low, high, scope, isReverse);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }
