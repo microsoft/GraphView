@@ -14,7 +14,6 @@ namespace GraphView
         public GremlinDerivedTableVariable(GremlinToSqlContext subqueryContext)
         {
             SubqueryContext = subqueryContext;
-            //ProjectedProperties.Add(GremlinKeyword.ScalarValue);
         }
 
         internal override void Populate(string property)

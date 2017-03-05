@@ -193,11 +193,11 @@ namespace GraphView
         //    return GremlinKeyword.ScalarValue;
         //}
 
-        internal override string GetProjectKey()
-        {
-            Populate(GremlinKeyword.ScalarValue);
-            return GremlinKeyword.ScalarValue;
-        }
+        //internal override string GetProjectKey()
+        //{
+        //    Populate(GremlinKeyword.ScalarValue);
+        //    return GremlinKeyword.ScalarValue;
+        //}
     }
 
     internal class GremlinBranchPropertyVariable : GremlinBranchVariable
@@ -218,10 +218,10 @@ namespace GraphView
         //    return GremlinKeyword.PropertyValue;
         //}
 
-        internal override string GetProjectKey()
-        {
-            Populate(GremlinKeyword.PropertyValue);
-            return GremlinKeyword.PropertyValue;
-        }
+        //internal override string GetProjectKey()
+        //{
+        //    Populate(GremlinKeyword.PropertyValue);
+        //    return GremlinKeyword.PropertyValue;
+        //}
     }
 }
