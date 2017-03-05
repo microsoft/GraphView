@@ -2510,8 +2510,8 @@ namespace GraphView
 
             while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
             {
-                var projectMap = new Dictionary<FieldObject, FieldObject>();
-                var extraRecord = new RawRecord();
+                MapField projectMap = new MapField();
+                RawRecord extraRecord = new RawRecord();
 
                 foreach (var tuple in _projectList)
                 {
@@ -2534,7 +2534,7 @@ namespace GraphView
                 }
 
                 var result = new RawRecord(currentRecord);
-                result.Append(new MapField(projectMap));
+                result.Append(projectMap);
                 if (extraRecord.Length > 0)
                     result.Append(extraRecord);
 
@@ -2691,7 +2691,7 @@ namespace GraphView
                 if (obj is CollectionField)
                     result.Append(new StringField(((CollectionField)obj).Collection.Count.ToString(), JsonDataType.Long));
                 else if (obj is MapField)
-                    result.Append(new StringField(((MapField)obj).Map.Count.ToString(), JsonDataType.Long));
+                    result.Append(new StringField(((MapField)obj).Count.ToString(), JsonDataType.Long));
                 else if (obj is TreeField)
                     result.Append(new StringField(((TreeField)obj).Children.Count.ToString(), JsonDataType.Long));
                 else
