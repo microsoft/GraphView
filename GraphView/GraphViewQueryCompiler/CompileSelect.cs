@@ -406,8 +406,6 @@ namespace GraphView
                                 SrcNode.ReverseCheckList = new Dictionary<int, int>();
                                 SrcNode.HeaderLength = 0;
                                 SrcNode.Properties = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-                                SrcNode.Low = SrcNodeTableReference.Low;
-                                SrcNode.High = SrcNodeTableReference.High;
                             }
 
                             // Consturct the edge of a path in MatchClause.Paths
@@ -536,8 +534,6 @@ namespace GraphView
                             DestNode.ReverseCheckList = new Dictionary<int, int>();
                             DestNode.HeaderLength = 0;
                             DestNode.Properties = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-                            DestNode.Low = DestNodeTableReference.Low;
-                            DestNode.High = DestNodeTableReference.High;
                         }
                         if (EdgeToSrcNode != null)
                         {
@@ -588,8 +584,6 @@ namespace GraphView
                     patternNode.External = false;
                     patternNode.Predicates = new List<WBooleanExpression>();
                     patternNode.Properties = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-                    patternNode.Low = patternNodeTableReference.Low;
-                    patternNode.High = patternNodeTableReference.High;
                 }
 
                 if (!subGraphMap.ContainsKey(root))
@@ -889,14 +883,6 @@ namespace GraphView
             }
         }
 
-        private void CheckAndAppendRangeFilter(QueryCompilationContext context, List<GraphViewExecutionOperator> operatorChain,
-            int low, int high)
-        {
-            if (low == Int32.MinValue && high == Int32.MaxValue) return;
-            operatorChain.Add(new RangeOperator(context.CurrentExecutionOperator, low, high));
-            context.CurrentExecutionOperator = operatorChain.Last();
-        }
-
         private GraphViewExecutionOperator ConstructOperator2(GraphViewConnection connection, MatchGraph graphPattern,
             QueryCompilationContext context, List<WTableReferenceWithAlias> nonVertexTableReferences,
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
@@ -948,8 +934,6 @@ namespace GraphView
                         UpdateNodeLayout(sourceNode.NodeAlias, sourceNode.Properties, context);
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
-
-                        CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
 
                         CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                             new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -1003,9 +987,7 @@ namespace GraphView
                             // Cross apply dangling edges
                             CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
                                 predicatesAccessedTableReferences);
-
-                            CheckAndAppendRangeFilter(context, operatorChain, sinkNode.Low, sinkNode.High);
-
+                            
                             CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
@@ -1073,8 +1055,6 @@ namespace GraphView
                 {
 
                 }
-
-                CheckAndAppendRangeFilter(context, operatorChain, tableReference.Low, tableReference.High);
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -2693,5 +2673,24 @@ namespace GraphView
     //        return orderLocalOp;
     //    }
     //}
+
+    partial class WRangeTableReference
+    {
+        // TODO: Unfinished
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            long lowEnd = long.Parse((Parameters[0] as WValueExpression).Value);
+            long highEnd = long.Parse((Parameters[1] as WValueExpression).Value);
+            int localFlag = int.Parse((Parameters[2] as WValueExpression).Value);
+            int tailFlag = int.Parse((Parameters[3] as WValueExpression).Value);
+            bool isLocal = localFlag > 0;
+            bool isTail = tailFlag > 0;
+
+            RangeOperator rangeOp = new RangeOperator(context.CurrentExecutionOperator, lowEnd, highEnd);
+            context.CurrentExecutionOperator = rangeOp;
+
+            return rangeOp;
+        }
+    }
 }
 

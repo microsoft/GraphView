@@ -2182,17 +2182,20 @@ namespace GraphView
 
     internal class RangeOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _lowEnd;
-        private int _highEnd;
-        private int _count;
+        private GraphViewExecutionOperator inputOp;
+        private long lowEnd;
+        //
+        // if highEnd is -1, return all the records starting from lowEnd
+        //
+        private long highEnd;
+        private long count;
 
-        internal RangeOperator(GraphViewExecutionOperator pInputOperator, int pLowEnd, int pHighEnd)
+        internal RangeOperator(GraphViewExecutionOperator inputOp, long lowEnd, long highEnd)
         {
-            _inputOp = pInputOperator;
-            _lowEnd = pLowEnd;
-            _highEnd = pHighEnd;
-            _count = 0;
+            this.inputOp = inputOp;
+            this.lowEnd = lowEnd;
+            this.highEnd = highEnd;
+            this.count = 0;
             this.Open();
         }
 
@@ -2200,27 +2203,27 @@ namespace GraphView
         {
             RawRecord srcRecord = null;
 
-            while (_inputOp.State() && (srcRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
-                if (_count < _lowEnd || (_highEnd != -1 && _count >= _highEnd))
+                if (this.count < this.lowEnd || (this.highEnd != -1 && this.count >= this.highEnd))
                 {
-                    _count++;
+                    this.count++;
                     continue;
                 }
-                    
-                _count++;
+
+                this.count++;
                 return srcRecord;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            _count = 0;
-            Open();
+            this.inputOp.ResetState();
+            this.count = 0;
+            this.Open();
         }
     }
 
