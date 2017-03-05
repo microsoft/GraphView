@@ -85,6 +85,7 @@ namespace GraphView
             public const string OrderGlobal = "OrderGlobal";
             public const string OrderLocal = "OrderLocal";
             public const string Path2 = "Path2";
+            public const string Range = "Range";
         }
 
         public enum Pop

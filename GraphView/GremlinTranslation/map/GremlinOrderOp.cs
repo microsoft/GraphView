@@ -34,7 +34,7 @@ namespace GraphView
                 }
                 else if (item == null)
                 {
-                    byList.Add(inputContext.PivotVariable.GetProjectKey());
+                    byList.Add(inputContext.PivotVariable.DefaultProjection());
                 }
                 else if (item is string)
                 {
@@ -48,7 +48,7 @@ namespace GraphView
 
             if (!ByList.Any())
             {
-                byList.Add(inputContext.PivotVariable.GetProjectKey());
+                byList.Add(inputContext.PivotVariable.DefaultProjection());
                 OrderComparer.Add(new IncrOrder());
             }
 

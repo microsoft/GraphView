@@ -33,7 +33,7 @@ namespace GraphView
 
             if (ByList.Count == 0)
             {
-                ByList.Add(inputContext.PivotVariable.GetProjectKey());
+                ByList.Add(inputContext.PivotVariable.DefaultProjection());
             }
 
             List<object> byList = new List<object>();

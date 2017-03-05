@@ -11,7 +11,12 @@ namespace GraphView
     {
         public override WTableReference ToTableReference()
         {
-            return SqlUtil.GetNamedTableReference(this);
+            return new WNamedTableReference()
+            {
+                Alias = SqlUtil.GetIdentifier(GetVariableName()),
+                TableObjectString = "node",
+                TableObjectName = SqlUtil.GetSchemaObjectName("node"),
+            }; ;
         }
 
         internal override void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)

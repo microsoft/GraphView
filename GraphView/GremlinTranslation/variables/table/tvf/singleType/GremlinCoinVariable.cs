@@ -10,7 +10,7 @@ namespace GraphView
     {
         public double Probability { get; set; }
 
-        public GremlinCoinVariable(double probability)
+        public GremlinCoinVariable(double probability) : base(GremlinVariableType.Table)
         {
             Probability = probability;
         }

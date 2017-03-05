@@ -14,7 +14,7 @@ namespace GraphView
     {
         List<object> rows;
 
-        public GremlinInjectVariable(List<object> values)
+        public GremlinInjectVariable(List<object> values): base(GremlinVariableType.Table)
         {
             rows = values;
         }

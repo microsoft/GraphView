@@ -36,9 +36,13 @@ namespace GraphView
                 {
                     parameters.Add(SqlUtil.GetScalarSubquery((Parameters[i] as GremlinToSqlContext).ToSelectQueryBlock()));
                 }
+                else if (Parameters[i] is GremlinVariableProperty)
+                {
+                    parameters.Add((Parameters[i] as GremlinVariableProperty).ToScalarExpression());
+                }
                 else
                 {
-                    parameters.Add(PrimaryVariable.GetVariableProperty(Parameters[i] as string).ToScalarExpression());
+                    throw new QueryCompilationException();
                 }
             }
             var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, GetVariableName());
