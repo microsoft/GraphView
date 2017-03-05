@@ -97,7 +97,7 @@ namespace GraphView
         }
     }
 
-    partial class WUpdateNodePropertiesTableReference
+    partial class WUpdateVertexPropertiesTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
