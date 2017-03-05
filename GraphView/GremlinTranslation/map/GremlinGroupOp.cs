@@ -36,7 +36,7 @@ namespace GraphView
             {
                 GroupBy = inputContext.PivotVariable.DefaultProjection();
             }
-            else
+            else if (GroupBy is string)
             {
                 GroupBy = inputContext.PivotVariable.GetVariableProperty(GroupBy as string);
             }
@@ -45,7 +45,7 @@ namespace GraphView
             {
                 ProjectBy = inputContext.PivotVariable.DefaultProjection();
             }
-            else
+            else if (ProjectBy is string)
             {
                 ProjectBy = inputContext.PivotVariable.GetVariableProperty(ProjectBy as string);
             }
