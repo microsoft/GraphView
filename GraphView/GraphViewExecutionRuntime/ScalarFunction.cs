@@ -132,11 +132,21 @@ namespace GraphView
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            //return record[fieldIndex]?.ToString();
             FieldObject fo = record[fieldIndex];
 
-            if (fo is PropertyField)
-                dataType = (fo as PropertyField).JsonDataType;
+            StringField sf = fo as StringField;
+            if (sf != null)
+            {
+                dataType = sf.JsonDataType;
+                return fo;
+            }
+
+            PropertyField pf = fo as PropertyField;
+            if (pf != null)
+            {
+                dataType = pf.JsonDataType;
+                return fo;
+            }
 
             return fo;
         }
@@ -169,11 +179,11 @@ namespace GraphView
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            JsonDataType targetType = DataType();
             //string value1 = f1.Evaluate(record);
             //string value2 = f2.Evaluate(record);
             string value1 = f1.Evaluate(record)?.ToValue;
             string value2 = f2.Evaluate(record)?.ToValue;
+            JsonDataType targetType = DataType();
 
             switch (targetType)
             {

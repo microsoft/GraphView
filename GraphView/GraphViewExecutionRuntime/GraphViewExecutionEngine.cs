@@ -287,12 +287,12 @@ namespace GraphView
             if (Object.ReferenceEquals(this, obj)) return true;
 
             StringField stringField = obj as StringField;
-            if (stringField == null)
-            {
+            if (stringField == null) {
                 return false;
             }
 
-            return Value.Equals(stringField.Value);
+            return this.JsonDataType == stringField.JsonDataType &&
+                   this.Value.Equals(stringField.Value, StringComparison.InvariantCultureIgnoreCase);
         }
 
         public override string ToValue
@@ -655,19 +655,6 @@ namespace GraphView
         public override string ToString()
         {
             return string.Format("{0}->{1}", PropertyName, PropertyValue);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (Object.ReferenceEquals(this, obj)) return true;
-
-            PropertyField pf = obj as PropertyField;
-            if (pf == null)
-            {
-                return false;
-            }
-
-            return PropertyName == pf.PropertyName && PropertyValue == pf.PropertyValue;
         }
 
         public override int GetHashCode()
