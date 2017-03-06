@@ -166,6 +166,83 @@ namespace GraphView
     }
 
     /// <summary>
+    /// Transfrom WColumnReferenceExpression for JsonQuery
+    /// e.g. After Invoke((WHERE N_0.age = 27 AND N_0.flag = true))
+    /// The booleanExpression.toString() will show
+    /// (WHERE age._value = 27 AND flag._value = true)
+    /// </summary>
+    internal class NormalizeWColumnReferenceExpressionVisitor : WSqlFragmentVisitor
+    {
+        //
+        // <key: encode name with only letters, digits and underscore
+        //  value: original column name>
+        //
+        private Dictionary<string, string> referencedProperties;
+
+        public NormalizeWColumnReferenceExpressionVisitor()
+        {
+            referencedProperties = new Dictionary<string, string>();
+        }
+
+        public Dictionary<string, string> Invoke(WBooleanExpression booleanExpression)
+        {
+            if (booleanExpression != null)
+                booleanExpression.Accept(this);
+
+            return referencedProperties;
+        }
+
+        public override void Visit(WColumnReferenceExpression columnReference)
+        {
+            IList<Identifier> columnList = columnReference.MultiPartIdentifier.Identifiers;
+            string propertyName = "";
+
+            if (columnList.Count == 2)
+            {
+                string originalColumnName = columnList[1].Value;
+
+                if (originalColumnName.Equals(GremlinKeyword.NodeID, StringComparison.InvariantCultureIgnoreCase) ||
+                    originalColumnName.Equals(GremlinKeyword.Label, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return;
+                }
+
+                string encodeName = EncodeString(originalColumnName);
+                referencedProperties.Add(encodeName, originalColumnName);
+                columnList[0].Value = encodeName;
+                columnList[1].Value = "_value";
+            }
+            else {
+                throw new QueryCompilationException("Identifier " + columnList.ToString() + " should be bound to a table.");
+            }
+        }
+
+        private static string EncodeString(string str)
+        {
+            char[] result = new char[str.Length * 6];
+            int idx = 0;
+            foreach (char ch in str)
+            {
+                if (char.IsDigit(ch) ||
+                    (ch >= 'A' && ch <= 'Z') ||
+                    ch >= 'a' && ch <= 'z') {
+                    result[idx++] = ch;
+                }
+                else {
+                    result[idx++] = '_';
+                    result[idx++] = 'x';
+                    string tmp = Convert.ToString((int)ch, 16).ToUpper();
+                    foreach (char c in tmp) {
+                        result[idx++] = c;
+                    }
+                    result[idx++] = '_';
+                }
+            }
+            return new string(result, 0, idx);
+        }
+    }
+
+    /// <summary>
     /// Return how many times have GraphView runtime functions appeared in a BooleanExpression
     /// </summary>
     internal class GraphviewRuntimeFunctionCountVisitor : WSqlFragmentVisitor

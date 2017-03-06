@@ -227,6 +227,110 @@ namespace GraphView
             return metaFieldSelectStringBuilder.ToString();
         }
 
+        //internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
+        //{
+        //    string nodeAlias = node.NodeAlias;
+        //    StringBuilder selectStrBuilder = new StringBuilder();
+        //    StringBuilder joinStrBuilder = new StringBuilder();
+        //    List<string> properties = new List<string> { nodeAlias };
+        //    List<ColumnGraphType> projectedColumnsType = new List<ColumnGraphType>();
+           
+        //    WBooleanExpression searchCondition = null;
+
+        //    properties.Add("id");
+        //    projectedColumnsType.Add(ColumnGraphType.VertexId);
+        //    //selectStrBuilder.Append(nodeAlias + ".id");
+        //    properties.Add("label");
+        //    projectedColumnsType.Add(ColumnGraphType.Value);
+        //    //selectStrBuilder.Append(nodeAlias + ".label");
+        //    properties.Add("_edge");
+        //    projectedColumnsType.Add(ColumnGraphType.OutAdjacencyList);
+        //    //selectStrBuilder.Append(", ").Append(nodeAlias + "._edge");
+        //    properties.Add("_reverse_edge");
+        //    projectedColumnsType.Add(ColumnGraphType.InAdjacencyList);
+        //    //selectStrBuilder.Append(", ").Append(nodeAlias + "._reverse_edge");
+        //    // This takes care of the node.* property
+        //    properties.Add("*");
+        //    projectedColumnsType.Add(ColumnGraphType.VertexObject);
+        //    //selectStrBuilder.Append(", ").Append(nodeAlias);
+
+        //    selectStrBuilder.Append(nodeAlias);
+
+        //    for (int i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < node.Properties.Count; i++)
+        //    {
+        //        string selectName = nodeAlias + "." + node.Properties[i];
+        //        properties.Add(node.Properties[i]);
+        //        projectedColumnsType.Add(ColumnGraphType.Value);
+        //        //selectStrBuilder.Append(", ").Append(selectName);
+        //    }
+                
+        //    foreach (WBooleanExpression predicate in node.Predicates)
+        //        searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
+
+        //    if (backwardMatchingEdges == null)
+        //        backwardMatchingEdges = new List<MatchEdge>();
+
+        //    //
+        //    // Currently, no backwardMatchingEdges will be produced
+        //    //
+        //    foreach (MatchEdge edge in backwardMatchingEdges)
+        //    {
+        //        joinStrBuilder.Append(" Join ")
+        //            .Append(edge.EdgeAlias)
+        //            .Append(" in ")
+        //            .Append(node.NodeAlias)
+        //            .Append(IsTraversalThroughPhysicalReverseEdge(edge) ? "._reverse_edge" : "_edge");
+
+        //        // TODO: Use the same offset in _edge and _reverse_edge
+        //        selectStrBuilder.Append(ConstructMetaFieldSelectClauseOfEdge(edge));
+        //        properties.Add(edge.EdgeAlias + "_source");
+        //        projectedColumnsType.Add(ColumnGraphType.EdgeSource);
+        //        properties.Add(edge.EdgeAlias + "_sink");
+        //        projectedColumnsType.Add(ColumnGraphType.EdgeSink);
+        //        properties.Add(edge.EdgeAlias + "_other");
+        //        projectedColumnsType.Add(ColumnGraphType.Value);
+        //        properties.Add(edge.EdgeAlias + "_ID");
+        //        projectedColumnsType.Add(ColumnGraphType.EdgeOffset);
+        //        properties.Add(edge.EdgeAlias + "_physical_ID");
+        //        projectedColumnsType.Add(ColumnGraphType.EdgeOffset);
+        //        // This adjType is used for notifying GetVertice that the following edgeField should be retrieved from _edge or _reverse_edge
+        //        properties.Add("adjType");
+        //        projectedColumnsType.Add(ColumnGraphType.Value);
+        //        // This takes care of the edge.* property
+        //        properties.Add(edge.EdgeAlias);
+        //        projectedColumnsType.Add(ColumnGraphType.EdgeObject);
+
+        //        for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edge.Properties.Count; i++)
+        //        {
+        //            string property = edge.Properties[i];
+        //            //var selectName = edge.EdgeAlias + "." + property;
+        //            //var selectAlias = edge.EdgeAlias + "_" + property;
+
+        //            projectedColumnsType.Add(ColumnGraphType.Value);
+                        
+        //            //selectStrBuilder.Append(", ").Append(string.Format("{0} AS {1}", selectName, selectAlias));
+        //            properties.Add(property);
+        //        }   
+
+        //        foreach (WBooleanExpression predicate in edge.Predicates)
+        //            searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
+        //    }
+
+        //    BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
+        //    booleanWValueExpressionVisitor.Invoke(searchCondition);
+
+        //    JsonQuery jsonQuery = new JsonQuery
+        //    {
+        //        Alias = nodeAlias,
+        //        JoinClause = joinStrBuilder.ToString(),
+        //        SelectClause = selectStrBuilder.ToString(),
+        //        WhereSearchCondition = searchCondition != null ? searchCondition.ToString() : null,
+        //        Properties = properties,
+        //        ProjectedColumnsType = projectedColumnsType,
+        //    };
+        //    node.AttachedJsonQuery = jsonQuery;
+        //}
+
         internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         {
             string nodeAlias = node.NodeAlias;
@@ -234,90 +338,64 @@ namespace GraphView
             StringBuilder joinStrBuilder = new StringBuilder();
             List<string> properties = new List<string> { nodeAlias };
             List<ColumnGraphType> projectedColumnsType = new List<ColumnGraphType>();
-           
+
             WBooleanExpression searchCondition = null;
+            
+            //
+            // SELECT N_0 FROM Node N_0
+            //
+            selectStrBuilder.Append(nodeAlias);
 
             properties.Add("id");
             projectedColumnsType.Add(ColumnGraphType.VertexId);
-            //selectStrBuilder.Append(nodeAlias + ".id");
+
             properties.Add("label");
             projectedColumnsType.Add(ColumnGraphType.Value);
-            //selectStrBuilder.Append(nodeAlias + ".label");
+
             properties.Add("_edge");
             projectedColumnsType.Add(ColumnGraphType.OutAdjacencyList);
-            //selectStrBuilder.Append(", ").Append(nodeAlias + "._edge");
+
             properties.Add("_reverse_edge");
             projectedColumnsType.Add(ColumnGraphType.InAdjacencyList);
-            //selectStrBuilder.Append(", ").Append(nodeAlias + "._reverse_edge");
-            // This takes care of the node.* property
+
             properties.Add("*");
             projectedColumnsType.Add(ColumnGraphType.VertexObject);
-            //selectStrBuilder.Append(", ").Append(nodeAlias);
 
-            selectStrBuilder.Append(nodeAlias);
-
-            for (int i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < node.Properties.Count; i++)
+            for (int propertyIndex = GraphViewReservedProperties.ReservedNodeProperties.Count; 
+                propertyIndex < node.Properties.Count;
+                propertyIndex++)
             {
-                string selectName = nodeAlias + "." + node.Properties[i];
-                properties.Add(node.Properties[i]);
+                properties.Add(node.Properties[propertyIndex]);
                 projectedColumnsType.Add(ColumnGraphType.Value);
-                //selectStrBuilder.Append(", ").Append(selectName);
             }
-                
+
             foreach (WBooleanExpression predicate in node.Predicates)
                 searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
-
-            if (backwardMatchingEdges == null)
-                backwardMatchingEdges = new List<MatchEdge>();
 
             //
             // Currently, no backwardMatchingEdges will be produced
             //
-            foreach (MatchEdge edge in backwardMatchingEdges)
-            {
-                joinStrBuilder.Append(" Join ")
-                    .Append(edge.EdgeAlias)
-                    .Append(" in ")
-                    .Append(node.NodeAlias)
-                    .Append(IsTraversalThroughPhysicalReverseEdge(edge) ? "._reverse_edge" : "_edge");
+            //if (backwardMatchingEdges == null)
+            //    backwardMatchingEdges = new List<MatchEdge>();
 
-                // TODO: Use the same offset in _edge and _reverse_edge
-                selectStrBuilder.Append(ConstructMetaFieldSelectClauseOfEdge(edge));
-                properties.Add(edge.EdgeAlias + "_source");
-                projectedColumnsType.Add(ColumnGraphType.EdgeSource);
-                properties.Add(edge.EdgeAlias + "_sink");
-                projectedColumnsType.Add(ColumnGraphType.EdgeSink);
-                properties.Add(edge.EdgeAlias + "_other");
-                projectedColumnsType.Add(ColumnGraphType.Value);
-                properties.Add(edge.EdgeAlias + "_ID");
-                projectedColumnsType.Add(ColumnGraphType.EdgeOffset);
-                properties.Add(edge.EdgeAlias + "_physical_ID");
-                projectedColumnsType.Add(ColumnGraphType.EdgeOffset);
-                // This adjType is used for notifying GetVertice that the following edgeField should be retrieved from _edge or _reverse_edge
-                properties.Add("adjType");
-                projectedColumnsType.Add(ColumnGraphType.Value);
-                // This takes care of the edge.* property
-                properties.Add(edge.EdgeAlias);
-                projectedColumnsType.Add(ColumnGraphType.EdgeObject);
+            //foreach (MatchEdge edge in backwardMatchingEdges)
+            //{
+            //}
 
-                for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edge.Properties.Count; i++)
-                {
-                    string property = edge.Properties[i];
-                    //var selectName = edge.EdgeAlias + "." + property;
-                    //var selectAlias = edge.EdgeAlias + "_" + property;
-
-                    projectedColumnsType.Add(ColumnGraphType.Value);
-                        
-                    //selectStrBuilder.Append(", ").Append(string.Format("{0} AS {1}", selectName, selectAlias));
-                    properties.Add(property);
-                }   
-
-                foreach (WBooleanExpression predicate in edge.Predicates)
-                    searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
-            }
 
             BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
             booleanWValueExpressionVisitor.Invoke(searchCondition);
+
+            NormalizeWColumnReferenceExpressionVisitor normalizeColumnReferenceExpressionVisitor =
+                new NormalizeWColumnReferenceExpressionVisitor();
+            Dictionary<string, string> referencedProperties =
+                normalizeColumnReferenceExpressionVisitor.Invoke(searchCondition);
+
+            foreach (KeyValuePair<string, string> referencedProperty in referencedProperties)
+            {
+                joinStrBuilder.AppendFormat(" JOIN {0} IN {1}['{2}'] ", referencedProperty.Key,
+                    nodeAlias, referencedProperty.Value);
+            }
 
             JsonQuery jsonQuery = new JsonQuery
             {
