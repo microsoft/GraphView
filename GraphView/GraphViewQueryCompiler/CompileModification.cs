@@ -177,19 +177,29 @@ namespace GraphView
 
         internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WColumnReferenceExpression updateTargetParameter = Parameters[0] as WColumnReferenceExpression;
+            WColumnReferenceExpression updateTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(updateTargetParameter != null, "updateTargetParameter != null");
 
             int updateTargetIndex = context.LocateColumnReference(updateTargetParameter);
 
+            List<WPropertyExpression> updatePropertiesExpressions = new List<WPropertyExpression>();
+
+            for (int i = 1; i < this.Parameters.Count; i += 2)
+            {
+                WPropertyExpression propertyExpression = Parameters[i] as WPropertyExpression;
+                Debug.Assert(propertyExpression != null, "updatePropertyExpression != null");
+
+                updatePropertiesExpressions.Add(propertyExpression);
+            }
+
             //
             // A new update property operator which update target's property based on its runtime type
             //
-            UpdateNodePropertiesOperator updatePropertyOp =
+            UpdateNodePropertiesOperator updatePropertiesOp =
                 new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection, updateTargetIndex, null);
-            context.CurrentExecutionOperator = updatePropertyOp;
+            context.CurrentExecutionOperator = updatePropertiesOp;
 
-            return updatePropertyOp;
+            return updatePropertiesOp;
         }
     }
 

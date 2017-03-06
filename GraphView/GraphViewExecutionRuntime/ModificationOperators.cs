@@ -194,6 +194,73 @@ namespace GraphView
         }
     }
 
+    internal class UpdatePropertiesOperator : ModificationBaseOpertaor2
+    {
+        int updateTargetIndex;
+
+        public UpdatePropertiesOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection,
+            int updateTargetIndex) : base(dummyInputOp, connection)
+        {
+            this.updateTargetIndex = updateTargetIndex;
+        }
+
+        private void UpdatePropertiesOfVertex(VertexField vertex)
+        {
+
+        }
+
+        private void UpdatePropertiesOfEdge(EdgeField edge)
+        {
+
+        }
+
+        private void UpdateMetaPropertiesOfVertexProperty(VertexPropertyField vp)
+        {
+
+        }
+
+        internal override RawRecord DataModify(RawRecord record)
+        {
+            FieldObject updateTarget = record[this.updateTargetIndex];
+
+            VertexField vertex = updateTarget as VertexField; ;
+            if (vertex != null)
+            {
+                this.UpdatePropertiesOfVertex(vertex);
+
+                return record;
+            }
+
+            EdgeField edge = updateTarget as EdgeField;
+            if (edge != null)
+            {
+                this.UpdatePropertiesOfEdge(edge);
+
+                return record;
+            }
+
+            PropertyField property = updateTarget as PropertyField;
+            if (property != null)
+            {
+                if (property is VertexPropertyField)
+                {
+                    this.UpdateMetaPropertiesOfVertexProperty((VertexPropertyField) property);
+                }
+                else
+                {
+                    throw new GraphViewException("");
+                }
+
+                return record;
+            }
+
+            //
+            // Should not reach here
+            //
+            return record;
+        }
+    }
+
     internal class DropNodeOperator : ModificationBaseOpertaor2
     {
         private int _nodeIdIndex;
