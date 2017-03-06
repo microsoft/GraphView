@@ -504,9 +504,24 @@ namespace GraphView
 
     public class WPropertyExpression : WPrimaryExpression
     {
+        /// <summary>
+        /// Indicate whether this property is to append(=list) or override(=single)
+        /// </summary>
         public GremlinKeyword.PropertyCardinality Cardinality { get; set; }
+
+        /// <summary>
+        /// Property's name
+        /// </summary>
         public WValueExpression Key { get; set; }
+
+        /// <summary>
+        /// Property's value
+        /// </summary>
         public WValueExpression Value { get; set; }
+
+        /// <summary>
+        /// Only valid for vertex property
+        /// </summary>
         public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
 
         public override void Accept(WSqlFragmentVisitor visitor)
@@ -553,51 +568,7 @@ namespace GraphView
         }
     }
 
-    public partial class WAddVTableReference : WSchemaObjectFunctionTableReference
-    {
-        public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
-        {
-            JObject nodeJsonDocument = new JObject();
-            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-
-            for (var i = 0; i < Parameters.Count; i += 2)
-            {
-                var key = (Parameters[i] as WValueExpression).Value;
-
-                //GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
-                //    Parameters[i + 1] as WValueExpression);
-                JObject tmp = new JObject();
-                GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
-                    Parameters[i + 1] as WValueExpression);
-                string name = (Parameters[i] as WValueExpression).Value;
-                JToken value = (Parameters[i + 1] as WValueExpression).ToJValue();
-                if (value != null) {
-                    if (VertexField.IsVertexMetaProperty(name)) {
-                        nodeJsonDocument[name] = value;
-                    }
-                    else {
-                        nodeJsonDocument[name] = new JArray {
-                            new JObject {
-                                ["_value"] = value,
-                                ["_meta"] = new JObject(),
-                            },
-                        };
-                    }
-                }
-
-                if (!projectedFieldList.Contains(key))
-                    projectedFieldList.Add(key);
-            }
-
-            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
-            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
-            nodeJsonDocument["_edge"] = new JArray();
-            nodeJsonDocument["_reverse_edge"] = new JArray();
-            nodeJsonDocument["_nextEdgeOffset"] = 0;
-
-            return nodeJsonDocument;
-        }
-    }
+    public partial class WAddVTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WSideEffectTableReference : WSchemaObjectFunctionTableReference {}
 

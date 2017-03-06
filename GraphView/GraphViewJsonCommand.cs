@@ -36,6 +36,10 @@ namespace GraphView
             }
         }
 
+        public static void UpdateVertexJObjectProperty(JObject vertexObject)
+        {
+            // TODO
+        }
 
         public static JProperty UpdateProperty(JObject jsonObject, WValueExpression fieldName, WValueExpression fieldValue)
         {

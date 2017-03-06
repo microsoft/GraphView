@@ -40,11 +40,23 @@ namespace GraphView
                 // "_id", "label", "_nextEdgeOffset", "_partition"
                 if (VertexField.IsVertexMetaProperty(property.Name)) {
                     vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property));
+                    if (property.Name == "id") {
+                        vertexId = (string)property.Value;
+                    }
+                    else if (property.Name == "label") {
+                        vertexLabel = (string)property.Value;
+                    }
                     continue;
                 }
 
                 // For other properties
                 switch (property.Name) {
+                case "_rid":
+                case "_self":
+                case "_etag":
+                case "_attachments":
+                case "_ts":
+                    continue;
                 case "_edge": // "_edge"
                     forwardAdjList = property.Value;
                     break;
@@ -605,8 +617,8 @@ namespace GraphView
     internal abstract class PropertyField : FieldObject
     {
         public string PropertyName { get; private set; }
-        public string PropertyValue { get; set; }
-        public JsonDataType JsonDataType { get; set; }
+        public virtual string PropertyValue { get; set; }
+        public virtual JsonDataType JsonDataType { get; set; }
 
         protected PropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
         {
@@ -683,9 +695,9 @@ namespace GraphView
         //    this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
         //}
 
-        public void Replace(JObject vertexPropertyObject)
+        public void Replace(JObject vertexSinglePropertyObject)
         {
-            /* Schema of vertexPropertyObject: 
+            /* Schema of vertexSinglePropertyObject: 
                 {
                   "_value": ...,
                   "_meta": { 
@@ -694,12 +706,12 @@ namespace GraphView
                   }
                 }
             */
-            JValue value = (JValue) vertexPropertyObject["_value"];
+            JValue value = (JValue) vertexSinglePropertyObject["_value"];
             this.PropertyValue = value.ToString();
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
 
             HashSet<string> metaPropertyKeysToRemove = new HashSet<string>(this.MetaProperties.Keys);
-            foreach (JProperty metaProperty in vertexPropertyObject["_meta"].Children<JProperty>()) {
+            foreach (JProperty metaProperty in vertexSinglePropertyObject["_meta"].Children<JProperty>()) {
                 ValuePropertyField valueProp;
                 bool found = this.MetaProperties.TryGetValue(metaProperty.Name, out valueProp);
                 if (found) {
@@ -711,6 +723,7 @@ namespace GraphView
                 }
             }
 
+            // TODO: Whether to remove them?
             foreach (string metaPropertyToRemove in metaPropertyKeysToRemove) {
                 this.MetaProperties.Remove(metaPropertyToRemove);
             }
@@ -766,6 +779,16 @@ namespace GraphView
     {
         public readonly List<VertexSinglePropertyField> Multiples = new List<VertexSinglePropertyField>();
 
+        public override string PropertyValue {
+            get {
+                throw new NotSupportedException("Can't get value on a VertexPropertyField");
+            }
+            set {
+                // Do nothing
+            }
+        }
+
+        public override JsonDataType JsonDataType { get; set; }
 
         //public VertexPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
         //    : base(propertyName, propertyValue, jsonDataType)
@@ -797,6 +820,7 @@ namespace GraphView
               <propName>: [
                 {
                   "_value": "Property Value",
+                  "_id": <GUID>
                   "_meta": { ... }
                 }, 
                 ...
@@ -806,6 +830,18 @@ namespace GraphView
             Debug.Assert(multiProperty.Value is JArray);
             this.PropertyValue = null;
             this.JsonDataType = JsonDataType.Array;
+
+            // TODO: HACK
+            Debug.Assert(((JArray)multiProperty.Value).Count == 1);
+            JObject tmpVertexPropertyObject = (JObject)((JArray)multiProperty.Value)[0];
+            if (this.Multiples.Count == 0) {
+                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, tmpVertexPropertyObject));
+            }
+            else {
+                Debug.Assert(this.Multiples.Count == 1);
+                this.Multiples[0].Replace(tmpVertexPropertyObject);
+            }
+            return;
 
             this.Multiples.Clear();
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
@@ -1144,7 +1180,11 @@ namespace GraphView
                     return RevAdjacencyList;
 
                 VertexPropertyField propertyField;
-                this.VertexProperties.TryGetValue(propertyName, out propertyField);
+                bool found = this.VertexProperties.TryGetValue(propertyName, out propertyField);
+                if (!found) {
+                    return null;
+                }
+
                 Debug.Assert(propertyField.Multiples.Count > 0, "Vertex's property must contains at least one value");
                 if (propertyField.Multiples.Count == 1) {
                     Debug.Assert(propertyField.Multiples[0].PropertyName == propertyName);
@@ -1190,9 +1230,9 @@ namespace GraphView
 
         public override string ToString()
         {
-            VertexPropertyField idProperty;
+            ValuePropertyField idProperty;
             string id;
-            if (VertexProperties.TryGetValue("id", out idProperty))
+            if (VertexMetaProperties.TryGetValue("id", out idProperty))
             {
                 id = idProperty.ToValue;
             }
@@ -1207,8 +1247,8 @@ namespace GraphView
         {
             get
             {
-                VertexPropertyField idProperty;
-                if (VertexProperties.TryGetValue("id", out idProperty))
+                ValuePropertyField idProperty;
+                if (VertexMetaProperties.TryGetValue("id", out idProperty))
                 {
                     return idProperty.ToValue;
                 }
@@ -1223,13 +1263,13 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("{");
-            sb.AppendFormat("\"id\": \"{0}\"", VertexProperties["id"].PropertyValue);
+            sb.AppendFormat("\"id\": \"{0}\"", VertexMetaProperties["id"].PropertyValue);
 
 
-            if (VertexProperties.ContainsKey("label"))
-            {
+            Debug.Assert(VertexMetaProperties.ContainsKey("label"));
+            if (VertexMetaProperties["label"] != null) {
                 sb.Append(", ");
-                sb.AppendFormat("\"label\": \"{0}\"", VertexProperties["label"].PropertyValue);
+                sb.AppendFormat("\"label\": \"{0}\"", VertexMetaProperties["label"].PropertyValue);
             }
 
             sb.Append(", ");
@@ -1238,7 +1278,7 @@ namespace GraphView
             if (!connection.UseReverseEdges)
             {
                 RevAdjacencyList = EdgeDocumentHelper.GetReverseAdjacencyListOfVertex(connection,
-                    VertexProperties["id"].PropertyValue);
+                    VertexMetaProperties["id"].PropertyValue);
             }
 
             if (RevAdjacencyList != null && RevAdjacencyList.AllEdges.Any())
@@ -1438,7 +1478,8 @@ namespace GraphView
                     sb.Append(", ");
                 }
 
-                VertexPropertyField vp = VertexProperties[propertyName];
+                // TODO: HACK!!!
+                VertexSinglePropertyField vp = VertexProperties[propertyName].Multiples[0];
 
                 if (vp.JsonDataType == JsonDataType.String)
                 {

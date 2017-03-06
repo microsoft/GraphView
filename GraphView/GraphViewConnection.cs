@@ -346,30 +346,7 @@ namespace GraphView
             Guid guid = Guid.NewGuid();
             return guid.ToString("D");
         }
-
-        internal static string EncodeString(string str)
-        {
-            char[] result = new char[str.Length * 6];
-            int idx = 0;
-            foreach (char ch in str) {
-                if (char.IsDigit(ch) ||
-                    (ch >= 'A' && ch <= 'Z') ||
-                    ch >= 'a' && ch <= 'z') {
-                    result[idx++] = ch;
-                }
-                else {
-                    result[idx++] = '_';
-                    result[idx++] = 'x';
-                    string tmp = Convert.ToString((int)ch, 16).ToUpper();
-                    foreach (char c in tmp) {
-                        result[idx++] = c;
-                    }
-                    result[idx++] = '_';
-                }
-            }
-            return new string(result, 0, idx);
-        }
-
+        
     }
 
 }

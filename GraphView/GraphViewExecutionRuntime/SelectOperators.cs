@@ -239,6 +239,7 @@ namespace GraphView
                         Alias = sinkVertexQuery.Alias,
                         WhereSearchCondition = sinkVertexQuery.WhereSearchCondition,
                         SelectClause = sinkVertexQuery.SelectClause,
+                        JoinClause = sinkVertexQuery.JoinClause,
                         ProjectedColumnsType = sinkVertexQuery.ProjectedColumnsType,
                         Properties = sinkVertexQuery.Properties,
                     };

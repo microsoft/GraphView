@@ -221,6 +221,7 @@ namespace GraphView
         {
             char[] result = new char[str.Length * 6];
             int idx = 0;
+            result[idx++] = 'D';
             foreach (char ch in str)
             {
                 if (char.IsDigit(ch) ||

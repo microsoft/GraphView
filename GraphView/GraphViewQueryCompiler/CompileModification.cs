@@ -10,6 +10,47 @@ namespace GraphView
 {
     partial class WAddVTableReference
     {
+        public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
+        {
+            JObject nodeJsonDocument = new JObject();
+            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
+
+            for (var i = 0; i < Parameters.Count; i += 2) {
+                var key = (Parameters[i] as WValueExpression).Value;
+
+                //GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
+                //    Parameters[i + 1] as WValueExpression);
+                GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
+                    Parameters[i + 1] as WValueExpression);
+                string name = (Parameters[i] as WValueExpression).Value;
+                JToken value = (Parameters[i + 1] as WValueExpression).ToJValue();
+                if (value != null) {
+                    if (VertexField.IsVertexMetaProperty(name)) {
+                        nodeJsonDocument[name] = value;
+                    }
+                    else {
+                        nodeJsonDocument[name] = new JArray {
+                            new JObject {
+                                ["_value"] = value,
+                                ["_meta"] = new JObject(),
+                            },
+                        };
+                    }
+                }
+
+                if (!projectedFieldList.Contains(key))
+                    projectedFieldList.Add(key);
+            }
+
+            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
+            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
+            nodeJsonDocument["_edge"] = new JArray();
+            nodeJsonDocument["_reverse_edge"] = new JArray();
+            nodeJsonDocument["_nextEdgeOffset"] = 0;
+
+            return nodeJsonDocument;
+        }
+
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<string> projectedField;
@@ -31,23 +72,43 @@ namespace GraphView
             return addVOp;
         }
 
+        public JObject ConstructNodeJsonDocument2(List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
+        {
+            JObject vertexObject = new JObject();
+            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
+
+            foreach (WPropertyExpression vertexProperty in vertexProperties) {
+                // TODO
+            }
+
+            vertexObject["_edge"] = new JArray();
+            vertexObject["_reverse_edge"] = new JArray();
+            vertexObject["_nextEdgeOffset"] = 0;
+
+            return vertexObject;
+        }
+
         internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WValueExpression labelValue = Parameters[0] as WValueExpression;
-            //List<WPropertyExpression> vertexProperties = new List<WPropertyExpression>();
+            //
+            // Parameters:
+            //   #1 <WValueExpression>: Vertex label
+            //   ... <WPropertyExpression>: The initial properties on vertex
+            //
 
-            //for (int i = 1; i < Parameters.Count; i++)
-            //{
-            //    WPropertyExpression property = Parameters[i] as WPropertyExpression;;
-            //    Debug.Assert(property != null, "property != null");
-            //    vertexProperties.Add(property);
-            //}
+            WValueExpression labelValue = (WValueExpression)this.Parameters[0];
+
+            List<WPropertyExpression> vertexProperties = new List<WPropertyExpression>();
+            for (int i = 1; i < this.Parameters.Count; i++) {
+                WPropertyExpression property = (WPropertyExpression)this.Parameters[i];
+                Debug.Assert(property != null, "[WAddVTableReference.Compile] Vertex property should not be null");
+                Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.list, "[WAddVTableReference.Compile] Vertex property should be append-mode");
+                vertexProperties.Add(property);
+            }
 
             List<string> projectedField;
-            //
-            // change the ConstructNodeJsonDocument, now based on the List<WPropertyExpression>
-            //
-            JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
+
+            JObject nodeJsonDocument = ConstructNodeJsonDocument2(vertexProperties, out projectedField);
 
             AddVOperator addVOp = new AddVOperator(null, null, null, null);
             context.CurrentExecutionOperator = addVOp;
@@ -57,8 +118,7 @@ namespace GraphView
             context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
             context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
             context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
-            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++)
-            {
+            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++) {
                 context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }
 

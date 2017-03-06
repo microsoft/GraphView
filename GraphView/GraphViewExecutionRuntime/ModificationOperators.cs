@@ -670,22 +670,23 @@ namespace GraphView
                     WValueExpression keyExpression = t.Item1;
                     WValueExpression valueExpression = t.Item2;
 
-                    if (mode == UpdatePropertyMode.Set)
-                    {
-                        JProperty hackTmp = GraphViewJsonCommand.UpdateProperty(vertexDocObject, keyExpression, valueExpression);
+                    if (mode == UpdatePropertyMode.Set) {
+                        string name = (string)keyExpression.ToJValue();
+                        JValue value = valueExpression.ToJValue();
 
-                        if (hackTmp == null)
+                        if (value == null) {
                             vertexField.VertexProperties.Remove(keyExpression.Value);
+                        }
                         else {
-                            JProperty multiProperty = new JProperty(hackTmp.Name) {
+                            JProperty multiProperty = new JProperty(name) {
                                 Value = new JArray {
                                     new JObject {
-                                        ["_value"] = hackTmp.Value,
+                                        ["_value"] = value,
                                         ["_meta"] = new JObject(),
                                     }
                                 }
                             };
-
+                            vertexDocObject[multiProperty.Name] = multiProperty.Value;
                             vertexField.ReplaceProperty(multiProperty);
                         }
                     }
