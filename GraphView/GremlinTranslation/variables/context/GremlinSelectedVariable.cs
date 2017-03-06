@@ -17,42 +17,42 @@ namespace GraphView {
             return RealVariable.GetEdgeType();
         }
 
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            switch (GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                    return GetVariableProperty(GremlinKeyword.EdgeID);
-                case GremlinVariableType.Scalar:
-                    return GetVariableProperty(GremlinKeyword.ScalarValue);
-                case GremlinVariableType.Vertex:
-                    return GetVariableProperty(GremlinKeyword.NodeID);
-                case GremlinVariableType.Property:
-                    return GetVariableProperty(GremlinKeyword.PropertyValue);
-            }
-            return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
-        }
+        //internal override GremlinVariableProperty DefaultVariableProperty()
+        //{
+        //    switch (GetVariableType())
+        //    {
+        //        case GremlinVariableType.Edge:
+        //            return GetVariableProperty(GremlinKeyword.EdgeID);
+        //        case GremlinVariableType.Scalar:
+        //            return GetVariableProperty(GremlinKeyword.ScalarValue);
+        //        case GremlinVariableType.Vertex:
+        //            return GetVariableProperty(GremlinKeyword.NodeID);
+        //        case GremlinVariableType.Property:
+        //            return GetVariableProperty(GremlinKeyword.PropertyValue);
+        //    }
+        //    return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
+        //}
 
-        internal override GremlinVariableProperty DefaultProjection()
-        {
-            switch (GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                    return GetVariableProperty(GremlinKeyword.Star);
-                case GremlinVariableType.Scalar:
-                    return GetVariableProperty(GremlinKeyword.ScalarValue);
-                case GremlinVariableType.Vertex:
-                    return GetVariableProperty(GremlinKeyword.Star);
-                case GremlinVariableType.Property:
-                    return GetVariableProperty(GremlinKeyword.PropertyValue);
-            }
-            return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
-        }
+        //internal override GremlinVariableProperty DefaultProjection()
+        //{
+        //    switch (GetVariableType())
+        //    {
+        //        case GremlinVariableType.Edge:
+        //            return GetVariableProperty(GremlinKeyword.Star);
+        //        case GremlinVariableType.Scalar:
+        //            return GetVariableProperty(GremlinKeyword.ScalarValue);
+        //        case GremlinVariableType.Vertex:
+        //            return GetVariableProperty(GremlinKeyword.Star);
+        //        case GremlinVariableType.Property:
+        //            return GetVariableProperty(GremlinKeyword.PropertyValue);
+        //    }
+        //    return GetVariableProperty(GremlinKeyword.TableDefaultColumnName);
+        //}
 
-        internal override string GetPrimaryKey()
-        {
-            return RealVariable.GetPrimaryKey();
-        }
+        //internal override string GetPrimaryKey()
+        //{
+        //    return RealVariable.GetPrimaryKey();
+        //}
 
         internal override string GetProjectKey()
         {

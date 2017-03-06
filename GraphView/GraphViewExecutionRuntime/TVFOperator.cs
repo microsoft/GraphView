@@ -378,7 +378,7 @@ namespace GraphView
                         Compose1Field compose1Field = fo as Compose1Field;
                         foreach (string unfoldColumn in _unfoldColumns)
                         {
-                            newRecord.Append(compose1Field.Map[new StringField(unfoldColumn)]);
+                            newRecord.Append(compose1Field.CompositeFieldObject[unfoldColumn]);
                         }
                     }
                     else
@@ -391,7 +391,7 @@ namespace GraphView
             else if (unfoldTarget.GetType() == typeof(MapField))
             {
                 MapField mf = unfoldTarget as MapField;
-                foreach (var pair in mf.Map)
+                foreach (KeyValuePair<FieldObject, FieldObject> pair in mf)
                 {
                     RawRecord newRecord = new RawRecord();
                     string key = pair.Key.ToString();

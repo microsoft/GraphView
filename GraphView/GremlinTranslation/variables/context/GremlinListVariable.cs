@@ -15,10 +15,10 @@ namespace GraphView
             GremlinVariableList = new List<GremlinVariable>(gremlinVariableList);
         }
 
-        internal override GremlinVariableProperty DefaultVariableProperty()
-        {
-            return new GremlinVariableProperty(null, GremlinKeyword.ScalarValue);
-        }
+        //internal override GremlinVariableProperty DefaultVariableProperty()
+        //{
+        //    return new GremlinVariableProperty(null, GremlinKeyword.ScalarValue);
+        //}
 
         internal override void Populate(string property)
         {

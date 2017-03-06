@@ -20,6 +20,10 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
 
             ByTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
             inputContext.PivotVariable.Store(inputContext, SideEffectKey, ByTraversal.GetEndOp().GetContext());

@@ -13,11 +13,6 @@ namespace GraphView
             EdgeType = edgeType;
         }
 
-        internal override GremlinTableVariable CreateAdjVertex(GremlinVariableProperty propertyVariable)
-        {
-            return new GremlinFreeVertexVariable();
-        }
-
         internal override void InV(GremlinToSqlContext currentContext)
         {
             currentContext.InV(this);

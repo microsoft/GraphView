@@ -25,17 +25,29 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
 
             List<object> byParameters = new List<object>();
 
             if (GroupBy == null || GroupBy as string == "")
             {
-                GroupBy = inputContext.PivotVariable.GetProjectKey();
+                GroupBy = inputContext.PivotVariable.DefaultProjection();
+            }
+            else if (GroupBy is string)
+            {
+                GroupBy = inputContext.PivotVariable.GetVariableProperty(GroupBy as string);
             }
 
             if (ProjectBy == null || ProjectBy as string == "")
             {
-                ProjectBy = inputContext.PivotVariable.GetProjectKey();
+                ProjectBy = inputContext.PivotVariable.DefaultProjection();
+            }
+            else if (ProjectBy is string)
+            {
+                ProjectBy = inputContext.PivotVariable.GetVariableProperty(ProjectBy as string);
             }
 
             if (GroupBy is GraphTraversal2)

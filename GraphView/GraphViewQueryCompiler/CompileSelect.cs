@@ -406,8 +406,6 @@ namespace GraphView
                                 SrcNode.ReverseCheckList = new Dictionary<int, int>();
                                 SrcNode.HeaderLength = 0;
                                 SrcNode.Properties = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-                                SrcNode.Low = SrcNodeTableReference.Low;
-                                SrcNode.High = SrcNodeTableReference.High;
                             }
 
                             // Consturct the edge of a path in MatchClause.Paths
@@ -536,8 +534,6 @@ namespace GraphView
                             DestNode.ReverseCheckList = new Dictionary<int, int>();
                             DestNode.HeaderLength = 0;
                             DestNode.Properties = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-                            DestNode.Low = DestNodeTableReference.Low;
-                            DestNode.High = DestNodeTableReference.High;
                         }
                         if (EdgeToSrcNode != null)
                         {
@@ -588,8 +584,6 @@ namespace GraphView
                     patternNode.External = false;
                     patternNode.Predicates = new List<WBooleanExpression>();
                     patternNode.Properties = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-                    patternNode.Low = patternNodeTableReference.Low;
-                    patternNode.High = patternNodeTableReference.High;
                 }
 
                 if (!subGraphMap.ContainsKey(root))
@@ -889,14 +883,6 @@ namespace GraphView
             }
         }
 
-        private void CheckAndAppendRangeFilter(QueryCompilationContext context, List<GraphViewExecutionOperator> operatorChain,
-            int low, int high)
-        {
-            if (low == Int32.MinValue && high == Int32.MaxValue) return;
-            operatorChain.Add(new RangeOperator(context.CurrentExecutionOperator, low, high));
-            context.CurrentExecutionOperator = operatorChain.Last();
-        }
-
         private GraphViewExecutionOperator ConstructOperator2(GraphViewConnection connection, MatchGraph graphPattern,
             QueryCompilationContext context, List<WTableReferenceWithAlias> nonVertexTableReferences,
             List<Tuple<WBooleanExpression, HashSet<string>>> predicatesAccessedTableReferences)
@@ -948,8 +934,6 @@ namespace GraphView
                         UpdateNodeLayout(sourceNode.NodeAlias, sourceNode.Properties, context);
                         processedNodes.Add(sourceNode);
                         tableReferences.Add(sourceNode.NodeAlias, TableGraphType.Vertex);
-
-                        CheckAndAppendRangeFilter(context, operatorChain, sourceNode.Low, sourceNode.High);
 
                         CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                             new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -1003,9 +987,7 @@ namespace GraphView
                             // Cross apply dangling edges
                             CrossApplyEdges(connection, context, operatorChain, sinkNode.DanglingEdges,
                                 predicatesAccessedTableReferences);
-
-                            CheckAndAppendRangeFilter(context, operatorChain, sinkNode.Low, sinkNode.High);
-
+                            
                             CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                                 new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
                                 operatorChain);
@@ -1073,8 +1055,6 @@ namespace GraphView
                 {
 
                 }
-
-                CheckAndAppendRangeFilter(context, operatorChain, tableReference.Low, tableReference.High);
 
                 CheckRemainingPredicatesAndAppendFilterOp(context, connection,
                     new HashSet<string>(tableReferences.Keys), predicatesAccessedTableReferences,
@@ -1282,7 +1262,7 @@ namespace GraphView
                 {
                     var alias = expr.ColumnName;
                     // TODO: Change to Addfield with correct ColumnGraphType
-                    context.AddField("", alias ?? "_value", ColumnGraphType.Value);
+                    context.AddField("", alias ?? GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
                 }
 
                 operatorChain.Add(projectAggregationOp);
@@ -1949,9 +1929,53 @@ namespace GraphView
 
             GraphViewExecutionOperator valuesOperator = new ValuesOperator(context.CurrentExecutionOperator, valuesIdxList, allValuesIndex);
             context.CurrentExecutionOperator = valuesOperator;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             
             return valuesOperator;
+        }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WValueExpression selectStarFlag = Parameters[0] as WValueExpression;
+            Debug.Assert(selectStarFlag != null, "selectStarFlag != null");
+            bool isSelectStar = int.Parse(selectStarFlag.Value) > 0;
+
+            List<int> targetIndex = new List<int>();
+            List<string> populateMetaproperties = new List<string>();
+
+            for (int i = 1; i < Parameters.Count; i++)
+            {
+                WColumnReferenceExpression targetParameter = Parameters[i] as WColumnReferenceExpression;
+                if (targetParameter != null)
+                {
+                    targetIndex.Add(context.LocateColumnReference(targetParameter));
+                    continue;
+                }
+
+                WValueExpression populateMetapropertyNameParameter = Parameters[i] as WValueExpression;
+                if (populateMetapropertyNameParameter != null)
+                {
+                    populateMetaproperties.Add(populateMetapropertyNameParameter.Value);
+                    continue;
+                }
+
+                throw new QueryCompilationException(
+                    "Parameters of Values table can only be WColumnReferenceExpression or WValueExpression.");
+            }
+
+            //
+            // A new Values operator extracting values based on the input target's runtime time
+            //
+            GraphViewExecutionOperator valuesOp = new ValuesOperator(context.CurrentExecutionOperator, null, 0);
+            context.CurrentExecutionOperator = valuesOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            foreach (string metapropertyName in populateMetaproperties)
+            {
+                context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
+            }
+
+            return valuesOp;
+
         }
     }
 
@@ -1982,9 +2006,52 @@ namespace GraphView
 
             GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, propertiesList, allPropertyIndex);
             context.CurrentExecutionOperator = propertiesOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return propertiesOp;
+        }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WValueExpression selectStarFlag = Parameters[0] as WValueExpression; 
+            Debug.Assert(selectStarFlag != null, "selectStarFlag != null");
+            bool isSelectStar = int.Parse(selectStarFlag.Value) > 0;
+
+            List<int> targetIndex = new List<int>();
+            List<string> populateMetaproperties = new List<string>();
+
+            for (int i = 1; i < Parameters.Count; i++)
+            {
+                WColumnReferenceExpression targetParameter = Parameters[i] as WColumnReferenceExpression;
+                if (targetParameter != null)
+                {
+                    targetIndex.Add(context.LocateColumnReference(targetParameter));
+                    continue;
+                }
+
+                WValueExpression populateMetapropertyNameParameter = Parameters[i] as WValueExpression;
+                if (populateMetapropertyNameParameter != null)
+                {
+                    populateMetaproperties.Add(populateMetapropertyNameParameter.Value);
+                    continue;
+                }
+
+                throw new QueryCompilationException(
+                    "Parameters of Properties table can only be WColumnReferenceExpression or WValueExpression.");
+            }
+
+            //
+            // A new Properties operator extracting properties based on the input target's runtime time
+            //
+            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, null, 0);
+            context.CurrentExecutionOperator = propertiesOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            foreach (string metapropertyName in populateMetaproperties) {
+                context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
+            }
+        
+            return propertiesOp;
+
         }
     }
 
@@ -2029,7 +2096,7 @@ namespace GraphView
 
             var constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues);
             context.CurrentExecutionOperator = constantOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return constantOp;
         }
@@ -2057,7 +2124,7 @@ namespace GraphView
             }
 
             context.CurrentExecutionOperator = projectByOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             for (var i = 0; i < Parameters.Count; i += 2)
             {
@@ -2090,6 +2157,10 @@ namespace GraphView
         {
             WSelectQueryBlock contextSelect, repeatSelect;
             Split(out contextSelect, out repeatSelect);
+
+            if (HasAggregateFunctionInTheRepeatSelectQuery(repeatSelect)) {
+                throw new QueryCompilationException("The parent of an aggregate function cannot be a repeat operator.");
+            }
 
             List<int> inputIndexes = new List<int>();
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
@@ -2212,7 +2283,7 @@ namespace GraphView
 
             var pathOp = new PathOperator(context.CurrentExecutionOperator, pathFieldList);
             context.CurrentExecutionOperator = pathOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return pathOp;
         }
@@ -2241,7 +2312,7 @@ namespace GraphView
 
             // In g.Inject() case, the inject() step creates a new column in RawRecord
             if (context.RawRecordLayout.Count == 0)
-                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+                context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return injectOp;
         }
@@ -2273,7 +2344,7 @@ namespace GraphView
                 (CollectionFunction)sideEffectState);
             context.CurrentExecutionOperator = aggregateOp;
             // TODO: Change to correct ColumnGraphType
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return aggregateOp;
         }
@@ -2305,7 +2376,7 @@ namespace GraphView
                 (CollectionFunction) sideEffectState);
             context.CurrentExecutionOperator = storeOp;
             // TODO: Change to correct ColumnGraphType
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
 
             return storeOp;
@@ -2398,7 +2469,7 @@ namespace GraphView
             PropertyKeyOperator keyOp = new PropertyKeyOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(propertyField));
             context.CurrentExecutionOperator = keyOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return keyOp;
         }
@@ -2413,7 +2484,7 @@ namespace GraphView
             PropertyValueOperator valueOp = new PropertyValueOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(propertyField));
             context.CurrentExecutionOperator = valueOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return valueOp;
         }
@@ -2464,7 +2535,7 @@ namespace GraphView
                 if (!context.CarryOn)
                     context.ClearField();
                 // Change to correct ColumnGraphType
-                context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+                context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
                 return groupOp;
             }
@@ -2570,7 +2641,7 @@ namespace GraphView
             SumLocalOperator sumLocalOp = new SumLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = sumLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return sumLocalOp;
         }
@@ -2585,7 +2656,7 @@ namespace GraphView
             MaxLocalOperator maxLocalOp = new MaxLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = maxLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return maxLocalOp;
         }
@@ -2600,7 +2671,7 @@ namespace GraphView
             MinLocalOperator minLocalOp = new MinLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = minLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return minLocalOp;
         }
@@ -2615,7 +2686,7 @@ namespace GraphView
             MeanLocalOperator meanLocalOp = new MeanLocalOperator(context.CurrentExecutionOperator,
                 context.LocateColumnReference(targetField));
             context.CurrentExecutionOperator = meanLocalOp;
-            context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return meanLocalOp;
         }
@@ -2693,5 +2764,81 @@ namespace GraphView
     //        return orderLocalOp;
     //    }
     //}
+
+    partial class WRangeTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            //
+            // The first parameter is used only when isLocal = true
+            //
+            WColumnReferenceExpression inputCollection = Parameters[0] as WColumnReferenceExpression;
+            int lowEnd = int.Parse((Parameters[1] as WValueExpression).Value);
+            int highEnd = int.Parse((Parameters[2] as WValueExpression).Value);
+            int localFlag = int.Parse((Parameters[3] as WValueExpression).Value);
+            int tailFlag = int.Parse((Parameters[4] as WValueExpression).Value);
+            bool isLocal = localFlag > 0;
+            bool isTail = tailFlag > 0;
+
+            //
+            // Compilation of Tail op, which returns lastN elements
+            //
+            if (isTail)
+            {
+                int lastN = highEnd < 0 ? 1 : highEnd;
+
+                if (isLocal)
+                {
+                    TailLocalOperator tailLocalOp = new TailLocalOperator(context.CurrentExecutionOperator,
+                        context.LocateColumnReference(inputCollection), lastN);
+                    context.CurrentExecutionOperator = tailLocalOp;
+                    return tailLocalOp;
+                }
+                else
+                {
+                    TailOperator tailOp = new TailOperator(context.CurrentExecutionOperator, lastN);
+                    context.CurrentExecutionOperator = tailOp;
+
+                    return tailOp;
+                }
+            }
+            //
+            // Compilation of Range op, which return elements from [startIndex, startIndex + count)
+            // If count == -1, return all elements starting from startIndex 
+            //
+            else
+            {
+                if ((lowEnd > highEnd && highEnd >= 0) || (lowEnd >= 0 && highEnd < -1)) {
+                    throw new QueryCompilationException(string.Format("Not a legal range: [{0}, {1}]", lowEnd, highEnd));
+                }
+
+                int startIndex = lowEnd < 0 ? 0 : lowEnd;
+                int count;
+                if (highEnd == -1) {
+                    count = -1;
+                }
+                else if ((count = highEnd - startIndex) < 0) {
+                    count = 0;
+                }
+
+                if (isLocal)
+                {
+                    RangeLocalOperator rangeLocalOp = new RangeLocalOperator(context.CurrentExecutionOperator,
+                        context.LocateColumnReference(inputCollection), startIndex, count);
+                    context.CurrentExecutionOperator = rangeLocalOp;
+
+                    return rangeLocalOp;;
+                }
+                else
+                {
+
+                    RangeOperator rangeOp = new RangeOperator(context.CurrentExecutionOperator, startIndex, count);
+                    context.CurrentExecutionOperator = rangeOp;
+
+                    return rangeOp;
+                }
+            }
+        }
+    }
 }
 

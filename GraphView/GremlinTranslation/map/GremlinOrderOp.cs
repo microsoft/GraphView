@@ -23,6 +23,10 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
 
             List<object> byList = new List<object>();
             foreach (var item in ByList)
@@ -34,11 +38,11 @@ namespace GraphView
                 }
                 else if (item == null)
                 {
-                    byList.Add(inputContext.PivotVariable.GetProjectKey());
+                    byList.Add(inputContext.PivotVariable.DefaultProjection());
                 }
                 else if (item is string)
                 {
-                    byList.Add(item);
+                    byList.Add(inputContext.PivotVariable.GetVariableProperty(item as string));
                 }
                 else
                 {
@@ -48,7 +52,7 @@ namespace GraphView
 
             if (!ByList.Any())
             {
-                byList.Add(inputContext.PivotVariable.GetProjectKey());
+                byList.Add(inputContext.PivotVariable.DefaultProjection());
                 OrderComparer.Add(new IncrOrder());
             }
 

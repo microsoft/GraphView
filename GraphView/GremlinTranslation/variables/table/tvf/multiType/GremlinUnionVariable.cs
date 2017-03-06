@@ -13,7 +13,7 @@ namespace GraphView
         {
             if (unionContextList.Count == 0)
             {
-                return new GremlinUnionNullVariable(unionContextList);
+                return new GremlinUnionTableVariable(unionContextList);
             }
             if (GremlinUtil.IsTheSameOutputType(unionContextList))
             {

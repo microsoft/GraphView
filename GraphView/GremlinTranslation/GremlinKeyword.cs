@@ -19,12 +19,11 @@ namespace GraphView
         public const string NodeID = "id";
         public const string EdgeAdj = "_edge";
         public const string ReverseEdgeAdj = "_reverse_edge";
-        public const string TableDefaultColumnName = "_t";
         public const string Path = "_path";
-        public const string DefaultProject = "_result";
-        public const string ScalarValue = "_value";
-        public const string PropertyValue = "_value";
+        //public const string ScalarValue = "_value";
+        //public const string PropertyValue = "_value";
         public const string Star = "*";
+        public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);
 
 
         public static class func
@@ -58,7 +57,9 @@ namespace GraphView
             public const string DropNode = "DropNode";
             public const string DropEdge = "DropEdge";
             public const string DropProperties = "DropProperties";
-            public const string UpdateNodeProperties = "UpdateNodeProperties";
+            public const string UpdateNodeProperties = "UpdateVertexProperties";
+            public const string UpdateVertexProperties = "UpdateVertexProperties";
+            public const string UpdateMetaProperties = "UpdateMetaProperties";
             public const string UpdateEdgeProperties = "UpdateEdgeProperties";
             public const string Path = "Path";
             public const string Inject = "Inject";
@@ -86,6 +87,7 @@ namespace GraphView
             public const string OrderGlobal = "OrderGlobal";
             public const string OrderLocal = "OrderLocal";
             public const string Path2 = "Path2";
+            public const string Range = "Range";
         }
 
         public enum Pop
@@ -116,7 +118,7 @@ namespace GraphView
             Incr
         }
 
-        public enum VertexPropertyCardinality
+        public enum PropertyCardinality
         {
             single,   // Set
             list,     // Append
@@ -215,14 +217,5 @@ namespace GraphView
             {"last", "GremlinKeyword.Pop.last"},
             {"first", "GremlinKeyword.Pop.first"},
         };
-    }
-
-    public enum GremlinEdgeType
-    {
-        BothE,
-        BothForwardE,
-        InE,
-        InForwardE,
-        OutE
     }
 }

@@ -72,10 +72,10 @@ namespace GraphView
     public abstract partial class WTableReferenceWithAlias : WTableReference 
     {
         internal Identifier Alias { set; get; }
-        internal int Low { get; set; }
-        internal int High { get; set; }
-        internal bool IsLocal { get; set; }
-        internal bool IsReverse { get; set; }
+        //internal int Low { get; set; }
+        //internal int High { get; set; }
+        //internal bool IsLocal { get; set; }
+        //internal bool IsReverse { get; set; }
     }
 
     public abstract partial class WTableReferenceWithAliasAndColumns : WTableReferenceWithAlias
@@ -454,6 +454,13 @@ namespace GraphView
                 throw new SyntaxErrorException("The input of a repeat table reference must be a UNION ALL binary query and the two sub-queries must be a select query block.");
             }
         }
+
+        internal bool HasAggregateFunctionInTheRepeatSelectQuery(WSelectQueryBlock repeatSelectQuery)
+        {
+            AggregateFunctionCountVisitor aggregateCountVisitor = new AggregateFunctionCountVisitor();
+
+            return aggregateCountVisitor.Invoke(repeatSelectQuery) > 0;
+        }
     }
 
     public partial class WSampleTableReference : WSchemaObjectFunctionTableReference {}
@@ -495,12 +502,55 @@ namespace GraphView
         }
     }
 
-    public class WVertexPropertyExpression: WPrimaryExpression
+    public class WPropertyExpression : WPrimaryExpression
     {
-        public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
+        public GremlinKeyword.PropertyCardinality Cardinality { get; set; }
         public WValueExpression Key { get; set; }
         public WValueExpression Value { get; set; }
         public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            Key?.Accept(visitor);
+            Value?.Accept(visitor);
+
+            if (MetaProperties != null)
+            {
+                foreach (KeyValuePair<WValueExpression, WValueExpression> kvp in MetaProperties)
+                {
+                    kvp.Key.Accept(visitor);
+                    kvp.Value.Accept(visitor);
+                }
+            }
+
+            base.AcceptChildren(visitor);
+        }
+
+        internal override string ToString(string indent)
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("{0}({1}, {2}, {3}",
+                indent,
+                Cardinality == GremlinKeyword.PropertyCardinality.list ? "list" : "singe",
+                Key.ToString(), Value.ToString());
+            if (MetaProperties.Count > 0)
+            {
+                sb.Append(", Meta: (");
+                foreach (var metaProperty in MetaProperties)
+                {
+                    sb.AppendFormat("{0}:{1}", metaProperty.Key.ToString(), metaProperty.Value.ToString());
+                }
+                sb.Append(")");
+            }
+            sb.Append(")");
+            return sb.ToString();
+        }
     }
 
     public partial class WAddVTableReference : WSchemaObjectFunctionTableReference
@@ -561,7 +611,9 @@ namespace GraphView
 
     public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WUpdateNodePropertiesTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WUpdateVertexPropertiesTableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WUpdateMetaPropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
@@ -587,7 +639,9 @@ namespace GraphView
 
     public partial class WSumLocalTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WPath2TableReference : WSchemaObjectFunctionTableReference { }
+    public partial class WPath2TableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WRangeTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WJoinParenthesisTableReference : WTableReference
     {

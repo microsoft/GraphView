@@ -11,7 +11,10 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
-
+            if (inputContext.PivotVariable != null)
+            {
+                throw new QueryCompilationException("This step only can be a start step.");
+            }
             GremlinFreeVertexVariable newVariable = new GremlinFreeVertexVariable();
 
             inputContext.VariableList.Add(newVariable);

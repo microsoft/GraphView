@@ -110,6 +110,157 @@ namespace GraphView
 
     }
 
+    internal class DropOperator : ModificationBaseOpertaor2
+    {
+        private int dropTargetIndex;
+
+        public DropOperator(GraphViewExecutionOperator duumyInputOp, GraphViewConnection connection, int dropTargetIndex)
+            : base(duumyInputOp, connection)
+        {
+            this.dropTargetIndex = dropTargetIndex;
+        }
+
+        private void DropVertex(string vertexId)
+        {
+            
+        }
+
+        private void DropEdge(string srcVertexId, long edgeOffset)
+        {
+            
+        }
+
+        private void DropVertexProperty(VertexPropertyField vp)
+        {
+            
+        }
+
+        private void DropEdgeProperty(EdgePropertyField ep)
+        {
+            
+        }
+
+        //private void DropMetaProperty(MetaPropertyField p)
+        //{
+            
+        //}
+
+        internal override RawRecord DataModify(RawRecord record)
+        {
+            FieldObject dropTarget = record[this.dropTargetIndex];
+
+            VertexField vertex = dropTarget as VertexField;;
+            if (vertex != null)
+            {
+                string vertexId = vertex["id"].ToValue;
+                this.DropVertex(vertexId);
+
+                return null;
+            }
+
+            EdgeField edge = dropTarget as EdgeField;
+            if (edge != null)
+            {
+                string srcVertexId = edge.OutV;
+                long edgeOffset = edge.Offset;
+                this.DropEdge(srcVertexId, edgeOffset);
+
+                return null;
+            }
+
+            PropertyField property = dropTarget as PropertyField;
+            if (property != null)
+            {
+                if (property is VertexPropertyField)
+                {
+                    this.DropVertexProperty((VertexPropertyField)property);
+                }
+                else if (property is EdgePropertyField)
+                {
+                    this.DropEdgeProperty((EdgePropertyField)property);
+                }
+                //else
+                //{
+                //    this.DropMetaProperty((MetaPropertyField) property);
+                //}
+
+                return null;
+            }
+
+            //
+            // Should not reach here
+            //
+            return null;
+        }
+    }
+
+    internal class UpdatePropertiesOperator : ModificationBaseOpertaor2
+    {
+        int updateTargetIndex;
+
+        public UpdatePropertiesOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection,
+            int updateTargetIndex) : base(dummyInputOp, connection)
+        {
+            this.updateTargetIndex = updateTargetIndex;
+        }
+
+        private void UpdatePropertiesOfVertex(VertexField vertex)
+        {
+
+        }
+
+        private void UpdatePropertiesOfEdge(EdgeField edge)
+        {
+
+        }
+
+        private void UpdateMetaPropertiesOfVertexProperty(VertexPropertyField vp)
+        {
+
+        }
+
+        internal override RawRecord DataModify(RawRecord record)
+        {
+            FieldObject updateTarget = record[this.updateTargetIndex];
+
+            VertexField vertex = updateTarget as VertexField; ;
+            if (vertex != null)
+            {
+                this.UpdatePropertiesOfVertex(vertex);
+
+                return record;
+            }
+
+            EdgeField edge = updateTarget as EdgeField;
+            if (edge != null)
+            {
+                this.UpdatePropertiesOfEdge(edge);
+
+                return record;
+            }
+
+            PropertyField property = updateTarget as PropertyField;
+            if (property != null)
+            {
+                if (property is VertexPropertyField)
+                {
+                    this.UpdateMetaPropertiesOfVertexProperty((VertexPropertyField) property);
+                }
+                else
+                {
+                    throw new GraphViewException("");
+                }
+
+                return record;
+            }
+
+            //
+            // Should not reach here
+            //
+            return record;
+        }
+    }
+
     internal class DropNodeOperator : ModificationBaseOpertaor2
     {
         private int _nodeIdIndex;

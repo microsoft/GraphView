@@ -14,6 +14,7 @@ namespace GraphView
         public GremlinKeyword.Scope Scope { get; set; }
         public GremlinVariable InputVariable { get; set; }
         public GremlinOrderVariable(GremlinVariable inputVariable, List<object> byList, List<IComparer> orderList, GremlinKeyword.Scope scope)
+            :base(GremlinVariableType.Table)
         {
             ByList = byList;
             OrderList = orderList;
@@ -32,9 +33,9 @@ namespace GraphView
             (secondTableRef as WOrderTableReference).OrderParameters = new List<Tuple<WScalarExpression, IComparer>>();
             for (var i = 0; i < OrderList.Count; i++)
             {
-                if (ByList[i] is string)
+                if (ByList[i] is GremlinVariableProperty)
                 {
-                    var scalarExpr = InputVariable.GetVariableProperty(ByList[i] as string).ToScalarExpression();
+                    var scalarExpr = (ByList[i] as GremlinVariableProperty).ToScalarExpression();
                     (secondTableRef as WOrderTableReference).OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalarExpr, OrderList[i]));
                     (secondTableRef as WOrderTableReference).Parameters.Add(scalarExpr);
                 }

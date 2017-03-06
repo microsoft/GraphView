@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -270,12 +271,12 @@ namespace GraphView
             if (Object.ReferenceEquals(this, obj)) return true;
 
             StringField stringField = obj as StringField;
-            if (stringField == null)
-            {
+            if (stringField == null) {
                 return false;
             }
 
-            return Value.Equals(stringField.Value);
+            return this.JsonDataType == stringField.JsonDataType &&
+                   this.Value.Equals(stringField.Value, StringComparison.InvariantCultureIgnoreCase);
         }
 
         public override string ToValue
@@ -362,35 +363,84 @@ namespace GraphView
         }
     }
 
-    internal class MapField : FieldObject
+    internal class MapField : FieldObject, IEnumerable<KeyValuePair<FieldObject, FieldObject>>
     {
-        public Dictionary<FieldObject, FieldObject> Map { get; set; }
+        private Dictionary<FieldObject, FieldObject> map;
+        public List<FieldObject> Order { get; set; } 
+
+        public int Count { get { return map.Count; } }
 
         public MapField()
         {
-            Map = new Dictionary<FieldObject, FieldObject>();
+            this.map = new Dictionary<FieldObject, FieldObject>();
+            this.Order = new List<FieldObject>();
         }
 
-        public MapField(Dictionary<FieldObject, FieldObject> map)
+        public MapField(int capacity)
         {
-            Map = map;
+            this.map = new Dictionary<FieldObject, FieldObject>(capacity);
+            this.Order = new List<FieldObject>(capacity);
+        }
+
+        public void Add(FieldObject key, FieldObject value)
+        {
+            this.map.Add(key, value);
+            this.Order.Add(key);
+        }
+
+        public bool Remove(FieldObject key)
+        {
+            bool isRemoved = this.map.Remove(key);
+            if (isRemoved) {
+                this.Order.Remove(key);
+            }
+
+            return isRemoved;
+        }
+
+        public bool RemoveAt(int index)
+        {
+            if (Order.Count == 0 || index >= Order.Count || index < 0) {
+                return false;
+            }
+
+            this.map.Remove(this.Order[index]);
+            this.Order.RemoveAt(index);
+            return true;
+        }
+
+        public FieldObject this[FieldObject key]
+        {
+            get
+            {
+                FieldObject value;
+                this.map.TryGetValue(key, out value);
+                return value;
+            }
+            set
+            {
+                if (!this.map.ContainsKey(key))
+                {
+                    this.Order.Add(key);
+                    this.map.Add(key, value);
+                } else {
+                    this.map[key] = value;
+                }
+            }
         }
 
         public override string ToString()
         {
-            if (Map.Count == 0) return "[]";
+            if (this.map.Count == 0) return "[]";
 
-            var mapStringBuilder = new StringBuilder("[");
-            var i = 0;
+            StringBuilder mapStringBuilder = new StringBuilder("[");
+            int i = 0;
 
-            foreach (var pair in Map)
+            foreach (FieldObject key in Order)
             {
-                var key = pair.Key;
-                var value = pair.Value;
-
                 if (i++ > 0)
                     mapStringBuilder.Append(", ");
-                mapStringBuilder.Append(key.ToString()).Append(":").Append(value.ToString());
+                mapStringBuilder.Append(key.ToString()).Append(":").Append(this.map[key].ToString());
             }
 
             mapStringBuilder.Append(']');
@@ -404,18 +454,17 @@ namespace GraphView
             sb.Append("{");
 
             bool firstEntry = true;
-            foreach (var entry in Map)
+
+            foreach (FieldObject entry in this.Order)
             {
-                if (firstEntry)
-                {
+                if (firstEntry) {
                     firstEntry = false;
                 }
-                else
-                {
+                else {
                     sb.Append(", ");
                 }
 
-                sb.AppendFormat("\"{0}\": {1}", entry.Key.ToValue, entry.Value.ToGraphSON());
+                sb.AppendFormat("\"{0}\": {1}", entry.ToValue, this.map[entry].ToGraphSON());
             }
 
             sb.Append("}");
@@ -427,16 +476,15 @@ namespace GraphView
             if (Object.ReferenceEquals(this, obj)) return true;
 
             MapField mapField = obj as MapField;
-            if (mapField == null || Map.Count != mapField.Map.Count)
-            {
+            if (mapField == null || this.map.Count != mapField.map.Count) {
                 return false;
             }
 
-            foreach (var kvp in Map)
+            foreach (KeyValuePair<FieldObject, FieldObject> kvp in this.map)
             {
-                var key = kvp.Key;
+                FieldObject key = kvp.Key;
                 FieldObject value2;
-                if (!mapField.Map.TryGetValue(key, out value2))
+                if (!mapField.map.TryGetValue(key, out value2))
                     return false;
                 if (!kvp.Value.Equals(value2))
                     return false;
@@ -447,48 +495,82 @@ namespace GraphView
 
         public override int GetHashCode()
         {
-            return ToString().GetHashCode();
+            if (this.map.Count == 0) return "[]".GetHashCode();
+
+            StringBuilder mapStringBuilder = new StringBuilder("[");
+            int i = 0;
+
+            foreach (KeyValuePair<FieldObject, FieldObject> kvp in this.map)
+            {
+                FieldObject key = kvp.Key;
+                FieldObject value = kvp.Value;
+
+                if (i++ > 0)
+                    mapStringBuilder.Append(", ");
+                mapStringBuilder.Append(key.ToString()).Append(":").Append(value.ToString());
+            }
+
+            mapStringBuilder.Append(']');
+
+            return mapStringBuilder.ToString().GetHashCode();
+        }
+
+        public IEnumerator<KeyValuePair<FieldObject, FieldObject>> GetEnumerator()
+        {
+            foreach (KeyValuePair<FieldObject, FieldObject> keyValuePair in map) {
+                yield return keyValuePair;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
         }
     }
 
     internal class Compose1Field : FieldObject
     {
-        public Dictionary<FieldObject, FieldObject> Map { get; set; }
-        public FieldObject DefaultProjectionKey { get; set; }
+        public Dictionary<string, FieldObject> CompositeFieldObject { get; set; }
+        public string DefaultProjectionKey { get; set; }
 
-        public Compose1Field(Dictionary<FieldObject, FieldObject> map, FieldObject defaultProjectionKey)
+        public Compose1Field(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
         {
-            Map = map;
+            CompositeFieldObject = compositeFieldObject;
             DefaultProjectionKey = defaultProjectionKey;
+        }
+
+        public bool TryGetFieldObject(string key, out FieldObject fieldObject)
+        {
+            return CompositeFieldObject.TryGetValue(key, out fieldObject);
         }
 
         public override string ToString()
         {
-            return Map[DefaultProjectionKey].ToString();
+            return CompositeFieldObject[DefaultProjectionKey].ToString();
         }
 
-        public override string ToValue => Map[DefaultProjectionKey].ToValue;
+        public override string ToValue => CompositeFieldObject[DefaultProjectionKey].ToValue;
 
         public override string ToGraphSON()
         {
-            return Map[DefaultProjectionKey].ToGraphSON();
+            return CompositeFieldObject[DefaultProjectionKey].ToGraphSON();
         }
 
         public override bool Equals(object obj)
         {
             if (Object.ReferenceEquals(this, obj)) return true;
 
-            MapField mapField = obj as MapField;
-            if (mapField == null || Map.Count != mapField.Map.Count)
+            Compose1Field compose1Field = obj as Compose1Field;
+            if (compose1Field == null || CompositeFieldObject.Count != compose1Field.CompositeFieldObject.Count)
             {
                 return false;
             }
 
-            foreach (var kvp in Map)
+            foreach (KeyValuePair<string, FieldObject> kvp in CompositeFieldObject)
             {
-                var key = kvp.Key;
+                string key = kvp.Key;
                 FieldObject value2;
-                if (!mapField.Map.TryGetValue(key, out value2))
+                if (!compose1Field.CompositeFieldObject.TryGetValue(key, out value2))
                     return false;
                 if (!kvp.Value.Equals(value2))
                     return false;
@@ -499,15 +581,15 @@ namespace GraphView
 
         public override int GetHashCode()
         {
-            if (Map.Count == 0) return "[]".GetHashCode();
+            if (CompositeFieldObject.Count == 0) return "[]".GetHashCode();
 
-            var mapStringBuilder = new StringBuilder("[");
-            var i = 0;
+            StringBuilder mapStringBuilder = new StringBuilder("[");
+            int i = 0;
 
-            foreach (var pair in Map)
+            foreach (KeyValuePair<string, FieldObject> pair in CompositeFieldObject)
             {
-                var key = pair.Key;
-                var value = pair.Value;
+                string key = pair.Key;
+                FieldObject value = pair.Value;
 
                 if (i++ > 0)
                     mapStringBuilder.Append(", ");
@@ -557,19 +639,6 @@ namespace GraphView
         public override string ToString()
         {
             return string.Format("{0}->{1}", PropertyName, PropertyValue);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (Object.ReferenceEquals(this, obj)) return true;
-
-            PropertyField pf = obj as PropertyField;
-            if (pf == null)
-            {
-                return false;
-            }
-
-            return PropertyName == pf.PropertyName && PropertyValue == pf.PropertyValue;
         }
 
         public override int GetHashCode()
@@ -970,7 +1039,7 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
 
-            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e)))
+            foreach (string offset in Edges.Keys.OrderBy(e => long.Parse(e.Substring(e.IndexOf(".")+1))))
             {
                 if (sb.Length > 0)
                 {

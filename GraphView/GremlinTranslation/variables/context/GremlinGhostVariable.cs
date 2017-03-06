@@ -58,7 +58,8 @@ namespace GraphView
             {
                 return new GremlinVariableProperty(AttachedVariable, SelectKey);
             }
-            return GetVariableProperty(GetPrimaryKey());
+            return base.DefaultProjection();
+            //return GetVariableProperty(GetPrimaryKey());
         }
 
         internal override GremlinVariableProperty DefaultProjection()
@@ -85,10 +86,8 @@ namespace GraphView
                     if (GremlinUtil.IsVertexProperty(property)) return;
                     break;
                 case GremlinVariableType.Scalar:
-                    if (property != GremlinKeyword.ScalarValue) return;
-                    break;
                 case GremlinVariableType.Property:
-                    if (property != GremlinKeyword.PropertyValue) return;
+                    if (property != GremlinKeyword.TableDefaultColumnName) return;
                     break;
             }
             base.Populate(property);

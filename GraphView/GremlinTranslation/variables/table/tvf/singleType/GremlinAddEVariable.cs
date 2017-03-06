@@ -154,7 +154,7 @@ namespace GraphView
         }
 
 
-        internal override void From(GremlinToSqlContext currentContext, string label)
+        internal void From(GremlinToSqlContext currentContext, string label)
         {
             List<GremlinVariable> selectVariableList = currentContext.Select(label);
             if (selectVariableList.Count == 0 || selectVariableList.Count > 1)
@@ -167,7 +167,7 @@ namespace GraphView
             FromVertexContext = fromContext;
         }
 
-        internal override void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
+        internal void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
             FromVertexContext = fromVertexContext;
             FromVertexContext.HomeVariable = this;
@@ -179,7 +179,7 @@ namespace GraphView
              EdgeProperties.AddRange(properties);
         }
 
-        internal override void To(GremlinToSqlContext currentContext, string label)
+        internal void To(GremlinToSqlContext currentContext, string label)
         {
             List<GremlinVariable> selectVariableList = currentContext.Select(label);
             if (selectVariableList.Count == 0 || selectVariableList.Count > 1)
@@ -192,7 +192,7 @@ namespace GraphView
             ToVertexContext = toContext;
         }
 
-        internal override void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
+        internal void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {
             ToVertexContext = toVertexContext;
             ToVertexContext.HomeVariable = this;

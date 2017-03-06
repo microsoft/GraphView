@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,6 +16,40 @@ namespace GraphView
             JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
 
             GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
+            context.CurrentExecutionOperator = addVOp;
+
+            context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
+            context.AddField(Alias.Value, "label", ColumnGraphType.Value);
+            context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
+            context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
+            context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
+            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++)
+            {
+                context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
+            }
+
+            return addVOp;
+        }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WValueExpression labelValue = Parameters[0] as WValueExpression;
+            //List<WPropertyExpression> vertexProperties = new List<WPropertyExpression>();
+
+            //for (int i = 1; i < Parameters.Count; i++)
+            //{
+            //    WPropertyExpression property = Parameters[i] as WPropertyExpression;;
+            //    Debug.Assert(property != null, "property != null");
+            //    vertexProperties.Add(property);
+            //}
+
+            List<string> projectedField;
+            //
+            // change the ConstructNodeJsonDocument, now based on the List<WPropertyExpression>
+            //
+            JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
+
+            AddVOperator addVOp = new AddVOperator(null, null, null, null);
             context.CurrentExecutionOperator = addVOp;
 
             context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
@@ -79,6 +114,21 @@ namespace GraphView
 
             return dropNodeOp;
         }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression dropTargetParameter = Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(dropTargetParameter != null, "dropTargetParameter != null");
+            int dropTargetIndex = context.LocateColumnReference(dropTargetParameter);
+
+            //
+            // A new DropOperator which drops target based on its runtime type
+            //
+            DropNodeOperator dropOp = new DropNodeOperator(context.CurrentExecutionOperator, dbConnection, dropTargetIndex);
+            context.CurrentExecutionOperator = dropOp;
+
+            return dropOp;
+        }
     }
 
     partial class WDropEdgeTableReference
@@ -97,7 +147,7 @@ namespace GraphView
         }
     }
 
-    partial class WUpdateNodePropertiesTableReference
+    partial class WUpdateVertexPropertiesTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
@@ -123,6 +173,33 @@ namespace GraphView
             context.CurrentExecutionOperator = updateNodePropertiesOp;
 
             return updateNodePropertiesOp;
+        }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression updateTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(updateTargetParameter != null, "updateTargetParameter != null");
+
+            int updateTargetIndex = context.LocateColumnReference(updateTargetParameter);
+
+            List<WPropertyExpression> updatePropertiesExpressions = new List<WPropertyExpression>();
+
+            for (int i = 1; i < this.Parameters.Count; i += 2)
+            {
+                WPropertyExpression propertyExpression = Parameters[i] as WPropertyExpression;
+                Debug.Assert(propertyExpression != null, "updatePropertyExpression != null");
+
+                updatePropertiesExpressions.Add(propertyExpression);
+            }
+
+            //
+            // A new update property operator which update target's property based on its runtime type
+            //
+            UpdateNodePropertiesOperator updatePropertiesOp =
+                new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection, updateTargetIndex, null);
+            context.CurrentExecutionOperator = updatePropertiesOp;
+
+            return updatePropertiesOp;
         }
     }
 

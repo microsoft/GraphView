@@ -67,7 +67,7 @@ namespace GraphView
 
         internal void Populate(string property)
         {
-            if (ProjectedProperties.Contains(property)) return;
+            if (ProjectedProperties.Contains(property) || property == GremlinKeyword.TableDefaultColumnName) return;
             ProjectedProperties.Add(property);
             PivotVariable.Populate(property);
         }
@@ -364,8 +364,9 @@ namespace GraphView
                 || PivotVariable.GetVariableType() == GremlinVariableType.NULL)
             {
                 selectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetStarColumnReferenceExpr()));
+                return selectElements;
             }
-            else if (ProjectedProperties != null && ProjectedProperties.Count != 0)
+            if (ProjectedProperties != null && ProjectedProperties.Count != 0)
             {
                 foreach (var projectProperty in ProjectedProperties)
                 {
@@ -376,7 +377,8 @@ namespace GraphView
                         selectScalarExpr = SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName);
                         selectElements.Add(selectScalarExpr);
                     }
-                    else if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
+                    else
+                    if (ProjectVariablePropertiesList.All(p => p.Item2 != projectProperty))
                     {
                         
                         if (PivotVariable.ProjectedProperties.Contains(projectProperty))
@@ -396,8 +398,7 @@ namespace GraphView
             }
             else
             {
-                GremlinVariableProperty defaultProjection = PivotVariable.DefaultProjection();
-                selectElements.Add(SqlUtil.GetSelectScalarExpr(defaultProjection.ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
+                selectElements.Add(SqlUtil.GetSelectScalarExpr(PivotVariable.DefaultProjection().ToScalarExpression(), GremlinKeyword.TableDefaultColumnName));
             }
 
             if (IsPopulateGremlinPath)
@@ -582,7 +583,7 @@ namespace GraphView
                 else
                 {
                     GremlinVariableProperty sinkProperty = lastVariable.GetVariableProperty(GremlinKeyword.EdgeSinkV);
-                    GremlinTableVariable inVertex = lastVariable.CreateAdjVertex(sinkProperty);
+                    GremlinTableVariable inVertex = new GremlinBoundVertexVariable(lastVariable.GetEdgeType(), sinkProperty);
                     if (path != null) path.SetSinkVariable(inVertex);
 
                     VariableList.Add(inVertex);
@@ -622,7 +623,7 @@ namespace GraphView
                 else
                 {
                     GremlinVariableProperty sourceProperty = lastVariable.GetVariableProperty(GremlinKeyword.EdgeSourceV);
-                    GremlinTableVariable outVertex = lastVariable.CreateAdjVertex(sourceProperty);
+                    GremlinTableVariable outVertex = new GremlinBoundVertexVariable(lastVariable.GetEdgeType(), sourceProperty);
                     if (path != null) path.SetSourceVariable(outVertex);
 
                     VariableList.Add(outVertex);
@@ -771,7 +772,7 @@ namespace GraphView
             List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
             foreach (var value in values)
             {
-                WScalarExpression firstExpr = lastVariable.GetVariableProperty(lastVariable.GetPrimaryKey()).ToScalarExpression();
+                WScalarExpression firstExpr = lastVariable.DefaultVariableProperty().ToScalarExpression();
                 WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
                 booleanExprList.Add(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals));
             }
@@ -781,7 +782,7 @@ namespace GraphView
 
         internal void HasId(GremlinVariable lastVariable, Predicate predicate)
         {
-            WScalarExpression firstExpr = lastVariable.GetVariableProperty(lastVariable.GetPrimaryKey()).ToScalarExpression();
+            WScalarExpression firstExpr = lastVariable.DefaultVariableProperty().ToScalarExpression();
             WScalarExpression secondExpr = SqlUtil.GetValueExpr(predicate.Value);
             AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals));
         }

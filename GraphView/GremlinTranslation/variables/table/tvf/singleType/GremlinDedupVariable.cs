@@ -16,7 +16,7 @@ namespace GraphView
         public GremlinDedupVariable(GremlinVariable inputVariable, 
                                     List<GremlinVariable> dedupVariables, 
                                     GremlinToSqlContext dedupContext,
-                                    GremlinKeyword.Scope scope)
+                                    GremlinKeyword.Scope scope) : base(GremlinVariableType.Table)
         {
             InputVariable = inputVariable;
             DedupVariables = new List<GremlinVariable>(dedupVariables);

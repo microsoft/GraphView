@@ -261,7 +261,7 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(groupedStates.Count);
+            MapField result = new MapField();
 
             if (elementPropertyProjectionIndex >= 0)
             {
@@ -279,7 +279,7 @@ namespace GraphView
                             projectFields.Add(fo);
                         }
                     }
-                    resultCollection[key] = new CollectionField(projectFields);
+                    result[key] = new CollectionField(projectFields);
                 }
             }
             else
@@ -305,11 +305,11 @@ namespace GraphView
                         return null;
                     }
 
-                    resultCollection[key] = aggregateResult;
+                    result[key] = aggregateResult;
                 }
             }
 
-            return new MapField(resultCollection);
+            return result;
         }
     }
 
@@ -348,7 +348,7 @@ namespace GraphView
             }
             else
             {
-                Dictionary<FieldObject, FieldObject> map = new Dictionary<FieldObject, FieldObject>();
+                MapField map = new MapField();
 
                 foreach (Tuple<string, IAggregateFunction> tuple in sideEffectStates)
                 {
@@ -358,7 +358,7 @@ namespace GraphView
                     map.Add(new StringField(key), sideEffectState.Terminate());
                 }
 
-                return new MapField(map);
+                return map;
             }
         }
     }
@@ -479,7 +479,7 @@ namespace GraphView
                 groupedStates[groupByKey].Add(r);
             }
 
-            Dictionary<FieldObject, FieldObject> resultCollection = new Dictionary<FieldObject, FieldObject>(groupedStates.Count);
+            MapField result = new MapField(groupedStates.Count);
             if (elementPropertyProjectionIndex >= 0)
             {
                 foreach (FieldObject key in groupedStates.Keys)
@@ -496,7 +496,7 @@ namespace GraphView
                             projectFields.Add(fo);
                         }
                     }
-                    resultCollection[key] = new CollectionField(projectFields);
+                    result[key] = new CollectionField(projectFields);
                 }
             }
             else
@@ -523,7 +523,7 @@ namespace GraphView
                         return null;
                     }
 
-                    resultCollection[key] = aggregateResult;
+                    result[key] = aggregateResult;
                 }
             }
 
@@ -532,7 +532,7 @@ namespace GraphView
             for (int i = 0; i < carryOnCount; i++)
                 resultRecord.Append((FieldObject)null);
 
-            resultRecord.Append(new MapField(resultCollection));
+            resultRecord.Append(result);
 
             Close();
             return resultRecord;
