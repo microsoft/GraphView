@@ -10,9 +10,13 @@ namespace GraphView
 {
     partial class WAddVTableReference2
     {
-        public JObject ConstructNodeJsonDocument(List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
+        public JObject ConstructNodeJsonDocument(string vertexLabel, List<WPropertyExpression> vertexProperties, out List<string> projectedFieldList)
         {
-            JObject vertexObject = new JObject();
+            Debug.Assert(vertexLabel != null);
+            JObject vertexObject = new JObject {
+                ["label"] = vertexLabel
+            };
+
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
 
             foreach (WPropertyExpression vertexProperty in vertexProperties) {
@@ -71,7 +75,7 @@ namespace GraphView
 
             List<string> projectedField;
 
-            JObject nodeJsonDocument = ConstructNodeJsonDocument(vertexProperties, out projectedField);
+            JObject nodeJsonDocument = ConstructNodeJsonDocument(labelValue.Value, vertexProperties, out projectedField);
 
             AddVOperator addVOp = new AddVOperator(
                 context.CurrentExecutionOperator,
