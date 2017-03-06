@@ -418,6 +418,10 @@ namespace GraphView
 
     public partial class WPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WAllPropertiesTableReference : WSchemaObjectFunctionTableReference { }
+
+    public partial class WAllValuesTableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WPathTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WInjectTableReference : WSchemaObjectFunctionTableReference {}

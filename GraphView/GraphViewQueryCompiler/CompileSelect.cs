@@ -2057,6 +2057,55 @@ namespace GraphView
         }
     }
 
+    partial class WAllPropertiesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputParameter = Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputParameter != null, "inputParameter != null");
+
+            int inputTargetIndex = context.LocateColumnReference(inputParameter);
+
+            List<string> populatedMetaproperties = new List<string>();
+            for (int metaPropertiesIndex = 1; metaPropertiesIndex < Parameters.Count; metaPropertiesIndex++)
+            {
+                WValueExpression metaPropertyExpression = Parameters[metaPropertiesIndex] as WValueExpression;
+                Debug.Assert(metaPropertyExpression != null, "metaPropertyExpression != null");
+                
+                populatedMetaproperties.Add(metaPropertyExpression.Value);
+            }
+
+            
+            AllPropertiesOperator allPropertiesOp = new AllPropertiesOperator(context.CurrentExecutionOperator,
+                inputTargetIndex, populatedMetaproperties);
+            context.CurrentExecutionOperator = allPropertiesOp;
+
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            foreach (string metapropertyName in populatedMetaproperties) {
+                context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
+            }
+
+            return allPropertiesOp;
+        }
+    }
+
+    partial class WAllValuesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputParameter = Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputParameter != null, "inputParameter != null");
+
+            int inputTargetIndex = context.LocateColumnReference(inputParameter);
+
+            AllValuesOperator allValuesOp = new AllValuesOperator(context.CurrentExecutionOperator, inputTargetIndex);
+            context.CurrentExecutionOperator = allValuesOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return allValuesOp;
+        }
+    }
+
     partial class WPropertiesTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
