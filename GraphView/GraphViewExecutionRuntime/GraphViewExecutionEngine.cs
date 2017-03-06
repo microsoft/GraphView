@@ -700,6 +700,16 @@ namespace GraphView
         //    this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
         //}
 
+        public FieldObject this[string metapropertyName]
+        {
+            get
+            {
+                ValuePropertyField propertyField;
+                this.MetaProperties.TryGetValue(metapropertyName, out propertyField);
+                return propertyField;
+            }
+        }
+
         public void Replace(JObject vertexSinglePropertyObject)
         {
             /* Schema of vertexSinglePropertyObject: 
