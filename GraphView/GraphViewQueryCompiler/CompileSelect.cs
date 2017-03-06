@@ -1933,6 +1933,50 @@ namespace GraphView
             
             return valuesOperator;
         }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WValueExpression selectStarFlag = Parameters[0] as WValueExpression;
+            Debug.Assert(selectStarFlag != null, "selectStarFlag != null");
+            bool isSelectStar = int.Parse(selectStarFlag.Value) > 0;
+
+            List<int> targetIndex = new List<int>();
+            List<string> populateMetaproperties = new List<string>();
+
+            for (int i = 1; i < Parameters.Count; i++)
+            {
+                WColumnReferenceExpression targetParameter = Parameters[i] as WColumnReferenceExpression;
+                if (targetParameter != null)
+                {
+                    targetIndex.Add(context.LocateColumnReference(targetParameter));
+                    continue;
+                }
+
+                WValueExpression populateMetapropertyNameParameter = Parameters[i] as WValueExpression;
+                if (populateMetapropertyNameParameter != null)
+                {
+                    populateMetaproperties.Add(populateMetapropertyNameParameter.Value);
+                    continue;
+                }
+
+                throw new QueryCompilationException(
+                    "Parameters of Values table can only be WColumnReferenceExpression or WValueExpression.");
+            }
+
+            //
+            // A new Values operator extracting values based on the input target's runtime time
+            //
+            GraphViewExecutionOperator valuesOp = new ValuesOperator(context.CurrentExecutionOperator, null, 0);
+            context.CurrentExecutionOperator = valuesOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            foreach (string metapropertyName in populateMetaproperties)
+            {
+                context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
+            }
+
+            return valuesOp;
+
+        }
     }
 
     partial class WPropertiesTableReference
@@ -1965,6 +2009,49 @@ namespace GraphView
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return propertiesOp;
+        }
+
+        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WValueExpression selectStarFlag = Parameters[0] as WValueExpression; 
+            Debug.Assert(selectStarFlag != null, "selectStarFlag != null");
+            bool isSelectStar = int.Parse(selectStarFlag.Value) > 0;
+
+            List<int> targetIndex = new List<int>();
+            List<string> populateMetaproperties = new List<string>();
+
+            for (int i = 1; i < Parameters.Count; i++)
+            {
+                WColumnReferenceExpression targetParameter = Parameters[i] as WColumnReferenceExpression;
+                if (targetParameter != null)
+                {
+                    targetIndex.Add(context.LocateColumnReference(targetParameter));
+                    continue;
+                }
+
+                WValueExpression populateMetapropertyNameParameter = Parameters[i] as WValueExpression;
+                if (populateMetapropertyNameParameter != null)
+                {
+                    populateMetaproperties.Add(populateMetapropertyNameParameter.Value);
+                    continue;
+                }
+
+                throw new QueryCompilationException(
+                    "Parameters of Properties table can only be WColumnReferenceExpression or WValueExpression.");
+            }
+
+            //
+            // A new Properties operator extracting properties based on the input target's runtime time
+            //
+            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, null, 0);
+            context.CurrentExecutionOperator = propertiesOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            foreach (string metapropertyName in populateMetaproperties) {
+                context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
+            }
+        
+            return propertiesOp;
+
         }
     }
 
