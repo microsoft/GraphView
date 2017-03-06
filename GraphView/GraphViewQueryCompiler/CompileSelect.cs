@@ -2775,8 +2775,12 @@ namespace GraphView
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             GraphViewExecutionOperator inputOp = context.CurrentExecutionOperator;
+
             double probability = double.Parse(((WValueExpression)this.Parameters[0]).Value);
-            return new CoinOperator(inputOp, probability);
+
+            GraphViewExecutionOperator coinOp = new CoinOperator(inputOp, probability);
+            context.CurrentExecutionOperator = coinOp;
+            return coinOp;
         }
     }
 
@@ -2788,7 +2792,9 @@ namespace GraphView
             long amountToSample = long.Parse(((WValueExpression)this.Parameters[0]).Value);
             ScalarFunction byFunction = this.Parameters[1]?.CompileToFunction(context, dbConnection);  // Can be null if no "by" step
 
-            return new SampleOperator(inputOp, amountToSample, byFunction);
+            GraphViewExecutionOperator sampleOp = new SampleOperator(inputOp, amountToSample, byFunction);
+            context.CurrentExecutionOperator = sampleOp;
+            return sampleOp;
         }
     }
 
