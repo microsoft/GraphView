@@ -17,6 +17,9 @@ namespace GraphView
 
             foreach (WPropertyExpression vertexProperty in vertexProperties) {
                 Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.list);
+                if (vertexProperty.Value == null) {
+                    continue;
+                }
 
                 JObject meta = new JObject();
                 foreach (KeyValuePair<WValueExpression, WValueExpression> pair in vertexProperty.MetaProperties) {

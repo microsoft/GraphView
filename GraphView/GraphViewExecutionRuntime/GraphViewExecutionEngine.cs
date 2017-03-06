@@ -896,7 +896,7 @@ namespace GraphView
     internal class EdgeField : FieldObject
     {
 
-        // <PropertyName, ValuePropertyField>
+        // <PropertyName, EdgePropertyField>
         public Dictionary<string, EdgePropertyField> EdgeProperties;
 
         public string Label { get; private set; }
