@@ -870,26 +870,26 @@ namespace GraphView
             Debug.Assert(multiProperty.Value is JArray);
             this.PropertyValue = null;
             this.JsonDataType = JsonDataType.Array;
+            
 
-            // TODO: HACK
-            Debug.Assert(((JArray)multiProperty.Value).Count == 1);
-            JObject tmpVertexPropertyObject = (JObject)((JArray)multiProperty.Value)[0];
-            if (this.Multiples.Count == 0) {
-                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, tmpVertexPropertyObject, this));
-            }
-            else {
-                Debug.Assert(this.Multiples.Count == 1);
-                this.Multiples[0].Replace(tmpVertexPropertyObject);
-            }
-            return;
-
-            this.Multiples.Clear();
+            HashSet<string> metaPropIdToRemove = new HashSet<string>(this.Multiples.Select(meta => meta.PropertyId));
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
                 Debug.Assert(vertexPropertyObject["_value"] is JValue);
+                Debug.Assert(vertexPropertyObject["_propId"] is JValue);
                 Debug.Assert(vertexPropertyObject["_meta"] is JObject);
 
-                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject, this));
+                string propId = (string) vertexPropertyObject["_propId"];
+                if (metaPropIdToRemove.Remove(propId)) {
+                    // This single-property should be replaced
+                    this.Multiples.First(single => single.PropertyId == propId).Replace(vertexPropertyObject);
+                }
+                else {
+                    // This single-property is newly added
+                    this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject, this));
+                }
             }
+
+            this.Multiples.RemoveAll(meta => metaPropIdToRemove.Contains(meta.PropertyId));
         }
     }
 

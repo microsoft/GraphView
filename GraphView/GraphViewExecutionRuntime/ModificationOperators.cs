@@ -680,6 +680,7 @@ namespace GraphView
                         else {
                             string propertyId;
                             if (vertexField.VertexProperties.ContainsKey(name)) {
+                                // TODO: HACK
                                 propertyId = vertexField.VertexProperties[name].Multiples[0].PropertyId;
                             }
                             else {
