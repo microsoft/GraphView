@@ -177,6 +177,136 @@ namespace GraphView
         } 
     }
 
+    internal class PropertiesOperator2 : TableValuedFunction
+    {
+        List<int> propertiesIndex;
+        List<string> populateMetaproperties; 
+
+        public PropertiesOperator2(
+            GraphViewExecutionOperator inputOp,
+            List<int> propertiesIndex,
+            List<string> populateMetaproperties) : base(inputOp)
+        {
+            this.propertiesIndex = propertiesIndex;
+            this.populateMetaproperties = populateMetaproperties;
+        }
+
+        internal override List<RawRecord> CrossApply(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+
+            foreach (int propertyIndex in this.propertiesIndex)
+            {
+                FieldObject propertyObject = record[propertyIndex];
+                if (propertyObject == null) {
+                    continue;
+                }
+
+                VertexPropertyField vp = propertyObject as VertexPropertyField;
+                if (vp != null)
+                {
+                    foreach (VertexSinglePropertyField vsp in vp.Multiples)
+                    {
+                        RawRecord r = new RawRecord();
+                        r.Append(vsp);
+                        foreach (string metapropertyName in this.populateMetaproperties) {
+                            r.Append(vsp[metapropertyName]);
+                        }
+
+                        results.Add(r);
+                    }
+                    continue;
+                }
+
+                VertexSinglePropertyField singleVp = propertyObject as VertexSinglePropertyField;
+                if (singleVp != null)
+                {
+                    RawRecord r = new RawRecord();
+                    r.Append(propertyObject);
+                    foreach (string metapropertyName in this.populateMetaproperties) {
+                        r.Append(singleVp[metapropertyName]);
+                    }
+                    results.Add(r);
+                    continue;
+                }
+
+                EdgePropertyField edgePf = propertyObject as EdgePropertyField;
+                if (edgePf != null)
+                {
+                    if (this.populateMetaproperties.Count > 0) {
+                        throw new GraphViewException("An edge property cannot contain meta properties.");
+                    }
+
+                    RawRecord r = new RawRecord();
+                    r.Append(propertyObject);
+                    results.Add(r);
+                    continue;
+                }
+
+                throw new GraphViewException("A meta property cannot contain meta properties.");
+            }
+
+            return results;
+        }
+    }
+
+    internal class ValuesOperator2 : TableValuedFunction
+    {
+        List<int> propertiesIndex;
+
+        public ValuesOperator2(GraphViewExecutionOperator inputOp, List<int> propertiesIndex) : base(inputOp)
+        {
+            this.propertiesIndex = propertiesIndex;
+        }
+
+        internal override List<RawRecord> CrossApply(RawRecord record)
+        {
+            List<RawRecord> results = new List<RawRecord>();
+
+            foreach (int propertyIndex in this.propertiesIndex)
+            {
+                FieldObject propertyObject = record[propertyIndex];
+                if (propertyObject == null) {
+                    continue;
+                }
+
+                VertexPropertyField vp = propertyObject as VertexPropertyField;
+                if (vp != null)
+                {
+                    foreach (VertexSinglePropertyField vsp in vp.Multiples)
+                    {
+                        RawRecord r = new RawRecord();
+                        r.Append(new StringField(vsp.PropertyValue, vsp.JsonDataType));
+                        results.Add(r);
+                    }
+                    continue;
+                }
+
+                VertexSinglePropertyField singleVp = propertyObject as VertexSinglePropertyField;
+                if (singleVp != null)
+                {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(singleVp.PropertyValue, singleVp.JsonDataType));
+                    results.Add(r);
+                    continue;
+                }
+
+                EdgePropertyField edgePf = propertyObject as EdgePropertyField;
+                if (edgePf != null)
+                {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(edgePf.PropertyValue, edgePf.JsonDataType));
+                    results.Add(r);
+                    continue;
+                }
+
+                throw new GraphViewException("A meta property cannot contain meta properties.");
+            }
+
+            return results;
+        }
+    }
+
     internal class AllPropertiesOperator : TableValuedFunction
     {
         private readonly int inputTargetIndex;
@@ -197,70 +327,77 @@ namespace GraphView
 
             FieldObject inputTarget = record[this.inputTargetIndex];
 
-            if (inputTarget is VertexField) {
-                VertexField vertexField = (VertexField) inputTarget;
-                foreach (VertexPropertyField property in vertexField.VertexProperties.Values) {
+            if (inputTarget is VertexField)
+            {
+                VertexField vertexField = (VertexField)inputTarget;
+                foreach (VertexPropertyField property in vertexField.VertexProperties.Values)
+                {
                     string propertyName = property.PropertyName;
                     Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
                     Debug.Assert(propertyName != "_edge");
                     Debug.Assert(propertyName != "_reverse_edge");
 
-                    switch (propertyName) {
-                    case "_rid":
-                    case "_self":
-                    case "_etag":
-                    case "_attachments":
-                    case "_ts":
-                        continue;
-                    default:
-                        foreach (VertexSinglePropertyField singleVp in property.Multiples) {
-                            RawRecord r = new RawRecord();
-                            r.Append(singleVp);
-                            foreach (string metaPropertyName in this.populateMetaProperties) {
-                                r.Append(singleVp[metaPropertyName]);
+                    switch (propertyName)
+                    {
+                        case "_rid":
+                        case "_self":
+                        case "_etag":
+                        case "_attachments":
+                        case "_ts":
+                            continue;
+                        default:
+                            foreach (VertexSinglePropertyField singleVp in property.Multiples)
+                            {
+                                RawRecord r = new RawRecord();
+                                r.Append(singleVp);
+                                foreach (string metaPropertyName in this.populateMetaProperties) {
+                                    r.Append(singleVp[metaPropertyName]);
+                                }
+                                results.Add(r);
                             }
-                            results.Add(r);
-                        }
-                        break;
+                            break;
                     }
                 }
             }
-            else if (inputTarget is EdgeField) {
-
-                if (this.populateMetaProperties.Count >= 0) {
+            else if (inputTarget is EdgeField)
+            {
+                if (this.populateMetaProperties.Count > 0){
                     throw new GraphViewException("An edge property cannot contain meta properties.");
                 }
 
                 EdgeField edgeField = (EdgeField)inputTarget;
-                foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties) {
+                foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties)
+                {
                     string propertyName = propertyPair.Key;
                     EdgePropertyField propertyField = propertyPair.Value;
 
-                    switch (propertyName) {
-                    // Reserved properties for meta-data
-                    case "_edgeId":
-                    case "_offset":
-                    case "_srcV":
-                    case "_sinkV":
-                    case "_srcVLabel":
-                    case "_sinkVLabel":
-                        continue;
-                    default:
-                        RawRecord r = new RawRecord();
-                        r.Append(propertyField);
-                        results.Add(r);
-                        break;
+                    switch (propertyName)
+                    {
+                        // Reserved properties for meta-data
+                        case "_edgeId":
+                        case "_offset":
+                        case "_srcV":
+                        case "_sinkV":
+                        case "_srcVLabel":
+                        case "_sinkVLabel":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(propertyField);
+                            results.Add(r);
+                            break;
                     }
                 }
             }
-            else if (inputTarget is VertexSinglePropertyField) {
-
-                if (populateMetaProperties.Count >= 0) {
+            else if (inputTarget is VertexSinglePropertyField)
+            {
+                if (populateMetaProperties.Count > 0) {
                     throw new GraphViewException("A meta property cannot contain meta properties.");
                 }
 
                 VertexSinglePropertyField singleVp = (VertexSinglePropertyField)inputTarget;
-                foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties) {
+                foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties)
+                {
                     RawRecord r = new RawRecord();
                     ValuePropertyField metaPropertyField = kvp.Value;
                     r.Append(metaPropertyField);
@@ -289,58 +426,67 @@ namespace GraphView
 
             FieldObject inputTarget = record[this.inputTargetIndex];
 
-            if (inputTarget is VertexField) {
-                VertexField vertexField = (VertexField) inputTarget;
-                foreach (VertexPropertyField property in vertexField.VertexProperties.Values) {
+            if (inputTarget is VertexField)
+            {
+                VertexField vertexField = (VertexField)inputTarget;
+                foreach (VertexPropertyField property in vertexField.VertexProperties.Values)
+                {
                     string propertyName = property.PropertyName;
                     Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
                     Debug.Assert(propertyName == "_edge");
                     Debug.Assert(propertyName == "_reverse_edge");
 
-                    switch (propertyName) {
-                    case "_rid":
-                    case "_self":
-                    case "_etag":
-                    case "_attachments":
-                    case "_ts":
-                        continue;
-                    default:
-                        foreach (VertexSinglePropertyField singleVp in property.Multiples) {
-                            RawRecord r = new RawRecord();
-                            r.Append(new StringField(singleVp.PropertyValue, singleVp.JsonDataType));
-                            results.Add(r);
-                        }
-                        break;
+                    switch (propertyName)
+                    {
+                        case "_rid":
+                        case "_self":
+                        case "_etag":
+                        case "_attachments":
+                        case "_ts":
+                            continue;
+                        default:
+                            foreach (VertexSinglePropertyField singleVp in property.Multiples)
+                            {
+                                RawRecord r = new RawRecord();
+                                r.Append(new StringField(singleVp.PropertyValue, singleVp.JsonDataType));
+                                results.Add(r);
+                            }
+                            break;
                     }
                 }
             }
-            else if (inputTarget is EdgeField) {
-                EdgeField edgeField = (EdgeField) inputTarget;
+            else if (inputTarget is EdgeField)
+            {
+                EdgeField edgeField = (EdgeField)inputTarget;
 
-                foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties) {
+                foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties)
+                {
                     string propertyName = propertyPair.Key;
                     EdgePropertyField edgePropertyField = propertyPair.Value;
 
-                    switch (propertyName) {
-                    // Reserved properties for meta-data
-                    case "_edgeId":
-                    case "_offset":
-                    case "_srcV":
-                    case "_sinkV":
-                    case "_srcVLabel":
-                    case "_sinkVLabel":
-                        continue;
-                    default:
-                        RawRecord r = new RawRecord();
-                        r.Append(new StringField(edgePropertyField.PropertyValue, edgePropertyField.JsonDataType));
-                        results.Add(r);
-                        break;
+                    switch (propertyName)
+                    {
+                        // Reserved properties for meta-data
+                        case "_edgeId":
+                        case "_offset":
+                        case "_srcV":
+                        case "_sinkV":
+                        case "_srcVLabel":
+                        case "_sinkVLabel":
+                            continue;
+                        default:
+                            RawRecord r = new RawRecord();
+                            r.Append(new StringField(edgePropertyField.PropertyValue, edgePropertyField.JsonDataType));
+                            results.Add(r);
+                            break;
                     }
                 }
             }
-            else if (inputTarget is VertexSinglePropertyField) {
+            else if (inputTarget is VertexSinglePropertyField)
+            {
                 VertexSinglePropertyField singleVp = inputTarget as VertexSinglePropertyField;
-                foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties) {
+                foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties)
+                {
                     RawRecord r = new RawRecord();
                     ValuePropertyField metaPropertyField = kvp.Value;
                     r.Append(new StringField(metaPropertyField.PropertyValue, metaPropertyField.JsonDataType));

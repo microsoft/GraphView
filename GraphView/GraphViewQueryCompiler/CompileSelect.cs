@@ -2014,46 +2014,26 @@ namespace GraphView
 
         internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WValueExpression selectStarFlag = Parameters[0] as WValueExpression;
-            Debug.Assert(selectStarFlag != null, "selectStarFlag != null");
-            bool isSelectStar = int.Parse(selectStarFlag.Value) > 0;
+            List<int> propertiesIndex = new List<int>();
 
-            List<int> targetIndex = new List<int>();
-            List<string> populateMetaproperties = new List<string>();
-
-            for (int i = 1; i < Parameters.Count; i++)
+            foreach (WScalarExpression expression in Parameters)
             {
-                WColumnReferenceExpression targetParameter = Parameters[i] as WColumnReferenceExpression;
+                WColumnReferenceExpression targetParameter = expression as WColumnReferenceExpression;
                 if (targetParameter != null)
                 {
-                    targetIndex.Add(context.LocateColumnReference(targetParameter));
-                    continue;
-                }
-
-                WValueExpression populateMetapropertyNameParameter = Parameters[i] as WValueExpression;
-                if (populateMetapropertyNameParameter != null)
-                {
-                    populateMetaproperties.Add(populateMetapropertyNameParameter.Value);
+                    propertiesIndex.Add(context.LocateColumnReference(targetParameter));
                     continue;
                 }
 
                 throw new QueryCompilationException(
-                    "Parameters of Values table can only be WColumnReferenceExpression or WValueExpression.");
+                    "Parameters of Properties table can only be WColumnReferenceExpression.");
             }
 
-            //
-            // A new Values operator extracting values based on the input target's runtime time
-            //
-            GraphViewExecutionOperator valuesOp = new ValuesOperator(context.CurrentExecutionOperator, null, 0);
+            GraphViewExecutionOperator valuesOp = new ValuesOperator2(context.CurrentExecutionOperator, propertiesIndex);
             context.CurrentExecutionOperator = valuesOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-            foreach (string metapropertyName in populateMetaproperties)
-            {
-                context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
-            }
 
             return valuesOp;
-
         }
     }
 
@@ -2140,23 +2120,19 @@ namespace GraphView
 
         internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WValueExpression selectStarFlag = Parameters[0] as WValueExpression; 
-            Debug.Assert(selectStarFlag != null, "selectStarFlag != null");
-            bool isSelectStar = int.Parse(selectStarFlag.Value) > 0;
-
-            List<int> targetIndex = new List<int>();
+            List<int> propertiesIndex = new List<int>();
             List<string> populateMetaproperties = new List<string>();
 
-            for (int i = 1; i < Parameters.Count; i++)
+            foreach (WScalarExpression expression in Parameters)
             {
-                WColumnReferenceExpression targetParameter = Parameters[i] as WColumnReferenceExpression;
+                WColumnReferenceExpression targetParameter = expression as WColumnReferenceExpression;
                 if (targetParameter != null)
                 {
-                    targetIndex.Add(context.LocateColumnReference(targetParameter));
+                    propertiesIndex.Add(context.LocateColumnReference(targetParameter));
                     continue;
                 }
 
-                WValueExpression populateMetapropertyNameParameter = Parameters[i] as WValueExpression;
+                WValueExpression populateMetapropertyNameParameter = expression as WValueExpression;
                 if (populateMetapropertyNameParameter != null)
                 {
                     populateMetaproperties.Add(populateMetapropertyNameParameter.Value);
@@ -2165,20 +2141,19 @@ namespace GraphView
 
                 throw new QueryCompilationException(
                     "Parameters of Properties table can only be WColumnReferenceExpression or WValueExpression.");
+
             }
 
-            //
-            // A new Properties operator extracting properties based on the input target's runtime time
-            //
-            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, null, 0);
+            GraphViewExecutionOperator propertiesOp = new PropertiesOperator2(context.CurrentExecutionOperator,
+                propertiesIndex, populateMetaproperties);
             context.CurrentExecutionOperator = propertiesOp;
+
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
             foreach (string metapropertyName in populateMetaproperties) {
                 context.AddField(Alias.Value, metapropertyName, ColumnGraphType.Value);
             }
         
             return propertiesOp;
-
         }
     }
 
