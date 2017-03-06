@@ -837,6 +837,12 @@ namespace GraphView
             }
         }
 
+        public override string ToValue {
+            get {
+                throw new NotSupportedException("Can't get 'ToValue' on a VertexPropertyField");
+            }
+        }
+
         public override JsonDataType JsonDataType { get; set; }
 
         //public VertexPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
