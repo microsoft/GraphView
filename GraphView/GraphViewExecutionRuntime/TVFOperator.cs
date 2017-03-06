@@ -112,11 +112,11 @@ namespace GraphView
                             continue;
                         default:
                             RawRecord r = new RawRecord();
-                            if (property is VertexPropertyField || property is ValuePropertyField) {
+                            if (property is VertexSinglePropertyField || property is ValuePropertyField) {
                                 r.Append(property);
                             }
-                            else if (property is VertexMultiPropertyField) {
-                                foreach (VertexPropertyField p in ((VertexMultiPropertyField) property).Multiples) {
+                            else if (property is VertexPropertyField) {
+                                foreach (VertexSinglePropertyField p in ((VertexPropertyField)property).Multiples) {
                                     r.Append(p);
                                 }
                             }

@@ -52,7 +52,7 @@ namespace GraphView
                     backwardAdjList = property.Value;
                     break;
                 default: // user-defined properties
-                    vertexField.VertexProperties.Add(property.Name, new VertexMultiPropertyField(property));
+                    vertexField.VertexProperties.Add(property.Name, new VertexPropertyField(property));
                     break;
                 }
             }
@@ -664,11 +664,11 @@ namespace GraphView
         }
     }
 
-    internal class VertexPropertyField : PropertyField
+    internal class VertexSinglePropertyField : PropertyField
     {
         public readonly Dictionary<string, ValuePropertyField> MetaProperties = new Dictionary<string, ValuePropertyField>();
 
-        public VertexPropertyField(string propertyName, JObject vertexPropertyObject) 
+        public VertexSinglePropertyField(string propertyName, JObject vertexPropertyObject) 
             : base(propertyName, 
                   vertexPropertyObject["_value"].ToString(), 
                   JsonDataTypeHelper.GetJsonDataType(vertexPropertyObject["_value"].Type))
@@ -723,6 +723,14 @@ namespace GraphView
         }
     }
 
+    internal class EdgePropertyField : PropertyField
+    {
+        public EdgePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
+            : base(propertyName, propertyValue, jsonDataType)
+        {
+        }
+    }
+
     internal class ValuePropertyField : PropertyField
     {
         public ValuePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType) 
@@ -754,17 +762,17 @@ namespace GraphView
         }
     }
 
-    internal class VertexMultiPropertyField : PropertyField
+    internal class VertexPropertyField : PropertyField
     {
-        public readonly List<VertexPropertyField> Multiples = new List<VertexPropertyField>();
+        public readonly List<VertexSinglePropertyField> Multiples = new List<VertexSinglePropertyField>();
 
 
-        //public VertexMultiPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
+        //public VertexPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
         //    : base(propertyName, propertyValue, jsonDataType)
         //{
         //}
 
-        public VertexMultiPropertyField(JProperty multiProperty)
+        public VertexPropertyField(JProperty multiProperty)
             : base(multiProperty.Name, null, JsonDataType.Array)
         {
             this.Replace(multiProperty);
@@ -804,7 +812,7 @@ namespace GraphView
                 Debug.Assert(vertexPropertyObject["_value"] is JValue);
                 Debug.Assert(vertexPropertyObject["_meta"] is JObject);
 
-                this.Multiples.Add(new VertexPropertyField(multiProperty.Name, vertexPropertyObject));
+                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject));
             }
         }
     }
@@ -1083,8 +1091,8 @@ namespace GraphView
             }
         }
 
-        // <Property Name, VertexMultiPropertyField>
-        public Dictionary<string, VertexMultiPropertyField> VertexProperties { get; } = new Dictionary<string, VertexMultiPropertyField>();
+        // <Property Name, VertexPropertyField>
+        public Dictionary<string, VertexPropertyField> VertexProperties { get; } = new Dictionary<string, VertexPropertyField>();
 
         /// <summary>
         /// [Property Name, ValuePropertyField] (that is, "id", "_nextEdgeOffset", "label", "_partition")
@@ -1096,15 +1104,15 @@ namespace GraphView
         /// <summary>
         /// Return all the properties of a vertex, they can be:
         ///  - ValuePropertyField: for reserved properties: id, label, _nextEdgeOffset, _partition (no meta-properties)
-        ///  - VertexPropertyField: for custom properties, single value (may contain meta-properties)
-        ///  - VertexMultiPropertyField: for custom properties, multiple values (may contain meta-properties)
+        ///  - VertexSinglePropertyField: for custom properties, single value (may contain meta-properties)
+        ///  - VertexPropertyField: for custom properties, multiple values (may contain meta-properties)
         /// </summary>
         public IEnumerable<PropertyField> AllProperties {
             get {
                 foreach (KeyValuePair<string, ValuePropertyField> pair in this.VertexMetaProperties) {
                     yield return pair.Value;
                 }
-                foreach (KeyValuePair<string, VertexMultiPropertyField> pair in this.VertexProperties) {
+                foreach (KeyValuePair<string, VertexPropertyField> pair in this.VertexProperties) {
                     yield return pair.Value.ToVertexPropertyFieldIfSingle();
                 }
             }
@@ -1135,7 +1143,7 @@ namespace GraphView
                 if (propertyName.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase))
                     return RevAdjacencyList;
 
-                VertexMultiPropertyField propertyField;
+                VertexPropertyField propertyField;
                 this.VertexProperties.TryGetValue(propertyName, out propertyField);
                 Debug.Assert(propertyField.Multiples.Count > 0, "Vertex's property must contains at least one value");
                 if (propertyField.Multiples.Count == 1) {
@@ -1160,12 +1168,12 @@ namespace GraphView
                 valueProp.Replace(property);
             }
             else {
-                VertexMultiPropertyField multiPropertyField;
-                if (this.VertexProperties.TryGetValue(property.Name, out multiPropertyField)) {
-                    multiPropertyField.Replace(property);
+                VertexPropertyField propertyField;
+                if (this.VertexProperties.TryGetValue(property.Name, out propertyField)) {
+                    propertyField.Replace(property);
                 }
                 else {
-                    this.VertexProperties.Add(property.Name, new VertexMultiPropertyField(property));
+                    this.VertexProperties.Add(property.Name, new VertexPropertyField(property));
                 }
             }
         }
@@ -1173,7 +1181,7 @@ namespace GraphView
 
         public VertexField(GraphViewConnection connection)
         {
-            VertexProperties = new Dictionary<string, VertexMultiPropertyField>();
+            VertexProperties = new Dictionary<string, VertexPropertyField>();
             AdjacencyList = new AdjacencyListField();
             RevAdjacencyList = new AdjacencyListField();
 
@@ -1182,7 +1190,7 @@ namespace GraphView
 
         public override string ToString()
         {
-            VertexMultiPropertyField idProperty;
+            VertexPropertyField idProperty;
             string id;
             if (VertexProperties.TryGetValue("id", out idProperty))
             {
@@ -1199,7 +1207,7 @@ namespace GraphView
         {
             get
             {
-                VertexMultiPropertyField idProperty;
+                VertexPropertyField idProperty;
                 if (VertexProperties.TryGetValue("id", out idProperty))
                 {
                     return idProperty.ToValue;
@@ -1430,7 +1438,7 @@ namespace GraphView
                     sb.Append(", ");
                 }
 
-                VertexMultiPropertyField vp = VertexProperties[propertyName];
+                VertexPropertyField vp = VertexProperties[propertyName];
 
                 if (vp.JsonDataType == JsonDataType.String)
                 {

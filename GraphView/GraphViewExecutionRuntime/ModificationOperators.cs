@@ -214,7 +214,7 @@ namespace GraphView
 
         }
 
-        private void UpdateMetaPropertiesOfVertexProperty(VertexPropertyField vp)
+        private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
         {
 
         }
@@ -242,9 +242,9 @@ namespace GraphView
             PropertyField property = updateTarget as PropertyField;
             if (property != null)
             {
-                if (property is VertexPropertyField)
+                if (property is VertexSinglePropertyField)
                 {
-                    this.UpdateMetaPropertiesOfVertexProperty((VertexPropertyField) property);
+                    this.UpdateMetaPropertiesOfSingleVertexProperty((VertexSinglePropertyField) property);
                 }
                 else
                 {
