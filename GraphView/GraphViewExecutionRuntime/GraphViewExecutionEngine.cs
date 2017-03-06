@@ -19,10 +19,9 @@ namespace GraphView
         public static VertexField ConstructVertexField(GraphViewConnection connection, JObject vertexObject, Dictionary<string, JObject> edgeDocDict)
         {
             VertexField vertexField = new VertexField(connection);
-            vertexField.JsonDocument = vertexObject;
 
-            string vertexId = null;
-            string vertexLabel = null;
+            string vertexId = (string)vertexObject["id"];
+            string vertexLabel = (string)vertexObject["label"];
 
             //
             // "_edge" & "_reverse_edge" could be either JObject or JArray:
@@ -40,12 +39,6 @@ namespace GraphView
                 // "_id", "label", "_nextEdgeOffset", "_partition"
                 if (VertexField.IsVertexMetaProperty(property.Name)) {
                     vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property));
-                    if (property.Name == "id") {
-                        vertexId = (string)property.Value;
-                    }
-                    else if (property.Name == "label") {
-                        vertexLabel = (string)property.Value;
-                    }
                     continue;
                 }
 
@@ -57,14 +50,16 @@ namespace GraphView
                 case "_attachments":
                 case "_ts":
                     continue;
+
                 case "_edge": // "_edge"
                     forwardAdjList = property.Value;
                     break;
                 case "_reverse_edge": // "_reverse_edge"
                     backwardAdjList = property.Value;
                     break;
+
                 default: // user-defined properties
-                    vertexField.VertexProperties.Add(property.Name, new VertexPropertyField(property));
+                    vertexField.VertexProperties.Add(property.Name, new VertexPropertyField(property, vertexField));
                     break;
                 }
             }
@@ -680,12 +675,22 @@ namespace GraphView
     {
         public readonly Dictionary<string, ValuePropertyField> MetaProperties = new Dictionary<string, ValuePropertyField>();
 
-        public VertexSinglePropertyField(string propertyName, JObject vertexPropertyObject) 
+        public string PropertyId { get; }
+
+        public VertexPropertyField VertexProperty { get; }
+
+
+        public VertexSinglePropertyField(string propertyName, JObject vertexSinglePropertyObject, VertexPropertyField vertexPropertyField) 
             : base(propertyName, 
-                  vertexPropertyObject["_value"].ToString(), 
-                  JsonDataTypeHelper.GetJsonDataType(vertexPropertyObject["_value"].Type))
+                  vertexSinglePropertyObject["_value"].ToString(), 
+                  JsonDataTypeHelper.GetJsonDataType(vertexSinglePropertyObject["_value"].Type))
         {
-            this.Replace(vertexPropertyObject);
+            Debug.Assert(vertexSinglePropertyObject["_propId"] != null);
+
+            this.VertexProperty = vertexPropertyField;
+
+            this.PropertyId = (string)vertexSinglePropertyObject["_propId"];
+            this.Replace(vertexSinglePropertyObject);
         }
 
 
@@ -700,12 +705,16 @@ namespace GraphView
             /* Schema of vertexSinglePropertyObject: 
                 {
                   "_value": ...,
+                  "_propId": <GUID>
                   "_meta": { 
                     "K1": "V1", 
                     ...
                   }
                 }
             */
+            Debug.Assert(vertexSinglePropertyObject["_propId"] != null);
+            Debug.Assert((string)vertexSinglePropertyObject["_propId"] == this.PropertyId);
+
             JValue value = (JValue) vertexSinglePropertyObject["_value"];
             this.PropertyValue = value.ToString();
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
@@ -738,9 +747,37 @@ namespace GraphView
 
     internal class EdgePropertyField : PropertyField
     {
-        public EdgePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
+        public EdgeField Edge { get; }
+
+        public EdgePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType, EdgeField edgeField)
             : base(propertyName, propertyValue, jsonDataType)
         {
+            this.Edge = edgeField;
+        }
+
+        public EdgePropertyField(JProperty property, EdgeField edgeField)
+            : base(property.Name,
+                property.Value.ToString(),
+                JsonDataTypeHelper.GetJsonDataType(property.Value.Type))
+        {
+            Debug.Assert(property.Value is JValue);
+
+            this.Edge = edgeField;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("p[{0}]", base.ToString());
+        }
+
+        public void Replace(JProperty property)
+        {
+            Debug.Assert(this.PropertyName == property.Name);
+            Debug.Assert(property.Value is JValue);
+            Debug.Assert(((JValue)property.Value).Type != JTokenType.Null);
+
+            this.PropertyValue = ((JValue)property.Value).ToString(CultureInfo.InvariantCulture);
+            this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(property.Value.Type);
         }
     }
 
@@ -777,7 +814,9 @@ namespace GraphView
 
     internal class VertexPropertyField : PropertyField
     {
-        public readonly List<VertexSinglePropertyField> Multiples = new List<VertexSinglePropertyField>();
+        public List<VertexSinglePropertyField> Multiples { get; } = new List<VertexSinglePropertyField>();
+
+        public VertexField Vertex { get; }
 
         public override string PropertyValue {
             get {
@@ -795,10 +834,11 @@ namespace GraphView
         //{
         //}
 
-        public VertexPropertyField(JProperty multiProperty)
+        public VertexPropertyField(JProperty multiProperty, VertexField vertexField)
             : base(multiProperty.Name, null, JsonDataType.Array)
         {
             this.Replace(multiProperty);
+            this.Vertex = vertexField;
         }
 
 
@@ -820,7 +860,7 @@ namespace GraphView
               <propName>: [
                 {
                   "_value": "Property Value",
-                  "_id": <GUID>
+                  "_propId": <GUID>
                   "_meta": { ... }
                 }, 
                 ...
@@ -835,7 +875,7 @@ namespace GraphView
             Debug.Assert(((JArray)multiProperty.Value).Count == 1);
             JObject tmpVertexPropertyObject = (JObject)((JArray)multiProperty.Value)[0];
             if (this.Multiples.Count == 0) {
-                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, tmpVertexPropertyObject));
+                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, tmpVertexPropertyObject, this));
             }
             else {
                 Debug.Assert(this.Multiples.Count == 1);
@@ -848,7 +888,7 @@ namespace GraphView
                 Debug.Assert(vertexPropertyObject["_value"] is JValue);
                 Debug.Assert(vertexPropertyObject["_meta"] is JObject);
 
-                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject));
+                this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject, this));
             }
         }
     }
@@ -857,7 +897,7 @@ namespace GraphView
     {
 
         // <PropertyName, ValuePropertyField>
-        public Dictionary<string, ValuePropertyField> EdgeProperties;
+        public Dictionary<string, EdgePropertyField> EdgeProperties;
 
         public string Label { get; private set; }
         public string InVLabel { get; private set; }
@@ -869,7 +909,7 @@ namespace GraphView
 
         private EdgeField()
         {
-            this.EdgeProperties = new Dictionary<string, ValuePropertyField>();
+            this.EdgeProperties = new Dictionary<string, EdgePropertyField>();
         }
 
         public FieldObject this[string propertyName]
@@ -878,21 +918,21 @@ namespace GraphView
             {
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
                     return this;
-                ValuePropertyField propertyField;
+                EdgePropertyField propertyField;
                 this.EdgeProperties.TryGetValue(propertyName, out propertyField);
                 return propertyField;
             }
         }
 
 
-        public void UpdateEdgeProperty(JProperty property)
+        public void UpdateEdgeProperty(JProperty property, EdgeField edgeField)
         {
-            ValuePropertyField propertyField;
+            EdgePropertyField propertyField;
             if (this.EdgeProperties.TryGetValue(property.Name, out propertyField)) {
                 propertyField.Replace(property);
             }
             else {
-                this.EdgeProperties.Add(property.Name, new ValuePropertyField(property));
+                this.EdgeProperties.Add(property.Name, new EdgePropertyField(property, this));
             }
         }
 
@@ -997,7 +1037,7 @@ namespace GraphView
             };
 
             foreach (JProperty property in edgeObject.Properties()) {
-                edgeField.EdgeProperties.Add(property.Name, new ValuePropertyField(property));
+                edgeField.EdgeProperties.Add(property.Name, new EdgePropertyField(property, edgeField));
 
                 switch (property.Name) {
                 case "_sinkV": // "_sinkV"
@@ -1025,7 +1065,7 @@ namespace GraphView
             };
 
             foreach (JProperty property in edgeObject.Properties()) {
-                edgeField.EdgeProperties.Add(property.Name, new ValuePropertyField(property));
+                edgeField.EdgeProperties.Add(property.Name, new EdgePropertyField(property, edgeField));
 
                 switch (property.Name) {
                 case "_srcV":
@@ -1158,8 +1198,6 @@ namespace GraphView
         public AdjacencyListField AdjacencyList { get; set; }
         public AdjacencyListField RevAdjacencyList { get; set; }
 
-        public JObject JsonDocument { get; set; }
-
         private GraphViewConnection connection;
 
         public FieldObject this[string propertyName]
@@ -1213,7 +1251,9 @@ namespace GraphView
                     propertyField.Replace(property);
                 }
                 else {
-                    this.VertexProperties.Add(property.Name, new VertexPropertyField(property));
+                    this.VertexProperties.Add(
+                        property.Name, 
+                        new VertexPropertyField(property, this));
                 }
             }
         }

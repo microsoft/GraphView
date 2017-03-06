@@ -88,8 +88,7 @@ namespace GraphView
             // Dictionary<vertexId, vertexObject>
             Dictionary<string, JObject> largeVertexes = new Dictionary<string, JObject>();
 
-            Func<VertexField, RawRecord> makeRawRecord = (vertexField) =>
-            {
+            Func<VertexField, RawRecord> makeRawRecord = (vertexField) => {
                 Debug.Assert(vertexField != null);
 
                 RawRecord rawRecord = new RawRecord();
@@ -104,14 +103,20 @@ namespace GraphView
             };
 
 
+            HashSet<string> gotVertexIds = new HashSet<string>();
+
             foreach (dynamic dynamicItem in items) {
                 JObject vertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
+                string vertexId = (string)vertexObject["id"];
+                if (!gotVertexIds.Add(vertexId)) {
+                    continue;
+                }
 
                 if (EdgeDocumentHelper.IsSpilledVertex(vertexObject, true) ||
                     EdgeDocumentHelper.IsSpilledVertex(vertexObject, false)) {
 
                     // If either incoming or outgoing edges are spilled, retrieve them in a batch.
-                    largeVertexes.Add((string)vertexObject["id"], vertexObject);
+                    largeVertexes.Add(vertexId, vertexObject);
                 }
                 else {
                     // If no edge spilling, return them first

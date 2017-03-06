@@ -568,7 +568,9 @@ namespace GraphView
         }
     }
 
-    public partial class WAddVTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WAddVTableReference2 : WSchemaObjectFunctionTableReference { }
+
+    public partial class WAddVTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WSideEffectTableReference : WSchemaObjectFunctionTableReference {}
 

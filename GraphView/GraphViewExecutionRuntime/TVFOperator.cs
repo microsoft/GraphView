@@ -138,7 +138,7 @@ namespace GraphView
 
                     foreach (var propertyPair in edgeField.EdgeProperties) {
                         string propertyName = propertyPair.Key;
-                        ValuePropertyField propertyField = propertyPair.Value;
+                        EdgePropertyField propertyField = propertyPair.Value;
 
                         switch (propertyName) {
                         // Reversed properties for meta-data
@@ -231,7 +231,7 @@ namespace GraphView
 
                     foreach (var propertyPair in edgeField.EdgeProperties) {
                         string propertyName = propertyPair.Key;
-                        ValuePropertyField propertyField = propertyPair.Value;
+                        EdgePropertyField propertyField = propertyPair.Value;
 
                         switch (propertyName) {
                         // Reversed properties for meta-data

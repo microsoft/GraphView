@@ -678,10 +678,19 @@ namespace GraphView
                             vertexField.VertexProperties.Remove(keyExpression.Value);
                         }
                         else {
+                            string propertyId;
+                            if (vertexField.VertexProperties.ContainsKey(name)) {
+                                propertyId = vertexField.VertexProperties[name].Multiples[0].PropertyId;
+                            }
+                            else {
+                                propertyId = GraphViewConnection.GenerateDocumentId();
+                            }
+
                             JProperty multiProperty = new JProperty(name) {
                                 Value = new JArray {
                                     new JObject {
                                         ["_value"] = value,
+                                        ["_propId"] = propertyId,
                                         ["_meta"] = new JObject(),
                                     }
                                 }
@@ -788,7 +797,7 @@ namespace GraphView
                         if (updatedProperty == null)
                             outEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            outEdgeField.UpdateEdgeProperty(updatedProperty);
+                            outEdgeField.UpdateEdgeProperty(updatedProperty, outEdgeField);
 
                         // Modify edgeObject (update the edge property)
                         updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
@@ -796,7 +805,7 @@ namespace GraphView
                         if (updatedProperty == null)
                             inEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            inEdgeField.UpdateEdgeProperty(updatedProperty);
+                            inEdgeField.UpdateEdgeProperty(updatedProperty, inEdgeField);
                     }
                     else {
                         throw new NotImplementedException();
