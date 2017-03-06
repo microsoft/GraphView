@@ -118,7 +118,7 @@ namespace GraphView
             Incr
         }
 
-        public enum VertexPropertyCardinality
+        public enum PropertyCardinality
         {
             single,
             list,

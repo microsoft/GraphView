@@ -502,19 +502,42 @@ namespace GraphView
         }
     }
 
-    public class WVertexPropertyExpression : WPrimaryExpression
+    public class WPropertyExpression : WPrimaryExpression
     {
-        public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
+        public GremlinKeyword.PropertyCardinality Cardinality { get; set; }
         public WValueExpression Key { get; set; }
         public WValueExpression Value { get; set; }
         public Dictionary<WValueExpression, WValueExpression> MetaProperties { get; set; }
+
+        public override void Accept(WSqlFragmentVisitor visitor)
+        {
+            if (visitor != null)
+                visitor.Visit(this);
+        }
+
+        public override void AcceptChildren(WSqlFragmentVisitor visitor)
+        {
+            Key?.Accept(visitor);
+            Value?.Accept(visitor);
+
+            if (MetaProperties != null)
+            {
+                foreach (KeyValuePair<WValueExpression, WValueExpression> kvp in MetaProperties)
+                {
+                    kvp.Key.Accept(visitor);
+                    kvp.Value.Accept(visitor);
+                }
+            }
+
+            base.AcceptChildren(visitor);
+        }
 
         internal override string ToString(string indent)
         {
             var sb = new StringBuilder();
             sb.AppendFormat("{0}({1}, {2}, {3}",
                 indent,
-                Cardinality == GremlinKeyword.VertexPropertyCardinality.list ? "list" : "singe",
+                Cardinality == GremlinKeyword.PropertyCardinality.list ? "list" : "singe",
                 Key.ToString(), Value.ToString());
             if (MetaProperties.Count > 0)
             {

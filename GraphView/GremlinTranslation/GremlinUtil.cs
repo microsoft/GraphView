@@ -79,7 +79,7 @@ namespace GraphView
 
     public class GremlinVertexProperty
     {
-        public GremlinVertexProperty(GremlinKeyword.VertexPropertyCardinality cardinality,
+        public GremlinVertexProperty(GremlinKeyword.PropertyCardinality cardinality,
             string key, object value, Dictionary<string, object> metaProperties)
         {
             Cardinality = cardinality;
@@ -88,19 +88,19 @@ namespace GraphView
             MetaProperties = metaProperties ?? new Dictionary<string, object>();
         }
 
-        public GremlinKeyword.VertexPropertyCardinality Cardinality { get; set; }
+        public GremlinKeyword.PropertyCardinality Cardinality { get; set; }
         public string Key { get; set; }
         public object Value { get; set; }
         public Dictionary<string, object> MetaProperties { get; set; }
 
-        public WVertexPropertyExpression ToVertexPropertyExpr()
+        public WPropertyExpression ToVertexPropertyExpr()
         {
             Dictionary<WValueExpression, WValueExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WValueExpression>();
             foreach (var property in MetaProperties)
             {
                 metaPropertiesExpr[SqlUtil.GetValueExpr(property.Key)] = SqlUtil.GetValueExpr(property.Value);
             }
-            return new WVertexPropertyExpression()
+            return new WPropertyExpression()
             {
                 Cardinality = Cardinality,
                 Key = SqlUtil.GetValueExpr(Key),
