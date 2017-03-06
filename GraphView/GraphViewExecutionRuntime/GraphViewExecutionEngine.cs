@@ -38,7 +38,7 @@ namespace GraphView
                 // For meta-properties
                 // "_id", "label", "_nextEdgeOffset", "_partition"
                 if (VertexField.IsVertexMetaProperty(property.Name)) {
-                    vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property));
+                    vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, vertexField));
                     continue;
                 }
 
@@ -617,6 +617,8 @@ namespace GraphView
 
         protected PropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
         {
+            Debug.Assert(this is VertexPropertyField || propertyValue != null);
+
             PropertyName = propertyName;
             PropertyValue = propertyValue;
             JsonDataType = jsonDataType;
@@ -738,7 +740,7 @@ namespace GraphView
                     metaPropertyKeysToRemove.Remove(metaProperty.Name);
                 }
                 else {
-                    this.MetaProperties.Add(metaProperty.Name, new ValuePropertyField(metaProperty));
+                    this.MetaProperties.Add(metaProperty.Name, new ValuePropertyField(metaProperty, this));
                 }
             }
 
@@ -793,17 +795,47 @@ namespace GraphView
 
     internal class ValuePropertyField : PropertyField
     {
-        public ValuePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType) 
+        /// <summary>
+        /// If this is a vertex meta property (id, label, ...), its parent is VertexField
+        /// If this is a vertex-property's meta property, its parent is VertexSinglePropertyField
+        /// </summary>
+        public FieldObject Parent { get; }
+
+        public ValuePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType, VertexField vertexField)
             : base(propertyName, propertyValue, jsonDataType)
         {
+            Debug.Assert(VertexField.IsVertexMetaProperty(propertyName));
+
+            this.Parent = vertexField;
         }
 
-        public ValuePropertyField(JProperty property)
+        public ValuePropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType, VertexSinglePropertyField vertexSingleProperty)
+            : base(propertyName, propertyValue, jsonDataType)
+        {
+            this.Parent = vertexSingleProperty;
+        }
+
+        
+        public ValuePropertyField(JProperty property, VertexField vertexField)
             : base(property.Name,
                 property.Value.ToString(),
                 JsonDataTypeHelper.GetJsonDataType(property.Value.Type))
         {
             Debug.Assert(property.Value is JValue);
+
+            this.Parent = vertexField;
+        }
+
+
+        public ValuePropertyField(JProperty property, VertexSinglePropertyField vertexSingleProperty)
+            : base(property.Name,
+                property.Value.ToString(),
+                JsonDataTypeHelper.GetJsonDataType(property.Value.Type))
+        {
+            Debug.Assert(VertexField.IsVertexMetaProperty(property.Name));
+            Debug.Assert(property.Value is JValue);
+
+            this.Parent = vertexSingleProperty;
         }
 
         public override string ToString()
@@ -816,6 +848,8 @@ namespace GraphView
             Debug.Assert(this.PropertyName == property.Name);
             Debug.Assert(property.Value is JValue);
             Debug.Assert(((JValue)property.Value).Type != JTokenType.Null);
+
+            Debug.Assert(this.Parent is VertexSinglePropertyField);
 
             this.PropertyValue = ((JValue)property.Value).ToString(CultureInfo.InvariantCulture);
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(property.Value.Type);
@@ -1191,6 +1225,8 @@ namespace GraphView
         /// "_edge" and "_reverse_edge" is not included
         /// </summary>
         public Dictionary<string, ValuePropertyField> VertexMetaProperties { get; } = new Dictionary<string, ValuePropertyField>();
+
+        public string VertexId => this.VertexMetaProperties["id"].PropertyValue;
 
 
         /// <summary>

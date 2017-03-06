@@ -199,6 +199,22 @@ namespace GraphView
         }
     }
 
+
+    partial class WDropTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            var dropTargetParameter = Parameters[0] as WColumnReferenceExpression;
+            var dropTargetIndex = context.LocateColumnReference(dropTargetParameter);
+
+            var dropOp = new DropOperator(context.CurrentExecutionOperator, dbConnection, dropTargetIndex);
+            context.CurrentExecutionOperator = dropOp;
+
+            return dropOp;
+        }
+    }
+
+
     partial class WDropNodeTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)

@@ -586,7 +586,9 @@ namespace GraphView
 
     public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
+
+    public partial class WDropPropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WUpdateVertexPropertiesTableReference : WSchemaObjectFunctionTableReference {}
 

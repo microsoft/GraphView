@@ -112,59 +112,99 @@ namespace GraphView
 
     internal class DropOperator : ModificationBaseOpertaor2
     {
-        private int dropTargetIndex;
+        private readonly int dropTargetIndex;
+        private readonly GraphViewConnection connection;
 
-        public DropOperator(GraphViewExecutionOperator duumyInputOp, GraphViewConnection connection, int dropTargetIndex)
-            : base(duumyInputOp, connection)
+        public DropOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection, int dropTargetIndex)
+            : base(dummyInputOp, connection)
         {
             this.dropTargetIndex = dropTargetIndex;
+            this.connection = connection;
         }
 
-        private void DropVertex(string vertexId)
+        private void DropVertex(VertexField vertexField)
         {
-            
+            // TODO:
         }
 
-        private void DropEdge(string srcVertexId, long edgeOffset)
+        private void DropEdge(EdgeField edgeField)
         {
-            
+            // TODO:
         }
 
         private void DropVertexProperty(VertexPropertyField vp)
         {
-            
+            // Update DocDB
+            VertexField vertexField = vp.Vertex;
+            JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
+
+            Debug.Assert(vertexObject[vp.PropertyName] != null);
+            vertexObject[vp.PropertyName].Remove();
+
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
+
+            // Update vertex field
+            vertexField.VertexProperties.Remove(vp.PropertyName);
+        }
+
+        private void DropVertexSingleProperty(VertexSinglePropertyField vp)
+        {
+            // Update DocDB
+            VertexField vertexField = vp.VertexProperty.Vertex;
+            JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
+
+            Debug.Assert(vertexObject[vp.PropertyName] != null);
+            ((JArray)vertexObject[vp.PropertyName])
+                .First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
+                .Remove();
+
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
+
+            // Update vertex field
+            vertexField.VertexProperties.Remove(vp.PropertyName);
+        }
+
+        private void DropVertexMetaProperty(ValuePropertyField metaProperty)
+        {
+            // Update DocDB
+            Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
+            VertexSinglePropertyField vertexSingleProperty = (VertexSinglePropertyField)metaProperty.Parent;
+
+            VertexField vertexField = vertexSingleProperty.VertexProperty.Vertex;
+            JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
+
+            Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
+            ((JArray)vertexObject[vertexSingleProperty.PropertyName])
+                .First(singleProperty => (string)singleProperty["_propId"] == vertexSingleProperty.PropertyId)
+                ["_meta"]
+                [metaProperty.PropertyName]
+                .Remove();
+
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
+
+            // Update vertex field
+            vertexSingleProperty.MetaProperties.Remove(metaProperty.PropertyName);
         }
 
         private void DropEdgeProperty(EdgePropertyField ep)
         {
-            
+            // TODO:
         }
-
-        //private void DropMetaProperty(MetaPropertyField p)
-        //{
-            
-        //}
 
         internal override RawRecord DataModify(RawRecord record)
         {
             FieldObject dropTarget = record[this.dropTargetIndex];
 
-            VertexField vertex = dropTarget as VertexField;;
-            if (vertex != null)
-            {
-                string vertexId = vertex["id"].ToValue;
-                this.DropVertex(vertexId);
-
+            VertexField vertexField = dropTarget as VertexField;;
+            if (vertexField != null) {
+                this.DropVertex(vertexField);
                 return null;
             }
 
-            EdgeField edge = dropTarget as EdgeField;
-            if (edge != null)
+            EdgeField edgeField = dropTarget as EdgeField;
+            if (edgeField != null)
             {
-                string srcVertexId = edge.OutV;
-                long edgeOffset = edge.Offset;
-                this.DropEdge(srcVertexId, edgeOffset);
-
+                this.DropEdge(edgeField);
                 return null;
             }
 
@@ -175,14 +215,18 @@ namespace GraphView
                 {
                     this.DropVertexProperty((VertexPropertyField)property);
                 }
+                else if (property is VertexSinglePropertyField)
+                {
+                    this.DropVertexSingleProperty((VertexSinglePropertyField)property);
+                }
                 else if (property is EdgePropertyField)
                 {
                     this.DropEdgeProperty((EdgePropertyField)property);
                 }
-                //else
-                //{
-                //    this.DropMetaProperty((MetaPropertyField) property);
-                //}
+                else
+                {
+                    this.DropVertexMetaProperty((ValuePropertyField)property);
+                }
 
                 return null;
             }
@@ -190,6 +234,7 @@ namespace GraphView
             //
             // Should not reach here
             //
+            throw new Exception("BUG: Should not get here");
             return null;
         }
     }
