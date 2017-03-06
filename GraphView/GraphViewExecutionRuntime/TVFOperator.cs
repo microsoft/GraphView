@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -93,9 +94,8 @@ namespace GraphView
             if (allPropertyIndex >= 0 && record[allPropertyIndex] != null) {
                 VertexField vertexField = record[allPropertyIndex] as VertexField;
                 if (vertexField != null) {
-                    foreach (var propertyPair in vertexField.VertexProperties) {
-                        string propertyName = propertyPair.Key;
-                        VertexPropertyField propertyField = propertyPair.Value;
+                    foreach (PropertyField property in vertexField.AllProperties) {
+                        string propertyName = property.PropertyName;
 
                         switch (propertyName) {
                         // Reversed properties for meta-data
@@ -112,7 +112,18 @@ namespace GraphView
                             continue;
                         default:
                             RawRecord r = new RawRecord();
-                            r.Append(propertyField);
+                            if (property is VertexPropertyField || property is ValuePropertyField) {
+                                r.Append(property);
+                            }
+                            else if (property is VertexMultiPropertyField) {
+                                foreach (VertexPropertyField p in ((VertexMultiPropertyField) property).Multiples) {
+                                    r.Append(p);
+                                }
+                            }
+                            else {
+                                Debug.Assert(false, $"[PropertiesOperator.CrossApply] property type error: {property.GetType()}");
+                            }
+
                             results.Add(r);
                             break;
                         }
@@ -127,7 +138,7 @@ namespace GraphView
 
                     foreach (var propertyPair in edgeField.EdgeProperties) {
                         string propertyName = propertyPair.Key;
-                        EdgePropertyField propertyField = propertyPair.Value;
+                        ValuePropertyField propertyField = propertyPair.Value;
 
                         switch (propertyName) {
                         // Reversed properties for meta-data
@@ -187,15 +198,14 @@ namespace GraphView
             {
                 VertexField vertexField = record[allValuesIndex] as VertexField;
                 if (vertexField != null) {
-                    foreach (var propertyPair in vertexField.VertexProperties) {
-                        string propertyName = propertyPair.Key;
-                        VertexPropertyField propertyField = propertyPair.Value;
+                    foreach (PropertyField property in vertexField.AllProperties) {
+                        string propertyName = property.PropertyName;
 
                         switch (propertyName) {
                         // Reversed properties for meta-data
                         case "_edge":
-                        case "_partition":
                         case "_reverse_edge":
+                        case "_partition":
                         case "_nextEdgeOffset":
 
                         case "_rid":
@@ -206,7 +216,7 @@ namespace GraphView
                             continue;
                         default:
                             RawRecord r = new RawRecord();
-                            r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
+                            r.Append(new StringField(property.PropertyValue, property.JsonDataType));
                             results.Add(r);
                             break;
                         }
@@ -221,7 +231,7 @@ namespace GraphView
 
                     foreach (var propertyPair in edgeField.EdgeProperties) {
                         string propertyName = propertyPair.Key;
-                        EdgePropertyField propertyField = propertyPair.Value;
+                        ValuePropertyField propertyField = propertyPair.Value;
 
                         switch (propertyName) {
                         // Reversed properties for meta-data

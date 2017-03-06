@@ -551,7 +551,7 @@ namespace GraphView
 
             if (vertexField != null)
             {
-                if (vertexField.VertexProperties.ContainsKey(_propertyName))
+                if (vertexField.AllProperties.Count(pf => pf.PropertyName ==  _propertyName) > 0)
                     return new StringField("true", JsonDataType.Boolean);
                 else
                     return new StringField("false", JsonDataType.Boolean);

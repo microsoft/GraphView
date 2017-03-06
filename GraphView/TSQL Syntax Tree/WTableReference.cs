@@ -514,9 +514,26 @@ namespace GraphView
             {
                 var key = (Parameters[i] as WValueExpression).Value;
 
-                //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, value, key).ToString();
+                //GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
+                //    Parameters[i + 1] as WValueExpression);
+                JObject tmp = new JObject();
                 GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
                     Parameters[i + 1] as WValueExpression);
+                string name = (Parameters[i] as WValueExpression).Value;
+                JToken value = (Parameters[i + 1] as WValueExpression).ToJValue();
+                if (value != null) {
+                    if (VertexField.IsVertexMetaProperty(name)) {
+                        nodeJsonDocument[name] = value;
+                    }
+                    else {
+                        nodeJsonDocument[name] = new JArray {
+                            new JObject {
+                                ["_value"] = value,
+                                ["_meta"] = new JObject(),
+                            },
+                        };
+                    }
+                }
 
                 if (!projectedFieldList.Contains(key))
                     projectedFieldList.Add(key);

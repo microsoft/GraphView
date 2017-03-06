@@ -521,12 +521,22 @@ namespace GraphView
 
                     if (mode == UpdatePropertyMode.Set)
                     {
-                        JProperty updatedProperty = GraphViewJsonCommand.UpdateProperty(vertexDocObject, keyExpression, valueExpression);
-                        if (updatedProperty == null)
+                        JProperty hackTmp = GraphViewJsonCommand.UpdateProperty(vertexDocObject, keyExpression, valueExpression);
+
+                        if (hackTmp == null)
                             vertexField.VertexProperties.Remove(keyExpression.Value);
-                        else
-                            vertexField.UpdateVertexProperty(updatedProperty.Name, updatedProperty.Value.ToString(),
-                                JsonDataTypeHelper.GetJsonDataType(updatedProperty.Value.Type));
+                        else {
+                            JProperty multiProperty = new JProperty(hackTmp.Name) {
+                                Value = new JArray {
+                                    new JObject {
+                                        ["_value"] = hackTmp.Value,
+                                        ["_meta"] = new JObject(),
+                                    }
+                                }
+                            };
+
+                            vertexField.ReplaceProperty(multiProperty);
+                        }
                     }
                     else {
                         throw new NotImplementedException();
@@ -626,8 +636,7 @@ namespace GraphView
                         if (updatedProperty == null)
                             outEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            outEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString(),
-                                JsonDataTypeHelper.GetJsonDataType(updatedProperty.Value.Type));
+                            outEdgeField.UpdateEdgeProperty(updatedProperty);
 
                         // Modify edgeObject (update the edge property)
                         updatedProperty = GraphViewJsonCommand.UpdateProperty(inEdgeObject, keyExpression, valueExpression);
@@ -635,8 +644,7 @@ namespace GraphView
                         if (updatedProperty == null)
                             inEdgeField.EdgeProperties.Remove(keyExpression.Value);
                         else
-                            inEdgeField.UpdateEdgeProperty(updatedProperty.Name, updatedProperty.Value.ToString(),
-                                JsonDataTypeHelper.GetJsonDataType(updatedProperty.Value.Type));
+                            inEdgeField.UpdateEdgeProperty(updatedProperty);
                     }
                     else {
                         throw new NotImplementedException();

@@ -118,8 +118,8 @@ namespace GraphView
 
         public enum VertexPropertyCardinality
         {
-            single,
-            list,
+            single,   // Set
+            list,     // Append
             //set
         }
 

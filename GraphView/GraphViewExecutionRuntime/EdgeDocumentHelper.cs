@@ -537,10 +537,10 @@ namespace GraphView
                 string srcVLabel = edgeMetadata["_srcVLabel"]?.ToString();
 
                 EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-                edgeField.EdgeProperties.Add("_srcV", new EdgePropertyField("_srcV", srcV, JsonDataType.String));
+                edgeField.EdgeProperties.Add("_srcV", new ValuePropertyField("_srcV", srcV, JsonDataType.String));
                 if (srcVLabel != null) {
                     edgeField.EdgeProperties.Add("_srcVLabel",
-                        new EdgePropertyField("_srcVLabel", srcVLabel, JsonDataType.String));
+                        new ValuePropertyField("_srcVLabel", srcVLabel, JsonDataType.String));
                 }
 
                 result.AddEdgeField(srcV, (long)edgeObject["_offset"], edgeField);
@@ -582,10 +582,10 @@ namespace GraphView
                 string srcVLabel = edgeMetadata["_srcVLabel"]?.ToString();
 
                 EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-                edgeField.EdgeProperties.Add("_srcV", new EdgePropertyField("_srcV", srcV, JsonDataType.String));
+                edgeField.EdgeProperties.Add("_srcV", new ValuePropertyField("_srcV", srcV, JsonDataType.String));
                 if (srcVLabel != null) {
                     edgeField.EdgeProperties.Add("_srcVLabel",
-                        new EdgePropertyField("_srcVLabel", srcVLabel, JsonDataType.String));
+                        new ValuePropertyField("_srcVLabel", srcVLabel, JsonDataType.String));
                 }
 
                 AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
