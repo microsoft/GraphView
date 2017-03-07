@@ -43,10 +43,10 @@ namespace GraphView
                 parameters.Add(InputVariable.DefaultVariableProperty().ToScalarExpression());
             }
 
-            var secondTableRef = SqlUtil.GetFunctionTableReference(
+            var tableRef = SqlUtil.GetFunctionTableReference(
                 Scope == GremlinKeyword.Scope.global ? GremlinKeyword.func.DedupGlobal : GremlinKeyword.func.DedupLocal,
-                parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+                parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

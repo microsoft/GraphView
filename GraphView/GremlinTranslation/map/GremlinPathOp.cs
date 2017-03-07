@@ -11,6 +11,10 @@ namespace GraphView
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
 
             inputContext.PivotVariable.Path(inputContext);
 
@@ -37,28 +41,10 @@ namespace GraphView
 
             if (ByList.Count == 0)
             {
-                ByList.Add(inputContext.PivotVariable.DefaultProjection());
+                ByList.Add(GremlinKeyword.TableDefaultColumnName);
             }
 
-            List<object> byList = new List<object>();
-            foreach (var item in ByList)
-            {
-                if (item is GraphTraversal2)
-                {
-                    (item as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
-                    byList.Add((item as GraphTraversal2).GetEndOp().GetContext());
-                }
-                else if (item is string)
-                {
-                    byList.Add(item);
-                }
-                else
-                {
-                    throw new QueryCompilationException("Can't process this type : " + item.GetType());
-                }
-            }
-
-            inputContext.PivotVariable.Path2(inputContext, byList);
+            inputContext.PivotVariable.Path2(inputContext, ByList);
 
             return inputContext;
         }

@@ -21,6 +21,11 @@ namespace GraphView
         {
             GremlinToSqlContext inputContext = GetInputContext();
 
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("AddE should follow by a Vertex");
+            } 
+
             inputContext.PivotVariable.AddE(inputContext, EdgeLabel);
 
             return inputContext;

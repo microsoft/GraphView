@@ -31,8 +31,8 @@ namespace GraphView
                     parameters.Add(ProjectVariable.GetVariableProperty(property).ToScalarExpression());
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

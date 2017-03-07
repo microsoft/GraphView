@@ -57,14 +57,6 @@ namespace GraphView
             queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetFunctionCall(GremlinKeyword.func.Fold, foldParameters), GremlinKeyword.TableDefaultColumnName));
             return SqlUtil.GetDerivedTable(queryBlock, GetVariableName());
         }
-
-        internal override void Unfold(GremlinToSqlContext currentContext)
-        {
-            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
-        }
     }
 
     internal class GremlinCountVariable : GremlinDerivedTableVariable

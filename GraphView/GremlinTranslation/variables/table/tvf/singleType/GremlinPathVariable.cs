@@ -29,8 +29,8 @@ namespace GraphView
             {
                 parameters.Add(path.ToScalarExpression());    
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Path, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

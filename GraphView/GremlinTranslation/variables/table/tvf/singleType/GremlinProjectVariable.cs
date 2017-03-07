@@ -30,9 +30,9 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetScalarSubquery(ProjectContextList[i % ProjectContextList.Count].ToSelectQueryBlock()));
                 parameters.Add(SqlUtil.GetValueExpr(ProjectKeys[i]));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, this, GetVariableName());
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Project, parameters, GetVariableName());
 
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
 
         internal override void Select(GremlinToSqlContext currentContext, string label)

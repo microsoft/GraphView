@@ -58,14 +58,5 @@ namespace GraphView
         {
             return GetVariableType();
         }
-
-        internal override void Unfold(GremlinToSqlContext currentContext)
-        {
-            GremlinTableVariable newVariable = GremlinUnfoldVariable.Create(this);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
-        }
-
     }
 }

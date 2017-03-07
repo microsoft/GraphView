@@ -871,13 +871,26 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 Property(params object[] keyValues)
+        public GraphTraversal2 Property(string key, object value, params object[] keyValues)
         {
-            AddGremlinOperator(new GremlinPropertyOp(keyValues));
+            return Property(GremlinKeyword.PropertyCardinality.single, key, value, keyValues);
+        }
+
+        public GraphTraversal2 Property(GremlinKeyword.PropertyCardinality cardinality, string key, object value,
+            params object[] keyValues)
+        {
+            if (keyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
+            Dictionary<string, object> metaProperties = new Dictionary<string, object>();
+            for (var i = 0; i < keyValues.Length; i += 2)
+            {
+                metaProperties[keyValues[i] as string] = keyValues[i + 1];
+            }
+            GremlinProperty property = new GremlinProperty(cardinality, key, value, metaProperties);
+            AddGremlinOperator(new GremlinPropertyOp(property));
             return this;
         }
 
-        public GraphTraversal2 PropertyMap(params string[] propertyKeys)
+        public GraphTraversal2 PropertyMap()
         {
             throw new NotImplementedException();
         }

@@ -37,16 +37,8 @@ namespace GraphView
             {
                 parameters.Add(SqlUtil.GetValueExpr(ConstantValue));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Constant, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
-        }
-
-        internal override void Unfold(GremlinToSqlContext currentContext)
-        {
-            GremlinTableVariable newVariable = new GremlinUnfoldScalarVariable(this);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Constant, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

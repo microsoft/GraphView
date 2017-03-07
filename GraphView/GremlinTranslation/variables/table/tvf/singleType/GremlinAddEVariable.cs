@@ -11,14 +11,14 @@ namespace GraphView
         public GremlinVariable InputVariable { get; set; }
         public GremlinToSqlContext FromVertexContext { get; set; }
         public GremlinToSqlContext ToVertexContext { get; set; }
-        public List<object> EdgeProperties { get; set; }
+        public List<GremlinProperty> EdgeProperties { get; set; }
         public string EdgeLabel { get; set; }
 
         private int OtherVIndex;
 
         public GremlinAddETableVariable(GremlinVariable inputVariable, string edgeLabel)
         {
-            EdgeProperties = new List<object>();
+            EdgeProperties = new List<GremlinProperty>();
             EdgeLabel = edgeLabel;
             InputVariable = inputVariable;
             EdgeType = WEdgeType.OutEdge;
@@ -29,89 +29,8 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-            EdgeProperties.Add(property);
-            EdgeProperties.Add(null);
+            EdgeProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.single, property , null, null));
             base.Populate(property);
-        }
-
-        internal override void InV(GremlinToSqlContext currentContext)
-        {
-            currentContext.InV(this);
-        }
-
-        internal override void OutV(GremlinToSqlContext currentContext)
-        {
-            currentContext.OutV(this);
-        }
-
-        internal override void OtherV(GremlinToSqlContext currentContext)
-        {
-            currentContext.OtherV(this);
-        }
-
-        internal override void Drop(GremlinToSqlContext currentContext)
-        {
-            currentContext.DropEdge(this);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
-        {
-            currentContext.Has(this, propertyKey);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
-        {
-            currentContext.Has(this, propertyKey, propertyContext);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
-        {
-            currentContext.Has(this, propertyKey, value);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
-        {
-            currentContext.Has(this, label, propertyKey, value);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
-        {
-            currentContext.Has(this, propertyKey, predicate);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
-        {
-            currentContext.Has(this, label, propertyKey, predicate);
-        }
-
-        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
-        {
-            currentContext.HasId(this, values);
-        }
-
-        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            currentContext.HasId(this, predicate);
-        }
-
-        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
-        {
-            currentContext.HasLabel(this, values);
-        }
-
-        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            currentContext.HasLabel(this, predicate);
-        }
-
-        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
-        {
-            currentContext.Properties(this, propertyKeys);
-        }
-
-        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
-        {
-            currentContext.Values(this, propertyKeys);
         }
 
         public override WTableReference ToTableReference()
@@ -131,14 +50,14 @@ namespace GraphView
                 parameters.Add(SqlUtil.GetValueExpr(GremlinKeyword.Label));
                 parameters.Add(SqlUtil.GetValueExpr(EdgeLabel));
             }
-            for (var i = 0; i < EdgeProperties.Count; i += 2)
+            foreach (var property in EdgeProperties)
             {
-                parameters.Add(SqlUtil.GetValueExpr(EdgeProperties[i]));
-                parameters.Add(SqlUtil.GetValueExpr(EdgeProperties[i+1]));
+                parameters.Add(SqlUtil.GetValueExpr(property.Key));
+                parameters.Add(SqlUtil.GetValueExpr(property.Value));
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, this, GetVariableName());
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AddE, parameters, GetVariableName());
 
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
 
         private WSelectQueryBlock GetSelectQueryBlock(GremlinToSqlContext context)
@@ -173,10 +92,10 @@ namespace GraphView
             FromVertexContext.HomeVariable = this;
         }
 
-        internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
+        internal override void Property(GremlinToSqlContext currentContext, GremlinProperty property)
         {
-             ProjectedProperties.Add(properties.First() as string);
-             EdgeProperties.AddRange(properties);
+            ProjectedProperties.Add(property.Key);
+            EdgeProperties.Add(property);
         }
 
         internal void To(GremlinToSqlContext currentContext, string label)

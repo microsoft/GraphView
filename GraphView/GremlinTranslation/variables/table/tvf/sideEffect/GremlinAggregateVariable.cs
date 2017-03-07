@@ -32,8 +32,8 @@ namespace GraphView
             selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ProjectContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
             parameters.Add(SqlUtil.GetScalarSubquery(selectQueryBlock));
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Aggregate, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Aggregate, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

@@ -31,43 +31,34 @@ namespace GraphView
             }
 
             List<object> byParameters = new List<object>();
-
-            if (GroupBy == null || GroupBy as string == "")
+            if (GroupBy == null)
             {
-                GroupBy = inputContext.PivotVariable.DefaultProjection();
+                byParameters.Add(inputContext.PivotVariable.DefaultProjection());
             }
             else if (GroupBy is string)
             {
-                GroupBy = inputContext.PivotVariable.GetVariableProperty(GroupBy as string);
+                byParameters.Add((string)GroupBy == "" ? inputContext.PivotVariable.DefaultProjection()
+                                                       : inputContext.PivotVariable.GetVariableProperty((string)GroupBy));
+            }
+            else if (GroupBy is GraphTraversal2)
+            {
+                ((GraphTraversal2)GroupBy).GetStartOp().InheritedVariableFromParent(inputContext);
+                byParameters.Add(((GraphTraversal2)GroupBy).GetEndOp().GetContext());
             }
 
-            if (ProjectBy == null || ProjectBy as string == "")
+            if (ProjectBy == null)
             {
-                ProjectBy = inputContext.PivotVariable.DefaultProjection();
+                byParameters.Add(inputContext.PivotVariable.DefaultProjection());
             }
             else if (ProjectBy is string)
             {
-                ProjectBy = inputContext.PivotVariable.GetVariableProperty(ProjectBy as string);
+                byParameters.Add((string)ProjectBy == "" ? inputContext.PivotVariable.DefaultProjection()
+                                                         : inputContext.PivotVariable.GetVariableProperty((string)ProjectBy));
             }
-
-            if (GroupBy is GraphTraversal2)
+            else if (ProjectBy is GraphTraversal2)
             {
-                (GroupBy as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
-                byParameters.Add((GroupBy as GraphTraversal2).GetEndOp().GetContext());
-            }
-            else
-            {
-                byParameters.Add(GroupBy);
-            }
-
-            if (ProjectBy is GraphTraversal2)
-            {
-                (ProjectBy as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
-                byParameters.Add((ProjectBy as GraphTraversal2).GetEndOp().GetContext());
-            }
-            else
-            {
-                byParameters.Add(ProjectBy);
+                ((GraphTraversal2)ProjectBy).GetStartOp().InheritedVariableFromParent(inputContext);
+                byParameters.Add(((GraphTraversal2)ProjectBy).GetEndOp().GetContext());
             }
 
             inputContext.PivotVariable.Group(inputContext, SideEffect, byParameters);

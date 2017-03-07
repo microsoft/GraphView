@@ -406,6 +406,8 @@ namespace GraphView
 
     public partial class WBoundInEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WDecompose1TableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WFlatMapTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WKeyTableReference : WSchemaObjectFunctionTableReference {}
@@ -582,6 +584,8 @@ namespace GraphView
 
     public partial class WDedupLocalTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WDropTableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WDropNodeTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WDropEdgeTableReference : WSchemaObjectFunctionTableReference {}
@@ -594,9 +598,9 @@ namespace GraphView
 
     public partial class WUpdateMetaPropertiesTableReference : WSchemaObjectFunctionTableReference { }
 
-    public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
-
     public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference { }
+
+    public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WStoreTableReference : WSchemaObjectFunctionTableReference {}
 

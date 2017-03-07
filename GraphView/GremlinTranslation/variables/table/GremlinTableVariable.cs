@@ -112,19 +112,4 @@ namespace GraphView
     {
         public GremlinEdgeTableVariable(): base(GremlinVariableType.Edge) {}
     }
-
-    internal abstract class GremlinPropertyTableVariable : GremlinTableVariable
-    {
-        public GremlinPropertyTableVariable(): base(GremlinVariableType.Property) { }
-    }
-
-    internal abstract class GremlinDropVariable : GremlinTableVariable
-    {
-        public GremlinDropVariable() : base(GremlinVariableType.NULL) {}
-
-        internal override GremlinVariableType GetVariableType()
-        {
-            return GremlinVariableType.NULL;
-        }
-    }
 }

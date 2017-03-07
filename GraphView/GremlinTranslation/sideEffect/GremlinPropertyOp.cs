@@ -9,20 +9,30 @@ namespace GraphView
 {
     internal class GremlinPropertyOp: GremlinTranslationOperator
     {
-        public List<object> Properties { get; set; }
+        private GremlinProperty property;
 
-        public GremlinPropertyOp(params object[] properties)
+        public GremlinPropertyOp(GremlinProperty property)
         {
-            if (properties.Length % 2 != 0) throw new Exception("The parameter of property should be even");
-            if (properties.Length < 2) throw new Exception("The number of parameter of property should be larger than 2");
-            Properties = new List <object>(properties);
+            this.property = property;
         }
 
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
+            if (inputContext.PivotVariable == null)
+            {
+                throw new QueryCompilationException("The PivotVariable can't be null.");
+            }
 
-            inputContext.PivotVariable.Property(inputContext, Properties);
+            GremlinVariableType pivotType = inputContext.PivotVariable.GetVariableType();
+            if (   pivotType != GremlinVariableType.Vertex
+                && pivotType != GremlinVariableType.Table
+                && (this.property.Cardinality == GremlinKeyword.PropertyCardinality.list
+                    || this.property.MetaProperties.Count > 0))
+            {
+                throw new QueryCompilationException("Only vertex can use PropertyCardinality.list and have meta properties");
+            }
+            inputContext.PivotVariable.Property(inputContext, property);
 
             return inputContext;
         }

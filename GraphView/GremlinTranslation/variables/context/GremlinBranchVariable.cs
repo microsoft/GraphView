@@ -12,6 +12,7 @@ namespace GraphView
                                                     GremlinVariable parentVariable,
                                                     List<List<GremlinVariable>> brachVariableList)
         {
+            //TODO: refactor
             if (CheckIsTheSameType(brachVariableList))
             {
                 switch (brachVariableList.First().First().GetVariableType())
@@ -46,12 +47,6 @@ namespace GraphView
         {
             return GremlinVariableType.Table;
         }
-
-        //internal override string GetPrimaryKey()
-        //{
-        //    Populate(GremlinKeyword.TableDefaultColumnName);
-        //    return GremlinKeyword.TableDefaultColumnName;
-        //}
 
         internal override string GetProjectKey()
         {

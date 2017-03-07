@@ -26,7 +26,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                currentContext.Both(this, edgeLabels);
+                base.Both(currentContext, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable bothEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.BothEdge);
@@ -47,7 +47,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                currentContext.In(this, edgeLabels);
+                base.In(currentContext, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
@@ -65,7 +65,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                currentContext.InE(this, edgeLabels);
+                base.InE(currentContext, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
@@ -79,7 +79,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                currentContext.Out(this, edgeLabels);
+                base.Out(currentContext, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable outEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
@@ -96,7 +96,7 @@ namespace GraphView
         {
             if (this.isTraversalToBound)
             {
-                currentContext.OutE(this, edgeLabels);
+                base.OutE(currentContext, edgeLabels);
                 return;
             }
             GremlinFreeEdgeTableVariable outEdgeTableVar = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
@@ -104,71 +104,6 @@ namespace GraphView
             currentContext.AddLabelPredicateForEdge(outEdgeTableVar, edgeLabels);
             currentContext.AddPath(new GremlinMatchPath(this, outEdgeTableVar, null));
             currentContext.SetPivotVariable(outEdgeTableVar);
-        }
-
-        internal override void Drop(GremlinToSqlContext currentContext)
-        {
-            currentContext.DropVertex(this);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey)
-        {
-            currentContext.Has(this, propertyKey);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
-        {
-            currentContext.Has(this, propertyKey, propertyContext);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
-        {
-            currentContext.Has(this, propertyKey, value);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
-        {
-            currentContext.Has(this, label, propertyKey, value);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
-        {
-            currentContext.Has(this, propertyKey, predicate);
-        }
-
-        internal override void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
-        {
-            currentContext.Has(this, label, propertyKey, predicate);
-        }
-
-        internal override void HasId(GremlinToSqlContext currentContext, List<object> values)
-        {
-            currentContext.HasId(this, values);
-        }
-
-        internal override void HasId(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            currentContext.HasId(this, predicate);
-        }
-
-        internal override void HasLabel(GremlinToSqlContext currentContext, List<object> values)
-        {
-            currentContext.HasLabel(this, values);
-        }
-
-        internal override void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            currentContext.HasLabel(this, predicate);
-        }
-
-        internal override void Properties(GremlinToSqlContext currentContext, List<string> propertyKeys)
-        {
-            currentContext.Properties(this, propertyKeys);
-        }
-
-        internal override void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)
-        {
-            currentContext.Values(this, propertyKeys);
         }
 
         internal override void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
@@ -182,7 +117,6 @@ namespace GraphView
             this.isTraversalToBound = true;
             base.Coin(currentContext, probability);
         }
-        
 
         internal override void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
         {
@@ -209,10 +143,10 @@ namespace GraphView
             base.Order(currentContext, byList, orderList, scope);
         }
 
-        internal override void Property(GremlinToSqlContext currentContext, List<object> properties)
+        internal override void Property(GremlinToSqlContext currentContext, GremlinProperty vertexProperty)
         {
             this.isTraversalToBound = true;
-            base.Property(currentContext, properties);
+            base.Property(currentContext, vertexProperty);
         }
 
         internal override void Range(GremlinToSqlContext currentContext, int low, int high, GremlinKeyword.Scope scope, bool isReverse)

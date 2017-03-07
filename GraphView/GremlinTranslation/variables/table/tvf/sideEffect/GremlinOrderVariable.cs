@@ -26,25 +26,25 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            var secondTableRef = Scope == GremlinKeyword.Scope.global ?
-                SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderGlobal, parameters, this, GetVariableName())
-              : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderLocal, parameters, this, GetVariableName());
+            var tableRef = Scope == GremlinKeyword.Scope.global ?
+                SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderGlobal, parameters, GetVariableName())
+              : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderLocal, parameters, GetVariableName());
 
-            (secondTableRef as WOrderTableReference).OrderParameters = new List<Tuple<WScalarExpression, IComparer>>();
+            (tableRef as WOrderTableReference).OrderParameters = new List<Tuple<WScalarExpression, IComparer>>();
             for (var i = 0; i < OrderList.Count; i++)
             {
                 if (ByList[i] is GremlinVariableProperty)
                 {
                     var scalarExpr = (ByList[i] as GremlinVariableProperty).ToScalarExpression();
-                    (secondTableRef as WOrderTableReference).OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalarExpr, OrderList[i]));
-                    (secondTableRef as WOrderTableReference).Parameters.Add(scalarExpr);
+                    (tableRef as WOrderTableReference).OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalarExpr, OrderList[i]));
+                    (tableRef as WOrderTableReference).Parameters.Add(scalarExpr);
                 }
                 else if (ByList[i] is GremlinToSqlContext)
                 {
                     var scalarQuery = SqlUtil.GetScalarSubquery((ByList[i] as GremlinToSqlContext).ToSelectQueryBlock());
-                    (secondTableRef as WOrderTableReference).OrderParameters.Add(
+                    (tableRef as WOrderTableReference).OrderParameters.Add(
                         new Tuple<WScalarExpression, IComparer>(scalarQuery, OrderList[i]));
-                    (secondTableRef as WOrderTableReference).Parameters.Add(scalarQuery);
+                    (tableRef as WOrderTableReference).Parameters.Add(scalarQuery);
                 }
                 else
                 {
@@ -52,7 +52,7 @@ namespace GraphView
                 }
             }
 
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

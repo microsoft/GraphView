@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal abstract class GremlinScalarVariable : GremlinVariable, ISqlScalar
+    internal abstract class GremlinScalarVariable : GremlinVariable
     {
         internal override GremlinVariableType GetVariableType()
         {

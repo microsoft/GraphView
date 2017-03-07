@@ -9,24 +9,31 @@ namespace GraphView
     internal class GremlinAddVOp: GremlinTranslationOperator
     {
         public string VertexLabel { get; set; }
-        public List<object> PropertyKeyValues { get; set; }
+        public List<GremlinProperty> PropertyKeyValues { get; set; }
 
         public GremlinAddVOp()
         {
-            PropertyKeyValues = new List<object>();
+            PropertyKeyValues = new List<GremlinProperty>();
             VertexLabel = "vertex";
         }
 
         public GremlinAddVOp(params object[] propertyKeyValues)
         {
-            PropertyKeyValues = new List<object>(propertyKeyValues);
+            if (propertyKeyValues.Length > 1 && propertyKeyValues.Length % 2 != 0) throw new Exception("The parameter of property should be even");
+            PropertyKeyValues = new List<GremlinProperty>();
+            for (var i = 0; i < propertyKeyValues.Length; i += 2)
+            {
+                PropertyKeyValues.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.list, 
+                                                                propertyKeyValues[i] as string,
+                                                                propertyKeyValues[i+1], null));
+            }
             VertexLabel = "vertex";
         }
 
         public GremlinAddVOp(string vertexLabel)
         {
             VertexLabel = vertexLabel;
-            PropertyKeyValues = new List<object>();
+            PropertyKeyValues = new List<GremlinProperty>();
         }
 
         internal override GremlinToSqlContext GetContext()

@@ -24,19 +24,18 @@ namespace GraphView
             return "R_" + _tableCount++;
         }
 
-        internal static bool IsTheSameOutputType(List<GremlinToSqlContext> contextList)
+        internal static GremlinVariableType GetContextListType(List<GremlinToSqlContext> contextList)
         {
-            if (contextList.Count <= 1) return true;
+            if (contextList.Count == 0) return GremlinVariableType.Table;
+            if (contextList.Count == 1) return contextList.First().PivotVariable.GetVariableType();
             bool isSameType = true;
             for (var i = 1; i < contextList.Count; i++)
             {
                 isSameType = contextList[i - 1].PivotVariable.GetVariableType() ==
                               contextList[i].PivotVariable.GetVariableType();
-                             //|| contextList[i - 1].PivotVariable.GetVariableType() == GremlinVariableType.Table
-                             //|| contextList[i].PivotVariable.GetVariableType() == GremlinVariableType.Table;
-                if (isSameType == false) return false;
+                if (isSameType == false) return GremlinVariableType.Table;
             }
-            return isSameType;
+            return contextList.First().PivotVariable.GetVariableType();
         }
 
         internal static bool IsTheSameType(List<GremlinVariable> variableList)
@@ -77,9 +76,9 @@ namespace GraphView
         }
     }
 
-    public class GremlinVertexProperty
+    public class GremlinProperty
     {
-        public GremlinVertexProperty(GremlinKeyword.PropertyCardinality cardinality,
+        public GremlinProperty(GremlinKeyword.PropertyCardinality cardinality,
             string key, object value, Dictionary<string, object> metaProperties)
         {
             Cardinality = cardinality;
@@ -93,7 +92,7 @@ namespace GraphView
         public object Value { get; set; }
         public Dictionary<string, object> MetaProperties { get; set; }
 
-        public WPropertyExpression ToVertexPropertyExpr()
+        public WPropertyExpression ToPropertyExpr()
         {
             Dictionary<WValueExpression, WValueExpression> metaPropertiesExpr = new Dictionary<WValueExpression, WValueExpression>();
             foreach (var property in MetaProperties)

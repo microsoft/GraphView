@@ -19,8 +19,8 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(Probability));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coin, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Coin, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

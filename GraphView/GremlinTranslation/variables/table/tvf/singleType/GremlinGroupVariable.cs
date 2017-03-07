@@ -45,9 +45,9 @@ namespace GraphView
                     throw new QueryCompilationException();
                 }
             }
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, this, GetVariableName());
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, GetVariableName());
 
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

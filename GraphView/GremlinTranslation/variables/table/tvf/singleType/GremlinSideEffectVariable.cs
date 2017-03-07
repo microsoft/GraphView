@@ -21,9 +21,9 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetScalarSubquery(SideEffectContext.ToSelectQueryBlock()));
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SideEffect, parameters, this, GetVariableName());
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SideEffect, parameters, GetVariableName());
 
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

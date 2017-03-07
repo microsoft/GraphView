@@ -9,6 +9,8 @@ namespace GraphView
 {
     public class GremlinKeyword
     {
+        public const bool OLD = true;
+
         public const string Label = "label";
         public const string SinkLabel = "_sinkLabel";
         public const string EdgeID = "_offset";
@@ -41,6 +43,8 @@ namespace GraphView
             public const string BothV = "BothV";
             public const string Optional = "Optional";
             public const string Properties = "Properties";
+            public const string AllProperties = "AllProperties";
+            public const string VertexProperties = "Properties";
             public const string Repeat = "Repeat";
             public const string Value = "Value";
             public const string Values = "Values";
@@ -54,13 +58,15 @@ namespace GraphView
             public const string DedupLocal = "DedupLocal";
             public const string Fold = "fold";
             public const string Count = "count";
-            public const string DropNode = "DropNode";
-            public const string DropEdge = "DropEdge";
-            public const string DropProperties = "DropProperties";
-            public const string UpdateNodeProperties = "UpdateVertexProperties";
-            public const string UpdateVertexProperties = "UpdateVertexProperties";
-            public const string UpdateMetaProperties = "UpdateMetaProperties";
-            public const string UpdateEdgeProperties = "UpdateEdgeProperties";
+            public const string Drop = "Drop";
+            //public const string DropNode = "DropNode";
+            //public const string DropEdge = "DropEdge";
+            //public const string DropProperties = "DropProperties";
+            //public const string UpdateNodeProperties = "UpdateVertexProperties";
+            //public const string UpdateVertexProperties = "UpdateVertexProperties";
+            //public const string UpdateMetaProperties = "UpdateMetaProperties";
+            //public const string UpdateEdgeProperties = "UpdateEdgeProperties";
+            public const string UpdateProperties = "UpdateProperties";
             public const string Path = "Path";
             public const string Inject = "Inject";
             public const string Tree = "Tree";
@@ -88,6 +94,7 @@ namespace GraphView
             public const string OrderLocal = "OrderLocal";
             public const string Path2 = "Path2";
             public const string Range = "Range";
+            public const string Decompose1 = "Decompose1";
         }
 
         public enum Pop

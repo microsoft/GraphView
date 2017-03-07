@@ -6,49 +6,45 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinPropertiesVariable: GremlinPropertyTableVariable
+    internal class GremlinPropertiesVariable: GremlinTableVariable
     {
         public List<string> PropertyKeys { get; set; }
-        public GremlinVariable ProjectVariable { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
-        public GremlinPropertiesVariable(GremlinVariable projectVariable, List<string> propertyKeys)
+        public GremlinPropertiesVariable(GremlinVariable inputVariable, List<string> propertyKeys)
+            :base(GremlinVariableType.VertexProperty)
         {
-            ProjectVariable = projectVariable;
+            InputVariable = inputVariable;
             PropertyKeys = new List<string>(propertyKeys);
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+
+            bool isFetchAll = false;
             if (PropertyKeys.Count == 0)
             {
-                parameters.Add(ProjectVariable.GetVariableProperty(GremlinKeyword.Star).ToScalarExpression());
+                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+                isFetchAll = true;
             }
             else
             {
                 foreach (var property in PropertyKeys)
                 {
-                    parameters.Add(ProjectVariable.GetVariableProperty(property).ToScalarExpression());
+                    parameters.Add(InputVariable.GetVariableProperty(property).ToScalarExpression());
                 }
             }
-            
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Properties, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
-        }
 
-        internal override void Key(GremlinToSqlContext currentContext)
-        {
-            currentContext.Key(this);
-        }
+            foreach (var projectProperty in ProjectedProperties)
+            {
+                if (projectProperty == GremlinKeyword.TableDefaultColumnName) continue;
+                parameters.Add(SqlUtil.GetValueExpr(projectProperty));
+            }
 
-        internal override void Value(GremlinToSqlContext currentContext)
-        {
-            currentContext.Value(this);
-        }
-
-        internal override void Drop(GremlinToSqlContext currentContext)
-        {
-            currentContext.DropProperties(ProjectVariable, PropertyKeys);
+            var tableRef = SqlUtil.GetFunctionTableReference(isFetchAll ? GremlinKeyword.func.AllProperties : GremlinKeyword.func.Properties,
+                                                                    parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

@@ -309,7 +309,7 @@ namespace GraphView
         }
 
         internal static WSchemaObjectFunctionTableReference GetFunctionTableReference(string functionName,
-            List<WScalarExpression> parameterList, GremlinVariable gremlinvariable, string alias = null)
+            List<WScalarExpression> parameterList, string alias = null)
         {
             WSchemaObjectFunctionTableReference funcTableRef;
             switch (functionName)
@@ -356,6 +356,9 @@ namespace GraphView
                 case GremlinKeyword.func.Properties:
                     funcTableRef = new WPropertiesTableReference();
                     break;
+                case GremlinKeyword.func.AllProperties:
+                    funcTableRef = new WAllPropertiesTableReference();
+                    break;
                 case GremlinKeyword.func.Repeat:
                     funcTableRef = new WRepeatTableReference();
                     break;
@@ -375,7 +378,7 @@ namespace GraphView
                     funcTableRef = new WProjectTableReference();
                     break;
                 case GremlinKeyword.func.AddV:
-                    funcTableRef = new WAddVTableReference();
+                    funcTableRef = new WAddVTableReference2();
                     break;
                 case GremlinKeyword.func.AddE:
                     funcTableRef = new WAddETableReference();
@@ -389,23 +392,29 @@ namespace GraphView
                 case GremlinKeyword.func.DedupLocal:
                     funcTableRef = new WDedupLocalTableReference();
                     break;
-                case GremlinKeyword.func.DropNode:
-                    funcTableRef = new WDropNodeTableReference();
+                case GremlinKeyword.func.Drop:
+                    funcTableRef = new WDropTableReference();
                     break;
-                case GremlinKeyword.func.DropEdge:
-                    funcTableRef = new WDropEdgeTableReference();
-                    break;
-                case GremlinKeyword.func.DropProperties:
-                    funcTableRef = new WDropPropertiesTableReference();
-                    break;
-                case GremlinKeyword.func.UpdateVertexProperties:
-                    funcTableRef = new WUpdateVertexPropertiesTableReference();
-                    break;
-                case GremlinKeyword.func.UpdateEdgeProperties:
-                    funcTableRef = new WUpdateEdgePropertiesTableReference();
-                    break;
-                case GremlinKeyword.func.UpdateMetaProperties:
-                    funcTableRef = new WUpdateMetaPropertiesTableReference();
+                //case GremlinKeyword.func.DropNode:
+                //    funcTableRef = new WDropNodeTableReference();
+                //    break;
+                //case GremlinKeyword.func.DropEdge:
+                //    funcTableRef = new WDropEdgeTableReference();
+                //    break;
+                //case GremlinKeyword.func.DropProperties:
+                //    funcTableRef = new WDropPropertiesTableReference();
+                //    break;
+                //case GremlinKeyword.func.UpdateVertexProperties:
+                //    funcTableRef = new WUpdateVertexPropertiesTableReference();
+                //    break;
+                //case GremlinKeyword.func.UpdateEdgeProperties:
+                //    funcTableRef = new WUpdateEdgePropertiesTableReference();
+                //    break;
+                //case GremlinKeyword.func.UpdateMetaProperties:
+                //    funcTableRef = new WUpdateMetaPropertiesTableReference();
+                //    break;
+                case GremlinKeyword.func.UpdateProperties:
+                    funcTableRef = new WUpdatePropertiesTableReference();
                     break;
                 case GremlinKeyword.func.Inject:
                     funcTableRef = new WInjectTableReference();
@@ -458,16 +467,15 @@ namespace GraphView
                 case GremlinKeyword.func.Range:
                     funcTableRef = new WRangeTableReference();
                     break;
+                case GremlinKeyword.func.Decompose1:
+                    funcTableRef = new WDecompose1TableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }
             funcTableRef.SchemaObject = GetSchemaObjectName(functionName);
             funcTableRef.Parameters = parameterList;
             funcTableRef.Alias = GetIdentifier(alias);
-            //funcTableRef.Low = gremlinvariable.Low;
-            //funcTableRef.High = gremlinvariable.High;
-            //funcTableRef.IsLocal = gremlinvariable.IsLocal;
-            //funcTableRef.IsReverse = gremlinvariable.IsReverse;
             return funcTableRef;
         }
 
@@ -481,11 +489,11 @@ namespace GraphView
             return new WVariableReference() { Name = "@" + name };
         }
 
-        internal static WUnqualifiedJoin GetCrossApplyTableReference(WTableReference firstTableRef, WTableReference secondTableRef)
+        internal static WUnqualifiedJoin GetCrossApplyTableReference(WTableReference secondTableRef)
         {
             return new WUnqualifiedJoin()
             {
-                FirstTableRef = firstTableRef,
+                FirstTableRef = null,
                 SecondTableRef = secondTableRef,
                 UnqualifiedJoinType = UnqualifiedJoinType.CrossApply
             };

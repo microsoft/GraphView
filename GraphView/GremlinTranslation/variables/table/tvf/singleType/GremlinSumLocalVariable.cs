@@ -19,8 +19,8 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
-            var secondTableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SumLocal, parameters, this, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(null, secondTableRef);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SumLocal, parameters, GetVariableName());
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }
