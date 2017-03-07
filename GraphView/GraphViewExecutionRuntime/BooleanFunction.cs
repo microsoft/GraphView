@@ -43,21 +43,48 @@ namespace GraphView
             this.comparisonType = comparisonType;
         }
 
+
         public override bool Evaluate(RawRecord record)
         {
-            //string value1 = firstScalarFunction.Evaluate(record);
-            //string value2 = secondScalarFunction.Evaluate(record);
-            string value1 = firstScalarFunction.Evaluate(record)?.ToValue;
-            string value2 = secondScalarFunction.Evaluate(record)?.ToValue;
+            FieldObject lhs = firstScalarFunction.Evaluate(record);
+            FieldObject rhs = secondScalarFunction.Evaluate(record);
 
-            JsonDataType type1 = firstScalarFunction.DataType();
-            JsonDataType type2 = secondScalarFunction.DataType();
-
-            JsonDataType targetType = type1 > type2 ? type1 : type2;
-
-            if (value1 == null || value2 == null)
+            if (lhs == null || rhs == null) {
                 return false;
+            }
 
+            if (lhs is VertexPropertyField)
+            {
+                VertexPropertyField vp = (VertexPropertyField)lhs;
+                foreach (VertexSinglePropertyField vsp in vp.Multiples)
+                {
+                    JsonDataType type1 = vsp.JsonDataType;
+                    JsonDataType type2 = secondScalarFunction.DataType();
+
+                    JsonDataType targetType = type1 > type2 ? type1 : type2;
+
+                    if (Compare(vsp.ToValue, rhs.ToValue, type1, type2, targetType)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            else
+            {
+                JsonDataType type1 = firstScalarFunction.DataType();
+                JsonDataType type2 = secondScalarFunction.DataType();
+
+                JsonDataType targetType = type1 > type2 ? type1 : type2;
+
+                string value1 = firstScalarFunction.Evaluate(record)?.ToValue;
+                string value2 = secondScalarFunction.Evaluate(record)?.ToValue;
+
+                return Compare(value1, value2, type1, type2, targetType);
+            }
+        }
+
+        private bool Compare(string value1, string value2, JsonDataType type1, JsonDataType type2, JsonDataType targetType)
+        {
             switch (targetType)
             {
                 case JsonDataType.Boolean:

@@ -923,21 +923,49 @@ namespace GraphView
         public VertexField Vertex { get; }
 
         public override string PropertyValue {
-            get {
-                throw new NotSupportedException("Can't get value on a VertexPropertyField");
+            get
+            {
+                if (Multiples.Count == 1)
+                    return Multiples[0].PropertyValue;
+                Debug.Assert(false, "Should not get here.");
+                return "";
+                //throw new NotSupportedException("Can't get value on a VertexPropertyField with multiple properties");
             }
             set {
                 // Do nothing
             }
         }
 
+        public override string ToString()
+        {
+            if (this.Multiples.Count == 1)
+                return Multiples[0].ToString();
+            Debug.Assert(false, "Should not get here.");
+            return "";
+            //throw new NotSupportedException("Can't get value on a VertexPropertyField with multiple properties");
+        }
+
         public override string ToValue {
-            get {
-                throw new NotSupportedException("Can't get 'ToValue' on a VertexPropertyField");
+            get
+            {
+                if (this.Multiples.Count == 1)
+                    return Multiples[0].ToValue;
+                Debug.Assert(false, "Should not get here.");
+                return "";
+                //throw new NotSupportedException("Can't get 'ToValue' on a VertexPropertyField");
             }
         }
 
-        public override JsonDataType JsonDataType { get; set; }
+        public override JsonDataType JsonDataType
+        {
+            get
+            {
+                if (Multiples.Count == 1)
+                    return Multiples[0].JsonDataType;
+                Debug.Assert(false, "Should not get here.");
+                return JsonDataType.String;
+            }
+        }
 
         //public VertexPropertyField(string propertyName, string propertyValue, JsonDataType jsonDataType)
         //    : base(propertyName, propertyValue, jsonDataType)
