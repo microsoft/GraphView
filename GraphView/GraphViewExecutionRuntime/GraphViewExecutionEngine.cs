@@ -244,6 +244,8 @@ namespace GraphView
         {
             if (JsonDataType == JsonDataType.String) 
                return "\"" + Value + "\"";
+            else if (JsonDataType == JsonDataType.Boolean)
+                return Value.ToLowerInvariant();
             return Value;
         }
 
@@ -665,11 +667,11 @@ namespace GraphView
 
         public override string ToGraphSON()
         {
-            if (JsonDataType == JsonDataType.String)
-            {
+            if (this.JsonDataType == JsonDataType.String)
                 return string.Format("{{\"{0}\": \"{1}\"}}", PropertyName, PropertyValue);
-            }
-            return string.Format("{{\"{0}\": {1}}}", PropertyName, PropertyValue.ToLower());
+            if (this.JsonDataType == JsonDataType.Boolean)
+                return string.Format("{{\"{0}\": {1}}}", PropertyName, PropertyValue.ToLowerInvariant());
+            return string.Format("{{\"{0}\": {1}}}", PropertyName, PropertyValue);
         }
     }
 
@@ -750,10 +752,50 @@ namespace GraphView
             }
         }
 
-
         public override string ToString()
         {
             return string.Format("vp[{0}]", base.ToString());
+        }
+
+        public override string ToGraphSON()
+        {
+            StringBuilder vpGraphSonBuilder = new StringBuilder();
+            if (this.JsonDataType == JsonDataType.String)
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": \"{1}\"", this.PropertyName, this.PropertyValue);
+            else if (this.JsonDataType == JsonDataType.Boolean)
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
+            else
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyName, this.PropertyValue);
+
+            bool isFirstMetaproperty = true;
+
+            foreach (KeyValuePair<string, ValuePropertyField> kvp in this.MetaProperties)
+            {
+                string key = kvp.Key;
+                ValuePropertyField value = kvp.Value;
+
+                if (isFirstMetaproperty)
+                {
+                    vpGraphSonBuilder.Append(", \"properties\":{");
+                    isFirstMetaproperty = false;
+                }      
+                else
+                    vpGraphSonBuilder.Append(", ");
+
+                if (value.JsonDataType == JsonDataType.String)
+                    vpGraphSonBuilder.AppendFormat("\"{0}\": \"{1}\"", key, value.PropertyValue);
+                else if (value.JsonDataType == JsonDataType.Boolean)
+                    vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue.ToLowerInvariant());
+                else
+                    vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue);
+            }
+
+            if (!isFirstMetaproperty)
+                vpGraphSonBuilder.Append("}");
+            
+            vpGraphSonBuilder.Append("}");
+
+            return vpGraphSonBuilder.ToString();
         }
     }
 
@@ -780,6 +822,15 @@ namespace GraphView
         public override string ToString()
         {
             return string.Format("p[{0}]", base.ToString());
+        }
+
+        public override string ToGraphSON()
+        {
+            if (this.JsonDataType == JsonDataType.String)
+                return string.Format("\"key\":\"{0}\", \"value\":\"{1}\"", this.PropertyName, this.PropertyValue);
+            if (this.JsonDataType == JsonDataType.Boolean)
+                return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
+            return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue);
         }
 
         public void Replace(JProperty property)
@@ -843,6 +894,15 @@ namespace GraphView
             return string.Format("p[{0}]", base.ToString());
         }
 
+        public override string ToGraphSON()
+        {
+            if (this.JsonDataType == JsonDataType.String)
+                return string.Format("\"key\":\"{0}\", \"value\":\"{1}\"", this.PropertyName, this.PropertyValue);
+            if (this.JsonDataType == JsonDataType.Boolean)
+                return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
+            return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue);
+        }
+
         public void Replace(JProperty property)
         {
             Debug.Assert(this.PropertyName == property.Name);
@@ -891,6 +951,58 @@ namespace GraphView
             this.Vertex = vertexField;
         }
 
+        public override string ToGraphSON()
+        {
+            StringBuilder vpGraphSonBuilder = new StringBuilder();
+            vpGraphSonBuilder.AppendFormat("\"{0}\":[", this.PropertyName);
+
+            bool isFirstVsp = true;
+            foreach (VertexSinglePropertyField vsp in this.Multiples)
+            {
+                if (isFirstVsp)
+                    isFirstVsp = false;
+                else
+                    vpGraphSonBuilder.Append(", ");
+
+                if (vsp.JsonDataType == JsonDataType.String)
+                    vpGraphSonBuilder.AppendFormat("{{\"value\": \"{0}\"", vsp.PropertyValue);
+                else if (vsp.JsonDataType == JsonDataType.Boolean)
+                    vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", vsp.PropertyValue.ToLowerInvariant());
+                else
+                    vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", vsp.PropertyValue);
+
+                if (vsp.MetaProperties.Count > 0)
+                {
+                    vpGraphSonBuilder.Append(", \"properties\":{");
+                    bool isFirstMetaproperty = true;
+
+                    foreach (KeyValuePair<string, ValuePropertyField> kvp in vsp.MetaProperties)
+                    {
+                        string key = kvp.Key;
+                        ValuePropertyField value = kvp.Value;
+
+                        if (isFirstMetaproperty)
+                            isFirstMetaproperty = false;
+                        else
+                            vpGraphSonBuilder.Append(", ");
+
+                        if (value.JsonDataType == JsonDataType.String)
+                            vpGraphSonBuilder.AppendFormat("\"{0}\": \"{1}\"", key, value.PropertyValue);
+                        else if (value.JsonDataType == JsonDataType.Boolean)
+                            vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue);
+                        else
+                            vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue);
+                    }
+                    vpGraphSonBuilder.Append("}");
+                }
+
+                vpGraphSonBuilder.Append("}");
+            }
+
+            vpGraphSonBuilder.Append("]");
+
+            return vpGraphSonBuilder.ToString();
+        }
 
         public PropertyField ToVertexPropertyFieldIfSingle()
         {
@@ -1041,13 +1153,14 @@ namespace GraphView
                     sb.Append(", ");
                 }
 
-                if (this.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
-                {
+                if (this.EdgeProperties[propertyName].JsonDataType == JsonDataType.String) {
                     sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, this.EdgeProperties[propertyName].PropertyValue);
                 }
-                else
-                {
-                    sb.AppendFormat("\"{0}\": {1}", propertyName, this.EdgeProperties[propertyName].PropertyValue.ToLower());
+                else if (this.EdgeProperties[propertyName].JsonDataType == JsonDataType.Boolean) {
+                    sb.AppendFormat("\"{0}\": {1}", propertyName, this.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
+                }
+                else {
+                    sb.AppendFormat("\"{0}\": {1}", propertyName, this.EdgeProperties[propertyName].PropertyValue);
                 }
             }
             if (!firstProperty) {
@@ -1276,13 +1389,14 @@ namespace GraphView
                 }
 
                 Debug.Assert(propertyField.Multiples.Count > 0, "Vertex's property must contains at least one value");
-                if (propertyField.Multiples.Count == 1) {
-                    Debug.Assert(propertyField.Multiples[0].PropertyName == propertyName);
-                    return propertyField.Multiples[0];
-                }
-                else {
-                    return propertyField;
-                }
+                return propertyField;
+                //if (propertyField.Multiples.Count == 1) {
+                //    Debug.Assert(propertyField.Multiples[0].PropertyName == propertyName);
+                //    return propertyField.Multiples[0];
+                //}
+                //else {
+                //    return propertyField;
+                //}
             }
         }
 
@@ -1439,13 +1553,20 @@ namespace GraphView
                             if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
                             {
                                 sb.AppendFormat("\"{0}\": \"{1}\"",
-                                propertyName,
-                                edgeField.EdgeProperties[propertyName].PropertyValue);
-                            } else
+                                    propertyName,
+                                    edgeField.EdgeProperties[propertyName].PropertyValue);
+                            }
+                            else if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.Boolean)
                             {
                                 sb.AppendFormat("\"{0}\": {1}",
-                                propertyName,
-                                edgeField.EdgeProperties[propertyName].PropertyValue.ToLower());
+                                    propertyName,
+                                    edgeField.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
+                            }
+                            else
+                            {
+                                sb.AppendFormat("\"{0}\": {1}",
+                                    propertyName,
+                                    edgeField.EdgeProperties[propertyName].PropertyValue);
                             }
                         }
                         if (!firstInEProperty)
@@ -1527,11 +1648,18 @@ namespace GraphView
                                 sb.AppendFormat("\"{0}\": \"{1}\"",
                                 propertyName,
                                 edgeField.EdgeProperties[propertyName].PropertyValue);
-                            } else
+                            }
+                            else if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.Boolean)
                             {
                                 sb.AppendFormat("\"{0}\": {1}",
                                 propertyName,
-                                edgeField.EdgeProperties[propertyName].PropertyValue.ToLower());
+                                edgeField.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
+                            }
+                            else
+                            {
+                                sb.AppendFormat("\"{0}\": {1}",
+                                propertyName,
+                                edgeField.EdgeProperties[propertyName].PropertyValue);
                             }
                         }
                         if (!firstOutEProperty)
@@ -1546,18 +1674,20 @@ namespace GraphView
             }
 
             bool firstVertexProperty = true;
-            foreach (string propertyName in VertexProperties.Keys)
+            foreach (KeyValuePair<string, VertexPropertyField> kvp in VertexProperties)
             {
-                switch (propertyName) {
-                case "id":
-                case "label":
-                case "_partition":
-                case "_edge":
-                case "_reverse_edge":
-                case "_nextEdgeOffset":
-                    continue;
-                default:
-                    break;
+                string propertyName = kvp.Key;
+                switch (propertyName)
+                {
+                    case "id":
+                    case "label":
+                    case "_partition":
+                    case "_edge":
+                    case "_reverse_edge":
+                    case "_nextEdgeOffset":
+                        continue;
+                    default:
+                        break;
                 }
 
                 if (firstVertexProperty)
@@ -1565,25 +1695,15 @@ namespace GraphView
                     sb.Append(", \"properties\": {");
                     firstVertexProperty = false;
                 }
-                else
-                {
+                else {
                     sb.Append(", ");
                 }
 
-                // TODO: HACK!!!
-                VertexSinglePropertyField vp = VertexProperties[propertyName].Multiples[0];
-
-                if (vp.JsonDataType == JsonDataType.String)
-                {
-                    sb.AppendFormat("\"{0}\": [{{\"value\": \"{1}\"}}]", propertyName, vp.PropertyValue);
-                }
-                else
-                {
-                    sb.AppendFormat("\"{0}\": [{{\"value\": {1}}}]", propertyName, vp.PropertyValue.ToLower());
-                }
+                VertexPropertyField vp = kvp.Value;
+                sb.Append(vp.ToGraphSON());
             }
-            if (!firstVertexProperty)
-            {
+
+            if (!firstVertexProperty) {
                 sb.Append("}");
             }
 
