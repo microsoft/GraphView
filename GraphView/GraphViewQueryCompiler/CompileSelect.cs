@@ -1989,31 +1989,6 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            List<int> valuesIdxList = new List<int>();
-            int allValuesIndex = -1;
-
-            if (Parameters.Count == 1 &&
-                (Parameters[0] as WColumnReferenceExpression).ColumnName.Equals("*", StringComparison.OrdinalIgnoreCase))
-            {
-                allValuesIndex = context.LocateColumnReference(Parameters[0] as WColumnReferenceExpression);
-            }
-            foreach (var expression in Parameters)
-            {
-                var columnReference = expression as WColumnReferenceExpression;
-                if (columnReference == null)
-                    throw new SyntaxErrorException("Parameters of Values function can only be WColumnReference.");
-                valuesIdxList.Add(context.LocateColumnReference(columnReference));
-            }
-
-            GraphViewExecutionOperator valuesOperator = new ValuesOperator(context.CurrentExecutionOperator, valuesIdxList, allValuesIndex);
-            context.CurrentExecutionOperator = valuesOperator;
-            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-            
-            return valuesOperator;
-        }
-
-        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
             List<int> propertiesIndex = new List<int>();
 
             foreach (WScalarExpression expression in Parameters)
@@ -2089,36 +2064,6 @@ namespace GraphView
     partial class WPropertiesTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            List<Tuple<string, int>> propertiesList = new List<Tuple<string, int>>();
-            int allPropertyIndex = -1;
-
-            if (Parameters.Count == 1 &&
-                (Parameters[0] as WColumnReferenceExpression).ColumnName.Equals("*", StringComparison.OrdinalIgnoreCase))
-            {
-                allPropertyIndex = context.LocateColumnReference(Parameters[0] as WColumnReferenceExpression);
-            }
-            else
-            {
-                foreach (var expression in Parameters)
-                {
-                    var columnReference = expression as WColumnReferenceExpression;
-                    if (columnReference == null)
-                        throw new SyntaxErrorException("Parameters of Properties function can only be WColumnReference.");
-
-                    propertiesList.Add(new Tuple<string, int>(columnReference.ColumnName,
-                        context.LocateColumnReference(columnReference)));
-                }
-            }
-
-            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator, propertiesList, allPropertyIndex);
-            context.CurrentExecutionOperator = propertiesOp;
-            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-
-            return propertiesOp;
-        }
-
-        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
             List<int> propertiesIndex = new List<int>();
             List<string> populateMetaproperties = new List<string>();
