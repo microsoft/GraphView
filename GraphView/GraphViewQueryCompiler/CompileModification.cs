@@ -21,7 +21,11 @@ namespace GraphView
 
             foreach (WPropertyExpression vertexProperty in vertexProperties) {
                 Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.list);
-                if (vertexProperty.Value == null) {
+
+                if (!projectedFieldList.Contains(vertexProperty.Key.Value))
+                    projectedFieldList.Add(vertexProperty.Key.Value);
+
+                if (vertexProperty.Value.ToJValue() == null) {
                     continue;
                 }
 
@@ -69,6 +73,7 @@ namespace GraphView
                 WPropertyExpression property = (WPropertyExpression)this.Parameters[i];
                 Debug.Assert(property != null, "[WAddVTableReference.Compile] Vertex property should not be null");
                 Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.list, "[WAddVTableReference.Compile] Vertex property should be append-mode");
+                Debug.Assert(property.Value != null);
 
                 vertexProperties.Add(property);
             }
