@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace GraphViewUnitTest.Gremlin
 {
@@ -93,5 +95,21 @@ namespace GraphViewUnitTest.Gremlin
         //            .Aggregate(0, (acc, val) => (acc ^ val));
         //    }
         //}
+
+        public int GetVertexCount(GraphViewCommand graph)
+        {
+            graph.OutputFormat = OutputFormat.Regular;
+            int count = JsonConvert.DeserializeObject<int>(graph.g().V().Count().Next().First());
+            graph.OutputFormat = OutputFormat.GraphSON;
+            return count;
+        }
+
+        public int GetEdgeCount(GraphViewCommand graph)
+        {
+            graph.OutputFormat = OutputFormat.Regular;
+            int count = JsonConvert.DeserializeObject<int>(graph.g().E().Count().Next().First());
+            graph.OutputFormat = OutputFormat.GraphSON;
+            return count;
+        }
     }
 }

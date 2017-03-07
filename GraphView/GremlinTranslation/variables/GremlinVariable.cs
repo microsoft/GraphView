@@ -731,10 +731,40 @@ namespace GraphView
 
         internal virtual void Path2(GremlinToSqlContext currentContext, List<object> byList)
         {
-            GremlinPath2Variable newVariable = new GremlinPath2Variable(currentContext.GetGremlinStepList(), byList);
-            currentContext.VariableList.Add(newVariable);
-            currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
+            //List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
+            //List<GremlinVariableProperty> steps = currentContext.GetGremlinStepList();
+            //foreach (var by in byList)
+            //{
+            //    GremlinToSqlContext newContext = new GremlinToSqlContext();
+            //    GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(steps);
+            //    newContext.VariableList.Add(decompose1);
+            //    newContext.TableReferences.Add(decompose1);
+            //    newContext.SetPivotVariable(decompose1);
+
+            //    if (by is string)
+            //    {
+            //        decompose1.DefaultProjectionKey = by as string;
+            //        byContexts.Add(newContext);
+            //    }
+            //    else if (by is GraphTraversal2)
+            //    {
+            //        var traversal = by as GraphTraversal2;
+            //        if (traversal.GetStartOp() is GremlinParentContextOp)
+            //        {
+            //            traversal.GetStartOp().InheritedContextFromParent(newContext);
+            //        }
+            //        byContexts.Add(traversal.GetEndOp().GetContext());
+            //    }
+            //    else
+            //    {
+            //        throw new QueryCompilationException($"Can't process this type {by.GetType()}.");
+            //    }
+            //}
+             
+            //GremlinPath2Variable newVariable = new GremlinPath2Variable(steps, byContexts);
+            //currentContext.VariableList.Add(newVariable);
+            //currentContext.TableReferences.Add(newVariable);
+            //currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys, List<GremlinToSqlContext> byContexts)

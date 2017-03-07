@@ -96,6 +96,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 List<string> expected = new List<string> { "vp[name->marko]", "vp[name->vadas]", "vp[name->josh]", "vp[name->peter]" };
                 CheckUnOrderedResults(expected, result);
             }
-        }
+        } 
     }
 }
