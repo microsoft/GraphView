@@ -114,22 +114,35 @@ namespace GraphView
     {
         private readonly int dropTargetIndex;
         private readonly GraphViewConnection connection;
+        private readonly GraphViewExecutionOperator dummyInputOp;
 
         public DropOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection, int dropTargetIndex)
             : base(dummyInputOp, connection)
         {
             this.dropTargetIndex = dropTargetIndex;
             this.connection = connection;
+            this.dummyInputOp = dummyInputOp;
         }
 
         private void DropVertex(VertexField vertexField)
         {
-            // TODO:
+            RawRecord record = new RawRecord();
+            record.Append(new StringField(vertexField.VertexId));  // nodeIdIndex
+            DropNodeOperator op = new DropNodeOperator(this.dummyInputOp, this.connection, 0);
+            op.DataModify(record);
+
+            // Now VertexCacheObject has been updated (in DataModify)
         }
 
         private void DropEdge(EdgeField edgeField)
         {
-            // TODO:
+            RawRecord record = new RawRecord();
+            record.Append(new StringField(edgeField.OutV));  // srcIdIndex
+            record.Append(new StringField(edgeField.Offset.ToString()));  // edgeOffsetIndex
+            DropEdgeOperator op = new DropEdgeOperator(this.dummyInputOp, this.connection, 0, 1);
+            op.DataModify(record);
+
+            // Now VertexCacheObject has been updated (in DataModify)
         }
 
         private void DropVertexProperty(VertexPropertyField vp)
@@ -188,7 +201,47 @@ namespace GraphView
 
         private void DropEdgeProperty(EdgePropertyField ep)
         {
-            // TODO:
+            //EdgeField edgeField = ep.Edge;
+            //if (edgeField.EdgeDocID != null) {  // This is a spilled edge
+            //    JObject edgeDocument = this.connection.RetrieveDocumentById(edgeField.EdgeDocID);
+            //    ((JArray)edgeDocument["_edge"])
+            //        .First(edge => (string)edge["_srcV"] == edgeField.OutV && (long)edge["_offset"] == edgeField.Offset)
+            //        [ep.PropertyName]
+            //        .Remove();
+            //    this.connection.ReplaceOrDeleteDocumentAsync(edgeField.EdgeDocID, edgeDocument).Wait();
+            //}
+            //else {  // This is not a spilled edge
+            //    JObject edgeDocument = this.connection.RetrieveDocumentById(edgeField.EdgeDocID);
+            //    ((JArray)edgeDocument["_edge"])
+            //        .First(edge => (string)edge["_srcV"] == edgeField.OutV && (long)edge["_offset"] == edgeField.Offset)
+            //        [ep.PropertyName]
+            //        .Remove();
+            //    this.connection.ReplaceOrDeleteDocumentAsync(edgeField.EdgeDocID, edgeDocument).Wait();
+            //}
+
+            //// Update edge field
+            //bool found = edgeField.EdgeProperties.Remove(ep.PropertyName);
+            //Debug.Assert(found);
+
+            List<Tuple<WValueExpression, WValueExpression, int>> propertyList = new List<Tuple<WValueExpression, WValueExpression, int>>();
+            propertyList.Add(
+                new Tuple<WValueExpression, WValueExpression, int>(
+                    new WValueExpression(ep.PropertyName, true), 
+                    new WValueExpression("null", false), 
+                    0));
+            UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(
+                this.dummyInputOp, 
+                this.connection,
+                0, 1, 
+                propertyList
+                );
+            RawRecord record = new RawRecord();
+            record.Append(new StringField(ep.Edge.OutV));
+            record.Append(new StringField(ep.Edge.Offset.ToString()));
+            op.DataModify(record);
+
+            // Now VertexCacheObject has been updated (in DataModify)
+            Debug.Assert(!ep.Edge.EdgeProperties.ContainsKey(ep.PropertyName));
         }
 
         internal override RawRecord DataModify(RawRecord record)
