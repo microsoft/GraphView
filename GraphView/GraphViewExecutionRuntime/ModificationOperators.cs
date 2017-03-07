@@ -187,11 +187,21 @@ namespace GraphView
             JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
 
             Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
-            ((JArray)vertexObject[vertexSingleProperty.PropertyName])
-                .First(singleProperty => (string)singleProperty["_propId"] == vertexSingleProperty.PropertyId)
-                ["_meta"]
-                [metaProperty.PropertyName]
-                .Remove();
+            //((JArray)vertexObject[vertexSingleProperty.PropertyName])
+            //    .First(singleProperty => (string)singleProperty["_propId"] == vertexSingleProperty.PropertyId)
+            //    ["_meta"]
+            //    [metaProperty.PropertyName]
+            //    .Remove();
+
+            //
+            // TODO: To be confirmed by Wenbin
+            //
+            JToken propertyJToken = ((JArray) vertexObject[vertexSingleProperty.PropertyName])
+                .First(singleProperty => (string) singleProperty["_propId"] == vertexSingleProperty.PropertyId);
+
+            JObject metaPropertyJObject = (JObject) propertyJToken?["_meta"];
+
+            metaPropertyJObject?.Property(metaProperty.PropertyName)?.Remove();
 
             this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
 
