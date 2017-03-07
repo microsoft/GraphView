@@ -243,7 +243,20 @@ namespace GraphView
                     continue;
                 }
 
-                throw new GraphViewException("A meta property cannot contain meta properties.");
+                ValuePropertyField metaPf = propertyObject as ValuePropertyField;
+                if (metaPf != null)
+                {
+                    if (this.populateMetaproperties.Count > 0) {
+                        throw new GraphViewException("A meta property cannot contain meta properties.");
+                    }
+
+                    RawRecord r = new RawRecord();
+                    r.Append(propertyObject);
+                    results.Add(r);
+                    continue;
+                }
+
+                Debug.Assert(false, "Should not get here.");
             }
 
             return results;
@@ -300,7 +313,16 @@ namespace GraphView
                     continue;
                 }
 
-                throw new GraphViewException("A meta property cannot contain meta properties.");
+                ValuePropertyField metaPf = propertyObject as ValuePropertyField;
+                if (metaPf != null)
+                {
+                    RawRecord r = new RawRecord();
+                    r.Append(new StringField(metaPf.PropertyValue, metaPf.JsonDataType));
+                    results.Add(r);
+                    continue;
+                }
+
+                Debug.Assert(false, "Should not get here.");
             }
 
             return results;
@@ -361,10 +383,6 @@ namespace GraphView
             }
             else if (inputTarget is EdgeField)
             {
-                if (this.populateMetaProperties.Count > 0){
-                    throw new GraphViewException("An edge property cannot contain meta properties.");
-                }
-
                 EdgeField edgeField = (EdgeField)inputTarget;
                 foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties)
                 {
@@ -388,13 +406,13 @@ namespace GraphView
                             break;
                     }
                 }
+
+                if (this.populateMetaProperties.Count > 0 && results.Count > 0) {
+                    throw new GraphViewException("An edge property cannot contain meta properties.");
+                }
             }
             else if (inputTarget is VertexSinglePropertyField)
             {
-                if (populateMetaProperties.Count > 0) {
-                    throw new GraphViewException("A meta property cannot contain meta properties.");
-                }
-
                 VertexSinglePropertyField singleVp = (VertexSinglePropertyField)inputTarget;
                 foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties)
                 {
@@ -403,9 +421,13 @@ namespace GraphView
                     r.Append(metaPropertyField);
                     results.Add(r);
                 }
+
+                if (this.populateMetaProperties.Count > 0 && results.Count > 0) {
+                    throw new GraphViewException("An edge property cannot contain meta properties.");
+                }
             }
             else {
-                throw new Exception("Should not get properties here!");
+                throw new GraphViewException("The input of properties() cannot be a meta or edge property.");
             }
             return results;
         }
@@ -494,7 +516,7 @@ namespace GraphView
                 }
             }
             else {
-                throw new GraphViewException("A meta or edge property cannot contain meta properties.");
+                throw new GraphViewException("The input of values() cannot be a meta or edge property.");
             }
             return results;
         }

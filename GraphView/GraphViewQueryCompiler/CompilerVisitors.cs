@@ -179,6 +179,8 @@ namespace GraphView
         //
         private Dictionary<string, string> referencedProperties;
 
+        private const string ReservedPropertyKeyName = "_value";
+
         public NormalizeWColumnReferenceExpressionVisitor()
         {
             referencedProperties = new Dictionary<string, string>();
@@ -210,7 +212,7 @@ namespace GraphView
                 string encodeName = EncodeString(originalColumnName);
                 referencedProperties.Add(encodeName, originalColumnName);
                 columnList[0].Value = encodeName;
-                columnList[1].Value = "_value";
+                columnList[1].Value = NormalizeWColumnReferenceExpressionVisitor.ReservedPropertyKeyName;
             }
             else {
                 throw new QueryCompilationException("Identifier " + columnList.ToString() + " should be bound to a table.");
