@@ -49,7 +49,7 @@ namespace GraphView
             GremlinToSqlContext fromVertexContext = FromVertexTraversal.GetEndOp().GetContext();
             var gremlinAddETableVariable = inputContext.PivotVariable as GremlinAddETableVariable;
             if (gremlinAddETableVariable != null)
-                gremlinAddETableVariable.To(inputContext, fromVertexContext);
+                gremlinAddETableVariable.From(inputContext, fromVertexContext);
             else
                 throw new QueryCompilationException("From step only can follow by AddE step.");
 
