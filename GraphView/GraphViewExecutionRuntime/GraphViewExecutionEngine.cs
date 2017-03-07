@@ -761,11 +761,11 @@ namespace GraphView
         {
             StringBuilder vpGraphSonBuilder = new StringBuilder();
             if (this.JsonDataType == JsonDataType.String)
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": \"{1}\"", this.PropertyName, this.PropertyValue);
+                vpGraphSonBuilder.AppendFormat("{{\"value\": \"{0}\", \"label\": \"{1}\"", this.PropertyValue, this.PropertyName);
             else if (this.JsonDataType == JsonDataType.Boolean)
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": \"{1}\"", this.PropertyValue.ToLowerInvariant(), this.PropertyName);
             else
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyName, this.PropertyValue);
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": \"{1}\"", this.PropertyValue, this.PropertyName);
 
             bool isFirstMetaproperty = true;
 
@@ -827,10 +827,10 @@ namespace GraphView
         public override string ToGraphSON()
         {
             if (this.JsonDataType == JsonDataType.String)
-                return string.Format("\"key\":\"{0}\", \"value\":\"{1}\"", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":\"{0}\", \"value\":\"{1}\"}}", this.PropertyName, this.PropertyValue);
             if (this.JsonDataType == JsonDataType.Boolean)
-                return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
-            return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
+            return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue);
         }
 
         public void Replace(JProperty property)
@@ -897,10 +897,10 @@ namespace GraphView
         public override string ToGraphSON()
         {
             if (this.JsonDataType == JsonDataType.String)
-                return string.Format("\"key\":\"{0}\", \"value\":\"{1}\"", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":\"{0}\", \"value\":\"{1}\"}}", this.PropertyName, this.PropertyValue);
             if (this.JsonDataType == JsonDataType.Boolean)
-                return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
-            return string.Format("\"key\":\"{0}\", \"value\":{1}", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
+            return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue);
         }
 
         public void Replace(JProperty property)
