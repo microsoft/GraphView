@@ -442,6 +442,25 @@ namespace GraphView
             //
             throw new Exception("BUG: Should not get here!");
         }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (InputOperator.State() && (srcRecord = InputOperator.Next()) != null)
+            {
+                RawRecord result = DataModify(srcRecord);
+                if (result == null) continue;
+
+                //
+                // Return the srcRecord
+                //
+                return srcRecord;
+            }
+
+            Close();
+            return null;
+        }
     }
 
     internal class DropNodeOperator : ModificationBaseOpertaor2
