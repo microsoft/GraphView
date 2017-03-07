@@ -294,27 +294,112 @@ namespace GraphView
 
     internal class UpdatePropertiesOperator : ModificationBaseOpertaor2
     {
-        int updateTargetIndex;
+        private readonly int updateTargetIndex;
+        private readonly List<WPropertyExpression> updateProperties;
 
-        public UpdatePropertiesOperator(GraphViewExecutionOperator dummyInputOp, GraphViewConnection connection,
-            int updateTargetIndex) : base(dummyInputOp, connection)
+        public UpdatePropertiesOperator(
+            GraphViewExecutionOperator dummyInputOp,
+            GraphViewConnection connection,
+            int updateTargetIndex,
+            List<WPropertyExpression> updateProperties)
+            : base(dummyInputOp, connection)
         {
             this.updateTargetIndex = updateTargetIndex;
+            this.updateProperties = updateProperties;
         }
 
         private void UpdatePropertiesOfVertex(VertexField vertex)
         {
+            JObject vertexDocument = this.Connection.RetrieveDocumentById(vertex.VertexId);
+            foreach (WPropertyExpression property in this.updateProperties) {
+                Debug.Assert(property.Value != null);
 
+                VertexPropertyField vertexProperty;
+                string name = property.Key.Value;
+
+                // Construct single property
+                JObject meta = new JObject();
+                foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
+                    meta[pair.Key.ToJValue()] = pair.Value.ToJValue();
+                }
+                JObject singleProperty = new JObject {
+                    ["_value"] = property.Value.ToJValue(),
+                    ["_propId"] = GraphViewConnection.GenerateDocumentId(),
+                    ["_meta"] = meta,
+                };
+
+                // Set / Append to multiProperty
+                JArray multiProperty;
+                if (vertexDocument[name] == null) {
+                    multiProperty = new JArray();
+                    vertexDocument[name] = multiProperty;
+                }
+                else {
+                    multiProperty = (JArray)vertexDocument[name];
+                }
+
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.single) {
+                    multiProperty.Clear();
+                }
+                multiProperty.Add(singleProperty);
+
+                // Update vertex field
+                bool existed = vertex.VertexProperties.TryGetValue(name, out vertexProperty);
+                if (!existed) {
+                    vertexProperty = new VertexPropertyField(vertexDocument.Property(name), vertex);
+                    vertex.VertexProperties.Add(name, vertexProperty);
+                }
+                else {
+                    vertexProperty.Replace(vertexDocument.Property(name));
+                }
+            }
+
+            // Upload to DocDB
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument).Wait();
         }
 
         private void UpdatePropertiesOfEdge(EdgeField edge)
         {
+            List<Tuple<WValueExpression, WValueExpression, int>> propertyList =
+                new List<Tuple<WValueExpression, WValueExpression, int>>();
+            foreach (WPropertyExpression property in this.updateProperties) {
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.list ||
+                    property.MetaProperties.Count > 0) {
+                    throw new Exception("Can't create meta property or duplicated property on edges");
+                }
 
+                propertyList.Add(new Tuple<WValueExpression, WValueExpression, int>(property.Key, property.Value, 0));
+            }
+
+            RawRecord record = new RawRecord();
+            record.Append(new StringField(edge.OutV));
+            record.Append(new StringField(edge.Offset.ToString()));
+            UpdateEdgePropertiesOperator op = new UpdateEdgePropertiesOperator(this.InputOperator, this.Connection, 0, 1, propertyList);
+            op.DataModify(record);
         }
 
         private void UpdateMetaPropertiesOfSingleVertexProperty(VertexSinglePropertyField vp)
         {
+            string vertexId = vp.VertexProperty.Vertex.VertexId;
+            JObject vertexDocument = this.Connection.RetrieveDocumentById(vertexId);
+            JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
+                .First(single => (string) single["_propId"] == vp.PropertyId);
+            JObject meta = (JObject)singleProperty["meta"];
 
+            foreach (WPropertyExpression property in this.updateProperties) {
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.list ||
+                    property.MetaProperties.Count > 0) {
+                    throw new Exception("Can't create meta property or duplicated property on vertex-property's meta property");
+                }
+
+                meta[property.Key] = property.Value.ToJValue();
+            }
+
+            // Update vertex single property
+            vp.Replace(singleProperty);
+
+            // Upload to DocDB
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument).Wait();
         }
 
         internal override RawRecord DataModify(RawRecord record)
@@ -346,7 +431,7 @@ namespace GraphView
                 }
                 else
                 {
-                    throw new GraphViewException("");
+                    throw new GraphViewException($"BUG: updateTarget is {nameof(PropertyField)}: {property.GetType()}");
                 }
 
                 return record;
@@ -355,7 +440,7 @@ namespace GraphView
             //
             // Should not reach here
             //
-            return record;
+            throw new Exception("BUG: Should not get here!");
         }
     }
 

@@ -596,6 +596,8 @@ namespace GraphView
 
     public partial class WUpdateEdgePropertiesTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WUpdatePropertiesTableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WStoreTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WAggregateTableReference : WSchemaObjectFunctionTableReference {}

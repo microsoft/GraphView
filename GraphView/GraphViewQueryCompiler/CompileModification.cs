@@ -347,6 +347,31 @@ namespace GraphView
         }
     }
 
+
+    partial class WUpdatePropertiesTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression updateParameter = this.Parameters[0] as WColumnReferenceExpression;
+            int updateIndex = context.LocateColumnReference(updateParameter);
+            var propertiesList = new List<WPropertyExpression>();
+
+            for (int i = 1; i < this.Parameters.Count; ++i) {
+                propertiesList.Add((WPropertyExpression)this.Parameters[i]);
+            }
+
+            UpdatePropertiesOperator updateOp = new UpdatePropertiesOperator(
+                context.CurrentExecutionOperator, 
+                dbConnection,
+                updateIndex, 
+                propertiesList);
+            context.CurrentExecutionOperator = updateOp;
+
+            return updateOp;
+        }
+    }
+
+
     //partial class WInsertNodeSpecification
     //{
     //    /// <summary>
