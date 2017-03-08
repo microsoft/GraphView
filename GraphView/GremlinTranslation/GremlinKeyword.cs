@@ -25,6 +25,7 @@ namespace GraphView
         //public const string ScalarValue = "_value";
         //public const string PropertyValue = "_value";
         public const string Star = "*";
+        public const string Compose1TableDefaultName = "C";
         public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);
 
 

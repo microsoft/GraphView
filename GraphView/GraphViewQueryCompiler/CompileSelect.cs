@@ -2336,6 +2336,50 @@ namespace GraphView
         }
     }
 
+    partial class WPath2TableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
+        {
+            //
+            // If the boolean value is true, then it's a subPath to be unfolded
+            //
+            List<Tuple<ScalarFunction, bool>> pathStepList = new List<Tuple<ScalarFunction, bool>>();
+            List<ScalarFunction> byFuncList = new List<ScalarFunction>();
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            foreach (WScalarExpression expression in Parameters)
+            {
+                WFunctionCall basicStep = expression as WFunctionCall;
+                WColumnReferenceExpression subPath = expression as WColumnReferenceExpression;
+                WScalarSubquery byFunc = expression as WScalarSubquery;
+
+                if (basicStep != null)
+                {
+                    pathStepList.Add(new Tuple<ScalarFunction, bool>(basicStep.CompileToFunction(context, dbcConnection), false));
+                }
+                else if (subPath != null)
+                {
+                    pathStepList.Add(new Tuple<ScalarFunction, bool>(subPath.CompileToFunction(context, dbcConnection), true));
+                }
+                else if (byFunc != null)
+                {
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbcConnection));
+                }
+                else {
+                    throw new QueryCompilationException(
+                        "The parameter of WPathTableReference can only be a WFunctionCall/WColumnReferenceExpression/WScalarSubquery.");
+                }
+            }
+
+            PathOperator2 pathOp = new PathOperator2(context.CurrentExecutionOperator, pathStepList, byFuncList);
+            context.CurrentExecutionOperator = pathOp;
+
+            return pathOp;
+        }
+    }
+
     partial class WInjectTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)

@@ -688,6 +688,95 @@ namespace GraphView
         }
     }
 
+    internal class PathOperator2 : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        //
+        // If the boolean value is true, then it's a subPath to be unfolded
+        //
+        private List<Tuple<ScalarFunction, bool>> pathStepList;
+        private List<ScalarFunction> byFuncList;
+        private int activeByFuncIndex;
+
+        public PathOperator2(GraphViewExecutionOperator inputOp,
+            List<Tuple<ScalarFunction, bool>> pathStepList,
+            List<ScalarFunction> byFuncList)
+        {
+            this.inputOp = inputOp;
+            this.pathStepList = pathStepList;
+            this.byFuncList = byFuncList;
+            this.activeByFuncIndex = 0;
+
+            this.Open();
+        }
+
+        private FieldObject GetStepProjectionResult(FieldObject step)
+        {
+            FieldObject stepProjectionResult;
+
+            if (this.byFuncList.Count == 0) {
+                stepProjectionResult = step;
+            }
+            else
+            {
+                RawRecord initCompose1Record = new RawRecord();
+                initCompose1Record.Append(step);
+                stepProjectionResult = this.byFuncList[this.activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
+
+                if (stepProjectionResult == null) {
+                    throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
+                }
+            }
+
+            return stepProjectionResult;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord inputRec;
+            while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+            {
+                List<FieldObject> path = new List<FieldObject>();
+
+                foreach (Tuple<ScalarFunction, bool> tuple in pathStepList)
+                {
+                    ScalarFunction accessPathStepFunc = tuple.Item1;
+                    bool needsUnfold = tuple.Item2;
+
+                    FieldObject step = accessPathStepFunc.Evaluate(inputRec);
+                    if (step == null) continue;
+
+                    if (needsUnfold)
+                    {
+                        CollectionField subPath = step as CollectionField;
+                        Debug.Assert(subPath != null, "(subPath as CollectionField) != null");
+
+                        foreach (FieldObject subPathStep in subPath.Collection) {
+                            path.Add(GetStepProjectionResult(subPathStep));
+                        }
+                    }
+                    else {
+                        path.Add(GetStepProjectionResult(step));
+                    }
+                }
+
+                RawRecord r = new RawRecord(inputRec);
+                r.Append(new CollectionField(path));
+                return r;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.activeByFuncIndex = 0;
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
+
     internal class UnfoldOperator : TableValuedFunction
     {
         private ScalarFunction _unfoldTarget;
