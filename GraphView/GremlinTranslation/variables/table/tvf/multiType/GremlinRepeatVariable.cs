@@ -182,8 +182,8 @@ namespace GraphView
                     firstQueryExpr.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
 
                     List<WScalarExpression> compose2Paramters = new List<WScalarExpression>();
-                    compose2Paramters.Add(selectedVariable.RealVariable.ToCompose1());
                     compose2Paramters.Add(SqlUtil.GetColumnReferenceExpr("R", columnName));
+                    compose2Paramters.Add(selectedVariable.RealVariable.ToCompose1());
                     WFunctionCall compose2 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose2, compose2Paramters);
                     selectQueryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(compose2, columnName));
                 }
