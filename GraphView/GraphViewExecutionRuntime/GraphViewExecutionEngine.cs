@@ -711,6 +711,13 @@ namespace GraphView
             this.Replace(vertexSinglePropertyObject);
         }
 
+        public VertexSinglePropertyField(VertexSinglePropertyField rhs)
+            :base(rhs.PropertyName, rhs.PropertyValue, rhs.JsonDataType)
+        {
+            this.MetaProperties = rhs.MetaProperties;
+            this.PropertyId = rhs.PropertyId;
+            this.VertexProperty = rhs.VertexProperty;
+        }
 
         //public void UpdateValue(JValue value)
         //{
@@ -833,6 +840,12 @@ namespace GraphView
             this.Edge = edgeField;
         }
 
+        public EdgePropertyField(EdgePropertyField rhs)
+            : base(rhs.PropertyName, rhs.PropertyValue, rhs.JsonDataType)
+        {
+            this.Edge = rhs.Edge;
+        }
+
         public override string ToString()
         {
             return string.Format("p[{0}]", base.ToString());
@@ -903,6 +916,12 @@ namespace GraphView
             this.Parent = vertexSingleProperty;
         }
 
+        public ValuePropertyField(ValuePropertyField rhs)
+            : base(rhs.PropertyName, rhs.PropertyValue, rhs.JsonDataType)
+        {
+            this.Parent = rhs.Parent;
+        }
+
         public override string ToString()
         {
             return string.Format("p[{0}]", base.ToString());
@@ -941,6 +960,8 @@ namespace GraphView
             {
                 if (Multiples.Count == 1)
                     return Multiples[0].PropertyValue;
+                if (Multiples.Count == 0)
+                    return "";
                 Debug.Assert(false, "Should not get here.");
                 return "";
                 //throw new NotSupportedException("Can't get value on a VertexPropertyField with multiple properties");
@@ -954,6 +975,8 @@ namespace GraphView
         {
             if (this.Multiples.Count == 1)
                 return Multiples[0].ToString();
+            if (this.Multiples.Count == 0)
+                return "";
             Debug.Assert(false, "Should not get here.");
             return "";
             //throw new NotSupportedException("Can't get value on a VertexPropertyField with multiple properties");
@@ -964,6 +987,8 @@ namespace GraphView
             {
                 if (this.Multiples.Count == 1)
                     return Multiples[0].ToValue;
+                if (this.Multiples.Count == 0)
+                    return "";
                 Debug.Assert(false, "Should not get here.");
                 return "";
                 //throw new NotSupportedException("Can't get 'ToValue' on a VertexPropertyField");
@@ -974,8 +999,11 @@ namespace GraphView
         {
             get
             {
-                if (Multiples.Count == 1)
+                if (this.Multiples.Count == 1)
                     return Multiples[0].JsonDataType;
+                if (this.Multiples.Count == 0)
+                    return JsonDataType.Null;
+
                 Debug.Assert(false, "Should not get here.");
                 return JsonDataType.String;
             }

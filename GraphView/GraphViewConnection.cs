@@ -188,7 +188,7 @@ namespace GraphView
         }
 
 
-        public void ResetCollection(bool partitionCollection = true, int? edgeSpillThreshold = null)
+        public void ResetCollection(bool partitionCollection = false, int? edgeSpillThreshold = null)
         {
             EnsureDatabaseExist();
 

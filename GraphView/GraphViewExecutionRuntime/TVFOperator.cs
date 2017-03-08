@@ -208,7 +208,7 @@ namespace GraphView
                     foreach (VertexSinglePropertyField vsp in vp.Multiples)
                     {
                         RawRecord r = new RawRecord();
-                        r.Append(vsp);
+                        r.Append(new VertexSinglePropertyField(vsp));
                         foreach (string metapropertyName in this.populateMetaproperties) {
                             r.Append(vsp[metapropertyName]);
                         }
@@ -222,7 +222,7 @@ namespace GraphView
                 if (singleVp != null)
                 {
                     RawRecord r = new RawRecord();
-                    r.Append(propertyObject);
+                    r.Append(new VertexSinglePropertyField(singleVp));
                     foreach (string metapropertyName in this.populateMetaproperties) {
                         r.Append(singleVp[metapropertyName]);
                     }
@@ -238,7 +238,7 @@ namespace GraphView
                     }
 
                     RawRecord r = new RawRecord();
-                    r.Append(propertyObject);
+                    r.Append(new EdgePropertyField(edgePf));
                     results.Add(r);
                     continue;
                 }
@@ -251,7 +251,7 @@ namespace GraphView
                     }
 
                     RawRecord r = new RawRecord();
-                    r.Append(propertyObject);
+                    r.Append(new ValuePropertyField(metaPf));
                     results.Add(r);
                     continue;
                 }
@@ -371,7 +371,7 @@ namespace GraphView
                             foreach (VertexSinglePropertyField singleVp in property.Multiples)
                             {
                                 RawRecord r = new RawRecord();
-                                r.Append(singleVp);
+                                r.Append(new VertexSinglePropertyField(singleVp));
                                 foreach (string metaPropertyName in this.populateMetaProperties) {
                                     r.Append(singleVp[metaPropertyName]);
                                 }
@@ -387,7 +387,7 @@ namespace GraphView
                 foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties)
                 {
                     string propertyName = propertyPair.Key;
-                    EdgePropertyField propertyField = propertyPair.Value;
+                    EdgePropertyField edgePropertyField = propertyPair.Value;
 
                     switch (propertyName)
                     {
@@ -402,7 +402,7 @@ namespace GraphView
                             continue;
                         default:
                             RawRecord r = new RawRecord();
-                            r.Append(propertyField);
+                            r.Append(new EdgePropertyField(edgePropertyField));
                             results.Add(r);
                             break;
                     }
@@ -419,7 +419,7 @@ namespace GraphView
                 {
                     RawRecord r = new RawRecord();
                     ValuePropertyField metaPropertyField = kvp.Value;
-                    r.Append(metaPropertyField);
+                    r.Append(new ValuePropertyField(metaPropertyField));
                     results.Add(r);
                 }
 
