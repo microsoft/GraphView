@@ -2375,6 +2375,7 @@ namespace GraphView
 
             PathOperator2 pathOp = new PathOperator2(context.CurrentExecutionOperator, pathStepList, byFuncList);
             context.CurrentExecutionOperator = pathOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return pathOp;
         }
