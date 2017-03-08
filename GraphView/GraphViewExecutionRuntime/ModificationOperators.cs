@@ -174,7 +174,15 @@ namespace GraphView
             this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
 
             // Update vertex field
-            vertexField.VertexProperties.Remove(vp.PropertyName);
+            //
+            // TODO: To be confirmed by Wenbin
+            //
+            VertexPropertyField vertexPropertyField = vertexField.VertexProperties[vp.PropertyName];
+            vertexPropertyField.Multiples.RemoveAll(vsp => vsp.PropertyId == vp.PropertyId);
+            if (!vertexPropertyField.Multiples.Any()) {
+                vertexField.VertexProperties.Remove(vp.PropertyName);
+            }
+
         }
 
         private void DropVertexPropertyMetaProperty(ValuePropertyField metaProperty)
@@ -386,7 +394,7 @@ namespace GraphView
             JObject vertexDocument = this.Connection.RetrieveDocumentById(vertexId);
             JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
                 .First(single => (string) single["_propId"] == vp.PropertyId);
-            JObject meta = (JObject)singleProperty["meta"];
+            JObject meta = (JObject)singleProperty["_meta"];
 
             foreach (WPropertyExpression property in this.updateProperties) {
                 if (property.Cardinality == GremlinKeyword.PropertyCardinality.list ||
@@ -394,7 +402,7 @@ namespace GraphView
                     throw new Exception("Can't create meta property or duplicated property on vertex-property's meta property");
                 }
 
-                meta[property.Key] = property.Value.ToJValue();
+                meta[property.Key.Value] = property.Value.ToJValue();
             }
 
             // Update vertex single property
