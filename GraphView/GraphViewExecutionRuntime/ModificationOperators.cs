@@ -167,9 +167,16 @@ namespace GraphView
             JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
 
             Debug.Assert(vertexObject[vp.PropertyName] != null);
-            ((JArray)vertexObject[vp.PropertyName])
-                .First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
+
+            //
+            // TODO: To be confirmed by Wenbin
+            //
+            JArray vertexPropertiesArray = (JArray) vertexObject[vp.PropertyName];
+            vertexPropertiesArray.First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
                 .Remove();
+            if (vertexPropertiesArray.Count == 0) {
+                vertexObject.Property(vp.PropertyName).Remove();
+            }
 
             this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
 
