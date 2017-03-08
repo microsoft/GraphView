@@ -553,6 +553,20 @@ namespace GraphView
             return CompositeFieldObject.TryGetValue(key, out fieldObject);
         }
 
+        public FieldObject this[string key]
+        {
+            get
+            {
+                FieldObject value;
+                this.CompositeFieldObject.TryGetValue(key, out value);
+                return value;
+            }
+            set
+            {
+                this.CompositeFieldObject[key] = value;
+            }
+        }
+
         public override string ToString()
         {
             return CompositeFieldObject[DefaultProjectionKey].ToString();

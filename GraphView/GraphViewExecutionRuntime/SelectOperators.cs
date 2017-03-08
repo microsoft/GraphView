@@ -3595,4 +3595,50 @@ namespace GraphView
             Open();
         }
     }
+
+    internal class Decompose1Operator : GraphViewExecutionOperator
+    {
+        GraphViewExecutionOperator inputOp;
+        int decomposeTargetIndex;
+        List<string> populateColumns;
+
+        public Decompose1Operator(
+            GraphViewExecutionOperator inputOp,
+            int decomposeTargetIndex,
+            List<string> populateColumns)
+        {
+            this.inputOp = inputOp;
+            this.decomposeTargetIndex = decomposeTargetIndex;
+            this.populateColumns = populateColumns;
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord inputRecord = null;
+            while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
+            {
+                Compose1Field compose1Obj = inputRecord[this.decomposeTargetIndex] as Compose1Field;
+                Debug.Assert(compose1Obj != null, "compose1Obj != null");
+
+                RawRecord r = new RawRecord(inputRecord);
+
+                foreach (string populateColumn in this.populateColumns) {
+                    r.Append(compose1Obj[populateColumn]);
+                }
+
+                return r;
+            }
+
+            Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
 }

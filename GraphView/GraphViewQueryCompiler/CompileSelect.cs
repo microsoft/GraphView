@@ -2938,5 +2938,35 @@ namespace GraphView
             }
         }
     }
+
+    partial class WDecompose1TableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression decomposeTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(decomposeTargetParameter != null, "decomposeTargetParameter != null");
+
+            int decomposeTargetIndex = context.LocateColumnReference(decomposeTargetParameter);
+            List<string> populateColumns = new List<string>();
+
+            for (int i = 1; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateColumn != null, "populateColumn != null");
+
+                populateColumns.Add(populateColumn.Value);
+            }
+
+            Decompose1Operator decompose1Op = new Decompose1Operator(context.CurrentExecutionOperator,
+                decomposeTargetIndex, populateColumns);
+            context.CurrentExecutionOperator = decompose1Op;
+
+            foreach (string populateColumn in populateColumns) {
+                context.AddField(Alias.Value, populateColumn, ColumnGraphType.Value);
+            }
+
+            return decompose1Op;
+        }
+    }
 }
 
