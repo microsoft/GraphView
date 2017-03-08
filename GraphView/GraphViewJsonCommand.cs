@@ -31,6 +31,9 @@ namespace GraphView
             if (!expr.SingleQuoted && bool.TryParse(expr.Value, out boolValue)) {
                 return (JValue)boolValue;
             }
+            else if (expr.SingleQuoted) {
+                return (JValue)expr.Value;  // String value
+            }
             else {
                 return (JValue)JToken.Parse(expr.ToString());
             }

@@ -363,6 +363,9 @@ namespace GraphView
 
             for (int i = 1; i < this.Parameters.Count; ++i) {
                 propertiesList.Add((WPropertyExpression)this.Parameters[i]);
+#if DEBUG
+                ((WPropertyExpression)this.Parameters[i]).Value.ToJValue();
+#endif
             }
 
             UpdatePropertiesOperator updateOp = new UpdatePropertiesOperator(
