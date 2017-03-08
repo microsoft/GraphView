@@ -187,15 +187,7 @@ namespace GraphView
             JObject vertexObject = this.connection.RetrieveDocumentById(vertexField.VertexId);
 
             Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
-            //((JArray)vertexObject[vertexSingleProperty.PropertyName])
-            //    .First(singleProperty => (string)singleProperty["_propId"] == vertexSingleProperty.PropertyId)
-            //    ["_meta"]
-            //    [metaProperty.PropertyName]
-            //    .Remove();
 
-            //
-            // TODO: To be confirmed by Wenbin
-            //
             JToken propertyJToken = ((JArray) vertexObject[vertexSingleProperty.PropertyName])
                 .First(singleProperty => (string) singleProperty["_propId"] == vertexSingleProperty.PropertyId);
 
@@ -330,7 +322,7 @@ namespace GraphView
                 // Construct single property
                 JObject meta = new JObject();
                 foreach (KeyValuePair<WValueExpression, WValueExpression> pair in property.MetaProperties) {
-                    meta[pair.Key.ToJValue()] = pair.Value.ToJValue();
+                    meta[pair.Key.Value] = pair.Value.ToJValue();
                 }
                 JObject singleProperty = new JObject {
                     ["_value"] = property.Value.ToJValue(),

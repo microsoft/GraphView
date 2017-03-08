@@ -872,6 +872,7 @@ namespace GraphView
                 property.Value.ToString(),
                 JsonDataTypeHelper.GetJsonDataType(property.Value.Type))
         {
+            Debug.Assert(VertexField.IsVertexMetaProperty(property.Name));
             Debug.Assert(property.Value is JValue);
 
             this.Parent = vertexField;
@@ -883,11 +884,6 @@ namespace GraphView
                 property.Value.ToString(),
                 JsonDataTypeHelper.GetJsonDataType(property.Value.Type))
         {
-            //
-            // TODO: To be confirmed by Wenbin
-            //
-            //Debug.Assert(VertexField.IsVertexMetaProperty(property.Name));
-            Debug.Assert(!VertexField.IsVertexMetaProperty(property.Name));
             Debug.Assert(property.Value is JValue);
 
             this.Parent = vertexSingleProperty;
