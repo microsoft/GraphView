@@ -8,19 +8,20 @@ namespace GraphView
 {
     internal class GremlinBoundEdgeTableVariable : GremlinEdgeTableVariable
     {
-        public GremlinVariableProperty SourceVertexVariableProperty;
-        public GremlinVariableProperty AdjEdgeVariableProperty;
-        public GremlinVariableProperty RevAdjEdgeVariableProperty;
-        public GremlinVariableProperty LabelVariableProperty;
+        private GremlinVariableProperty sourceVertexVariableProperty;
+        private GremlinVariableProperty adjEdgeVariableProperty;
+        private GremlinVariableProperty revAdjEdgeVariableProperty;
+        private GremlinVariableProperty labelVariableProperty;
+
 
         public GremlinBoundEdgeTableVariable(GremlinVariableProperty sourceVertexVariableProperty,
                                         GremlinVariableProperty adjEdgeVariableProperty,
                                         GremlinVariableProperty labelVariableProperty,
                                         WEdgeType edgeType)
         {
-            SourceVertexVariableProperty = sourceVertexVariableProperty;
-            AdjEdgeVariableProperty = adjEdgeVariableProperty;
-            LabelVariableProperty = labelVariableProperty;
+            this.sourceVertexVariableProperty = sourceVertexVariableProperty;
+            this.adjEdgeVariableProperty = adjEdgeVariableProperty;
+            this.labelVariableProperty = labelVariableProperty;
             EdgeType = edgeType;
         }
 
@@ -30,10 +31,10 @@ namespace GraphView
                                         GremlinVariableProperty labelVariableProperty,
                                         WEdgeType edgeType)
         {
-            SourceVertexVariableProperty = sourceVertexVariableProperty;
-            AdjEdgeVariableProperty = adjEdgeVariableProperty;
-            RevAdjEdgeVariableProperty = revAdjEdgeVariableProperty;
-            LabelVariableProperty = labelVariableProperty;
+            this.sourceVertexVariableProperty = sourceVertexVariableProperty;
+            this.adjEdgeVariableProperty = adjEdgeVariableProperty;
+            this.revAdjEdgeVariableProperty = revAdjEdgeVariableProperty;
+            this.labelVariableProperty = labelVariableProperty;
             EdgeType = edgeType;
         }
 
@@ -41,10 +42,10 @@ namespace GraphView
         {
             List<WScalarExpression> PropertyKeys = new List<WScalarExpression>();
 
-            if (SourceVertexVariableProperty != null) PropertyKeys.Add(SourceVertexVariableProperty.ToScalarExpression());
-            if (AdjEdgeVariableProperty != null) PropertyKeys.Add(AdjEdgeVariableProperty.ToScalarExpression());
-            if (RevAdjEdgeVariableProperty != null) PropertyKeys.Add(RevAdjEdgeVariableProperty.ToScalarExpression());
-            if (LabelVariableProperty != null) PropertyKeys.Add(LabelVariableProperty.ToScalarExpression());
+            if (this.sourceVertexVariableProperty != null) PropertyKeys.Add(this.sourceVertexVariableProperty.ToScalarExpression());
+            if (this.adjEdgeVariableProperty != null) PropertyKeys.Add(this.adjEdgeVariableProperty.ToScalarExpression());
+            if (this.revAdjEdgeVariableProperty != null) PropertyKeys.Add(this.revAdjEdgeVariableProperty.ToScalarExpression());
+            if (this.labelVariableProperty != null) PropertyKeys.Add(this.labelVariableProperty.ToScalarExpression());
 
             foreach (var property in ProjectedProperties)
             {
@@ -52,7 +53,7 @@ namespace GraphView
             }
 
             WTableReference tableRef = null;
-            switch (EdgeType)
+            switch (this.EdgeType)
             {
                 case WEdgeType.BothEdge:
                     tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.BothE, PropertyKeys, GetVariableName());

@@ -78,6 +78,7 @@
     <Compile Include="GremlinFunctionalTestSuite.cs" />
     <Compile Include="GremlinTranslationOperator.cs" />
     <Compile Include="Gremlin\AbstractGremlinTest.cs" />
+    <Compile Include="Gremlin\CustomTest.cs" />
     <Compile Include="Gremlin\GraphData.cs" />
     <Compile Include="Gremlin\GraphDataLoader.cs" />
     <Compile Include="Gremlin\ProcessTests\NestingPropertiesTest.cs" />
@@ -92,6 +93,7 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\CoalesceTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\ConstantTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\GroupTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\PathTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\ProjectTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\PropertiesTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\SelectTest.cs" />

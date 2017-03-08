@@ -29,17 +29,17 @@ namespace GraphView
                 base.Both(currentContext, edgeLabels);
                 return;
             }
-            GremlinFreeEdgeTableVariable bothEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.BothEdge);
-            currentContext.VariableList.Add(bothEdgeTable);
-            currentContext.AddLabelPredicateForEdge(bothEdgeTable, edgeLabels);
+            GremlinFreeEdgeVariable bothEdge = new GremlinFreeEdgeVariable(WEdgeType.BothEdge);
+            currentContext.VariableList.Add(bothEdge);
+            currentContext.AddLabelPredicateForEdge(bothEdge, edgeLabels);
 
             GremlinFreeVertexVariable bothVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(bothVertex);
 
             // In this case, the both-edgeTable variable is not added to the table-reference list. 
-            // Instead, we populate a path this_variable-[bothEdgeTable]->bothVertex in the context
+            // Instead, we populate a path this_variable-[bothEdge]->bothVertex in the context
             currentContext.TableReferences.Add(bothVertex);
-            currentContext.AddPath(new GremlinMatchPath(this, bothEdgeTable, bothVertex));
+            currentContext.PathList.Add(new GremlinMatchPath(this, bothEdge, bothVertex));
             currentContext.SetPivotVariable(bothVertex);
         }
 
@@ -50,14 +50,14 @@ namespace GraphView
                 base.In(currentContext, edgeLabels);
                 return;
             }
-            GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
-            currentContext.VariableList.Add(inEdgeTable);
-            currentContext.AddLabelPredicateForEdge(inEdgeTable, edgeLabels);
+            GremlinFreeEdgeVariable inEdge = new GremlinFreeEdgeVariable(WEdgeType.InEdge);
+            currentContext.VariableList.Add(inEdge);
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
 
             GremlinFreeVertexVariable outVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(outVertex);
             currentContext.TableReferences.Add(outVertex);
-            currentContext.AddPath(new GremlinMatchPath(outVertex, inEdgeTable, this));
+            currentContext.PathList.Add(new GremlinMatchPath(outVertex, inEdge, this));
             currentContext.SetPivotVariable(outVertex);
         }
 
@@ -68,11 +68,11 @@ namespace GraphView
                 base.InE(currentContext, edgeLabels);
                 return;
             }
-            GremlinFreeEdgeTableVariable inEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.InEdge);
-            currentContext.VariableList.Add(inEdgeTable);
-            currentContext.AddLabelPredicateForEdge(inEdgeTable, edgeLabels);
-            currentContext.AddPath(new GremlinMatchPath(null, inEdgeTable, this));
-            currentContext.SetPivotVariable(inEdgeTable);
+            GremlinFreeEdgeVariable inEdge = new GremlinFreeEdgeVariable(WEdgeType.InEdge);
+            currentContext.VariableList.Add(inEdge);
+            currentContext.AddLabelPredicateForEdge(inEdge, edgeLabels);
+            currentContext.PathList.Add(new GremlinMatchPath(null, inEdge, this));
+            currentContext.SetPivotVariable(inEdge);
         }
 
         internal override void Out(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -82,14 +82,14 @@ namespace GraphView
                 base.Out(currentContext, edgeLabels);
                 return;
             }
-            GremlinFreeEdgeTableVariable outEdgeTable = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
-            currentContext.VariableList.Add(outEdgeTable);
-            currentContext.AddLabelPredicateForEdge(outEdgeTable, edgeLabels);
+            GremlinFreeEdgeVariable outEdge = new GremlinFreeEdgeVariable(WEdgeType.OutEdge);
+            currentContext.VariableList.Add(outEdge);
+            currentContext.AddLabelPredicateForEdge(outEdge, edgeLabels);
 
             GremlinFreeVertexVariable inVertex = new GremlinFreeVertexVariable();
             currentContext.VariableList.Add(inVertex);
             currentContext.TableReferences.Add(inVertex);
-            currentContext.AddPath(new GremlinMatchPath(this, outEdgeTable, inVertex));
+            currentContext.PathList.Add(new GremlinMatchPath(this, outEdge, inVertex));
             currentContext.SetPivotVariable(inVertex);
         }
         internal override void OutE(GremlinToSqlContext currentContext, List<string> edgeLabels)
@@ -99,11 +99,11 @@ namespace GraphView
                 base.OutE(currentContext, edgeLabels);
                 return;
             }
-            GremlinFreeEdgeTableVariable outEdgeTableVar = new GremlinFreeEdgeTableVariable(WEdgeType.OutEdge);
-            currentContext.VariableList.Add(outEdgeTableVar);
-            currentContext.AddLabelPredicateForEdge(outEdgeTableVar, edgeLabels);
-            currentContext.AddPath(new GremlinMatchPath(this, outEdgeTableVar, null));
-            currentContext.SetPivotVariable(outEdgeTableVar);
+            GremlinFreeEdgeVariable outEdgeVar = new GremlinFreeEdgeVariable(WEdgeType.OutEdge);
+            currentContext.VariableList.Add(outEdgeVar);
+            currentContext.AddLabelPredicateForEdge(outEdgeVar, edgeLabels);
+            currentContext.PathList.Add(new GremlinMatchPath(this, outEdgeVar, null));
+            currentContext.SetPivotVariable(outEdgeVar);
         }
 
         internal override void Aggregate(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)

@@ -44,12 +44,6 @@ namespace GraphView
             }
         }
 
-        internal override void PopulateGremlinPath()
-        {
-            RepeatContext.PopulateGremlinPath();
-            RepeatContext.CurrentContextPath.IsInRepeatContext = true;
-        }
-
         internal override GremlinVariableType GetUnfoldVariableType()
         {
             throw new NotImplementedException();
@@ -68,9 +62,11 @@ namespace GraphView
             return false;
         }
 
-        internal override GremlinVariableProperty GetPath()
+        internal override GremlinPathStepVariable GetAndPopulatePath()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.Path);
+            GremlinPathVariable pathVariable = RepeatContext.PopulateGremlinPath();
+            pathVariable.IsInRepeatContext = true;
+            return new GremlinPathStepVariable(pathVariable, this);
         }
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
@@ -100,8 +96,6 @@ namespace GraphView
             List<WSelectScalarExpression> inputSelectList = GetInputSelectList(ref map);
             List<WSelectScalarExpression> outerSelectList = GetOuterSelectList(ref map);
             List<WSelectScalarExpression> terminateSelectList = GetConditionSelectList(ref map2);
-            List<WSelectScalarExpression> repeatPathOuterList = GetRepeatPathOuterVariableList(ref map3);
-            List<WSelectScalarExpression> conditionPathOuterList = GetConditionPathOuterVariableList(ref map4);
 
             WSelectQueryBlock selectQueryBlock = RepeatContext.ToSelectQueryBlock();
             selectQueryBlock.SelectElements.Clear();
@@ -115,14 +109,6 @@ namespace GraphView
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
             foreach (var selectElement in terminateSelectList)
-            {
-                selectQueryBlock.SelectElements.Add(selectElement);
-            }
-            foreach (var selectElement in repeatPathOuterList)
-            {
-                selectQueryBlock.SelectElements.Add(selectElement);
-            }
-            foreach (var selectElement in conditionPathOuterList)
             {
                 selectQueryBlock.SelectElements.Add(selectElement);
             }
@@ -313,62 +299,6 @@ namespace GraphView
                 }
             }
             return terminateSelectList;
-        }
-
-        public List<WSelectScalarExpression> GetConditionPathOuterVariableList(ref Dictionary<GremlinVariableProperty, string> map)
-        {
-            List<WSelectScalarExpression> pathOuterVariableList = new List<WSelectScalarExpression>();
-            List<GremlinVariable> variableList = new List<GremlinVariable>();
-            List<GremlinVariable> temp = RepeatCondition.TerminationContext?.FetchVarsFromCurrAndChildContext();
-            if (temp != null)
-            {
-                variableList.AddRange(temp);
-            }
-            temp = RepeatCondition.EmitContext?.FetchVarsFromCurrAndChildContext();
-            if (temp != null)
-            {
-                variableList.AddRange(temp);
-            }
-            foreach (var variable in variableList)
-            {
-                if (variable is GremlinPathVariable)
-                {
-                    var pathVariable = (variable as GremlinPathVariable);
-                    foreach (var stepVariable in pathVariable.PathList)
-                    {
-                        if (!variableList.Contains(stepVariable.GremlinVariable))
-                        {
-                            var aliasName = GenerateKey();
-                            pathOuterVariableList.Add(SqlUtil.GetSelectScalarExpr(stepVariable.ToScalarExpression(), aliasName));
-                            map[stepVariable] = aliasName;
-                        }
-                    }
-                }
-            }
-            return pathOuterVariableList;
-        }
-
-        public List<WSelectScalarExpression> GetRepeatPathOuterVariableList(ref Dictionary<GremlinVariableProperty, string> map)
-        {
-            List<WSelectScalarExpression> pathOuterVariableList = new List<WSelectScalarExpression>();
-            var allVariablesInRepeatContext = RepeatContext.FetchVarsFromCurrAndChildContext();
-            foreach (var variable in allVariablesInRepeatContext)
-            {
-                if (variable is GremlinPathVariable)
-                {
-                    var pathVariable = (variable as GremlinPathVariable);
-                    foreach (var stepVariable in pathVariable.PathList)
-                    {
-                        if (!allVariablesInRepeatContext.Contains(stepVariable.GremlinVariable))
-                        {
-                            var aliasName = GenerateKey();
-                            pathOuterVariableList.Add(SqlUtil.GetSelectScalarExpr(stepVariable.ToScalarExpression(), aliasName));
-                            map[stepVariable] = aliasName;
-                        }
-                    }
-                }
-            }
-            return pathOuterVariableList;
         }
 
         public string GenerateKey()

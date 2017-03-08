@@ -25,14 +25,10 @@ namespace GraphView
             LocalContext.Populate(property);
         }
 
-        internal override GremlinVariableProperty GetPath()
+        internal override GremlinPathStepVariable GetAndPopulatePath()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.Path);
-        }
-
-        internal override void PopulateGremlinPath()
-        {
-            LocalContext.PopulateGremlinPath();
+            GremlinPathVariable pathVariable = LocalContext.PopulateGremlinPath();
+            return new GremlinPathStepVariable(pathVariable, this);
         }
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()

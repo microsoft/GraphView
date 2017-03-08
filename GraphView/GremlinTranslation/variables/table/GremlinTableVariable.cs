@@ -6,7 +6,7 @@ namespace GraphView
 {
     internal abstract class GremlinTableVariable : GremlinVariable
     {
-        public WEdgeType EdgeType { get; set; }
+        //public WEdgeType EdgeType { get; set; }
         public GremlinVariableType VariableType { get; set; }
 
         public GremlinTableVariable(GremlinVariableType variableType)
@@ -15,10 +15,10 @@ namespace GraphView
             variableName = GremlinUtil.GenerateTableAlias(VariableType);
         }
 
-        internal override WEdgeType GetEdgeType()
-        {
-            return EdgeType;
-        }
+        //internal override WEdgeType GetEdgeType()
+        //{
+        //    return EdgeType;
+        //}
 
         internal override void Populate(string property)
         {
@@ -110,6 +110,8 @@ namespace GraphView
 
     internal abstract class GremlinEdgeTableVariable : GremlinTableVariable
     {
+        public WEdgeType EdgeType { get; set; }
+
         public GremlinEdgeTableVariable(): base(GremlinVariableType.Edge) {}
     }
 }

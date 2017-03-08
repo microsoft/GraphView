@@ -21,9 +21,10 @@ namespace GraphView
             OptionalContext.HomeVariable = this;
         }
 
-        internal override GremlinVariableProperty GetPath()
+        internal override GremlinPathStepVariable GetAndPopulatePath()
         {
-            return new GremlinVariableProperty(this, GremlinKeyword.Path);
+            GremlinPathVariable pathVariable = OptionalContext.PopulateGremlinPath();
+            return new GremlinPathStepVariable(pathVariable, this);
         }
 
         internal override void Populate(string property)
@@ -48,11 +49,6 @@ namespace GraphView
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
             return OptionalContext.FetchVarsFromCurrAndChildContext();
-        }
-
-        internal override void PopulateGremlinPath()
-        {
-            OptionalContext.PopulateGremlinPath();
         }
 
         internal override bool ContainsLabel(string label)

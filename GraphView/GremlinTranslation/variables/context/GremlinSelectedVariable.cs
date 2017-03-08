@@ -12,10 +12,10 @@ namespace GraphView {
         public string SelectKey { get; set; }
         public GremlinVariable RealVariable { get; set; }
 
-        internal override WEdgeType GetEdgeType()
-        {
-            return RealVariable.GetEdgeType();
-        }
+        //internal override WEdgeType GetEdgeType()
+        //{
+        //    return RealVariable.GetEdgeType();
+        //}
 
         internal override string GetProjectKey()
         {

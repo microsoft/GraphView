@@ -850,12 +850,6 @@ namespace GraphView
         public GraphTraversal2 Path()
         {
             AddGremlinOperator(new GremlinPathOp());
-            return this;   
-        }
-
-        public GraphTraversal2 Path2()
-        {
-            AddGremlinOperator(new GremlinPath2Op());
             return this;
         }
 

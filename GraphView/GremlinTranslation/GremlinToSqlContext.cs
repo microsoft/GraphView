@@ -194,9 +194,9 @@ namespace GraphView
             return taggedVariableList;
         }
 
-        internal void PopulateGremlinPath()
+        internal GremlinPathVariable PopulateGremlinPath()
         {
-            if (IsPopulateGremlinPath) return;
+            if (IsPopulateGremlinPath) return CurrentContextPath;
 
             GremlinPathVariable newVariable = new GremlinPathVariable(GetCurrAndChildGremlinStepList());
             VariableList.Add(newVariable);
@@ -204,6 +204,8 @@ namespace GraphView
             CurrentContextPath = newVariable;
 
             IsPopulateGremlinPath = true;
+
+            return newVariable;
         }
 
         internal void SetPivotVariable(GremlinVariable newPivotVariable)
@@ -213,48 +215,43 @@ namespace GraphView
             newPivotVariable.HomeContext = this;
         }
 
-        internal List<GremlinVariableProperty> GetGremlinStepList(GremlinVariable stopVariable = null)
+        internal List<GremlinPathStepVariable> GetGremlinStepList(GremlinVariable stopVariable = null)
         {
-            List<GremlinVariableProperty> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
+            List<GremlinPathStepVariable> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
             if (gremlinStepList == null)
             {
-                gremlinStepList = new List<GremlinVariableProperty>();
+                gremlinStepList = new List<GremlinPathStepVariable>();
             }
             foreach (var step in StepList)
             {
                 if (step == stopVariable) break;
-                step.PopulateGremlinPath();
-                gremlinStepList.Add(step.GetPath());
+                //step.PopulateGremlinPath();
+                gremlinStepList.Add(step.GetAndPopulatePath());
             }
             return gremlinStepList;
         }
 
-        internal List<GremlinVariableProperty> GetCurrAndChildGremlinStepList(GremlinVariable stopVariable = null)
+        internal List<GremlinPathStepVariable> GetCurrAndChildGremlinStepList(GremlinVariable stopVariable = null)
         {
-            List<GremlinVariableProperty> gremlinStepList = new List<GremlinVariableProperty>();
+            List<GremlinPathStepVariable> gremlinStepList = new List<GremlinPathStepVariable>();
             foreach (var step in StepList)
             {
                 if (step == stopVariable) break;
-                step.PopulateGremlinPath();
-                gremlinStepList.Add(step.GetPath());
+                //step.PopulateGremlinPath();
+                gremlinStepList.Add(step.GetAndPopulatePath());
             }
             return gremlinStepList;
         }
 
-        internal void AddPath(GremlinMatchPath path)
-        {
-            PathList.Add(path);
-        }
+        //internal bool IsVariableInCurrentContext(GremlinVariable variable)
+        //{
+        //    return TableReferences.Contains(variable);
+        //}
 
-        internal bool IsVariableInCurrentContext(GremlinVariable variable)
-        {
-            return TableReferences.Contains(variable);
-        }
-
-        internal GremlinMatchPath GetPathFromPathList(GremlinVariable edge)
-        {
-            return PathList.Find(p => p.EdgeVariable.GetVariableName() == edge.GetVariableName());
-        }
+        //internal GremlinMatchPath GetPathFromPathList(GremlinVariable edge)
+        //{
+        //    return PathList.Find(p => p.EdgeVariable.GetVariableName() == edge.GetVariableName());
+        //}
 
         internal void AddPredicate(WBooleanExpression newPredicate)
         {
@@ -346,10 +343,10 @@ namespace GraphView
             var newMatchClause = new WMatchClause();
             foreach (var path in PathList)
             {
-                if (path.EdgeVariable is GremlinFreeEdgeTableVariable && VariableList.Contains(path.EdgeVariable))
-                {
-                    newMatchClause.Paths.Add(path.ToMatchPath());
-                }
+                //if (path.EdgeVariable is GremlinFreeEdgeVariable && VariableList.Contains(path.EdgeVariable))
+                //{
+                    newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
+                //}
             }
             return newMatchClause.Paths.Count == 0 ? null : newMatchClause;
         }

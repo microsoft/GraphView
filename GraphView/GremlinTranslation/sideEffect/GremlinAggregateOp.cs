@@ -33,7 +33,7 @@ namespace GraphView
 
         public override void ModulateBy()
         {
-            throw new NotImplementedException();
+            ByTraversal = GraphTraversal2.__();
         }
 
         public override void ModulateBy(GraphTraversal2 traversal)

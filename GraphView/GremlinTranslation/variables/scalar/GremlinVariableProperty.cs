@@ -22,6 +22,12 @@ namespace GraphView
             return this;
         }
 
+        internal override void Populate(string property)
+        {
+            GremlinVariable.Populate(property);
+            base.Populate(property);
+        }
+
         public override WScalarExpression ToScalarExpression()
         {
             return SqlUtil.GetColumnReferenceExpr(GremlinVariable.GetVariableName(), VariableProperty);

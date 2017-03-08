@@ -35,17 +35,15 @@ namespace GraphView
             }
         }
 
-        internal override void PopulateGremlinPath()
+        internal override GremlinPathStepVariable GetAndPopulatePath()
         {
+            List<GremlinVariable> pathStepVariableList = new List<GremlinVariable>();
             foreach (var context in UnionContextList)
             {
-                context.PopulateGremlinPath();
+                GremlinPathVariable newVariable = context.PopulateGremlinPath();
+                pathStepVariableList.Add(newVariable);
             }
-        }
-
-        internal override GremlinVariableProperty GetPath()
-        {
-            return new GremlinVariableProperty(this, GremlinKeyword.Path);
+            return new GremlinPathStepVariable(pathStepVariableList, this);
         }
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
@@ -89,17 +87,17 @@ namespace GraphView
             return false;
         }
 
-        internal override WEdgeType GetEdgeType()
-        {
-            if (UnionContextList.Count <= 1) return UnionContextList.First().PivotVariable.GetEdgeType();
-            for (var i = 1; i < UnionContextList.Count; i++)
-            {
-                var isSameType = UnionContextList[i - 1].PivotVariable.GetEdgeType()
-                                  == UnionContextList[i].PivotVariable.GetEdgeType();
-                if (isSameType == false) throw new NotImplementedException();
-            }
-            return UnionContextList.First().PivotVariable.GetEdgeType();
-        }
+        //internal override WEdgeType GetEdgeType()
+        //{
+        //    if (UnionContextList.Count <= 1) return UnionContextList.First().PivotVariable.GetEdgeType();
+        //    for (var i = 1; i < UnionContextList.Count; i++)
+        //    {
+        //        var isSameType = UnionContextList[i - 1].PivotVariable.GetEdgeType()
+        //                          == UnionContextList[i].PivotVariable.GetEdgeType();
+        //        if (isSameType == false) throw new NotImplementedException();
+        //    }
+        //    return UnionContextList.First().PivotVariable.GetEdgeType();
+        //}
 
         public override WTableReference ToTableReference()
         {

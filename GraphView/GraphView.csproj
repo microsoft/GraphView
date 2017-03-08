@@ -153,6 +153,8 @@
     <Compile Include="GremlinTranslation\variables\context\GremlinSelectedVariable.cs" />
     <Compile Include="GremlinTranslation\variables\context\GremlinListVariable.cs" />
     <Compile Include="GremlinTranslation\variables\context\GremlinRepeatSelectedVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\GremlinPathStepVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\multiType\GremlinDecompose1Variable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\sideEffect\GremlinOrderVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\edge\GremlinBoundEdgeVariable.cs" />
@@ -170,7 +172,6 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinMaxLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinMeanLocalVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinMinLocalVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinPath2Variable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\singleType\GremlinPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\sideEffect\GremlinStoreVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\multiType\GremlinUnfoldVariable.cs" />

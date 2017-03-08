@@ -8,38 +8,15 @@ namespace GraphView
 {
     internal class GremlinMatchPath
     {
-        public GremlinVariable SourceVariable { get; set; } 
-        public GremlinVariable EdgeVariable { get; set; } 
-        public GremlinVariable SinkVariable { get; set; } 
+        public GremlinFreeVertexVariable SourceVariable { get; set; } 
+        public GremlinFreeEdgeVariable EdgeVariable { get; set; } 
+        public GremlinFreeVertexVariable SinkVariable { get; set; } 
  
-        public GremlinMatchPath(GremlinVariable sourceVariable, GremlinVariable edgeVariable, GremlinVariable sinkVariable)
+        public GremlinMatchPath(GremlinFreeVertexVariable sourceVariable, GremlinFreeEdgeVariable edgeVariable, GremlinFreeVertexVariable sinkVariable)
         { 
             SourceVariable = sourceVariable; 
             EdgeVariable = edgeVariable; 
             SinkVariable = sinkVariable; 
         }
-
-        public void SetSinkVariable(GremlinVariable sinkVariable)
-        {
-            SinkVariable = sinkVariable;
-        }
-
-        public void SetSourceVariable(GremlinVariable sourceVariable)
-        {
-            SourceVariable = sourceVariable;
-        }
-
-        public WMatchPath ToMatchPath()
-        {
-            if (!(SinkVariable is GremlinFreeVertexVariable))
-            {
-                SinkVariable = null;
-            }
-            if (!(SourceVariable is GremlinFreeVertexVariable))
-            {
-                SourceVariable = null;
-            }
-            return SqlUtil.GetMatchPath(this);
-        }
-    } 
+    }
 }

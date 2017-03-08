@@ -264,7 +264,7 @@ namespace GraphView
 
         internal static WSchemaObjectName GetPathTail(GremlinMatchPath path)
         {
-            var edge = path.EdgeVariable as GremlinEdgeTableVariable;
+            var edge = path.EdgeVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
                 return path.SourceVariable == null ? null : GetSchemaObjectName(path.SourceVariable?.GetVariableName());
             else
@@ -273,7 +273,7 @@ namespace GraphView
 
         internal static WSchemaObjectName GetPathSource(GremlinMatchPath path)
         {
-            var edge = path.EdgeVariable as GremlinEdgeTableVariable;
+            var edge = path.EdgeVariable;
             if (edge.EdgeType == WEdgeType.InEdge)
                 return GetSchemaObjectName(path.SinkVariable.GetVariableName());
             else
@@ -286,12 +286,12 @@ namespace GraphView
             {
                 new Tuple<WSchemaObjectName, WEdgeColumnReferenceExpression>(
                     GetPathSource(path),
-                    GetEdgeColumnReferenceExpr(path.EdgeVariable as GremlinEdgeTableVariable)
+                    GetEdgeColumnReferenceExpr(path.EdgeVariable)
                 )
             };
         }
 
-        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinEdgeTableVariable edgeTable)
+        internal static WEdgeColumnReferenceExpression GetEdgeColumnReferenceExpr(GremlinFreeEdgeVariable edgeTable)
         {
             return new WEdgeColumnReferenceExpression()
             {
@@ -338,13 +338,7 @@ namespace GraphView
                 case GremlinKeyword.func.Local:
                     funcTableRef = new WLocalTableReference();
                     break;
-                case GremlinKeyword.func.OutV:
-                    funcTableRef = new WBoundOutNodeTableReference();
-                    break;
-                case GremlinKeyword.func.InV:
-                    funcTableRef = new WBoundOutNodeTableReference();
-                    break;
-                case GremlinKeyword.func.OtherV:
+                case GremlinKeyword.func.EtoV:
                     funcTableRef = new WBoundOutNodeTableReference();
                     break;
                 case GremlinKeyword.func.BothV:
@@ -395,24 +389,6 @@ namespace GraphView
                 case GremlinKeyword.func.Drop:
                     funcTableRef = new WDropTableReference();
                     break;
-                //case GremlinKeyword.func.DropNode:
-                //    funcTableRef = new WDropNodeTableReference();
-                //    break;
-                //case GremlinKeyword.func.DropEdge:
-                //    funcTableRef = new WDropEdgeTableReference();
-                //    break;
-                //case GremlinKeyword.func.DropProperties:
-                //    funcTableRef = new WDropPropertiesTableReference();
-                //    break;
-                //case GremlinKeyword.func.UpdateVertexProperties:
-                //    funcTableRef = new WUpdateVertexPropertiesTableReference();
-                //    break;
-                //case GremlinKeyword.func.UpdateEdgeProperties:
-                //    funcTableRef = new WUpdateEdgePropertiesTableReference();
-                //    break;
-                //case GremlinKeyword.func.UpdateMetaProperties:
-                //    funcTableRef = new WUpdateMetaPropertiesTableReference();
-                //    break;
                 case GremlinKeyword.func.UpdateProperties:
                     funcTableRef = new WUpdatePropertiesTableReference();
                     break;
