@@ -104,8 +104,9 @@ namespace GraphView
                     }
                     else
                     {
-                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"boolean\"",
-                            value1, value2));
+                        return false;
+                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"boolean\"",
+                        //    value1, value2));
                     }
                 case JsonDataType.Bytes:
                     switch (comparisonType)
@@ -116,7 +117,8 @@ namespace GraphView
                         case BooleanComparisonType.NotEqualToExclamation:
                             return value1 != value2;
                         default:
-                            throw new NotImplementedException();
+                            return false;
+                            //throw new NotImplementedException();
                     }
                 case JsonDataType.Int:
                     int int_value1, int_value2;
@@ -147,8 +149,9 @@ namespace GraphView
                     }
                     else
                     {
-                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"int\"",
-                            value1, value2));
+                        return false;
+                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"int\"",
+                        //    value1, value2));
                     }
                 case JsonDataType.Long:
                     long long_value1, long_value2;
@@ -179,8 +182,9 @@ namespace GraphView
                     }
                     else
                     {
-                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"long\"",
-                            value1, value2));
+                        return false;
+                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"long\"",
+                        //    value1, value2));
                     }
                 case JsonDataType.Double:
                     double double_value1, double_value2;
@@ -211,8 +215,9 @@ namespace GraphView
                     }
                     else
                     {
-                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"double\"",
-                            value1, value2));
+                        return false;
+                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"double\"",
+                        //    value1, value2));
                     }
                 case JsonDataType.Float:
                     float float_value1, float_value2;
@@ -243,8 +248,9 @@ namespace GraphView
                     }
                     else
                     {
-                        throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"float\"",
-                            value1, value2));
+                        return false;
+                        //throw new QueryCompilationException(string.Format("Cannot cast \"{0}\" or \"{1}\" to values of type \"float\"",
+                        //    value1, value2));
                     }
                 case JsonDataType.String:
                     switch (comparisonType)
