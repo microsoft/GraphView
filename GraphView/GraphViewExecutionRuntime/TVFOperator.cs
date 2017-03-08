@@ -696,7 +696,6 @@ namespace GraphView
         //
         private List<Tuple<ScalarFunction, bool>> pathStepList;
         private List<ScalarFunction> byFuncList;
-        private int activeByFuncIndex;
 
         public PathOperator2(GraphViewExecutionOperator inputOp,
             List<Tuple<ScalarFunction, bool>> pathStepList,
@@ -705,12 +704,11 @@ namespace GraphView
             this.inputOp = inputOp;
             this.pathStepList = pathStepList;
             this.byFuncList = byFuncList;
-            this.activeByFuncIndex = 0;
 
             this.Open();
         }
 
-        private FieldObject GetStepProjectionResult(FieldObject step)
+        private FieldObject GetStepProjectionResult(FieldObject step, ref int activeByFuncIndex)
         {
             FieldObject stepProjectionResult;
 
@@ -721,7 +719,7 @@ namespace GraphView
             {
                 RawRecord initCompose1Record = new RawRecord();
                 initCompose1Record.Append(step);
-                stepProjectionResult = this.byFuncList[this.activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
+                stepProjectionResult = this.byFuncList[activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
 
                 if (stepProjectionResult == null) {
                     throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
@@ -737,6 +735,7 @@ namespace GraphView
             while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
             {
                 List<FieldObject> path = new List<FieldObject>();
+                int activeByFuncIndex = 0;
 
                 foreach (Tuple<ScalarFunction, bool> tuple in pathStepList)
                 {
@@ -752,11 +751,11 @@ namespace GraphView
                         Debug.Assert(subPath != null, "(subPath as CollectionField) != null");
 
                         foreach (FieldObject subPathStep in subPath.Collection) {
-                            path.Add(GetStepProjectionResult(subPathStep));
+                            path.Add(GetStepProjectionResult(subPathStep, ref activeByFuncIndex));
                         }
                     }
                     else {
-                        path.Add(GetStepProjectionResult(step));
+                        path.Add(GetStepProjectionResult(step, ref activeByFuncIndex));
                     }
                 }
 
@@ -771,7 +770,6 @@ namespace GraphView
 
         public override void ResetState()
         {
-            this.activeByFuncIndex = 0;
             this.inputOp.ResetState();
             this.Open();
         }
