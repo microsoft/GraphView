@@ -1533,7 +1533,7 @@ namespace GraphView
             {
                 sb.Append(", \"inE\": {");
                 // Groups incoming edges by their labels
-                var groupByLabel = RevAdjacencyList.AllEdges.GroupBy(e => e["label"].ToValue);
+                var groupByLabel = RevAdjacencyList.AllEdges.GroupBy(e => e.Label);
                 bool firstInEGroup = true;
                 foreach (var g in groupByLabel)
                 {
@@ -1626,7 +1626,7 @@ namespace GraphView
             {
                 sb.Append(", \"outE\": {");
                 // Groups outgoing edges by their labels
-                var groupByLabel = AdjacencyList.AllEdges.GroupBy(e => e["label"].ToValue);
+                var groupByLabel = AdjacencyList.AllEdges.GroupBy(e => e.Label);
                 bool firstOutEGroup = true;
                 foreach (var g in groupByLabel)
                 {
