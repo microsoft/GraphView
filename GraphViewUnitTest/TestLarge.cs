@@ -33,7 +33,7 @@ namespace GraphViewUnitTest
 
             GraphViewConnection connection = new GraphViewConnection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName);
             connection.EnsureDatabaseExist();
-            connection.ResetCollection(edgeSpillThreshold);
+            connection.ResetCollection(true, edgeSpillThreshold);
             return connection;
         }
 
@@ -182,7 +182,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void TestAddDropEdges_DropSome_Large()
         {
-            const int EDGE_COUNT = 100;
+            const int EDGE_COUNT = 30;
             GraphViewConnection connection = CreateConnection($"AddAndDropEdges_DropSome_Large E={EDGE_COUNT}");
             GraphViewCommand graph = new GraphViewCommand(connection);
             string suffix = new string('_', 1024 * 900);

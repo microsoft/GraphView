@@ -50,9 +50,11 @@ namespace GraphView
         {
             tooLarge = false;
             try {
-                connection.ReplaceOrDeleteDocumentAsync(docId, docObject).Wait();
+                Debug.Assert(docObject != null);
+                connection.ReplaceOrDeleteDocumentAsync(docId, docObject, (string) docObject["_partition"]).Wait();
             }
-            catch (AggregateException ex) when (ex.InnerException?.GetType().Name.Equals("RequestEntityTooLargeException") ?? false) {
+            catch (AggregateException ex)
+                when ((ex.InnerException as DocumentClientException)?.Error.Code == "RequestEntityTooLarge") {
                 tooLarge = true;
             }
         }
@@ -383,7 +385,7 @@ namespace GraphView
 
 
         public static void RemoveEdge(
-            Dictionary<string, JObject> documentMap,
+            Dictionary<string, Tuple<JObject, string>> documentMap,
             GraphViewConnection connection,
             string edgeDocId,
             JObject vertexObject,
@@ -400,6 +402,8 @@ namespace GraphView
                 Debug.Assert(edgeDocumentsArray.Count > 0, "edgeDocuments.Count > 0");
 
                 JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId);
+                Debug.Assert(edgeDocument["_partition"] != null);
+                Debug.Assert(vertexObject["_partition"] != null);
                 Debug.Assert(((string)edgeDocument["id"]).Equals(edgeDocId), "((string)edgeDocument['id']).Equals(edgeDocId)");
                 Debug.Assert((bool)edgeDocument["_is_reverse"] == isReverse, "(bool)edgeDocument['_is_reverse'] == isReverse");
                 Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
@@ -433,11 +437,11 @@ namespace GraphView
                     }
 
                     // Delete the edge-document, and add the vertex-document to the upload list
-                    documentMap[edgeDocId] = null;
-                    documentMap[(string)vertexObject["id"]] = vertexObject;
+                    documentMap[edgeDocId] = new Tuple<JObject, string>(null, (string)edgeDocument["_partition"]);
+                    documentMap[(string)vertexObject["id"]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject["_partition"]);
                 }
                 else {
-                    documentMap[edgeDocId] = edgeDocument;
+                    documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, (string)edgeDocument["_partition"]);
                 }
             }
             else if (edgeContainer is JArray) {
@@ -449,7 +453,7 @@ namespace GraphView
                 else {
                     ((JArray)edgeContainer).First(e => (long)e["_offset"] == edgeOffset).Remove();
                 }
-                documentMap[(string)vertexObject["id"]] = vertexObject;
+                documentMap[(string)vertexObject["id"]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject["_partition"]);
             }
             else {
                 throw new Exception($"BUG: edgeContainer should either be JObject or JArray, but now: {edgeContainer?.GetType()}");

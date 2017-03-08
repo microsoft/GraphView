@@ -154,7 +154,7 @@ namespace GraphView
             Debug.Assert(vertexObject[vp.PropertyName] != null);
             vertexObject[vp.PropertyName].Remove();
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
 
             // Update vertex field
             vertexField.VertexProperties.Remove(vp.PropertyName);
@@ -171,15 +171,14 @@ namespace GraphView
                 .First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
                 .Remove();
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
 
             // Update vertex field
             vertexField.VertexProperties.Remove(vp.PropertyName);
         }
 
-        private void DropVertexMetaProperty(ValuePropertyField metaProperty)
+        private void DropVertexPropertyMetaProperty(ValuePropertyField metaProperty)
         {
-            // Update DocDB
             Debug.Assert(metaProperty.Parent is VertexSinglePropertyField);
             VertexSinglePropertyField vertexSingleProperty = (VertexSinglePropertyField)metaProperty.Parent;
 
@@ -195,7 +194,8 @@ namespace GraphView
 
             metaPropertyJObject?.Property(metaProperty.PropertyName)?.Remove();
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject).Wait();
+            // Update DocDB
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
 
             // Update vertex field
             vertexSingleProperty.MetaProperties.Remove(metaProperty.PropertyName);
@@ -280,7 +280,7 @@ namespace GraphView
                 }
                 else
                 {
-                    this.DropVertexMetaProperty((ValuePropertyField)property);
+                    this.DropVertexPropertyMetaProperty((ValuePropertyField)property);
                 }
 
                 return null;
@@ -357,7 +357,7 @@ namespace GraphView
             }
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument, (string)vertexDocument["_partition"]).Wait();
         }
 
         private void UpdatePropertiesOfEdge(EdgeField edge)
@@ -401,7 +401,7 @@ namespace GraphView
             vp.Replace(singleProperty);
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument, (string)vertexDocument["_partition"]).Wait();
         }
 
         internal override RawRecord DataModify(RawRecord record)
@@ -516,7 +516,8 @@ namespace GraphView
             Debug.Assert(vertexObject["_reverse_edge"] is JArray);
             Debug.Assert(((JArray)vertexObject["_reverse_edge"]).Count == 0);
 #endif
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null).Wait();
+            // NOTE: for vertex document, id = _partition
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, null, vertexId).Wait();
 
             // Update VertexCache
             this.Connection.VertexCache.TryRemoveVertexField(vertexId);
@@ -715,7 +716,7 @@ namespace GraphView
                 sinkEdgeDocId = srcEdgeDocId;
             }
 
-            Dictionary<string, JObject> uploadDocuments = new Dictionary<string, JObject>();
+            Dictionary<string, Tuple<JObject, string>> uploadDocuments = new Dictionary<string, Tuple<JObject, string>>();
             EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Connection, srcEdgeDocId, srcVertexObject, false, srcId, edgeOffset);
             EdgeDocumentHelper.RemoveEdge(uploadDocuments, this.Connection, sinkEdgeDocId, sinkVertexObject, true, srcId, edgeOffset);
             this.Connection.ReplaceOrDeleteDocumentsAsync(uploadDocuments).Wait();
@@ -836,9 +837,8 @@ namespace GraphView
 
             JObject vertexDocObject = this.Connection.RetrieveDocumentById(vertexId);
 
-            var documentsMap = new Dictionary<string, JObject>();
-            UpdateNodeProperties(documentsMap, vertexId, vertexDocObject, PropertiesToBeUpdated, Mode);
-            this.Connection.ReplaceOrDeleteDocumentsAsync(documentsMap).Wait();
+            UpdateNodeProperties(vertexId, vertexDocObject, PropertiesToBeUpdated, Mode);
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocObject, (string)vertexDocObject["_partition"]).Wait();
 
             // Drop step, return null
             if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
@@ -846,7 +846,6 @@ namespace GraphView
         }
 
         private void UpdateNodeProperties(
-            Dictionary<string, JObject> documentsMap,
             string vertexId,
             JObject vertexDocObject,
             List<Tuple<WValueExpression, WValueExpression, int>> propList,
@@ -909,8 +908,6 @@ namespace GraphView
                     }
                 }
             }
-
-            documentsMap[vertexId] = vertexDocObject;
         }
     }
 
