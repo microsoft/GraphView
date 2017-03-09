@@ -2758,14 +2758,14 @@ namespace GraphView
 
     internal class PropertyKeyOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _propertyFieldIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int propertyFieldIndex;
 
-        public PropertyKeyOperator(GraphViewExecutionOperator pInputOp, int pPropertyFieldIndex)
+        public PropertyKeyOperator(GraphViewExecutionOperator inputOp, int propertyFieldIndex)
         {
-            _inputOp = pInputOp;
-            _propertyFieldIndex = pPropertyFieldIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.propertyFieldIndex = propertyFieldIndex;
+            this.Open();
         }
 
 
@@ -2773,11 +2773,11 @@ namespace GraphView
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
             {
-                PropertyField p = currentRecord[_propertyFieldIndex] as PropertyField;
+                PropertyField p = currentRecord[this.propertyFieldIndex] as PropertyField;
                 if (p == null)
-                    throw new GraphViewException("The input of the key step should be a property");
+                    continue;
 
                 RawRecord result = new RawRecord(currentRecord);
                 result.Append(new StringField(p.PropertyName));
@@ -2791,32 +2791,32 @@ namespace GraphView
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
     internal class PropertyValueOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _propertyFieldIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int propertyFieldIndex;
 
-        public PropertyValueOperator(GraphViewExecutionOperator pInputOp, int pPropertyFieldIndex)
+        public PropertyValueOperator(GraphViewExecutionOperator inputOp, int propertyFieldIndex)
         {
-            _inputOp = pInputOp;
-            _propertyFieldIndex = pPropertyFieldIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.propertyFieldIndex = propertyFieldIndex;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (inputOp.State() && (currentRecord = inputOp.Next()) != null)
             {
-                PropertyField p = currentRecord[_propertyFieldIndex] as PropertyField;
+                PropertyField p = currentRecord[this.propertyFieldIndex] as PropertyField;
                 if (p == null)
-                    throw new GraphViewException("The input of the value step should be a property");
+                    continue;
 
                 RawRecord result = new RawRecord(currentRecord);
                 result.Append(new StringField(p.PropertyValue, p.JsonDataType));
@@ -2830,8 +2830,8 @@ namespace GraphView
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
