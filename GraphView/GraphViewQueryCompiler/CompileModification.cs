@@ -265,61 +265,34 @@ namespace GraphView
         }
     }
 
-    partial class WUpdateVertexPropertiesTableReference
-    {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
-            var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
-            var nodeAlias = nodeIdParameter.TableReference;
-            var propertiesList = new List<Tuple<WValueExpression, WValueExpression, int>>();
+    //partial class WUpdateVertexPropertiesTableReference
+    //{
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+    //    {
+    //        var nodeIdParameter = Parameters[0] as WColumnReferenceExpression;
+    //        var nodeIdIndex = context.LocateColumnReference(nodeIdParameter);
+    //        var nodeAlias = nodeIdParameter.TableReference;
+    //        var propertiesList = new List<Tuple<WValueExpression, WValueExpression, int>>();
 
-            for (var i = 1; i < Parameters.Count; i += 2)
-            {
-                var keyExpression = Parameters[i] as WValueExpression;
-                var valueExpression = Parameters[i+1] as WValueExpression;
+    //        for (var i = 1; i < Parameters.Count; i += 2)
+    //        {
+    //            var keyExpression = Parameters[i] as WValueExpression;
+    //            var valueExpression = Parameters[i+1] as WValueExpression;
 
-                int propertyIndex;
-                if (!context.TryLocateColumnReference(new WColumnReferenceExpression(nodeAlias, keyExpression.Value), out propertyIndex))
-                    propertyIndex = -1;
+    //            int propertyIndex;
+    //            if (!context.TryLocateColumnReference(new WColumnReferenceExpression(nodeAlias, keyExpression.Value), out propertyIndex))
+    //                propertyIndex = -1;
 
-                propertiesList.Add(new Tuple<WValueExpression, WValueExpression, int>(keyExpression, valueExpression, propertyIndex));
-            }
+    //            propertiesList.Add(new Tuple<WValueExpression, WValueExpression, int>(keyExpression, valueExpression, propertyIndex));
+    //        }
 
-            var updateNodePropertiesOp = new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection,
-                nodeIdIndex, propertiesList);
-            context.CurrentExecutionOperator = updateNodePropertiesOp;
+    //        var updateNodePropertiesOp = new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection,
+    //            nodeIdIndex, propertiesList);
+    //        context.CurrentExecutionOperator = updateNodePropertiesOp;
 
-            return updateNodePropertiesOp;
-        }
-
-        internal GraphViewExecutionOperator Compile2(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            WColumnReferenceExpression updateTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
-            Debug.Assert(updateTargetParameter != null, "updateTargetParameter != null");
-
-            int updateTargetIndex = context.LocateColumnReference(updateTargetParameter);
-
-            List<WPropertyExpression> updatePropertiesExpressions = new List<WPropertyExpression>();
-
-            for (int i = 1; i < this.Parameters.Count; i += 2)
-            {
-                WPropertyExpression propertyExpression = Parameters[i] as WPropertyExpression;
-                Debug.Assert(propertyExpression != null, "updatePropertyExpression != null");
-
-                updatePropertiesExpressions.Add(propertyExpression);
-            }
-
-            //
-            // A new update property operator which update target's property based on its runtime type
-            //
-            UpdateNodePropertiesOperator updatePropertiesOp =
-                new UpdateNodePropertiesOperator(context.CurrentExecutionOperator, dbConnection, updateTargetIndex, null);
-            context.CurrentExecutionOperator = updatePropertiesOp;
-
-            return updatePropertiesOp;
-        }
-    }
+    //        return updateNodePropertiesOp;
+    //    }
+    //}
 
     partial class WUpdateEdgePropertiesTableReference
     {

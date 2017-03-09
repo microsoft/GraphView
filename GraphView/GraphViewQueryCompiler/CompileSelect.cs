@@ -195,37 +195,37 @@ namespace GraphView
             }
         }
 
-        /// <summary>
-        /// This function works like the FillMetaField function in the AdjacencyListDecoder
-        /// </summary>
-        /// <param name="edge"></param>
-        /// <returns></returns>
-        [Obsolete]
-        internal static string ConstructMetaFieldSelectClauseOfEdge(MatchEdge edge)
-        {
-            StringBuilder metaFieldSelectStringBuilder = new StringBuilder();
-            bool isStartVertexTheOriginVertex = edge.IsReversed;
-            bool isReversedAdjList = IsTraversalThroughPhysicalReverseEdge(edge);
-            string nodeId = edge.SourceNode.NodeAlias + ".id";
-            string edgeSink = edge.EdgeAlias + "._otherV";
-            string edgeId = edge.EdgeAlias + "._offset";
-            string edgeReverseId = edge.EdgeAlias + "._reverse_ID";
+        ///// <summary>
+        ///// This function works like the FillMetaField function in the AdjacencyListDecoder
+        ///// </summary>
+        ///// <param name="edge"></param>
+        ///// <returns></returns>
+        //[Obsolete]
+        //internal static string ConstructMetaFieldSelectClauseOfEdge(MatchEdge edge)
+        //{
+        //    StringBuilder metaFieldSelectStringBuilder = new StringBuilder();
+        //    bool isStartVertexTheOriginVertex = edge.IsReversed;
+        //    bool isReversedAdjList = IsTraversalThroughPhysicalReverseEdge(edge);
+        //    string nodeId = edge.SourceNode.NodeAlias + ".id";
+        //    string edgeSink = edge.EdgeAlias + "._otherV";
+        //    string edgeId = edge.EdgeAlias + "._offset";
+        //    string edgeReverseId = edge.EdgeAlias + "._reverse_ID";
 
-            string sourceValue = isReversedAdjList ? edgeSink : nodeId;
-            string sinkValue = isReversedAdjList ? nodeId : edgeSink;
-            string otherValue = isStartVertexTheOriginVertex ? edgeSink : nodeId;
-            string edgeIdValue = isReversedAdjList ? edgeReverseId : edgeId;
+        //    string sourceValue = isReversedAdjList ? edgeSink : nodeId;
+        //    string sinkValue = isReversedAdjList ? nodeId : edgeSink;
+        //    string otherValue = isStartVertexTheOriginVertex ? edgeSink : nodeId;
+        //    string edgeIdValue = isReversedAdjList ? edgeReverseId : edgeId;
 
-            metaFieldSelectStringBuilder.Append(", ").Append($"{sourceValue} AS {edge.EdgeAlias}_source");
-            metaFieldSelectStringBuilder.Append(", ").Append($"{sinkValue} AS {edge.EdgeAlias}_sink");
-            metaFieldSelectStringBuilder.Append(", ").Append($"{otherValue} AS {edge.EdgeAlias}_other");
-            metaFieldSelectStringBuilder.Append(", ").Append($"{edgeIdValue} AS {edge.EdgeAlias}_ID");
-            metaFieldSelectStringBuilder.Append(", ").Append($"{edgeId} AS {edge.EdgeAlias}_physical_ID");
-            metaFieldSelectStringBuilder.Append(", ").Append($"{(isReversedAdjList ? "_reverse_edge" : "_edge")} AS adjType");
-            metaFieldSelectStringBuilder.Append(", ").Append($"{edge.EdgeAlias} AS {edge.EdgeAlias}");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{sourceValue} AS {edge.EdgeAlias}_source");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{sinkValue} AS {edge.EdgeAlias}_sink");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{otherValue} AS {edge.EdgeAlias}_other");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{edgeIdValue} AS {edge.EdgeAlias}_ID");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{edgeId} AS {edge.EdgeAlias}_physical_ID");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{(isReversedAdjList ? "_reverse_edge" : "_edge")} AS adjType");
+        //    metaFieldSelectStringBuilder.Append(", ").Append($"{edge.EdgeAlias} AS {edge.EdgeAlias}");
 
-            return metaFieldSelectStringBuilder.ToString();
-        }
+        //    return metaFieldSelectStringBuilder.ToString();
+        //}
 
         //internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         //{

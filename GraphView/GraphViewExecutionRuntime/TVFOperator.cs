@@ -116,7 +116,7 @@ namespace GraphView
                                 r.Append(property);
                             }
                             else if (property is VertexPropertyField) {
-                                foreach (VertexSinglePropertyField p in ((VertexPropertyField)property).Multiples) {
+                                foreach (VertexSinglePropertyField p in ((VertexPropertyField)property).Multiples.Values) {
                                     r.Append(p);
                                 }
                             }
@@ -205,7 +205,7 @@ namespace GraphView
                 VertexPropertyField vp = propertyObject as VertexPropertyField;
                 if (vp != null)
                 {
-                    foreach (VertexSinglePropertyField vsp in vp.Multiples)
+                    foreach (VertexSinglePropertyField vsp in vp.Multiples.Values)
                     {
                         RawRecord r = new RawRecord();
                         r.Append(new VertexSinglePropertyField(vsp));
@@ -286,7 +286,7 @@ namespace GraphView
                 VertexPropertyField vp = propertyObject as VertexPropertyField;
                 if (vp != null)
                 {
-                    foreach (VertexSinglePropertyField vsp in vp.Multiples)
+                    foreach (VertexSinglePropertyField vsp in vp.Multiples.Values)
                     {
                         RawRecord r = new RawRecord();
                         r.Append(new StringField(vsp.PropertyValue, vsp.JsonDataType));
@@ -368,7 +368,7 @@ namespace GraphView
                         case "_ts":
                             continue;
                         default:
-                            foreach (VertexSinglePropertyField singleVp in property.Multiples)
+                            foreach (VertexSinglePropertyField singleVp in property.Multiples.Values)
                             {
                                 RawRecord r = new RawRecord();
                                 r.Append(new VertexSinglePropertyField(singleVp));
@@ -468,7 +468,7 @@ namespace GraphView
                         case "_ts":
                             continue;
                         default:
-                            foreach (VertexSinglePropertyField singleVp in property.Multiples)
+                            foreach (VertexSinglePropertyField singleVp in property.Multiples.Values)
                             {
                                 RawRecord r = new RawRecord();
                                 r.Append(new StringField(singleVp.PropertyValue, singleVp.JsonDataType));

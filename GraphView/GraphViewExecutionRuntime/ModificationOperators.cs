@@ -168,24 +168,20 @@ namespace GraphView
 
             Debug.Assert(vertexObject[vp.PropertyName] != null);
 
-            //
-            // TODO: To be confirmed by Wenbin
-            //
-            JArray vertexPropertiesArray = (JArray) vertexObject[vp.PropertyName];
-            vertexPropertiesArray.First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
+            JArray vertexProperty = (JArray)vertexObject[vp.PropertyName];
+            vertexProperty
+                .First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
                 .Remove();
-            if (vertexPropertiesArray.Count == 0) {
-                vertexObject.Property(vp.PropertyName).Remove();
+            if (vertexObject.Count == 0) {
+                vertexProperty.Remove();
             }
 
             this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
 
             // Update vertex field
-            //
-            // TODO: To be confirmed by Wenbin
-            //
             VertexPropertyField vertexPropertyField = vertexField.VertexProperties[vp.PropertyName];
-            vertexPropertyField.Multiples.RemoveAll(vsp => vsp.PropertyId == vp.PropertyId);
+            bool found = vertexPropertyField.Multiples.Remove(vp.PropertyId);
+            Debug.Assert(found);
             if (!vertexPropertyField.Multiples.Any()) {
                 vertexField.VertexProperties.Remove(vp.PropertyName);
             }
@@ -835,96 +831,96 @@ namespace GraphView
         }
     }
 
-    internal class UpdateNodePropertiesOperator : UpdatePropertiesBaseOperator
-    {
-        private int _nodeIdIndex;
+    //internal class UpdateNodePropertiesOperator : UpdatePropertiesBaseOperator
+    //{
+    //    private int _nodeIdIndex;
 
-        public UpdateNodePropertiesOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
-                                            int pNodeIndex, List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
-            : base(inputOp, connection, pPropertiesList, pMode)
-        {
-            _nodeIdIndex = pNodeIndex;
-        }
+    //    public UpdateNodePropertiesOperator(GraphViewExecutionOperator inputOp, GraphViewConnection connection,
+    //                                        int pNodeIndex, List<Tuple<WValueExpression, WValueExpression, int>> pPropertiesList, UpdatePropertyMode pMode = UpdatePropertyMode.Set)
+    //        : base(inputOp, connection, pPropertiesList, pMode)
+    //    {
+    //        _nodeIdIndex = pNodeIndex;
+    //    }
 
-        internal override RawRecord DataModify(RawRecord record)
-        {
-            string vertexId = record[this._nodeIdIndex].ToValue;
+    //    internal override RawRecord DataModify(RawRecord record)
+    //    {
+    //        string vertexId = record[this._nodeIdIndex].ToValue;
 
-            JObject vertexDocObject = this.Connection.RetrieveDocumentById(vertexId);
+    //        JObject vertexDocObject = this.Connection.RetrieveDocumentById(vertexId);
 
-            UpdateNodeProperties(vertexId, vertexDocObject, PropertiesToBeUpdated, Mode);
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocObject, (string)vertexDocObject["_partition"]).Wait();
+    //        UpdateNodeProperties(vertexId, vertexDocObject, PropertiesToBeUpdated, Mode);
+    //        this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocObject, (string)vertexDocObject["_partition"]).Wait();
 
-            // Drop step, return null
-            if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
-            return record;
-        }
+    //        // Drop step, return null
+    //        if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
+    //        return record;
+    //    }
 
-        private void UpdateNodeProperties(
-            string vertexId,
-            JObject vertexDocObject,
-            List<Tuple<WValueExpression, WValueExpression, int>> propList,
-            UpdatePropertyMode mode)
-        {
-            VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
+    //    private void UpdateNodeProperties(
+    //        string vertexId,
+    //        JObject vertexDocObject,
+    //        List<Tuple<WValueExpression, WValueExpression, int>> propList,
+    //        UpdatePropertyMode mode)
+    //    {
+    //        VertexField vertexField = this.Connection.VertexCache.GetVertexField(vertexId);
 
-            // Drop all non-reserved properties
-            if (propList.Count == 1 &&
-                !propList[0].Item1.SingleQuoted &&
-                propList[0].Item1.Value.Equals("*", StringComparison.OrdinalIgnoreCase) &&
-                !propList[0].Item2.SingleQuoted &&
-                propList[0].Item2.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
-            {
-                List<string> toBeDroppedPropertiesNames = GraphViewJsonCommand.DropAllNodeProperties(vertexDocObject);
-                foreach (var propertyName in toBeDroppedPropertiesNames)
-                {
-                    vertexField.VertexProperties.Remove(propertyName);
-                }
-            }
-            else
-            {
-                foreach (var t in propList)
-                {
-                    WValueExpression keyExpression = t.Item1;
-                    WValueExpression valueExpression = t.Item2;
+    //        // Drop all non-reserved properties
+    //        if (propList.Count == 1 &&
+    //            !propList[0].Item1.SingleQuoted &&
+    //            propList[0].Item1.Value.Equals("*", StringComparison.OrdinalIgnoreCase) &&
+    //            !propList[0].Item2.SingleQuoted &&
+    //            propList[0].Item2.Value.Equals("null", StringComparison.OrdinalIgnoreCase))
+    //        {
+    //            List<string> toBeDroppedPropertiesNames = GraphViewJsonCommand.DropAllNodeProperties(vertexDocObject);
+    //            foreach (var propertyName in toBeDroppedPropertiesNames)
+    //            {
+    //                vertexField.VertexProperties.Remove(propertyName);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            foreach (var t in propList)
+    //            {
+    //                WValueExpression keyExpression = t.Item1;
+    //                WValueExpression valueExpression = t.Item2;
 
-                    if (mode == UpdatePropertyMode.Set) {
-                        string name = (string)keyExpression.ToJValue();
-                        JValue value = valueExpression.ToJValue();
+    //                if (mode == UpdatePropertyMode.Set) {
+    //                    string name = (string)keyExpression.ToJValue();
+    //                    JValue value = valueExpression.ToJValue();
 
-                        if (value == null) {
-                            vertexField.VertexProperties.Remove(keyExpression.Value);
-                        }
-                        else {
-                            string propertyId;
-                            if (vertexField.VertexProperties.ContainsKey(name)) {
-                                // TODO: HACK
-                                propertyId = vertexField.VertexProperties[name].Multiples[0].PropertyId;
-                            }
-                            else {
-                                propertyId = GraphViewConnection.GenerateDocumentId();
-                            }
+    //                    if (value == null) {
+    //                        vertexField.VertexProperties.Remove(keyExpression.Value);
+    //                    }
+    //                    else {
+    //                        string propertyId;
+    //                        if (vertexField.VertexProperties.ContainsKey(name)) {
+    //                            // TODO: HACK
+    //                            propertyId = vertexField.VertexProperties[name].Multiples.Values.First().PropertyId;
+    //                        }
+    //                        else {
+    //                            propertyId = GraphViewConnection.GenerateDocumentId();
+    //                        }
 
-                            JProperty multiProperty = new JProperty(name) {
-                                Value = new JArray {
-                                    new JObject {
-                                        ["_value"] = value,
-                                        ["_propId"] = propertyId,
-                                        ["_meta"] = new JObject(),
-                                    }
-                                }
-                            };
-                            vertexDocObject[multiProperty.Name] = multiProperty.Value;
-                            vertexField.ReplaceProperty(multiProperty);
-                        }
-                    }
-                    else {
-                        throw new NotImplementedException();
-                    }
-                }
-            }
-        }
-    }
+    //                        JProperty multiProperty = new JProperty(name) {
+    //                            Value = new JArray {
+    //                                new JObject {
+    //                                    ["_value"] = value,
+    //                                    ["_propId"] = propertyId,
+    //                                    ["_meta"] = new JObject(),
+    //                                }
+    //                            }
+    //                        };
+    //                        vertexDocObject[multiProperty.Name] = multiProperty.Value;
+    //                        vertexField.ReplaceProperty(multiProperty);
+    //                    }
+    //                }
+    //                else {
+    //                    throw new NotImplementedException();
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
 
     internal class UpdateEdgePropertiesOperator : UpdatePropertiesBaseOperator
     {

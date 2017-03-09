@@ -56,7 +56,7 @@ namespace GraphView
             if (lhs is VertexPropertyField)
             {
                 VertexPropertyField vp = (VertexPropertyField)lhs;
-                foreach (VertexSinglePropertyField vsp in vp.Multiples)
+                foreach (VertexSinglePropertyField vsp in vp.Multiples.Values)
                 {
                     JsonDataType type1 = vsp.JsonDataType;
                     JsonDataType type2 = secondScalarFunction.DataType();

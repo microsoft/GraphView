@@ -951,15 +951,15 @@ namespace GraphView
 
     internal class VertexPropertyField : PropertyField
     {
-        public List<VertexSinglePropertyField> Multiples { get; } = new List<VertexSinglePropertyField>();
+        // <_propId, single_property_field>
+        public Dictionary<string, VertexSinglePropertyField> Multiples { get; } = new Dictionary<string, VertexSinglePropertyField>();
 
         public VertexField Vertex { get; }
 
         public override string PropertyValue {
-            get
-            {
+            get {
                 if (Multiples.Count == 1)
-                    return Multiples[0].PropertyValue;
+                    return Multiples.Values.First().PropertyValue;
                 if (Multiples.Count == 0)
                     return "";
                 Debug.Assert(false, "Should not get here.");
@@ -974,7 +974,7 @@ namespace GraphView
         public override string ToString()
         {
             if (this.Multiples.Count == 1)
-                return Multiples[0].ToString();
+                return Multiples.Values.First().ToString();
             if (this.Multiples.Count == 0)
                 return "";
             Debug.Assert(false, "Should not get here.");
@@ -986,7 +986,7 @@ namespace GraphView
             get
             {
                 if (this.Multiples.Count == 1)
-                    return Multiples[0].ToValue;
+                    return Multiples.Values.First().ToValue;
                 if (this.Multiples.Count == 0)
                     return "";
                 Debug.Assert(false, "Should not get here.");
@@ -1000,7 +1000,7 @@ namespace GraphView
             get
             {
                 if (this.Multiples.Count == 1)
-                    return Multiples[0].JsonDataType;
+                    return Multiples.Values.First().JsonDataType;
                 if (this.Multiples.Count == 0)
                     return JsonDataType.Null;
 
@@ -1027,7 +1027,7 @@ namespace GraphView
             vpGraphSonBuilder.AppendFormat("\"{0}\":[", this.PropertyName);
 
             bool isFirstVsp = true;
-            foreach (VertexSinglePropertyField vsp in this.Multiples)
+            foreach (VertexSinglePropertyField vsp in this.Multiples.Values)
             {
                 if (isFirstVsp)
                     isFirstVsp = false;
@@ -1078,7 +1078,7 @@ namespace GraphView
         {
             Debug.Assert(this.Multiples.Count > 0);
             if (this.Multiples.Count == 1) {
-                return this.Multiples[0];
+                return this.Multiples.Values.First();
             }
             else {
                 return this;
@@ -1104,7 +1104,7 @@ namespace GraphView
             this.JsonDataType = JsonDataType.Array;
             
 
-            HashSet<string> metaPropIdToRemove = new HashSet<string>(this.Multiples.Select(meta => meta.PropertyId));
+            HashSet<string> metaPropIdToRemove = new HashSet<string>(this.Multiples.Keys);
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
                 Debug.Assert(vertexPropertyObject["_value"] is JValue);
                 Debug.Assert(vertexPropertyObject["_propId"] is JValue);
@@ -1113,15 +1113,17 @@ namespace GraphView
                 string propId = (string) vertexPropertyObject["_propId"];
                 if (metaPropIdToRemove.Remove(propId)) {
                     // This single-property should be replaced
-                    this.Multiples.First(single => single.PropertyId == propId).Replace(vertexPropertyObject);
+                    this.Multiples[propId].Replace(vertexPropertyObject);
                 }
                 else {
                     // This single-property is newly added
-                    this.Multiples.Add(new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject, this));
+                    this.Multiples.Add(propId, new VertexSinglePropertyField(multiProperty.Name, vertexPropertyObject, this));
                 }
             }
 
-            this.Multiples.RemoveAll(meta => metaPropIdToRemove.Contains(meta.PropertyId));
+            foreach (string propId in metaPropIdToRemove) {
+                this.Multiples.Remove(propId);
+            }
         }
     }
 
@@ -1470,29 +1472,29 @@ namespace GraphView
             }
         }
 
-        [Obsolete]
-        public void ReplaceProperty(JProperty property)
-        {
-            // Replace
-            if (IsVertexMetaProperty(property.Name)) {
-                ValuePropertyField valueProp;
-                bool found = this.VertexMetaProperties.TryGetValue(property.Name, out valueProp);
-                Debug.Assert(found && valueProp != null);
+        //[Obsolete]
+        //public void ReplaceProperty(JProperty property)
+        //{
+        //    // Replace
+        //    if (IsVertexMetaProperty(property.Name)) {
+        //        ValuePropertyField valueProp;
+        //        bool found = this.VertexMetaProperties.TryGetValue(property.Name, out valueProp);
+        //        Debug.Assert(found && valueProp != null);
 
-                valueProp.Replace(property);
-            }
-            else {
-                VertexPropertyField propertyField;
-                if (this.VertexProperties.TryGetValue(property.Name, out propertyField)) {
-                    propertyField.Replace(property);
-                }
-                else {
-                    this.VertexProperties.Add(
-                        property.Name, 
-                        new VertexPropertyField(property, this));
-                }
-            }
-        }
+        //        valueProp.Replace(property);
+        //    }
+        //    else {
+        //        VertexPropertyField propertyField;
+        //        if (this.VertexProperties.TryGetValue(property.Name, out propertyField)) {
+        //            propertyField.Replace(property);
+        //        }
+        //        else {
+        //            this.VertexProperties.Add(
+        //                property.Name, 
+        //                new VertexPropertyField(property, this));
+        //        }
+        //    }
+        //}
 
 
         public VertexField(GraphViewConnection connection)
