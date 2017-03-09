@@ -82,6 +82,7 @@
     <Compile Include="Gremlin\GraphData.cs" />
     <Compile Include="Gremlin\GraphDataLoader.cs" />
     <Compile Include="Gremlin\ProcessTests\NestingPropertiesTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\RepeatTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\UnionTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\AndTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\CoinTest.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\HasTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\IsTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\RangeTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\WhereTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\CoalesceTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\ConstantTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\GroupTest.cs" />
@@ -98,6 +100,7 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\PropertiesTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\SelectTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\UnfoldTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\VertexTest.cs" />
     <Compile Include="IoTUnitTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GraphViewMarvelTest.cs" />

@@ -81,6 +81,25 @@ namespace GraphViewUnitTest.Gremlin
             }
         }
 
+        public static void CheckOrderedResults<T>(IEnumerable<T> expected, IEnumerable<T> actual)
+        {
+            Assert.AreEqual(expected.Count(), actual.Count());
+            List<T> expectedList = new List<T>();
+            foreach (var item in expected)
+            {
+                expectedList.Add(item);
+            }
+            List<T> actualList = new List<T>();
+            foreach (var item in actual)
+            {
+                actualList.Add(item);
+            }
+            for (var i = 0; i < expectedList.Count(); i++)
+            {
+                Assert.AreEqual(expectedList[i], actualList[i]);
+            }
+        }
+
         public static void CheckUnOrderedResults<T>(IEnumerable<T> expected, IEnumerable<T> actual, IEqualityComparer<T> comparer)
         {
             Assert.AreEqual(expected.Count(), actual.Count());
