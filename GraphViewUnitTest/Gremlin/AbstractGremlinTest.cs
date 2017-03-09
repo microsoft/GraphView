@@ -49,12 +49,26 @@ namespace GraphViewUnitTest.Gremlin
 
         public string ConvertToVertexId(GraphViewCommand GraphViewCommand, string vertexName)
         {
-            return GraphViewCommand.g().V().Has("name", vertexName).Id().Next().FirstOrDefault();
+            OutputFormat originalFormat = GraphViewCommand.OutputFormat;
+            GraphViewCommand.OutputFormat = OutputFormat.Regular;
+
+            string vertexId = GraphViewCommand.g().V().Has("name", vertexName).Id().Next().FirstOrDefault();
+
+            GraphViewCommand.OutputFormat = originalFormat;
+
+            return vertexId;
         }
 
         public string ConvertToEdgeId(GraphViewCommand GraphViewCommand, string outVertexName, string edgeLabel, string inVertexName)
         {
-            return GraphViewCommand.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("_edgeId").Next().FirstOrDefault();
+            OutputFormat originalFormat = GraphViewCommand.OutputFormat;
+            GraphViewCommand.OutputFormat = OutputFormat.Regular;
+
+            string edgeId = GraphViewCommand.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("_edgeId").Next().FirstOrDefault();
+
+            GraphViewCommand.OutputFormat = originalFormat;
+
+            return edgeId;
         }
 
         public static void CheckUnOrderedResults<T>(IEnumerable<T> expected, IEnumerable<T> actual)
