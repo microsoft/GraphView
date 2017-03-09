@@ -570,31 +570,20 @@ namespace GraphView
 
         public GraphTraversal2 Has(string propertyKey)
         {
-            AddGremlinOperator(new GremlinHasOp(propertyKey));
+            AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasProperty, propertyKey));
             return this;
         }
 
-        public GraphTraversal2 Has(string propertyKey, Object value)
+        public GraphTraversal2 HasNot(string propertyKey)
         {
-            AddGremlinOperator(new GremlinHasOp(propertyKey, value));
+            AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasNotProperty, propertyKey));
             return this;
         }
 
-        public GraphTraversal2 Has(string label, string propertyKey, Object value)
+        public GraphTraversal2 Has(string propertyKey, object predicateOrValue)
         {
-            AddGremlinOperator(new GremlinHasOp(label, propertyKey, value));
-            return this;
-        }
-
-        public GraphTraversal2 Has(string propertyKey, Predicate predicate)
-        {
-            AddGremlinOperator(new GremlinHasOp(propertyKey, predicate));
-            return this;
-        }
-
-        public GraphTraversal2 Has(string label, string propertyKey, Predicate predicate)
-        {
-            AddGremlinOperator(new GremlinHasOp(label, propertyKey, predicate));
+            GremlinUtil.CheckIsValueOrPredicate(predicateOrValue);
+            AddGremlinOperator(new GremlinHasOp(propertyKey, predicateOrValue));
             return this;
         }
 
@@ -603,64 +592,44 @@ namespace GraphView
             AddGremlinOperator(new GremlinHasOp(propertyKey, propertyTraversal));
             return this;
         }
-        
-        public GraphTraversal2 HasId(params object[] values)
+
+        public GraphTraversal2 Has(string label, string propertyKey, object predicateOrValue)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasId, values));
+            GremlinUtil.CheckIsValueOrPredicate(predicateOrValue);
+            AddGremlinOperator(new GremlinHasOp(label, propertyKey, predicateOrValue));
             return this;
         }
 
-        public GraphTraversal2 HasId(Predicate predicate)
+        public GraphTraversal2 HasId(params object[] valuesOrPredicates)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasIdPredicate, predicate));
+            GremlinUtil.CheckIsValueOrPredicate(valuesOrPredicates);
+            AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasId, valuesOrPredicates));
             return this;
         }
 
-
-        public GraphTraversal2 HasKey(params string[] values)
+        public GraphTraversal2 HasLabel(params object[] valuesOrPredicates)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasKey, values));
+            GremlinUtil.CheckIsValueOrPredicate(valuesOrPredicates);
+            AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasLabel, valuesOrPredicates));
             return this;
         }
 
-        public GraphTraversal2 HasKey(Predicate predicate)
+        public GraphTraversal2 HasKey(params string[] valuesOrPredicates)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasPropertyPredicate, predicate));
+            AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasKey, valuesOrPredicates));
             return this;
         }
 
-        public GraphTraversal2 HasLabel(params object[] values)
+        public GraphTraversal2 HasValue(params object[] valuesOrPredicates)
         {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasLabel, values));
+            GremlinUtil.CheckIsValueOrPredicate(valuesOrPredicates);
+            AddGremlinOperator(new GremlinHasOp(GremlinHasType.HasValue, valuesOrPredicates));
             return this;
-        }
-
-        public GraphTraversal2 HasLabel(Predicate predicate)
-        {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasLabelPredicate, predicate));
-            return this;
-        }
-
-        public GraphTraversal2 HasValue(string value, params object[] values)
-        {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasValue, values));
-            return this;
-        }
-
-        public GraphTraversal2 HasValue(Predicate predicate)
-        {
-            AddGremlinOperator(new GremlinHasOp(HasOpType.HasValuePredicate, predicate));
-            return this;
-        }
-
-        public GraphTraversal2 HasNot(string propertyKey)
-        {
-            throw new NotImplementedException();
         }
 
         public GraphTraversal2 Id()
         {
-            AddGremlinOperator(new GremlinValuesOp("id"));
+            AddGremlinOperator(new GremlinIdOp());
             return this;
         }
 
@@ -713,7 +682,7 @@ namespace GraphView
 
         public GraphTraversal2 Label()
         {
-            AddGremlinOperator(new GremlinValuesOp("label"));
+            AddGremlinOperator(new GremlinValuesOp(GremlinKeyword.Label));
             return this;
         }
 

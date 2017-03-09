@@ -44,16 +44,19 @@ namespace GraphView
 
         public override void ModulateBy()
         {
+            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Dedup(local) can't be modulated by by()");
             ByTraversal = GraphTraversal2.__();
         }
 
         public override void ModulateBy(GraphTraversal2 traversal)
         {
+            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Dedup(local) can't be modulated by by()");
             ByTraversal = traversal;
         }
 
         public override void ModulateBy(string key)
         {
+            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Dedup(local) can't be modulated by by()");
             ByTraversal = GraphTraversal2.__().Values(key);
         }
     }

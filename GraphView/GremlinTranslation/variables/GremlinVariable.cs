@@ -365,105 +365,71 @@ namespace GraphView
 
         internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey)
         {
-            List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(DefaultProjection().ToScalarExpression());
-            parameters.Add(SqlUtil.GetValueExpr(propertyKey));
-            currentContext.AddPredicate(SqlUtil.GetFunctionBooleanExpression("hasProperty", parameters));
-        }
-
-        internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, object value)
-        {
-            WScalarExpression firstExpr = GetVariableProperty(propertyKey).ToScalarExpression();
-            WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
-            currentContext.AddPredicate(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-        }
-
-        internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, object value)
-        {
-            Has(currentContext, GremlinKeyword.Label, label);
-            Has(currentContext, propertyKey, value);
-        }
-
-        internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, Predicate predicate)
-        {
-            WScalarExpression firstExpr = GetVariableProperty(propertyKey).ToScalarExpression();
-            WScalarExpression secondExpr = SqlUtil.GetValueExpr(predicate.Value);
-            currentContext.AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate));
-        }
-
-        internal virtual void Has(GremlinToSqlContext currentContext, string label, string propertyKey, Predicate predicate)
-        {
-            Has(currentContext, GremlinKeyword.Label, label);
-            Has(currentContext, propertyKey, predicate);
-        }
-
-        internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, GremlinToSqlContext propertyContext)
-        {
-            Has(currentContext, propertyKey);
-            currentContext.AddPredicate(propertyContext.ToSqlBoolean());
-        }
-
-        internal virtual void HasId(GremlinToSqlContext currentContext, List<object> values)
-        {
-            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-            foreach (var value in values)
-            {
-                WScalarExpression firstExpr = DefaultVariableProperty().ToScalarExpression();
-                WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
-                booleanExprList.Add(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals));
-            }
-            WBooleanExpression concatSql = SqlUtil.ConcatBooleanExprWithOr(booleanExprList);
-            currentContext.AddPredicate(SqlUtil.GetBooleanParenthesisExpr(concatSql));
-        }
-
-        internal virtual void HasId(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            WScalarExpression firstExpr = DefaultVariableProperty().ToScalarExpression();
-            WScalarExpression secondExpr = SqlUtil.GetValueExpr(predicate.Value);
-            currentContext.AddPredicate(SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, BooleanComparisonType.Equals));
-        }
-
-        internal virtual void HasLabel(GremlinToSqlContext currentContext, List<object> values)
-        {
-            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
-            foreach (var value in values)
-            {
-                WScalarExpression firstExpr = GetVariableProperty(GremlinKeyword.Label).ToScalarExpression();
-                WScalarExpression secondExpr = SqlUtil.GetValueExpr(value);
-                booleanExprList.Add(SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr));
-            }
-            WBooleanExpression concatSql = SqlUtil.ConcatBooleanExprWithOr(booleanExprList);
-            currentContext.AddPredicate(SqlUtil.GetBooleanParenthesisExpr(concatSql));
-        }
-
-        internal virtual void HasLabel(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to vertices and edges.");
-        }
-
-        internal virtual void HasKey(GremlinToSqlContext currentContext, List<string> values)
-        {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
-        }
-
-        internal virtual void HasKey(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
-        }
-
-        internal virtual void HasValue(GremlinToSqlContext currentContext, List<object> values)
-        {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
-        }
-
-        internal virtual void HasValue(GremlinToSqlContext currentContext, Predicate predicate)
-        {
-            throw new QueryCompilationException("The Has(key, predicate) step only applies to properties.");
+            GraphTraversal2 traversal2 = GraphTraversal2.__().Properties(propertyKey);
+            traversal2.GetStartOp().InheritedVariableFromParent(currentContext);
+            currentContext.AddPredicate(SqlUtil.GetExistPredicate(traversal2.GetEndOp().GetContext().ToSelectQueryBlock()));
         }
 
         internal virtual void HasNot(GremlinToSqlContext currentContext, string propertyKey)
         {
-            throw new QueryCompilationException("The HasNot(propertyKey) step only applies to vertices and edges.");
+            GraphTraversal2 traversal2 = GraphTraversal2.__().Properties(propertyKey);
+            traversal2.GetStartOp().InheritedVariableFromParent(currentContext);
+            currentContext.AddPredicate(SqlUtil.GetNotExistPredicate(traversal2.GetEndOp().GetContext().ToSelectQueryBlock()));
+        }
+
+        private WBooleanExpression CreateBooleanExpression(GremlinVariableProperty variableProperty, object valuesOrPredicate)
+        {
+            if (valuesOrPredicate is string || valuesOrPredicate is int || valuesOrPredicate is bool)
+            {
+                WScalarExpression firstExpr = variableProperty.ToScalarExpression();
+                WScalarExpression secondExpr = SqlUtil.GetValueExpr(valuesOrPredicate);
+                return SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+            }
+            if (valuesOrPredicate is Predicate)
+            {
+                WScalarExpression firstExpr = variableProperty.ToScalarExpression();
+                WScalarExpression secondExpr = SqlUtil.GetValueExpr((valuesOrPredicate as Predicate).Value);
+                return SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, valuesOrPredicate as Predicate);
+            }
+            throw new ArgumentException();
+        }
+
+        internal virtual void Has(GremlinToSqlContext currentContext, string propertyKey, object valuesOrPredicate)
+        {
+            currentContext.AddPredicate(CreateBooleanExpression(GetVariableProperty(propertyKey), valuesOrPredicate));
+        }
+
+        internal virtual void HasIdOrLabel(GremlinToSqlContext currentContext, GremlinHasType hasType, List<object> valuesOrPredicates)
+        {
+            GremlinVariableProperty variableProperty = hasType == GremlinHasType.HasId
+                ? DefaultVariableProperty()
+                : GetVariableProperty(GremlinKeyword.Label);
+            List <WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            foreach (var valuesOrPredicate in valuesOrPredicates)
+            {
+                booleanExprList.Add(CreateBooleanExpression(variableProperty, valuesOrPredicate));
+            }
+            currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
+        }
+
+        /// <summary>
+        /// Only valid for VertexProperty
+        /// </summary>
+        internal virtual void HasKeyOrValue(GremlinToSqlContext currentContext, GremlinHasType hasType, List<object> valuesOrPredicates)
+        {
+            GraphTraversal2 traversal2 = hasType == GremlinHasType.HasKey ? GraphTraversal2.__().Key() : GraphTraversal2.__().Value();
+            traversal2.GetStartOp().InheritedVariableFromParent(currentContext);
+            GremlinToSqlContext existContext = traversal2.GetEndOp().GetContext();
+
+            List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
+            GremlinVariableProperty defaultVariableProperty = existContext.PivotVariable.DefaultProjection();
+            foreach (var valuesOrPredicate in valuesOrPredicates)
+            {
+                booleanExprList.Add(CreateBooleanExpression(defaultVariableProperty, valuesOrPredicate));
+            }
+            existContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
+
+            currentContext.AddPredicate(SqlUtil.GetExistPredicate(existContext.ToSelectQueryBlock()));
         }
 
         internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)

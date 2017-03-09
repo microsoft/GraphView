@@ -31,10 +31,16 @@ namespace GraphView
                 {
                     if (id is int || id is string)
                     {
-                        WScalarExpression firstExpr = newVariable.GetVariableProperty(GremlinKeyword.NodeID).ToScalarExpression();
+                        WScalarExpression firstExpr =
+                            newVariable.GetVariableProperty(GremlinKeyword.NodeID).ToScalarExpression();
                         WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);
-                        WBooleanComparisonExpression booleanExpr = SqlUtil.GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
+                        WBooleanComparisonExpression booleanExpr = SqlUtil.GetEqualBooleanComparisonExpr(firstExpr,
+                            secondExpr);
                         booleanExprList.Add(booleanExpr);
+                    }
+                    else
+                    {
+                        throw new ArgumentException();
                     }
                 }
                 inputContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));

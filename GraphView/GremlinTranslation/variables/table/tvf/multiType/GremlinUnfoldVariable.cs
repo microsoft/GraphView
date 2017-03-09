@@ -23,7 +23,7 @@ namespace GraphView
 
         internal override GremlinVariableType GetUnfoldVariableType()
         {
-            throw new NotImplementedException();
+            return UnfoldVariable.GetUnfoldVariableType();
         }
 
         internal override void Populate(string property)

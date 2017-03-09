@@ -12,6 +12,18 @@ namespace GraphView
         protected static int _edgeCount = 0;
         protected static int _tableCount = 0;
 
+        internal static void CheckIsValueOrPredicate(params object[] valueOrPredicates)
+        {
+            foreach (var valueOrPredicate in valueOrPredicates)
+            {
+                if (!(valueOrPredicate is string
+                     || valueOrPredicate is int
+                     || valueOrPredicate is bool
+                     || valueOrPredicate is Predicate))
+                                    throw new ArgumentException();
+            }
+        }
+
         internal static string GenerateTableAlias(GremlinVariableType variableType)
         {
             switch (variableType)

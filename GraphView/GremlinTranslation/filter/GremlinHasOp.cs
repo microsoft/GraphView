@@ -7,93 +7,60 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal enum HasOpType
+    internal enum GremlinHasType
     {
         HasProperty,
-        HasPropertyValue,
-        HasPropertyPredicate,
+        HasNotProperty,
+        HasPropertyValueOrPredicate,
         HasPropertyTraversal,
         HasLabelPropertyValue,
-        HasLabelPropertyPredicate,
 
         HasId,
-        HasIdPredicate,
         HasKey,
-        HasKeyPredicate,
         HasLabel,
-        HasLabelPredicate,
         HasValue,
-        HasValuePredicate
     }
     internal class GremlinHasOp: GremlinTranslationOperator
     {
         public string PropertyKey { get; set; }
-        public object Value { get; set; }
-        public List<object> Values { get; set; }
-        public List<string> Keys { get; set; }
         public string Label { get; set; }
-        public Predicate Predicate { get; set; }
+        public object ValueOrPredicate { get; set; }
+        public List<object> ValuesOrPredicates { get; set; }
         public GraphTraversal2 Traversal { get; set; }
-        public HasOpType OpType { get; set; }
+        public GremlinHasType Type { get; set; }
 
-        public GremlinHasOp(string propertyKey)
+        public GremlinHasOp(GremlinHasType type, string propertyKey)
         {
             PropertyKey = propertyKey;
-            OpType = HasOpType.HasProperty;
+            Type = type;
         }
 
-        public GremlinHasOp(string propertyKey, object value)
+        public GremlinHasOp(string propertyKey, object valueOrPredicate)
         {
             PropertyKey = propertyKey;
-            Value = value;
-            OpType = HasOpType.HasPropertyValue;
-        }
-
-        public GremlinHasOp(string label, string propertyKey, object value)
-        {
-            Label = label;
-            PropertyKey = propertyKey;
-            Value = value;
-            OpType = HasOpType.HasLabelPropertyValue;
-        }
-
-        public GremlinHasOp(string propertyKey, Predicate predicate)
-        {
-            PropertyKey = propertyKey;
-            Predicate = predicate;
-            OpType = HasOpType.HasPropertyPredicate;
+            ValueOrPredicate = valueOrPredicate;
+            Type = GremlinHasType.HasPropertyValueOrPredicate;
         }
 
         public GremlinHasOp(string propertyKey, GraphTraversal2 traversal)
         {
             PropertyKey = propertyKey;
             Traversal = traversal;
-            OpType = HasOpType.HasPropertyTraversal;
+            Type = GremlinHasType.HasPropertyTraversal;
         }
 
-        public GremlinHasOp(HasOpType type, params object[] values)
-        {
-            Values = new List<object>(values);
-            OpType = type;
-        }
-
-        public GremlinHasOp(HasOpType type, Predicate predicate)
-        {
-            Predicate = predicate;
-            OpType = type;
-        }
-
-        public GremlinHasOp(HasOpType type, params string[] keys)
-        {
-            Keys = new List<string>(keys);
-            OpType = type;
-        }
-
-        public GremlinHasOp(string label, string propertyKey, Predicate predicate)
+        public GremlinHasOp(string label, string propertyKey, object value)
         {
             Label = label;
             PropertyKey = propertyKey;
-            Predicate = predicate;
+            ValueOrPredicate = value;
+            Type = GremlinHasType.HasLabelPropertyValue;
+        }
+
+        public GremlinHasOp(GremlinHasType type, params object[] valuesOrPredicates)
+        {
+            ValuesOrPredicates = new List<object>(valuesOrPredicates);
+            Type = type;
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -104,40 +71,31 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            switch (OpType)
+            switch (Type)
             {
                 //has(key)
-                case HasOpType.HasProperty:
+                case GremlinHasType.HasProperty:
                     inputContext.PivotVariable.Has(inputContext, PropertyKey);
                     break;
 
-                //has(key, value)
-                case HasOpType.HasPropertyValue:
-                    inputContext.PivotVariable.Has(inputContext, PropertyKey, Value);
+                //hasNot(key)
+                case GremlinHasType.HasNotProperty:
+                    inputContext.PivotVariable.HasNot(inputContext, PropertyKey);
                     break;
 
-                //has(key, predicate)
-                case HasOpType.HasPropertyPredicate:
-                    inputContext.PivotVariable.Has(inputContext, PropertyKey, Predicate);
+                //has(key, value) | has(key, predicate)
+                case GremlinHasType.HasPropertyValueOrPredicate:
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, ValueOrPredicate);
                     break;
 
-                //has(label, key, value)
-                case HasOpType.HasLabelPropertyValue:
-                    inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Value);
-                    break;
-
-                //has(label, key, predicate)
-                case HasOpType.HasLabelPropertyPredicate:
-                    inputContext.PivotVariable.Has(inputContext, Label, PropertyKey, Predicate);
-                    break;
-
-                case HasOpType.HasPropertyTraversal:
+                //has(key, traversal)
+                case GremlinHasType.HasPropertyTraversal:
                     Traversal.GetStartOp().InheritedVariableFromParent(inputContext);
                     if (Traversal.GetStartOp() is GremlinParentContextOp)
                     {
                         if (Traversal.GremlinTranslationOpList.Count > 1)
                         {
-                            Traversal.InsertGremlinOperator(1,  new GremlinValuesOp(PropertyKey));
+                            Traversal.InsertGremlinOperator(1, new GremlinValuesOp(PropertyKey));
                         }
                         else
                         {
@@ -145,51 +103,28 @@ namespace GraphView
                         }
                     }
                     GremlinToSqlContext hasContext = Traversal.GetEndOp().GetContext();
-                    inputContext.PivotVariable.Has(inputContext, PropertyKey, hasContext);
+                    inputContext.AddPredicate(hasContext.ToSqlBoolean());
+                    break;
+
+                //has(label, key, value) | has(label, key, predicate)
+                case GremlinHasType.HasLabelPropertyValue:
+                    inputContext.PivotVariable.Has(inputContext, GremlinKeyword.Label, Label);
+                    inputContext.PivotVariable.Has(inputContext, PropertyKey, ValueOrPredicate);
                     break;
 
                 //hasId(values)
-                case HasOpType.HasId:
-                    inputContext.PivotVariable.HasId(inputContext, Values);
+                case GremlinHasType.HasId:
+                case GremlinHasType.HasLabel:
+                    inputContext.PivotVariable.HasIdOrLabel(inputContext, Type, ValuesOrPredicates);
                     break;
 
-                //hasId(predicate)
-                case HasOpType.HasIdPredicate:
-                    inputContext.PivotVariable.HasId(inputContext, Predicate);
+                //===================================================================
+                //hasKey(values) || hasValue(values)
+                case GremlinHasType.HasKey:
+                case GremlinHasType.HasValue:
+                    inputContext.PivotVariable.HasKeyOrValue(inputContext, Type, ValuesOrPredicates);
                     break;
-
-                //hasKey(values)
-                case HasOpType.HasKey:
-                    inputContext.PivotVariable.HasKey(inputContext, Keys);
-                    break;
-
-                //hasKey(predicate)
-                case HasOpType.HasKeyPredicate:
-                    inputContext.PivotVariable.HasKey(inputContext, Predicate);
-                    break;
-
-                //hasLabel(values)
-                case HasOpType.HasLabel:
-                    inputContext.PivotVariable.HasLabel(inputContext, Values);
-                    break;
-
-                //hasLabel(predicate)
-                case HasOpType.HasLabelPredicate:
-                    inputContext.PivotVariable.HasLabel(inputContext, Predicate);
-                    break;
-
-                //hasValue(values)
-                case HasOpType.HasValue:
-                    inputContext.PivotVariable.HasValue(inputContext, Values);
-                    break;
-
-                //hasValue(predicate)
-                case HasOpType.HasValuePredicate:
-                    inputContext.PivotVariable.HasValue(inputContext, Predicate);
-                    break;
-
             }
-
             return inputContext;
         }
 

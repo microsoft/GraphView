@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinAggregateOp: GremlinTranslationOperator, IGremlinByModulating
+    internal class GremlinAggregateOp: GremlinTranslationOperator
     {
         public string SideEffectKey { get; set; }
         public GraphTraversal2 ByTraversal { get; set; }
