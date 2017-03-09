@@ -13,7 +13,7 @@ namespace GraphView
 
         public const string Label = "label";
         public const string SinkLabel = "_sinkLabel";
-        public const string EdgeID = "_offset";
+        public const string EdgeID = "_edgeId";
         public const string EdgeReverseID = "_reverse_ID";
         public const string EdgeSourceV = "_source";
         public const string EdgeSinkV = "_sink";
@@ -22,8 +22,6 @@ namespace GraphView
         public const string EdgeAdj = "_edge";
         public const string ReverseEdgeAdj = "_reverse_edge";
         public const string Path = "_path";
-        //public const string ScalarValue = "_value";
-        //public const string PropertyValue = "_value";
         public const string Star = "*";
         public const string Compose1TableDefaultName = "C";
         public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);

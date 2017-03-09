@@ -115,9 +115,9 @@ namespace GraphView
             return variableList;
         }
 
-        internal List<GremlinVariable> SelectParent(string label, GremlinVariable stopVariable)
+        internal List<GremlinVariable> Select(string label, GremlinVariable stopVariable = null)
         {
-            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label, HomeVariable);
+            List<GremlinVariable> taggedVariableList = ParentContext?.Select(label, HomeVariable);
             if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
 
             var stopIndex = stopVariable == null ? VariableList.Count : VariableList.IndexOf(stopVariable);
@@ -127,45 +127,6 @@ namespace GraphView
                 if (VariableList[i].Labels.Contains(label))
                 {
                     taggedVariableList.Add(new GremlinContextVariable(VariableList[i]));
-                }
-                else
-                {
-                    if (VariableList[i].ContainsLabel(label))
-                    {
-                        List<GremlinVariable> subContextVariableList = VariableList[i].PopulateAllTaggedVariable(label);
-                        foreach (var subContextVar in subContextVariableList)
-                        {
-                            if (subContextVar is GremlinGhostVariable)
-                            {
-                                var ghostVar = subContextVar as GremlinGhostVariable;
-                                var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable,
-                                    ghostVar.AttachedVariable, label);
-                                taggedVariableList.Add(newGhostVar);
-                            }
-                            else
-                            {
-                                GremlinGhostVariable newVariable = GremlinGhostVariable.Create(subContextVar, VariableList[i], label);
-                                taggedVariableList.Add(newVariable);
-                            }
-                        }
-                    }
-                }
-            }
-            return taggedVariableList;
-        }
-
-        internal List<GremlinVariable> Select(string label, GremlinVariable stopVariable = null)
-        {
-            List<GremlinVariable> taggedVariableList = ParentContext?.SelectParent(label, HomeVariable);
-            if (taggedVariableList == null) taggedVariableList = new List<GremlinVariable>();
-
-            var stopIndex = stopVariable == null ? VariableList.Count : VariableList.IndexOf(stopVariable);
-
-            for (var i = 0; i < stopIndex; i++)
-            {
-                if (VariableList[i].Labels.Contains(label))
-                {
-                    taggedVariableList.Add(VariableList[i]);
                 }
                 else
                 {
@@ -225,7 +186,6 @@ namespace GraphView
             foreach (var step in StepList)
             {
                 if (step == stopVariable) break;
-                //step.PopulateGremlinPath();
                 gremlinStepList.Add(step.GetAndPopulatePath());
             }
             return gremlinStepList;
@@ -237,21 +197,10 @@ namespace GraphView
             foreach (var step in StepList)
             {
                 if (step == stopVariable) break;
-                //step.PopulateGremlinPath();
                 gremlinStepList.Add(step.GetAndPopulatePath());
             }
             return gremlinStepList;
         }
-
-        //internal bool IsVariableInCurrentContext(GremlinVariable variable)
-        //{
-        //    return TableReferences.Contains(variable);
-        //}
-
-        //internal GremlinMatchPath GetPathFromPathList(GremlinVariable edge)
-        //{
-        //    return PathList.Find(p => p.EdgeVariable.GetVariableName() == edge.GetVariableName());
-        //}
 
         internal void AddPredicate(WBooleanExpression newPredicate)
         {
@@ -343,10 +292,7 @@ namespace GraphView
             var newMatchClause = new WMatchClause();
             foreach (var path in PathList)
             {
-                //if (path.EdgeVariable is GremlinFreeEdgeVariable && VariableList.Contains(path.EdgeVariable))
-                //{
-                    newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
-                //}
+                 newMatchClause.Paths.Add(SqlUtil.GetMatchPath(path));
             }
             return newMatchClause.Paths.Count == 0 ? null : newMatchClause;
         }

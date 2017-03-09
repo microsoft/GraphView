@@ -27,7 +27,7 @@ namespace GraphView
                 if (row is string || row is int)
                 {
                     var queryBlock = new WSelectQueryBlock();
-                    queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(row), "_value"));
+                    queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(row), GremlinKeyword.TableDefaultColumnName));
                     parameters.Add(SqlUtil.GetScalarSubquery(queryBlock));
                 }
                 else

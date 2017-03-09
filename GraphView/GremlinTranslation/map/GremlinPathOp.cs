@@ -28,7 +28,7 @@ namespace GraphView
                 ByList.Add(GremlinKeyword.TableDefaultColumnName);
             }
 
-            inputContext.PivotVariable.Path2(inputContext, ByList);
+            inputContext.PivotVariable.Path(inputContext, ByList);
 
             return inputContext;
         }

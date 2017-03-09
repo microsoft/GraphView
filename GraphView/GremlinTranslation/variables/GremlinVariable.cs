@@ -706,15 +706,7 @@ namespace GraphView
             currentContext.SetPivotVariable(outVertex);
         }
 
-        //internal virtual void Path(GremlinToSqlContext currentContext)
-        //{
-        //    GremlinPathVariable newVariable = new GremlinPathVariable(currentContext.GetGremlinStepList());
-        //    currentContext.VariableList.Add(newVariable);
-        //    currentContext.TableReferences.Add(newVariable);
-        //    currentContext.SetPivotVariable(newVariable);
-        //}
-
-        internal virtual void Path2(GremlinToSqlContext currentContext, List<object> byList)
+        internal virtual void Path(GremlinToSqlContext currentContext, List<object> byList)
         {
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
             List<GremlinPathStepVariable> steps = currentContext.GetGremlinStepList();
@@ -820,7 +812,7 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void sample(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope, int amountToSample)
+        internal virtual void Sample(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope, int amountToSample)
         {
             throw new NotImplementedException();
         }

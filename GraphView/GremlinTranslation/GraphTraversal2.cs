@@ -455,6 +455,18 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal2 E(params object[] edgeIdsOrElements)
+        {
+            AddGremlinOperator(new GremlinEOp(edgeIdsOrElements));
+            return this;
+        }
+
+        public GraphTraversal2 E(List<object> edgeIdsOrElements)
+        {
+            AddGremlinOperator(new GremlinEOp(edgeIdsOrElements));
+            return this;
+        }
+
         public GraphTraversal2 Emit()
         {
             if (GetEndOp() is GremlinRepeatOp)
