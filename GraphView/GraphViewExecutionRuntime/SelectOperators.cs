@@ -2229,6 +2229,9 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.compositeDedupKeySet.Clear();
+            for (int i = 0; i < this.compositeDedupKeyFuncList.Count; i++) {
+                compositeDedupKeySet.Add(new HashSet<Object>());
+            }
             this.Open();
         }
     }
