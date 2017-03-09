@@ -2205,9 +2205,9 @@ namespace GraphView
             WSelectQueryBlock contextSelect, repeatSelect;
             Split(out contextSelect, out repeatSelect);
 
-            if (HasAggregateFunctionInTheRepeatSelectQuery(repeatSelect)) {
-                throw new QueryCompilationException("The parent of an aggregate function cannot be a repeat operator.");
-            }
+            //if (HasAggregateFunctionInTheRepeatSelectQuery(repeatSelect)) {
+            //    throw new QueryCompilationException("The parent of an aggregate function cannot be a repeat operator.");
+            //}
 
             List<int> inputIndexes = new List<int>();
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);

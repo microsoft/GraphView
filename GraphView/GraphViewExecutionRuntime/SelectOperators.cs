@@ -2041,6 +2041,11 @@ namespace GraphView
                     while ((newRec = innerOp.Next()) != null)
                     {
                         priorStates.Enqueue(newRec);
+
+                        if (emitCondition != null && emitCondition.Evaluate(newRec))
+                        {
+                            repeatResultBuffer.Enqueue(newRec);
+                        }
                     }
 
                     // Evaluates the remaining number of iterations
@@ -2063,14 +2068,17 @@ namespace GraphView
                             }
                         }
 
-                        var tmpQueue = priorStates;
+                        Queue<RawRecord> tmpQueue = priorStates;
                         priorStates = newStates;
                         newStates = tmpQueue;
                     }
 
-                    foreach (RawRecord resultRec in priorStates)
+                    if (emitCondition == null)
                     {
-                        repeatResultBuffer.Enqueue(resultRec);
+                        foreach (RawRecord resultRec in priorStates)
+                        {
+                            repeatResultBuffer.Enqueue(resultRec);
+                        }
                     }
                 }
                 else 
