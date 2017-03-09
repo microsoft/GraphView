@@ -1073,7 +1073,7 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOp;
         private List<RawRecord> inputBuffer;
-        private Queue<RawRecord> outputBuffer;
+        private int returnIndex;
 
         private List<Tuple<bool, ScalarFunction, IComparer>> orderByElements;
 
@@ -1082,24 +1082,24 @@ namespace GraphView
             this.Open();
             this.inputOp = inputOp;
             this.orderByElements = orderByElements;
-            this.outputBuffer = new Queue<RawRecord>();
+            this.returnIndex = 0;
         }
 
         public override RawRecord Next()
         {
-            if (inputBuffer == null)
+            if (this.inputBuffer == null)
             {
-                inputBuffer = new List<RawRecord>();
+                this.inputBuffer = new List<RawRecord>();
 
                 RawRecord inputRec = null;
-                while (inputOp.State() && (inputRec = inputOp.Next()) != null) {
-                    inputBuffer.Add(inputRec);
+                while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null) {
+                    this.inputBuffer.Add(inputRec);
                 }
 
-                inputBuffer.Sort((x, y) =>
+                this.inputBuffer.Sort((x, y) =>
                 {
                     int ret = 0;
-                    foreach (Tuple<bool, ScalarFunction, IComparer> orderByElement in orderByElements)
+                    foreach (Tuple<bool, ScalarFunction, IComparer> orderByElement in this.orderByElements)
                     {
                         bool isByString = orderByElement.Item1;
                         ScalarFunction byFunction = orderByElement.Item2;
@@ -1140,23 +1140,114 @@ namespace GraphView
                     }
                     return ret;
                 });
-
-                foreach (RawRecord x in inputBuffer)
-                    outputBuffer.Enqueue(x);
             }
 
-            if (outputBuffer.Count <= 1) this.Close();
-            if (outputBuffer.Count != 0) return outputBuffer.Dequeue();
+            while (this.returnIndex < this.inputBuffer.Count) {
+                return this.inputBuffer[this.returnIndex++];
+            }
+
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            inputBuffer = null;
-            inputOp.ResetState();
-            outputBuffer.Clear();
+            this.inputBuffer = null;
+            this.inputOp.ResetState();
+            this.returnIndex = 0;
 
-            Open();
+            this.Open();
+        }
+    }
+
+    internal class OrderLocalOperator : GraphViewExecutionOperator
+    {
+        private GraphViewExecutionOperator inputOp;
+        private int inputObjectIndex;
+        private List<Tuple<ScalarFunction, IComparer>> orderByElements;
+        private ByColumn byColumn;
+        private IComparer byColumnComparer;
+
+        enum ByColumn
+        {
+            NONE, KEYS, VALUES
+        }
+
+        public OrderLocalOperator(GraphViewExecutionOperator inputOp, int inputObjectIndex, List<Tuple<ScalarFunction, IComparer>> orderByElements)
+        {
+            this.inputOp = inputOp;
+            this.inputObjectIndex = inputObjectIndex;
+            this.orderByElements = orderByElements;
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord srcRecord = null;
+
+            while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
+            {
+                FieldObject inputObject = srcRecord[this.inputObjectIndex];
+                if (inputObject is CollectionField)
+                {
+                    CollectionField inputCollection = (CollectionField)inputObject;
+                    inputCollection.Collection.Sort((x, y) =>
+                    {
+                        int ret = 0;
+                        foreach (Tuple<ScalarFunction, IComparer> tuple in this.orderByElements)
+                        {
+                            ScalarFunction byFunction = tuple.Item1;
+
+                            RawRecord initCompose1RecordOfX = new RawRecord();
+                            initCompose1RecordOfX.Append(x);
+                            FieldObject xKey = byFunction.Evaluate(initCompose1RecordOfX);
+                            if (xKey == null) {
+                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                            }
+
+                            RawRecord initCompose1RecordOfY = new RawRecord();
+                            initCompose1RecordOfX.Append(y);
+                            FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
+                            if (yKey == null) {
+                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                            }
+
+                            IComparer comparer = tuple.Item2;
+                            ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
+
+                            if (ret != 0) break;
+                        }
+                        return ret;
+                    });
+                }
+                else if (inputObject is MapField)
+                {
+                    MapField inputMap = (MapField) inputObject;
+                    if (this.byColumn == ByColumn.KEYS) {
+                        inputMap.Order.Sort((x, y) => this.byColumnComparer.Compare(x.ToObject(), y.ToObject()));
+                    }
+                    else if (this.byColumn == ByColumn.VALUES)
+                    {
+                        inputMap.Order.Sort(
+                            (x, y) => this.byColumnComparer.Compare(inputMap[x].ToObject(), inputMap[y].ToObject()));
+                    }
+                    else
+                    {
+                        //TODO: Sync with Jinjin
+                    }
+                }
+
+                return srcRecord;
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
@@ -1950,6 +2041,11 @@ namespace GraphView
                     while ((newRec = innerOp.Next()) != null)
                     {
                         priorStates.Enqueue(newRec);
+
+                        if (emitCondition != null && emitCondition.Evaluate(newRec))
+                        {
+                            repeatResultBuffer.Enqueue(newRec);
+                        }
                     }
 
                     // Evaluates the remaining number of iterations
@@ -1972,14 +2068,17 @@ namespace GraphView
                             }
                         }
 
-                        var tmpQueue = priorStates;
+                        Queue<RawRecord> tmpQueue = priorStates;
                         priorStates = newStates;
                         newStates = tmpQueue;
                     }
 
-                    foreach (RawRecord resultRec in priorStates)
+                    if (emitCondition == null)
                     {
-                        repeatResultBuffer.Enqueue(resultRec);
+                        foreach (RawRecord resultRec in priorStates)
+                        {
+                            repeatResultBuffer.Enqueue(resultRec);
+                        }
                     }
                 }
                 else 
@@ -2085,16 +2184,15 @@ namespace GraphView
             this.inputOp = inputOperator;
             this.compositeDedupKeyFuncList = compositeDedupKeyFuncList;
             this.compositeDedupKeySet = new List<HashSet<Object>>();
+            for (int i = 0; i < compositeDedupKeyFuncList.Count; i++) {
+                compositeDedupKeySet.Add(new HashSet<Object>());
+            }
             this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord srcRecord = null;
-
-            for (int i = 0; i < compositeDedupKeyFuncList.Count; i++) {
-                compositeDedupKeySet.Add(new HashSet<Object>());
-            }
                 
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
