@@ -124,10 +124,11 @@ namespace GraphView
             base.Dedup(currentContext, dedupLabels, dedupContext, scope);
         }
 
-        internal override void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
+        internal override void Group(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext groupByContext,
+            GremlinToSqlContext projectByContext, bool isProjectByString)
         {
             if (sideEffectKey != null) this.isTraversalToBound = true;
-            base.Group(currentContext, sideEffectKey, parameters);
+            base.Group(currentContext, sideEffectKey, groupByContext, projectByContext, isProjectByString);
         }
 
         internal override void Inject(GremlinToSqlContext currentContext, List<object> values)
@@ -136,11 +137,11 @@ namespace GraphView
             base.Inject(currentContext, values);
         }
 
-        internal override void Order(GremlinToSqlContext currentContext, List<object> byList,
-            List<IComparer> orderList, GremlinKeyword.Scope scope)
+        internal override void Order(GremlinToSqlContext currentContext, Dictionary<GremlinToSqlContext, IComparer> byModulatingMap,
+            GremlinKeyword.Scope scope)
         {
             this.isTraversalToBound = true;
-            base.Order(currentContext, byList, orderList, scope);
+            base.Order(currentContext, byModulatingMap, scope);
         }
 
         internal override void Property(GremlinToSqlContext currentContext, GremlinProperty vertexProperty)

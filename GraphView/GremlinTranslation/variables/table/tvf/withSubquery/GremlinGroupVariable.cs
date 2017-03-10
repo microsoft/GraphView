@@ -8,34 +8,32 @@ namespace GraphView
 {
     internal class GremlinGroupVariable: GremlinScalarTableVariable
     {
-        public List<object> Parameters { get; set; }
+        public GremlinToSqlContext GroupByContext { get; set; }
+        public GremlinToSqlContext ProjectByContext { get; set; }
+        public bool IsProjectByString { get; set; }
         public string SideEffectKey { get; set; }
         public GremlinVariable PrimaryVariable { get; set; }
 
-        public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, List<object> parameters)
+        public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, GremlinToSqlContext groupByContext,
+            GremlinToSqlContext projectByContext, bool isProjectByString)
         {
             PrimaryVariable = primaryVariable;
             SideEffectKey = sideEffectKey;
-            Parameters = new List<object>(parameters);
-            foreach (var parameter in parameters)
-            {
-                if (parameter is GremlinToSqlContext)
-                {
-                    (parameter as GremlinToSqlContext).HomeVariable = this;
-                }
-            }
+            GroupByContext = groupByContext;
+            ProjectByContext = projectByContext;
+            IsProjectByString = isProjectByString;
+
+            GroupByContext.HomeVariable = this;
+            ProjectByContext.HomeVariable = this;
         }
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
             List<GremlinVariable> variableList = new List<GremlinVariable>();
-            foreach (var parameter in Parameters)
-            {
-                if (parameter is GremlinToSqlContext)
-                {
-                    variableList.AddRange((parameter as GremlinToSqlContext).FetchVarsFromCurrAndChildContext());
-                }
-            }
+            if (GroupByContext != null)
+                variableList.AddRange(GroupByContext.FetchVarsFromCurrAndChildContext());
+            if (ProjectByContext != null)
+                variableList.AddRange(ProjectByContext.FetchVarsFromCurrAndChildContext());
             return variableList;
         }
 
@@ -43,23 +41,10 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            for (var i = 0; i < Parameters.Count; i++)
-            {
-                if (Parameters[i] is GremlinToSqlContext)
-                {
-                    parameters.Add(SqlUtil.GetScalarSubquery((Parameters[i] as GremlinToSqlContext).ToSelectQueryBlock()));
-                }
-                else if (Parameters[i] is GremlinVariableProperty)
-                {
-                    parameters.Add((Parameters[i] as GremlinVariableProperty).ToScalarExpression());
-                }
-                else
-                {
-                    throw new QueryCompilationException();
-                }
-            }
+            parameters.Add(SqlUtil.GetScalarSubquery(GroupByContext.ToSelectQueryBlock()));
+            parameters.Add(SqlUtil.GetScalarSubquery(ProjectByContext.ToSelectQueryBlock()));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, GetVariableName());
-
+            ((WGroupTableReference) tableRef).IsProjectByString = IsProjectByString;
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

@@ -10,8 +10,9 @@ namespace GraphView
     internal class GremlinGroupOp: GremlinTranslationOperator
     {
         public string SideEffect { get; set; }
-        public object GroupBy { get; set; }
-        public object ProjectBy { get; set; }
+        public GraphTraversal2 GroupBy { get; set; }
+        public GraphTraversal2 ProjectBy { get; set; }
+        public bool IsProjectByString { get; set; }
 
         public GremlinGroupOp()
         {
@@ -30,38 +31,17 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            List<object> byParameters = new List<object>();
             if (GroupBy == null)
-            {
-                byParameters.Add(inputContext.PivotVariable.DefaultProjection());
-            }
-            else if (GroupBy is string)
-            {
-                byParameters.Add((string)GroupBy == "" ? inputContext.PivotVariable.DefaultProjection()
-                                                       : inputContext.PivotVariable.GetVariableProperty((string)GroupBy));
-            }
-            else if (GroupBy is GraphTraversal2)
-            {
-                ((GraphTraversal2)GroupBy).GetStartOp().InheritedVariableFromParent(inputContext);
-                byParameters.Add(((GraphTraversal2)GroupBy).GetEndOp().GetContext());
-            }
-
+                GroupBy = GraphTraversal2.__();
             if (ProjectBy == null)
-            {
-                byParameters.Add(inputContext.PivotVariable.DefaultProjection());
-            }
-            else if (ProjectBy is string)
-            {
-                byParameters.Add((string)ProjectBy == "" ? inputContext.PivotVariable.DefaultProjection()
-                                                         : inputContext.PivotVariable.GetVariableProperty((string)ProjectBy));
-            }
-            else if (ProjectBy is GraphTraversal2)
-            {
-                ((GraphTraversal2)ProjectBy).GetStartOp().InheritedVariableFromParent(inputContext);
-                byParameters.Add(((GraphTraversal2)ProjectBy).GetEndOp().GetContext());
-            }
+                ProjectBy = GraphTraversal2.__();
 
-            inputContext.PivotVariable.Group(inputContext, SideEffect, byParameters);
+            GroupBy.GetStartOp().InheritedVariableFromParent(inputContext);
+            ProjectBy.GetStartOp().InheritedVariableFromParent(inputContext);
+            GremlinToSqlContext groupByContext = GroupBy.GetEndOp().GetContext();
+            GremlinToSqlContext projectContext = ProjectBy.GetEndOp().GetContext();
+
+            inputContext.PivotVariable.Group(inputContext, SideEffect, groupByContext, projectContext, IsProjectByString);
 
             return inputContext;
         }
@@ -70,11 +50,11 @@ namespace GraphView
         {
             if (GroupBy == null)
             {
-                GroupBy = "";
+                GroupBy = GraphTraversal2.__();
             }
             else if (ProjectBy == null)
             {
-                ProjectBy = "";
+                ProjectBy = GraphTraversal2.__();
             }
             else
             {
@@ -82,15 +62,15 @@ namespace GraphView
             }
         }
 
-        public override void ModulateBy(GraphTraversal2 paramOp)
+        public override void ModulateBy(GraphTraversal2 traversal)
         {
             if (GroupBy == null)
             {
-                GroupBy = paramOp;
+                GroupBy = traversal;
             }
             else if (ProjectBy == null)
             {
-                ProjectBy = paramOp;
+                ProjectBy = traversal;
             }
             else
             {
@@ -102,11 +82,12 @@ namespace GraphView
         {
             if (GroupBy == null)
             {
-                GroupBy = key;
+                GroupBy = GraphTraversal2.__().Values(key);
             }
             else if (ProjectBy == null)
             {
-                ProjectBy = key;
+                ProjectBy = GraphTraversal2.__().Values(key);
+                IsProjectByString = true;
             }
             else
             {

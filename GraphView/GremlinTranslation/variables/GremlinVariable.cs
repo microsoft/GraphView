@@ -353,9 +353,10 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Group(GremlinToSqlContext currentContext, string sideEffectKey, List<object> parameters)
+        internal virtual void Group(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext groupByContext,
+            GremlinToSqlContext projectByContext, bool isProjectByString)
         {
-            GremlinGroupVariable newVariable = new GremlinGroupVariable(this, sideEffectKey, parameters);
+            GremlinGroupVariable newVariable = new GremlinGroupVariable(this, sideEffectKey, groupByContext, projectByContext, isProjectByString);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             if (sideEffectKey == null)
@@ -613,10 +614,9 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal virtual void Order(GremlinToSqlContext currentContext, List<object> byList,
-            List<IComparer> orderList, GremlinKeyword.Scope scope)
+        internal virtual void Order(GremlinToSqlContext currentContext, Dictionary<GremlinToSqlContext, IComparer> byModulatingMap, GremlinKeyword.Scope scope)
         {
-            GremlinOrderVariable newVariable = new GremlinOrderVariable(this, byList, orderList, scope);
+            GremlinOrderVariable newVariable = new GremlinOrderVariable(this, byModulatingMap, scope);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
         }

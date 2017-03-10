@@ -9,14 +9,12 @@ namespace GraphView
 {
     internal class GremlinOrderOp: GremlinTranslationOperator
     {
-        public List<IComparer> OrderComparer { get; set; }
-        public List<object> ByList { get; set; }
+        public Dictionary<GraphTraversal2, IComparer> ByModulatingMap { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
 
         public GremlinOrderOp(GremlinKeyword.Scope scope)
         {
-            ByList = new List<object>();
-            OrderComparer = new List<IComparer>();
+            ByModulatingMap = new Dictionary<GraphTraversal2, IComparer>();
             Scope = scope;
         }
 
@@ -28,99 +26,98 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            List<object> byList = new List<object>();
-            foreach (var item in ByList)
+            if (ByModulatingMap.Count == 0)
             {
-                if (item is GraphTraversal2)
-                {
-                    (item as GraphTraversal2).GetStartOp().InheritedVariableFromParent(inputContext);
-                    byList.Add((item as GraphTraversal2).GetEndOp().GetContext());
-                }
-                else if (item == null)
-                {
-                    byList.Add(inputContext.PivotVariable.DefaultProjection());
-                }
-                else if (item is string)
-                {
-                    byList.Add(inputContext.PivotVariable.GetVariableProperty(item as string));
-                }
-                else
-                {
-                    throw new QueryCompilationException();
-                }
+                ByModulatingMap.Add(GraphTraversal2.__(), new IncrOrder());
             }
 
-            if (!ByList.Any())
+            var newByModulatingMap = new Dictionary<GremlinToSqlContext, IComparer>();
+            foreach (var pair in ByModulatingMap)
             {
-                byList.Add(inputContext.PivotVariable.DefaultProjection());
-                OrderComparer.Add(new IncrOrder());
+                pair.Key.GetStartOp().InheritedVariableFromParent(inputContext);
+
+                newByModulatingMap.Add(pair.Key.GetEndOp().GetContext(), pair.Value);
             }
 
-            inputContext.PivotVariable.Order(inputContext, byList, OrderComparer, Scope);
+            inputContext.PivotVariable.Order(inputContext, newByModulatingMap, Scope);
             
             return inputContext;
         }
 
         public override void ModulateBy()
         {
-            ByList.Add(null);
-            OrderComparer.Add(new IncrOrder());
+            ByModulatingMap.Add(GraphTraversal2.__(), new IncrOrder());
+        }
+
+        public override void ModulateBy(GremlinKeyword.Order order)
+        {
+            switch (order)
+            {
+                case GremlinKeyword.Order.Incr:
+                    ByModulatingMap.Add(GraphTraversal2.__(), new IncrOrder());
+                    break;
+                case GremlinKeyword.Order.Desr:
+                    ByModulatingMap.Add(GraphTraversal2.__(), new DecrOrder());
+                    break;
+                case GremlinKeyword.Order.Shuffle:
+                    ByModulatingMap.Add(GraphTraversal2.__(), new ShuffleOrder());
+                    break;
+            }
+        }
+
+        public override void ModulateBy(IComparer comparer)
+        {
+            ByModulatingMap.Add(GraphTraversal2.__(), comparer);
         }
 
         public override void ModulateBy(string key)
         {
-            ByList.Add(key);
-            OrderComparer.Add(new IncrOrder());
+            ByModulatingMap.Add(GraphTraversal2.__().Values(key), new IncrOrder());
         }
 
         public override void ModulateBy(string key, IComparer comparer)
         {
-            ByList.Add(key);
-            OrderComparer.Add(comparer);
+            ByModulatingMap.Add(GraphTraversal2.__().Values(key), comparer);
         }
 
         public override void ModulateBy(string key, GremlinKeyword.Order order)
         {
-            ByList.Add(key);
             switch (order)
             {
                 case GremlinKeyword.Order.Incr:
-                    OrderComparer.Add(new IncrOrder());
+                    ByModulatingMap.Add(GraphTraversal2.__().Values(key), new IncrOrder());
                     break;
                 case GremlinKeyword.Order.Desr:
-                    OrderComparer.Add(new DecrOrder());
+                    ByModulatingMap.Add(GraphTraversal2.__().Values(key), new DecrOrder());
                     break;
                 case GremlinKeyword.Order.Shuffle:
-                    OrderComparer.Add(new ShuffleOrder());
+                    ByModulatingMap.Add(GraphTraversal2.__().Values(key), new ShuffleOrder());
                     break;
             }
         }
 
         public override void ModulateBy(GraphTraversal2 traversal)
         {
-            ByList.Add(traversal);
-            OrderComparer.Add(new IncrOrder());
+            ByModulatingMap.Add(traversal, new IncrOrder());
         }
 
         public override void ModulateBy(GraphTraversal2 traversal, IComparer comparer)
         {
-            ByList.Add(traversal);
-            OrderComparer.Add(comparer);
+            ByModulatingMap.Add(traversal, comparer);
         }
 
         public override void ModulateBy(GraphTraversal2 traversal, GremlinKeyword.Order order)
         {
-            ByList.Add(traversal);
             switch (order)
             {
                 case GremlinKeyword.Order.Incr:
-                    OrderComparer.Add(new IncrOrder());
+                    ByModulatingMap.Add(traversal, new IncrOrder());
                     break;
                 case GremlinKeyword.Order.Desr:
-                    OrderComparer.Add(new DecrOrder());
+                    ByModulatingMap.Add(traversal, new DecrOrder());
                     break;
                 case GremlinKeyword.Order.Shuffle:
-                    OrderComparer.Add(new ShuffleOrder());
+                    ByModulatingMap.Add(traversal, new ShuffleOrder());
                     break;
             }
         }
