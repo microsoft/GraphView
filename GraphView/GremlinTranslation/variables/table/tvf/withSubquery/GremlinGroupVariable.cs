@@ -10,18 +10,18 @@ namespace GraphView
     {
         public GremlinToSqlContext GroupByContext { get; set; }
         public GremlinToSqlContext ProjectByContext { get; set; }
-        public bool IsProjectByString { get; set; }
+        public bool IsProjectingACollection { get; set; }
         public string SideEffectKey { get; set; }
         public GremlinVariable PrimaryVariable { get; set; }
 
         public GremlinGroupVariable(GremlinVariable primaryVariable, string sideEffectKey, GremlinToSqlContext groupByContext,
-            GremlinToSqlContext projectByContext, bool isProjectByString)
+            GremlinToSqlContext projectByContext, bool isProjectingACollection)
         {
             PrimaryVariable = primaryVariable;
             SideEffectKey = sideEffectKey;
             GroupByContext = groupByContext;
             ProjectByContext = projectByContext;
-            IsProjectByString = isProjectByString;
+            IsProjectingACollection = isProjectingACollection;
 
             GroupByContext.HomeVariable = this;
             ProjectByContext.HomeVariable = this;
@@ -44,7 +44,7 @@ namespace GraphView
             parameters.Add(SqlUtil.GetScalarSubquery(GroupByContext.ToSelectQueryBlock()));
             parameters.Add(SqlUtil.GetScalarSubquery(ProjectByContext.ToSelectQueryBlock()));
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, GetVariableName());
-            ((WGroupTableReference) tableRef).IsProjectByString = IsProjectByString;
+            ((WGroupTableReference) tableRef).IsProjectingACollection = IsProjectingACollection;
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

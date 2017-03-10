@@ -12,15 +12,17 @@ namespace GraphView
         public string SideEffect { get; set; }
         public GraphTraversal2 GroupBy { get; set; }
         public GraphTraversal2 ProjectBy { get; set; }
-        public bool IsProjectByString { get; set; }
+        public bool IsProjectingACollection { get; set; }
 
         public GremlinGroupOp()
         {
+            IsProjectingACollection = true;
         }
 
         public GremlinGroupOp(string sideEffect)
         {
             SideEffect = sideEffect;
+            IsProjectingACollection = true;
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -41,7 +43,7 @@ namespace GraphView
             GremlinToSqlContext groupByContext = GroupBy.GetEndOp().GetContext();
             GremlinToSqlContext projectContext = ProjectBy.GetEndOp().GetContext();
 
-            inputContext.PivotVariable.Group(inputContext, SideEffect, groupByContext, projectContext, IsProjectByString);
+            inputContext.PivotVariable.Group(inputContext, SideEffect, groupByContext, projectContext, IsProjectingACollection);
 
             return inputContext;
         }
@@ -76,6 +78,7 @@ namespace GraphView
             {
                 throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
             }
+            IsProjectingACollection = false;
         }
 
         public override void ModulateBy(string key)
@@ -87,7 +90,6 @@ namespace GraphView
             else if (ProjectBy == null)
             {
                 ProjectBy = GraphTraversal2.__().Values(key);
-                IsProjectByString = true;
             }
             else
             {

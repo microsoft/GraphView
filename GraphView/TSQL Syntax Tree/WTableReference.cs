@@ -486,7 +486,7 @@ namespace GraphView
 
     public partial class WGroupTableReference : WSchemaObjectFunctionTableReference
     {
-        public bool IsProjectByString { get; set; }
+        public bool IsProjectingACollection { get; set; }
     }
 
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
