@@ -452,16 +452,16 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
                 Assert.Fail();
-                // TODO: GroupCount() Not Implemented on GraphTraversal2
+                // TODO: Select("values") Not Implemented on GraphTraversal2
 
-                //var traversal = GraphViewCommand.g().V()
-                //    .GroupCount()
-                //    .Select("values")
-                //    .Unfold()
-                //    .Dedup();
-                //var result = traversal.Next();
+                var traversal = GraphViewCommand.g().V()
+                    .GroupCount()
+                    .Select("values")
+                    .Unfold()
+                    .Dedup();
+                var result = traversal.Next();
 
-                //AbstractGremlinTest.CheckUnOrderedResults(new string[] { "1" }, result);
+                AbstractGremlinTest.CheckUnOrderedResults(new string[] { "1" }, result);
             }
         }
 
@@ -522,11 +522,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = GraphViewCommand.g().V()
                     .Repeat(GraphTraversal2.__().Dedup())
                     .Times(2)
-                    .Count();
+                    .Values("name");
 
                 var result = traversal.Next();
 
-                CollectionAssert.AreEqual(new string[] { "josh", "lop", "marko", "peter", "ripple", "vadas" }, result);
+                CheckOrderedResults(new string[] { "marko", "vadas", "lop", "josh", "ripple", "peter" }, result);
             }
         }
     }

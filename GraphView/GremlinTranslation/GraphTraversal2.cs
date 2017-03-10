@@ -402,11 +402,18 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal2 Constant()
+        {
+            AddGremlinOperator(new GremlinConstantOp(new List<object>()));
+            return this;
+        }
+
         public GraphTraversal2 Constant(object value)
         {
             AddGremlinOperator(new GremlinConstantOp(value));
             return this;
         }
+
         public GraphTraversal2 Count()
         {
             AddGremlinOperator(new GremlinCountOp(GremlinKeyword.Scope.global));

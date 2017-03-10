@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -19,25 +20,25 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            if (ConstantValue is List<object>)
+            bool isList = false;
+            if (GremlinUtil.IsList(ConstantValue) || GremlinUtil.IsArray(ConstantValue))
             {
-                foreach (var value in ConstantValue as List<object>)
+                isList = true;  //1 It's a list
+                foreach (var value in (IEnumerable) ConstantValue)
                 {
                     parameters.Add(SqlUtil.GetValueExpr(value));
                 }
             }
-            else if (ConstantValue is List<string>)
-            {
-                foreach (var value in ConstantValue as List<string>)
-                {
-                    parameters.Add(SqlUtil.GetValueExpr(value));
-                }
-            }
-            else
+            else if (GremlinUtil.IsNumber(ConstantValue) || ConstantValue is string)
             {
                 parameters.Add(SqlUtil.GetValueExpr(ConstantValue));
             }
+            else
+            {
+                throw new ArgumentException();
+            }
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Constant, parameters, GetVariableName());
+            ((WConstantReference) tableRef).IsList = isList;
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

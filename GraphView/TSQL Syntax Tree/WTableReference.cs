@@ -398,7 +398,10 @@ namespace GraphView
 
     public partial class WCoalesceTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WConstantReference : WSchemaObjectFunctionTableReference {}
+    public partial class WConstantReference : WSchemaObjectFunctionTableReference
+    {
+        public bool IsList { get; set; }
+    }
 
     public partial class WBoundBothEdgeTableReference : WSchemaObjectFunctionTableReference {}
 
