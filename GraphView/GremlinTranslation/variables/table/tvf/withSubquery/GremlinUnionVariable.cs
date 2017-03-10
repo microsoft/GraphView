@@ -51,11 +51,7 @@ namespace GraphView
             List<GremlinVariable> variableList = new List<GremlinVariable>();
             foreach (var context in UnionContextList)
             {
-                var subContextVariableList = context.FetchVarsFromCurrAndChildContext();
-                if (subContextVariableList != null)
-                {
-                    variableList.AddRange(subContextVariableList);
-                }
+                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
             }
             return variableList;
         }

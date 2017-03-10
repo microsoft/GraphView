@@ -24,6 +24,11 @@ namespace GraphView
             SubqueryContext.Populate(property);
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            return SubqueryContext == null ? new List<GremlinVariable>() : SubqueryContext.FetchVarsFromCurrAndChildContext();
+        }
+
         public override WTableReference ToTableReference()
         {
             return SqlUtil.GetDerivedTable(SubqueryContext.ToSelectQueryBlock(ProjectedProperties), GetVariableName());

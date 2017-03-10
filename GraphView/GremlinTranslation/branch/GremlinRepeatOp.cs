@@ -56,7 +56,14 @@ namespace GraphView
             }
             if (TerminationTraversal != null)
             {
-                TerminationTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
+                if (StartFromContext)
+                {
+                    TerminationTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                }
+                else
+                {
+                    TerminationTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
+                }
                 repeatCondition.TerminationContext = TerminationTraversal.GetEndOp().GetContext();
             }
             if (EmitPredicate != null)
@@ -65,7 +72,14 @@ namespace GraphView
             }
             if (EmitTraversal != null)
             {
-                EmitTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
+                if (EmitContext)
+                {
+                    EmitTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                }
+                else
+                {
+                    EmitTraversal.GetStartOp().InheritedVariableFromParent(repeatContext);
+                }
                 repeatCondition.EmitContext = EmitTraversal.GetEndOp().GetContext();
             }
             if (RepeatTimes != -1)

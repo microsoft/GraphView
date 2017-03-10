@@ -26,6 +26,19 @@ namespace GraphView
             }
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            foreach (var parameter in Parameters)
+            {
+                if (parameter is GremlinToSqlContext)
+                {
+                    variableList.AddRange((parameter as GremlinToSqlContext).FetchVarsFromCurrAndChildContext());
+                }
+            }
+            return variableList;
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

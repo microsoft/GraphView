@@ -21,6 +21,22 @@ namespace GraphView
             }
         }
 
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            //Project step should be regarded as one step, so we can't populate the tagged variable of ProjectContextList 
+            return base.PopulateAllTaggedVariable(label);
+        }
+
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            foreach (var context in ProjectContextList)
+            {
+                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+            }
+            return variableList;
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

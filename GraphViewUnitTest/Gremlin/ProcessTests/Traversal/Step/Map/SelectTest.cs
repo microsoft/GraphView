@@ -260,7 +260,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// <remarks>
         /// This test fails because Has Property Traversal doesn't seem to be supported yet.
         /// \development\euler\product\microsoft.azure.graph\graphview\gremlintranslation2\filter\gremlinhasop.cs Line 118.
-        /// HasOpType.HasKeyTraversal is not implemented
+        /// GremlinHasType.HasKeyTraversal is not implemented
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36516
         /// </remarks>
         [TestMethod]

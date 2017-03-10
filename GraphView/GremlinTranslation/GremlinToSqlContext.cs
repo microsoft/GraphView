@@ -53,6 +53,12 @@ namespace GraphView
 
         internal void Reset()
         {
+            GremlinVariable inputVariable = null;
+            if (VariableList.First() is GremlinContextVariable)
+            {
+                inputVariable = VariableList.First();
+            }
+
             PivotVariable = null;
             Predicates = null;
             VariableList.Clear();
@@ -63,6 +69,12 @@ namespace GraphView
             CurrentContextPath = null;
             ProjectVariablePropertiesList.Clear();
             ProjectedProperties.Clear();
+
+            //reserve the InputVariable
+            if (inputVariable != null)
+            {
+                VariableList.Add(inputVariable);
+            }
         }
 
         internal void Populate(string property)

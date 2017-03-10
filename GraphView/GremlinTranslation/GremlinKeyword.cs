@@ -24,8 +24,9 @@ namespace GraphView
         public const string Path = "_path";
         public const string Star = "*";
         public const string Compose1TableDefaultName = "C";
+        public const string RepeatInitalTableName = "R";
+        public const string RepeatColumnPrefix = "key_";
         public static string TableDefaultColumnName = "value$" + Guid.NewGuid().ToString().Substring(0, 8);
-
 
         public static class func
         {

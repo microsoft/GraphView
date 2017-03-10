@@ -47,6 +47,22 @@ namespace GraphView
             return false;
         }
 
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            //Coalesce step should be regarded as one step, so we can't populate the tagged variable of coalesceContextList 
+            return base.PopulateAllTaggedVariable(label);
+        }
+
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            foreach (var context in CoalesceContextList)
+            {
+                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+            }
+            return variableList;
+        }
+
         internal override GremlinVariableType GetUnfoldVariableType()
         {
             throw new NotImplementedException();

@@ -35,9 +35,15 @@ namespace GraphView
             return FlatMapContext.PivotVariable.GetUnfoldVariableType();
         }
 
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            //flatMap step should be regarded as one step, so we can't populate the tagged variable of FlatMapContext 
+            return base.PopulateAllTaggedVariable(label);
+        }
+
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
-            return FlatMapContext.FetchVarsFromCurrAndChildContext();
+            return FlatMapContext == null ? new List<GremlinVariable>() : FlatMapContext.FetchVarsFromCurrAndChildContext();
         }
 
         public override WTableReference ToTableReference()

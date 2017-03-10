@@ -23,6 +23,11 @@ namespace GraphView
             return ProjectContext.PivotVariable.GetVariableType();
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            return ProjectContext == null ? new List<GremlinVariable>() : ProjectContext.FetchVarsFromCurrAndChildContext();
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

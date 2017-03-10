@@ -43,11 +43,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        //internal virtual WEdgeType GetEdgeType()
-        //{
-        //    throw new NotImplementedException();
-        //}
-
         internal virtual bool ContainsLabel(string label)
         {
             return Labels.Contains(label);
@@ -92,8 +87,13 @@ namespace GraphView
             return new List<GremlinVariable>();
         }
 
+        /// <summary>
+        /// //This function is used for the algorithm of Repeat Step 
+        /// </summary>
+        /// <returns></returns>
         internal virtual List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
+            
             return null;
         }
 
@@ -191,6 +191,7 @@ namespace GraphView
 
         internal virtual void As(GremlinToSqlContext currentContext, List<string> labels)
         {
+            //TODO: when current step is a sideEffect step, we should add label to the last step
             foreach (var label in labels)
             {
                 currentContext.PivotVariable.Labels.Add(label);

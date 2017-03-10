@@ -29,7 +29,7 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-            base.Populate(property);
+            ProjectedProperties.Add(property);
 
             UnfoldVariable.Populate(property);
         }

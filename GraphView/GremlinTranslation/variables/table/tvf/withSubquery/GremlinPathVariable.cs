@@ -29,6 +29,16 @@ namespace GraphView
             ByContexts = new List<GremlinToSqlContext>();
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            foreach (var context in ByContexts)
+            {
+                variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+            }
+            return variableList;
+        }
+
         internal override void Populate(string property)
         {
             if (ByContexts.Count == 0)

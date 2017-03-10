@@ -48,7 +48,7 @@ namespace GraphView
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
-            return OptionalContext.FetchVarsFromCurrAndChildContext();
+            return OptionalContext == null ? new List<GremlinVariable>() :OptionalContext.FetchVarsFromCurrAndChildContext();
         }
 
         internal override bool ContainsLabel(string label)

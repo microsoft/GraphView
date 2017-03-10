@@ -33,7 +33,7 @@ namespace GraphView
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {
-            return LocalContext.FetchVarsFromCurrAndChildContext();
+            return LocalContext == null ? new List<GremlinVariable>(): LocalContext.FetchVarsFromCurrAndChildContext();
         }
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)

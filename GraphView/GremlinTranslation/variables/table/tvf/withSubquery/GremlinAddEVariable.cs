@@ -33,6 +33,14 @@ namespace GraphView
             base.Populate(property);
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            variableList.AddRange(FromVertexContext == null ? new List<GremlinVariable>() : FromVertexContext.FetchVarsFromCurrAndChildContext());
+            variableList.AddRange(ToVertexContext == null ? new List<GremlinVariable>() : ToVertexContext.FetchVarsFromCurrAndChildContext());
+            return variableList;
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
@@ -72,20 +80,6 @@ namespace GraphView
             } 
         }
 
-
-        //internal void From(GremlinToSqlContext currentContext, string label)
-        //{
-        //    List<GremlinVariable> selectVariableList = currentContext.Select(label);
-        //    if (selectVariableList.Count == 0 || selectVariableList.Count > 1)
-        //    {
-        //        throw new Exception("Error: Select variable with label");
-        //    }
-        //    GremlinVariable fromVariable = selectVariableList.First();
-        //    GremlinToSqlContext fromContext = new GremlinToSqlContext();
-        //    fromContext.SetPivotVariable(fromVariable);
-        //    FromVertexContext = fromContext;
-        //}
-
         internal void From(GremlinToSqlContext currentContext, GremlinToSqlContext fromVertexContext)
         {
             FromVertexContext = fromVertexContext;
@@ -97,19 +91,6 @@ namespace GraphView
             ProjectedProperties.Add(property.Key);
             EdgeProperties.Add(property);
         }
-
-        //internal void To(GremlinToSqlContext currentContext, string label)
-        //{
-        //    List<GremlinVariable> selectVariableList = currentContext.Select(label);
-        //    if (selectVariableList.Count == 0 || selectVariableList.Count > 1)
-        //    {
-        //        throw new Exception("Error: Select variable with label");
-        //    }
-        //    GremlinVariable toVariable = selectVariableList.First();
-        //    GremlinToSqlContext toContext = new GremlinToSqlContext();
-        //    toContext.SetPivotVariable(toVariable);
-        //    ToVertexContext = toContext;
-        //}
 
         internal void To(GremlinToSqlContext currentContext, GremlinToSqlContext toVertexContext)
         {

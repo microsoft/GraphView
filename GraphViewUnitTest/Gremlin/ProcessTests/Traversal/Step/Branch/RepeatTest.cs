@@ -127,10 +127,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 Assert.IsTrue(map.ContainsKey("josh"));
                 Assert.IsTrue(map.ContainsKey("ripple"));
                 Assert.IsTrue(map.ContainsKey("lop"));
-                Assert.Equals(1, map["vadas"]);
-                Assert.Equals(1, map["josh"]);
-                Assert.Equals(1, map["ripple"]);
-                Assert.Equals(1, map["lop"]);
+                Assert.AreEqual(1, map["vadas"]);
+                Assert.AreEqual(1, map["josh"]);
+                Assert.AreEqual(2, map["ripple"]);
+                Assert.AreEqual(4, map["lop"]);
             }
         }
 

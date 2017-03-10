@@ -17,6 +17,17 @@ namespace GraphView
             SideEffectContext.HomeVariable = this;
         }
 
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            //SideEffect step should be regarded as one step, so we can't populate the tagged variable of coalesceContextList 
+            return new List<GremlinVariable>();
+        }
+
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            return SideEffectContext.FetchVarsFromCurrAndChildContext();
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

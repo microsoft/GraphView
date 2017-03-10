@@ -35,6 +35,17 @@ namespace GraphView
             return MapContext.PivotVariable.GetUnfoldVariableType();
         }
 
+        internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
+        {
+            //Map step should be regarded as one step, so we can't populate the tagged variable of MapContext 
+            return base.PopulateAllTaggedVariable(label);
+        }
+
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            return MapContext == null ? new List<GremlinVariable>() : MapContext.FetchVarsFromCurrAndChildContext();
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();

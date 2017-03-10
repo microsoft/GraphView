@@ -24,6 +24,11 @@ namespace GraphView
             Scope = scope;
         }
 
+        internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
+        {
+            return DedupContext == null ? new List<GremlinVariable>() : DedupContext.FetchVarsFromCurrAndChildContext();
+        }
+
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
