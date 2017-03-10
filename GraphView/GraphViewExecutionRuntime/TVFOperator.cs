@@ -618,31 +618,40 @@ namespace GraphView
 
     internal class ConstantOperator : TableValuedFunction
     {
-        private List<string> _constantValues;
+        private List<ScalarFunction> constantValues;
+        private bool isList;
 
-        internal ConstantOperator(GraphViewExecutionOperator pInputOperator, List<string> pConstantValues)
-            : base(pInputOperator)
+        internal ConstantOperator(
+            GraphViewExecutionOperator inputOp,
+            List<ScalarFunction> constantValues,
+            bool isList)
+            : base(inputOp)
         {
-            _constantValues = pConstantValues;
+            this.constantValues = constantValues;
+            this.isList = isList;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
         {
-            var result = new RawRecord(1);
-            if (_constantValues.Count == 1)
-                result.fieldValues[0] = new StringField(_constantValues[0]);
-            else
-            {
-                List<FieldObject> cf = new List<FieldObject>();
-                foreach (var value in _constantValues)
-                {
-                    cf.Add(new StringField(value));
-                }
-                
-                result.fieldValues[0] = new CollectionField(cf);
+            RawRecord result = new RawRecord();
+
+            if (this.constantValues.Count == 0 && !this.isList) {
+                return new List<RawRecord>();
             }
 
-            return new List<RawRecord> {result};
+            if (isList)
+            {
+                List<FieldObject> collection = new List<FieldObject>();
+                foreach (ScalarFunction constantValueFunc in this.constantValues) {
+                    collection.Add(constantValueFunc.Evaluate(null));
+                }
+                result.Append(new CollectionField(collection));
+            }
+            else {
+                result.Append(this.constantValues[0].Evaluate(null));
+            }
+
+            return new List<RawRecord> { result };
         }
     }
 
@@ -778,50 +787,58 @@ namespace GraphView
 
     internal class UnfoldOperator : TableValuedFunction
     {
-        private ScalarFunction _unfoldTarget;
-        private List<string> _unfoldColumns; 
+        private ScalarFunction getUnfoldTargetFunc;
+        private List<string> unfoldCompose1Columns; 
 
         internal UnfoldOperator(
-            GraphViewExecutionOperator pInputOperator,
-            ScalarFunction pUnfoldTarget,
-            List<string> pUnfoldColumns)
-            : base(pInputOperator)
+            GraphViewExecutionOperator inputOp,
+            ScalarFunction getUnfoldTargetFunc,
+            List<string> unfoldCompose1Columns)
+            : base(inputOp)
         {
-            this._unfoldTarget = pUnfoldTarget;
-            this._unfoldColumns = pUnfoldColumns;
+            this.getUnfoldTargetFunc = getUnfoldTargetFunc;
+            this.unfoldCompose1Columns = unfoldCompose1Columns;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
         {
             List<RawRecord> results = new List<RawRecord>();
 
-            FieldObject unfoldTarget = _unfoldTarget.Evaluate(record);
+            FieldObject unfoldTarget = getUnfoldTargetFunc.Evaluate(record);
 
-            if (unfoldTarget.GetType() == typeof (CollectionField))
+            if (unfoldTarget is CollectionField)
             {
                 CollectionField cf = unfoldTarget as CollectionField;
-                foreach (FieldObject fo in cf.Collection)
+                foreach (FieldObject singleObj in cf.Collection)
                 {
-                    if (fo == null) continue;
+                    if (singleObj == null) continue;
                     RawRecord newRecord = new RawRecord();
 
                     // Extract only needed columns from Compose1Field
-                    if (fo.GetType() == typeof (Compose1Field))
+                    if (singleObj is Compose1Field)
                     {
-                        Compose1Field compose1Field = fo as Compose1Field;
-                        foreach (string unfoldColumn in _unfoldColumns)
-                        {
+                        Compose1Field compose1Field = singleObj as Compose1Field;
+                        foreach (string unfoldColumn in unfoldCompose1Columns) {
                             newRecord.Append(compose1Field.CompositeFieldObject[unfoldColumn]);
                         }
                     }
                     else
                     {
-                        newRecord.Append(fo);
+                        foreach (string columnName in this.unfoldCompose1Columns)
+                        {
+                            if (columnName.Equals(GremlinKeyword.TableDefaultColumnName)) {
+                                newRecord.Append(singleObj);
+                            }
+                            else {
+                                newRecord.Append((FieldObject)null);
+                            }     
+                        } 
                     }
+
                     results.Add(newRecord);
                 }
             }
-            else if (unfoldTarget.GetType() == typeof(MapField))
+            else if (unfoldTarget is MapField)
             {
                 MapField mf = unfoldTarget as MapField;
                 foreach (KeyValuePair<FieldObject, FieldObject> pair in mf)
@@ -830,14 +847,31 @@ namespace GraphView
                     string key = pair.Key.ToString();
                     string value = pair.Value.ToString();
 
-                    newRecord.Append(new StringField(key + "=" + value));
+                    foreach (string columnName in this.unfoldCompose1Columns)
+                    {
+                        if (columnName.Equals(GremlinKeyword.TableDefaultColumnName)) {
+                            newRecord.Append(new StringField(key + "=" + value));
+                        }
+                        else {
+                            newRecord.Append((FieldObject)null);
+                        }
+                    }
+
                     results.Add(newRecord);
                 }
             }
             else
             {
                 RawRecord newRecord = new RawRecord();
-                newRecord.Append(unfoldTarget);
+                foreach (string columnName in this.unfoldCompose1Columns)
+                {
+                    if (columnName.Equals(GremlinKeyword.TableDefaultColumnName)) {
+                        newRecord.Append(unfoldTarget);
+                    }
+                    else {
+                        newRecord.Append((FieldObject)null);
+                    }
+                }
                 results.Add(newRecord);
             }
 

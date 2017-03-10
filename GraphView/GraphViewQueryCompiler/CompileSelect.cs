@@ -2132,16 +2132,16 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            List<string> constantValues = new List<string>();
-            foreach (var parameter in Parameters)
+            List<ScalarFunction> constantValues = new List<ScalarFunction>();
+
+            foreach (WScalarExpression expression in this.Parameters)
             {
-                var constantParameter = parameter as WValueExpression;
-                if (constantParameter == null)
-                    throw new SyntaxErrorException("The parameter of Constant function can only be a WValueExpression");
-                constantValues.Add(constantParameter.Value);
+                WValueExpression constantValue = expression as WValueExpression;
+                Debug.Assert(constantValue != null, "constantValue != null");
+                constantValues.Add(constantValue.CompileToFunction(context, dbConnection));
             }
 
-            var constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues);
+            ConstantOperator constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues, this.IsList);
             context.CurrentExecutionOperator = constantOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
@@ -2288,25 +2288,26 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            var unfoldColumns = new List<string>();
-            for (var i = 1; i < Parameters.Count; i++)
+            List<string> unfoldColumns = new List<string>();
+            for (int i = 1; i < this.Parameters.Count; i++)
             {
-                var unfoldColumn = Parameters[i] as WValueExpression;
+                WValueExpression unfoldColumn = this.Parameters[i] as WValueExpression;
+                Debug.Assert(unfoldColumn != null, "unfoldColumn != null");
                 unfoldColumns.Add(unfoldColumn.Value);
             }
 
-            var unfoldOp = new UnfoldOperator(context.CurrentExecutionOperator,
-                Parameters[0].CompileToFunction(context, dbConnection), unfoldColumns);
+            UnfoldOperator unfoldOp = new UnfoldOperator(
+                context.CurrentExecutionOperator,
+                Parameters[0].CompileToFunction(context, dbConnection), 
+                unfoldColumns);
             context.CurrentExecutionOperator = unfoldOp;
 
-            for (var i = 1; i < Parameters.Count; i++)
+            for (int i = 1; i < this.Parameters.Count; i++)
             {
-                var columnName = (Parameters[i] as WValueExpression).Value;
+                string columnName = (Parameters[i] as WValueExpression).Value;
                 // TODO: Change to correct ColumnGraphType
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
             }
-
-            //context.AddField(Alias.Value, "_value", ColumnGraphType.Value);
 
             return unfoldOp;
         }
