@@ -73,12 +73,12 @@ namespace GraphView
             else if (ProjectBy == null)
             {
                 ProjectBy = traversal;
+                IsProjectingACollection = false;
             }
             else
             {
                 throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
             }
-            IsProjectingACollection = false;
         }
 
         public override void ModulateBy(string key)

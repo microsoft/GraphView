@@ -222,23 +222,23 @@ namespace GraphView
         GraphViewExecutionOperator aggregateOp;
         ConstantSourceOperator tempSourceOp;
         ContainerOperator groupedSourceOp;
-        int elementPropertyProjectionIndex;
+        bool isProjectingACollection;
 
         public GroupFunction(ConstantSourceOperator tempSourceOp,
             ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
-            int elementPropertyProjectionIndex)
+            bool isProjectingACollection)
         {
-            groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
             this.tempSourceOp = tempSourceOp;
             this.groupedSourceOp = groupedSourceOp;
             this.aggregateOp = aggregateOp;
-            this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
+            this.isProjectingACollection = isProjectingACollection;
         }
 
         public void Init()
         {
-            groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
         }
 
         public void Accumulate(params FieldObject[] values)
@@ -251,57 +251,60 @@ namespace GraphView
             FieldObject groupByKey = values[0] as FieldObject;
             RawRecord groupByValue = values[1] as RawRecord;
 
-            if (!groupedStates.ContainsKey(groupByKey))
-            {
-                groupedStates.Add(groupByKey, new List<RawRecord>());
+            if (!this.groupedStates.ContainsKey(groupByKey)) {
+                this.groupedStates.Add(groupByKey, new List<RawRecord>());
             }
 
-            groupedStates[groupByKey].Add(groupByValue);
+            this.groupedStates[groupByKey].Add(groupByValue);
         }
 
         public FieldObject Terminate()
         {
             MapField result = new MapField();
 
-            if (elementPropertyProjectionIndex >= 0)
+            if (this.isProjectingACollection)
             {
                 foreach (FieldObject key in groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (var rawRecord in groupedStates[key])
+                    foreach (RawRecord rawRecord in groupedStates[key])
                     {
-                        FieldObject fo = rawRecord[elementPropertyProjectionIndex];
-                        if (fo is PropertyField)
-                        {
-                            PropertyField pf = fo as PropertyField;
-                            projectFields.Add(new StringField(pf.PropertyValue, pf.JsonDataType));
-                        } else {
-                            projectFields.Add(fo);
+                        this.groupedSourceOp.ResetState();
+                        this.aggregateOp.ResetState();
+                        this.tempSourceOp.ConstantSource = rawRecord;
+                        this.groupedSourceOp.Next();
+
+                        RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
+                        FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
+
+                        if (projectResult == null) {
+                            throw new GraphViewException("The property does not exist for some of the elements having been grouped.");
                         }
+
+                        projectFields.Add(projectResult);
                     }
                     result[key] = new CollectionField(projectFields);
                 }
             }
             else
             {
-                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in groupedStates)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
                 {
                     FieldObject key = pair.Key;
                     List<RawRecord> aggregatedRecords = pair.Value;
-                    groupedSourceOp.ResetState();
-                    aggregateOp.ResetState();
+                    this.groupedSourceOp.ResetState();
+                    this.aggregateOp.ResetState();
 
                     foreach (RawRecord record in aggregatedRecords)
                     {
-                        tempSourceOp.ConstantSource = record;
-                        groupedSourceOp.Next();
+                        this.tempSourceOp.ConstantSource = record;
+                        this.groupedSourceOp.Next();
                     }
 
-                    RawRecord aggregateTraversalRecord = aggregateOp.Next();
+                    RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
 
                     FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
-                    if (aggregateResult == null)
-                    {
+                    if (aggregateResult == null) {
                         return null;
                     }
 
@@ -368,42 +371,40 @@ namespace GraphView
         public GroupFunction GroupState { get; private set; }
         GraphViewExecutionOperator inputOp;
         ScalarFunction groupByKeyFunction;
-        int groupByKeyFieldIndex;
 
         public GroupSideEffectOperator(
             GraphViewExecutionOperator inputOp,
             GroupFunction groupState,
-            ScalarFunction groupByKeyFunction,
-            int groupByKeyFieldIndex)
+            ScalarFunction groupByKeyFunction)
         {
             this.inputOp = inputOp;
             this.GroupState = groupState;
             this.groupByKeyFunction = groupByKeyFunction;
-            this.groupByKeyFieldIndex = groupByKeyFieldIndex;
 
-            Open();
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (inputOp.State())
+            if (this.inputOp.State())
             {
-                RawRecord r = inputOp.Next();
+                RawRecord r = this.inputOp.Next();
                 if (r == null)
                 {
-                    Close();
+                    this.Close();
                     return null;
                 }
 
-                FieldObject groupByKey = groupByKeyFieldIndex >= 0 
-                    ? new StringField(r[groupByKeyFieldIndex].ToValue) 
-                    : groupByKeyFunction.Evaluate(r);
+                FieldObject groupByKey = this.groupByKeyFunction.Evaluate(r);
 
-                GroupState.Accumulate(new Object[]{ groupByKey, r });
+                if (groupByKey == null) {
+                    throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
+                }
 
-                if (!inputOp.State())
-                {
-                    Close();
+                this.GroupState.Accumulate(new Object[]{ groupByKey, r });
+
+                if (!this.inputOp.State()) {
+                    this.Close();
                 }
                 return r;
             }
@@ -414,8 +415,8 @@ namespace GraphView
         public override void ResetState()
         {
             //GroupState.Init();
-            inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
@@ -424,13 +425,12 @@ namespace GraphView
         GraphViewExecutionOperator inputOp;
 
         ScalarFunction groupByKeyFunction;
-        int groupByKeyFieldIndex;
 
         GraphViewExecutionOperator aggregateOp;
         ConstantSourceOperator tempSourceOp;
         ContainerOperator groupedSourceOp;
 
-        int elementPropertyProjectionIndex;
+        bool isProjectingACollection;
         int carryOnCount;
 
         Dictionary<FieldObject, List<RawRecord>> groupedStates;
@@ -438,88 +438,93 @@ namespace GraphView
         public GroupOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction groupByKeyFunction,
-            int groupByKeyFieldIndex,
             ConstantSourceOperator tempSourceOp,
             ContainerOperator groupedSourceOp,
             GraphViewExecutionOperator aggregateOp,
-            int elementPropertyProjectionIndex,
+            bool isProjectingACollection,
             int carryOnCount)
         {
             this.inputOp = inputOp;
 
             this.groupByKeyFunction = groupByKeyFunction;
-            this.groupByKeyFieldIndex = groupByKeyFieldIndex;
 
             this.tempSourceOp = tempSourceOp;
             this.groupedSourceOp = groupedSourceOp;
             this.aggregateOp = aggregateOp;
 
-            this.elementPropertyProjectionIndex = elementPropertyProjectionIndex;
+            this.isProjectingACollection = isProjectingACollection;
             this.carryOnCount = carryOnCount;
 
-            groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
-            Open();
+            this.groupedStates = new Dictionary<FieldObject, List<RawRecord>>();
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            if (!State()) return null;
+            if (!this.State()) return null;
 
             RawRecord r = null;
-            while (inputOp.State() && (r = inputOp.Next()) != null)
+            while (this.inputOp.State() && (r = this.inputOp.Next()) != null)
             {
-                FieldObject groupByKey = groupByKeyFieldIndex >= 0 
-                    ? new StringField(r[groupByKeyFieldIndex].ToValue) 
-                    : groupByKeyFunction.Evaluate(r);
+                FieldObject groupByKey = groupByKeyFunction.Evaluate(r);
 
-                if (!groupedStates.ContainsKey(groupByKey))
-                {
-                    groupedStates.Add(groupByKey, new List<RawRecord>());
+                if (groupByKey == null) {
+                    throw new GraphViewException("The provided property name or traversal does not map to a value for some elements.");
                 }
-                groupedStates[groupByKey].Add(r);
+
+                if (!this.groupedStates.ContainsKey(groupByKey)) {
+                    this.groupedStates.Add(groupByKey, new List<RawRecord>());
+                }
+                this.groupedStates[groupByKey].Add(r);
             }
 
-            MapField result = new MapField(groupedStates.Count);
-            if (elementPropertyProjectionIndex >= 0)
+            MapField result = new MapField(this.groupedStates.Count);
+
+            if (this.isProjectingACollection)
             {
-                foreach (FieldObject key in groupedStates.Keys)
+                foreach (FieldObject key in this.groupedStates.Keys)
                 {
                     List<FieldObject> projectFields = new List<FieldObject>();
-                    foreach (var rawRecord in groupedStates[key])
+                    foreach (RawRecord rawRecord in this.groupedStates[key])
                     {
-                        FieldObject fo = rawRecord[elementPropertyProjectionIndex];
-                        if (fo is PropertyField)
-                        {
-                            PropertyField pf = fo as PropertyField;
-                            projectFields.Add(new StringField(pf.PropertyValue, pf.JsonDataType));
-                        } else {
-                            projectFields.Add(fo);
+                        this.groupedSourceOp.ResetState();
+                        this.aggregateOp.ResetState();
+                        this.tempSourceOp.ConstantSource = rawRecord;
+                        this.groupedSourceOp.Next();
+
+                        RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
+                        FieldObject projectResult = aggregateTraversalRecord?.RetriveData(0);
+
+                        if (projectResult == null) {
+                            throw new GraphViewException("The property does not exist for some of the elements having been grouped.");
                         }
+
+                        projectFields.Add(projectResult);
                     }
                     result[key] = new CollectionField(projectFields);
                 }
             }
             else
             {
-                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in groupedStates)
+                foreach (KeyValuePair<FieldObject, List<RawRecord>> pair in this.groupedStates)
                 {
                     FieldObject key = pair.Key;
                     List<RawRecord> aggregatedRecords = pair.Value;
-                    groupedSourceOp.ResetState();
-                    aggregateOp.ResetState();
+                    this.groupedSourceOp.ResetState();
+                    this.aggregateOp.ResetState();
 
                     foreach (RawRecord record in aggregatedRecords)
                     {
-                        tempSourceOp.ConstantSource = record;
-                        groupedSourceOp.Next();
+                        this.tempSourceOp.ConstantSource = record;
+                        this.groupedSourceOp.Next();
                     }
 
-                    RawRecord aggregateTraversalRecord = aggregateOp.Next();
+                    RawRecord aggregateTraversalRecord = this.aggregateOp.Next();
 
                     FieldObject aggregateResult = aggregateTraversalRecord?.RetriveData(0);
                     if (aggregateResult == null)
                     {
-                        Close();
+                        this.Close();
                         return null;
                     }
 
@@ -529,20 +534,21 @@ namespace GraphView
 
             RawRecord resultRecord = new RawRecord();
 
-            for (int i = 0; i < carryOnCount; i++)
+            for (int i = 0; i < this.carryOnCount; i++) {
                 resultRecord.Append((FieldObject)null);
+            }
 
             resultRecord.Append(result);
 
-            Close();
+            this.Close();
             return resultRecord;
         }
 
         public override void ResetState()
         {
-            inputOp.ResetState();
-            groupedStates.Clear();
-            Open();
+            this.inputOp.ResetState();
+            this.groupedStates.Clear();
+            this.Open();
         }
     }
 }

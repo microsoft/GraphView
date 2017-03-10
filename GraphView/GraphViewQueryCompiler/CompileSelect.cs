@@ -2587,30 +2587,16 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            WScalarSubquery groupKeySubQuery = Parameters[1] as WScalarSubquery;
-            WColumnReferenceExpression groupKeyColumnReference = Parameters[1] as WColumnReferenceExpression;
+            WScalarExpression groupKeySubQuery = Parameters[1];
             WScalarSubquery aggregateSubQuery = Parameters[2] as WScalarSubquery;
-            WColumnReferenceExpression elementPropertyProjection = Parameters[2] as WColumnReferenceExpression;
+            Debug.Assert(aggregateSubQuery != null, "aggregateSubQuery != null");
 
-            if (groupKeySubQuery == null && groupKeyColumnReference == null)
-                throw new SyntaxErrorException("The group key parameter of group table can only be WScalarSubquery or WColumnReferenceExpression.");
-            if (aggregateSubQuery == null && elementPropertyProjection == null)
-                throw new SyntaxErrorException("The group value parameter of group table can only be WScalarSubquery or WColumnReferenceExpression.");
-
-            int groupKeyFieldIndex = groupKeyColumnReference == null
-                                     ? -1
-                                     : context.LocateColumnReference(groupKeyColumnReference);
-
-            int elementPropertyProjectionIndex = elementPropertyProjection == null 
-                                                 ? -1 
-                                                 : context.LocateColumnReference(elementPropertyProjection);
-
-            ScalarFunction groupKeyFunction = groupKeySubQuery?.CompileToFunction(context, dbConnection);
+            ScalarFunction groupKeyFunction = groupKeySubQuery.CompileToFunction(context, dbConnection);
 
             QueryCompilationContext subcontext = new QueryCompilationContext(context);
             ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
             ContainerOperator aggregatedSourceOp = new ContainerOperator(tempSourceOp);
-            GraphViewExecutionOperator aggregateOp = aggregateSubQuery?.SubQueryExpr.Compile(subcontext, dbConnection);
+            GraphViewExecutionOperator aggregateOp = aggregateSubQuery.SubQueryExpr.Compile(subcontext, dbConnection);
             subcontext.OuterContextOp.SourceEnumerator = aggregatedSourceOp.GetEnumerator();
 
             WValueExpression groupParameter = Parameters[0] as WValueExpression;
@@ -2618,9 +2604,9 @@ namespace GraphView
             {
                 GroupOperator groupOp = new GroupOperator(
                     context.CurrentExecutionOperator, 
-                    groupKeyFunction, groupKeyFieldIndex,
+                    groupKeyFunction,
                     tempSourceOp, aggregatedSourceOp, aggregateOp, 
-                    elementPropertyProjectionIndex, 
+                    this.IsProjectingACollection, 
                     context.CarryOn ? context.RawRecordLayout.Count : -1);
 
                 context.CurrentExecutionOperator = groupOp;
@@ -2638,7 +2624,7 @@ namespace GraphView
                 if (!context.SideEffectStates.TryGetValue(groupParameter.Value, out sideEffectState))
                 {
                     sideEffectState = new GroupFunction(tempSourceOp, aggregatedSourceOp, aggregateOp,
-                        elementPropertyProjectionIndex);
+                        this.IsProjectingACollection);
                     context.SideEffectStates.Add(groupParameter.Value, sideEffectState);
                 }
                 else if (sideEffectState is GroupFunction) {
@@ -2651,7 +2637,7 @@ namespace GraphView
                 GroupSideEffectOperator groupSideEffectOp = new GroupSideEffectOperator(
                     context.CurrentExecutionOperator,
                     (GroupFunction)sideEffectState,
-                    groupKeyFunction, groupKeyFieldIndex);
+                    groupKeyFunction);
 
                 context.CurrentExecutionOperator = groupSideEffectOp;
 
@@ -2817,19 +2803,16 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            List<Tuple<bool, ScalarFunction, IComparer>> orderByElements = new List<Tuple<bool, ScalarFunction, IComparer>>();
+            List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
 
             foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
             {
                 WScalarExpression byParameter = tuple.Item1;
-                Debug.Assert(byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery,
-                    "byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery");
 
                 ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
                 IComparer comparer = tuple.Item2;
 
-                orderByElements.Add(new Tuple<bool, ScalarFunction, IComparer>(
-                    byParameter is WColumnReferenceExpression, byFunction, comparer));
+                orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
             OrderOperator orderOp = new OrderOperator(context.CurrentExecutionOperator, orderByElements);
