@@ -210,7 +210,7 @@ namespace GraphView
                 }
 
                 string encodeName = EncodeString(originalColumnName);
-                referencedProperties.Add(encodeName, originalColumnName);
+                referencedProperties[encodeName] = originalColumnName;
                 columnList[0].Value = encodeName;
                 columnList[1].Value = NormalizeWColumnReferenceExpressionVisitor.ReservedPropertyKeyName;
             }
