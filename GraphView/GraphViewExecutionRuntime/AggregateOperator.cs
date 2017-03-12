@@ -170,7 +170,7 @@ namespace GraphView
 
         private TreeField _root;
 
-        void IAggregateFunction.Accumulate(params FieldObject[] values)
+        public void Accumulate(params FieldObject[] values)
         {
             if (values.Length != 1)
             {
@@ -180,12 +180,12 @@ namespace GraphView
             ConstructTree(_root, 0, values[0] as CollectionField);
         }
 
-        void IAggregateFunction.Init()
+        public void Init()
         {
             _root = new TreeField(new StringField("root"));
         }
 
-        FieldObject IAggregateFunction.Terminate()
+        public FieldObject Terminate()
         {
             return _root;
         }
@@ -415,6 +415,58 @@ namespace GraphView
         public override void ResetState()
         {
             //GroupState.Init();
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
+
+    internal class TreeSideEffectOperator : GraphViewExecutionOperator
+    {
+        public TreeFunction TreeState { get; private set; }
+        GraphViewExecutionOperator inputOp;
+        int pathIndex;
+
+        public TreeSideEffectOperator(
+            GraphViewExecutionOperator inputOp,
+            TreeFunction treeState,
+            int pathIndex)
+        {
+            this.inputOp = inputOp;
+            this.TreeState = treeState;
+            this.pathIndex = pathIndex;
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            if (this.inputOp.State())
+            {
+                RawRecord r = this.inputOp.Next();
+                if (r == null)
+                {
+                    this.Close();
+                    return null;
+                }
+
+                CollectionField path = r[this.pathIndex] as CollectionField;
+
+                Debug.Assert(path != null);
+
+                this.TreeState.Accumulate(path);
+
+                if (!this.inputOp.State()) {
+                    this.Close();
+                }
+                return r;
+            }
+
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            //TreeState.Init();
             this.inputOp.ResetState();
             this.Open();
         }

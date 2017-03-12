@@ -489,6 +489,8 @@ namespace GraphView
         public bool IsProjectingACollection { get; set; }
     }
 
+    public partial class WTreeTableReference : WSchemaObjectFunctionTableReference {}
+
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
         public JObject ConstructEdgeJsonObject(out List<string> projectedFieldList)
