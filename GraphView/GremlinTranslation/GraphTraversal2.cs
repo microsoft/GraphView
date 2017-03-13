@@ -435,7 +435,8 @@ namespace GraphView
 
         public GraphTraversal2 CyclicPath()
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinCyclicPathOp());
+            return this;
         }
 
         public GraphTraversal2 Dedup(GremlinKeyword.Scope scope, params string[] dedupLabels)
@@ -933,7 +934,8 @@ namespace GraphView
 
         public GraphTraversal2 SimplePath()
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinSimplePathOp());
+            return this;
         }
 
         public GraphTraversal2 Store(string sideEffectKey)
@@ -1017,7 +1019,8 @@ namespace GraphView
 
         public GraphTraversal2 Tree(string sideEffectKey)
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinTreeOp(sideEffectKey));
+            return this;
         }
 
         public GraphTraversal2 Unfold()

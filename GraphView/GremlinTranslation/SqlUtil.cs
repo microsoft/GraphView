@@ -446,6 +446,15 @@ namespace GraphView
                 case GremlinKeyword.func.Decompose1:
                     funcTableRef = new WDecompose1TableReference();
                     break;
+                case GremlinKeyword.func.Tree:
+                    funcTableRef = new WTreeTableReference();
+                    break;
+                case GremlinKeyword.func.SimplePath:
+                    funcTableRef = new WSimplePathTableReference();
+                    break;
+                case GremlinKeyword.func.CyclicPath:
+                    funcTableRef = new WCyclicPathTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

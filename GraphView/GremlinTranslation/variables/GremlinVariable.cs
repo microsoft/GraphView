@@ -312,7 +312,9 @@ namespace GraphView
 
         internal virtual void CyclicPath(GremlinToSqlContext currentContext)
         {
-            throw new NotImplementedException();
+            GremlinCyclicPathVariable newVariable = new GremlinCyclicPathVariable(generatePath(currentContext));
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal virtual void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
@@ -673,10 +675,15 @@ namespace GraphView
             currentContext.SetPivotVariable(outVertex);
         }
 
-        internal virtual void Path(GremlinToSqlContext currentContext, List<object> byList)
+        private GremlinPathVariable generatePath(GremlinToSqlContext currentContext, List<GraphTraversal2> byList = null)
         {
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
             List<GremlinPathStepVariable> steps = currentContext.GetGremlinStepList();
+            if (byList == null)
+            {
+                byList = new List<GraphTraversal2> {GraphTraversal2.__()};
+            }
+
             foreach (var by in byList)
             {
                 GremlinToSqlContext newContext = new GremlinToSqlContext();
@@ -685,30 +692,20 @@ namespace GraphView
                 newContext.TableReferences.Add(decompose1);
                 newContext.SetPivotVariable(decompose1);
 
-                if (by is string)
-                {
-                    decompose1.DefaultProjectionKey = by as string;
-                    byContexts.Add(newContext);
-                }
-                else if (by is GraphTraversal2)
-                {
-                    var traversal = by as GraphTraversal2;
-                    if (traversal.GetStartOp() is GremlinParentContextOp)
-                    {
-                        traversal.GetStartOp().InheritedContextFromParent(newContext);
-                    }
-                    byContexts.Add(traversal.GetEndOp().GetContext());
-                }
-                else
-                {
-                    throw new QueryCompilationException($"Can't process this type {by.GetType()}.");
-                }
+                by.GetStartOp().InheritedContextFromParent(newContext);
+                byContexts.Add(by.GetEndOp().GetContext());
             }
 
             GremlinPathVariable newVariable = new GremlinPathVariable(steps, byContexts);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
-            currentContext.SetPivotVariable(newVariable);
+
+            return newVariable;
+        }
+
+        internal virtual void Path(GremlinToSqlContext currentContext, List<GraphTraversal2> byList)
+        {
+            currentContext.SetPivotVariable(generatePath(currentContext, byList));
         }
 
         internal virtual void Project(GremlinToSqlContext currentContext, List<string> projectKeys, List<GremlinToSqlContext> byContexts)
@@ -891,7 +888,12 @@ namespace GraphView
             currentContext.TableReferences.Add(newVariable);
         }
 
-        //internal virtual void SimplePath()
+        internal virtual void SimplePath(GremlinToSqlContext currentContext)
+        {
+            GremlinSimplePathVariable newVariable = new GremlinSimplePathVariable(generatePath(currentContext));
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+        }
 
         internal virtual void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
@@ -924,17 +926,9 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal virtual void Times(GremlinToSqlContext currentContext, int maxLoops)
+        internal virtual void Tree(GremlinToSqlContext currentContext, List<GraphTraversal2> byList)
         {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void Tree(GremlinToSqlContext currentContext)
-        {
-            GremlinPathVariable pathVariable = new GremlinPathVariable(currentContext.GetGremlinStepList());
-            currentContext.VariableList.Add(pathVariable);
-            currentContext.TableReferences.Add(pathVariable);
-
+            GremlinPathVariable pathVariable = generatePath(currentContext, byList);
             GremlinTreeVariable newVariable = new GremlinTreeVariable(currentContext.Duplicate(), pathVariable);
             currentContext.Reset();
             currentContext.VariableList.Add(newVariable);
@@ -942,9 +936,12 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void Tree(GremlinToSqlContext currentContext, string sideEffectKey)
+        internal virtual void Tree(GremlinToSqlContext currentContext, string sideEffectKey, List<GraphTraversal2> byList)
         {
-            throw new NotImplementedException();
+            GremlinPathVariable pathVariable = generatePath(currentContext, byList);
+            GremlinTreeSideEffectVariable newVariable = new GremlinTreeSideEffectVariable(sideEffectKey, pathVariable);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal virtual void Unfold(GremlinToSqlContext currentContext)

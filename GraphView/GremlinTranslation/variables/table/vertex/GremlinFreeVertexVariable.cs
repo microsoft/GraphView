@@ -118,6 +118,12 @@ namespace GraphView
             base.Coin(currentContext, probability);
         }
 
+        internal override void CyclicPath(GremlinToSqlContext currentContext)
+        {
+            this.isTraversalToBound = true;
+            base.CyclicPath(currentContext);
+        }
+
         internal override void Dedup(GremlinToSqlContext currentContext, List<string> dedupLabels, GremlinToSqlContext dedupContext, GremlinKeyword.Scope scope)
         {
             this.isTraversalToBound = true;
@@ -162,6 +168,12 @@ namespace GraphView
             base.SideEffect(currentContext, sideEffectContext);
         }
 
+        internal override void SimplePath(GremlinToSqlContext currentContext)
+        {
+            this.isTraversalToBound = true;
+            base.SimplePath(currentContext);
+        }
+
         internal override void Store(GremlinToSqlContext currentContext, string sideEffectKey, GremlinToSqlContext projectContext)
         {
             this.isTraversalToBound = true;
@@ -169,10 +181,10 @@ namespace GraphView
         }
 
        
-        internal override void Tree(GremlinToSqlContext currentContext, string sideEffectKey)
+        internal override void Tree(GremlinToSqlContext currentContext, string sideEffectKey, List<GraphTraversal2> byList)
         {
             this.isTraversalToBound = true;
-            base.Tree(currentContext, sideEffectKey);
+            base.Tree(currentContext, sideEffectKey, byList);
         }
     }
 }

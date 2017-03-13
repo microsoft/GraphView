@@ -77,7 +77,7 @@ namespace GraphView
             if (IsInRepeatContext)
             {
                 //Must add as the first parameter
-                parameters.Add(SqlUtil.GetColumnReferenceExpr("R", GremlinKeyword.Path));
+                parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, GremlinKeyword.Path));
             }
             foreach (var path in PathList)
             {

@@ -8,6 +8,21 @@ namespace GraphView
 {
     internal class GremlinTreeOp: GremlinTranslationOperator
     {
+        public string SideEffectKey { get; set; }
+
+        public List<GraphTraversal2> ByList { get; set; }
+
+        public GremlinTreeOp(string sideEffectKey)
+        {
+            SideEffectKey = sideEffectKey;
+            ByList = new List<GraphTraversal2>();
+        }
+
+        public GremlinTreeOp()
+        {
+            ByList = new List<GraphTraversal2>();
+        }
+
         internal override GremlinToSqlContext GetContext()
         {
             GremlinToSqlContext inputContext = GetInputContext();
@@ -16,9 +31,26 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            inputContext.PivotVariable.Tree(inputContext);
-
+            if (SideEffectKey == null)
+                inputContext.PivotVariable.Tree(inputContext, ByList);
+            else
+                inputContext.PivotVariable.Tree(inputContext, SideEffectKey, ByList);
             return inputContext;
+        }
+
+        public override void ModulateBy(GraphTraversal2 traversal)
+        {
+            ByList.Add(traversal);
+        }
+
+        public override void ModulateBy(string key)
+        {
+            ByList.Add(GraphTraversal2.__().Values(key));
+        }
+
+        public override void ModulateBy()
+        {
+            ByList.Add(GraphTraversal2.__());
         }
     }
 }

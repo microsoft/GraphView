@@ -88,6 +88,7 @@
     <Compile Include="GremlinTranslation\branch\GremlinUnionOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinAndOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinCoinOp.cs" />
+    <Compile Include="GremlinTranslation\filter\GremlinCyclicPathOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinDedupOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinDropOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinHasOp.cs" />
@@ -95,6 +96,7 @@
     <Compile Include="GremlinTranslation\filter\GremlinOrOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinRangeOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinSampleOp.cs" />
+    <Compile Include="GremlinTranslation\filter\GremlinSimplePathOp.cs" />
     <Compile Include="GremlinTranslation\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation\GremlinUtil.cs" />
@@ -154,7 +156,10 @@
     <Compile Include="GremlinTranslation\variables\context\GremlinListVariable.cs" />
     <Compile Include="GremlinTranslation\variables\context\GremlinRepeatSelectedVariable.cs" />
     <Compile Include="GremlinTranslation\variables\GremlinPathStepVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSimplePathVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinTreeSideEffectVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinOrderVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinAddEVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\edge\GremlinBoundEdgeVariable.cs" />

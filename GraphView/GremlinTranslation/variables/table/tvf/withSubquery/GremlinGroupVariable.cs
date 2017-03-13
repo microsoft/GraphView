@@ -25,6 +25,11 @@ namespace GraphView
 
             GroupByContext.HomeVariable = this;
             ProjectByContext.HomeVariable = this;
+
+            if (sideEffectKey != null)
+            {
+                Labels.Add(sideEffectKey);
+            }
         }
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
