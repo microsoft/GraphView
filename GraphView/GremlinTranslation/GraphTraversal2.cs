@@ -219,15 +219,26 @@ namespace GraphView
 
         internal void AddGremlinOperator(GremlinTranslationOperator newGremlinTranslationOp)
         {
-            GremlinTranslationOpList.Add(newGremlinTranslationOp);
-            if (LastGremlinTranslationOp == null)
+            if (LastGremlinTranslationOp is GremlinAndOp && (LastGremlinTranslationOp as GremlinAndOp).IsInfix)
             {
-                LastGremlinTranslationOp = newGremlinTranslationOp;
+                (LastGremlinTranslationOp as GremlinAndOp).SecondTraversal.AddGremlinOperator(newGremlinTranslationOp);
+            }
+            else if (LastGremlinTranslationOp is GremlinOrOp && (LastGremlinTranslationOp as GremlinOrOp).IsInfix)
+            {
+                (LastGremlinTranslationOp as GremlinOrOp).SecondTraversal.AddGremlinOperator(newGremlinTranslationOp);
             }
             else
             {
-                newGremlinTranslationOp.InputOperator = LastGremlinTranslationOp;
-                LastGremlinTranslationOp = newGremlinTranslationOp;
+                GremlinTranslationOpList.Add(newGremlinTranslationOp);
+                if (LastGremlinTranslationOp == null)
+                {
+                    LastGremlinTranslationOp = newGremlinTranslationOp;
+                }
+                else
+                {
+                    newGremlinTranslationOp.InputOperator = LastGremlinTranslationOp;
+                    LastGremlinTranslationOp = newGremlinTranslationOp;
+                }
             }
         }
 
@@ -279,7 +290,27 @@ namespace GraphView
 
         public GraphTraversal2 And(params GraphTraversal2[] andTraversals)
         {
-            AddGremlinOperator(new GremlinAndOp(andTraversals));
+            if (andTraversals.Length == 0)
+            {
+                //Infix And step
+                GraphTraversal2 firstTraversal = GraphTraversal2.__();
+                GraphTraversal2 sencondTraversal = GraphTraversal2.__();
+                for (var i = 1; i < GremlinTranslationOpList.Count; i++)
+                {
+                    firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i].Copy());
+                }
+                for (var i = 1; i < GremlinTranslationOpList.Count; i++)
+                {
+                    GremlinTranslationOpList.RemoveAt(i);
+                }
+                LastGremlinTranslationOp = GremlinTranslationOpList.First();
+                GremlinAndOp newAndOp = new GremlinAndOp(firstTraversal, sencondTraversal);
+                AddGremlinOperator(newAndOp);
+            }
+            else
+            {
+                AddGremlinOperator(new GremlinAndOp(andTraversals));
+            }
             return this;
         }
 
@@ -813,7 +844,27 @@ namespace GraphView
 
         public GraphTraversal2 Or(params GraphTraversal2[] orTraversals)
         {
-            AddGremlinOperator(new GremlinOrOp(orTraversals));
+            if (orTraversals.Length == 0)
+            {
+                //Infix And step
+                GraphTraversal2 firstTraversal = GraphTraversal2.__();
+                GraphTraversal2 sencondTraversal = GraphTraversal2.__();
+                for (var i = 1; i < GremlinTranslationOpList.Count; i++)
+                {
+                    firstTraversal.AddGremlinOperator(GremlinTranslationOpList[i].Copy());
+                }
+                for (var i = 1; i < GremlinTranslationOpList.Count; i++)
+                {
+                    GremlinTranslationOpList.RemoveAt(i);
+                }
+                LastGremlinTranslationOp = GremlinTranslationOpList.First();
+                GremlinOrOp newOrOp = new GremlinOrOp(firstTraversal, sencondTraversal);
+                AddGremlinOperator(newOrOp);
+            }
+            else
+            {
+                AddGremlinOperator(new GremlinOrOp(orTraversals));
+            }
             return this;
         }
 

@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Configuration;
 using System.Linq;
 using GraphView;
+using Newtonsoft.Json;
 
 namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
 {
@@ -39,7 +40,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Bug 36109: Calling GraphTraversal2.And() with no parameter throws exception.
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36511
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void AndAsInfixNotation()
         {
@@ -48,9 +48,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 var traversal = GraphViewCommand.g().V()
                     .And(
                         GraphTraversal2.__().OutE(),
-                        GraphTraversal2.__().HasLabel("person"))
-                    .And()
-                    .Has("age", Predicate.gte(32))
+                        GraphTraversal2.__().HasLabel("person").And().Has("age", Predicate.gte(32)))
                     .Values("name");
                 var result = traversal.Next();
 
@@ -67,12 +65,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// Bug 36109: Calling GraphTraversal2.And() with no parameter throws exception.
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36511
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void AndWithAs()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                string vertex = ConvertToVertexId(GraphViewCommand, "marko");
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V()
                     .As("a")
                     .Out("knows")
@@ -81,9 +80,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .In("created")
                     .As("a")
                     .Values("name");
-                var result = traversal.Next();
+                var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault()).First;
 
-                AbstractGremlinTest.CheckUnOrderedResults(new string[] { "marko" }, result);
+                Assert.AreEqual(vertex, (string)result.id);
             }
         }
 

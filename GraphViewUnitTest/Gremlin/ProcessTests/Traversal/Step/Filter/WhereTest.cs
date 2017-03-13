@@ -352,6 +352,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         [TestMethod]
         public void HasVertexIdRepeatBothECreatedWhereWithoutEAggregateEOtherVEmitPath()
         {
+            //==>[v[1], e[9][1 - created->3], v[3]]
+            //==>[v[1], e[9][1 - created->3], v[3], e[11][4 - created->3], v[4]]
+            //==>[v[1], e[9][1 - created->3], v[3], e[12][6 - created->3], v[6]]
+            //==>[v[1], e[9][1 - created->3], v[3], e[11][4 - created->3], v[4], e[10][4 - created->5], v[5]]
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
@@ -457,7 +461,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38580
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesWhereOutCreatedAndOutKnowsORInKnowsValueName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))

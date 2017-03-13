@@ -239,7 +239,7 @@ namespace GraphView
             {
                 if (Predicates != null)
                 {
-                    return SqlUtil.GetBooleanParenthesisExpr(Predicates);
+                    return Predicates;
                 }
                 return null;
             }

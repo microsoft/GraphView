@@ -10,10 +10,20 @@ namespace GraphView
     internal class GremlinOrOp : GremlinTranslationOperator
     {
         public List<GraphTraversal2> OrTraversals { get; set; }
+        public GraphTraversal2 FirstTraversal { get; set; }
+        public GraphTraversal2 SecondTraversal { get; set; }
+        public bool IsInfix { get; set; }
 
         public GremlinOrOp(params GraphTraversal2[] orTraversals)
         {
             OrTraversals = new List<GraphTraversal2>(orTraversals);
+        }
+
+        public GremlinOrOp(GraphTraversal2 firsTraversal, GraphTraversal2 secondTraversal)
+        {
+            FirstTraversal = firsTraversal;
+            SecondTraversal = secondTraversal;
+            IsInfix = true;
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -24,14 +34,25 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            List<GremlinToSqlContext> andContexts = new List<GremlinToSqlContext>();
-            foreach (var orTraversal in OrTraversals)
+            List<GremlinToSqlContext> orContexts = new List<GremlinToSqlContext>();
+            if (IsInfix)
             {
-                orTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
-                andContexts.Add(orTraversal.GetEndOp().GetContext());
+                FirstTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                orContexts.Add(FirstTraversal.GetEndOp().GetContext());
+
+                SecondTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                orContexts.Add(SecondTraversal.GetEndOp().GetContext());
+            }
+            else
+            {
+                foreach (var orTraversal in OrTraversals)
+                {
+                    orTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                    orContexts.Add(orTraversal.GetEndOp().GetContext());
+                }
             }
 
-            inputContext.PivotVariable.Or(inputContext, andContexts);
+            inputContext.PivotVariable.Or(inputContext, orContexts);
 
             return inputContext;
         }
