@@ -345,7 +345,7 @@ namespace GraphView
                 string script = $"SELECT * FROM Doc WHERE Doc.id = '{docId}'";
                 FeedOptions queryOptions = new FeedOptions {
                     MaxItemCount = -1,  // dynamic paging
-                    EnableCrossPartitionQuery = true,
+                    EnableCrossPartitionQuery = false,
                 };
                 List<dynamic> result = this.DocDBClient.CreateDocumentQuery(
                     UriFactory.CreateDocumentCollectionUri(this.DocDBDatabaseId, this.DocDBCollectionId),
@@ -368,7 +368,7 @@ namespace GraphView
             if (queryOptions == null) {
                 queryOptions = new FeedOptions {
                     MaxItemCount = -1,
-                    EnableCrossPartitionQuery = true
+                    EnableCrossPartitionQuery = false
                 };
             }
 
