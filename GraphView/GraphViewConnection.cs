@@ -56,8 +56,6 @@ namespace GraphView
     {
         internal static int InClauseLimit { get; } = 1000;
 
-        internal bool IsPartitionCollection { get; private set; }
-
 
         public string DocDBUrl { get; }
         public string DocDBPrimaryKey { get; }
@@ -86,6 +84,7 @@ namespace GraphView
 
         private DocumentClient DocDBClient { get; }  // Don't expose DocDBClient to outside!
 
+        internal CollectionType CollectionType { get; private set; }
 
         /// <summary>
         /// Initializes a new connection to DocDB.
@@ -99,7 +98,9 @@ namespace GraphView
             string docDBEndpointUrl,
             string docDBAuthorizationKey,
             string docDBDatabaseID,
-            string docDBCollectionID)
+            string docDBCollectionID,
+            CollectionType collectionType = CollectionType.UNDEFINED,
+            string preferredLocation = null)
         {
             // TODO: Parameter checking!
 
@@ -112,40 +113,74 @@ namespace GraphView
             this.DocDBPrimaryKey = docDBAuthorizationKey;
             this.DocDBDatabaseId = docDBDatabaseID;
             this.DocDBCollectionId = docDBCollectionID;
+
+            ConnectionPolicy connectionPolicy = new ConnectionPolicy {
+                ConnectionMode = ConnectionMode.Direct,
+                ConnectionProtocol = Protocol.Tcp,
+            };
+            if (!string.IsNullOrEmpty(preferredLocation)) {
+                connectionPolicy.PreferredLocations.Add(preferredLocation);
+            }
+
             this.DocDBClient = new DocumentClient(new Uri(this.DocDBUrl),
                                                   this.DocDBPrimaryKey,
-                                                  new ConnectionPolicy {
-                                                      ConnectionMode = ConnectionMode.Direct,
-                                                      ConnectionProtocol = Protocol.Tcp,
-                                                  });
+                                                  connectionPolicy);
             this.DocDBClient.OpenAsync().Wait();
+
+
+            //
+            // Check whether it is a partition collection (if exists)
+            //
+            DocumentCollection docDBCollection;
+            try {
+                docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(
+                                                             UriFactory.CreateDatabaseUri(this.DocDBDatabaseId))
+                                                         .Where(c => c.Id == this.DocDBCollectionId)
+                                                         .AsEnumerable()
+                                                         .FirstOrDefault();
+            }
+            catch (AggregateException aggex) 
+            when ((aggex.InnerException as DocumentClientException)?.Error.Code == "NotFound") {
+                // Now the database does not exist!
+                // NOTE: If the database exists, but the collection does not exist, it won't be an exception
+                docDBCollection = null;
+            }
+
+            bool? isPartitionedNow = (docDBCollection?.PartitionKey.Paths.Count > 0);
+            if (isPartitionedNow.HasValue && isPartitionedNow.Value) {
+                if (collectionType == CollectionType.STANDARD) {
+                    throw new Exception("Can't specify CollectionType.STANDARD on an existing partitioned collection");
+                }
+            }
+            else if (isPartitionedNow.HasValue && !isPartitionedNow.Value) {
+                if (collectionType == CollectionType.PARTITIONED) {
+                    throw new Exception("Can't specify CollectionType.PARTITIONED on an existing standard collection");
+                }
+            }
+            this.CollectionType = collectionType;
+
+            if (collectionType == CollectionType.UNDEFINED) {
+                if (docDBCollection == null) {
+                    // Do nothing
+                }
+                else if (docDBCollection.PartitionKey != null && docDBCollection.PartitionKey.Paths.Count < 1) {
+                    this.CollectionType = CollectionType.STANDARD;
+                }
+                else if (docDBCollection.PartitionKey != null
+                         && docDBCollection.PartitionKey.Paths.Count > 0
+                         && docDBCollection.PartitionKey.Paths[0].Equals("/_partition", StringComparison.OrdinalIgnoreCase)) {
+                    this.CollectionType = CollectionType.PARTITIONED;
+                }
+                else {
+                    throw new Exception(string.Format("Collection not properly configured. If you wish to configure a partitioned collection, please chose /{0} as partitionKey", "_partition"));
+                }
+            }
 
             this.Identifier = $"{docDBEndpointUrl}\0{docDBDatabaseID}\0{docDBCollectionID}";
             this.VertexCache = VertexObjectCache.FromConnection(this);
 
             this.UseReverseEdges = true;
-
-            //
-            // Check whether it is a partition collection (if exists)
-            //
-            DocumentCollection docDBCollection = this.DocDBClient.CreateDocumentCollectionQuery(this._docDBDatabaseUri)
-                                                     .Where(c => c.Id == this.DocDBCollectionId)
-                                                     .AsEnumerable()
-                                                     .FirstOrDefault();
-            if (docDBCollection != null) {
-                if (docDBCollection.PartitionKey.Paths.Count == 0) {
-                    this.IsPartitionCollection = false;
-                }
-                else {
-                    Debug.Assert(docDBCollection.PartitionKey.Paths.Count == 1);
-                    Debug.Assert(docDBCollection.PartitionKey.Paths[0] == "/_partition");
-                    this.IsPartitionCollection = true;
-                }
-            }
-            else {
-                // The collection has not been created
-                this.IsPartitionCollection = false;
-            }
+            
 
             // Retrieve metadata from DocDB
             JObject metaObject = RetrieveDocumentById("metadata");
@@ -188,7 +223,17 @@ namespace GraphView
         }
 
 
-        public void ResetCollection(bool partitionCollection = false, int? edgeSpillThreshold = null)
+        /// <summary>
+        /// If the collection has existed, reset the collection.
+        ///   - collectionType = STANDARD: the collection is reset to STANDARD
+        ///   - collectionType = PARTITIONED: the collection is reset to PARTITIONED
+        ///   - collectionType = UNDEFINED: the collection's partition property remains the same as original one
+        /// If the collection does not exist, create the collection
+        ///   - collectionType = STANDARD: the newly created collection is STANDARD
+        ///   - collectionType = PARTITIONED: the newly created collection is PARTITIONED
+        ///   - collectionType = UNDEFINED: an exception is thrown!
+        /// </summary>
+        public void ResetCollection(CollectionType collectionType = CollectionType.STANDARD, int? edgeSpillThreshold = null)
         {
             EnsureDatabaseExist();
 
@@ -201,7 +246,24 @@ namespace GraphView
             if (docDBCollection != null) {
                 DeleteCollection();
             }
-            CreateCollection(partitionCollection);
+
+            switch (collectionType) {
+            case CollectionType.STANDARD:
+            case CollectionType.PARTITIONED:
+                break;
+            case CollectionType.UNDEFINED:
+                if (this.CollectionType == CollectionType.UNDEFINED) {
+                    throw new Exception("Can't specify CollectionType.UNDEFINED to reset a non-existing collection");
+                }
+                collectionType = this.CollectionType;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(collectionType), collectionType, null);
+            }
+
+            Debug.Assert(collectionType != CollectionType.UNDEFINED);
+            CreateCollection(collectionType == CollectionType.PARTITIONED);
+            this.CollectionType = collectionType;
 
             //
             // Create a meta-data document!
@@ -238,7 +300,6 @@ namespace GraphView
             if (isPartitionCollection) {
                 collection.PartitionKey.Paths.Add("/_partition");
             }
-            this.IsPartitionCollection = isPartitionCollection;
 
             this.DocDBClient.CreateDocumentCollectionAsync(
                 this._docDBDatabaseUri,
@@ -292,7 +353,7 @@ namespace GraphView
         internal async Task ReplaceOrDeleteDocumentAsync(string docId, JObject docObject, string partition)
         {
             RequestOptions option = null;
-            if (this.IsPartitionCollection) {
+            if (this.CollectionType == CollectionType.PARTITIONED) {
                 option = new RequestOptions {
                     PartitionKey = new PartitionKey(partition)
                 };
@@ -345,8 +406,11 @@ namespace GraphView
                 string script = $"SELECT * FROM Doc WHERE Doc.id = '{docId}'";
                 FeedOptions queryOptions = new FeedOptions {
                     MaxItemCount = -1,  // dynamic paging
-                    EnableCrossPartitionQuery = false,
                 };
+                if (this.CollectionType == CollectionType.PARTITIONED) {
+                    queryOptions.EnableCrossPartitionQuery = true;
+                }
+
                 List<dynamic> result = this.DocDBClient.CreateDocumentQuery(
                     UriFactory.CreateDocumentCollectionUri(this.DocDBDatabaseId, this.DocDBCollectionId),
                     script,
@@ -368,8 +432,10 @@ namespace GraphView
             if (queryOptions == null) {
                 queryOptions = new FeedOptions {
                     MaxItemCount = -1,
-                    EnableCrossPartitionQuery = false
                 };
+                if (this.CollectionType == CollectionType.PARTITIONED) {
+                    queryOptions.EnableCrossPartitionQuery = true;
+                }
             }
 
             return this.DocDBClient.CreateDocumentQuery(

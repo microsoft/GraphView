@@ -33,7 +33,7 @@ namespace GraphViewUnitTest
 
             GraphViewConnection connection = new GraphViewConnection(DOCDB_URL, DOCDB_AUTHKEY, DOCDB_DATABASE, collectionName);
             connection.EnsureDatabaseExist();
-            connection.ResetCollection(true, edgeSpillThreshold);
+            connection.ResetCollection(CollectionType.PARTITIONED, edgeSpillThreshold);
             return connection;
         }
 
