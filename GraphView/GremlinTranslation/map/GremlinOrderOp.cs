@@ -9,12 +9,12 @@ namespace GraphView
 {
     internal class GremlinOrderOp: GremlinTranslationOperator
     {
-        public Dictionary<GraphTraversal2, IComparer> ByModulatingMap { get; set; }
+        public List<Tuple<object, IComparer>> ByModulatingMap { get; set; }
         public GremlinKeyword.Scope Scope { get; set; }
 
         public GremlinOrderOp(GremlinKeyword.Scope scope)
         {
-            ByModulatingMap = new Dictionary<GraphTraversal2, IComparer>();
+            ByModulatingMap = new List<Tuple<object, IComparer>>();
             Scope = scope;
         }
 
@@ -28,15 +28,28 @@ namespace GraphView
 
             if (ByModulatingMap.Count == 0)
             {
-                ByModulatingMap.Add(GraphTraversal2.__(), new IncrOrder());
+                if (Scope == GremlinKeyword.Scope.global)
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__(), new IncrOrder()));
+                else
+                    ByModulatingMap.Add(new Tuple<object, IComparer>("", new IncrOrder()));
             }
 
-            var newByModulatingMap = new Dictionary<GremlinToSqlContext, IComparer>();
+            var newByModulatingMap = new List<Tuple<object, IComparer>>();
             foreach (var pair in ByModulatingMap)
             {
-                pair.Key.GetStartOp().InheritedVariableFromParent(inputContext);
-
-                newByModulatingMap.Add(pair.Key.GetEndOp().GetContext(), pair.Value);
+                if (pair.Item1 is GraphTraversal2)
+                {
+                    ((GraphTraversal2)pair.Item1).GetStartOp().InheritedVariableFromParent(inputContext);
+                    newByModulatingMap.Add(new Tuple<object, IComparer>(((GraphTraversal2)pair.Item1).GetEndOp().GetContext(), pair.Item2));
+                }
+                else if (pair.Item1 is GremlinKeyword.Column || pair.Item1 == "")
+                {
+                    newByModulatingMap.Add(new Tuple<object, IComparer>(pair.Item1, pair.Item2));
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
             }
 
             inputContext.PivotVariable.Order(inputContext, newByModulatingMap, Scope);
@@ -46,38 +59,49 @@ namespace GraphView
 
         public override void ModulateBy()
         {
-            ByModulatingMap.Add(GraphTraversal2.__(), new IncrOrder());
+            if (Scope == GremlinKeyword.Scope.global)
+                ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__(), new IncrOrder()));
+            else
+                ByModulatingMap.Add(new Tuple<object, IComparer>("", new IncrOrder()));
         }
 
         public override void ModulateBy(GremlinKeyword.Order order)
         {
+            object key;
+            if (Scope == GremlinKeyword.Scope.global)
+                key = GraphTraversal2.__();
+            else
+                key = "";
             switch (order)
             {
                 case GremlinKeyword.Order.Incr:
-                    ByModulatingMap.Add(GraphTraversal2.__(), new IncrOrder());
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(key, new IncrOrder()));
                     break;
-                case GremlinKeyword.Order.Desr:
-                    ByModulatingMap.Add(GraphTraversal2.__(), new DecrOrder());
+                case GremlinKeyword.Order.Decr:
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(key, new DecrOrder()));
                     break;
                 case GremlinKeyword.Order.Shuffle:
-                    ByModulatingMap.Add(GraphTraversal2.__(), new ShuffleOrder());
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(key, new ShuffleOrder()));
                     break;
             }
         }
 
         public override void ModulateBy(IComparer comparer)
         {
-            ByModulatingMap.Add(GraphTraversal2.__(), comparer);
+            if (Scope == GremlinKeyword.Scope.global)
+                ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__(), comparer));
+            else
+                ByModulatingMap.Add(new Tuple<object, IComparer>("", comparer));
         }
 
         public override void ModulateBy(string key)
         {
-            ByModulatingMap.Add(GraphTraversal2.__().Values(key), new IncrOrder());
+            ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__().Values(key), new IncrOrder()));
         }
 
         public override void ModulateBy(string key, IComparer comparer)
         {
-            ByModulatingMap.Add(GraphTraversal2.__().Values(key), comparer);
+            ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__().Values(key), comparer));
         }
 
         public override void ModulateBy(string key, GremlinKeyword.Order order)
@@ -85,25 +109,25 @@ namespace GraphView
             switch (order)
             {
                 case GremlinKeyword.Order.Incr:
-                    ByModulatingMap.Add(GraphTraversal2.__().Values(key), new IncrOrder());
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__().Values(key), new IncrOrder()));
                     break;
-                case GremlinKeyword.Order.Desr:
-                    ByModulatingMap.Add(GraphTraversal2.__().Values(key), new DecrOrder());
+                case GremlinKeyword.Order.Decr:
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__().Values(key), new DecrOrder()));
                     break;
                 case GremlinKeyword.Order.Shuffle:
-                    ByModulatingMap.Add(GraphTraversal2.__().Values(key), new ShuffleOrder());
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(GraphTraversal2.__().Values(key), new ShuffleOrder()));
                     break;
             }
         }
 
         public override void ModulateBy(GraphTraversal2 traversal)
         {
-            ByModulatingMap.Add(traversal, new IncrOrder());
+            ByModulatingMap.Add(new Tuple<object, IComparer>(traversal, new IncrOrder()));
         }
 
         public override void ModulateBy(GraphTraversal2 traversal, IComparer comparer)
         {
-            ByModulatingMap.Add(traversal, comparer);
+            ByModulatingMap.Add(new Tuple<object, IComparer>(traversal, comparer));
         }
 
         public override void ModulateBy(GraphTraversal2 traversal, GremlinKeyword.Order order)
@@ -111,13 +135,39 @@ namespace GraphView
             switch (order)
             {
                 case GremlinKeyword.Order.Incr:
-                    ByModulatingMap.Add(traversal, new IncrOrder());
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(traversal, new IncrOrder()));
                     break;
-                case GremlinKeyword.Order.Desr:
-                    ByModulatingMap.Add(traversal, new DecrOrder());
+                case GremlinKeyword.Order.Decr:
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(traversal, new DecrOrder()));
                     break;
                 case GremlinKeyword.Order.Shuffle:
-                    ByModulatingMap.Add(traversal, new ShuffleOrder());
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(traversal, new ShuffleOrder()));
+                    break;
+            }
+        }
+
+        public override void ModulateBy(GremlinKeyword.Column column)
+        {
+            ByModulatingMap.Add(new Tuple<object, IComparer>(column, new IncrOrder()));
+        }
+
+        public override void ModulateBy(GremlinKeyword.Column column, IComparer comparer)
+        {
+            ByModulatingMap.Add(new Tuple<object, IComparer>(column, comparer));
+        }
+
+        public override void ModulateBy(GremlinKeyword.Column column, GremlinKeyword.Order order)
+        {
+            switch (order)
+            {
+                case GremlinKeyword.Order.Incr:
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(column, new IncrOrder()));
+                    break;
+                case GremlinKeyword.Order.Decr:
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(column, new DecrOrder()));
+                    break;
+                case GremlinKeyword.Order.Shuffle:
+                    ByModulatingMap.Add(new Tuple<object, IComparer>(column, new ShuffleOrder()));
                     break;
             }
         }

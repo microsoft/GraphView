@@ -117,7 +117,7 @@ namespace GraphView
         public enum Order
         {
             Shuffle,
-            Desr,
+            Decr,
             Incr
         }
 

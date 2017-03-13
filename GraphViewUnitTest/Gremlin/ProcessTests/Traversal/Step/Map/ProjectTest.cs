@@ -67,7 +67,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 ////                                     .By(GraphTraversal2.__().In("created").Count())
                 ////                                     .Order().By(
                 ////                                               GraphTraversal2.__().Select("b"),
-                ////                                               GremlinKeyword.Order.Desr)
+                ////                                               GremlinKeyword.Order.Decr)
                 ////                                     .Select("a");
 
                 ////var result = traversal.Next();

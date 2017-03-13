@@ -616,7 +616,7 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal virtual void Order(GremlinToSqlContext currentContext, Dictionary<GremlinToSqlContext, IComparer> byModulatingMap, GremlinKeyword.Scope scope)
+        internal virtual void Order(GremlinToSqlContext currentContext, List<Tuple<object, IComparer>> byModulatingMap, GremlinKeyword.Scope scope)
         {
             GremlinOrderVariable newVariable = new GremlinOrderVariable(this, byModulatingMap, scope);
             currentContext.VariableList.Add(newVariable);

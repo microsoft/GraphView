@@ -9,10 +9,10 @@ namespace GraphView
 {
     internal class GremlinOrderVariable: GremlinTableVariable
     {
-        public Dictionary<GremlinToSqlContext, IComparer> ByModulatingMap;
+        public List<Tuple<object, IComparer>> ByModulatingMap;
         public GremlinKeyword.Scope Scope { get; set; }
         public GremlinVariable InputVariable { get; set; }
-        public GremlinOrderVariable(GremlinVariable inputVariable, Dictionary<GremlinToSqlContext, IComparer> byModulatingMap, GremlinKeyword.Scope scope)
+        public GremlinOrderVariable(GremlinVariable inputVariable, List<Tuple<object, IComparer>> byModulatingMap, GremlinKeyword.Scope scope)
             :base(GremlinVariableType.Table)
         {
             ByModulatingMap = byModulatingMap;
@@ -25,7 +25,10 @@ namespace GraphView
             List<GremlinVariable> variableList = new List<GremlinVariable>();
             foreach (var by in ByModulatingMap)
             {
-                variableList.AddRange(by.Key.FetchVarsFromCurrAndChildContext());
+                if (by.Item1 is GremlinToSqlContext)
+                {
+                    variableList.AddRange(((GremlinToSqlContext)by.Item1).FetchVarsFromCurrAndChildContext());
+                }
             }
             return variableList;
         }
@@ -34,8 +37,8 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            var tableRef = Scope == GremlinKeyword.Scope.global ?
-                SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderGlobal, parameters, GetVariableName())
+            var tableRef = Scope == GremlinKeyword.Scope.global
+              ? SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderGlobal, parameters, GetVariableName())
               : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderLocal, parameters, GetVariableName());
 
             var wOrderTableReference = tableRef as WOrderTableReference;
@@ -44,10 +47,29 @@ namespace GraphView
 
             foreach (var pair in ByModulatingMap)
             {
-                var scalarQuery = SqlUtil.GetScalarSubquery(pair.Key.ToSelectQueryBlock());
+                WScalarExpression scalrExpr;
+                if (pair.Item1 is GremlinToSqlContext)
+                {
+                    scalrExpr = SqlUtil.GetScalarSubquery(((GremlinToSqlContext)pair.Item1).ToSelectQueryBlock());
+                }
+                else if (pair.Item1 is GremlinKeyword.Column)
+                {
+                    GremlinKeyword.Column column = (GremlinKeyword.Column) pair.Item1;
+                    scalrExpr = column == GremlinKeyword.Column.keys
+                        ? SqlUtil.GetValueExpr("keys")
+                        : SqlUtil.GetValueExpr("values");
+                }
+                else if (pair.Item1 == "")
+                {
+                    scalrExpr = SqlUtil.GetValueExpr(null);
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
                 var orderTableReference = tableRef as WOrderTableReference;
-                orderTableReference?.OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalarQuery, pair.Value));
-                orderTableReference?.Parameters.Add(scalarQuery);
+                orderTableReference?.OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalrExpr, pair.Item2));
+                orderTableReference?.Parameters.Add(scalrExpr);
             }
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);

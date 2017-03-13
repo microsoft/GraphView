@@ -68,22 +68,37 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        public virtual void ModulateBy(string paramOp, GremlinKeyword.Order order)
+        public virtual void ModulateBy(string key, GremlinKeyword.Order order)
         {
             throw new NotImplementedException();
         }
 
-        public virtual void ModulateBy(GraphTraversal2 paramOp, GremlinKeyword.Order order)
+        public virtual void ModulateBy(GraphTraversal2 traversal, GremlinKeyword.Order order)
         {
             throw new NotImplementedException();
         }
 
-        public virtual void ModulateBy(string paramOp, IComparer order)
+        public virtual void ModulateBy(string key, IComparer order)
         {
             throw new NotImplementedException();
         }
 
-        public virtual void ModulateBy(GraphTraversal2 paramOp, IComparer order)
+        public virtual void ModulateBy(GraphTraversal2 traversal, IComparer order)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GremlinKeyword.Column column)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GremlinKeyword.Column column, GremlinKeyword.Order order)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void ModulateBy(GremlinKeyword.Column column, IComparer order)
         {
             throw new NotImplementedException();
         }

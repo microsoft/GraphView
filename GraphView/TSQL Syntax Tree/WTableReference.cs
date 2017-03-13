@@ -566,7 +566,7 @@ namespace GraphView
             var sb = new StringBuilder();
             sb.AppendFormat("{0}({1}, {2}, {3}",
                 indent,
-                Cardinality == GremlinKeyword.PropertyCardinality.list ? "list" : "singe",
+                Cardinality == GremlinKeyword.PropertyCardinality.list ? "list" : "single",
                 Key.ToString(), Value.ToString());
             if (MetaProperties.Count > 0)
             {

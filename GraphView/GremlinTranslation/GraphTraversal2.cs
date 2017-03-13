@@ -317,6 +317,36 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal2 By(GremlinKeyword.Order order)
+        {
+            GetEndOp().ModulateBy(order);
+            return this;
+        }
+
+        public GraphTraversal2 By(IComparer comparer)
+        {
+            GetEndOp().ModulateBy(comparer);
+            return this;
+        }
+
+        public GraphTraversal2 By(GremlinKeyword.Column column)
+        {
+            GetEndOp().ModulateBy(column);
+            return this;
+        }
+
+        public GraphTraversal2 By(GremlinKeyword.Column column, GremlinKeyword.Order order)
+        {
+            GetEndOp().ModulateBy(column, order);
+            return this;
+        }
+
+        public GraphTraversal2 By(GremlinKeyword.Column column, IComparer comparer)
+        {
+            GetEndOp().ModulateBy(column, comparer);
+            return this;
+        }
+
         public GraphTraversal2 By(string key)
         {
             GetEndOp().ModulateBy(key);
@@ -350,19 +380,6 @@ namespace GraphView
         public GraphTraversal2 By(GraphTraversal2 traversal, IComparer order)
         {
             GetEndOp().ModulateBy(traversal, order);
-            return this;
-        }
-
-
-        public GraphTraversal2 By(GremlinKeyword.Order order)
-        {
-            GetEndOp().ModulateBy(order);
-            return this;
-        }
-
-        public GraphTraversal2 By(IComparer order)
-        {
-            GetEndOp().ModulateBy(order);
             return this;
         }
 
