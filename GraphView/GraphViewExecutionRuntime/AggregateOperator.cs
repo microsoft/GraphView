@@ -170,6 +170,11 @@ namespace GraphView
 
         private TreeField _root;
 
+        public TreeFunction()
+        {
+            _root = new TreeField(new StringField("root"));
+        }
+
         public void Accumulate(params FieldObject[] values)
         {
             if (values.Length != 1)

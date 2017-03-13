@@ -2997,5 +2997,35 @@ namespace GraphView
             return decompose1Op;
         }
     }
+
+    partial class WSimplePathTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression pathColumn = Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(pathColumn != null, "pathColumn != null");
+            int pathIndex = context.LocateColumnReference(pathColumn);
+
+            SimplePathOperator simplePathOp = new SimplePathOperator(context.CurrentExecutionOperator, pathIndex);
+            context.CurrentExecutionOperator = simplePathOp;
+
+            return simplePathOp;
+        }
+    }
+
+    partial class WCyclicPathTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression pathColumn = Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(pathColumn != null, "pathColumn != null");
+            int pathIndex = context.LocateColumnReference(pathColumn);
+
+            CyclicPathOperator cyclicPathOp = new CyclicPathOperator(context.CurrentExecutionOperator, pathIndex);
+            context.CurrentExecutionOperator = cyclicPathOp;
+
+            return cyclicPathOp;
+        }
+    }
 }
 
