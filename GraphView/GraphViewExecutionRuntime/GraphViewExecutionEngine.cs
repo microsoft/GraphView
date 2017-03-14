@@ -372,7 +372,7 @@ namespace GraphView
         }
     }
 
-    internal class MapField : FieldObject, IEnumerable<KeyValuePair<FieldObject, FieldObject>>
+    internal class MapField : FieldObject, IEnumerable<EntryField>
     {
         private Dictionary<FieldObject, FieldObject> map;
         public List<FieldObject> Order { get; set; } 
@@ -405,6 +405,11 @@ namespace GraphView
             }
 
             return isRemoved;
+        }
+
+        public List<EntryField> ToList()
+        {
+            return map.Select(kvp => new EntryField(kvp)).ToList();
         }
 
         public bool RemoveAt(int index)
@@ -524,10 +529,10 @@ namespace GraphView
             return mapStringBuilder.ToString().GetHashCode();
         }
 
-        public IEnumerator<KeyValuePair<FieldObject, FieldObject>> GetEnumerator()
+        public IEnumerator<EntryField> GetEnumerator()
         {
             foreach (KeyValuePair<FieldObject, FieldObject> keyValuePair in map) {
-                yield return keyValuePair;
+                yield return new EntryField(keyValuePair);
             }
         }
 
@@ -535,6 +540,19 @@ namespace GraphView
         {
             return this.GetEnumerator();
         }
+    }
+
+    internal class EntryField : FieldObject
+    {
+        private KeyValuePair<FieldObject, FieldObject> entry;
+
+        public EntryField(KeyValuePair<FieldObject, FieldObject> entry)
+        {
+            this.entry = entry;
+        }
+
+        public FieldObject Key => entry.Key;
+        public FieldObject Value => entry.Value;
     }
 
     internal class Compose1Field : FieldObject

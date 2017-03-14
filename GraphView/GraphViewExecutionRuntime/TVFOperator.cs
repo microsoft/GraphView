@@ -970,11 +970,11 @@ namespace GraphView
             else if (unfoldTarget is MapField)
             {
                 MapField mf = unfoldTarget as MapField;
-                foreach (KeyValuePair<FieldObject, FieldObject> pair in mf)
+                foreach (EntryField entry in mf)
                 {
                     RawRecord newRecord = new RawRecord();
-                    string key = pair.Key.ToString();
-                    string value = pair.Value.ToString();
+                    string key = entry.Key.ToString();
+                    string value = entry.Value.ToString();
 
                     foreach (string columnName in this.unfoldCompose1Columns)
                     {

@@ -1145,13 +1145,6 @@ namespace GraphView
         private GraphViewExecutionOperator inputOp;
         private int inputObjectIndex;
         private List<Tuple<ScalarFunction, IComparer>> orderByElements;
-        private ByColumn byColumn;
-        private IComparer byColumnComparer;
-
-        enum ByColumn
-        {
-            NONE, KEYS, VALUES
-        }
 
         public OrderLocalOperator(GraphViewExecutionOperator inputOp, int inputObjectIndex, List<Tuple<ScalarFunction, IComparer>> orderByElements)
         {
@@ -1159,6 +1152,19 @@ namespace GraphView
             this.inputObjectIndex = inputObjectIndex;
             this.orderByElements = orderByElements;
             this.Open();
+        }
+
+        private bool IsKeys(FieldObject obj)
+        {
+            StringField key = obj as StringField;
+            return key != null && key.JsonDataType == JsonDataType.String && key.Value.Equals("keys");
+        }
+
+        private bool IsValues(FieldObject obj)
+        {
+            StringField key = obj as StringField;
+            return key != null && key.JsonDataType == JsonDataType.String && key.Value.Equals("values");
+
         }
 
         public override RawRecord Next()
@@ -1177,23 +1183,34 @@ namespace GraphView
                         foreach (Tuple<ScalarFunction, IComparer> tuple in this.orderByElements)
                         {
                             ScalarFunction byFunction = tuple.Item1;
-
-                            RawRecord initCompose1RecordOfX = new RawRecord();
-                            initCompose1RecordOfX.Append(x);
-                            FieldObject xKey = byFunction.Evaluate(initCompose1RecordOfX);
-                            if (xKey == null) {
-                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                            Object xObj, yObj;
+                            if (byFunction == null)
+                            {
+                                xObj = x.ToObject();
+                                yObj = y.ToObject();
                             }
+                            else
+                            {
+                                RawRecord initCompose1RecordOfX = new RawRecord();
+                                initCompose1RecordOfX.Append(x);
+                                FieldObject xKey = byFunction.Evaluate(initCompose1RecordOfX);
+                                if (xKey == null) {
+                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                                }
 
-                            RawRecord initCompose1RecordOfY = new RawRecord();
-                            initCompose1RecordOfX.Append(y);
-                            FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
-                            if (yKey == null) {
-                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                                RawRecord initCompose1RecordOfY = new RawRecord();
+                                initCompose1RecordOfX.Append(y);
+                                FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
+                                if (yKey == null) {
+                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                                }
+
+                                xObj = xKey.ToObject();
+                                yObj = yKey.ToObject();
                             }
 
                             IComparer comparer = tuple.Item2;
-                            ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
+                            ret = comparer.Compare(xObj, yObj);
 
                             if (ret != 0) break;
                         }
@@ -1203,18 +1220,74 @@ namespace GraphView
                 else if (inputObject is MapField)
                 {
                     MapField inputMap = (MapField) inputObject;
-                    if (this.byColumn == ByColumn.KEYS) {
-                        inputMap.Order.Sort((x, y) => this.byColumnComparer.Compare(x.ToObject(), y.ToObject()));
-                    }
-                    else if (this.byColumn == ByColumn.VALUES)
+                    List<EntryField> entries = inputMap.ToList();
+
+                    entries.Sort((x, y) =>
                     {
-                        inputMap.Order.Sort(
-                            (x, y) => this.byColumnComparer.Compare(inputMap[x].ToObject(), inputMap[y].ToObject()));
-                    }
-                    else
-                    {
-                        //TODO: Sync with Jinjin
-                    }
+                        int ret = 0;
+                        foreach (Tuple<ScalarFunction, IComparer> tuple in this.orderByElements)
+                        {
+                            ScalarFunction byFunction = tuple.Item1;
+                            Object xObj, yObj;
+                            if (byFunction == null)
+                            {
+                                xObj = x.ToObject();
+                                yObj = y.ToObject();
+                            }
+                            else
+                            {
+                                //
+                                // TODO: Sync with Jinjin to remove this case
+                                //
+                                if (byFunction is ScalarValue)
+                                {
+                                    if (IsKeys(byFunction.Evaluate(null)))
+                                    {
+                                        xObj = x.Key.ToObject();
+                                        yObj = y.Key.ToObject();
+                                    }
+                                    else if (IsValues(byFunction.Evaluate(null)))
+                                    {
+                                        xObj = x.Value.ToObject();
+                                        yObj = y.Value.ToObject();
+                                    }
+                                    else
+                                    {
+                                        Debug.Assert(false, "Should not get here.");
+                                        xObj = null;
+                                        yObj = null;
+                                    }
+                                }
+                                else
+                                {
+                                    RawRecord initKeyValuePairRecordOfX = new RawRecord();
+                                    initKeyValuePairRecordOfX.Append(x);
+                                    FieldObject xKey = byFunction.Evaluate(initKeyValuePairRecordOfX);
+                                    if (xKey == null) {
+                                        throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                                    }
+
+                                    RawRecord initKeyValuePairRecordOfY = new RawRecord();
+                                    initKeyValuePairRecordOfY.Append(y);
+                                    FieldObject yKey = byFunction.Evaluate(initKeyValuePairRecordOfY);
+                                    if (yKey == null) {
+                                        throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                                    }
+
+                                    xObj = xKey.ToObject();
+                                    yObj = yKey.ToObject();
+                                }
+                            }
+
+                            IComparer comparer = tuple.Item2;
+                            ret = comparer.Compare(xObj, yObj);
+
+                            if (ret != 0) break;
+                        }
+                        return ret;
+                    });
+
+                    inputMap.Order = entries.Select(entry => entry.Key).ToList();
                 }
 
                 return srcRecord;

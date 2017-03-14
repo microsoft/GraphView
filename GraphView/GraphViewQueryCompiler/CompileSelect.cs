@@ -1483,7 +1483,7 @@ namespace GraphView
                     WScalarSubquery scalarSubquery = parameter as WScalarSubquery;
                     if (scalarSubquery == null)
                     {
-                        throw new SyntaxErrorException("The input of a union table reference must be one or more scalar subqueries.");
+                        throw new SyntaxErrorException("The input of an union table reference must be one or more scalar subqueries.");
                     }
 
                     if (firstSelectQuery == null)
@@ -1491,7 +1491,7 @@ namespace GraphView
                         firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
                         if (firstSelectQuery == null)
                         {
-                            throw new SyntaxErrorException("The input of a union table reference must be one or more select query blocks.");
+                            throw new SyntaxErrorException("The input of an union table reference must be one or more select query blocks.");
                         }
                     }
 
@@ -1512,12 +1512,12 @@ namespace GraphView
                     WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
                     if (selectScalar == null)
                     {
-                        throw new SyntaxErrorException("The input subquery of a union table reference can only select scalar elements.");
+                        throw new SyntaxErrorException("The input subquery of an union table reference can only select scalar elements.");
                     }
                     WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
                     if (columnRef == null)
                     {
-                        throw new SyntaxErrorException("The input subquery of a union table reference can only select column epxressions.");
+                        throw new SyntaxErrorException("The input subquery of an union table reference can only select column epxressions.");
                     }
                     if (columnRef.ColumnType == ColumnType.Wildcard)
                         continue;
@@ -2867,30 +2867,35 @@ namespace GraphView
         }
     }
 
-    //partial class WOrderLocalTableReference
-    //{
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-    //    {
-    //        List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
+    partial class WOrderLocalTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputObject = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputObject != null, "inputObject != null");
+            int inputObjectIndex = context.LocateColumnReference(inputObject);
 
-    //        foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
-    //        {
-    //            WScalarExpression byParameter = tuple.Item1;
-    //            Debug.Assert(byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery,
-    //                "byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery");
+            List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
 
-    //            ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
-    //            IComparer comparer = tuple.Item2;
+            foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
+            {
+                WScalarExpression byParameter = tuple.Item1;
+                Debug.Assert(byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery,
+                    "byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery");
 
-    //            orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
-    //        }
+                ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
+                IComparer comparer = tuple.Item2;
 
-    //        OrderLocalOperator orderLocalOp = new OrderLocalOperator(context.CurrentExecutionOperator, orderByElements);
-    //        context.CurrentExecutionOperator = orderLocalOp;
+                orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
+            }
 
-    //        return orderLocalOp;
-    //    }
-    //}
+            OrderLocalOperator orderLocalOp = new OrderLocalOperator(context.CurrentExecutionOperator, inputObjectIndex,
+                orderByElements);
+            context.CurrentExecutionOperator = orderLocalOp;
+
+            return orderLocalOp;
+        }
+    }
 
     partial class WRangeTableReference
     {
