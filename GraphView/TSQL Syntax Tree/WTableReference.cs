@@ -493,6 +493,8 @@ namespace GraphView
 
     public partial class WValueMapTableReference : WSchemaObjectFunctionTableReference { }
 
+    public partial class WPropertyMapTableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WChooseTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference

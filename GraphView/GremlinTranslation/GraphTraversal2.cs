@@ -941,9 +941,10 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 PropertyMap()
+        public GraphTraversal2 PropertyMap(params string[] propertyKeys)
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinPropertyMapOp(propertyKeys));
+            return this;
         }
 
         public GraphTraversal2 Range(int low, int high)

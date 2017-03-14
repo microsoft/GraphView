@@ -104,6 +104,7 @@
     <Compile Include="GremlinTranslation\IGremlinByModulating.cs" />
     <Compile Include="GremlinTranslation\map\GremlinMapOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPathOp.cs" />
+    <Compile Include="GremlinTranslation\map\GremlinPropertyMapOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinAsOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinEOp.cs" />
     <Compile Include="GremlinTranslation\GremlinKeyword.cs" />
@@ -159,6 +160,7 @@
     <Compile Include="GremlinTranslation\variables\GremlinPathStepVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinPropertyMapVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSimplePathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinTreeSideEffectVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinValueMapVariable.cs" />

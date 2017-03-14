@@ -462,6 +462,9 @@ namespace GraphView
                 case GremlinKeyword.func.ValueMap:
                     funcTableRef = new WValueMapTableReference();
                     break;
+                case GremlinKeyword.func.PropertyMap:
+                    funcTableRef = new WPropertyMapTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

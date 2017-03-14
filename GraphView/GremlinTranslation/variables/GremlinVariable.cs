@@ -743,9 +743,12 @@ namespace GraphView
             }
         }
 
-        internal virtual void PropertyMap(GremlinToSqlContext currentContext, params string[] propertyKeys)
+        internal virtual void PropertyMap(GremlinToSqlContext currentContext, List<string> propertyKeys)
         {
-            throw new NotImplementedException();
+            GremlinPropertyMapVariable newVariable = new GremlinPropertyMapVariable(this, propertyKeys);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Range(GremlinToSqlContext currentContext, int low, int high, GremlinKeyword.Scope scope, bool isReverse)
