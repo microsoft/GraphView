@@ -774,14 +774,11 @@ namespace GraphView
         //internal virtual void Sack(BiFunction<V, U, V>) sackOperator) //Deprecated
         //internal virtual void Sack(BiFunction<V, U, V>) sackOperator, string, elementPropertyKey) //Deprecated
 
-        internal virtual void Sample(GremlinToSqlContext currentContext, int amountToSample)
+        internal virtual void Sample(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope, int amountToSample, GremlinToSqlContext probabilityContext)
         {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void Sample(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope, int amountToSample)
-        {
-            throw new NotImplementedException();
+            GremlinSampleVariable newVariable = new GremlinSampleVariable(scope, amountToSample, probabilityContext);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
         }
 
         internal GremlinVariable GetTheFirstVariable(List<GremlinVariable> taggedVariableList)

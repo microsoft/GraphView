@@ -472,7 +472,9 @@ namespace GraphView
         }
     }
 
-    public partial class WSampleTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WSampleGlobalTableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WSampleLocalTableReference : WSchemaObjectFunctionTableReference { }
 
     public partial class WValuesTableReference : WSchemaObjectFunctionTableReference {}
 

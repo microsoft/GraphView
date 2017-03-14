@@ -162,6 +162,13 @@ namespace GraphView
             base.Range(currentContext, low, high, scope, isReverse);
         }
 
+        internal override void Sample(GremlinToSqlContext currentContext, GremlinKeyword.Scope scope, int amountToSample,
+            GremlinToSqlContext probabilityContext)
+        {
+            this.isTraversalToBound = true;
+            base.Sample(currentContext, scope, amountToSample, probabilityContext);
+        }
+
         internal override void SideEffect(GremlinToSqlContext currentContext, GremlinToSqlContext sideEffectContext)
         {
             this.isTraversalToBound = true;

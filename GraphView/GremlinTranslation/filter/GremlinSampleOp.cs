@@ -9,10 +9,13 @@ namespace GraphView
 {
     internal class GremlinSampleOp: GremlinTranslationOperator
     {
-        public long AmountToSample { get; set; }
+        public GremlinKeyword.Scope Scope { get; set; }
+        public int AmountToSample { get; set; }
+        public GraphTraversal2 ProbabilityTraversal { get; set; }
 
-        public GremlinSampleOp(long amountToSample)
+        public GremlinSampleOp(GremlinKeyword.Scope scope, int amountToSample)
         {
+            Scope = scope;
             AmountToSample = amountToSample;
         }
 
@@ -24,8 +27,34 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            throw new NotImplementedException();
+            GremlinToSqlContext probabilityContext = null;
+            if (ProbabilityTraversal != null)
+            {
+                ProbabilityTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                probabilityContext = ProbabilityTraversal.GetEndOp().GetContext();
+            }
 
+            inputContext.PivotVariable.Sample(inputContext, Scope, AmountToSample, probabilityContext);
+
+            return inputContext;
+        }
+
+        public override void ModulateBy()
+        {
+            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Sample(local) can't be modulated by by()");
+            ProbabilityTraversal = GraphTraversal2.__();
+        }
+
+        public override void ModulateBy(GraphTraversal2 traversal)
+        {
+            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Sample(local) can't be modulated by by()");
+            ProbabilityTraversal = traversal;
+        }
+
+        public override void ModulateBy(string key)
+        {
+            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Sample(local) can't be modulated by by()");
+            ProbabilityTraversal = GraphTraversal2.__().Values(key);
         }
     }
 }

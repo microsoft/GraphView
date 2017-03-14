@@ -93,6 +93,8 @@ namespace GraphView
             public const string CyclicPath = "CyclicPath";
             public const string ValueMap = "ValueMap";
             public const string PropertyMap = "PropertyMap";
+            public const string SampleGlobal = "SampleGlobal";
+            public const string SampleLocal = "SampleLocal";
         }
 
         public enum Pop

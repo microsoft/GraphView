@@ -2830,7 +2830,7 @@ namespace GraphView
         }
     }
 
-    partial class WSampleTableReference
+    partial class WSampleGlobalTableReference
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {

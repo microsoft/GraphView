@@ -974,11 +974,16 @@ namespace GraphView
 
         public GraphTraversal2 Sample(int amountToSample)
         {
-            AddGremlinOperator(new GremlinSampleOp(amountToSample));
+            AddGremlinOperator(new GremlinSampleOp(GremlinKeyword.Scope.global, amountToSample));
             return this;
         }
 
-        //public GraphTraversal2 Sample(Scope scope, int amountToSample)
+        public GraphTraversal2 Sample(GremlinKeyword.Scope scope, int amountToSample)
+        {
+            AddGremlinOperator(new GremlinSampleOp(scope, amountToSample));
+            return this;
+        }
+
         //public GraphTraversal2 Select(Column column)
         //public GraphTraversal2 Select(Pop pop, string selectKey)
 
