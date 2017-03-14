@@ -279,13 +279,16 @@ namespace GraphView
         {
             if (Object.ReferenceEquals(this, obj)) return true;
 
-            StringField stringField = obj as StringField;
-            if (stringField == null) {
+            StringField rhs = obj as StringField;
+            if (rhs == null) {
                 return false;
             }
 
-            return this.JsonDataType == stringField.JsonDataType &&
-                   this.Value.Equals(stringField.Value, StringComparison.InvariantCultureIgnoreCase);
+            JsonDataType type1 = this.JsonDataType;
+            JsonDataType type2 = rhs.JsonDataType;
+            JsonDataType targetType = type1 > type2 ? type1 : type2;
+
+            return ComparisonFunction.Compare(this.Value, rhs.Value, targetType, BooleanComparisonType.Equals);
         }
 
         public override string ToValue

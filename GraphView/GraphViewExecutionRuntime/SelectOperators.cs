@@ -3569,7 +3569,7 @@ namespace GraphView
                 foreach (Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
                 {
                     FieldObject rhs = tuple.Item1.Evaluate(null);
-                    if (evaluatedValue.ToObject().Equals(rhs.ToObject()))
+                    if (evaluatedValue.Equals(rhs))
                     {
                         tuple.Item2.Enqueue(currentRecord);
                         hasBeenChosen = true;

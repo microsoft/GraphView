@@ -63,7 +63,7 @@ namespace GraphView
 
                     JsonDataType targetType = type1 > type2 ? type1 : type2;
 
-                    if (Compare(vsp.ToValue, rhs.ToValue, type1, type2, targetType)) {
+                    if (Compare(vsp.ToValue, rhs.ToValue, targetType, this.comparisonType)) {
                         return true;
                     }
                 }
@@ -79,11 +79,11 @@ namespace GraphView
                 string value1 = firstScalarFunction.Evaluate(record)?.ToValue;
                 string value2 = secondScalarFunction.Evaluate(record)?.ToValue;
 
-                return Compare(value1, value2, type1, type2, targetType);
+                return Compare(value1, value2, targetType, this.comparisonType);
             }
         }
 
-        private bool Compare(string value1, string value2, JsonDataType type1, JsonDataType type2, JsonDataType targetType)
+        public static bool Compare(string value1, string value2, JsonDataType targetType, BooleanComparisonType comparisonType)
         {
             switch (targetType)
             {

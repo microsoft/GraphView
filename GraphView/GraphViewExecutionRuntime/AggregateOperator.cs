@@ -32,7 +32,7 @@ namespace GraphView
 
     internal class CountFunction : IAggregateFunction
     {
-        int count;
+        long count;
 
         public void Accumulate(params FieldObject[] values)
         {
@@ -46,7 +46,7 @@ namespace GraphView
 
         public FieldObject Terminate()
         {
-            return new StringField(count.ToString(), JsonDataType.Int);
+            return new StringField(count.ToString(), JsonDataType.Long);
         }
     }
 
