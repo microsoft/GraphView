@@ -13,9 +13,7 @@ namespace GraphView
         public GraphTraversal2 TrueChoiceTraversal { get; set; }
         public GraphTraversal2 FalseChocieTraversal { get; set; }
         public GraphTraversal2 ChoiceTraversal { get; set; }
-        public Predicate Predicate { get; set; }
-        public ChooseType Type { get; set; }
-        public Dictionary<object, GraphTraversal2> OptionDict { get; set; }
+        public Dictionary<object, GraphTraversal2> Options { get; set; }
 
         public GremlinChooseOp(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice,
             GraphTraversal2 falseChoice)
@@ -23,24 +21,13 @@ namespace GraphView
             PredicateTraversal = traversalPredicate;
             TrueChoiceTraversal = trueChoice;
             FalseChocieTraversal = falseChoice;
-            Type = ChooseType.TraversalPredicate;
-            OptionDict = new Dictionary<object, GraphTraversal2>();
+            Options = new Dictionary<object, GraphTraversal2>();
         }
 
         public GremlinChooseOp(GraphTraversal2 choiceTraversal)
         {
             ChoiceTraversal = choiceTraversal;
-            Type = ChooseType.Option;
-            OptionDict = new Dictionary<object, GraphTraversal2>();
-        }
-
-        public GremlinChooseOp(Predicate predicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
-        {
-            Predicate = predicate;
-            TrueChoiceTraversal = trueChoice;
-            FalseChocieTraversal = falseChoice;
-            Type = ChooseType.Predicate;
-            OptionDict = new Dictionary<object, GraphTraversal2>();
+            Options = new Dictionary<object, GraphTraversal2>();
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -50,15 +37,35 @@ namespace GraphView
             {
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
-            throw new NotImplementedException();
-        }
 
-        public enum ChooseType
-        {
-            TraversalPredicate,
-            Predicate,
-            Option
-        }
+            if (TrueChoiceTraversal != null && FalseChocieTraversal != null)
+            {
+                PredicateTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                TrueChoiceTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                FalseChocieTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
 
+                GremlinToSqlContext predicateContext = PredicateTraversal.GetEndOp().GetContext();
+                GremlinToSqlContext trueContext = TrueChoiceTraversal.GetEndOp().GetContext();
+                GremlinToSqlContext falseContext = FalseChocieTraversal.GetEndOp().GetContext();
+
+                inputContext.PivotVariable.Choose(inputContext, predicateContext, trueContext, falseContext);
+            }
+            else
+            {
+                Dictionary<object, GremlinToSqlContext> options = new Dictionary<object, GremlinToSqlContext>();
+                foreach (var option in Options)
+                {
+                    option.Value.GetStartOp().InheritedVariableFromParent(inputContext);
+                    GremlinToSqlContext temp = option.Value.GetEndOp().GetContext();
+                    options[option.Key] = temp;
+                }
+
+                ChoiceTraversal.GetStartOp().InheritedVariableFromParent(inputContext);
+                GremlinToSqlContext choiceContext = ChoiceTraversal.GetEndOp().GetContext();
+                inputContext.PivotVariable.Choose(inputContext, choiceContext, options);
+            }
+
+            return inputContext;
+        }
     }
 }

@@ -45,6 +45,11 @@ namespace GraphView
             if (wOrderTableReference != null)
                 wOrderTableReference.OrderParameters = new List<Tuple<WScalarExpression, IComparer>>();
 
+            if (Scope == GremlinKeyword.Scope.local)
+            {
+                ((WOrderLocalTableReference)tableRef).Parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+            }
+
             foreach (var pair in ByModulatingMap)
             {
                 WScalarExpression scalrExpr;

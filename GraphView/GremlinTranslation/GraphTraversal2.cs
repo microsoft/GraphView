@@ -427,14 +427,16 @@ namespace GraphView
             return this;
         }
 
-        public GraphTraversal2 Choose(Predicate choosePredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
+        public GraphTraversal2 Choose(Predicate choosePredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice = null)
         {
-            AddGremlinOperator(new GremlinChooseOp(choosePredicate, trueChoice, falseChoice));
+            if (falseChoice == null) falseChoice = __();
+            AddGremlinOperator(new GremlinChooseOp(__().Is(choosePredicate), trueChoice, falseChoice));
             return this;
         }
 
-        public GraphTraversal2 Choose(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice)
+        public GraphTraversal2 Choose(GraphTraversal2 traversalPredicate, GraphTraversal2 trueChoice, GraphTraversal2 falseChoice = null)
         {
+            if (falseChoice == null) falseChoice = __();
             AddGremlinOperator(new GremlinChooseOp(traversalPredicate, trueChoice, falseChoice));
             return this;
         }
@@ -827,20 +829,21 @@ namespace GraphView
         }
         public GraphTraversal2 Option(object pickToken, GraphTraversal2 traversalOption)
         {
-            if (LastGremlinTranslationOp is GremlinChooseOp)
+            if (!(GremlinUtil.IsNumber(pickToken) || pickToken is string || pickToken is GremlinKeyword.Pick))
             {
-                (LastGremlinTranslationOp as GremlinChooseOp).OptionDict[pickToken] = traversalOption;
+                throw new ArgumentException();
+            }
+            var op = LastGremlinTranslationOp as GremlinChooseOp;
+            if (op != null)
+            {
+                if (op.Options.ContainsKey(pickToken))
+                {
+                    throw new SyntaxErrorException($"Choose step can only have one traversal per pick token: {pickToken}");
+                }
+                op.Options[pickToken] = traversalOption;
                 return this;
             }
-            else
-            {
-                throw new Exception("Option step only can follow by choose step.");
-            }
-        }
-
-        public GraphTraversal2 Option(GraphTraversal2 tarversalOption)
-        {
-            throw new NotImplementedException();
+            throw new Exception("Option step only can follow by choose step.");
         }
 
         public GraphTraversal2 Optional(GraphTraversal2 traversalOption)

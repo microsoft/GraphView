@@ -85,6 +85,7 @@
     <Compile Include="Gremlin\GraphData.cs" />
     <Compile Include="Gremlin\GraphDataLoader.cs" />
     <Compile Include="Gremlin\ProcessTests\NestingPropertiesTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\ChooseTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\RepeatTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Branch\UnionTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\AndTest.cs" />

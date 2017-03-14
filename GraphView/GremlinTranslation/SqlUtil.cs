@@ -474,6 +474,12 @@ namespace GraphView
                 case GremlinKeyword.func.Barrier:
                     funcTableRef = new WBarrierTableReference();
                     break;
+                case GremlinKeyword.func.Choose:
+                    funcTableRef = new WChooseTableReference();
+                    break;
+                case GremlinKeyword.func.ChooseWithOptions:
+                    funcTableRef = new WChooseWithOptionsTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

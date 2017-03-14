@@ -96,6 +96,8 @@ namespace GraphView
             public const string SampleGlobal = "SampleGlobal";
             public const string SampleLocal = "SampleLocal";
             public const string Barrier = "Barrier";
+            public const string Choose = "Choose";
+            public const string ChooseWithOptions = "ChooseWithOptions";
         }
 
         public enum Pop
@@ -131,6 +133,12 @@ namespace GraphView
             single,   // Set
             list,     // Append
             //set
+        }
+
+        public enum Pick
+        {
+            Any,
+            None
         }
 
         public static readonly Dictionary<string, string> GremlinStepToGraphTraversalDict = new Dictionary
