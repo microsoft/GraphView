@@ -1153,7 +1153,14 @@ namespace GraphView
 
         public GraphTraversal2 ValueMap(params string[] propertyKeys)
         {
-            throw new NotImplementedException();
+            AddGremlinOperator(new GremlinValueMapOp(false, propertyKeys));
+            return this;
+        }
+
+        public GraphTraversal2 ValueMap(bool isIncludeTokens, params string[] propertyKeys)
+        {
+            AddGremlinOperator(new GremlinValueMapOp(isIncludeTokens, propertyKeys));
+            return this;
         }
 
         public GraphTraversal2 Values(params string[] propertyKeys)

@@ -972,14 +972,12 @@ namespace GraphView
             currentContext.SetPivotVariable(newVariable);
         }
 
-        internal virtual void ValueMap(GremlinToSqlContext currentContext, Boolean includeTokens, params string[] propertyKeys)
+        internal virtual void ValueMap(GremlinToSqlContext currentContext, bool isIncludeTokens, List<string> propertyKeys)
         {
-            throw new NotImplementedException();
-        }
-
-        internal virtual void ValueMap(GremlinToSqlContext currentContext, params string[] propertyKeys)
-        {
-            throw new NotImplementedException();
+            GremlinValueMapVariable newVariable = new GremlinValueMapVariable(this, isIncludeTokens, propertyKeys);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Values(GremlinToSqlContext currentContext, List<string> propertyKeys)

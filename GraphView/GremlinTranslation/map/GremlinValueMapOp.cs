@@ -8,7 +8,14 @@ namespace GraphView
 {
     internal class GremlinValueMapOp: GremlinTranslationOperator
     {
-        public GremlinValueMapOp() { }
+        public bool IsIncludeTokens { get; set; }
+        public List<string> PropertyKeys { get; set; }
+
+        public GremlinValueMapOp(bool isIncludeTokens, params string[] propertyKeys)
+        {
+            IsIncludeTokens = isIncludeTokens;
+            PropertyKeys = new List<string>(propertyKeys);
+        }
 
         internal override GremlinToSqlContext GetContext()
         {
@@ -17,7 +24,10 @@ namespace GraphView
             {
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
-            throw new NotImplementedException();
+
+            inputContext.PivotVariable.ValueMap(inputContext, IsIncludeTokens, PropertyKeys);
+
+            return inputContext;
         }
     }
 }

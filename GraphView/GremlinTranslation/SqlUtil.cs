@@ -459,6 +459,9 @@ namespace GraphView
                 case GremlinKeyword.func.CyclicPath:
                     funcTableRef = new WCyclicPathTableReference();
                     break;
+                case GremlinKeyword.func.ValueMap:
+                    funcTableRef = new WValueMapTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

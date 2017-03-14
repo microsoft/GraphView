@@ -91,6 +91,7 @@ namespace GraphView
             public const string Decompose1 = "Decompose1";
             public const string SimplePath = "SimplePath";
             public const string CyclicPath = "CyclicPath";
+            public const string ValueMap = "ValueMap";
         }
 
         public enum Pop
