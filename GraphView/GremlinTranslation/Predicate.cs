@@ -77,6 +77,11 @@ namespace GraphView
         {
             return new Predicate(PredicateType.gt, value);
         }
+        // To support case: __.where('c',gt('u'). c and u represent 2 columns.
+        public static Predicate gt(String value)
+        {
+            return new Predicate(PredicateType.gt, value);
+        }
 
         public static Predicate gte(double value)
         {

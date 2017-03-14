@@ -1183,7 +1183,8 @@ namespace GraphView
 
         public GraphTraversal2 Where(string startKey, Predicate predicate)
         {
-            AddGremlinOperator(new GremlinWhereOp(startKey, predicate));
+            //AddGremlinOperator(new GremlinWhereOp(startKey, predicate));
+            AddGremlinOperator(new GremlinWhereOp(GraphTraversal2.__().V().Has(startKey, predicate)));
             return this;
         }
 

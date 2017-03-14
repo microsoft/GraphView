@@ -18,6 +18,80 @@ namespace GraphViewUnitTest
     [TestClass]
     public class IOTQueryTest
     {
+        [TestMethod]
+        public void ProjectTest()
+        {
+            //          GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+            //"MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+            //"GroupMatch", "MarvelTest");
+            //          GraphViewCommand cmd = new GraphViewCommand(connection);
+            //          //cmd.CommandText = "g.V().project('c', 'u').by('|provisioning').by('|provisioning').where('c', gt('u'))";
+            //          //cmd.CommandText = "g.V().project('c').by('|provisioning')";
+            //          cmd.CommandText = "g.V().has('weapon', 'lasso').as('character').out('appeared').as('comicbook').select('comicbook').next()";
+            //          cmd.OutputFormat = OutputFormat.GraphSON;
+            //          var results = cmd.Execute();
+            //          foreach (var result in results)
+            //          {
+            //              Console.WriteLine(result);
+            //          }
+
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+           "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+           "GroupMatch", "MarvelTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //graph.CommandText = "g.V().has('weapon', 'lasso').as('character').out('appeared').as('comicbook').select('comicbook').next()";
+            //graph.CommandText = "g.V().project('c', 'u').by('|provisioning').by('|provisioning').where('c', gt('u'))";
+            //graph.CommandText = "g.V().Where(GraphTraversal2.__().As('a').Values('name').Is('josh'))";
+            graph.CommandText = "g.V().where('c')";
+            graph.OutputFormat = OutputFormat.GraphSON;
+            var results = graph.Execute();
+
+            foreach (string result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+
+        [TestMethod]
+        public void ProjectTest2()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            //var results = graph.g().V().Project("c").By("name").Where("c", Predicate.eq("josh"));
+            // (0) check the has 
+            //var results = graph.g().V().Has("name", Predicate.eq("josh")).Values("name");
+            // (1) first step, ref the origin 
+            var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().V().Has("c", Predicate.eq("josh")));
+            // (2) second step, ref the new alias
+            // var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().Values("c").Is("josh"));
+  
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+        [TestMethod]
+        public void WhereStep()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            GraphViewCommand graph = new GraphViewCommand(connection);
+            var results = graph.g().V().Where("name", Predicate.eq("josh"));
+            // (0) check the has 
+            //var results = graph.g().V().Has("name", Predicate.eq("josh")).Values("name");
+            // (1) first step, ref the origin 
+            //var results = graph.g().V().Where(GraphTraversal2.__().V().Has("name", Predicate.eq("josh")));
+            // (2) second step, ref the new alias
+            // var results = graph.g().V().Where(GraphTraversal2.__().Values("c").Is("josh"));
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
         public void runQuery(int queryNum)
         {
             string line;
@@ -43,7 +117,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void testSingleQuery()
         {
-            runQuery(8);
+            runQuery(36);
         }
         [TestMethod]
         public void testAllQueries()
@@ -95,7 +169,7 @@ namespace GraphViewUnitTest
             query = query.Replace("[", "");
             query = query.Replace("]", "");
             query = query.Replace("bothE", "BothE");
-
+            //query = query.Replace("gt(", "Predicate.gt(");
             result = query;
             return result;
         }
