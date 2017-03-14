@@ -499,6 +499,8 @@ namespace GraphView
 
     public partial class WChooseTableReference : WSchemaObjectFunctionTableReference { }
 
+    public partial class WChooseWithOptionsTableReference : WSchemaObjectFunctionTableReference { }
+
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
         public JObject ConstructEdgeJsonObject(out List<string> projectedFieldList)
