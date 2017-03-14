@@ -3467,7 +3467,7 @@ namespace GraphView
 
             while (this.evaluatedFalseRecords.Any())
             {
-                this.tempSourceOp.ConstantSource = this.evaluatedTrueRecords.Dequeue();
+                this.tempSourceOp.ConstantSource = this.evaluatedFalseRecords.Dequeue();
                 this.falseBranchSourceOp.Next();
             }
 
@@ -3526,6 +3526,7 @@ namespace GraphView
             this.noneRawRecords = new Queue<RawRecord>();
             this.optionNoneTraversalOp = null;
             this.needsOptionSourceInit = true;
+            this.traversalList = new List<Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>>();
 
             this.Open();
         }
@@ -3534,6 +3535,7 @@ namespace GraphView
         {
             if (value == null) {
                 this.optionNoneTraversalOp = optionTraversalOp;
+                return;
             }
                 
             this.traversalList.Add(new Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>(value,
@@ -3567,7 +3569,7 @@ namespace GraphView
                 foreach (Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
                 {
                     FieldObject rhs = tuple.Item1.Evaluate(null);
-                    if (evaluatedValue.ToObject().Equals(rhs))
+                    if (evaluatedValue.ToObject().Equals(rhs.ToObject()))
                     {
                         tuple.Item2.Enqueue(currentRecord);
                         hasBeenChosen = true;

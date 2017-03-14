@@ -3118,8 +3118,8 @@ namespace GraphView
             QueryCompilationContext falseBranchSubContext = new QueryCompilationContext(context);
             falseBranchSubContext.CarryOn = true;
             ContainerOperator falseBranchSourceOp = new ContainerOperator(tempSourceOp);
-            GraphViewExecutionOperator falseBranchTraversalOp = falseTraversalParameter.SubQueryExpr.Compile(trueBranchSubContext, dbConnection);
-            falseBranchSubContext.OuterContextOp.SourceEnumerator = trueBranchSourceOp.GetEnumerator();
+            GraphViewExecutionOperator falseBranchTraversalOp = falseTraversalParameter.SubQueryExpr.Compile(falseBranchSubContext, dbConnection);
+            falseBranchSubContext.OuterContextOp.SourceEnumerator = falseBranchSourceOp.GetEnumerator();
 
             ChooseOperator chooseOp = new ChooseOperator(
                 context.CurrentExecutionOperator,
