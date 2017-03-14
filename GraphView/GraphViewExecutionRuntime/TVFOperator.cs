@@ -74,115 +74,10 @@ namespace GraphView
 
     internal class PropertiesOperator : TableValuedFunction
     {
-        List<Tuple<string, int>> propertyList;
-        int allPropertyIndex;
-
-        public PropertiesOperator(
-            GraphViewExecutionOperator pInputOperator, 
-            List<Tuple<string, int>> pPropertiesList,
-            int pAllPropertyIndex) : base(pInputOperator)
-        {
-            propertyList = pPropertiesList;
-            allPropertyIndex = pAllPropertyIndex;
-        }
-
-        internal override List<RawRecord> CrossApply(RawRecord record)
-        {
-            var results = new List<RawRecord>();
-
-            // Extract all properties if allPropertyIndex >= 0
-            if (allPropertyIndex >= 0 && record[allPropertyIndex] != null) {
-                VertexField vertexField = record[allPropertyIndex] as VertexField;
-                if (vertexField != null) {
-                    foreach (PropertyField property in vertexField.AllProperties) {
-                        string propertyName = property.PropertyName;
-
-                        switch (propertyName) {
-                        // Reversed properties for meta-data
-                        case "_edge":
-                        case "_partition":
-                        case "_reverse_edge":
-                        case "_nextEdgeOffset":
-
-                        case "_rid":
-                        case "_self":
-                        case "_etag":
-                        case "_attachments":
-                        case "_ts":
-                            continue;
-                        default:
-                            RawRecord r = new RawRecord();
-                            if (property is VertexSinglePropertyField || property is ValuePropertyField) {
-                                r.Append(property);
-                            }
-                            else if (property is VertexPropertyField) {
-                                foreach (VertexSinglePropertyField p in ((VertexPropertyField)property).Multiples.Values) {
-                                    r.Append(p);
-                                }
-                            }
-                            else {
-                                Debug.Assert(false, $"[PropertiesOperator.CrossApply] property type error: {property.GetType()}");
-                            }
-
-                            results.Add(r);
-                            break;
-                        }
-                    }
-                }
-                else {
-                    EdgeField edgeField = record[allPropertyIndex] as EdgeField;
-                    if (edgeField == null)
-                        throw new GraphViewException(
-                            string.Format("The FieldObject record[{0}] should be a VertexField or EdgeField but now it is {1}.",
-                                          allPropertyIndex, record[allPropertyIndex].ToString()));
-
-                    foreach (var propertyPair in edgeField.EdgeProperties) {
-                        string propertyName = propertyPair.Key;
-                        EdgePropertyField propertyField = propertyPair.Value;
-
-                        switch (propertyName) {
-                        // Reversed properties for meta-data
-                        case "_offset":
-                        case "_srcV":
-                        case "_sinkV":
-                        case "_srcVLabel":
-                        case "_sinkVLabel":
-                            continue;
-                        default:
-                            RawRecord r = new RawRecord();
-                            r.Append(propertyField);
-                            results.Add(r);
-                            break;
-                        }
-                    }
-                }
-            }
-            else {
-                // TODO: Now translation code needn't to generate the key name for the operator
-                foreach (var pair in propertyList) {
-                    //string propertyName = pair.Item1;
-                    int propertyValueIndex = pair.Item2;
-                    var propertyValue = record[propertyValueIndex];
-                    if (propertyValue == null) {
-                        continue;
-                    }
-
-                    var result = new RawRecord();
-                    result.Append(propertyValue);
-                    results.Add(result);
-                }
-            }
-
-            return results;
-        } 
-    }
-
-    internal class PropertiesOperator2 : TableValuedFunction
-    {
         List<int> propertiesIndex;
         List<string> populateMetaproperties; 
 
-        public PropertiesOperator2(
+        public PropertiesOperator(
             GraphViewExecutionOperator inputOp,
             List<int> propertiesIndex,
             List<string> populateMetaproperties) : base(inputOp)
@@ -263,11 +158,11 @@ namespace GraphView
         }
     }
 
-    internal class ValuesOperator2 : TableValuedFunction
+    internal class ValuesOperator : TableValuedFunction
     {
         List<int> propertiesIndex;
 
-        public ValuesOperator2(GraphViewExecutionOperator inputOp, List<int> propertiesIndex) : base(inputOp)
+        public ValuesOperator(GraphViewExecutionOperator inputOp, List<int> propertiesIndex) : base(inputOp)
         {
             this.propertiesIndex = propertiesIndex;
         }
@@ -356,8 +251,8 @@ namespace GraphView
                 {
                     string propertyName = property.PropertyName;
                     Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
-                    Debug.Assert(propertyName != "_edge");
-                    Debug.Assert(propertyName != "_reverse_edge");
+                    Debug.Assert(!propertyName.Equals("_edge"));
+                    Debug.Assert(!propertyName.Equals("_reverse_edge"));
 
                     switch (propertyName)
                     {
@@ -434,6 +329,333 @@ namespace GraphView
         }
     }
 
+    internal class ValueMapOperator : TableValuedFunction
+    {
+        private readonly int inputTargetIndex;
+        private readonly bool includingMetaValue;
+        private readonly List<string> propertyNameList;
+
+        internal ValueMapOperator(
+            GraphViewExecutionOperator inputOp, 
+            int inputTargetIndex, 
+            bool includingMetaValue, 
+            List<string> propertyNameList) 
+            : base(inputOp)
+        {
+            this.inputTargetIndex = inputTargetIndex;
+            this.includingMetaValue = includingMetaValue;
+            this.propertyNameList = propertyNameList;
+        }
+
+        internal override List<RawRecord> CrossApply(RawRecord record)
+        {
+            MapField valueMap = new MapField();
+
+            FieldObject inputTarget = record[this.inputTargetIndex];
+
+            if (inputTarget is VertexField)
+            {
+                VertexField vertexField = (VertexField)inputTarget;
+                if (this.includingMetaValue)
+                {
+                    valueMap.Add(new StringField("id"), new StringField(vertexField["id"].ToValue));
+                    valueMap.Add(new StringField("label"), new StringField(vertexField["label"].ToValue));
+                }
+
+                if (this.propertyNameList.Any())
+                {
+                    foreach (string propertyName in this.propertyNameList)
+                    {
+                        FieldObject property = vertexField[propertyName];
+                        if (property == null) {
+                            continue;
+                        }
+
+                        List<FieldObject> values = new List<FieldObject>();
+                        VertexPropertyField vp = property as VertexPropertyField;
+                        if (vp != null) {
+                            foreach (VertexSinglePropertyField vsp in vp.Multiples.Values) {
+                                values.Add(new StringField(vsp.PropertyValue, vsp.JsonDataType));
+                            }
+                        }
+
+                        valueMap.Add(new StringField(propertyName), new CollectionField(values));
+                    }
+                }
+                else
+                {
+                    foreach (VertexPropertyField property in vertexField.VertexProperties.Values)
+                    {
+                        string propertyName = property.PropertyName;
+                        Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
+                        Debug.Assert(!propertyName.Equals("_edge"));
+                        Debug.Assert(!propertyName.Equals("_reverse_edge"));
+
+                        switch (propertyName)
+                        {
+                            case "_rid":
+                            case "_self":
+                            case "_etag":
+                            case "_attachments":
+                            case "_ts":
+                                continue;
+                            default:
+                                List<FieldObject> values = new List<FieldObject>();
+                                foreach (VertexSinglePropertyField singleVp in property.Multiples.Values) {
+                                    values.Add(new StringField(singleVp.PropertyValue, singleVp.JsonDataType));
+                                }
+                                valueMap.Add(new StringField(propertyName), new CollectionField(values));
+                                break;
+                        }
+                    }
+                }
+            }
+            else if (inputTarget is EdgeField)
+            {
+                EdgeField edgeField = (EdgeField)inputTarget;
+
+                if (this.includingMetaValue)
+                {
+                    valueMap.Add(new StringField("id"), new StringField(edgeField["_edgeId"].ToValue));
+                    valueMap.Add(new StringField("label"), new StringField(edgeField.Label));
+                }
+
+                if (this.propertyNameList.Any())
+                {
+                    foreach (string propertyName in this.propertyNameList)
+                    {
+                        FieldObject property = edgeField[propertyName];
+                        if (property == null) {
+                            continue;
+                        }
+
+                        EdgePropertyField edgePf = property as EdgePropertyField;
+                        if (edgePf != null)
+                        {
+                            valueMap.Add(new StringField(propertyName),
+                                new StringField(edgePf.PropertyValue, edgePf.JsonDataType));
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties)
+                    {
+                        string propertyName = propertyPair.Key;
+                        EdgePropertyField edgePropertyField = propertyPair.Value;
+
+                        switch (propertyName)
+                        {
+                            // Reserved properties for meta-data
+                            case "_edgeId":
+                            case "_offset":
+                            case "_srcV":
+                            case "_sinkV":
+                            case "_srcVLabel":
+                            case "_sinkVLabel":
+                                continue;
+                            default:
+                                valueMap.Add(new StringField(propertyName),
+                                    new StringField(edgePropertyField.PropertyValue, edgePropertyField.JsonDataType));
+                                break;
+                        }
+                    }
+                }
+            }
+            else if (inputTarget is VertexSinglePropertyField)
+            {
+                VertexSinglePropertyField singleVp = inputTarget as VertexSinglePropertyField;
+
+                if (this.includingMetaValue)
+                {
+                    valueMap.Add(new StringField("id"), new StringField(singleVp.PropertyId));
+                    valueMap.Add(new StringField("key"), new StringField(singleVp.PropertyName));
+                    valueMap.Add(new StringField("value"), new StringField(singleVp.PropertyValue));
+                }
+
+                if (this.propertyNameList.Any())
+                {
+                    foreach (string propertyName in this.propertyNameList)
+                    {
+                        FieldObject property = singleVp[propertyName];
+                        if (property == null) {
+                            continue;
+                        }
+
+                        ValuePropertyField metaPf = property as ValuePropertyField;
+                        if (metaPf != null)
+                        {
+                            valueMap.Add(new StringField(propertyName),
+                                new StringField(metaPf.PropertyValue, metaPf.JsonDataType));
+                        }
+                    }
+                } else {
+                    foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties) {
+                        valueMap.Add(new StringField(kvp.Key), new StringField(kvp.Value.PropertyValue, kvp.Value.JsonDataType));
+                    }
+                }
+            }
+            else {
+                throw new GraphViewException("The input of valueMap() cannot be a meta or edge property.");
+            }
+
+            RawRecord result = new RawRecord();
+            result.Append(valueMap);
+            return new List<RawRecord> { result };
+        }
+    }
+
+    internal class PropertyMapOperator : TableValuedFunction
+    {
+        private readonly int inputTargetIndex;
+        private readonly List<string> propertyNameList;
+
+        internal PropertyMapOperator(
+            GraphViewExecutionOperator inputOp,
+            int inputTargetIndex,
+            List<string> propertyNameList)
+            : base(inputOp)
+        {
+            this.inputTargetIndex = inputTargetIndex;
+            this.propertyNameList = propertyNameList;
+        }
+
+        internal override List<RawRecord> CrossApply(RawRecord record)
+        {
+            MapField valueMap = new MapField();
+
+            FieldObject inputTarget = record[this.inputTargetIndex];
+
+            if (inputTarget is VertexField)
+            {
+                VertexField vertexField = (VertexField)inputTarget;
+
+                if (this.propertyNameList.Any())
+                {
+                    foreach (string propertyName in this.propertyNameList)
+                    {
+                        FieldObject property = vertexField[propertyName];
+                        if (property == null) {
+                            continue;
+                        }
+
+                        List<FieldObject> values = new List<FieldObject>();
+                        VertexPropertyField vp = property as VertexPropertyField;
+                        if (vp != null) {
+                            foreach (VertexSinglePropertyField vsp in vp.Multiples.Values) {
+                                values.Add(vsp);
+                            }
+                        }
+
+                        valueMap.Add(new StringField(propertyName), new CollectionField(values));
+                    }
+                }
+                else
+                {
+                    foreach (VertexPropertyField property in vertexField.VertexProperties.Values)
+                    {
+                        string propertyName = property.PropertyName;
+                        Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
+                        Debug.Assert(!propertyName.Equals("_edge"));
+                        Debug.Assert(!propertyName.Equals("_reverse_edge"));
+
+                        switch (propertyName)
+                        {
+                            case "_rid":
+                            case "_self":
+                            case "_etag":
+                            case "_attachments":
+                            case "_ts":
+                                continue;
+                            default:
+                                List<FieldObject> values = new List<FieldObject>();
+                                foreach (VertexSinglePropertyField singleVp in property.Multiples.Values) {
+                                    values.Add(singleVp);
+                                }
+                                valueMap.Add(new StringField(propertyName), new CollectionField(values));
+                                break;
+                        }
+                    }
+                }
+            }
+            else if (inputTarget is EdgeField)
+            {
+                EdgeField edgeField = (EdgeField)inputTarget;
+
+                if (this.propertyNameList.Any())
+                {
+                    foreach (string propertyName in this.propertyNameList)
+                    {
+                        FieldObject property = edgeField[propertyName];
+                        if (property == null) {
+                            continue;
+                        }
+
+                        EdgePropertyField edgePf = property as EdgePropertyField;
+                        if (edgePf != null)
+                        {
+                            valueMap.Add(new StringField(propertyName), edgePf);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (KeyValuePair<string, EdgePropertyField> propertyPair in edgeField.EdgeProperties)
+                    {
+                        string propertyName = propertyPair.Key;
+                        EdgePropertyField edgePropertyField = propertyPair.Value;
+
+                        switch (propertyName)
+                        {
+                            // Reserved properties for meta-data
+                            case "_edgeId":
+                            case "_offset":
+                            case "_srcV":
+                            case "_sinkV":
+                            case "_srcVLabel":
+                            case "_sinkVLabel":
+                                continue;
+                            default:
+                                valueMap.Add(new StringField(propertyName), edgePropertyField);
+                                break;
+                        }
+                    }
+                }
+            }
+            else if (inputTarget is VertexSinglePropertyField)
+            {
+                VertexSinglePropertyField singleVp = inputTarget as VertexSinglePropertyField;
+
+                if (this.propertyNameList.Any())
+                {
+                    foreach (string propertyName in this.propertyNameList)
+                    {
+                        FieldObject property = singleVp[propertyName];
+                        if (property == null) {
+                            continue;
+                        }
+
+                        ValuePropertyField metaPf = property as ValuePropertyField;
+                        if (metaPf != null) {
+                            valueMap.Add(new StringField(propertyName), metaPf);
+                        }
+                    }
+                } else {
+                    foreach (KeyValuePair<string, ValuePropertyField> kvp in singleVp.MetaProperties) {
+                        valueMap.Add(new StringField(kvp.Key), kvp.Value);
+                    }
+                }
+            }
+            else {
+                throw new GraphViewException("The input of valueMap() cannot be a meta or edge property.");
+            }
+
+            RawRecord result = new RawRecord();
+            result.Append(valueMap);
+            return new List<RawRecord> { result };
+        }
+    }
+
     internal class AllValuesOperator : TableValuedFunction
     {
         private readonly int inputTargetIndex;
@@ -456,8 +678,8 @@ namespace GraphView
                 {
                     string propertyName = property.PropertyName;
                     Debug.Assert(!VertexField.IsVertexMetaProperty(propertyName));
-                    Debug.Assert(propertyName == "_edge");
-                    Debug.Assert(propertyName == "_reverse_edge");
+                    Debug.Assert(!propertyName.Equals("_edge"));
+                    Debug.Assert(!propertyName.Equals("_reverse_edge"));
 
                     switch (propertyName)
                     {
@@ -519,99 +741,6 @@ namespace GraphView
             else {
                 throw new GraphViewException("The input of values() cannot be a meta or edge property.");
             }
-            return results;
-        }
-    }
-
-    internal class ValuesOperator : TableValuedFunction
-    {
-        internal List<int> ValuesIdxList;
-        int allValuesIndex;
-
-        internal ValuesOperator(GraphViewExecutionOperator pInputOperator, List<int> pValuesIdxList, int pAllValuesIndex)
-            : base(pInputOperator)
-        {
-            ValuesIdxList = pValuesIdxList;
-            allValuesIndex = pAllValuesIndex;
-        }
-
-        internal override List<RawRecord> CrossApply(RawRecord record)
-        {
-            var results = new List<RawRecord>();
-
-            // Extract all values if allValuesIndex >= 0
-            if (allValuesIndex >= 0 && record[allValuesIndex] != null)
-            {
-                VertexField vertexField = record[allValuesIndex] as VertexField;
-                if (vertexField != null) {
-                    foreach (PropertyField property in vertexField.AllProperties) {
-                        string propertyName = property.PropertyName;
-
-                        switch (propertyName) {
-                        // Reversed properties for meta-data
-                        case "_edge":
-                        case "_reverse_edge":
-                        case "_partition":
-                        case "_nextEdgeOffset":
-
-                        case "_rid":
-                        case "_self":
-                        case "_etag":
-                        case "_attachments":
-                        case "_ts":
-                            continue;
-                        default:
-                            RawRecord r = new RawRecord();
-                            r.Append(new StringField(property.PropertyValue, property.JsonDataType));
-                            results.Add(r);
-                            break;
-                        }
-                    }
-                }
-                else {
-                    EdgeField edgeField = record[allValuesIndex] as EdgeField;
-                    if (edgeField == null)
-                        throw new GraphViewException(
-                            string.Format("The FieldObject record[{0}] should be a VertexField or EdgeField but now it is {1}.",
-                                          allValuesIndex, record[allValuesIndex].ToString()));
-
-                    foreach (var propertyPair in edgeField.EdgeProperties) {
-                        string propertyName = propertyPair.Key;
-                        EdgePropertyField propertyField = propertyPair.Value;
-
-                        switch (propertyName) {
-                        // Reversed properties for meta-data
-                        case "_offset":
-                        case "_srcV":
-                        case "_srcVLabel":
-                        case "_sinkV":
-                        case "_sinkVLabel":
-                            continue;
-                        default:
-                            RawRecord r = new RawRecord();
-                            r.Append(new StringField(propertyField.ToValue, propertyField.JsonDataType));
-                            results.Add(r);
-                            break;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                foreach (var propIdx in ValuesIdxList)
-                {
-                    PropertyField propertyValue = record[propIdx] as PropertyField;
-                    if (propertyValue == null)
-                    {
-                        continue;
-                    }
-
-                    var result = new RawRecord();
-                    result.Append(new StringField(propertyValue.ToValue, propertyValue.JsonDataType));
-                    results.Add(result);
-                }
-            }
-
             return results;
         }
     }

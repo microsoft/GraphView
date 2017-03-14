@@ -2008,7 +2008,7 @@ namespace GraphView
                     "Parameters of Properties table can only be WColumnReferenceExpression.");
             }
 
-            GraphViewExecutionOperator valuesOp = new ValuesOperator2(context.CurrentExecutionOperator, propertiesIndex);
+            GraphViewExecutionOperator valuesOp = new ValuesOperator(context.CurrentExecutionOperator, propertiesIndex);
             context.CurrentExecutionOperator = valuesOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
@@ -2093,7 +2093,7 @@ namespace GraphView
 
             }
 
-            GraphViewExecutionOperator propertiesOp = new PropertiesOperator2(context.CurrentExecutionOperator,
+            GraphViewExecutionOperator propertiesOp = new PropertiesOperator(context.CurrentExecutionOperator,
                 propertiesIndex, populateMetaproperties);
             context.CurrentExecutionOperator = propertiesOp;
 
@@ -3025,6 +3025,62 @@ namespace GraphView
             context.CurrentExecutionOperator = cyclicPathOp;
 
             return cyclicPathOp;
+        }
+    }
+
+    partial class WValueMapTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputTarget = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputTarget != null, "inputTarget != null");
+            int inputTargetIndex = context.LocateColumnReference(inputTarget);
+
+            WValueExpression includingMetaParameter = this.Parameters[1] as WValueExpression;
+            Debug.Assert(includingMetaParameter != null, "includingMetaParameter != null");
+            bool includingMetaValue = int.Parse(includingMetaParameter.Value) > 0;
+
+            List<string> propertyNameList = new List<string>();
+            for (int i = 2; i < this.Parameters.Count; i++)
+            {
+                WValueExpression propertyName = this.Parameters[i] as WValueExpression;
+                Debug.Assert(propertyName != null, "propertyName != null");
+
+                propertyNameList.Add(propertyName.Value);
+            }
+
+            ValueMapOperator valueMapOp = new ValueMapOperator(context.CurrentExecutionOperator, inputTargetIndex,
+                includingMetaValue, propertyNameList);
+            context.CurrentExecutionOperator = valueMapOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return valueMapOp;
+        }
+    }
+
+    partial class WPropertyMapTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputTarget = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputTarget != null, "inputTarget != null");
+            int inputTargetIndex = context.LocateColumnReference(inputTarget);
+
+            List<string> propertyNameList = new List<string>();
+            for (int i = 1; i < this.Parameters.Count; i++)
+            {
+                WValueExpression propertyName = this.Parameters[i] as WValueExpression;
+                Debug.Assert(propertyName != null, "propertyName != null");
+
+                propertyNameList.Add(propertyName.Value);
+            }
+
+            PropertyMapOperator propertyMapOp = new PropertyMapOperator(context.CurrentExecutionOperator,
+                inputTargetIndex, propertyNameList);
+            context.CurrentExecutionOperator = propertyMapOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return propertyMapOp;
         }
     }
 }
