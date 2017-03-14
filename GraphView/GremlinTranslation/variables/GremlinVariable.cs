@@ -198,6 +198,13 @@ namespace GraphView
             }
         }
 
+        internal virtual void Barrier(GremlinToSqlContext currentContext)
+        {
+            GremlinBarrierVariable newVariable = new GremlinBarrierVariable();
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+        }
+
         internal virtual void Both(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);

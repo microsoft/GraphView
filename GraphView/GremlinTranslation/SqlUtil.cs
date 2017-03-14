@@ -471,6 +471,9 @@ namespace GraphView
                 case GremlinKeyword.func.SampleLocal:
                     funcTableRef = new WSampleLocalTableReference();
                     break;
+                case GremlinKeyword.func.Barrier:
+                    funcTableRef = new WBarrierTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

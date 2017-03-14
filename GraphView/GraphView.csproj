@@ -82,6 +82,7 @@
     <Compile Include="DocDBScript.cs" />
     <Compile Include="GraphViewExecutionRuntime\ScalarFunction.cs" />
     <Compile Include="GraphViewQueryCompiler\CompilerVisitors.cs" />
+    <Compile Include="GremlinTranslation\barrier\GremlinBarrierOp.cs" />
     <Compile Include="GremlinTranslation\barrier\GremlinCapOp.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinChooseOp.cs" />
     <Compile Include="GremlinTranslation\branch\GremlinLocalOp.cs" />
@@ -158,10 +159,11 @@
     <Compile Include="GremlinTranslation\variables\context\GremlinListVariable.cs" />
     <Compile Include="GremlinTranslation\variables\context\GremlinRepeatSelectedVariable.cs" />
     <Compile Include="GremlinTranslation\variables\GremlinPathStepVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinBarrierVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinPropertyMapVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSampleVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinSampleVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSimplePathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinTreeSideEffectVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinValueMapVariable.cs" />

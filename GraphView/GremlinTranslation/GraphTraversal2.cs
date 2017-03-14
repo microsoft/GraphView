@@ -321,6 +321,13 @@ namespace GraphView
 
         public GraphTraversal2 Barrier()
         {
+            AddGremlinOperator(new GremlinBarrierOp());
+            return this;
+        }
+
+        public GraphTraversal2 Barrier(int maxBarrierSize)
+        {
+            AddGremlinOperator(new GremlinBarrierOp(maxBarrierSize));
             return this;
         }
 
