@@ -3088,5 +3088,116 @@ namespace GraphView
             return propertyMapOp;
         }
     }
+
+    partial class WChooseTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
+            Debug.Assert(targetSubquery != null, "targetSubquery != null");
+
+            WScalarSubquery trueTraversalParameter = this.Parameters[1] as WScalarSubquery;
+            Debug.Assert(trueTraversalParameter != null, "trueTraversalParameter != null");
+            WSelectQueryBlock selectQueryBlock = trueTraversalParameter.SubQueryExpr as WSelectQueryBlock;
+            Debug.Assert(selectQueryBlock != null, "selectQueryBlock != null");
+
+            WScalarSubquery falseTraversalParameter = this.Parameters[2] as WScalarSubquery;
+            Debug.Assert(falseTraversalParameter != null, "falseTraversalParameter != null");
+
+
+            ScalarFunction targetSubqueryFunc = targetSubquery.CompileToFunction(context, dbConnection);
+
+            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
+
+            QueryCompilationContext trueBranchSubContext = new QueryCompilationContext(context);
+            trueBranchSubContext.CarryOn = true;
+            ContainerOperator trueBranchSourceOp = new ContainerOperator(tempSourceOp);
+            GraphViewExecutionOperator trueBranchTraversalOp = trueTraversalParameter.SubQueryExpr.Compile(trueBranchSubContext, dbConnection);
+            trueBranchSubContext.OuterContextOp.SourceEnumerator = trueBranchSourceOp.GetEnumerator();
+
+            QueryCompilationContext falseBranchSubContext = new QueryCompilationContext(context);
+            falseBranchSubContext.CarryOn = true;
+            ContainerOperator falseBranchSourceOp = new ContainerOperator(tempSourceOp);
+            GraphViewExecutionOperator falseBranchTraversalOp = falseTraversalParameter.SubQueryExpr.Compile(trueBranchSubContext, dbConnection);
+            falseBranchSubContext.OuterContextOp.SourceEnumerator = trueBranchSourceOp.GetEnumerator();
+
+            ChooseOperator chooseOp = new ChooseOperator(
+                context.CurrentExecutionOperator,
+                targetSubqueryFunc,
+                tempSourceOp, 
+                trueBranchSourceOp, trueBranchTraversalOp, 
+                falseBranchSourceOp, falseBranchTraversalOp);
+            context.CurrentExecutionOperator = chooseOp;
+
+            foreach (WSelectElement selectElement in selectQueryBlock.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                Debug.Assert(selectScalar != null, "selectScalar != null");
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                Debug.Assert(columnRef != null, "selectScalar != null");
+
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            return chooseOp;
+        }
+    }
+
+    partial class WChooseWithOptionsTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WScalarSubquery targetSubquery = this.Parameters[0] as WScalarSubquery;
+            Debug.Assert(targetSubquery != null, "targetSubquery != null");
+
+            ScalarFunction targetSubqueryFunc = targetSubquery.CompileToFunction(context, dbConnection);
+            ConstantSourceOperator tempSourceOp = new ConstantSourceOperator();
+            ContainerOperator optionSourceOp = new ContainerOperator(tempSourceOp);
+
+            ChooseWithOptionsOperator chooseWithOptionsOp =
+                new ChooseWithOptionsOperator(context.CurrentExecutionOperator, targetSubqueryFunc, tempSourceOp,
+                    optionSourceOp);
+
+            WSelectQueryBlock firstSelectQuery = null;
+            for (int i = 1; i < this.Parameters.Count; i += 2)
+            {
+                WValueExpression value = this.Parameters[i] as WValueExpression;
+                Debug.Assert(value != null, "value != null");
+                if (this.IsOptionNone(value)) {
+                    value = null;
+                }
+
+                WScalarSubquery scalarSubquery = this.Parameters[i + 1] as WScalarSubquery;
+                Debug.Assert(scalarSubquery != null, "scalarSubquery != null");
+
+                if (firstSelectQuery == null)
+                {
+                    firstSelectQuery = scalarSubquery.SubQueryExpr as WSelectQueryBlock;
+                    Debug.Assert(firstSelectQuery != null, "firstSelectQuery != null");
+                }
+
+                QueryCompilationContext subcontext = new QueryCompilationContext(context);
+                subcontext.CarryOn = true;
+                GraphViewExecutionOperator optionTraversalOp = scalarSubquery.SubQueryExpr.Compile(subcontext, dbConnection);
+                subcontext.OuterContextOp.SourceEnumerator = optionSourceOp.GetEnumerator();
+                chooseWithOptionsOp.AddOptionTraversal(value?.CompileToFunction(context, dbConnection), optionTraversalOp);
+            }
+
+            foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
+            {
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                Debug.Assert(selectScalar != null, "selectScalar != null");
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                Debug.Assert(columnRef != null, "selectScalar != null");
+
+                string selectElementAlias = selectScalar.ColumnName;
+                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+            }
+
+            context.CurrentExecutionOperator = chooseWithOptionsOp;
+            return chooseWithOptionsOp;
+        }
+    }
 }
 

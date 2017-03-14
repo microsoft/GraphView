@@ -3407,7 +3407,7 @@ namespace GraphView
     {
         GraphViewExecutionOperator inputOp;
 
-        ScalarFunction scalarSubQueryFunc;
+        ScalarFunction targetSubQueryFunc;
 
         ConstantSourceOperator tempSourceOp;
         ContainerOperator trueBranchSourceOp;
@@ -3421,7 +3421,7 @@ namespace GraphView
 
         public ChooseOperator(
             GraphViewExecutionOperator inputOp,
-            ScalarFunction scalarSubQueryFunc,
+            ScalarFunction targetSubQueryFunc,
             ConstantSourceOperator tempSourceOp,
             ContainerOperator trueBranchSourceOp,
             GraphViewExecutionOperator trueBranchTraversalOp,
@@ -3430,7 +3430,7 @@ namespace GraphView
             )
         {
             this.inputOp = inputOp;
-            this.scalarSubQueryFunc = scalarSubQueryFunc;
+            this.targetSubQueryFunc = targetSubQueryFunc;
             this.tempSourceOp = tempSourceOp;
             this.trueBranchSourceOp = trueBranchSourceOp;
             this.trueBranchTraversalOp = trueBranchTraversalOp;
@@ -3448,7 +3448,7 @@ namespace GraphView
             RawRecord currentRecord = null;
             while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
-                if (this.scalarSubQueryFunc.Evaluate(currentRecord) != null)
+                if (this.targetSubQueryFunc.Evaluate(currentRecord) != null)
                     this.evaluatedTrueRecords.Enqueue(currentRecord);
                 else
                     this.evaluatedFalseRecords.Enqueue(currentRecord);
@@ -3498,14 +3498,14 @@ namespace GraphView
     {
         GraphViewExecutionOperator inputOp;
 
-        ScalarFunction scalarSubQueryFunc;
+        ScalarFunction targetSubQueryFunc;
 
         ConstantSourceOperator tempSourceOp;
         ContainerOperator optionSourceOp;
 
         int activeOptionTraversalIndex;
         bool needsOptionSourceInit;
-        List<Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator>> traversalList;
+        List<Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>> traversalList;
 
         Queue<RawRecord> noneRawRecords;
         GraphViewExecutionOperator optionNoneTraversalOp;
@@ -3513,27 +3513,30 @@ namespace GraphView
 
         public ChooseWithOptionsOperator(
             GraphViewExecutionOperator inputOp,
-            ScalarFunction scalarSubQueryFunc,
+            ScalarFunction targetSubQueryFunc,
             ConstantSourceOperator tempSourceOp,
-            ContainerOperator optionSourceOp,
-            GraphViewExecutionOperator optionNoneTraversalOp
+            ContainerOperator optionSourceOp
             )
         {
             this.inputOp = inputOp;
-            this.scalarSubQueryFunc = scalarSubQueryFunc;
+            this.targetSubQueryFunc = targetSubQueryFunc;
             this.tempSourceOp = tempSourceOp;
             this.optionSourceOp = optionSourceOp;
             this.activeOptionTraversalIndex = 0;
             this.noneRawRecords = new Queue<RawRecord>();
-            this.optionNoneTraversalOp = optionNoneTraversalOp;
+            this.optionNoneTraversalOp = null;
             this.needsOptionSourceInit = true;
 
             this.Open();
         }
 
-        public void AddOptionTraversal(object value, GraphViewExecutionOperator optionTraversalOp)
+        public void AddOptionTraversal(ScalarFunction value, GraphViewExecutionOperator optionTraversalOp)
         {
-            this.traversalList.Add(new Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator>(value,
+            if (value == null) {
+                this.optionNoneTraversalOp = optionTraversalOp;
+            }
+                
+            this.traversalList.Add(new Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator>(value,
                 new Queue<RawRecord>(), optionTraversalOp));
         }
 
@@ -3555,15 +3558,16 @@ namespace GraphView
             RawRecord currentRecord = null;
             while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
-                FieldObject evaluatedValue = this.scalarSubQueryFunc.Evaluate(currentRecord);
+                FieldObject evaluatedValue = this.targetSubQueryFunc.Evaluate(currentRecord);
                 if (evaluatedValue == null) {
                     throw new GraphViewException("The provided traversal of choose() does not map to a value.");
                 }
 
                 bool hasBeenChosen = false;
-                foreach (Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
+                foreach (Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
                 {
-                    if (evaluatedValue.ToObject().Equals(tuple.Item1))
+                    FieldObject rhs = tuple.Item1.Evaluate(null);
+                    if (evaluatedValue.ToObject().Equals(rhs))
                     {
                         tuple.Item2.Enqueue(currentRecord);
                         hasBeenChosen = true;
@@ -3621,7 +3625,7 @@ namespace GraphView
             this.noneRawRecords.Clear();
             this.optionNoneTraversalOp?.ResetState();
 
-            foreach (Tuple<object, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
+            foreach (Tuple<ScalarFunction, Queue<RawRecord>, GraphViewExecutionOperator> tuple in this.traversalList)
             {
                 tuple.Item2.Clear();
                 tuple.Item3.ResetState();

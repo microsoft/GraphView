@@ -499,7 +499,13 @@ namespace GraphView
 
     public partial class WChooseTableReference : WSchemaObjectFunctionTableReference { }
 
-    public partial class WChooseWithOptionsTableReference : WSchemaObjectFunctionTableReference { }
+    public partial class WChooseWithOptionsTableReference : WSchemaObjectFunctionTableReference
+    {
+        private bool IsOptionNone(WValueExpression option)
+        {
+            return !option.SingleQuoted && option.Value.Equals("null", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public partial class WAddETableReference : WSchemaObjectFunctionTableReference
     {
