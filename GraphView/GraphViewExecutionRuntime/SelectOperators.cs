@@ -1154,19 +1154,6 @@ namespace GraphView
             this.Open();
         }
 
-        private bool IsKeys(FieldObject obj)
-        {
-            StringField key = obj as StringField;
-            return key != null && key.JsonDataType == JsonDataType.String && key.Value.Equals("keys");
-        }
-
-        private bool IsValues(FieldObject obj)
-        {
-            StringField key = obj as StringField;
-            return key != null && key.JsonDataType == JsonDataType.String && key.Value.Equals("values");
-
-        }
-
         public override RawRecord Next()
         {
             RawRecord srcRecord = null;
@@ -1236,47 +1223,22 @@ namespace GraphView
                             }
                             else
                             {
-                                //
-                                // TODO: Sync with Jinjin to remove this case
-                                //
-                                if (byFunction is ScalarValue)
-                                {
-                                    if (IsKeys(byFunction.Evaluate(null)))
-                                    {
-                                        xObj = x.Key.ToObject();
-                                        yObj = y.Key.ToObject();
-                                    }
-                                    else if (IsValues(byFunction.Evaluate(null)))
-                                    {
-                                        xObj = x.Value.ToObject();
-                                        yObj = y.Value.ToObject();
-                                    }
-                                    else
-                                    {
-                                        Debug.Assert(false, "Should not get here.");
-                                        xObj = null;
-                                        yObj = null;
-                                    }
+                                RawRecord initKeyValuePairRecordOfX = new RawRecord();
+                                initKeyValuePairRecordOfX.Append(x);
+                                FieldObject xKey = byFunction.Evaluate(initKeyValuePairRecordOfX);
+                                if (xKey == null) {
+                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                                 }
-                                else
-                                {
-                                    RawRecord initKeyValuePairRecordOfX = new RawRecord();
-                                    initKeyValuePairRecordOfX.Append(x);
-                                    FieldObject xKey = byFunction.Evaluate(initKeyValuePairRecordOfX);
-                                    if (xKey == null) {
-                                        throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
-                                    }
-
-                                    RawRecord initKeyValuePairRecordOfY = new RawRecord();
-                                    initKeyValuePairRecordOfY.Append(y);
-                                    FieldObject yKey = byFunction.Evaluate(initKeyValuePairRecordOfY);
-                                    if (yKey == null) {
-                                        throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
-                                    }
-
-                                    xObj = xKey.ToObject();
-                                    yObj = yKey.ToObject();
+                                
+                                RawRecord initKeyValuePairRecordOfY = new RawRecord();
+                                initKeyValuePairRecordOfY.Append(y);
+                                FieldObject yKey = byFunction.Evaluate(initKeyValuePairRecordOfY);
+                                if (yKey == null) {
+                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                                 }
+                                
+                                xObj = xKey.ToObject();
+                                yObj = yKey.ToObject();
                             }
 
                             IComparer comparer = tuple.Item2;
@@ -3787,7 +3749,78 @@ namespace GraphView
                 return r;
             }
 
-            Close();
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
+
+    internal class SelectColumnOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator inputOp;
+        private readonly int inputTargetIndex;
+
+        //
+        // true, select(keys)
+        // false, select(values)
+        //
+        private readonly bool isSelectKeys;
+
+        public SelectColumnOperator(
+            GraphViewExecutionOperator inputOp,
+            int inputTargetIndex,
+            bool isSelectKeys)
+        {
+            this.inputOp = inputOp;
+            this.inputTargetIndex = inputTargetIndex;
+            this.isSelectKeys = isSelectKeys;
+
+            this.Open();
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord inputRecord = null;
+            while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
+            {
+                FieldObject selectObj = inputRecord[this.inputTargetIndex];
+                RawRecord r = new RawRecord(inputRecord);
+
+                if (selectObj is MapField)
+                {
+                    MapField inputMap = (MapField)selectObj;
+                    List<FieldObject> columns = new List<FieldObject>();
+
+                    foreach (EntryField entry in inputMap) {
+                        columns.Add(this.isSelectKeys ? entry.Key : entry.Value);
+                    }
+
+                    r.Append(new CollectionField(columns));
+                    return r;
+                }
+                else if (selectObj is EntryField)
+                {
+                    EntryField inputEntry = (EntryField) selectObj;
+                    r.Append(this.isSelectKeys ? inputEntry.Key : inputEntry.Value);
+                    return r;
+                }
+                //
+                // TODO: Deal with PathField
+                //
+                //else if (selectObj is PathField)
+                //{
+                    
+                //}
+                throw new GraphViewException(string.Format("The provided object does not have acessible {0}.",
+                    this.isSelectKeys ? "keys" : "values"));
+            }
+
+            this.Close();
             return null;
         }
 

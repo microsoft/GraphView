@@ -2875,15 +2875,19 @@ namespace GraphView
             Debug.Assert(inputObject != null, "inputObject != null");
             int inputObjectIndex = context.LocateColumnReference(inputObject);
 
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
             List<Tuple<ScalarFunction, IComparer>> orderByElements = new List<Tuple<ScalarFunction, IComparer>>();
 
             foreach (Tuple<WScalarExpression, IComparer> tuple in OrderParameters)
             {
                 WScalarExpression byParameter = tuple.Item1;
-                Debug.Assert(byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery,
-                    "byParameter is WColumnReferenceExpression || byParameter is WScalarSubquery");
 
-                ScalarFunction byFunction = byParameter.CompileToFunction(context, dbConnection);
+                ScalarFunction byFunction = this.IsByParameterNull(byParameter) 
+                                            ? null 
+                                            : byParameter.CompileToFunction(byInitContext, dbConnection);
                 IComparer comparer = tuple.Item2;
 
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
@@ -3197,6 +3201,26 @@ namespace GraphView
 
             context.CurrentExecutionOperator = chooseWithOptionsOp;
             return chooseWithOptionsOp;
+        }
+    }
+
+    partial class WSelectColumnTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        {
+            WColumnReferenceExpression inputTargetParameter = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputTargetParameter != null, "inputTargetParameter != null");
+            int inputTargetIndex = context.LocateColumnReference(inputTargetParameter);
+
+            WValueExpression selectParameter = this.Parameters[1] as WValueExpression;
+            Debug.Assert(selectParameter != null, "selectParameter != null");
+            bool isSelectKeys = selectParameter.Value.Equals("keys", StringComparison.OrdinalIgnoreCase);
+
+            SelectColumnOperator selectColumnOp = new SelectColumnOperator(context.CurrentExecutionOperator,
+                inputTargetIndex, isSelectKeys);
+            context.CurrentExecutionOperator = selectColumnOp;
+
+            return selectColumnOp;
         }
     }
 }

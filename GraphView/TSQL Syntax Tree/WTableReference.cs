@@ -436,7 +436,14 @@ namespace GraphView
         public List<Tuple<WScalarExpression, IComparer>> OrderParameters { get; set; }
     }
 
-    public partial class WOrderLocalTableReference : WOrderTableReference {}
+    public partial class WOrderLocalTableReference : WOrderTableReference
+    {
+        private bool IsByParameterNull(WScalarExpression byParameter)
+        {
+            WValueExpression byNull = byParameter as WValueExpression;
+            return byNull != null && !byNull.SingleQuoted && byNull.Value.Equals("null", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public partial class WOrderGlobalTableReference : WOrderTableReference {}
 
