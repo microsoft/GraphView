@@ -3219,6 +3219,7 @@ namespace GraphView
             SelectColumnOperator selectColumnOp = new SelectColumnOperator(context.CurrentExecutionOperator,
                 inputTargetIndex, isSelectKeys);
             context.CurrentExecutionOperator = selectColumnOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return selectColumnOp;
         }

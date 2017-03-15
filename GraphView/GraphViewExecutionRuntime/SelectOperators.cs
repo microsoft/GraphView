@@ -2191,17 +2191,15 @@ namespace GraphView
     internal class DeduplicateOperator : GraphViewExecutionOperator
     {
         private GraphViewExecutionOperator inputOp;
-        private List<HashSet<Object>> compositeDedupKeySet;
+        private HashSet<CollectionField> compositeDedupKeySet;
         private List<ScalarFunction> compositeDedupKeyFuncList;
 
         internal DeduplicateOperator(GraphViewExecutionOperator inputOperator, List<ScalarFunction> compositeDedupKeyFuncList)
         {
             this.inputOp = inputOperator;
             this.compositeDedupKeyFuncList = compositeDedupKeyFuncList;
-            this.compositeDedupKeySet = new List<HashSet<Object>>();
-            for (int i = 0; i < compositeDedupKeyFuncList.Count; i++) {
-                compositeDedupKeySet.Add(new HashSet<Object>());
-            }
+            this.compositeDedupKeySet = new HashSet<CollectionField>();
+
             this.Open();
         }
 
@@ -2211,8 +2209,7 @@ namespace GraphView
                 
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
-                bool hasNewUniqueKey = false;
-
+                List<FieldObject> keys = new List<FieldObject>();
                 for (int dedupKeyIndex = 0; dedupKeyIndex < compositeDedupKeyFuncList.Count; dedupKeyIndex++)
                 {
                     ScalarFunction getDedupKeyFunc = compositeDedupKeyFuncList[dedupKeyIndex];
@@ -2221,18 +2218,15 @@ namespace GraphView
                         throw new GraphViewException("The provided traversal or property name of Dedup does not map to a value.");
                     }
 
-                    if (!compositeDedupKeySet[dedupKeyIndex].Contains(key))
-                    {
-                        compositeDedupKeySet[dedupKeyIndex].Add(key);
-                        hasNewUniqueKey = true;
-                    }
+                    keys.Add(key);
                 }
 
-                if (!hasNewUniqueKey) {
-                    continue;
+                CollectionField compositeDedupKey = new CollectionField(keys);
+                if (!this.compositeDedupKeySet.Contains(compositeDedupKey))
+                {
+                    this.compositeDedupKeySet.Add(compositeDedupKey);
+                    return srcRecord;
                 }
-
-                return srcRecord;
             }
 
             this.Close();
@@ -2244,9 +2238,7 @@ namespace GraphView
         {
             this.inputOp.ResetState();
             this.compositeDedupKeySet.Clear();
-            for (int i = 0; i < this.compositeDedupKeyFuncList.Count; i++) {
-                compositeDedupKeySet.Add(new HashSet<Object>());
-            }
+
             this.Open();
         }
     }
