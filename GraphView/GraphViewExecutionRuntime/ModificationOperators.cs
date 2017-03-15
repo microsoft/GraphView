@@ -84,7 +84,7 @@ namespace GraphView
 
         internal override RawRecord DataModify(RawRecord record)
         {
-            JObject vertexObject = this._vertexDocument;
+            JObject vertexObject = (JObject)this._vertexDocument.DeepClone();
 
             string vertexId = GraphViewConnection.GenerateDocumentId();
             Debug.Assert(vertexObject["id"] == null);

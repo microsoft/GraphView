@@ -96,6 +96,7 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\IsTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\RangeTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Filter\WhereTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\AddVertexTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\CoalesceTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\ConstantTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\GroupTest.cs" />

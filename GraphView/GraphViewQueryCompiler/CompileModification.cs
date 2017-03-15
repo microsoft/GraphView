@@ -102,71 +102,71 @@ namespace GraphView
         }
     }
 
-    partial class WAddVTableReference
-    {
-        public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
-        {
-            JObject nodeJsonDocument = new JObject();
-            projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
+    //partial class WAddVTableReference
+    //{
+    //    public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
+    //    {
+    //        JObject nodeJsonDocument = new JObject();
+    //        projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
 
-            for (var i = 0; i < Parameters.Count; i += 2) {
-                var key = (Parameters[i] as WValueExpression).Value;
+    //        for (var i = 0; i < Parameters.Count; i += 2) {
+    //            var key = (Parameters[i] as WValueExpression).Value;
 
-                //GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
-                //    Parameters[i + 1] as WValueExpression);
-                GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
-                    Parameters[i + 1] as WValueExpression);
-                string name = (Parameters[i] as WValueExpression).Value;
-                JToken value = (Parameters[i + 1] as WValueExpression).ToJValue();
-                if (value != null) {
-                    if (VertexField.IsVertexMetaProperty(name)) {
-                        nodeJsonDocument[name] = value;
-                    }
-                    else {
-                        nodeJsonDocument[name] = new JArray {
-                            new JObject {
-                                ["_value"] = value,
-                                ["_propId"] = GraphViewConnection.GenerateDocumentId(),
-                                ["_meta"] = new JObject(),
-                            },
-                        };
-                    }
-                }
+    //            //GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
+    //            //    Parameters[i + 1] as WValueExpression);
+    //            GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
+    //                Parameters[i + 1] as WValueExpression);
+    //            string name = (Parameters[i] as WValueExpression).Value;
+    //            JToken value = (Parameters[i + 1] as WValueExpression).ToJValue();
+    //            if (value != null) {
+    //                if (VertexField.IsVertexMetaProperty(name)) {
+    //                    nodeJsonDocument[name] = value;
+    //                }
+    //                else {
+    //                    nodeJsonDocument[name] = new JArray {
+    //                        new JObject {
+    //                            ["_value"] = value,
+    //                            ["_propId"] = GraphViewConnection.GenerateDocumentId(),
+    //                            ["_meta"] = new JObject(),
+    //                        },
+    //                    };
+    //                }
+    //            }
 
-                if (!projectedFieldList.Contains(key))
-                    projectedFieldList.Add(key);
-            }
+    //            if (!projectedFieldList.Contains(key))
+    //                projectedFieldList.Add(key);
+    //        }
 
-            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
-            //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
-            nodeJsonDocument["_edge"] = new JArray();
-            nodeJsonDocument["_reverse_edge"] = new JArray();
-            nodeJsonDocument["_nextEdgeOffset"] = 0;
+    //        //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
+    //        //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
+    //        nodeJsonDocument["_edge"] = new JArray();
+    //        nodeJsonDocument["_reverse_edge"] = new JArray();
+    //        nodeJsonDocument["_nextEdgeOffset"] = 0;
 
-            return nodeJsonDocument;
-        }
+    //        return nodeJsonDocument;
+    //    }
 
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-        {
-            List<string> projectedField;
-            JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
+    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+    //    {
+    //        List<string> projectedField;
+    //        JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
 
-            GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
-            context.CurrentExecutionOperator = addVOp;
+    //        GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
+    //        context.CurrentExecutionOperator = addVOp;
 
-            context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
-            context.AddField(Alias.Value, "label", ColumnGraphType.Value);
-            context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
-            context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
-            context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
-            for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++)
-            {
-                context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
-            }
+    //        context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
+    //        context.AddField(Alias.Value, "label", ColumnGraphType.Value);
+    //        context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
+    //        context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
+    //        context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
+    //        for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++)
+    //        {
+    //            context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
+    //        }
 
-            return addVOp;
-        }
-    }
+    //        return addVOp;
+    //    }
+    //}
 
     partial class WAddETableReference
     {
