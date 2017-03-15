@@ -22,6 +22,33 @@ namespace GraphViewUnitTest
         /// test and fix the query 44 id() operator, invalid argumentsError
         /// </summary>
         /// <remarks>
+        /// The reason is unfold op UnionContextList.Count == 2, not support now.
+        /// </remarks>
+        [TestMethod]
+        public void queryTest48()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            //connection.ResetCollection();
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            cmd.OutputFormat = OutputFormat.GraphSON;
+            // (1) the sub query
+            //cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application')).constant('~0'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|deleted',true).constant('~3'),__.not(__.V(307424).outE().hasId('ayak-6l7k-f11-5pfk').has('/etag','nEszMsmsS8CindxZLzW09g==')).constant('~4'),__.not(__.V(307424).has('/etag','I9cr2GEAQraOsG8wFRBsww==')).constant('~5'),__.not(__.V(217320).has('/etag','vFSAV9c/Qn6b4IegSI4NMQ==')).constant('~6')),__.map(__.union(__.coalesce(__.V(307424).outE().hasId('ayak-6l7k-f11-5pfk'),__.constant(''))).fold()).as('#-e').map(__.union(__.V(307424).addE('instance').to(__.V(217320)).property('|app','ed011feb-0db1-40de-b633-9ec16b758259').property('/_id','parent-to-product').property('|v0',1).property('|v1',0).property('/_schemaVersion','1.0.0')).property('/etag','j5FJhuu8RMWqyfx42G0IUA==').fold()).as('#e').map(__.union(__.union(__.select('#-e'),__.select('#e')).unfold())))";
+            // (2) sub query
+            cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application')).constant('~0'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|deleted',true).constant('~3'),__.not(__.V(307424).outE().hasId('ayak-6l7k-f11-5pfk').has('/etag','nEszMsmsS8CindxZLzW09g==')).constant('~4'),__.not(__.V(307424).has('/etag','I9cr2GEAQraOsG8wFRBsww==')).constant('~5'),__.not(__.V(217320).has('/etag','vFSAV9c/Qn6b4IegSI4NMQ==')).constant('~6')),__.map(__.union(__.coalesce(__.V(307424).outE().hasId('ayak-6l7k-f11-5pfk'),__.constant(''))).fold()).as('#-e').map(__.union(__.V(307424).addE('instance').to(__.V(217320)).property('|app','ed011feb-0db1-40de-b633-9ec16b758259').property('/_id','parent-to-product').property('|v0',1).property('|v1',0).property('/_schemaVersion','1.0.0')).property('/etag','j5FJhuu8RMWqyfx42G0IUA==').fold()).as('#e').map(__.union(__.union(__.select('#-e'),__.select('#e')).unfold())))";
+
+            var results = cmd.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+        /// <summary>
+        /// test and fix the query 44 id() operator, invalid argumentsError
+        /// </summary>
+        /// <remarks>
         /// The reason is scalar variable let Id() operator throws exception, just let it return the default column name to avoid the error.
         /// </remarks>
         [TestMethod]
@@ -129,7 +156,7 @@ namespace GraphViewUnitTest
             var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().V().Has("c", Predicate.eq("josh")));
             // (2) second step, ref the new alias
             // var results = graph.g().V().Project("c").By("name").Where(GraphTraversal2.__().Values("c").Is("josh"));
-  
+
             foreach (var result in results)
             {
                 Console.WriteLine(result);
@@ -186,7 +213,7 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void testSingleQuery()
         {
-            runQuery(44);
+            runQuery(48);
         }
         [TestMethod]
         public void testAllQueries()
@@ -199,7 +226,8 @@ namespace GraphViewUnitTest
                     runQuery(count);
                     count++;
                 }
-            } catch(Exception e)
+            }
+            catch (Exception e)
             {
                 Console.WriteLine("query" + count + " throw Exception");
                 Console.WriteLine(e.Message);
@@ -228,7 +256,7 @@ namespace GraphViewUnitTest
                 counter++;
             }
             inFile.Close();
-            
+
         }
 
         public String formatQueryStr(String query)

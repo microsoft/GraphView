@@ -484,7 +484,17 @@ namespace GraphView
                     PathEdgeList[index].Item2.Accept(visitor);
                 }
             }
-            Tail.Accept(visitor);
+
+            // Tail.Accept(visitor);
+            if (Tail != null)
+            {
+                Tail.Accept(visitor);
+            }
+            else
+            {
+                // Just work around to skip the exception
+                Console.WriteLine("WClause.AcceptChildren -> Tail.Accept(visitor), the Tail is null");
+            }
             base.AcceptChildren(visitor);
         }
 

@@ -7,7 +7,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal class GremlinUnionVariable: GremlinTableVariable
+    internal class GremlinUnionVariable : GremlinTableVariable
     {
         public List<GremlinToSqlContext> UnionContextList { get; set; }
 
@@ -21,7 +21,14 @@ namespace GraphView
         {
             if (UnionContextList.Count == 0) return GremlinVariableType.Table;
             if (UnionContextList.Count == 1) return UnionContextList.First().PivotVariable.GetUnfoldVariableType();
-            else throw new NotImplementedException();
+            if (UnionContextList.Count == 2)
+            {
+                return UnionContextList.First().PivotVariable.GetUnfoldVariableType();
+            }
+            else 
+            {   
+                throw new NotImplementedException();
+            }
         }
 
         internal override void Populate(string property)
@@ -64,7 +71,7 @@ namespace GraphView
                 var variableList = context.SelectVarsFromCurrAndChildContext(label);
                 branchVariableList.Add(variableList);
             }
-            return new List<GremlinVariable>() {GremlinBranchVariable.Create(label, this, branchVariableList)};
+            return new List<GremlinVariable>() { GremlinBranchVariable.Create(label, this, branchVariableList) };
         }
 
         internal override bool ContainsLabel(string label)
