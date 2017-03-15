@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinSelectOp: GremlinTranslationOperator, IGremlinByModulating
+    internal class GremlinSelectOp: GremlinTranslationOperator
     {
         public List<string> SelectKeys { get; set; }
         public GremlinKeyword.Pop Pop { get; set; }
@@ -15,11 +15,6 @@ namespace GraphView
         {
             SelectKeys = new List<string>(selectKeys);
             Pop = pop;
-        }
-
-        public GremlinSelectOp(params string[] selectKeys)
-        {
-            SelectKeys = new List<string>(selectKeys);
         }
 
         internal override GremlinToSqlContext GetContext()
@@ -34,7 +29,7 @@ namespace GraphView
             {
                 switch (Pop)
                 {
-                    case GremlinKeyword.Pop.Default:
+                    case GremlinKeyword.Pop.all:
                         inputContext.PivotVariable.Select(inputContext, SelectKeys.First());
                         break;
                     default:
@@ -46,7 +41,7 @@ namespace GraphView
             {
                 switch (Pop)
                 {
-                    case GremlinKeyword.Pop.Default:
+                    case GremlinKeyword.Pop.all:
                         inputContext.PivotVariable.Select(inputContext, SelectKeys);
                         break;
                     default:

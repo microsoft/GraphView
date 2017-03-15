@@ -149,7 +149,7 @@ namespace GraphView
             base.Inject(currentContext, values);
         }
 
-        internal override void Order(GremlinToSqlContext currentContext, List<Tuple<object, IComparer>> byModulatingMap,
+        internal override void Order(GremlinToSqlContext currentContext, List<Tuple<GremlinToSqlContext, IComparer>> byModulatingMap,
             GremlinKeyword.Scope scope)
         {
             this.isTraversalToBound = true;

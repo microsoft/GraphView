@@ -483,6 +483,12 @@ namespace GraphView
                 case GremlinKeyword.func.ChooseWithOptions:
                     funcTableRef = new WChooseWithOptionsTableReference();
                     break;
+                case GremlinKeyword.func.Select:
+                    funcTableRef = new WSelectTableReference();
+                    break;
+                case GremlinKeyword.func.SelectColumn:
+                    funcTableRef = new WSelectColumnTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

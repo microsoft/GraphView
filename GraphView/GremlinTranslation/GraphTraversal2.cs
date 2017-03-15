@@ -621,6 +621,7 @@ namespace GraphView
         {
             GremlinGroupOp newGroupOp = new GremlinGroupOp();
             newGroupOp.ProjectBy = __().Count();
+            newGroupOp.IsProjectingACollection = false;
             AddGremlinOperator(newGroupOp);
             return this;
         }
@@ -994,8 +995,11 @@ namespace GraphView
             return this;
         }
 
-        //public GraphTraversal2 Select(Column column)
-        //public GraphTraversal2 Select(Pop pop, string selectKey)
+        public GraphTraversal2 Select(GremlinKeyword.Column column)
+        {
+            AddGremlinOperator(new GremlinSelectColumnOp(column));
+            return this;
+        }
 
         public GraphTraversal2 Select(GremlinKeyword.Pop pop, params string[] selectKeys)
         {
@@ -1005,10 +1009,9 @@ namespace GraphView
 
         public GraphTraversal2 Select(params string[] selectKeys)
         {
-            AddGremlinOperator(new GremlinSelectOp(selectKeys));
+            AddGremlinOperator(new GremlinSelectOp(GremlinKeyword.Pop.all, selectKeys));
             return this;
         }
-
 
         public GraphTraversal2 SideEffect(GraphTraversal2 sideEffectTraversal)
         {

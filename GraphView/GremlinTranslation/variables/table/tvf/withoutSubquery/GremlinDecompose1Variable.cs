@@ -8,12 +8,17 @@ namespace GraphView
 {
     internal class GremlinDecompose1Variable: GremlinTableVariable
     {
-        public List<GremlinPathStepVariable> ComposeVariableList { get; set; }
+        public List<GremlinVariable> ComposeVariableList { get; set; }
         public string DefaultProjectionKey { get; set; }
 
-        public GremlinDecompose1Variable(List<GremlinPathStepVariable> composeVariableList) : base(GremlinVariableType.Table)
+        public GremlinDecompose1Variable(List<GremlinVariable> composeVariableList) : base(GremlinVariableType.Table)
         {
             ComposeVariableList = composeVariableList;
+        }
+
+        public GremlinDecompose1Variable(GremlinVariable composeVariable) : base(GremlinVariableType.Table)
+        {
+            ComposeVariableList = new List<GremlinVariable> {composeVariable};
         }
 
         internal override GremlinVariableProperty DefaultProjection()
@@ -35,7 +40,7 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            parameters.Add(SqlUtil.GetColumnReferenceExpr("C", GremlinKeyword.TableDefaultColumnName));
+            parameters.Add(SqlUtil.GetColumnReferenceExpr(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName));
             foreach (var projectProperty in ProjectedProperties)
             {
                 parameters.Add(SqlUtil.GetValueExpr(projectProperty));

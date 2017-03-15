@@ -106,6 +106,7 @@
     <Compile Include="GremlinTranslation\map\GremlinMapOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPathOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPropertyMapOp.cs" />
+    <Compile Include="GremlinTranslation\map\GremlinSelectColumnOp.cs" />
     <Compile Include="GremlinTranslation\sideEffect\GremlinAsOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinEOp.cs" />
     <Compile Include="GremlinTranslation\GremlinKeyword.cs" />
@@ -163,6 +164,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinPropertyMapVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSelectColumnVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinChooseVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinSampleVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSimplePathVariable.cs" />

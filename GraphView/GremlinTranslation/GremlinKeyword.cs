@@ -99,11 +99,13 @@ namespace GraphView
             public const string Barrier = "Barrier";
             public const string Choose = "Choose";
             public const string ChooseWithOptions = "ChooseWithOptions";
+            public const string Select = "Select";
+            public const string SelectColumn = "SelectColumn";
         }
 
         public enum Pop
         {
-            Default,
+            all,
             first,
             last
         }

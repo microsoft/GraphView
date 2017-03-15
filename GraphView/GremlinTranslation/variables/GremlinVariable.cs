@@ -624,7 +624,7 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.ConcatBooleanExprWithOr(booleanExprList));
         }
 
-        internal virtual void Order(GremlinToSqlContext currentContext, List<Tuple<object, IComparer>> byModulatingMap, GremlinKeyword.Scope scope)
+        internal virtual void Order(GremlinToSqlContext currentContext, List<Tuple<GremlinToSqlContext, IComparer>> byModulatingMap, GremlinKeyword.Scope scope)
         {
             GremlinOrderVariable newVariable = new GremlinOrderVariable(this, byModulatingMap, scope);
             currentContext.VariableList.Add(newVariable);
@@ -695,7 +695,7 @@ namespace GraphView
             foreach (var by in byList)
             {
                 GremlinToSqlContext newContext = new GremlinToSqlContext();
-                GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(steps);
+                GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(steps.Cast<GremlinVariable>().ToList());
                 newContext.VariableList.Add(decompose1);
                 newContext.TableReferences.Add(decompose1);
                 newContext.SetPivotVariable(decompose1);
@@ -877,6 +877,14 @@ namespace GraphView
                 (selectedVariable as GremlinSelectedVariable).SelectKey = label;
             }
 
+        }
+
+        internal virtual void SelectColumn(GremlinToSqlContext currentContext, GremlinKeyword.Column column)
+        {
+            GremlinSelectColumnVariable newVariable = new GremlinSelectColumnVariable(this, column);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
         }
 
         internal virtual void Select(GremlinToSqlContext currentContext, List<string> selectKeys)
