@@ -366,6 +366,9 @@ namespace GraphView
                 case GremlinKeyword.func.Values:
                     funcTableRef = new WValuesTableReference();
                     break;
+                case GremlinKeyword.func.AllValues:
+                    funcTableRef = new WAllValuesTableReference();
+                    break;
                 case GremlinKeyword.func.Unfold:
                     funcTableRef = new WUnfoldTableReference();
                     break;

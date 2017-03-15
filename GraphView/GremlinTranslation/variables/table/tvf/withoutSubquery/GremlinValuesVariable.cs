@@ -20,9 +20,11 @@ namespace GraphView
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
+            WTableReference tableRef = null;
             if (PropertyKeys.Count == 0)
             {
                 parameters.Add(ProjectVariable.GetVariableProperty(GremlinKeyword.Star).ToScalarExpression());
+                tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.AllValues, parameters, GetVariableName());
             }
             else
             {
@@ -30,8 +32,8 @@ namespace GraphView
                 {
                     parameters.Add(ProjectVariable.GetVariableProperty(property).ToScalarExpression());
                 }
+                tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, GetVariableName());
             }
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Values, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }

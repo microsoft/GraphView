@@ -49,6 +49,7 @@ namespace GraphView
             public const string Repeat = "Repeat";
             public const string Value = "Value";
             public const string Values = "Values";
+            public const string AllValues = "AllValues";
             public const string Unfold = "Unfold";
             public const string Union = "Union";
             public const string Project = "Project";
