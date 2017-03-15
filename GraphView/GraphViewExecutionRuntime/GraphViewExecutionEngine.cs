@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
+using Newtonsoft.Json;
 
 // Add DocumentDB references
 
@@ -224,37 +225,7 @@ namespace GraphView
 
         public static string ToLiteral(string inputString)
         {
-            StringBuilder literal = new StringBuilder(inputString.Length + 2);
-            literal.Append("\"");
-            foreach (Char c in inputString)
-            {
-                switch (c)
-                {
-                    case '\'': literal.Append(@"\'"); break;
-                    case '\"': literal.Append("\\\""); break;
-                    case '\\': literal.Append(@"\\"); break;
-                    case '\0': literal.Append(@"\0"); break;
-                    case '\a': literal.Append(@"\a"); break;
-                    case '\b': literal.Append(@"\b"); break;
-                    case '\f': literal.Append(@"\f"); break;
-                    case '\n': literal.Append(@"\n"); break;
-                    case '\r': literal.Append(@"\r"); break;
-                    case '\t': literal.Append(@"\t"); break;
-                    case '\v': literal.Append(@"\v"); break;
-                    default:
-                        if (Char.GetUnicodeCategory(c) != UnicodeCategory.Control) {
-                            literal.Append(c);
-                        }
-                        else
-                        {
-                            literal.Append(@"\u");
-                            literal.Append(((ushort)c).ToString("x4"));
-                        }
-                        break;
-                }
-            }
-            literal.Append("\"");
-            return literal.ToString();
+            return JsonConvert.ToString(inputString);
         }
     }
 
