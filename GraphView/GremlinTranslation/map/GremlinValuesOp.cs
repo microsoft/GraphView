@@ -59,7 +59,9 @@ namespace GraphView
                 propertyKeys.Add(GremlinKeyword.NodeID);
             }
             else {
-                throw new NotImplementedException($"Can't process this type {inputContext.PivotVariable.GetVariableType()} for now.");
+                // Type is Scalar, TODO: hack for now ! but id should be unified later  
+                propertyKeys.Add(GremlinKeyword.TableDefaultColumnName);
+                //throw new NotImplementedException($"Can't process this type {inputContext.PivotVariable.GetVariableType()} for now.");
             }
 
             inputContext.PivotVariable.Values(inputContext, propertyKeys);
