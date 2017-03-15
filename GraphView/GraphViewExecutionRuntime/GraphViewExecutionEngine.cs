@@ -222,6 +222,40 @@ namespace GraphView
 
         public virtual Object ToObject() { return this; }
 
+        public static string ToLiteral(string inputString)
+        {
+            StringBuilder literal = new StringBuilder(inputString.Length + 2);
+            literal.Append("\"");
+            foreach (Char c in inputString)
+            {
+                switch (c)
+                {
+                    case '\'': literal.Append(@"\'"); break;
+                    case '\"': literal.Append("\\\""); break;
+                    case '\\': literal.Append(@"\\"); break;
+                    case '\0': literal.Append(@"\0"); break;
+                    case '\a': literal.Append(@"\a"); break;
+                    case '\b': literal.Append(@"\b"); break;
+                    case '\f': literal.Append(@"\f"); break;
+                    case '\n': literal.Append(@"\n"); break;
+                    case '\r': literal.Append(@"\r"); break;
+                    case '\t': literal.Append(@"\t"); break;
+                    case '\v': literal.Append(@"\v"); break;
+                    default:
+                        if (Char.GetUnicodeCategory(c) != UnicodeCategory.Control) {
+                            literal.Append(c);
+                        }
+                        else
+                        {
+                            literal.Append(@"\u");
+                            literal.Append(((ushort)c).ToString("x4"));
+                        }
+                        break;
+                }
+            }
+            literal.Append("\"");
+            return literal.ToString();
+        }
     }
 
     internal class StringField : FieldObject
@@ -242,11 +276,11 @@ namespace GraphView
 
         public override string ToGraphSON()
         {
-            if (JsonDataType == JsonDataType.String) 
-               return "\"" + Value + "\"";
+            if (JsonDataType == JsonDataType.String)
+                return FieldObject.ToLiteral(this.Value);
             else if (JsonDataType == JsonDataType.Boolean)
-                return Value.ToLowerInvariant();
-            return Value;
+                return this.Value.ToLowerInvariant();
+            return this.Value;
         }
 
         public override object ToObject()
@@ -703,10 +737,10 @@ namespace GraphView
         public override string ToGraphSON()
         {
             if (this.JsonDataType == JsonDataType.String)
-                return string.Format("{{\"{0}\": \"{1}\"}}", PropertyName, PropertyValue);
+                return string.Format("{{{0}: {1}}}", FieldObject.ToLiteral(this.PropertyName), FieldObject.ToLiteral(this.PropertyValue));
             if (this.JsonDataType == JsonDataType.Boolean)
-                return string.Format("{{\"{0}\": {1}}}", PropertyName, PropertyValue.ToLowerInvariant());
-            return string.Format("{{\"{0}\": {1}}}", PropertyName, PropertyValue);
+                return string.Format("{{{0}: {1}}}", FieldObject.ToLiteral(this.PropertyName), this.PropertyValue.ToLowerInvariant());
+            return string.Format("{{{0}: {1}}}", FieldObject.ToLiteral(this.PropertyName), this.PropertyValue);
         }
     }
 
@@ -803,11 +837,11 @@ namespace GraphView
         {
             StringBuilder vpGraphSonBuilder = new StringBuilder();
             if (this.JsonDataType == JsonDataType.String)
-                vpGraphSonBuilder.AppendFormat("{{\"value\": \"{0}\", \"label\": \"{1}\"", this.PropertyValue, this.PropertyName);
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", FieldObject.ToLiteral(this.PropertyValue), FieldObject.ToLiteral(this.PropertyName));
             else if (this.JsonDataType == JsonDataType.Boolean)
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": \"{1}\"", this.PropertyValue.ToLowerInvariant(), this.PropertyName);
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyValue.ToLowerInvariant(), FieldObject.ToLiteral(this.PropertyName));
             else
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": \"{1}\"", this.PropertyValue, this.PropertyName);
+                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyValue, FieldObject.ToLiteral(this.PropertyName));
 
             bool isFirstMetaproperty = true;
 
@@ -825,11 +859,11 @@ namespace GraphView
                     vpGraphSonBuilder.Append(", ");
 
                 if (value.JsonDataType == JsonDataType.String)
-                    vpGraphSonBuilder.AppendFormat("\"{0}\": \"{1}\"", key, value.PropertyValue);
+                    vpGraphSonBuilder.AppendFormat("{0}: {1}", FieldObject.ToLiteral(key), FieldObject.ToLiteral(value.PropertyValue));
                 else if (value.JsonDataType == JsonDataType.Boolean)
-                    vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue.ToLowerInvariant());
+                    vpGraphSonBuilder.AppendFormat("{0}: {1}", FieldObject.ToLiteral(key), value.PropertyValue.ToLowerInvariant());
                 else
-                    vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue);
+                    vpGraphSonBuilder.AppendFormat("{0}: {1}", FieldObject.ToLiteral(key), value.PropertyValue);
             }
 
             if (!isFirstMetaproperty)
@@ -875,10 +909,10 @@ namespace GraphView
         public override string ToGraphSON()
         {
             if (this.JsonDataType == JsonDataType.String)
-                return string.Format("{{\"key\":\"{0}\", \"value\":\"{1}\"}}", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":{0}, \"value\":{1}}}", FieldObject.ToLiteral(this.PropertyName), FieldObject.ToLiteral(this.PropertyValue));
             if (this.JsonDataType == JsonDataType.Boolean)
-                return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
-            return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":{0}, \"value\":{1}}}", FieldObject.ToLiteral(this.PropertyName), this.PropertyValue.ToLowerInvariant());
+            return string.Format("{{\"key\":{0}, \"value\":{1}}}", FieldObject.ToLiteral(this.PropertyName), this.PropertyValue);
         }
 
         public void Replace(JProperty property)
@@ -951,10 +985,10 @@ namespace GraphView
         public override string ToGraphSON()
         {
             if (this.JsonDataType == JsonDataType.String)
-                return string.Format("{{\"key\":\"{0}\", \"value\":\"{1}\"}}", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":{0}, \"value\":{1}}}", FieldObject.ToLiteral(this.PropertyName), FieldObject.ToLiteral(this.PropertyValue));
             if (this.JsonDataType == JsonDataType.Boolean)
-                return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue.ToLowerInvariant());
-            return string.Format("{{\"key\":\"{0}\", \"value\":{1}}}", this.PropertyName, this.PropertyValue);
+                return string.Format("{{\"key\":{0}, \"value\":{1}}}", FieldObject.ToLiteral(this.PropertyName), this.PropertyValue.ToLowerInvariant());
+            return string.Format("{{\"key\":{0}, \"value\":{1}}}", FieldObject.ToLiteral(this.PropertyName), this.PropertyValue);
         }
 
         public void Replace(JProperty property)
@@ -1045,7 +1079,7 @@ namespace GraphView
         public override string ToGraphSON()
         {
             StringBuilder vpGraphSonBuilder = new StringBuilder();
-            vpGraphSonBuilder.AppendFormat("\"{0}\":[", this.PropertyName);
+            vpGraphSonBuilder.AppendFormat("{0}:[", FieldObject.ToLiteral(this.PropertyName));
 
             bool isFirstVsp = true;
             foreach (VertexSinglePropertyField vsp in this.Multiples.Values)
@@ -1056,7 +1090,7 @@ namespace GraphView
                     vpGraphSonBuilder.Append(", ");
 
                 if (vsp.JsonDataType == JsonDataType.String)
-                    vpGraphSonBuilder.AppendFormat("{{\"value\": \"{0}\"", vsp.PropertyValue);
+                    vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", FieldObject.ToLiteral(vsp.PropertyValue));
                 else if (vsp.JsonDataType == JsonDataType.Boolean)
                     vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", vsp.PropertyValue.ToLowerInvariant());
                 else
@@ -1078,11 +1112,11 @@ namespace GraphView
                             vpGraphSonBuilder.Append(", ");
 
                         if (value.JsonDataType == JsonDataType.String)
-                            vpGraphSonBuilder.AppendFormat("\"{0}\": \"{1}\"", key, value.PropertyValue);
+                            vpGraphSonBuilder.AppendFormat("{0}: {1}", FieldObject.ToLiteral(key), FieldObject.ToLiteral(value.PropertyValue));
                         else if (value.JsonDataType == JsonDataType.Boolean)
-                            vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue);
+                            vpGraphSonBuilder.AppendFormat("{0}: {1}", FieldObject.ToLiteral(key), value.PropertyValue);
                         else
-                            vpGraphSonBuilder.AppendFormat("\"{0}\": {1}", key, value.PropertyValue);
+                            vpGraphSonBuilder.AppendFormat("{0}: {1}", FieldObject.ToLiteral(key), value.PropertyValue);
                     }
                     vpGraphSonBuilder.Append("}");
                 }
@@ -1201,22 +1235,22 @@ namespace GraphView
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("{{\"id\": {0}", this.EdgeProperties["_offset"].ToValue);
             if (this.Label != null) {
-                sb.AppendFormat(", \"label\": \"{0}\"", this.Label);
+                sb.AppendFormat(", \"label\": {0}", FieldObject.ToLiteral(this.Label));
             }
 
             sb.Append(", \"type\": \"edge\"");
 
             if (this.InVLabel != null) {
-                sb.AppendFormat(", \"inVLabel\": \"{0}\"", this.InVLabel);
+                sb.AppendFormat(", \"inVLabel\": {0}", FieldObject.ToLiteral(this.InVLabel));
             }
             if (this.OutVLabel != null) {
-                sb.AppendFormat(", \"outVLabel\": \"{0}\"", this.OutVLabel);
+                sb.AppendFormat(", \"outVLabel\": {0}", FieldObject.ToLiteral(this.OutVLabel));
             }
             if (this.InV != null) {
-                sb.AppendFormat(", \"inV\": \"{0}\"", this.InV);
+                sb.AppendFormat(", \"inV\": {0}", FieldObject.ToLiteral(this.InV));
             }
             if (this.OutV != null) {
-                sb.AppendFormat(", \"outV\": \"{0}\"", this.OutV);
+                sb.AppendFormat(", \"outV\": {0}", FieldObject.ToLiteral(this.OutV));
             }
 
             bool firstProperty = true;
@@ -1247,13 +1281,13 @@ namespace GraphView
                 }
 
                 if (this.EdgeProperties[propertyName].JsonDataType == JsonDataType.String) {
-                    sb.AppendFormat("\"{0}\": \"{1}\"", propertyName, this.EdgeProperties[propertyName].PropertyValue);
+                    sb.AppendFormat("{0}: {1}", FieldObject.ToLiteral(propertyName), FieldObject.ToLiteral(this.EdgeProperties[propertyName].PropertyValue));
                 }
                 else if (this.EdgeProperties[propertyName].JsonDataType == JsonDataType.Boolean) {
-                    sb.AppendFormat("\"{0}\": {1}", propertyName, this.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
+                    sb.AppendFormat("{0}: {1}", FieldObject.ToLiteral(propertyName), this.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
                 }
                 else {
-                    sb.AppendFormat("\"{0}\": {1}", propertyName, this.EdgeProperties[propertyName].PropertyValue);
+                    sb.AppendFormat("{0}: {1}", FieldObject.ToLiteral(propertyName), this.EdgeProperties[propertyName].PropertyValue);
                 }
             }
             if (!firstProperty) {
@@ -1562,13 +1596,13 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("{");
-            sb.AppendFormat("\"id\": \"{0}\"", VertexMetaProperties["id"].PropertyValue);
+            sb.AppendFormat("\"id\": {0}", FieldObject.ToLiteral(VertexMetaProperties["id"].PropertyValue));
 
 
             Debug.Assert(VertexMetaProperties.ContainsKey("label"));
             if (VertexMetaProperties["label"] != null) {
                 sb.Append(", ");
-                sb.AppendFormat("\"label\": \"{0}\"", VertexMetaProperties["label"].PropertyValue);
+                sb.AppendFormat("\"label\": {0}", FieldObject.ToLiteral(VertexMetaProperties["label"].PropertyValue));
             }
 
             sb.Append(", ");
@@ -1645,20 +1679,20 @@ namespace GraphView
 
                             if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
                             {
-                                sb.AppendFormat("\"{0}\": \"{1}\"",
-                                    propertyName,
-                                    edgeField.EdgeProperties[propertyName].PropertyValue);
+                                sb.AppendFormat("{0}: {1}",
+                                    FieldObject.ToLiteral(propertyName),
+                                    FieldObject.ToLiteral(edgeField.EdgeProperties[propertyName].PropertyValue));
                             }
                             else if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.Boolean)
                             {
-                                sb.AppendFormat("\"{0}\": {1}",
-                                    propertyName,
+                                sb.AppendFormat("{0}: {1}",
+                                    FieldObject.ToLiteral(propertyName),
                                     edgeField.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
                             }
                             else
                             {
-                                sb.AppendFormat("\"{0}\": {1}",
-                                    propertyName,
+                                sb.AppendFormat("{0}: {1}",
+                                    FieldObject.ToLiteral(propertyName),
                                     edgeField.EdgeProperties[propertyName].PropertyValue);
                             }
                         }
@@ -1738,20 +1772,20 @@ namespace GraphView
 
                             if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.String)
                             {
-                                sb.AppendFormat("\"{0}\": \"{1}\"",
-                                propertyName,
-                                edgeField.EdgeProperties[propertyName].PropertyValue);
+                                sb.AppendFormat("{0}: {1}",
+                                FieldObject.ToLiteral(propertyName),
+                                FieldObject.ToLiteral(edgeField.EdgeProperties[propertyName].PropertyValue));
                             }
                             else if (edgeField.EdgeProperties[propertyName].JsonDataType == JsonDataType.Boolean)
                             {
-                                sb.AppendFormat("\"{0}\": {1}",
-                                propertyName,
+                                sb.AppendFormat("{0}: {1}",
+                                FieldObject.ToLiteral(propertyName),
                                 edgeField.EdgeProperties[propertyName].PropertyValue.ToLowerInvariant());
                             }
                             else
                             {
-                                sb.AppendFormat("\"{0}\": {1}",
-                                propertyName,
+                                sb.AppendFormat("{0}: {1}",
+                                FieldObject.ToLiteral(propertyName),
                                 edgeField.EdgeProperties[propertyName].PropertyValue);
                             }
                         }
@@ -1855,7 +1889,7 @@ namespace GraphView
         public void ToGraphSON(StringBuilder strBuilder)
         {
             int cnt = 0;
-            strBuilder.Append("\"" + nodeObject.ToValue + "\":{\"key\":");
+            strBuilder.Append(FieldObject.ToLiteral(nodeObject.ToValue) + ":{\"key\":");
             strBuilder.Append(nodeObject.ToGraphSON());
             strBuilder.Append(", \"value\": ");
             strBuilder.Append("{");
