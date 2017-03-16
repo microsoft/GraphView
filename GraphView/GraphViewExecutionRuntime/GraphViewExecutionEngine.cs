@@ -801,7 +801,7 @@ namespace GraphView
             get
             {
                 if (metapropertyName.Equals(KW_PROPERTY_ID))
-                    return new StringField(this.PropertyId);
+                    return new ValuePropertyField(KW_PROPERTY_ID, this.PropertyId, JsonDataType.String, this);
 
                 ValuePropertyField propertyField;
                 this.MetaProperties.TryGetValue(metapropertyName, out propertyField);
