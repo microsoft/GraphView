@@ -260,6 +260,10 @@ namespace GraphView
         {
             {"last", "GremlinKeyword.Pop.last"},
             {"first", "GremlinKeyword.Pop.first"},
+
+            {"decr", "GremlinKeyword.Order.Decr"},
+            {"incr", "GremlinKeyword.Order.Incr"},
+            {"shuffle", "GremlinKeyword.Order.Shuffle"}
         };
     }
 }

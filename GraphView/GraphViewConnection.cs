@@ -432,6 +432,7 @@ namespace GraphView
             if (queryOptions == null) {
                 queryOptions = new FeedOptions {
                     MaxItemCount = -1,
+                    EnableScanInQuery = true,
                 };
                 if (this.CollectionType == CollectionType.PARTITIONED) {
                     queryOptions.EnableCrossPartitionQuery = true;
