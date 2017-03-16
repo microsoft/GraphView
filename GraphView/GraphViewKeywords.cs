@@ -25,6 +25,7 @@
 // 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace GraphView
 {
@@ -40,5 +41,9 @@ namespace GraphView
                 "outdegree"
 #endif
         };
+
+        public const string EDGE_ID = "id";
+        public const string PROPERTY_ID = "id";
+
     }
 }

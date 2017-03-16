@@ -297,8 +297,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             {
                 string edgeId = this.ConvertToEdgeId(GraphViewCommand, "marko", "knows", "vadas");
 
-                //var traversal = GraphViewCommand.g().E().HasId(edgeId).HasLabel("knows");
-                var traversal = GraphViewCommand.g().E().Has("_edgeId", edgeId).HasLabel("knows");
+                var traversal = GraphViewCommand.g().E().HasId(edgeId).HasLabel("knows");
+                //var traversal = GraphViewCommand.g().E().Has("_edgeId", edgeId).HasLabel("knows");
 
                 var result = traversal.Label().Next();
                 Assert.AreEqual(1, result.Count);
@@ -392,11 +392,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 string edgeId1 = this.ConvertToEdgeId(GraphViewCommand, "josh", "created", "lop");
                 string edgeId2 = this.ConvertToEdgeId(GraphViewCommand, "josh", "created", "ripple");
 
-                //var traversal = GraphViewCommand.g().E().HasId(edgeId1).OutV().OutE().HasId(edgeId2);
-                var traversal = GraphViewCommand.g().E().Has("_edgeId", edgeId1).OutV().OutE().Has("_edgeId", edgeId2);
+                var traversal = GraphViewCommand.g().E().HasId(edgeId1).OutV().OutE().HasId(edgeId2);
+                //var traversal = GraphViewCommand.g().E().Has("_edgeId", edgeId1).OutV().OutE().Has("_edgeId", edgeId2);
 
-                //var result = traversal.Id().Next();
-                var result = traversal.Values("_edgeId").Next();
+                var result = traversal.Id().Next();
+                //var result = traversal.Values("_edgeId").Next();
 
                 Assert.AreEqual(1, result.Count);
                 Assert.AreEqual(edgeId2, result.FirstOrDefault());

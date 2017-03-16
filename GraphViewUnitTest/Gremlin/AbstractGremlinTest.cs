@@ -64,7 +64,7 @@ namespace GraphViewUnitTest.Gremlin
             OutputFormat originalFormat = GraphViewCommand.OutputFormat;
             GraphViewCommand.OutputFormat = OutputFormat.Regular;
 
-            string edgeId = GraphViewCommand.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("_edgeId").Next().FirstOrDefault();
+            string edgeId = GraphViewCommand.g().V().Has("name", outVertexName).OutE(edgeLabel).As("e").InV().Has("name", inVertexName).Select("e").Values("id").Next().FirstOrDefault();
 
             GraphViewCommand.OutputFormat = originalFormat;
 

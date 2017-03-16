@@ -65,7 +65,7 @@ namespace GraphView
         public bool UseReverseEdges { get; set; }
 
         /// <summary>
-        /// Whether to generate "_edgeId" for edgeObject
+        /// Whether to generate "id" for edgeObject
         /// </summary>
         public bool GenerateEdgeId { get; } = true;
 

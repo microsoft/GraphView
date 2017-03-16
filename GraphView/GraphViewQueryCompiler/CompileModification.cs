@@ -45,7 +45,7 @@ namespace GraphView
 
                 propArray.Add(new JObject {
                     ["_value"] = vertexProperty.Value.ToJValue(),
-                    ["_propId"] = GraphViewConnection.GenerateDocumentId(),
+                    [GraphViewKeywords.PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
                     ["_meta"] = meta,
                 });
                 //GraphViewJsonCommand.AppendVertexSinglePropertyToVertex(vertexObject);
@@ -126,7 +126,7 @@ namespace GraphView
     //                    nodeJsonDocument[name] = new JArray {
     //                        new JObject {
     //                            ["_value"] = value,
-    //                            ["_propId"] = GraphViewConnection.GenerateDocumentId(),
+    //                            [GraphViewKeywords.PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
     //                            ["_meta"] = new JObject(),
     //                        },
     //                    };

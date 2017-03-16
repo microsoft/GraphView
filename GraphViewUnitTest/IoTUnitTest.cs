@@ -50,7 +50,7 @@ namespace GraphViewUnitTest
                 ConfigurationManager.AppSettings["DocDBCollectionModern"]);
             connection.ResetCollection();
             graph = new GraphViewCommand(connection);
-            //graph.OutputFormat = OutputFormat.GraphSON;
+            graph.OutputFormat = OutputFormat.GraphSON;
             //graph.UseReverseEdges = false;
         }
 

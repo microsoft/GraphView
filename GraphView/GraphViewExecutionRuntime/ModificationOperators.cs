@@ -170,7 +170,7 @@ namespace GraphView
 
             JArray vertexProperty = (JArray)vertexObject[vp.PropertyName];
             vertexProperty
-                .First(singleProperty => (string)singleProperty["_propId"] == vp.PropertyId)
+                .First(singleProperty => (string)singleProperty[GraphViewKeywords.PROPERTY_ID] == vp.PropertyId)
                 .Remove();
             if (vertexObject.Count == 0) {
                 vertexProperty.Remove();
@@ -199,7 +199,7 @@ namespace GraphView
             Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
 
             JToken propertyJToken = ((JArray) vertexObject[vertexSingleProperty.PropertyName])
-                .First(singleProperty => (string) singleProperty["_propId"] == vertexSingleProperty.PropertyId);
+                .First(singleProperty => (string) singleProperty[GraphViewKeywords.PROPERTY_ID] == vertexSingleProperty.PropertyId);
 
             JObject metaPropertyJObject = (JObject) propertyJToken?["_meta"];
 
@@ -337,7 +337,7 @@ namespace GraphView
                 }
                 JObject singleProperty = new JObject {
                     ["_value"] = property.Value.ToJValue(),
-                    ["_propId"] = GraphViewConnection.GenerateDocumentId(),
+                    [GraphViewKeywords.PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
                     ["_meta"] = meta,
                 };
 
@@ -396,7 +396,7 @@ namespace GraphView
             string vertexId = vp.VertexProperty.Vertex.VertexId;
             JObject vertexDocument = this.Connection.RetrieveDocumentById(vertexId);
             JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
-                .First(single => (string) single["_propId"] == vp.PropertyId);
+                .First(single => (string) single[GraphViewKeywords.PROPERTY_ID] == vp.PropertyId);
             JObject meta = (JObject)singleProperty["_meta"];
 
             foreach (WPropertyExpression property in this.updateProperties) {
@@ -905,7 +905,7 @@ namespace GraphView
     //                            Value = new JArray {
     //                                new JObject {
     //                                    ["_value"] = value,
-    //                                    ["_propId"] = propertyId,
+    //                                    [GraphViewKeywords.PROPERTY_ID] = propertyId,
     //                                    ["_meta"] = new JObject(),
     //                                }
     //                            }

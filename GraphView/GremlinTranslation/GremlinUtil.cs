@@ -66,8 +66,7 @@ namespace GraphView
 
         internal static bool IsVertexProperty(string property)
         {
-            if (property == GremlinKeyword.NodeID
-                || property == GremlinKeyword.EdgeAdj
+            if (property == GremlinKeyword.EdgeAdj
                 || property == GremlinKeyword.ReverseEdgeAdj)
             {
                 return true;
@@ -77,8 +76,7 @@ namespace GraphView
 
         internal static bool IsEdgeProperty(string property)
         {
-            if (property == GremlinKeyword.EdgeID
-                || property == GremlinKeyword.EdgeSourceV
+            if (property == GremlinKeyword.EdgeSourceV
                 || property == GremlinKeyword.EdgeSinkV
                 || property == GremlinKeyword.EdgeOtherV
             )

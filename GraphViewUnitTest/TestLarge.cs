@@ -70,6 +70,7 @@ namespace GraphViewUnitTest
 
 
         [TestMethod]
+        [Ignore]  // Ignored because this test is TOO slow!
         public void TestAddHeavyEdges_LargeQuantity()
         {
             const int EDGE_COUNT = 100;

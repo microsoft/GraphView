@@ -729,11 +729,11 @@ namespace GraphView
                   vertexSinglePropertyObject["_value"].ToString(), 
                   JsonDataTypeHelper.GetJsonDataType(vertexSinglePropertyObject["_value"].Type))
         {
-            Debug.Assert(vertexSinglePropertyObject["_propId"] != null);
+            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID] != null);
 
             this.VertexProperty = vertexPropertyField;
 
-            this.PropertyId = (string)vertexSinglePropertyObject["_propId"];
+            this.PropertyId = (string)vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID];
             this.Replace(vertexSinglePropertyObject);
         }
 
@@ -766,15 +766,15 @@ namespace GraphView
             /* Schema of vertexSinglePropertyObject: 
                 {
                   "_value": ...,
-                  "_propId": <GUID>
+                  GraphViewKeywords.PROPERTY_ID: <GUID>
                   "_meta": { 
                     "K1": "V1", 
                     ...
                   }
                 }
             */
-            Debug.Assert(vertexSinglePropertyObject["_propId"] != null);
-            Debug.Assert((string)vertexSinglePropertyObject["_propId"] == this.PropertyId);
+            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID] != null);
+            Debug.Assert((string)vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID] == this.PropertyId);
 
             JValue value = (JValue) vertexSinglePropertyObject["_value"];
             this.PropertyValue = value.ToString();
@@ -977,7 +977,7 @@ namespace GraphView
 
     internal class VertexPropertyField : PropertyField
     {
-        // <_propId, single_property_field>
+        // <id, single_property_field>
         public Dictionary<string, VertexSinglePropertyField> Multiples { get; } = new Dictionary<string, VertexSinglePropertyField>();
 
         public VertexField Vertex { get; }
@@ -1118,7 +1118,7 @@ namespace GraphView
               <propName>: [
                 {
                   "_value": "Property Value",
-                  "_propId": <GUID>
+                  GraphViewKeywords.PROPERTY_ID: <GUID>
                   "_meta": { ... }
                 }, 
                 ...
@@ -1133,10 +1133,10 @@ namespace GraphView
             HashSet<string> metaPropIdToRemove = new HashSet<string>(this.Multiples.Keys);
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
                 Debug.Assert(vertexPropertyObject["_value"] is JValue);
-                Debug.Assert(vertexPropertyObject["_propId"] is JValue);
+                Debug.Assert(vertexPropertyObject[GraphViewKeywords.PROPERTY_ID] is JValue);
                 Debug.Assert(vertexPropertyObject["_meta"] is JObject);
 
-                string propId = (string) vertexPropertyObject["_propId"];
+                string propId = (string) vertexPropertyObject[GraphViewKeywords.PROPERTY_ID];
                 if (metaPropIdToRemove.Remove(propId)) {
                     // This single-property should be replaced
                     this.Multiples[propId].Replace(vertexPropertyObject);
@@ -1233,7 +1233,7 @@ namespace GraphView
                 case "_srcVLabel":
                 case "_sinkV":
                 case "_sinkVLabel":
-                case "_edgeId":
+                case GraphViewKeywords.EDGE_ID:
 
                 //case GremlinKeyword.EdgeSourceV:
                 //case GremlinKeyword.EdgeSinkV:

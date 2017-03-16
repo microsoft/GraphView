@@ -288,7 +288,7 @@ namespace GraphView
                     {
                         // Reserved properties for meta-data
                         case "label":
-                        case "_edgeId":
+                        case GraphViewKeywords.EDGE_ID:
                         case "_offset":
                         case "_srcV":
                         case "_sinkV":
@@ -416,7 +416,7 @@ namespace GraphView
 
                 if (this.includingMetaValue)
                 {
-                    valueMap.Add(new StringField("id"), new StringField(edgeField["_edgeId"].ToValue));
+                    valueMap.Add(new StringField("id"), new StringField(edgeField[GraphViewKeywords.EDGE_ID].ToValue));
                     valueMap.Add(new StringField("label"), new StringField(edgeField.Label));
                 }
 
@@ -447,7 +447,7 @@ namespace GraphView
                         switch (propertyName)
                         {
                             // Reserved properties for meta-data
-                            case "_edgeId":
+                            case GraphViewKeywords.EDGE_ID:
                             case "_offset":
                             case "_srcV":
                             case "_sinkV":
@@ -608,7 +608,7 @@ namespace GraphView
                         switch (propertyName)
                         {
                             // Reserved properties for meta-data
-                            case "_edgeId":
+                            case GraphViewKeywords.EDGE_ID:
                             case "_offset":
                             case "_srcV":
                             case "_sinkV":
@@ -712,7 +712,7 @@ namespace GraphView
                     switch (propertyName)
                     {
                         // Reserved properties for meta-data
-                        case "_edgeId":
+                        case GraphViewKeywords.EDGE_ID:
                         case "_offset":
                         case "_srcV":
                         case "_sinkV":

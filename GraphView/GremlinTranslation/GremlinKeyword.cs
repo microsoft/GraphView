@@ -13,7 +13,7 @@ namespace GraphView
 
         public const string Label = "label";
         public const string SinkLabel = "_sinkLabel";
-        public const string EdgeID = "_edgeId";
+        public const string EdgeID = "id";
         public const string EdgeReverseID = "_reverse_ID";
         public const string EdgeSourceV = "_source";
         public const string EdgeSinkV = "_sink";

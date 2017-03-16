@@ -96,8 +96,8 @@ namespace GraphView
             // Add "id" property to edgeObject if desired
             if (connection.GenerateEdgeId) {
                 string guid = GraphViewConnection.GenerateDocumentId();
-                outEdgeObject["_edgeId"] = guid;
-                inEdgeObject["_edgeId"] = guid;
+                outEdgeObject[GraphViewKeywords.EDGE_ID] = guid;
+                inEdgeObject[GraphViewKeywords.EDGE_ID] = guid;
             }
 
             string srcLabel = srcVertexObject["label"]?.ToString();
