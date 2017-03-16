@@ -10,6 +10,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Globalization;
 using Newtonsoft.Json;
+using static GraphView.GraphViewKeywords;
 
 // Add DocumentDB references
 
@@ -22,10 +23,10 @@ namespace GraphView
             VertexField vertexField = new VertexField(connection);
 
             string vertexId = (string)vertexObject["id"];
-            string vertexLabel = (string)vertexObject["label"];
+            string vertexLabel = (string)vertexObject[KW_VERTEX_LABEL];
 
             //
-            // "_edge" & "_reverse_edge" could be either JObject or JArray:
+            // "_edge" & KW_VERTEX_REV_EDGE could be either JObject or JArray:
             // - For vertexes that have numerous edges (too large to be filled in one document),
             //     they are JObject indicating the documents storing their in/out edges.
             //     The schema is defined in Schema.txt
@@ -37,7 +38,7 @@ namespace GraphView
             foreach (JProperty property in vertexObject.Properties()) {
 
                 // For meta-properties
-                // "_id", "label", "_nextEdgeOffset", "_partition"
+                // "id", "label", "nextEdgeOffset", "partition"
                 if (VertexField.IsVertexMetaProperty(property.Name)) {
                     vertexField.VertexMetaProperties.Add(property.Name, new ValuePropertyField(property, vertexField));
                     continue;
@@ -52,10 +53,10 @@ namespace GraphView
                 case "_ts":
                     continue;
 
-                case "_edge": // "_edge"
+                case KW_VERTEX_EDGE: // "_edge"
                     forwardAdjList = property.Value;
                     break;
-                case "_reverse_edge": // "_reverse_edge"
+                case KW_VERTEX_REV_EDGE: // "_reverse_edge"
                     backwardAdjList = property.Value;
                     break;
 
@@ -103,7 +104,7 @@ namespace GraphView
             AdjacencyListField result = new AdjacencyListField();
 
             foreach (JObject edgeObject in edgeArray.Children<JObject>()) {
-                result.AddEdgeField(outVId, (long)edgeObject["_offset"],
+                result.AddEdgeField(outVId, (long)edgeObject[KW_EDGE_OFFSET],
                                     EdgeField.ConstructForwardEdgeField(outVId, outVLabel, null, edgeObject));
             }
 
@@ -116,8 +117,8 @@ namespace GraphView
             AdjacencyListField result = new AdjacencyListField();
 
             foreach (JObject edgeObject in edgeArray.Children<JObject>()) {
-                result.AddEdgeField((string)edgeObject["_srcV"],  // for backward edge, this is the srcVertexId
-                                    (long)edgeObject["_offset"],
+                result.AddEdgeField((string)edgeObject[KW_EDGE_SRCV],  // for backward edge, this is the srcVertexId
+                                    (long)edgeObject[KW_EDGE_OFFSET],
                                     EdgeField.ConstructBackwardEdgeField(inVId, inVLabel, null, edgeObject));
             }
 
@@ -144,7 +145,7 @@ namespace GraphView
             Debug.Assert(edgeDocuments != null, "edgeDocuments != null");
 
             foreach (JObject edgeDocument in edgeDocuments.Children<JObject>()) {
-                string edgeDocID = (string)(JValue)edgeDocument["id"];
+                string edgeDocID = (string)(JValue)edgeDocument[KW_DOC_ID];
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocID), "!string.IsNullOrEmpty(edgeDocID)");
 
                 //
@@ -162,7 +163,7 @@ namespace GraphView
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
                     result.AddEdgeField(outVId,
-                                        (long)edgeObject["_offset"],
+                                        (long)edgeObject[KW_EDGE_OFFSET],
                                         EdgeField.ConstructForwardEdgeField(outVId, outVLabel, edgeDocID, edgeObject));
                 }
             }
@@ -173,7 +174,7 @@ namespace GraphView
 
         /// <summary>
         /// For a vertex with lots of edges (thus can't be filled into one document), 
-        /// "_reverse_edge" is JObject indicating the documents storing its (backward) edges.
+        /// KW_VERTEX_REV_EDGE is JObject indicating the documents storing its (backward) edges.
         /// For the json schema of <paramref name="edgeContainer"/>, see Schema.txt
         /// </summary>
         /// <param name="inVId"></param>
@@ -191,7 +192,7 @@ namespace GraphView
             Debug.Assert(edgeDocuments != null, "edgeDocuments != null");
 
             foreach (JObject edgeDocument in edgeDocuments.Children<JObject>()) {
-                string edgeDocID = (string)(JValue)edgeDocument["id"];
+                string edgeDocID = (string)(JValue)edgeDocument[KW_DOC_ID];
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocID), "!string.IsNullOrEmpty(edgeDocID)");
 
                 //
@@ -208,8 +209,8 @@ namespace GraphView
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 foreach (JObject edgeObject in edgesArray.Children<JObject>()) {
-                    result.AddEdgeField((string)edgeObject["_srcV"],
-                                        (long)edgeObject["_offset"],
+                    result.AddEdgeField((string)edgeObject[KW_EDGE_SRCV],
+                                        (long)edgeObject[KW_EDGE_OFFSET],
                                         EdgeField.ConstructBackwardEdgeField(inVId, inVLabel, edgeDocID, edgeObject));
                 }
             }
@@ -773,11 +774,11 @@ namespace GraphView
                   vertexSinglePropertyObject["_value"].ToString(), 
                   JsonDataTypeHelper.GetJsonDataType(vertexSinglePropertyObject["_value"].Type))
         {
-            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID] != null);
+            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] != null);
 
             this.VertexProperty = vertexPropertyField;
 
-            this.PropertyId = (string)vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID];
+            this.PropertyId = (string)vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID];
             this.Replace(vertexSinglePropertyObject);
         }
 
@@ -799,7 +800,7 @@ namespace GraphView
         {
             get
             {
-                if (metapropertyName.Equals(GraphViewKeywords.PROPERTY_ID))
+                if (metapropertyName.Equals(KW_PROPERTY_ID))
                     return new StringField(this.PropertyId);
 
                 ValuePropertyField propertyField;
@@ -813,15 +814,15 @@ namespace GraphView
             /* Schema of vertexSinglePropertyObject: 
                 {
                   "_value": ...,
-                  GraphViewKeywords.PROPERTY_ID: <GUID>
+                  GraphViewKeywords.KW_PROPERTY_ID: <GUID>
                   "_meta": { 
                     "K1": "V1", 
                     ...
                   }
                 }
             */
-            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID] != null);
-            Debug.Assert((string)vertexSinglePropertyObject[GraphViewKeywords.PROPERTY_ID] == this.PropertyId);
+            Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] != null);
+            Debug.Assert((string)vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] == this.PropertyId);
 
             JValue value = (JValue) vertexSinglePropertyObject["_value"];
             this.PropertyValue = value.ToString();
@@ -1165,7 +1166,7 @@ namespace GraphView
               <propName>: [
                 {
                   "_value": "Property Value",
-                  GraphViewKeywords.PROPERTY_ID: <GUID>
+                  KW_PROPERTY_ID: <GUID>
                   "_meta": { ... }
                 }, 
                 ...
@@ -1180,10 +1181,10 @@ namespace GraphView
             HashSet<string> metaPropIdToRemove = new HashSet<string>(this.Multiples.Keys);
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
                 Debug.Assert(vertexPropertyObject["_value"] is JValue);
-                Debug.Assert(vertexPropertyObject[GraphViewKeywords.PROPERTY_ID] is JValue);
+                Debug.Assert(vertexPropertyObject[GraphViewKeywords.KW_PROPERTY_ID] is JValue);
                 Debug.Assert(vertexPropertyObject["_meta"] is JObject);
 
-                string propId = (string) vertexPropertyObject[GraphViewKeywords.PROPERTY_ID];
+                string propId = (string) vertexPropertyObject[GraphViewKeywords.KW_PROPERTY_ID];
                 if (metaPropIdToRemove.Remove(propId)) {
                     // This single-property should be replaced
                     this.Multiples[propId].Replace(vertexPropertyObject);
@@ -1245,13 +1246,13 @@ namespace GraphView
 
         public override string ToString()
         {
-            return String.Format("e[{0}]{1}({2})-{3}->{4}({5})", this.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue, this.OutV, this.OutVLabel, this.Label, this.InV, this.InVLabel);
+            return String.Format("e[{0}]{1}({2})-{3}->{4}({5})", this.EdgeProperties[KW_EDGE_ID].ToValue, this.OutV, this.OutVLabel, this.Label, this.InV, this.InVLabel);
         }
 
         public override string ToGraphSON()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{{\"id\": \"{0}\"", this.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue);
+            sb.AppendFormat("{{\"id\": \"{0}\"", this.EdgeProperties[KW_EDGE_ID].ToValue);
             if (this.Label != null) {
                 sb.AppendFormat(", \"label\": {0}", FieldObject.ToLiteral(this.Label));
             }
@@ -1274,13 +1275,13 @@ namespace GraphView
             bool firstProperty = true;
             foreach (string propertyName in this.EdgeProperties.Keys) {
                 switch (propertyName) {
-                case "label":
-                case "_offset":
-                case "_srcV":
-                case "_srcVLabel":
-                case "_sinkV":
-                case "_sinkVLabel":
-                case GraphViewKeywords.EDGE_ID:
+                case KW_EDGE_LABEL:
+                case KW_EDGE_OFFSET:
+                case KW_EDGE_SRCV:
+                case KW_EDGE_SRCV_LABEL:
+                case KW_EDGE_SINKV:
+                case KW_EDGE_SINKV_LABEL:
+                case KW_EDGE_ID:
 
                 //case GremlinKeyword.EdgeSourceV:
                 //case GremlinKeyword.EdgeSinkV:
@@ -1341,20 +1342,20 @@ namespace GraphView
                 OutV = outVId,
                 OutVLabel = outVLabel,
                 EdgeDocID = edgeDocID,
-                Offset = (long)edgeObject["_offset"],
+                Offset = (long)edgeObject[KW_EDGE_OFFSET],
             };
 
             foreach (JProperty property in edgeObject.Properties()) {
                 edgeField.EdgeProperties.Add(property.Name, new EdgePropertyField(property, edgeField));
 
                 switch (property.Name) {
-                case "_sinkV": // "_sinkV"
+                case KW_EDGE_SINKV: // "_sinkV"
                     edgeField.InV = property.Value.ToString();
                     break;
-                case "_sinkVLabel": // "_sinkVLabel"
+                case KW_EDGE_SINKV_LABEL: // "_sinkVLabel"
                     edgeField.InVLabel = property.Value.ToString();
                     break;
-                case "label":
+                case KW_EDGE_LABEL:
                     edgeField.Label = property.Value.ToString();
                     break;
                 }
@@ -1369,20 +1370,20 @@ namespace GraphView
                 InV = inVId,
                 InVLabel = inVLabel,
                 EdgeDocID = edgeDocID,
-                Offset = (long)edgeObject["_offset"],
+                Offset = (long)edgeObject[KW_EDGE_OFFSET],
             };
 
             foreach (JProperty property in edgeObject.Properties()) {
                 edgeField.EdgeProperties.Add(property.Name, new EdgePropertyField(property, edgeField));
 
                 switch (property.Name) {
-                case "_srcV":
+                case KW_EDGE_SRCV:
                     edgeField.OutV = property.Value.ToString();
                     break;
-                case "_srcVLabel":
+                case KW_EDGE_SRCV_LABEL:
                     edgeField.OutVLabel = property.Value.ToString();
                     break;
-                case "label":
+                case KW_EDGE_LABEL:
                     edgeField.Label = property.Value.ToString();
                     break;
                 }
@@ -1465,10 +1466,10 @@ namespace GraphView
         public static bool IsVertexMetaProperty(string propertyName)
         {
             switch (propertyName) {
-            case "id":
-            case "_partition":
-            case "label":
-            case "_nextEdgeOffset":
+            case KW_DOC_ID:
+            case KW_DOC_PARTITION:
+            case KW_VERTEX_LABEL:
+            case KW_VERTEX_NEXTOFFSET:
                 return true;
             default:
                 return false;
@@ -1480,11 +1481,11 @@ namespace GraphView
 
         /// <summary>
         /// [Property Name, ValuePropertyField] (that is, "id", "_nextEdgeOffset", "label", "_partition")
-        /// "_edge" and "_reverse_edge" is not included
+        /// "_edge" and "_reverse_edge" are not included
         /// </summary>
         public Dictionary<string, ValuePropertyField> VertexMetaProperties { get; } = new Dictionary<string, ValuePropertyField>();
 
-        public string VertexId => this.VertexMetaProperties["id"].PropertyValue;
+        public string VertexId => this.VertexMetaProperties[KW_DOC_ID].PropertyValue;
 
 
         /// <summary>
@@ -1521,10 +1522,10 @@ namespace GraphView
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
                     return this;
 
-                if (propertyName.Equals("_edge", StringComparison.OrdinalIgnoreCase))
+                if (propertyName.Equals(KW_VERTEX_EDGE, StringComparison.OrdinalIgnoreCase))
                     return AdjacencyList;
 
-                if (propertyName.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase))
+                if (propertyName.Equals(KW_VERTEX_REV_EDGE, StringComparison.OrdinalIgnoreCase))
                     return RevAdjacencyList;
 
                 VertexPropertyField propertyField;
@@ -1614,13 +1615,13 @@ namespace GraphView
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("{");
-            sb.AppendFormat("\"id\": {0}", FieldObject.ToLiteral(VertexMetaProperties["id"].PropertyValue));
+            sb.AppendFormat("\"id\": {0}", FieldObject.ToLiteral(VertexMetaProperties[KW_DOC_ID].PropertyValue));
 
 
-            Debug.Assert(VertexMetaProperties.ContainsKey("label"));
-            if (VertexMetaProperties["label"] != null) {
+            Debug.Assert(VertexMetaProperties.ContainsKey(KW_VERTEX_LABEL));
+            if (VertexMetaProperties[KW_VERTEX_LABEL] != null) {
                 sb.Append(", ");
-                sb.AppendFormat("\"label\": {0}", FieldObject.ToLiteral(VertexMetaProperties["label"].PropertyValue));
+                sb.AppendFormat("\"label\": {0}", FieldObject.ToLiteral(VertexMetaProperties[KW_VERTEX_LABEL].PropertyValue));
             }
 
             sb.Append(", ");
@@ -1666,7 +1667,7 @@ namespace GraphView
 
                         sb.Append("{");
                         sb.AppendFormat("\"id\": \"{0}\", ", 
-                            edgeField.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue);
+                            edgeField.EdgeProperties[KW_EDGE_ID].ToValue);
                         sb.AppendFormat("\"outV\": \"{0}\"", edgeField.OutV);
 
                         bool firstInEProperty = true;
@@ -1674,16 +1675,16 @@ namespace GraphView
                         {
                             switch(propertyName)
                             {
-                            case GraphViewKeywords.EDGE_ID:
-                            case "label":
-                            case "_offset":
-                            case "_srcV":
-                            case "_sinkV":
-                            case "_srcVLabel":
-                            case "_sinkVLabel":
-                                    continue;
-                                default:
-                                    break;
+                            case KW_EDGE_ID:
+                            case KW_EDGE_LABEL:
+                            case KW_EDGE_OFFSET:
+                            case KW_EDGE_SRCV:
+                            case KW_EDGE_SINKV:
+                            case KW_EDGE_SRCV_LABEL:
+                            case KW_EDGE_SINKV_LABEL:
+                                continue;
+                            default:
+                                break;
                             }
 
                             if (firstInEProperty)
@@ -1760,7 +1761,7 @@ namespace GraphView
 
                         sb.Append("{");
                         sb.AppendFormat("\"id\": \"{0}\", ", 
-                            edgeField.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue);
+                        edgeField.EdgeProperties[KW_EDGE_ID].ToValue);
                         sb.AppendFormat("\"inV\": \"{0}\"", edgeField.InV);
 
                         bool firstOutEProperty = true;
@@ -1768,15 +1769,15 @@ namespace GraphView
                         {
                             switch (propertyName)
                             {
-                            case GraphViewKeywords.EDGE_ID:
-                            case "label":
-                            case "_offset":
-                            case "_srcV":
-                            case "_sinkV":
-                            case "_srcVLabel":
-                            case "_sinkVLabel":
+                            case KW_EDGE_ID:
+                            case KW_EDGE_LABEL:
+                            case KW_EDGE_OFFSET:
+                            case KW_EDGE_SRCV:
+                            case KW_EDGE_SINKV:
+                            case KW_EDGE_SRCV_LABEL:
+                            case KW_EDGE_SINKV_LABEL:
                                 continue;
-                                default:
+                            default:
                                     break;
                             }
 
@@ -1826,12 +1827,12 @@ namespace GraphView
                 string propertyName = kvp.Key;
                 switch (propertyName)
                 {
-                    case "id":
-                    case "label":
-                    case "_partition":
-                    case "_edge":
-                    case "_reverse_edge":
-                    case "_nextEdgeOffset":
+                    case KW_DOC_ID:
+                    case KW_DOC_PARTITION:
+                    case KW_VERTEX_LABEL:
+                    case KW_VERTEX_EDGE:
+                    case KW_VERTEX_REV_EDGE:
+                    case KW_VERTEX_NEXTOFFSET:
                         continue;
                     default:
                         break;
@@ -2096,10 +2097,22 @@ namespace GraphView
     internal class GraphViewReservedProperties
     {
         internal static ReadOnlyCollection<string> ReservedNodeProperties { get; } = 
-            new ReadOnlyCollection<string>(new List<string> { "id", "label", "_edge", "_reverse_edge", "*" });
+            new ReadOnlyCollection<string>(new List<string> {
+                GremlinKeyword.NodeID,
+                GremlinKeyword.Label,
+                GremlinKeyword.EdgeAdj,
+                GremlinKeyword.ReverseEdgeAdj,
+                GremlinKeyword.Star,
+            });
 
         internal static ReadOnlyCollection<string> ReservedEdgeProperties { get; } =
-            new ReadOnlyCollection<string>(new List<string> {"_source", "_sink", "_other", "_offset", "*"});
+            new ReadOnlyCollection<string>(new List<string> {
+                GremlinKeyword.EdgeSourceV,
+                GremlinKeyword.EdgeSinkV,
+                GremlinKeyword.EdgeOtherV,
+                GremlinKeyword.EdgeOffset,
+                GremlinKeyword.Star,
+            });
     }
 
     /// <summary>

@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -63,10 +64,10 @@ namespace GraphView
         {
             if (string.IsNullOrEmpty(vertexQuery.WhereSearchCondition))
             {
-                vertexQuery.WhereSearchCondition = $"{vertexQuery.Alias}.id = {vertexQuery.Alias}._partition";
+                vertexQuery.WhereSearchCondition = $"{vertexQuery.Alias}.{KW_DOC_ID} = {vertexQuery.Alias}.{KW_DOC_PARTITION}";
             }
             else {
-                vertexQuery.WhereSearchCondition = $"({vertexQuery.WhereSearchCondition}) AND ({vertexQuery.Alias}.id = {vertexQuery.Alias}._partition)";
+                vertexQuery.WhereSearchCondition = $"({vertexQuery.WhereSearchCondition}) AND ({vertexQuery.Alias}.{KW_DOC_ID} = {vertexQuery.Alias}.{KW_DOC_PARTITION})";
             }
 
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
@@ -107,7 +108,7 @@ namespace GraphView
 
             foreach (dynamic dynamicItem in items) {
                 JObject vertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
-                string vertexId = (string)vertexObject["id"];
+                string vertexId = (string)vertexObject[KW_DOC_ID];
                 if (!gotVertexIds.Add(vertexId)) {
                     continue;
                 }
@@ -120,7 +121,7 @@ namespace GraphView
                 }
                 else {
                     // If no edge spilling, return them first
-                    VertexField vertexField = this.Connection.VertexCache.GetVertexField((string)vertexObject["id"], vertexObject);
+                    VertexField vertexField = this.Connection.VertexCache.GetVertexField((string)vertexObject[KW_DOC_ID], vertexObject);
                     yield return makeRawRecord(vertexField);
                 }
 
@@ -145,7 +146,7 @@ namespace GraphView
                 //    string edgeOffset = item[properties[i++]].ToString();
                 //    long physicalOffset = (long)item[properties[i++]];
                 //    string adjType = item[properties[i++]].ToString();
-                //    //var isReversedAdjList = adjType.Equals("_reverse_edge", StringComparison.OrdinalIgnoreCase);
+                //    //var isReversedAdjList = adjType.Equals(KW_VERTEX_REV_EDGE, StringComparison.OrdinalIgnoreCase);
 
                 //    EdgeField edgeField = (vertexObject[adjType] as AdjacencyListField).GetEdgeField(source, physicalOffset);
 
@@ -158,15 +159,15 @@ namespace GraphView
                 //    for (; i < endOfEdgeIndex; i++)
                 //        rawRecord.Append(edgeField[properties[i]]);
 
-                //    //edgeField.Label = edgeField["label"]?.ToValue;
+                //    //edgeField.Label = edgeField[KW_EDGE_LABEL]?.ToValue;
                 //    //edgeField.InV = source;
                 //    //edgeField.OutV = sink;
                 //    //edgeField.InVLabel = isReversedAdjList
-                //    //    ? edgeField["_sinkLabel"]?.ToValue
-                //    //    : vertexObject["label"]?.ToValue;
+                //    //    ? edgeField[KW_EDGE_SINKV_LABEL]?.ToValue
+                //    //    : vertexObject[KW_VERTEX_LABEL]?.ToValue;
                 //    //edgeField.OutVLabel = isReversedAdjList
-                //    //    ? vertexObject["label"]?.ToValue
-                //    //    : edgeField["_sinkLabel"]?.ToValue;
+                //    //    ? vertexObject[KW_VERTEX_LABEL]?.ToValue
+                //    //    : edgeField[KW_EDGE_SINKV_LABEL]?.ToValue;
 
                 //    endOfEdgeIndex = projectedColumnsType.FindIndex(i,
                 //        e => e == ColumnGraphType.EdgeSource);
@@ -221,7 +222,7 @@ namespace GraphView
                         edgeDict.Add(vertexId, edgeDocSet);
                     }
 
-                    edgeDocSet.Add((string)edgeDocument["id"], edgeDocument);
+                    edgeDocSet.Add((string)edgeDocument[KW_EDGE_ID], edgeDocument);
                 }
 
                 foreach (KeyValuePair<string, Dictionary<string, JObject>> pair in edgeDict) {

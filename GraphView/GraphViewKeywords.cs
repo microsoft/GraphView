@@ -25,25 +25,45 @@
 // 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace GraphView
 {
     internal static class GraphViewKeywords
     {
-        public static HashSet<string> _keywords { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+        public static HashSet<string> _keywords { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        public const string KW_DOC_ID = "id";
+        public const string KW_DOC_PARTITION = "_partition";
+
+        public const string KW_VERTEX_LABEL = "label";
+        public const string KW_VERTEX_EDGE = GremlinKeyword.EdgeAdj;
+        public const string KW_VERTEX_REV_EDGE = GremlinKeyword.ReverseEdgeAdj;
+        public const string KW_VERTEX_NEXTOFFSET = "_nextEdgeOffset";
+
+        public const string KW_PROPERTY_ID = "id";
+        public const string KW_PROPERTY_VALUE = "_value";
+        public const string KW_PROPERTY_META = "_meta";
+
+        public const string KW_EDGE_LABEL = "label";
+        public const string KW_EDGE_ID = "id";
+        public const string KW_EDGE_OFFSET = "_offset";
+        public const string KW_EDGE_SRCV = "_srcV";
+        public const string KW_EDGE_SRCV_LABEL = "_srcVLabel";
+        public const string KW_EDGE_SINKV = "_sinkV";
+        public const string KW_EDGE_SINKV_LABEL = "_sinkVLabel";
+
+        static GraphViewKeywords()
+        {
 #if !DEBUG
-                "globalnodeid",
-                "sink",
-                "localnodeid",
-                "edgeid",
-                "indegree",
-                "outdegree"
+            Type thisType = typeof(GraphViewKeywords);
+            foreach (FieldInfo field in thisType.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)) {
+                if (field.FieldType == typeof(string)) {
+                    _keywords.Add((string) field.GetValue(null));
+                }
+            }
 #endif
-        };
-
-        public const string EDGE_ID = "id";
-        public const string PROPERTY_ID = "id";
-
+        }
     }
 }

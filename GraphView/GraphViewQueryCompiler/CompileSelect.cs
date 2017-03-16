@@ -194,142 +194,7 @@ namespace GraphView
                 }
             }
         }
-
-        ///// <summary>
-        ///// This function works like the FillMetaField function in the AdjacencyListDecoder
-        ///// </summary>
-        ///// <param name="edge"></param>
-        ///// <returns></returns>
-        //[Obsolete]
-        //internal static string ConstructMetaFieldSelectClauseOfEdge(MatchEdge edge)
-        //{
-        //    StringBuilder metaFieldSelectStringBuilder = new StringBuilder();
-        //    bool isStartVertexTheOriginVertex = edge.IsReversed;
-        //    bool isReversedAdjList = IsTraversalThroughPhysicalReverseEdge(edge);
-        //    string nodeId = edge.SourceNode.NodeAlias + ".id";
-        //    string edgeSink = edge.EdgeAlias + "._otherV";
-        //    string edgeId = edge.EdgeAlias + "._offset";
-        //    string edgeReverseId = edge.EdgeAlias + "._reverse_ID";
-
-        //    string sourceValue = isReversedAdjList ? edgeSink : nodeId;
-        //    string sinkValue = isReversedAdjList ? nodeId : edgeSink;
-        //    string otherValue = isStartVertexTheOriginVertex ? edgeSink : nodeId;
-        //    string edgeIdValue = isReversedAdjList ? edgeReverseId : edgeId;
-
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{sourceValue} AS {edge.EdgeAlias}_source");
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{sinkValue} AS {edge.EdgeAlias}_sink");
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{otherValue} AS {edge.EdgeAlias}_other");
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{edgeIdValue} AS {edge.EdgeAlias}_ID");
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{edgeId} AS {edge.EdgeAlias}_physical_ID");
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{(isReversedAdjList ? "_reverse_edge" : "_edge")} AS adjType");
-        //    metaFieldSelectStringBuilder.Append(", ").Append($"{edge.EdgeAlias} AS {edge.EdgeAlias}");
-
-        //    return metaFieldSelectStringBuilder.ToString();
-        //}
-
-        //internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
-        //{
-        //    string nodeAlias = node.NodeAlias;
-        //    StringBuilder selectStrBuilder = new StringBuilder();
-        //    StringBuilder joinStrBuilder = new StringBuilder();
-        //    List<string> properties = new List<string> { nodeAlias };
-        //    List<ColumnGraphType> projectedColumnsType = new List<ColumnGraphType>();
-           
-        //    WBooleanExpression searchCondition = null;
-
-        //    properties.Add("id");
-        //    projectedColumnsType.Add(ColumnGraphType.VertexId);
-        //    //selectStrBuilder.Append(nodeAlias + ".id");
-        //    properties.Add("label");
-        //    projectedColumnsType.Add(ColumnGraphType.Value);
-        //    //selectStrBuilder.Append(nodeAlias + ".label");
-        //    properties.Add("_edge");
-        //    projectedColumnsType.Add(ColumnGraphType.OutAdjacencyList);
-        //    //selectStrBuilder.Append(", ").Append(nodeAlias + "._edge");
-        //    properties.Add("_reverse_edge");
-        //    projectedColumnsType.Add(ColumnGraphType.InAdjacencyList);
-        //    //selectStrBuilder.Append(", ").Append(nodeAlias + "._reverse_edge");
-        //    // This takes care of the node.* property
-        //    properties.Add("*");
-        //    projectedColumnsType.Add(ColumnGraphType.VertexObject);
-        //    //selectStrBuilder.Append(", ").Append(nodeAlias);
-
-        //    selectStrBuilder.Append(nodeAlias);
-
-        //    for (int i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < node.Properties.Count; i++)
-        //    {
-        //        string selectName = nodeAlias + "." + node.Properties[i];
-        //        properties.Add(node.Properties[i]);
-        //        projectedColumnsType.Add(ColumnGraphType.Value);
-        //        //selectStrBuilder.Append(", ").Append(selectName);
-        //    }
-                
-        //    foreach (WBooleanExpression predicate in node.Predicates)
-        //        searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
-
-        //    if (backwardMatchingEdges == null)
-        //        backwardMatchingEdges = new List<MatchEdge>();
-
-        //    //
-        //    // Currently, no backwardMatchingEdges will be produced
-        //    //
-        //    foreach (MatchEdge edge in backwardMatchingEdges)
-        //    {
-        //        joinStrBuilder.Append(" Join ")
-        //            .Append(edge.EdgeAlias)
-        //            .Append(" in ")
-        //            .Append(node.NodeAlias)
-        //            .Append(IsTraversalThroughPhysicalReverseEdge(edge) ? "._reverse_edge" : "_edge");
-
-        //        // TODO: Use the same offset in _edge and _reverse_edge
-        //        selectStrBuilder.Append(ConstructMetaFieldSelectClauseOfEdge(edge));
-        //        properties.Add(edge.EdgeAlias + "_source");
-        //        projectedColumnsType.Add(ColumnGraphType.EdgeSource);
-        //        properties.Add(edge.EdgeAlias + "_sink");
-        //        projectedColumnsType.Add(ColumnGraphType.EdgeSink);
-        //        properties.Add(edge.EdgeAlias + "_other");
-        //        projectedColumnsType.Add(ColumnGraphType.Value);
-        //        properties.Add(edge.EdgeAlias + "_ID");
-        //        projectedColumnsType.Add(ColumnGraphType.EdgeOffset);
-        //        properties.Add(edge.EdgeAlias + "_physical_ID");
-        //        projectedColumnsType.Add(ColumnGraphType.EdgeOffset);
-        //        // This adjType is used for notifying GetVertice that the following edgeField should be retrieved from _edge or _reverse_edge
-        //        properties.Add("adjType");
-        //        projectedColumnsType.Add(ColumnGraphType.Value);
-        //        // This takes care of the edge.* property
-        //        properties.Add(edge.EdgeAlias);
-        //        projectedColumnsType.Add(ColumnGraphType.EdgeObject);
-
-        //        for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < edge.Properties.Count; i++)
-        //        {
-        //            string property = edge.Properties[i];
-        //            //var selectName = edge.EdgeAlias + "." + property;
-        //            //var selectAlias = edge.EdgeAlias + "_" + property;
-
-        //            projectedColumnsType.Add(ColumnGraphType.Value);
-                        
-        //            //selectStrBuilder.Append(", ").Append(string.Format("{0} AS {1}", selectName, selectAlias));
-        //            properties.Add(property);
-        //        }   
-
-        //        foreach (WBooleanExpression predicate in edge.Predicates)
-        //            searchCondition = WBooleanBinaryExpression.Conjunction(searchCondition, predicate);
-        //    }
-
-        //    BooleanWValueExpressionVisitor booleanWValueExpressionVisitor = new BooleanWValueExpressionVisitor();
-        //    booleanWValueExpressionVisitor.Invoke(searchCondition);
-
-        //    JsonQuery jsonQuery = new JsonQuery
-        //    {
-        //        Alias = nodeAlias,
-        //        JoinClause = joinStrBuilder.ToString(),
-        //        SelectClause = selectStrBuilder.ToString(),
-        //        WhereSearchCondition = searchCondition != null ? searchCondition.ToString() : null,
-        //        Properties = properties,
-        //        ProjectedColumnsType = projectedColumnsType,
-        //    };
-        //    node.AttachedJsonQuery = jsonQuery;
-        //}
+        
 
         internal static void ConstructJsonQueryOnNode(MatchNode node, List<MatchEdge> backwardMatchingEdges = null)
         {
@@ -346,19 +211,19 @@ namespace GraphView
             //
             selectStrBuilder.Append(nodeAlias);
 
-            properties.Add("id");
+            properties.Add(GremlinKeyword.NodeID);
             projectedColumnsType.Add(ColumnGraphType.VertexId);
 
-            properties.Add("label");
+            properties.Add(GremlinKeyword.Label);
             projectedColumnsType.Add(ColumnGraphType.Value);
 
-            properties.Add("_edge");
+            properties.Add(GremlinKeyword.EdgeAdj);
             projectedColumnsType.Add(ColumnGraphType.OutAdjacencyList);
 
-            properties.Add("_reverse_edge");
+            properties.Add(GremlinKeyword.ReverseEdgeAdj);
             projectedColumnsType.Add(ColumnGraphType.InAdjacencyList);
 
-            properties.Add("*");
+            properties.Add(GremlinKeyword.Star);
             projectedColumnsType.Add(ColumnGraphType.VertexObject);
 
             for (int propertyIndex = GraphViewReservedProperties.ReservedNodeProperties.Count; 
@@ -742,9 +607,9 @@ namespace GraphView
         private Tuple<int, int> LocateAdjacencyListIndexes(QueryCompilationContext context, MatchEdge edge)
         {
             var edgeIndex =
-                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_edge"));
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, GremlinKeyword.EdgeAdj));
             var reverseEdgeIndex =
-                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, "_reverse_edge"));
+                context.LocateColumnReference(new WColumnReferenceExpression(edge.SourceNode.NodeAlias, GremlinKeyword.ReverseEdgeAdj));
             if (edge.EdgeType == WEdgeType.BothEdge)
                 return new Tuple<int, int>(edgeIndex, reverseEdgeIndex);
 
@@ -854,8 +719,8 @@ namespace GraphView
                 var edgePredicates = edge.RetrievePredicatesExpression();
                 operatorChain.Add(new AdjacencyListDecoder2(
                     operatorChain.Last(),
-                    context.LocateColumnReference(edge.SourceNode.NodeAlias, "id"),
-                    context.LocateColumnReference(edge.SourceNode.NodeAlias, "label"),
+                    context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.NodeID),
+                    context.LocateColumnReference(edge.SourceNode.NodeAlias, GremlinKeyword.Label),
                     edgeIndexTuple.Item1, edgeIndexTuple.Item2, !edge.IsReversed,
                     edgePredicates != null ? edgePredicates.CompileToFunction(localEdgeContext, connection) : null,
                     edge.Properties, connection));
@@ -867,7 +732,7 @@ namespace GraphView
 
                 if (isForwardingEdges)
                 {
-                    var sinkNodeIdColumnReference = new WColumnReferenceExpression(edge.SinkNode.NodeAlias, "id");
+                    var sinkNodeIdColumnReference = new WColumnReferenceExpression(edge.SinkNode.NodeAlias, GremlinKeyword.NodeID);
                     // Add "forwardEdge.traversalColumn = sinkNode.id" filter
                     var edgeSinkColumnReference = GetAdjacencyListTraversalColumn(edge);
                     var edgeJoinPredicate = new WBooleanComparisonExpression
@@ -938,11 +803,11 @@ namespace GraphView
 
         private void UpdateNodeLayout(string nodeAlias, List<string> properties, QueryCompilationContext context)
         {
-            context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
-            context.AddField(nodeAlias, "label", ColumnGraphType.Value);
-            context.AddField(nodeAlias, "_edge", ColumnGraphType.OutAdjacencyList);
-            context.AddField(nodeAlias, "_reverse_edge", ColumnGraphType.InAdjacencyList);
-            context.AddField(nodeAlias, "*", ColumnGraphType.VertexObject);
+            context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
+            context.AddField(nodeAlias, GremlinKeyword.Label, ColumnGraphType.Value);
+            context.AddField(nodeAlias, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
+            context.AddField(nodeAlias, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
+            context.AddField(nodeAlias, GremlinKeyword.Star, ColumnGraphType.VertexObject);
             for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < properties.Count; i++)
                 context.AddField(nodeAlias, properties[i], ColumnGraphType.Value);
         }
@@ -950,11 +815,11 @@ namespace GraphView
         private void UpdateEdgeLayout(string edgeAlias, List<string> properties, QueryCompilationContext context)
         {
             // Update context's record layout
-            context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
-            context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
-            context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
-            context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < properties.Count; i++)
             {
                 context.AddField(edgeAlias, properties[i], ColumnGraphType.Value);
@@ -1787,11 +1652,11 @@ namespace GraphView
             // Update context's record layout
             if (isSendQueryRequired)
             {
-                context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
-                context.AddField(nodeAlias, "label", ColumnGraphType.Value);
-                context.AddField(nodeAlias, "_edge", ColumnGraphType.OutAdjacencyList);
-                context.AddField(nodeAlias, "_reverse_edge", ColumnGraphType.InAdjacencyList);
-                context.AddField(nodeAlias, "*", ColumnGraphType.VertexObject);
+                context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
+                context.AddField(nodeAlias, GremlinKeyword.Label, ColumnGraphType.Value);
+                context.AddField(nodeAlias, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
+                context.AddField(nodeAlias, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
+                context.AddField(nodeAlias, GremlinKeyword.Star, ColumnGraphType.VertexObject);
                 for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < matchNode.Properties.Count; i++)
                     context.AddField(nodeAlias, matchNode.Properties[i], ColumnGraphType.Value);
             }
@@ -1846,11 +1711,11 @@ namespace GraphView
             // Update context's record layout
             if (isSendQueryRequired)
             {
-                context.AddField(nodeAlias, "id", ColumnGraphType.VertexId);
-                context.AddField(nodeAlias, "label", ColumnGraphType.Value);
-                context.AddField(nodeAlias, "_edge", ColumnGraphType.OutAdjacencyList);
-                context.AddField(nodeAlias, "_reverse_edge", ColumnGraphType.InAdjacencyList);
-                context.AddField(nodeAlias, "*", ColumnGraphType.VertexObject);
+                context.AddField(nodeAlias, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
+                context.AddField(nodeAlias, GremlinKeyword.Label, ColumnGraphType.Value);
+                context.AddField(nodeAlias, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
+                context.AddField(nodeAlias, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
+                context.AddField(nodeAlias, GremlinKeyword.Star, ColumnGraphType.VertexObject);
                 for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < matchNode.Properties.Count; i++)
                     context.AddField(nodeAlias, matchNode.Properties[i], ColumnGraphType.Value);
             }
@@ -1891,11 +1756,12 @@ namespace GraphView
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
-            context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
-            context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
-            context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
-            context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
+
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {
                 context.AddField(edgeAlias, projectFields[i], ColumnGraphType.Value);
@@ -1932,11 +1798,11 @@ namespace GraphView
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
-            context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
-            context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
-            context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
-            context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {
                 context.AddField(edgeAlias, projectFields[i], ColumnGraphType.Value);
@@ -1975,11 +1841,11 @@ namespace GraphView
             context.CurrentExecutionOperator = adjListDecoder;
 
             // Update context's record layout
-            context.AddField(edgeAlias, "_source", ColumnGraphType.EdgeSource);
-            context.AddField(edgeAlias, "_sink", ColumnGraphType.EdgeSink);
-            context.AddField(edgeAlias, "_other", ColumnGraphType.Value);
-            context.AddField(edgeAlias, "_offset", ColumnGraphType.EdgeOffset);
-            context.AddField(edgeAlias, "*", ColumnGraphType.EdgeObject);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
+            context.AddField(edgeAlias, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(edgeAlias, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectFields.Count; i++)
             {
                 context.AddField(edgeAlias, projectFields[i], ColumnGraphType.Value);

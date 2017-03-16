@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -14,7 +15,7 @@ namespace GraphView
         {
             Debug.Assert(vertexLabel != null);
             JObject vertexObject = new JObject {
-                ["label"] = vertexLabel
+                [KW_VERTEX_LABEL] = vertexLabel
             };
 
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
@@ -45,14 +46,14 @@ namespace GraphView
 
                 propArray.Add(new JObject {
                     ["_value"] = vertexProperty.Value.ToJValue(),
-                    [GraphViewKeywords.PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
                     ["_meta"] = meta,
                 });
                 //GraphViewJsonCommand.AppendVertexSinglePropertyToVertex(vertexObject);
             }
 
             vertexObject["_edge"] = new JArray();
-            vertexObject["_reverse_edge"] = new JArray();
+            vertexObject[KW_VERTEX_REV_EDGE] = new JArray();
             vertexObject["_nextEdgeOffset"] = 0;
 
             return vertexObject;
@@ -89,11 +90,11 @@ namespace GraphView
                 projectedField);
             context.CurrentExecutionOperator = addVOp;
 
-            context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
-            context.AddField(Alias.Value, "label", ColumnGraphType.Value);
-            context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
-            context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
-            context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
+            context.AddField(Alias.Value, GremlinKeyword.NodeID, ColumnGraphType.VertexId);
+            context.AddField(Alias.Value, GremlinKeyword.Label, ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.EdgeAdj, ColumnGraphType.OutAdjacencyList);
+            context.AddField(Alias.Value, GremlinKeyword.ReverseEdgeAdj, ColumnGraphType.InAdjacencyList);
+            context.AddField(Alias.Value, GremlinKeyword.Star, ColumnGraphType.VertexObject);
             for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++) {
                 context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
             }
@@ -101,72 +102,7 @@ namespace GraphView
             return addVOp;
         }
     }
-
-    //partial class WAddVTableReference
-    //{
-    //    public JObject ConstructNodeJsonDocument(out List<string> projectedFieldList)
-    //    {
-    //        JObject nodeJsonDocument = new JObject();
-    //        projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
-
-    //        for (var i = 0; i < Parameters.Count; i += 2) {
-    //            var key = (Parameters[i] as WValueExpression).Value;
-
-    //            //GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
-    //            //    Parameters[i + 1] as WValueExpression);
-    //            GraphViewJsonCommand.UpdateProperty(nodeJsonDocument, Parameters[i] as WValueExpression,
-    //                Parameters[i + 1] as WValueExpression);
-    //            string name = (Parameters[i] as WValueExpression).Value;
-    //            JToken value = (Parameters[i + 1] as WValueExpression).ToJValue();
-    //            if (value != null) {
-    //                if (VertexField.IsVertexMetaProperty(name)) {
-    //                    nodeJsonDocument[name] = value;
-    //                }
-    //                else {
-    //                    nodeJsonDocument[name] = new JArray {
-    //                        new JObject {
-    //                            ["_value"] = value,
-    //                            [GraphViewKeywords.PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-    //                            ["_meta"] = new JObject(),
-    //                        },
-    //                    };
-    //                }
-    //            }
-
-    //            if (!projectedFieldList.Contains(key))
-    //                projectedFieldList.Add(key);
-    //        }
-
-    //        //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_edge").ToString();
-    //        //nodeJsonDocument = GraphViewJsonCommand.insert_property(nodeJsonDocument, "[]", "_reverse_edge").ToString();
-    //        nodeJsonDocument["_edge"] = new JArray();
-    //        nodeJsonDocument["_reverse_edge"] = new JArray();
-    //        nodeJsonDocument["_nextEdgeOffset"] = 0;
-
-    //        return nodeJsonDocument;
-    //    }
-
-    //    internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
-    //    {
-    //        List<string> projectedField;
-    //        JObject nodeJsonDocument = ConstructNodeJsonDocument(out projectedField);
-
-    //        GraphViewExecutionOperator addVOp = new AddVOperator(context.CurrentExecutionOperator, dbConnection, nodeJsonDocument, projectedField);
-    //        context.CurrentExecutionOperator = addVOp;
-
-    //        context.AddField(Alias.Value, "id", ColumnGraphType.VertexId);
-    //        context.AddField(Alias.Value, "label", ColumnGraphType.Value);
-    //        context.AddField(Alias.Value, "_edge", ColumnGraphType.OutAdjacencyList);
-    //        context.AddField(Alias.Value, "_reverse_edge", ColumnGraphType.InAdjacencyList);
-    //        context.AddField(Alias.Value, "*", ColumnGraphType.VertexObject);
-    //        for (var i = GraphViewReservedProperties.ReservedNodeProperties.Count; i < projectedField.Count; i++)
-    //        {
-    //            context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);
-    //        }
-
-    //        return addVOp;
-    //    }
-    //}
+    
 
     partial class WAddETableReference
     {
@@ -190,11 +126,11 @@ namespace GraphView
             context.CurrentExecutionOperator = addEOp;
 
             // Update context's record layout
-            context.AddField(Alias.Value, "_source", ColumnGraphType.EdgeSource);
-            context.AddField(Alias.Value, "_sink", ColumnGraphType.EdgeSink);
-            context.AddField(Alias.Value, "_other", ColumnGraphType.Value);
-            context.AddField(Alias.Value, "_offset", ColumnGraphType.EdgeOffset);
-            context.AddField(Alias.Value, "*", ColumnGraphType.EdgeObject);
+            context.AddField(Alias.Value, GremlinKeyword.EdgeSourceV, ColumnGraphType.EdgeSource);
+            context.AddField(Alias.Value, GremlinKeyword.EdgeSinkV, ColumnGraphType.EdgeSink);
+            context.AddField(Alias.Value, GremlinKeyword.EdgeOtherV, ColumnGraphType.Value);
+            context.AddField(Alias.Value, GremlinKeyword.EdgeOffset, ColumnGraphType.EdgeOffset);
+            context.AddField(Alias.Value, GremlinKeyword.Star, ColumnGraphType.EdgeObject);
             for (var i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < projectedField.Count; i++)
             {
                 context.AddField(Alias.Value, projectedField[i], ColumnGraphType.Value);

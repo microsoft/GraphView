@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -287,13 +288,13 @@ namespace GraphView
                     switch (propertyName)
                     {
                         // Reserved properties for meta-data
-                        case "label":
-                        case GraphViewKeywords.EDGE_ID:
-                        case "_offset":
-                        case "_srcV":
-                        case "_sinkV":
-                        case "_srcVLabel":
-                        case "_sinkVLabel":
+                        case KW_EDGE_LABEL:
+                        case KW_EDGE_ID:
+                        case KW_EDGE_OFFSET:
+                        case KW_EDGE_SRCV:
+                        case KW_EDGE_SINKV:
+                        case KW_EDGE_SRCV_LABEL:
+                        case KW_EDGE_SINKV_LABEL:
                             continue;
                         default:
                             RawRecord r = new RawRecord();
@@ -358,8 +359,8 @@ namespace GraphView
                 VertexField vertexField = (VertexField)inputTarget;
                 if (this.includingMetaValue)
                 {
-                    valueMap.Add(new StringField("id"), new StringField(vertexField["id"].ToValue));
-                    valueMap.Add(new StringField("label"), new StringField(vertexField["label"].ToValue));
+                    valueMap.Add(new StringField(GremlinKeyword.NodeID), new StringField(vertexField[KW_DOC_ID].ToValue));
+                    valueMap.Add(new StringField(GremlinKeyword.Label), new StringField(vertexField[KW_VERTEX_LABEL].ToValue));
                 }
 
                 if (this.propertyNameList.Any())
@@ -416,8 +417,8 @@ namespace GraphView
 
                 if (this.includingMetaValue)
                 {
-                    valueMap.Add(new StringField("id"), new StringField(edgeField[GraphViewKeywords.EDGE_ID].ToValue));
-                    valueMap.Add(new StringField("label"), new StringField(edgeField.Label));
+                    valueMap.Add(new StringField(GremlinKeyword.EdgeID), new StringField(edgeField[KW_EDGE_ID].ToValue));
+                    valueMap.Add(new StringField(GremlinKeyword.Label), new StringField(edgeField.Label));
                 }
 
                 if (this.propertyNameList.Any())
@@ -447,12 +448,12 @@ namespace GraphView
                         switch (propertyName)
                         {
                             // Reserved properties for meta-data
-                            case GraphViewKeywords.EDGE_ID:
-                            case "_offset":
-                            case "_srcV":
-                            case "_sinkV":
-                            case "_srcVLabel":
-                            case "_sinkVLabel":
+                            case GraphViewKeywords.KW_EDGE_ID:
+                            case KW_EDGE_OFFSET:
+                            case KW_EDGE_SRCV:
+                            case KW_EDGE_SINKV:
+                            case KW_EDGE_SRCV_LABEL:
+                            case KW_EDGE_SINKV_LABEL:
                                 continue;
                             default:
                                 valueMap.Add(new StringField(propertyName),
@@ -608,12 +609,12 @@ namespace GraphView
                         switch (propertyName)
                         {
                             // Reserved properties for meta-data
-                            case GraphViewKeywords.EDGE_ID:
-                            case "_offset":
-                            case "_srcV":
-                            case "_sinkV":
-                            case "_srcVLabel":
-                            case "_sinkVLabel":
+                            case GraphViewKeywords.KW_EDGE_ID:
+                            case KW_EDGE_OFFSET:
+                            case KW_EDGE_SRCV:
+                            case KW_EDGE_SINKV:
+                            case KW_EDGE_SRCV_LABEL:
+                            case KW_EDGE_SINKV_LABEL:
                                 continue;
                             default:
                                 valueMap.Add(new StringField(propertyName), edgePropertyField);
@@ -712,13 +713,13 @@ namespace GraphView
                     switch (propertyName)
                     {
                         // Reserved properties for meta-data
-                        case "label":
-                        case GraphViewKeywords.EDGE_ID:
-                        case "_offset":
-                        case "_srcV":
-                        case "_sinkV":
-                        case "_srcVLabel":
-                        case "_sinkVLabel":
+                        case KW_EDGE_ID:
+                        case KW_EDGE_LABEL:
+                        case KW_EDGE_OFFSET:
+                        case KW_EDGE_SRCV:
+                        case KW_EDGE_SINKV:
+                        case KW_EDGE_SRCV_LABEL:
+                        case KW_EDGE_SINKV_LABEL:
                             continue;
                         default:
                             RawRecord r = new RawRecord();

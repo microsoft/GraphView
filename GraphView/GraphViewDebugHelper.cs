@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -34,7 +35,7 @@ namespace GraphView
                 query = $"SELECT edge\n" +
                         $"FROM doc\n" +
                         $"JOIN edge IN doc._edge\n" +
-                        $"WHERE doc._partition = '{vertexId}'\n";
+                        $"WHERE doc.{KW_DOC_PARTITION} = '{vertexId}'\n";
             }
 
             List<JObject> ret = new List<JObject>();
@@ -43,22 +44,22 @@ namespace GraphView
                 JObject edgeObject = (JObject)result["edge"];
 
                 if (isReverse) {
-                    if (edgeObject["_srcV"] != null) {
+                    if (edgeObject[KW_EDGE_SRCV] != null) {
                         // This is an incoming edge
                         ret.Add(edgeObject);
                     }
-                    else if (edgeObject["_sinkV"] != null) {
+                    else if (edgeObject[KW_EDGE_SINKV] != null) {
                     }
                     else {
                         throw new Exception($"Invalid edgeObject! {result}");
                     }
                 }
                 else {
-                    if (edgeObject["_sinkV"] != null) {
+                    if (edgeObject[KW_EDGE_SINKV] != null) {
                         // This is an outgoing edge
                         ret.Add(edgeObject);
                     }
-                    else if (edgeObject["_srcV"] != null) {
+                    else if (edgeObject[KW_EDGE_SRCV] != null) {
                     }
                     else {
                         throw new Exception($"Invalid edgeObject! {result}");

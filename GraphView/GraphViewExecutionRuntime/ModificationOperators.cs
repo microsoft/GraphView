@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -87,10 +88,10 @@ namespace GraphView
             JObject vertexObject = (JObject)this._vertexDocument.DeepClone();
 
             string vertexId = GraphViewConnection.GenerateDocumentId();
-            Debug.Assert(vertexObject["id"] == null);
-            Debug.Assert(vertexObject["_partition"] == null);
-            vertexObject["id"] = vertexId;
-            vertexObject["_partition"] = vertexId;
+            Debug.Assert(vertexObject[KW_DOC_ID] == null);
+            Debug.Assert(vertexObject[KW_DOC_PARTITION] == null);
+            vertexObject[KW_DOC_ID] = vertexId;
+            vertexObject[KW_DOC_PARTITION] = vertexId;
 
             this.Connection.CreateDocumentAsync(vertexObject).Wait();
 
@@ -154,7 +155,7 @@ namespace GraphView
             Debug.Assert(vertexObject[vp.PropertyName] != null);
             vertexObject[vp.PropertyName].Remove();
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject[KW_DOC_PARTITION]).Wait();
 
             // Update vertex field
             vertexField.VertexProperties.Remove(vp.PropertyName);
@@ -170,13 +171,13 @@ namespace GraphView
 
             JArray vertexProperty = (JArray)vertexObject[vp.PropertyName];
             vertexProperty
-                .First(singleProperty => (string)singleProperty[GraphViewKeywords.PROPERTY_ID] == vp.PropertyId)
+                .First(singleProperty => (string)singleProperty[GraphViewKeywords.KW_PROPERTY_ID] == vp.PropertyId)
                 .Remove();
             if (vertexObject.Count == 0) {
                 vertexProperty.Remove();
             }
 
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject[KW_DOC_PARTITION]).Wait();
 
             // Update vertex field
             VertexPropertyField vertexPropertyField = vertexField.VertexProperties[vp.PropertyName];
@@ -199,14 +200,14 @@ namespace GraphView
             Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
 
             JToken propertyJToken = ((JArray) vertexObject[vertexSingleProperty.PropertyName])
-                .First(singleProperty => (string) singleProperty[GraphViewKeywords.PROPERTY_ID] == vertexSingleProperty.PropertyId);
+                .First(singleProperty => (string) singleProperty[GraphViewKeywords.KW_PROPERTY_ID] == vertexSingleProperty.PropertyId);
 
             JObject metaPropertyJObject = (JObject) propertyJToken?["_meta"];
 
             metaPropertyJObject?.Property(metaProperty.PropertyName)?.Remove();
 
             // Update DocDB
-            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject["_partition"]).Wait();
+            this.connection.ReplaceOrDeleteDocumentAsync(vertexField.VertexId, vertexObject, (string)vertexObject[KW_DOC_PARTITION]).Wait();
 
             // Update vertex field
             vertexSingleProperty.MetaProperties.Remove(metaProperty.PropertyName);
@@ -218,7 +219,7 @@ namespace GraphView
             //if (edgeField.EdgeDocID != null) {  // This is a spilled edge
             //    JObject edgeDocument = this.connection.RetrieveDocumentById(edgeField.EdgeDocID);
             //    ((JArray)edgeDocument["_edge"])
-            //        .First(edge => (string)edge["_srcV"] == edgeField.OutV && (long)edge["_offset"] == edgeField.Offset)
+            //        .First(edge => (string)edge[KW_EDGE_SRCV] == edgeField.OutV && (long)edge[KW_EDGE_OFFSET] == edgeField.Offset)
             //        [ep.PropertyName]
             //        .Remove();
             //    this.connection.ReplaceOrDeleteDocumentAsync(edgeField.EdgeDocID, edgeDocument).Wait();
@@ -226,7 +227,7 @@ namespace GraphView
             //else {  // This is not a spilled edge
             //    JObject edgeDocument = this.connection.RetrieveDocumentById(edgeField.EdgeDocID);
             //    ((JArray)edgeDocument["_edge"])
-            //        .First(edge => (string)edge["_srcV"] == edgeField.OutV && (long)edge["_offset"] == edgeField.Offset)
+            //        .First(edge => (string)edge[KW_EDGE_SRCV] == edgeField.OutV && (long)edge[KW_EDGE_OFFSET] == edgeField.Offset)
             //        [ep.PropertyName]
             //        .Remove();
             //    this.connection.ReplaceOrDeleteDocumentAsync(edgeField.EdgeDocID, edgeDocument).Wait();
@@ -337,7 +338,7 @@ namespace GraphView
                 }
                 JObject singleProperty = new JObject {
                     ["_value"] = property.Value.ToJValue(),
-                    [GraphViewKeywords.PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [GraphViewKeywords.KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
                     ["_meta"] = meta,
                 };
 
@@ -368,7 +369,7 @@ namespace GraphView
             }
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument, (string)vertexDocument["_partition"]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertex.VertexId, vertexDocument, (string)vertexDocument[KW_DOC_PARTITION]).Wait();
         }
 
         private void UpdatePropertiesOfEdge(EdgeField edge)
@@ -396,7 +397,7 @@ namespace GraphView
             string vertexId = vp.VertexProperty.Vertex.VertexId;
             JObject vertexDocument = this.Connection.RetrieveDocumentById(vertexId);
             JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
-                .First(single => (string) single[GraphViewKeywords.PROPERTY_ID] == vp.PropertyId);
+                .First(single => (string) single[GraphViewKeywords.KW_PROPERTY_ID] == vp.PropertyId);
             JObject meta = (JObject)singleProperty["_meta"];
 
             foreach (WPropertyExpression property in this.updateProperties) {
@@ -412,7 +413,7 @@ namespace GraphView
             vp.Replace(singleProperty);
 
             // Upload to DocDB
-            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument, (string)vertexDocument["_partition"]).Wait();
+            this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocument, (string)vertexDocument[KW_DOC_PARTITION]).Wait();
         }
 
         internal override RawRecord DataModify(RawRecord record)
@@ -609,8 +610,8 @@ namespace GraphView
             //
             // Update vertex's adjacency list and reverse adjacency list (in vertex field)
             //
-            EdgeField outEdgeField = EdgeField.ConstructForwardEdgeField(srcId, srcVertexField["label"]?.ToValue, outEdgeDocID, outEdgeObject);
-            EdgeField inEdgeField = EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField["label"]?.ToValue, inEdgeDocID, inEdgeObject);
+            EdgeField outEdgeField = EdgeField.ConstructForwardEdgeField(srcId, srcVertexField[KW_VERTEX_LABEL]?.ToValue, outEdgeDocID, outEdgeObject);
+            EdgeField inEdgeField = EdgeField.ConstructBackwardEdgeField(sinkId, sinkVertexField[KW_VERTEX_LABEL]?.ToValue, inEdgeDocID, inEdgeObject);
 
             srcVertexField.AdjacencyList.AddEdgeField(srcId, outEdgeField.Offset, outEdgeField);
             sinkVertexField.RevAdjacencyList.AddEdgeField(srcId, inEdgeField.Offset, inEdgeField);
@@ -623,7 +624,7 @@ namespace GraphView
             result.Append(new StringField(srcId));
             result.Append(new StringField(sinkId));
             result.Append(new StringField(_otherVTag == 0 ? srcId : sinkId));
-            result.Append(new StringField(outEdgeObject["_offset"].ToString()));
+            result.Append(new StringField(outEdgeObject[KW_EDGE_OFFSET].ToString()));
             result.Append(outEdgeField);
 
             for (int i = GraphViewReservedProperties.ReservedEdgeProperties.Count; i < _edgeProperties.Count; i++)
@@ -650,7 +651,7 @@ namespace GraphView
         //    var reverseEdgeOffset = sinkJsonDocument["_nextReverseEdgeOffset"].ToObject<long>();
 
         //    // Construct the edge object for srcNode._edge
-        //    var sinkNodeLabel = sinkJsonDocument["label"]?.ToString();
+        //    var sinkNodeLabel = sinkJsonDocument[KW_VERTEX_LABEL]?.ToString();
         //    GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, edgeOffset, reverseEdgeOffset, sinkId, sinkNodeLabel);
 
         //    // Insert the edge object in the srcNode._edge and update the _nextEdgeOffset
@@ -664,7 +665,7 @@ namespace GraphView
 
         //    // Construct the edge object for sinkNode._reverse_edge
         //    edgeJsonDocument = JObject.FromObject(edgeJsonDocument);
-        //    var srcNodeLabel = srcJsonDocument["label"]?.ToString();
+        //    var srcNodeLabel = srcJsonDocument[KW_VERTEX_LABEL]?.ToString();
         //    GraphViewJsonCommand.UpdateEdgeMetaProperty(edgeJsonDocument, reverseEdgeOffset, edgeOffset, srcId, srcNodeLabel);
 
         //    // Insert the edge object in the sinkNode._reverse_edge and update the _nextReverseEdgeOffset
@@ -712,7 +713,7 @@ namespace GraphView
                 return null;
             }
 
-            string sinkId = (string)srcEdgeObject["_sinkV"];
+            string sinkId = (string)srcEdgeObject[KW_EDGE_SINKV];
             JObject sinkVertexObject;
             if (!string.Equals(sinkId, srcId))
             {
@@ -849,7 +850,7 @@ namespace GraphView
     //        JObject vertexDocObject = this.Connection.RetrieveDocumentById(vertexId);
 
     //        UpdateNodeProperties(vertexId, vertexDocObject, PropertiesToBeUpdated, Mode);
-    //        this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocObject, (string)vertexDocObject["_partition"]).Wait();
+    //        this.Connection.ReplaceOrDeleteDocumentAsync(vertexId, vertexDocObject, (string)vertexDocObject[KW_DOC_PARTITION]).Wait();
 
     //        // Drop step, return null
     //        if (PropertiesToBeUpdated.Any(t => t.Item2 == null)) return null;
@@ -905,7 +906,7 @@ namespace GraphView
     //                            Value = new JArray {
     //                                new JObject {
     //                                    ["_value"] = value,
-    //                                    [GraphViewKeywords.PROPERTY_ID] = propertyId,
+    //                                    [GraphViewKeywords.KW_PROPERTY_ID] = propertyId,
     //                                    ["_meta"] = new JObject(),
     //                                }
     //                            }
@@ -956,7 +957,7 @@ namespace GraphView
                 return null;
             }
 
-            string sinkVertexId = (string)outEdgeObject["_sinkV"];
+            string sinkVertexId = (string)outEdgeObject[KW_EDGE_SINKV];
             JObject sinkVertexObject;
             string inEdgeDocId;
             JObject inEdgeObject;

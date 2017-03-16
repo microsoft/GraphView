@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using static GraphView.GraphViewKeywords;
 
 // Add DocumentDB references
 using Newtonsoft.Json;
@@ -83,12 +84,12 @@ namespace GraphView
                 string name = property.Name;
                 switch (name) {
                 // Reversed properties for meta-data
-                case "id":
-                case "_partition":
-                case "_edge":
-                case "_reverse_edge":
-                case "label":
-                case "_nextEdgeOffset":
+                case KW_DOC_ID:
+                case KW_DOC_PARTITION:
+                case KW_VERTEX_EDGE:
+                case KW_VERTEX_REV_EDGE:
+                case KW_VERTEX_LABEL:
+                case KW_VERTEX_NEXTOFFSET:
 
                 case "_rid":
                 case "_self":
@@ -119,13 +120,13 @@ namespace GraphView
                 string name = property.Name;
                 switch (name) {
                 // Reversed properties for meta-data
-                case GraphViewKeywords.EDGE_ID:
-                case "_offset":
-                case "_srcV":
-                case "_srcVLabel":
-                case "_sinkV":
-                case "_sinkVLabel":
-                case "label":
+                case KW_EDGE_ID:
+                case KW_EDGE_OFFSET:
+                case KW_EDGE_SRCV:
+                case KW_EDGE_SRCV_LABEL:
+                case KW_EDGE_SINKV:
+                case KW_EDGE_SINKV_LABEL:
+                case KW_EDGE_LABEL:
                     continue;
                 default:
                     property.Remove();
@@ -141,14 +142,14 @@ namespace GraphView
         public static void UpdateEdgeMetaProperty(
             JObject edgeJObject, long edgeOffset, bool isReverseEdge, string srcOrSinkVId, string srcOrSinkVLabel)
         {
-            edgeJObject["_offset"] = edgeOffset;
+            edgeJObject[KW_EDGE_OFFSET] = edgeOffset;
             if (isReverseEdge) {
-                edgeJObject["_srcV"] = srcOrSinkVId;
-                edgeJObject["_srcVLabel"] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+                edgeJObject[KW_EDGE_SRCV] = srcOrSinkVId;
+                edgeJObject[KW_EDGE_SRCV_LABEL] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
             }
             else {
-                edgeJObject["_sinkV"] = srcOrSinkVId;
-                edgeJObject["_sinkVLabel"] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
+                edgeJObject[KW_EDGE_SINKV] = srcOrSinkVId;
+                edgeJObject[KW_EDGE_SINKV_LABEL] = (JValue)srcOrSinkVLabel ?? JValue.CreateNull();
             }
         }
 

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -22,7 +23,7 @@ namespace GraphView
         {
             Debug.Assert(vertexObject != null);
 
-            JToken edgeContainer = vertexObject[checkReverse ? "_reverse_edge" : "_edge"];
+            JToken edgeContainer = vertexObject[checkReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
             if (edgeContainer is JObject) {
                 Debug.Assert(edgeContainer["_edges"] is JArray);
                 return true;
@@ -51,7 +52,7 @@ namespace GraphView
             tooLarge = false;
             try {
                 Debug.Assert(docObject != null);
-                connection.ReplaceOrDeleteDocumentAsync(docId, docObject, (string) docObject["_partition"]).Wait();
+                connection.ReplaceOrDeleteDocumentAsync(docId, docObject, (string) docObject[KW_DOC_PARTITION]).Wait();
             }
             catch (AggregateException ex)
                 when ((ex.InnerException as DocumentClientException)?.Error.Code == "RequestEntityTooLarge") {
@@ -96,12 +97,12 @@ namespace GraphView
             // Add "id" property to edgeObject if desired
             if (connection.GenerateEdgeId) {
                 string guid = GraphViewConnection.GenerateDocumentId();
-                outEdgeObject[GraphViewKeywords.EDGE_ID] = guid;
-                inEdgeObject[GraphViewKeywords.EDGE_ID] = guid;
+                outEdgeObject[KW_EDGE_ID] = guid;
+                inEdgeObject[KW_EDGE_ID] = guid;
             }
 
-            string srcLabel = srcVertexObject["label"]?.ToString();
-            string sinkLabel = sinkVertexObject["label"]?.ToString();
+            string srcLabel = srcVertexObject[KW_VERTEX_LABEL]?.ToString();
+            string sinkLabel = sinkVertexObject[KW_VERTEX_LABEL]?.ToString();
             GraphViewJsonCommand.UpdateEdgeMetaProperty(outEdgeObject, edgeOffset, false, sinkId, sinkLabel);
             GraphViewJsonCommand.UpdateEdgeMetaProperty(inEdgeObject, edgeOffset, true, srcId, srcLabel);
 
@@ -134,7 +135,7 @@ namespace GraphView
             out string newEdgeDocId)
         {
             bool tooLarge;
-            JToken edgeContainer = vertexObject[isReverse ? "_reverse_edge" : "_edge"]; // JArray or JObject
+            JToken edgeContainer = vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE]; // JArray or JObject
             if (edgeContainer is JObject) {
                 // Now it is a large-degree vertex, and contains at least 1 edge-document
                 JArray edgeDocumentsArray = (JArray)edgeContainer["_edges"];
@@ -143,7 +144,7 @@ namespace GraphView
 
                 string lastEdgeDocId = (string)edgeDocumentsArray.Last["id"];
                 JObject edgeDocument = connection.RetrieveDocumentById(lastEdgeDocId);
-                Debug.Assert(((string)edgeDocument["id"]).Equals(lastEdgeDocId), "((string)edgeDocument['id']).Equals(lastEdgeDocId)");
+                Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId), "((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId)");
                 Debug.Assert((bool)edgeDocument["_is_reverse"] == isReverse, "(bool)edgeDocument['_is_reverse'] == isReverse");
                 Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
 
@@ -180,24 +181,24 @@ namespace GraphView
                     // or the threashold is reached:
                     // Create a new edge-document to store the edge.
                     JObject edgeDocObject = new JObject {
-                        ["id"] = GraphViewConnection.GenerateDocumentId(),
-                        ["_partition"] = vertexObject["_partition"],
+                        [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                        [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
                         ["_is_reverse"] = isReverse,
-                        ["_vertex_id"] = (string)vertexObject["id"],
+                        ["_vertex_id"] = (string)vertexObject[KW_DOC_ID],
                         ["_edge"] = new JArray(edgeObject)
                     };
                     lastEdgeDocId = connection.CreateDocumentAsync(edgeDocObject).Result;
 
                     // Add the newly create edge-document to vertexObject & upload the vertexObject
                     edgeDocumentsArray.Add(new JObject {
-                        ["id"] = lastEdgeDocId
+                        [KW_DOC_ID] = lastEdgeDocId
                     });
                 }
                 newEdgeDocId = lastEdgeDocId;
 
                 // Upload the vertex documention (at least, its _nextXxx is changed)
                 bool dummyTooLarge;
-                UploadOne(connection, (string)vertexObject["id"], vertexObject, out dummyTooLarge);
+                UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out dummyTooLarge);
                 Debug.Assert(!dummyTooLarge);
             }
             else if (edgeContainer is JArray) {
@@ -214,7 +215,7 @@ namespace GraphView
                 }
 
                 if (!tooLarge) {
-                    UploadOne(connection, (string)vertexObject["id"], vertexObject, out tooLarge);
+                    UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out tooLarge);
                 }
                 if (tooLarge) {
                     string existEdgeDocId;
@@ -254,12 +255,12 @@ namespace GraphView
         /// <param name="newEdgeDocId">This is the second edge-document (to store the currently creating edge)</param>
         private static void SpillVertexEdgesToDocument(GraphViewConnection connection, JObject vertexObject, out string existEdgeDocId, out string newEdgeDocId)
         {
-            Debug.Assert(vertexObject["_partition"] != null);
-            Debug.Assert((string)vertexObject["id"] == (string)vertexObject["_partition"]);
+            Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
+            Debug.Assert((string)vertexObject[KW_DOC_ID] == (string)vertexObject[KW_DOC_PARTITION]);
 
             // NOTE: The VertexCache is not updated here
-            bool outEdgeSeperated = vertexObject["_edge"] is JObject;
-            bool inEdgeSeperated = vertexObject["_reverse_edge"] is JObject;
+            bool outEdgeSeperated = vertexObject[KW_VERTEX_EDGE] is JObject;
+            bool inEdgeSeperated = vertexObject[KW_VERTEX_REV_EDGE] is JObject;
             if (inEdgeSeperated && outEdgeSeperated) {
                 throw new Exception("BUG: Should not get here! Either incoming or outgoing edegs should not have been seperated");
             }
@@ -267,24 +268,24 @@ namespace GraphView
             JArray targetEdgeArray;
             bool targetEdgeIsReverse;
             if (inEdgeSeperated) {
-                targetEdgeArray = (JArray)vertexObject["_edge"];
+                targetEdgeArray = (JArray)vertexObject[KW_VERTEX_EDGE];
                 targetEdgeIsReverse = false;
             }
             else if (outEdgeSeperated) {
-                targetEdgeArray = (JArray)vertexObject["_reverse_edge"];
+                targetEdgeArray = (JArray)vertexObject[KW_VERTEX_REV_EDGE];
                 targetEdgeIsReverse = true;
             }
             else {
-                JArray outEdgeArray = (JArray)vertexObject["_edge"];
-                JArray inEdgeArray = (JArray)vertexObject["_reverse_edge"];
+                JArray outEdgeArray = (JArray)vertexObject[KW_VERTEX_EDGE];
+                JArray inEdgeArray = (JArray)vertexObject[KW_VERTEX_REV_EDGE];
                 targetEdgeIsReverse = (outEdgeArray.ToString().Length < inEdgeArray.ToString().Length);
                 targetEdgeArray = targetEdgeIsReverse ? inEdgeArray : outEdgeArray;
             }
 
             // Create a new edge-document to store the currently creating edge
             JObject newEdgeDocObject = new JObject {
-                ["id"] = GraphViewConnection.GenerateDocumentId(),
-                ["_partition"] = vertexObject["_partition"],
+                [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
                 ["_is_reverse"] = targetEdgeIsReverse,
                 ["_is_reverse"] = targetEdgeIsReverse,
                 ["_vertex_id"] = (string)vertexObject["id"],
@@ -295,27 +296,27 @@ namespace GraphView
 
             // Create another new edge-document to store the existing edges.
             JObject existEdgeDocObject = new JObject {
-                ["id"] = GraphViewConnection.GenerateDocumentId(),
-                ["_partition"] = vertexObject["_partition"],
+                [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
+                [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
                 ["_is_reverse"] = targetEdgeIsReverse,
-                ["_vertex_id"] = (string)vertexObject["id"],
+                ["_vertex_id"] = (string)vertexObject[KW_DOC_ID],
                 ["_edge"] = targetEdgeArray,
             };
             existEdgeDocId = connection.CreateDocumentAsync(existEdgeDocObject).Result;
 
             // Update vertexObject to store the newly create edge-document & upload the vertexObject
-            vertexObject[targetEdgeIsReverse ? "_reverse_edge" : "_edge"] = new JObject {
+            vertexObject[targetEdgeIsReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE] = new JObject {
                 ["_edges"] = new JArray {
                     new JObject {
-                        ["id"] = existEdgeDocId,
+                        [KW_DOC_ID] = existEdgeDocId,
                     },
                     new JObject {
-                        ["id"] = newEdgeDocId,
+                        [KW_DOC_ID] = newEdgeDocId,
                     },
                 },
             };            
             bool dummyTooLarge;
-            UploadOne(connection, (string)vertexObject["id"], vertexObject, out dummyTooLarge);
+            UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out dummyTooLarge);
         }
 
 
@@ -336,46 +337,46 @@ namespace GraphView
             out JObject edgeObject, out string edgeDocId)
         {
             if (!isReverseEdge) {
-                Debug.Assert((string)vertexObject["id"] == srcVertexId);
+                Debug.Assert((string)vertexObject[KW_DOC_ID] == srcVertexId);
             }
-            JToken edgeContainer = vertexObject[isReverseEdge ? "_reverse_edge" : "_edge"];
+            JToken edgeContainer = vertexObject[isReverseEdge ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
 
             if (edgeContainer is JArray) {  // for small-degree vertexes
                 if (isReverseEdge) {
                     edgeObject = (from edgeObj in edgeContainer.Children<JObject>()
-                                  where (string)edgeObj["_srcV"] == srcVertexId
-                                  where (long)edgeObj["_offset"] == edgeOffset
+                                  where (string)edgeObj[KW_EDGE_SRCV] == srcVertexId
+                                  where (long)edgeObj[KW_EDGE_OFFSET] == edgeOffset
                                   select edgeObj
                                  ).FirstOrDefault();
                 }
                 else {
                     edgeObject = (from edgeObj in edgeContainer.Children<JObject>()
-                                  where (long)edgeObj["_offset"] == edgeOffset
+                                  where (long)edgeObj[KW_EDGE_OFFSET] == edgeOffset
                                   select edgeObj
                                  ).FirstOrDefault();
                 }
                 edgeDocId = null;
             }
             else if (edgeContainer is JObject) { // for large-degree vertexes
-                string edgeIdList = string.Join(", ", edgeContainer["_edges"].Children<JObject>().Select(e => $"'{e["id"]}'"));
+                string edgeDocIdList = string.Join(", ", edgeContainer["_edges"].Children<JObject>().Select(e => $"'{e[KW_DOC_ID]}'"));
                 string query;
                 if (isReverseEdge) {
-                    query = $"SELECT doc.id, edge\n" +
+                    query = $"SELECT doc.{KW_DOC_ID}, edge\n" +
                             $"FROM doc\n" +
                             $"JOIN edge IN doc._edge\n" +
-                            $"WHERE doc.id IN ({edgeIdList})\n" +
-                            $"  AND (edge._srcV = '{srcVertexId}')\n" +
-                            $"  AND (edge._offset = {edgeOffset})\n";
+                            $"WHERE doc.{KW_DOC_ID} IN ({edgeDocIdList})\n" +
+                            $"  AND (edge.{KW_EDGE_SRCV} = '{srcVertexId}')\n" +
+                            $"  AND (edge.{KW_EDGE_OFFSET} = {edgeOffset})\n";
                 }
                 else {
-                    query = $"SELECT doc.id, edge\n" +
+                    query = $"SELECT doc.{KW_DOC_ID}, edge\n" +
                             $"FROM doc\n" +
                             $"JOIN edge IN doc._edge\n" +
-                            $"WHERE doc.id IN ({edgeIdList})\n" +
-                            $"  AND (edge._offset = {edgeOffset})\n";
+                            $"WHERE doc.{KW_DOC_ID} IN ({edgeDocIdList})\n" +
+                            $"  AND (edge.{KW_EDGE_OFFSET} = {edgeOffset})\n";
                 }
                 JObject result = connection.ExecuteQueryUnique(query);
-                edgeDocId = (string)result?["id"];
+                edgeDocId = (string)result?[KW_DOC_ID];
                 edgeObject = (JObject)result?["edge"];
             }
             else {
@@ -392,7 +393,7 @@ namespace GraphView
             bool isReverse,
             string srcVertexId, long edgeOffset)
         {
-            JToken edgeContainer = vertexObject[isReverse ? "_reverse_edge" : "_edge"];
+            JToken edgeContainer = vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
             if (edgeContainer is JObject) {
                 // Now it is a large-degree vertex, and contains at least 1 edge-document
                 Debug.Assert(!string.IsNullOrEmpty(edgeDocId), "!string.IsNullOrEmpty(edgeDocId)");
@@ -402,8 +403,8 @@ namespace GraphView
                 Debug.Assert(edgeDocumentsArray.Count > 0, "edgeDocuments.Count > 0");
 
                 JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId);
-                Debug.Assert(edgeDocument["_partition"] != null);
-                Debug.Assert(vertexObject["_partition"] != null);
+                Debug.Assert(edgeDocument[KW_DOC_PARTITION] != null);
+                Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
                 Debug.Assert(((string)edgeDocument["id"]).Equals(edgeDocId), "((string)edgeDocument['id']).Equals(edgeDocId)");
                 Debug.Assert((bool)edgeDocument["_is_reverse"] == isReverse, "(bool)edgeDocument['_is_reverse'] == isReverse");
                 Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
@@ -413,10 +414,10 @@ namespace GraphView
                 Debug.Assert(edgesArray != null, "edgesArray != null");
                 Debug.Assert(edgesArray.Count > 0, "edgesArray.Count > 0");
                 if (isReverse) {
-                    edgesArray.First(e => (string)e["_srcV"] == srcVertexId && (long)e["_offset"] == edgeOffset).Remove();
+                    edgesArray.First(e => (string)e[KW_EDGE_SRCV] == srcVertexId && (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
                 }
                 else {
-                    edgesArray.First(e => (long)e["_offset"] == edgeOffset).Remove();
+                    edgesArray.First(e => (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
                 }
 
                 // 
@@ -429,31 +430,31 @@ namespace GraphView
 
                     //
                     // If the vertex-document contains no (incoming or outgoing) edges now, set edgeContainer 
-                    // ("_edge" or "_reverse_edge") to an empry JArray! Anyway, we ensure that if edgeContainer 
+                    // ("_edge" or KW_VERTEX_REV_EDGE) to an empry JArray! Anyway, we ensure that if edgeContainer 
                     // is JObject, it contains at least one edge-document
                     //
                     if (edgeDocumentsArray.Count == 0) {
-                        vertexObject[isReverse ? "_reverse_edge" : "_edge"] = new JArray();
+                        vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE] = new JArray();
                     }
 
                     // Delete the edge-document, and add the vertex-document to the upload list
-                    documentMap[edgeDocId] = new Tuple<JObject, string>(null, (string)edgeDocument["_partition"]);
-                    documentMap[(string)vertexObject["id"]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject["_partition"]);
+                    documentMap[edgeDocId] = new Tuple<JObject, string>(null, (string)edgeDocument[KW_DOC_PARTITION]);
+                    documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject[KW_DOC_PARTITION]);
                 }
                 else {
-                    documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, (string)edgeDocument["_partition"]);
+                    documentMap[edgeDocId] = new Tuple<JObject, string>(edgeDocument, (string)edgeDocument[KW_DOC_PARTITION]);
                 }
             }
             else if (edgeContainer is JArray) {
                 Debug.Assert(edgeDocId == null, "edgeDocId == null");
 
                 if (isReverse) {
-                    ((JArray)edgeContainer).First(e => (string)e["_srcV"] == srcVertexId && (long)e["_offset"] == edgeOffset).Remove();
+                    ((JArray)edgeContainer).First(e => (string)e[KW_EDGE_SRCV] == srcVertexId && (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
                 }
                 else {
-                    ((JArray)edgeContainer).First(e => (long)e["_offset"] == edgeOffset).Remove();
+                    ((JArray)edgeContainer).First(e => (long)e[KW_EDGE_OFFSET] == edgeOffset).Remove();
                 }
-                documentMap[(string)vertexObject["id"]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject["_partition"]);
+                documentMap[(string)vertexObject[KW_DOC_ID]] = new Tuple<JObject, string>(vertexObject, (string)vertexObject[KW_DOC_PARTITION]);
             }
             else {
                 throw new Exception($"BUG: edgeContainer should either be JObject or JArray, but now: {edgeContainer?.GetType()}");
@@ -474,14 +475,14 @@ namespace GraphView
             JObject vertexObject,
             string edgeDocId,  // Can be null
             bool isReverse,
-            JObject newEdgeObject  // With all metadata (including id, _partition, _srcV/_sinkV, _offset)
+            JObject newEdgeObject  // With all metadata (including id, partition, srcV/sinkV, offset)
         )
         {
             bool tooLarge;
-            string srcOrSinkVInEdgeObject = isReverse ? "_srcV" : "_sinkV";
+            string srcOrSinkVInEdgeObject = isReverse ? KW_EDGE_SRCV : KW_EDGE_SINKV;
 
             if (edgeDocId == null) {
-                JArray edgeContainer = (JArray)vertexObject[isReverse ? "_reverse_edge" : "_edge"];
+                JArray edgeContainer = (JArray)vertexObject[isReverse ? KW_VERTEX_REV_EDGE : KW_VERTEX_EDGE];
 
                 // Don't use JToken.Replace() here.
                 // Make sure the currently modified edge is the last child of edgeContainer, which 
@@ -489,12 +490,12 @@ namespace GraphView
                 //
                 // NOTE: The following line applies for both incomming and outgoing edge.
                 edgeContainer.Children<JObject>().First(
-                    e => (long)e["_offset"] == (long)newEdgeObject["_offset"] &&
+                    e => (long)e[KW_EDGE_OFFSET] == (long)newEdgeObject[KW_EDGE_OFFSET] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
                 edgeContainer.Add(newEdgeObject);
 
-                UploadOne(connection, (string)vertexObject["id"], vertexObject, out tooLarge);
+                UploadOne(connection, (string)vertexObject[KW_DOC_ID], vertexObject, out tooLarge);
                 if (tooLarge) {
                     // Handle this situation: The updated edge is too large to be filled into the vertex-document
                     string existEdgeDocId, newEdgeDocId;
@@ -504,7 +505,7 @@ namespace GraphView
             else {
                 JObject edgeDocObject = connection.RetrieveDocumentById(edgeDocId);
                 edgeDocObject["_edge"].Children<JObject>().First(
-                    e => (long)e["_offset"] == (long)newEdgeObject["_offset"] &&
+                    e => (long)e[KW_EDGE_OFFSET] == (long)newEdgeObject[KW_EDGE_OFFSET] &&
                          (string)e[srcOrSinkVInEdgeObject] == (string)newEdgeObject[srcOrSinkVInEdgeObject]
                 ).Remove();
                 ((JArray)edgeDocObject["_edge"]).Add(newEdgeObject);
@@ -527,27 +528,27 @@ namespace GraphView
             AdjacencyListField result = new AdjacencyListField();
 
             string query = $"SELECT {{\"edge\": edge, " +
-                           $"\"_srcV\": doc.id, " +
-                           $"\"_srcVLabel\": doc.label}} AS incomingEdgeMetadata\n" +
+                           $"\"{KW_EDGE_SRCV}\": doc.id, " +
+                           $"\"{KW_EDGE_SRCV_LABEL}\": doc.label}} AS incomingEdgeMetadata\n" +
                            $"FROM doc\n" +
                            $"JOIN edge IN doc._edge\n" +
-                           $"WHERE edge._sinkV = '{vertexId}'\n";
+                           $"WHERE edge.{KW_EDGE_SINKV} = '{vertexId}'\n";
 
             foreach (JObject edgeDocument in connection.ExecuteQuery(query))
             {
                 JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
                 JObject edgeObject = (JObject)edgeMetadata["edge"];
-                string srcV = edgeMetadata["_srcV"].ToString();
-                string srcVLabel = edgeMetadata["_srcVLabel"]?.ToString();
+                string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
+                string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
 
                 EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-                edgeField.EdgeProperties.Add("_srcV", new EdgePropertyField("_srcV", srcV, JsonDataType.String, edgeField));
+                edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
                 if (srcVLabel != null) {
-                    edgeField.EdgeProperties.Add("_srcVLabel",
-                        new EdgePropertyField("_srcVLabel", srcVLabel, JsonDataType.String, edgeField));
+                    edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
+                        new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
                 }
 
-                result.AddEdgeField(srcV, (long)edgeObject["_offset"], edgeField);
+                result.AddEdgeField(srcV, (long)edgeObject[KW_EDGE_OFFSET], edgeField);
             }
 
             return result;
@@ -570,30 +571,30 @@ namespace GraphView
             }
 
             string query = $"SELECT {{\"edge\": edge, " +
-                           $"\"vertexId\": edge._sinkV, "+
-                           $"\"_srcV\": doc.id, " +
-                           $"\"_srcVLabel\": doc.label}} AS incomingEdgeMetadata\n" +
+                           $"  \"vertexId\": edge.{KW_EDGE_SINKV}, "+
+                           $"  \"{KW_EDGE_SRCV}\": doc.id, " +
+                           $"  \"{KW_EDGE_SRCV_LABEL}\": doc.label}} AS incomingEdgeMetadata\n" +
                            $"FROM doc\n" +
                            $"JOIN edge IN doc._edge\n" +
-                           $"WHERE edge._sinkV IN ({vertexIdList.ToString()})\n";
+                           $"WHERE edge.{KW_EDGE_SINKV} IN ({vertexIdList.ToString()})\n";
 
             foreach (JObject edgeDocument in connection.ExecuteQuery(query))
             {
                 JObject edgeMetadata = (JObject)edgeDocument["incomingEdgeMetadata"];
                 JObject edgeObject = (JObject)edgeMetadata["edge"];
                 string vertexId = edgeMetadata["vertexId"].ToString();
-                string srcV = edgeMetadata["_srcV"].ToString();
-                string srcVLabel = edgeMetadata["_srcVLabel"]?.ToString();
+                string srcV = edgeMetadata[KW_EDGE_SRCV].ToString();
+                string srcVLabel = edgeMetadata[KW_EDGE_SRCV_LABEL]?.ToString();
 
                 EdgeField edgeField = EdgeField.ConstructForwardEdgeField(srcV, srcVLabel, null, edgeObject);
-                edgeField.EdgeProperties.Add("_srcV", new EdgePropertyField("_srcV", srcV, JsonDataType.String, edgeField));
+                edgeField.EdgeProperties.Add(KW_EDGE_SRCV, new EdgePropertyField(KW_EDGE_SRCV, srcV, JsonDataType.String, edgeField));
                 if (srcVLabel != null) {
-                    edgeField.EdgeProperties.Add("_srcVLabel",
-                        new EdgePropertyField("_srcVLabel", srcVLabel, JsonDataType.String, edgeField));
+                    edgeField.EdgeProperties.Add(KW_EDGE_SRCV_LABEL,
+                        new EdgePropertyField(KW_EDGE_SRCV_LABEL, srcVLabel, JsonDataType.String, edgeField));
                 }
 
                 AdjacencyListField revAdjList = revAdjacencyListCollection[vertexId];
-                revAdjList.AddEdgeField(srcV, (long)edgeObject["_offset"], edgeField);
+                revAdjList.AddEdgeField(srcV, (long)edgeObject[KW_EDGE_OFFSET], edgeField);
             }
 
             return revAdjacencyListCollection;

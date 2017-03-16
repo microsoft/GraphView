@@ -43,6 +43,7 @@ using System.Threading;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
+using static GraphView.GraphViewKeywords;
 
 // For debugging
 
@@ -168,11 +169,11 @@ namespace GraphView
                 }
                 else if (docDBCollection.PartitionKey != null
                          && docDBCollection.PartitionKey.Paths.Count > 0
-                         && docDBCollection.PartitionKey.Paths[0].Equals("/_partition", StringComparison.OrdinalIgnoreCase)) {
+                         && docDBCollection.PartitionKey.Paths[0].Equals($"/{KW_DOC_PARTITION}", StringComparison.OrdinalIgnoreCase)) {
                     this.CollectionType = CollectionType.PARTITIONED;
                 }
                 else {
-                    throw new Exception(string.Format("Collection not properly configured. If you wish to configure a partitioned collection, please chose /{0} as partitionKey", "_partition"));
+                    throw new Exception(string.Format("Collection not properly configured. If you wish to configure a partitioned collection, please chose /{0} as partitionKey", KW_DOC_PARTITION));
                 }
             }
 
@@ -279,8 +280,8 @@ namespace GraphView
                 this.EdgeSpillThreshold = (int)edgeSpillThreshold;
             }
             JObject metaObject = new JObject {
-                ["id"] = "metadata",
-                ["_partition"] = "metapartition",
+                [KW_DOC_ID] = "metadata",
+                [KW_DOC_PARTITION] = "metapartition",
                 ["_edgeSpillThreshold"] = jEdgeSpillThreshold
             };
             CreateDocumentAsync(metaObject).Wait();
@@ -298,7 +299,7 @@ namespace GraphView
                 Id = this.DocDBCollectionId,
             };
             if (isPartitionCollection) {
-                collection.PartitionKey.Paths.Add("/_partition");
+                collection.PartitionKey.Paths.Add($"/{KW_DOC_PARTITION}");
             }
 
             this.DocDBClient.CreateDocumentCollectionAsync(
@@ -322,11 +323,11 @@ namespace GraphView
         internal async Task<string> CreateDocumentAsync(JObject docObject)
         {
             Debug.Assert(docObject != null, "The newly created document should not be null");
-            Debug.Assert(docObject["id"] != null, "The newly created document should specify 'id' field");
-            Debug.Assert(docObject["_partition"] != null, "The newly created document should specify '_partition' field");
+            Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should specify '{KW_DOC_ID}' field");
+            Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should specify '{KW_DOC_PARTITION}' field");
 
             Document createdDocument = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
-            Debug.Assert((string)docObject["id"] == createdDocument.Id);
+            Debug.Assert((string)docObject[KW_DOC_ID] == createdDocument.Id);
             return createdDocument.Id;
         }
 
@@ -341,11 +342,11 @@ namespace GraphView
         {
             foreach (JObject docObject in docObjects) {
                 Debug.Assert(docObject != null, "The newly created document should not be null");
-                Debug.Assert(docObject["id"] != null, "The newly created document should contain 'id' field");
-                Debug.Assert(docObject["_partition"] != null, "The newly created document should contain '_partition' field");
+                Debug.Assert(docObject[KW_DOC_ID] != null, $"The newly created document should contain '{KW_DOC_ID}' field");
+                Debug.Assert(docObject[KW_DOC_PARTITION] != null, $"The newly created document should contain '{KW_DOC_PARTITION}' field");
 
                 Document createdDoc = await this.DocDBClient.CreateDocumentAsync(this._docDBCollectionUri, docObject);
-                Debug.Assert((string)docObject["id"] == createdDoc.Id);
+                Debug.Assert((string)docObject[KW_DOC_ID] == createdDoc.Id);
             }
         }
 
@@ -364,12 +365,12 @@ namespace GraphView
                 this.DocDBClient.DeleteDocumentAsync(documentUri, option).Wait();
             }
             else {
-                Debug.Assert(docObject["id"] is JValue);
-                Debug.Assert((string)docObject["id"] == docId, "The replaced document should match ID in the parameter");
-                Debug.Assert(partition != null && partition == (string)docObject["_partition"]);
+                Debug.Assert(docObject[KW_DOC_ID] is JValue);
+                Debug.Assert((string)docObject[KW_DOC_ID] == docId, "The replaced document should match ID in the parameter");
+                Debug.Assert(partition != null && partition == (string)docObject[KW_DOC_PARTITION]);
 
                 await this.DocDBClient.ReplaceDocumentAsync(documentUri, docObject, option);
-                docObject["id"] = docId;
+                docObject[KW_DOC_ID] = docId;
             }
         }
 
@@ -386,7 +387,7 @@ namespace GraphView
                 JObject docObject = pair.Value.Item1;  // Can be null (null means deletion)
                 string partition = pair.Value.Item2;  // Partition
                 if (docObject != null) {
-                    Debug.Assert(partition == (string)docObject["_partition"]);
+                    Debug.Assert(partition == (string)docObject[KW_DOC_PARTITION]);
                 }
                 await ReplaceOrDeleteDocumentAsync(docId, docObject, partition);
             }
@@ -403,7 +404,7 @@ namespace GraphView
                 //
                 // It seems that DocDB won't return an empty result, but throw an exception instead!
                 // 
-                string script = $"SELECT * FROM Doc WHERE Doc.id = '{docId}'";
+                string script = $"SELECT * FROM Doc WHERE Doc.{KW_DOC_ID} = '{docId}'";
                 FeedOptions queryOptions = new FeedOptions {
                     MaxItemCount = -1,  // dynamic paging
                 };

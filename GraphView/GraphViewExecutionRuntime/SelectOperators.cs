@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Newtonsoft.Json.Linq;
+using static GraphView.GraphViewKeywords;
 
 namespace GraphView
 {
@@ -776,10 +777,10 @@ namespace GraphView
             string otherValue;
             if (this.isStartVertexTheOriginVertex) {
                 if (isReversedAdjList) {
-                    otherValue = edge["_srcV"].ToValue;
+                    otherValue = edge[KW_EDGE_SRCV].ToValue;
                 }
                 else {
-                    otherValue = edge["_sinkV"].ToValue;
+                    otherValue = edge[KW_EDGE_SINKV].ToValue;
                 }
             }
             else {
