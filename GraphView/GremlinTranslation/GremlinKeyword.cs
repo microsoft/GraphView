@@ -11,6 +11,7 @@ namespace GraphView
     {
         public const bool OLD = true;
 
+        public const string DefaultId = "id";
         public const string Label = "label";
         public const string SinkLabel = "_sinkLabel";
         public const string EdgeID = "id";

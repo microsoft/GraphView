@@ -4,6 +4,8 @@ using System.Configuration;
 using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 {
@@ -79,33 +81,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/map/CoalesceTest.java
         /// Gremlin: g.V().coalesce(out("likes"), out("knows"), out("created")).<String>groupCount().by("name");
         /// </summary>
-        /// <remarks>
-        /// GroupCount() Not Implemented on GraphTraversal2
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36609
-        /// </remarks>
-        [Ignore]
         [TestMethod]
         public void CoalesceWithGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Implement GroupCount()
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
+                var traversal = GraphViewCommand.g().V()
+                    .Coalesce(
+                        GraphTraversal2.__().Out("likes"),
+                        GraphTraversal2.__().Out("knows"),
+                        GraphTraversal2.__().Out("created"))
+                    .GroupCount()
+                    .By("name");
 
-                //var traversal = GraphViewCommand.g().V()
-                //    .Coalesce(
-                //        GraphTraversal2.__().Out("likes"),
-                //        GraphTraversal2.__().Out("knows"),
-                //        GraphTraversal2.__().Out("created"))
-                //    .GroupCount()
-                //    .By("name");
-                //Dictionary<string, long> result = traversal.Next();
-
-                //Assert.AreEqual(4, result.Count);
-                //AbstractGremlinTest.CheckUnOrderedResults(new string[] { "josh", "lop", "ripple", "vadas" }, result.Keys);
-                //Assert.AreEqual(1, result["josh"]);
-                //Assert.AreEqual(2, result["lop"]);
-                //Assert.AreEqual(1, result["ripple"]);
-                //Assert.AreEqual(1, result["vadas"]);
+                var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+                Assert.AreEqual(1, (int)result[0]["josh"]);
+                Assert.AreEqual(2, (int)result[0]["lop"]);
+                Assert.AreEqual(1, (int)result[0]["ripple"]);
+                Assert.AreEqual(1, (int)result[0]["vadas"]);
             }
         }
 
@@ -114,43 +108,29 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// from org/apache/tinkerpop/gremlin/process/traversal/step/map/CoalesceTest.java
         /// Gremlin: g.V().coalesce(outE("knows"), outE("created")).otherV().path().by("name").by(T.label);
         /// </summary>
-        /// <remarks>
-        /// Coalesce() then Path() does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36750
-        /// 
-        /// Path().By("name") does not work
-        /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36753
-        /// </remarks>
 
-        [Ignore]
         [TestMethod]
         public void CoalesceWithPath()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                // TODO: Use Graphson to parse result.
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
+                var traversal = GraphViewCommand.g().V()
+                    .Coalesce(
+                        GraphTraversal2.__().OutE("knows"),
+                        GraphTraversal2.__().OutE("created"))
+                    .OtherV()
+                    .Path()
+                    .By("name")
+                    .By("label");
 
-                //var label = Enumerable.Empty<string>();
-                //List<Path> expected = new List<Path>
-                //{
-                //    new Path().Extend("marko", label).Extend("knows", label).Extend("vadas", label),
-                //    new Path().Extend("marko", label).Extend("knows", label).Extend("josh", label),
-                //    new Path().Extend("josh", label).Extend("created", label).Extend("ripple", label),
-                //    new Path().Extend("josh", label).Extend("created", label).Extend("lop", label),
-                //    new Path().Extend("peter", label).Extend("created", label).Extend("lop", label),
-                //};
+                var result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
-                //var traversal = GraphViewCommand.g().V()
-                //    .Coalesce(
-                //        GraphTraversal2.__().OutE("knows"),
-                //        GraphTraversal2.__().OutE("created"))
-                //    .OtherV()
-                //    .Path()
-                //    .By("name")
-                //    .By("label");
-                //IEnumerable<Path> result = traversal.Next();
-
-                //AbstractGremlinTest.CheckUnOrderedResults<Path>(expected, result);
+                //CheckOrderedResults(new [] {"marko", "knows", "vadas"}, ((JArray)result[0]).Select(p=>p.ToString()).ToList());
+                //CheckOrderedResults(new[] { "marko", "knows", "josh" }, ((JArray)result[1]).Select(p => p.ToString()).ToList());
+                //CheckOrderedResults(new[] { "josh", "created", "ripple" }, ((JArray)result[2]).Select(p => p.ToString()).ToList());
+                //CheckOrderedResults(new[] { "josh", "created", "lop" }, ((JArray)result[3]).Select(p => p.ToString()).ToList());
+                //CheckOrderedResults(new[] { "peter", "created", "lop" }, ((JArray)result[3]).Select(p => p.ToString()).ToList());
             }
         }
     }

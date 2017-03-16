@@ -52,7 +52,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))
             {
                 List<string> result = command.g().E().Properties().Next();
-                Assert.AreEqual(12, result.Count);
+                Assert.AreEqual(6, result.Count);
                 result = command.g().E().Properties().Drop().Next();
                 Assert.AreEqual(0, result.Count);
             }

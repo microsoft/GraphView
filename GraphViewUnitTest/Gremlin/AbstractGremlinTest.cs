@@ -59,6 +59,18 @@ namespace GraphViewUnitTest.Gremlin
             return vertexId;
         }
 
+        public string ConvertToPropertyId(GraphViewCommand GraphViewCommand, string vertexName, string property)
+        {
+            OutputFormat originalFormat = GraphViewCommand.OutputFormat;
+            GraphViewCommand.OutputFormat = OutputFormat.Regular;
+
+            string propertyId = GraphViewCommand.g().V().Has("name", vertexName).Properties(property).Id().Next().FirstOrDefault();
+
+            GraphViewCommand.OutputFormat = originalFormat;
+
+            return propertyId;
+        }
+
         public string ConvertToEdgeId(GraphViewCommand GraphViewCommand, string outVertexName, string edgeLabel, string inVertexName)
         {
             OutputFormat originalFormat = GraphViewCommand.OutputFormat;

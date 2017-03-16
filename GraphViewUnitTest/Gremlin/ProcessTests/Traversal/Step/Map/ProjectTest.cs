@@ -1,5 +1,7 @@
-﻿using GraphView;
+﻿using System.Linq;
+using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
 
 namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 {
@@ -20,7 +22,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37476
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasLabelPersonProjectABByOutECountByAge()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -32,11 +33,16 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                                                     .By(GraphTraversal2.__().OutE().Count())
                                                     .By("age");
 
-                var result = traversal.Next();
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
 
-                // Skipping Asserts until we fix the above listed bugs.
-
-                ////dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                Assert.AreEqual(3, (int)result[0]["a"]);
+                Assert.AreEqual(29, (int)result[0]["b"]);
+                Assert.AreEqual(0, (int)result[1]["a"]);
+                Assert.AreEqual(27, (int)result[1]["b"]);
+                Assert.AreEqual(2, (int)result[2]["a"]);
+                Assert.AreEqual(32, (int)result[2]["b"]);
+                Assert.AreEqual(1, (int)result[3]["a"]);
+                Assert.AreEqual(35, (int)result[3]["b"]);
             }
         }
 
@@ -44,37 +50,23 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_hasLabelXpersonX_projectXa_bX_byXoutE_countX_byXageX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/ProjectTest.java.
         /// Equivalent gremlin: "g.V.out('created').project('a', 'b').by('name').by(__.in('created').count).order.by(select('b'),decr).select('a')"
         /// </summary>
-        /// <remarks>
-        /// Test fails because of the following bugs:
-        /// 1. By(string key) not implemented for Project Op.
-        /// \Development\Euler\Product\Microsoft.Azure.Graph\GraphView\GremlinTranslation2\map\GremlinProjectOp.cs, Line 48.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37476
-        /// 2. GraphTraversal2 by(Traversal&lt;?, ?&gt; traversal, Comparator comparator) not implemented.
-        /// \Development\Euler\Product\Microsoft.Azure.Graph\GraphView\GremlinTranslation2\map\GremlinProjectOp.cs, Line 348.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37477
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesOutCreatedProjectABByNameByInCreatedCountOrderBySelectB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                graphCommand.OutputFormat = OutputFormat.GraphSON;
+                var traversal = graphCommand.g().V().Out("created")
+                                                     .Project("a", "b")
+                                                     .By("name")
+                                                     .By(GraphTraversal2.__().In("created").Count())
+                                                     .Order().By(
+                                                               GraphTraversal2.__().Select("b"),
+                                                               GremlinKeyword.Order.Decr)
+                                                     .Select("a");
 
-                ////var traversal = graphCommand.g().V().Out("created")
-                ////                                     .Project("a", "b")
-                ////                                     .By("name")
-                ////                                     .By(GraphTraversal2.__().In("created").Count())
-                ////                                     .Order().By(
-                ////                                               GraphTraversal2.__().Select("b"),
-                ////                                               GremlinKeyword.Order.Decr)
-                ////                                     .Select("a");
-
-                ////var result = traversal.Next();
-
-                // Skipping Asserts until we fix the above listed bugs.
-
-                ////dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                var result = traversal.Next();
+                
+                CheckUnOrderedResults(new [] {"lop", "lop", "lop", "ripple"}, result);
             }
         }
     }

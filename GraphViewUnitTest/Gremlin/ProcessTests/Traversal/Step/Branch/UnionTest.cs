@@ -1,7 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Configuration;
+using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
 {
@@ -71,7 +74,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                Assert.Fail();
                 var traversal = GraphViewCommand.g().V().Choose(
                     GraphTraversal2.__().Label().Is("person"),
                     GraphTraversal2.__().Union(
@@ -90,30 +92,29 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Equivalent gremlin: "g.V.choose(__.label.is('person'), union(__.out.lang, __.out.name), __.in.label).groupCount"
         /// </summary>
         /// <remarks>
-        /// This fails because Choose is not implemented.
-        /// \Development\Euler\Product\Microsoft.Azure.Graph\GraphView\GremlinTranslation2\branch\GremlinChooseOp.cs Line 45, in GetContext().
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36531
-        /// GroupCount() is not implemented on GraphTraversal2. Replacing the functionality by using Group().By(__().Count())
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36609
         /// </remarks>
         [TestMethod]
         public void ChooseIfPersonThenUnionOutLangOutAndOutNameElseInLabelGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
-                Assert.Fail();
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V().Choose(
                     GraphTraversal2.__().Label().Is("person"),
                     GraphTraversal2.__().Union(
                         GraphTraversal2.__().Out().Values("lang"),
                         GraphTraversal2.__().Out().Values("name")),
                     GraphTraversal2.__().In().Label())
-                    .Group().By(GraphTraversal2.__().Count());
+                    .GroupCount();
 
-                var result = traversal.Next();
-                // ASIDE: Below Assertions are incorrect, revisit this once we actually get the above traversal to work.
-                var expectedResult = new List<string>() { "lop", "lop", "lop", "ripple", "java", "java", "java", "java", "josh", "vadas", "person", "person", "person", "person" };
-                AbstractGremlinTest.CheckUnOrderedResults<string>(expectedResult, result);
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
+                
+                Assert.AreEqual(4, (int)result[0]["java"]);
+                Assert.AreEqual(1, (int)result[0]["ripple"]);
+                Assert.AreEqual(4, (int)result[0]["person"]);
+                Assert.AreEqual(1, (int)result[0]["vadas"]);
+                Assert.AreEqual(1, (int)result[0]["josh"]);
+                Assert.AreEqual(3, (int)result[0]["lop"]);
             }
         }
 
@@ -121,19 +122,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Port of the g_V_unionXrepeatXunionXoutXcreatedX__inXcreatedXX_timesX2X__repeatXunionXinXcreatedX__outXcreatedXX_timesX2XX_label_groupCount() UT from org/apache/tinkerpop/gremlin/process/traversal/step/branch/UnionTest.java.
         /// Equivalent gremlin: "g.V.union(repeat(union(out('created'), __.in('created'))).times(2), repeat(union(__.in('created'), out('created'))).times(2)).label.groupCount()"
         /// </summary>
-        /// <remarks>
-        /// 1. GroupCount() is not implemented on GraphTraversal2. Replacing the functionality by using Group().By(__().Count())
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36609
-        /// 2. This Test seems to throw an exception during compilation, more details on the error in the below work item:
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36710
-        /// </remarks>
-        
+
         [TestMethod]
-        [Ignore]
         public void UnionRepeatUnionOutCreatedInCreatedTimes2RepeatUnionInCreatedOutCreatedTimes2LabelGroupCount()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = GraphViewCommand.g().V().Union(
                     GraphTraversal2.__().Repeat(
                         GraphTraversal2.__().Union(
@@ -143,14 +138,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                         GraphTraversal2.__().Union(
                             GraphTraversal2.__().In("created"),
                             GraphTraversal2.__().Out("created"))).Times(2))
-                    .Label().Group().By(GraphTraversal2.__().Count());
+                    .Label().GroupCount();
 
-                var result = traversal.Next();
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
-                // Assertions missing, revisit this once we actually get the above traversal to work.
-                //assertEquals(12l, groupCount.get("software").longValue());
-                //assertEquals(20l, groupCount.get("person").longValue());
-                //assertEquals(2, groupCount.size());
+                Assert.AreEqual(12, (int)result[0]["software"]);
+                Assert.AreEqual(20, (int)result[0]["person"]);
             }
         }
 
@@ -163,11 +156,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36732
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVId1VId2LocalUnionOutECountInECountOutEWeightSum()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 string vertexId1 = this.ConvertToVertexId(GraphViewCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(GraphViewCommand, "vadas");
 
@@ -177,11 +170,10 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                             GraphTraversal2.__().OutE().Count(),
                             GraphTraversal2.__().InE().Count(),
                             GraphTraversal2.__().OutE().Values("weight").Sum()));
-
-                var result = traversal.Next();
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
 
                 // Assertions missing, revisit this once we actually get the above traversal to work.
-                //checkResults(Arrays.asList(0l, 0l, 0, 3l, 1l, 1.9d), traversal);
+                CheckUnOrderedResults(new double[] { 0d, 0d, 0d, 3d, 1d, 1.9d}, ((JArray)result).Select(j => j.ToObject<double>()).ToList());
             }
         }
 
@@ -189,16 +181,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
         /// Port of the g_VX1_2X_unionXoutE_count__inE_count__outE_weight_sumX UT from org/apache/tinkerpop/gremlin/process/traversal/step/branch/UnionTest.java.
         /// Equivalent gremlin: "g.V(v1Id, v2Id).union(outE().count, inE().count, outE().weight.sum)", "v1Id", v1Id, "v2Id", v2Id
         /// </summary>
-        /// <remarks>
-        /// The traversal fails because GremlinSumOp.GetContext() throws a NotImplementedException.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36732
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVId1VId2UnionOutECountInECountOutEWeightSum()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
             {
+                GraphViewCommand.OutputFormat = OutputFormat.GraphSON;
                 string vertexId1 = this.ConvertToVertexId(GraphViewCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(GraphViewCommand, "vadas");
 
@@ -208,10 +196,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                         GraphTraversal2.__().InE().Count(),
                         GraphTraversal2.__().OutE().Values("weight").Sum());
 
-                var result = traversal.Next();
+                dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.FirstOrDefault());
 
-                // Assertions missing, revisit this once we actually get the above traversal to work.
-                // checkResults(Arrays.asList(3l, 1.9d, 1l), traversal);
+                CheckUnOrderedResults(new double[] { 3d, 1.9d, 1d }, ((JArray)result).Select(j => j.ToObject<double>()).ToList());
             }
         }
     }

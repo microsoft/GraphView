@@ -72,13 +72,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_VX1X_repeatXboth_simplePathX_untilXhasIdX6XX_path_byXnameX_unfold UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/UnfoldTest.java.
         /// Equivalent gremlin: "g.V(v1Id).repeat(__.both.simplePath).until(hasId(v6Id)).path.by('name').unfold", "v1Id", v1Id, "v6Id", v6Id
         /// </summary>
-        /// <remarks>
-        /// Test fails becuase of the following:
-        /// 1. SimplePath is not implemented. WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37474
-        /// 2. Path does not support ModulatingBy, hence the By fails. WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37475
-        /// </remarks>
-        [TestMethod]
         [Ignore]
+        [TestMethod]
         public void HasVIdRepeatBothSimplePathUntilHasIdVPathByNameUnfold()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -86,15 +81,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(graphCommand, "peter");
 
-                graphCommand.OutputFormat = OutputFormat.GraphSON;
-
-                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both()/*.SimplePath()*/).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
+                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
 
                 var result = traversal.Next();
 
-                // Skipping Asserts until we fix the above listed bugs.
-
-                ////dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                CheckUnOrderedResults(new [] {"marko", "lop", "peter", "marko", "josh", "lop", "peter"}, result);
             }
         }
     }

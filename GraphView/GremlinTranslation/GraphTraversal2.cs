@@ -695,7 +695,8 @@ namespace GraphView
 
         public GraphTraversal2 Id()
         {
-            AddGremlinOperator(new GremlinIdOp());
+            //TODO: id should be a tvf later
+            AddGremlinOperator(new GremlinValuesOp(GremlinKeyword.DefaultId));
             return this;
         }
 

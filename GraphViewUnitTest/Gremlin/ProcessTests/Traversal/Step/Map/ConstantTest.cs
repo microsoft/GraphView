@@ -36,7 +36,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Choose() is not implemented
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36801
         /// </remarks>
-        [Ignore]
         [TestMethod]
         public void ConstantWithChoose()
         {

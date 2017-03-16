@@ -33,40 +33,4 @@ namespace GraphView
             return inputContext;
         }
     }
-
-    internal class GremlinIdOp : GremlinTranslationOperator
-    {
-       internal override GremlinToSqlContext GetContext()
-        {
-            GremlinToSqlContext inputContext = GetInputContext();
-            if (inputContext.PivotVariable == null)
-            {
-                throw new QueryCompilationException("The PivotVariable can't be null.");
-            }
-
-            List<string> propertyKeys = new List<string>();
-            if (inputContext.PivotVariable.GetVariableType() == GremlinVariableType.Vertex)
-            {
-                propertyKeys.Add(GremlinKeyword.NodeID);
-            }
-            else if (inputContext.PivotVariable.GetVariableType() == GremlinVariableType.Edge)
-            {
-                propertyKeys.Add(GremlinKeyword.EdgeID);
-            }
-            else if (inputContext.PivotVariable.GetVariableType() == GremlinVariableType.Table)
-            {
-                //TODO: hack for now ! but id should be unified later  
-                propertyKeys.Add(GremlinKeyword.NodeID);
-            }
-            else {
-                // Type is Scalar, TODO: hack for now ! but id should be unified later  
-                propertyKeys.Add(GremlinKeyword.TableDefaultColumnName);
-                //throw new NotImplementedException($"Can't process this type {inputContext.PivotVariable.GetVariableType()} for now.");
-            }
-
-            inputContext.PivotVariable.Values(inputContext, propertyKeys);
-
-            return inputContext;
-        }
-    }
 }
