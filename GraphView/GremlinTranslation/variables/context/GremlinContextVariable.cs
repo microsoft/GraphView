@@ -32,11 +32,6 @@ namespace GraphView
             RealVariable.Populate(property);
         }
 
-        internal override void Select(GremlinToSqlContext currentContext, List<string> Labels)
-        {
-            RealVariable.Select(currentContext, Labels);
-        }
-
         internal override void Select(GremlinToSqlContext currentContext, string selectKey)
         {
             RealVariable.Select(currentContext, selectKey);

@@ -102,7 +102,6 @@
     <Compile Include="GremlinTranslation\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation\GremlinUtil.cs" />
-    <Compile Include="GremlinTranslation\IGremlinByModulating.cs" />
     <Compile Include="GremlinTranslation\map\GremlinMapOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPathOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPropertyMapOp.cs" />
@@ -199,9 +198,7 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinKeyVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinMapVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinProjectVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\scalar\GremlinScalarSubquery.cs" />
-    <Compile Include="GremlinTranslation\variables\scalar\GremlinScalarVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\scalar\GremlinVariableProperty.cs" />
+    <Compile Include="GremlinTranslation\variables\GremlinVariableProperty.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinCoalesceTableVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinConstantVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinFlatMapVariable.cs" />

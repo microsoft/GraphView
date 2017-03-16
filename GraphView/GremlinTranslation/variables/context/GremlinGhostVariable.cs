@@ -59,7 +59,6 @@ namespace GraphView
                 return new GremlinVariableProperty(AttachedVariable, SelectKey);
             }
             return base.DefaultProjection();
-            //return GetVariableProperty(GetPrimaryKey());
         }
 
         internal override GremlinVariableProperty DefaultProjection()

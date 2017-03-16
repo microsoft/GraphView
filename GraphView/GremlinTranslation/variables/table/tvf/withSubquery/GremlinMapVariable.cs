@@ -30,10 +30,10 @@ namespace GraphView
             return false;
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            return MapContext.PivotVariable.GetUnfoldVariableType();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    return MapContext.PivotVariable.GetUnfoldVariableType();
+        //}
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {

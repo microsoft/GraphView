@@ -109,7 +109,7 @@ namespace GraphView
                 }
             }
 
-            return new List<GremlinVariable>() { GremlinBranchVariable.Create(label, this, branchVariableList) };
+            return new List<GremlinVariable>() { new GremlinBranchVariable(label, this, branchVariableList) };
         }
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
@@ -133,10 +133,10 @@ namespace GraphView
             return variableList;
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            throw new NotImplementedException();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         public override WTableReference ToTableReference()
         {

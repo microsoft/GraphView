@@ -44,10 +44,10 @@ namespace GraphView
             FoldVariable = subqueryContext.PivotVariable;
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            return FoldVariable.GetVariableType();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    return FoldVariable.GetVariableType();
+        //}
 
         public override WTableReference ToTableReference()
         {

@@ -36,10 +36,10 @@ namespace GraphView
             OptionalContext.Populate(property);
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            throw new NotImplementedException();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)
         {

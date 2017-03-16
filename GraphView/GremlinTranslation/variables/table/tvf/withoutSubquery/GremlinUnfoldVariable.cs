@@ -10,16 +10,22 @@ namespace GraphView
     {
         public GremlinVariable UnfoldVariable { get; set; }
 
-        public GremlinUnfoldVariable(GremlinVariable unfoldVariable, GremlinVariableType variableType)
-            : base(variableType)
+        //public GremlinUnfoldVariable(GremlinVariable unfoldVariable, GremlinVariableType variableType)
+        //    : base(variableType)
+        //{
+        //    UnfoldVariable = unfoldVariable;
+        //}
+
+        public GremlinUnfoldVariable(GremlinVariable unfoldVariable)
+            : base(GremlinVariableType.Table)
         {
             UnfoldVariable = unfoldVariable;
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            return UnfoldVariable.GetUnfoldVariableType();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    return UnfoldVariable.GetUnfoldVariableType();
+        //}
 
         internal override void Populate(string property)
         {

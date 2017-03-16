@@ -18,10 +18,10 @@ namespace GraphView
             Labels.Add(sideEffectKey);
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            return ProjectContext.PivotVariable.GetVariableType();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    return ProjectContext.PivotVariable.GetVariableType();
+        //}
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
         {

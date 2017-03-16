@@ -63,10 +63,10 @@ namespace GraphView
             return variableList;
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            throw new NotImplementedException();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         public override  WTableReference ToTableReference()
         {

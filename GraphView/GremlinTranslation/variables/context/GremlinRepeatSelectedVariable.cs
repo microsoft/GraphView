@@ -22,11 +22,6 @@ namespace GraphView
             return new GremlinVariableProperty(AttachedVariable, SelectKey);
         }
 
-        internal override GremlinVariableType GetVariableType()
-        {
-            return RealVariable.GetVariableType();
-        }
-
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    internal class GremlinVariableProperty : GremlinScalarVariable
+    internal class GremlinVariableProperty : GremlinVariable
     {
         public GremlinVariable GremlinVariable { get; set; }
         public string VariableProperty { get; set; }
@@ -15,6 +15,11 @@ namespace GraphView
         {
             GremlinVariable = gremlinVariable;
             VariableProperty = variableProperty;
+        }
+
+        internal override GremlinVariableType GetVariableType()
+        {
+            return GremlinVariableType.Scalar;
         }
 
         internal override GremlinVariableProperty DefaultVariableProperty()
@@ -28,7 +33,7 @@ namespace GraphView
             base.Populate(property);
         }
 
-        public override WScalarExpression ToScalarExpression()
+        public WScalarExpression ToScalarExpression()
         {
             return SqlUtil.GetColumnReferenceExpr(GremlinVariable.GetVariableName(), VariableProperty);
         }

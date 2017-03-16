@@ -41,23 +41,6 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
-        internal override string GetProjectKey()
-        {
-            string projectKey;
-            switch (GetVariableType())
-            {
-                case GremlinVariableType.Edge:
-                case GremlinVariableType.Vertex:
-                    projectKey = GremlinKeyword.Star;
-                    break;
-                default:
-                    projectKey = GremlinKeyword.TableDefaultColumnName;
-                    break;
-            }
-            Populate(projectKey);
-            return projectKey;
-        }
-
         internal override GremlinVariableType GetVariableType()
         {
             return VariableType;

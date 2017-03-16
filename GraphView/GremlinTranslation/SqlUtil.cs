@@ -232,13 +232,6 @@ namespace GraphView
             return new WSchemaObjectName(GetIdentifier(value));
         }
 
-        internal static WBooleanExpression GetHaskeyBooleanExpr(GremlinVariable currVar, string key)
-        {
-            var firstExpr = GetFunctionCall("has_key", GetColumnReferenceExpr(currVar.GetVariableName(), key));
-            var secondExpr = GetValueExpr("true");
-            return GetEqualBooleanComparisonExpr(firstExpr, secondExpr);
-        }
-
         internal static WFunctionCall GetFunctionCall(string functionName, params WScalarExpression[] parameterList)
         {
             return new WFunctionCall()
@@ -503,11 +496,6 @@ namespace GraphView
             return new WScalarSubquery() { SubQueryExpr = selectQueryBlock };
         }
 
-        internal static WVariableReference GetVariableReference(string name)
-        {
-            return new WVariableReference() { Name = "@" + name };
-        }
-
         internal static WUnqualifiedJoin GetCrossApplyTableReference(WTableReference secondTableRef)
         {
             return new WUnqualifiedJoin()
@@ -523,9 +511,7 @@ namespace GraphView
             return new WQueryDerivedTable()
             {
                 QueryExpr = selectQueryBlock,
-                Alias = GetIdentifier(alias),
-                //Low = Int32.MinValue,
-                //High = Int32.MaxValue
+                Alias = GetIdentifier(alias)
             };
         }
 

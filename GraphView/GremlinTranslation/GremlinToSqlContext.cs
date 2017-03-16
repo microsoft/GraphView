@@ -237,11 +237,7 @@ namespace GraphView
         {
             if (TableReferences.Count == 0)
             {
-                if (Predicates != null)
-                {
-                    return Predicates;
-                }
-                return null;
+                return Predicates;
             }
             else
             {

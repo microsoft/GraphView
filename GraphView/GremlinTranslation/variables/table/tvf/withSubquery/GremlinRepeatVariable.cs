@@ -42,10 +42,10 @@ namespace GraphView
             }
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            throw new NotImplementedException();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    throw new NotImplementedException();
+        //}
 
         internal override bool ContainsLabel(string label)
         {
@@ -109,6 +109,24 @@ namespace GraphView
             //Some variables will populate ProjectProperty only when we call the ToTableReference function where they appear.
             WRepeatConditionExpression repeatConditionExpr = GetRepeatConditionExpression();
             WSelectQueryBlock repeatQueryBlock = RepeatContext.ToSelectQueryBlock();
+
+            if (SelectedVariableList.Count != 0)
+            {
+                foreach (var selectedVariableTuple in SelectedVariableList)
+                {
+                    var columnName = selectedVariableTuple.Item1;
+                    var selectedVariable = selectedVariableTuple.Item2;
+
+                    var compose2 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose2, new List<WScalarExpression>()
+                    {
+                        SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, columnName),
+                        selectedVariable.RealVariable.ToCompose1()
+                    });
+
+                    repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
+                    repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(compose2, columnName));
+                }
+            }
 
             // TODO: explain this step in detail
             var repeatNewToOldSelectedVarMap = GetNewToOldSelectedVarMap(RepeatContext);
@@ -197,23 +215,7 @@ namespace GraphView
                 repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(secondExpr, property));
             }
 
-            if (SelectedVariableList.Count != 0)
-            {
-                foreach (var selectedVariableTuple in SelectedVariableList)
-                {
-                    var columnName = selectedVariableTuple.Item1;
-                    var selectedVariable = selectedVariableTuple.Item2;
 
-                    var compose2 = SqlUtil.GetFunctionCall(GremlinKeyword.func.Compose2, new List<WScalarExpression>()
-                    {
-                        SqlUtil.GetColumnReferenceExpr(GremlinKeyword.RepeatInitalTableName, columnName),
-                        selectedVariable.RealVariable.ToCompose1()
-                    });
-
-                    repeatFirstSelect.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(null), columnName));
-                    repeatSecondSelect.Add(SqlUtil.GetSelectScalarExpr(compose2, columnName));
-                }
-            }
 
             if (RepeatContext.IsPopulateGremlinPath)
             {

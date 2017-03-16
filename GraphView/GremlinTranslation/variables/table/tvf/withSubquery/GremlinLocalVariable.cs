@@ -41,10 +41,10 @@ namespace GraphView
             return LocalContext.SelectVarsFromCurrAndChildContext(label);
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            return LocalContext.PivotVariable.GetUnfoldVariableType();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    return LocalContext.PivotVariable.GetUnfoldVariableType();
+        //}
 
         public override WTableReference ToTableReference()
         {

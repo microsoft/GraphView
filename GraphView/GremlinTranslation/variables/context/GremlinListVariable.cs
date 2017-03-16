@@ -15,11 +15,6 @@ namespace GraphView
             GremlinVariableList = new List<GremlinVariable>(gremlinVariableList);
         }
 
-        //internal override GremlinVariableProperty DefaultVariableProperty()
-        //{
-        //    return new GremlinVariableProperty(null, GremlinKeyword.ScalarValue);
-        //}
-
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
@@ -54,9 +49,9 @@ namespace GraphView
             return GremlinVariableType.Table;
         }
 
-        internal override GremlinVariableType GetUnfoldVariableType()
-        {
-            return GetVariableType();
-        }
+        //internal override GremlinVariableType GetUnfoldVariableType()
+        //{
+        //    return GetVariableType();
+        //}
     }
 }
