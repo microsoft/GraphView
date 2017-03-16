@@ -391,7 +391,7 @@ namespace GraphView
 
         private WBooleanExpression CreateBooleanExpression(GremlinVariableProperty variableProperty, object valuesOrPredicate)
         {
-            if (valuesOrPredicate is string || valuesOrPredicate is int || valuesOrPredicate is bool)
+            if (valuesOrPredicate is string || GremlinUtil.IsNumber(valuesOrPredicate) || valuesOrPredicate is bool)
             {
                 WScalarExpression firstExpr = variableProperty.ToScalarExpression();
                 WScalarExpression secondExpr = SqlUtil.GetValueExpr(valuesOrPredicate);

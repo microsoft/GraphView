@@ -29,7 +29,7 @@ namespace GraphView
                 List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
                 foreach (var id in VertexIdsOrElements)
                 {
-                    if (id is int || id is string)
+                    if (GremlinUtil.IsNumber(id) || id is string)
                     {
                         WScalarExpression firstExpr =
                             newVariable.GetVariableProperty(GremlinKeyword.NodeID).ToScalarExpression();

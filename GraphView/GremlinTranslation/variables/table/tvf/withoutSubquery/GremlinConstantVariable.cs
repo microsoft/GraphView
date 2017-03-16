@@ -29,7 +29,7 @@ namespace GraphView
                     parameters.Add(SqlUtil.GetValueExpr(value));
                 }
             }
-            else if (GremlinUtil.IsNumber(ConstantValue) || ConstantValue is string)
+            else if (GremlinUtil.IsNumber(ConstantValue) || ConstantValue is string || ConstantValue is bool)
             {
                 parameters.Add(SqlUtil.GetValueExpr(ConstantValue));
             }

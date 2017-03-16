@@ -40,7 +40,7 @@ namespace GraphView
                 List<WBooleanExpression> booleanExprList = new List<WBooleanExpression>();
                 foreach (var id in EdgeIdsOrElements)
                 {
-                    if (id is int || id is string)
+                    if (GremlinUtil.IsNumber(id) || id is string)
                     {
                         WScalarExpression firstExpr = inputContext.PivotVariable.GetVariableProperty(GremlinKeyword.EdgeID).ToScalarExpression();
                         WScalarExpression secondExpr = SqlUtil.GetValueExpr(id);

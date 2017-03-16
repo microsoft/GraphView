@@ -18,7 +18,7 @@ namespace GraphView
             foreach (var valueOrPredicate in valueOrPredicates)
             {
                 if (!(valueOrPredicate is string
-                     || valueOrPredicate is int
+                     || IsNumber(valueOrPredicate)
                      || valueOrPredicate is bool
                      || valueOrPredicate is Predicate))
                                     throw new ArgumentException();

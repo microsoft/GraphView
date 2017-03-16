@@ -830,7 +830,7 @@ namespace GraphView
         }
         public GraphTraversal2 Option(object pickToken, GraphTraversal2 traversalOption)
         {
-            if (!(GremlinUtil.IsNumber(pickToken) || pickToken is string || pickToken is GremlinKeyword.Pick))
+            if (!(GremlinUtil.IsNumber(pickToken) || pickToken is string || pickToken is GremlinKeyword.Pick || pickToken is bool))
             {
                 throw new ArgumentException();
             }

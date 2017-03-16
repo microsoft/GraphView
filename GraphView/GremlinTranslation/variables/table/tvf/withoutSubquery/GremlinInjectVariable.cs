@@ -24,7 +24,7 @@ namespace GraphView
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             foreach (var row in rows)
             {
-                if (row is string || row is int)
+                if (row is string || GremlinUtil.IsNumber(row) || row is bool)
                 {
                     var queryBlock = new WSelectQueryBlock();
                     queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(row), GremlinKeyword.TableDefaultColumnName));
