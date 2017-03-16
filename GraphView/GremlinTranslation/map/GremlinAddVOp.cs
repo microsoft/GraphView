@@ -23,7 +23,7 @@ namespace GraphView
             PropertyKeyValues = new List<GremlinProperty>();
             for (var i = 0; i < propertyKeyValues.Length; i += 2)
             {
-                PropertyKeyValues.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.list, 
+                PropertyKeyValues.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, 
                                                                 propertyKeyValues[i] as string,
                                                                 propertyKeyValues[i+1], null));
             }

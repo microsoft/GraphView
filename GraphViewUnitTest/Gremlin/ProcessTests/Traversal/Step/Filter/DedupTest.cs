@@ -36,7 +36,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                     .In()
                     .Values("name")
                     .Fold()
-                    .Dedup(GremlinKeyword.Scope.local)
+                    .Dedup(GremlinKeyword.Scope.Local)
                     .Unfold();
                 var result = traversal.Next();
 
@@ -470,7 +470,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 GraphViewCommand.OutputFormat = OutputFormat.Regular;
                 var traversal = GraphViewCommand.g().V()
                     .GroupCount()
-                    .Select(GremlinKeyword.Column.values)
+                    .Select(GremlinKeyword.Column.Values)
                     .Unfold()
                     .Dedup();
                 var result = traversal.Next();
@@ -507,7 +507,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                         .Dedup()
                         .Order()
                         .Fold())
-                    .Select(GremlinKeyword.Column.values)
+                    .Select(GremlinKeyword.Column.Values)
                     .Unfold()
                     .Dedup();
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());

@@ -14,14 +14,14 @@ namespace GraphView
 
         /// <summary>
         /// g.addV("name", "marko", "name", "mike").property("name", "peter")
-        /// => {"name": {cardinality: cardinality.single, label: "peter"}  marko and mike will be covered
+        /// => {"name": {cardinality: cardinality.Single, label: "peter"}  marko and mike will be covered
         /// </summary>
         public Dictionary<string, List<GremlinProperty>> PropertyFromAddVParameters { get; set; }
 
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-            VertexProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.list, property, null, null));
+            VertexProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.List, property, null, null));
             base.Populate(property);
         }
 
@@ -63,7 +63,7 @@ namespace GraphView
 
         internal override void Property(GremlinToSqlContext currentContext, GremlinProperty vertexProperty)
         {
-            vertexProperty.Cardinality = GremlinKeyword.PropertyCardinality.list;
+            vertexProperty.Cardinality = GremlinKeyword.PropertyCardinality.List;
             if (PropertyFromAddVParameters.ContainsKey(vertexProperty.Key))
             {
                 foreach (var property in PropertyFromAddVParameters[vertexProperty.Key])

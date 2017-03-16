@@ -19,7 +19,7 @@ namespace GraphView
             InputVaribale = inputVariable;
             Low = low;
             High = high;
-            IsLocal = scope != GremlinKeyword.Scope.global;
+            IsLocal = scope != GremlinKeyword.Scope.Global;
             IsReverse = isReverse;
         }
 

@@ -5,7 +5,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace GraphView
 {
-    internal abstract class GremlinTranslationOperator: IGremlinByModulating
+    internal abstract class GremlinTranslationOperator
     {
         public GremlinTranslationOperator InputOperator { get; set; }
 
@@ -43,42 +43,7 @@ namespace GraphView
             return InputOperator != null ? InputOperator.GetContext() : new GremlinToSqlContext();
         }
 
-        public virtual void ModulateBy()
-        {
-            throw new NotImplementedException();
-        }
-
         public virtual void ModulateBy(GraphTraversal2 traversal)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void ModulateBy(string key)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void ModulateBy(GremlinKeyword.Order order)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void ModulateBy(IComparer order)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void ModulateBy(string key, GremlinKeyword.Order order)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void ModulateBy(GraphTraversal2 traversal, GremlinKeyword.Order order)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual void ModulateBy(string key, IComparer order)
         {
             throw new NotImplementedException();
         }
@@ -88,19 +53,65 @@ namespace GraphView
             throw new NotImplementedException();
         }
 
+        public virtual void ModulateBy(GremlinKeyword.Order order)
+        {
+            ModulateBy(GraphTraversal2.__(), order);
+        }
+
+        public virtual void ModulateBy(IComparer comparer)
+        {
+            ModulateBy(GraphTraversal2.__(), comparer);
+        }
+
+        public virtual void ModulateBy(GraphTraversal2 traversal, GremlinKeyword.Order order)
+        {
+            switch (order)
+            {
+                case GremlinKeyword.Order.Incr:
+                    ModulateBy(traversal, new IncrOrder());
+                    break;
+                case GremlinKeyword.Order.Decr:
+                    ModulateBy(traversal, new DecrOrder());
+                    break;
+                case GremlinKeyword.Order.Shuffle:
+                    ModulateBy(traversal, new ShuffleOrder());
+                    break;
+            }
+        }
+
+        public virtual void ModulateBy()
+        {
+            ModulateBy(GraphTraversal2.__());
+        }
+
+        public virtual void ModulateBy(string key)
+        {
+            ModulateBy(GraphTraversal2.__().Values(key));
+        }
+
+        public virtual void ModulateBy(string key, GremlinKeyword.Order order)
+        {
+            ModulateBy(GraphTraversal2.__().Values(key), order);
+        }
+
+        public virtual void ModulateBy(string key, IComparer comparer)
+        {
+            ModulateBy(GraphTraversal2.__().Values(key), comparer);
+        }
+
         public virtual void ModulateBy(GremlinKeyword.Column column)
         {
-            throw new NotImplementedException();
+            ModulateBy(GraphTraversal2.__().Select(column));
         }
 
         public virtual void ModulateBy(GremlinKeyword.Column column, GremlinKeyword.Order order)
         {
-            throw new NotImplementedException();
+            ModulateBy(GraphTraversal2.__().Select(column), order);
         }
 
-        public virtual void ModulateBy(GremlinKeyword.Column column, IComparer order)
+        public virtual void ModulateBy(GremlinKeyword.Column column, IComparer comparer)
         {
-            throw new NotImplementedException();
+            ModulateBy(GraphTraversal2.__().Select(column), comparer);
         }
     }
     

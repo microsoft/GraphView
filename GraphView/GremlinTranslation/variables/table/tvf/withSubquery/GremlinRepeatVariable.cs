@@ -275,10 +275,10 @@ namespace GraphView
                     GremlinVariable newSelectedVar;
                     switch (oldSelectedVar.Pop)
                     {
-                        case GremlinKeyword.Pop.last:
+                        case GremlinKeyword.Pop.Last:
                             newSelectedVar = newSelectVariableList.Last();
                             break;
-                        case GremlinKeyword.Pop.first:
+                        case GremlinKeyword.Pop.First:
                             newSelectedVar = newSelectVariableList.First();
                             break;
                         default:

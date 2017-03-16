@@ -20,7 +20,7 @@ namespace GraphView
             projectedFieldList = new List<string>(GraphViewReservedProperties.ReservedNodeProperties);
 
             foreach (WPropertyExpression vertexProperty in vertexProperties) {
-                Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.list);
+                Debug.Assert(vertexProperty.Cardinality == GremlinKeyword.PropertyCardinality.List);
 
                 if (!projectedFieldList.Contains(vertexProperty.Key.Value))
                     projectedFieldList.Add(vertexProperty.Key.Value);
@@ -72,7 +72,7 @@ namespace GraphView
             for (int i = 1; i < this.Parameters.Count; i++) {
                 WPropertyExpression property = (WPropertyExpression)this.Parameters[i];
                 Debug.Assert(property != null, "[WAddVTableReference.Compile] Vertex property should not be null");
-                Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.list, "[WAddVTableReference.Compile] Vertex property should be append-mode");
+                Debug.Assert(property.Cardinality == GremlinKeyword.PropertyCardinality.List, "[WAddVTableReference.Compile] Vertex property should be append-mode");
                 Debug.Assert(property.Value != null);
 
                 vertexProperties.Add(property);

@@ -624,7 +624,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                GremlinKeyword.Pop?[] pops = { null, GremlinKeyword.Pop.all, GremlinKeyword.Pop.first, GremlinKeyword.Pop.last };
+                GremlinKeyword.Pop?[] pops = { null, GremlinKeyword.Pop.All, GremlinKeyword.Pop.First, GremlinKeyword.Pop.Last };
                 foreach (var pop in pops)
                 {
                     var root = graphCommand.g().V();

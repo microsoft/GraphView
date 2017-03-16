@@ -105,22 +105,22 @@ namespace GraphView
 
         public enum Pop
         {
-            all,
-            first,
-            last
+            All,
+            First,
+            Last
         }
 
         public enum Column
         {
-            //The values and keys enums are from Column which is used to select "columns" from a Map, Map.Entry, or Path. 
-            keys,
-            values
+            //The Values and Keys enums are from Column which is used to select "columns" from a Map, Map.Entry, or Path. 
+            Keys,
+            Values
         }
 
         public enum Scope
         {
-            local,
-            global
+            Local,
+            Global
         }
 
 
@@ -133,8 +133,8 @@ namespace GraphView
 
         public enum PropertyCardinality
         {
-            single,   // Set
-            list,     // Append
+            Single,   // Set
+            List     // Append
             //set
         }
 
@@ -258,8 +258,8 @@ namespace GraphView
 
         public static readonly Dictionary<string, string> GremlinKeywordToGraphTraversalDict = new Dictionary<string, string>()
         {
-            {"last", "GremlinKeyword.Pop.last"},
-            {"first", "GremlinKeyword.Pop.first"},
+            {"last", "GremlinKeyword.Pop.Last"},
+            {"first", "GremlinKeyword.Pop.First"},
 
             {"decr", "GremlinKeyword.Order.Decr"},
             {"incr", "GremlinKeyword.Order.Incr"},

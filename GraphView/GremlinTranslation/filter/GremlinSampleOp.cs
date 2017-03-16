@@ -39,22 +39,10 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy()
-        {
-            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Sample(local) can't be modulated by by()");
-            ProbabilityTraversal = GraphTraversal2.__();
-        }
-
         public override void ModulateBy(GraphTraversal2 traversal)
         {
-            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Sample(local) can't be modulated by by()");
+            if (Scope == GremlinKeyword.Scope.Local) throw new SyntaxErrorException("Sample(Local) can't be modulated by by()");
             ProbabilityTraversal = traversal;
-        }
-
-        public override void ModulateBy(string key)
-        {
-            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Sample(local) can't be modulated by by()");
-            ProbabilityTraversal = GraphTraversal2.__().Values(key);
         }
     }
 }

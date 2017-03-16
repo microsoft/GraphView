@@ -37,15 +37,5 @@ namespace GraphView
         {
             ByList.Add(traversal);
         }
-
-        public override void ModulateBy(string key)
-        {
-            ByList.Add(GraphTraversal2.__().Values(key));
-        }
-
-        public override void ModulateBy()
-        {
-            ByList.Add(GraphTraversal2.__());
-        }
     }
 }

@@ -49,7 +49,7 @@ namespace GraphView
             }
 
             var tableRef = SqlUtil.GetFunctionTableReference(
-                Scope == GremlinKeyword.Scope.global ? GremlinKeyword.func.DedupGlobal : GremlinKeyword.func.DedupLocal,
+                Scope == GremlinKeyword.Scope.Global ? GremlinKeyword.func.DedupGlobal : GremlinKeyword.func.DedupLocal,
                 parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
         }

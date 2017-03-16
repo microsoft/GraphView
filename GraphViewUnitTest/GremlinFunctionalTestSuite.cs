@@ -500,7 +500,7 @@ namespace GraphViewUnitTest
                                 .FlatMap(GraphTraversal2.__()
                                     .OutV()
                                     .As("mdl")
-                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                     .Both()
                                     .Dedup()
                                     .And(GraphTraversal2.__()
@@ -510,10 +510,10 @@ namespace GraphViewUnitTest
                                 .As("@v")
                                 .Optional(GraphTraversal2.__().FlatMap(
                                     GraphTraversal2.__()
-                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                        .Select(GremlinKeyword.Pop.Last, "@e")
                                         .Values("_key")
                                         .As("key")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Optional(GraphTraversal2.__().Out("mdl"))
                                         .InE("ref")
                                         .And(GraphTraversal2.__()
@@ -522,7 +522,7 @@ namespace GraphViewUnitTest
                             .Until(GraphTraversal2.__().FlatMap(
                                 GraphTraversal2.__()
                                     .As("res")
-                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                     .Where(Predicate.eq("res"))))
                             .Select("@v")
                             .Unfold())
@@ -716,7 +716,7 @@ namespace GraphViewUnitTest
             //                                        GraphTraversal2.__()
             //                                            .InV()
             //                                            .As("mdl")
-            //                                            .Select(GremlinKeyword.Pop.last,
+            //                                            .Select(GremlinKeyword.Pop.Last,
             //                                                "@v")
             //                                            .Both()
             //                                            .Dedup()
@@ -729,11 +729,11 @@ namespace GraphViewUnitTest
             //                                    .As("@v")
             //                                    .Optional(GraphTraversal2.__().FlatMap(
             //                                        GraphTraversal2.__()
-            //                                            .Select(GremlinKeyword.Pop.last,
+            //                                            .Select(GremlinKeyword.Pop.Last,
             //                                                "@e")
             //                                            .Values("_ref")
             //                                            .As("key")
-            //                                            .Select(GremlinKeyword.Pop.last,
+            //                                            .Select(GremlinKeyword.Pop.Last,
             //                                                "@v")
             //                                            .Optional(GraphTraversal2.__()
             //                                                .Out("mdl"))
@@ -745,7 +745,7 @@ namespace GraphViewUnitTest
             //                            .Until(GraphTraversal2.__().FlatMap(
             //                                GraphTraversal2.__()
             //                                    .As("res")
-            //                                    .Select(GremlinKeyword.Pop.last, "@v")
+            //                                    .Select(GremlinKeyword.Pop.Last, "@v")
             //                                    .Where(Predicate.eq("res"))))
             //                            .SideEffect(
             //                                GraphTraversal2.__()
@@ -1449,7 +1449,7 @@ namespace GraphViewUnitTest
                                 .FlatMap(GraphTraversal2.__()
                                     .OutV()
                                     .As("mdl")
-                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                     .Both()
                                     .Dedup()
                                     .And(GraphTraversal2.__()
@@ -1459,10 +1459,10 @@ namespace GraphViewUnitTest
                                 .As("@v")
                                 .Optional(GraphTraversal2.__().FlatMap(
                                     GraphTraversal2.__()
-                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                        .Select(GremlinKeyword.Pop.Last, "@e")
                                         .Values("_key")
                                         .As("key")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Optional(GraphTraversal2.__().Out("mdl"))
                                         .InE("ref")
                                         .And(GraphTraversal2.__()
@@ -1471,7 +1471,7 @@ namespace GraphViewUnitTest
                             .Until(GraphTraversal2.__().FlatMap(
                                 GraphTraversal2.__()
                                     .As("res")
-                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                     .Where(Predicate.eq("res"))))
                             .Select("@v")
                             .Unfold())
@@ -1553,7 +1553,7 @@ namespace GraphViewUnitTest
                                                         .__()
                                                         .InV()
                                                         .As("mdl")
-                                                        .Select(GremlinKeyword.Pop.last,
+                                                        .Select(GremlinKeyword.Pop.Last,
                                                             "@v")
                                                         .Both()
                                                         .Dedup()
@@ -1566,11 +1566,11 @@ namespace GraphViewUnitTest
                                                 .As("@v")
                                                 .Optional(GraphTraversal2.__().FlatMap(
                                                     GraphTraversal2.__()
-                                                        .Select(GremlinKeyword.Pop.last,
+                                                        .Select(GremlinKeyword.Pop.Last,
                                                             "@e")
                                                         .Values("_ref")
                                                         .As("key")
-                                                        .Select(GremlinKeyword.Pop.last,
+                                                        .Select(GremlinKeyword.Pop.Last,
                                                             "@v")
                                                         .Optional(GraphTraversal2.__()
                                                             .Out("mdl"))
@@ -1582,7 +1582,7 @@ namespace GraphViewUnitTest
                                         .Until(GraphTraversal2.__().FlatMap(
                                             GraphTraversal2.__()
                                                 .As("res")
-                                                .Select(GremlinKeyword.Pop.last, "@v")
+                                                .Select(GremlinKeyword.Pop.Last, "@v")
                                                 .Where(Predicate.eq("res"))))
                                         .SideEffect(
                                             GraphTraversal2.__()
@@ -1704,7 +1704,7 @@ namespace GraphViewUnitTest
                                                             .__()
                                                             .InV()
                                                             .As("mdl")
-                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                                             .Both()
                                                             .Dedup()
                                                             .And(
@@ -1714,10 +1714,10 @@ namespace GraphViewUnitTest
                                                     .As("@v")
                                                     .Optional(GraphTraversal2.__().FlatMap(
                                                         GraphTraversal2.__()
-                                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                                            .Select(GremlinKeyword.Pop.Last, "@e")
                                                             .Values("_ref")
                                                             .As("key")
-                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                                             .Optional(GraphTraversal2.__().Out("mdl"))
                                                             .OutE("ref")
                                                             .And(
@@ -1727,7 +1727,7 @@ namespace GraphViewUnitTest
                                             .Until(GraphTraversal2.__().FlatMap(
                                                 GraphTraversal2.__()
                                                     .As("res")
-                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                                     .Where(Predicate.eq("res"))))
                                             .SideEffect(
                                                 GraphTraversal2.__()
@@ -1843,7 +1843,7 @@ namespace GraphViewUnitTest
                                                             .__()
                                                             .InV()
                                                             .As("mdl")
-                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                                             .Both()
                                                             .Dedup()
                                                             .And(
@@ -1853,10 +1853,10 @@ namespace GraphViewUnitTest
                                                     .As("@v")
                                                     .Optional(GraphTraversal2.__().FlatMap(
                                                         GraphTraversal2.__()
-                                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                                            .Select(GremlinKeyword.Pop.Last, "@e")
                                                             .Values("_ref")
                                                             .As("key")
-                                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                                             .Optional(GraphTraversal2.__().Out("mdl"))
                                                             .OutE("ref")
                                                             .And(
@@ -1866,7 +1866,7 @@ namespace GraphViewUnitTest
                                             .Until(GraphTraversal2.__().FlatMap(
                                                 GraphTraversal2.__()
                                                     .As("res")
-                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                                     .Where(Predicate.eq("res"))))
                                             .SideEffect(
                                                 GraphTraversal2.__()
@@ -2820,7 +2820,7 @@ namespace GraphViewUnitTest
                                 .FlatMap(GraphTraversal2.__()
                                     .OutV()
                                     .As("mdl")
-                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                     .Both()
                                     .Dedup()
                                     .And(GraphTraversal2.__()
@@ -2830,10 +2830,10 @@ namespace GraphViewUnitTest
                                 .As("@v")
                                 .Optional(GraphTraversal2.__().FlatMap(
                                     GraphTraversal2.__()
-                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                        .Select(GremlinKeyword.Pop.Last, "@e")
                                         .Values("_key")
                                         .As("key")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Optional(GraphTraversal2.__().Out("mdl"))
                                         .InE("ref")
                                         .And(GraphTraversal2.__()
@@ -2842,7 +2842,7 @@ namespace GraphViewUnitTest
                             .Until(GraphTraversal2.__().FlatMap(
                                 GraphTraversal2.__()
                                     .As("res")
-                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                     .Where(Predicate.eq("res"))))
                             .Select("@v")
                             .Unfold())
@@ -2972,7 +2972,7 @@ namespace GraphViewUnitTest
                                     .FlatMap(GraphTraversal2.__()
                                         .OutV()
                                         .As("mdl")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Both()
                                         .Dedup()
                                         .And(GraphTraversal2.__()
@@ -2981,17 +2981,17 @@ namespace GraphViewUnitTest
                                     .As("@v")
                                     .Optional(GraphTraversal2.__().FlatMap(
                                         GraphTraversal2.__()
-                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                            .Select(GremlinKeyword.Pop.Last, "@e")
                                             .Values("_key")
                                             .As("key")
-                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                             .Optional(GraphTraversal2.__().Out("mdl"))
                                             .InE("ref")
                                             .And(GraphTraversal2.__().Values("_ref").Where(Predicate.eq("key"))))))
                                 .Until(GraphTraversal2.__().FlatMap(
                                     GraphTraversal2.__()
                                         .As("res")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Where(Predicate.eq("res"))))
                                 .Select("@v")
                                 .Unfold())
@@ -3149,7 +3149,7 @@ namespace GraphViewUnitTest
                                     .FlatMap(GraphTraversal2.__()
                                         .OutV()
                                         .As("mdl")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Both()
                                         .Dedup()
                                         .And(GraphTraversal2.__()
@@ -3159,10 +3159,10 @@ namespace GraphViewUnitTest
                                     .As("@v")
                                     .Optional(GraphTraversal2.__().FlatMap(
                                         GraphTraversal2.__()
-                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                            .Select(GremlinKeyword.Pop.Last, "@e")
                                             .Values("_key")
                                             .As("key")
-                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                             .Optional(GraphTraversal2.__().Out("mdl"))
                                             .InE("ref")
                                             .And(GraphTraversal2.__()
@@ -3171,7 +3171,7 @@ namespace GraphViewUnitTest
                                 .Until(GraphTraversal2.__().FlatMap(
                                     GraphTraversal2.__()
                                         .As("res")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Where(Predicate.eq("res"))))
                                 .Select("@v")
                                 .Unfold())
@@ -3884,7 +3884,7 @@ namespace GraphViewUnitTest
                                     .FlatMap(GraphTraversal2.__()
                                         .OutV()
                                         .As("mdl")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Both()
                                         .Dedup()
                                         .And(GraphTraversal2.__()
@@ -3894,10 +3894,10 @@ namespace GraphViewUnitTest
                                     .As("@v")
                                     .Optional(GraphTraversal2.__().FlatMap(
                                         GraphTraversal2.__()
-                                            .Select(GremlinKeyword.Pop.last, "@e")
+                                            .Select(GremlinKeyword.Pop.Last, "@e")
                                             .Values("_key")
                                             .As("key")
-                                            .Select(GremlinKeyword.Pop.last, "@v")
+                                            .Select(GremlinKeyword.Pop.Last, "@v")
                                             .Optional(GraphTraversal2.__().Out("mdl"))
                                             .InE("ref")
                                             .And(GraphTraversal2.__()
@@ -3906,7 +3906,7 @@ namespace GraphViewUnitTest
                                 .Until(GraphTraversal2.__().FlatMap(
                                     GraphTraversal2.__()
                                         .As("res")
-                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                         .Where(Predicate.eq("res"))))
                                 .Select("@v")
                                 .Unfold())
@@ -4020,7 +4020,7 @@ namespace GraphViewUnitTest
                                                         GraphTraversal2.__()
                                                             .InV()
                                                             .As("mdl")
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@v")
                                                             .Both()
                                                             .Dedup()
@@ -4033,11 +4033,11 @@ namespace GraphViewUnitTest
                                                     .As("@v")
                                                     .Optional(GraphTraversal2.__().FlatMap(
                                                         GraphTraversal2.__()
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@e")
                                                             .Values("_ref")
                                                             .As("key")
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@v")
                                                             .Optional(GraphTraversal2.__()
                                                                 .Out("mdl"))
@@ -4049,7 +4049,7 @@ namespace GraphViewUnitTest
                                             .Until(GraphTraversal2.__().FlatMap(
                                                 GraphTraversal2.__()
                                                     .As("res")
-                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                                     .Where(Predicate.eq("res"))))
                                             .SideEffect(
                                                 GraphTraversal2.__()
@@ -4170,7 +4170,7 @@ namespace GraphViewUnitTest
                                                             .__()
                                                             .InV()
                                                             .As("mdl")
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@v")
                                                             .Both()
                                                             .Dedup()
@@ -4183,11 +4183,11 @@ namespace GraphViewUnitTest
                                                     .As("@v")
                                                     .Optional(GraphTraversal2.__().FlatMap(
                                                         GraphTraversal2.__()
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@e")
                                                             .Values("_ref")
                                                             .As("key")
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@v")
                                                             .Optional(GraphTraversal2.__()
                                                                 .Out("mdl"))
@@ -4199,7 +4199,7 @@ namespace GraphViewUnitTest
                                             .Until(GraphTraversal2.__().FlatMap(
                                                 GraphTraversal2.__()
                                                     .As("res")
-                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                                     .Where(Predicate.eq("res"))))
                                             .SideEffect(
                                                 GraphTraversal2.__()
@@ -4335,7 +4335,7 @@ namespace GraphViewUnitTest
                                                     GraphTraversal2.__()
                                                         .OutV()
                                                         .As("mdl")
-                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                                         .Both()
                                                         .Dedup()
                                                         .And(GraphTraversal2.__()
@@ -4345,10 +4345,10 @@ namespace GraphViewUnitTest
                                                 .As("@v")
                                                 .Optional(GraphTraversal2.__().FlatMap(
                                                     GraphTraversal2.__()
-                                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                                        .Select(GremlinKeyword.Pop.Last, "@e")
                                                         .Values("_key")
                                                         .As("key")
-                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                                         .Optional(
                                                             GraphTraversal2.__().Out("mdl"))
                                                         .InE("ref")
@@ -4358,7 +4358,7 @@ namespace GraphViewUnitTest
                                         .Until(GraphTraversal2.__().FlatMap(
                                             GraphTraversal2.__()
                                                 .As("res")
-                                                .Select(GremlinKeyword.Pop.last, "@v")
+                                                .Select(GremlinKeyword.Pop.Last, "@v")
                                                 .Where(Predicate.eq("res"))))
                                         .Select("@v")
                                         .Unfold())
@@ -4479,7 +4479,7 @@ namespace GraphViewUnitTest
                                                     GraphTraversal2.__()
                                                         .OutV()
                                                         .As("mdl")
-                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                                         .Both()
                                                         .Dedup()
                                                         .And(GraphTraversal2.__()
@@ -4489,10 +4489,10 @@ namespace GraphViewUnitTest
                                                 .As("@v")
                                                 .Optional(GraphTraversal2.__().FlatMap(
                                                     GraphTraversal2.__()
-                                                        .Select(GremlinKeyword.Pop.last, "@e")
+                                                        .Select(GremlinKeyword.Pop.Last, "@e")
                                                         .Values("_key")
                                                         .As("key")
-                                                        .Select(GremlinKeyword.Pop.last, "@v")
+                                                        .Select(GremlinKeyword.Pop.Last, "@v")
                                                         .Optional(
                                                             GraphTraversal2.__().Out("mdl"))
                                                         .InE("ref")
@@ -4502,7 +4502,7 @@ namespace GraphViewUnitTest
                                         .Until(GraphTraversal2.__().FlatMap(
                                             GraphTraversal2.__()
                                                 .As("res")
-                                                .Select(GremlinKeyword.Pop.last, "@v")
+                                                .Select(GremlinKeyword.Pop.Last, "@v")
                                                 .Where(Predicate.eq("res"))))
                                         .Select("@v")
                                         .Unfold())
@@ -4600,7 +4600,7 @@ namespace GraphViewUnitTest
                                                             .__()
                                                             .InV()
                                                             .As("mdl")
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@v")
                                                             .Both()
                                                             .Dedup()
@@ -4613,11 +4613,11 @@ namespace GraphViewUnitTest
                                                     .As("@v")
                                                     .Optional(GraphTraversal2.__().FlatMap(
                                                         GraphTraversal2.__()
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@e")
                                                             .Values("_ref")
                                                             .As("key")
-                                                            .Select(GremlinKeyword.Pop.last,
+                                                            .Select(GremlinKeyword.Pop.Last,
                                                                 "@v")
                                                             .Optional(GraphTraversal2.__()
                                                                 .Out("mdl"))
@@ -4629,7 +4629,7 @@ namespace GraphViewUnitTest
                                             .Until(GraphTraversal2.__().FlatMap(
                                                 GraphTraversal2.__()
                                                     .As("res")
-                                                    .Select(GremlinKeyword.Pop.last, "@v")
+                                                    .Select(GremlinKeyword.Pop.Last, "@v")
                                                     .Where(Predicate.eq("res"))))
                                             .SideEffect(
                                                 GraphTraversal2.__()

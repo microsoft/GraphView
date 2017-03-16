@@ -31,19 +31,9 @@ namespace GraphView
             return inputContext;
         }
 
-        public override void ModulateBy()
-        {
-            ByTraversal = GraphTraversal2.__();
-        }
-
         public override void ModulateBy(GraphTraversal2 traversal)
         {
             ByTraversal = traversal;
-        }
-
-        public override void ModulateBy(string key)
-        {
-            ByTraversal = GraphTraversal2.__().Values(key);
         }
     }
 }

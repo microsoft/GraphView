@@ -34,30 +34,18 @@ namespace GraphView
                 dedupContext = ByTraversal.GetEndOp().GetContext();
             }
 
-            // Dedup(local, "x", "y"), the dedupLabels should be ignored
-            if (Scope == GremlinKeyword.Scope.local) DedupLabels.Clear();
+            // Dedup(Local, "x", "y"), the dedupLabels should be ignored
+            if (Scope == GremlinKeyword.Scope.Local) DedupLabels.Clear();
 
             inputContext.PivotVariable.Dedup(inputContext, DedupLabels, dedupContext, Scope);
 
             return inputContext;
         }
 
-        public override void ModulateBy()
-        {
-            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Dedup(local) can't be modulated by by()");
-            ByTraversal = GraphTraversal2.__();
-        }
-
         public override void ModulateBy(GraphTraversal2 traversal)
         {
-            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Dedup(local) can't be modulated by by()");
+            if (Scope == GremlinKeyword.Scope.Local) throw new SyntaxErrorException("Dedup(Local) can't be modulated by by()");
             ByTraversal = traversal;
-        }
-
-        public override void ModulateBy(string key)
-        {
-            if (Scope == GremlinKeyword.Scope.local) throw new SyntaxErrorException("Dedup(local) can't be modulated by by()");
-            ByTraversal = GraphTraversal2.__().Values(key);
         }
     }
 }

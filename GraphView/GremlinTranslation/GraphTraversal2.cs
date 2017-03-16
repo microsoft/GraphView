@@ -473,13 +473,13 @@ namespace GraphView
 
         public GraphTraversal2 Count()
         {
-            AddGremlinOperator(new GremlinCountOp(GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinCountOp(GremlinKeyword.Scope.Global));
             return this;
         }
 
         public GraphTraversal2 Count(GremlinKeyword.Scope scope)
         {
-            if (scope == GremlinKeyword.Scope.global)
+            if (scope == GremlinKeyword.Scope.Global)
             {
                 AddGremlinOperator(new GremlinCountOp(scope));
             }
@@ -504,7 +504,7 @@ namespace GraphView
 
         public GraphTraversal2 Dedup(params string[] dedupLabels)
         {
-            AddGremlinOperator(new GremlinDedupOp(GremlinKeyword.Scope.global, dedupLabels));
+            AddGremlinOperator(new GremlinDedupOp(GremlinKeyword.Scope.Global, dedupLabels));
             return this;
         }
 
@@ -754,7 +754,7 @@ namespace GraphView
 
         public GraphTraversal2 Limit(int limit)
         {
-            AddGremlinOperator(new GremlinRangeOp(0, limit, GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinRangeOp(0, limit, GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -789,7 +789,7 @@ namespace GraphView
 
         public GraphTraversal2 Max()
         {
-            AddGremlinOperator(new GremlinMaxOp(GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinMaxOp(GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -801,7 +801,7 @@ namespace GraphView
 
         public GraphTraversal2 Mean()
         {
-            AddGremlinOperator(new GremlinMeanOp(GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinMeanOp(GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -813,7 +813,7 @@ namespace GraphView
 
         public GraphTraversal2 Min()
         {
-            AddGremlinOperator(new GremlinMinOp(GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinMinOp(GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -881,7 +881,7 @@ namespace GraphView
 
         public GraphTraversal2 Order()
         {
-            AddGremlinOperator(new GremlinOrderOp(GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinOrderOp(GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -935,7 +935,7 @@ namespace GraphView
 
         public GraphTraversal2 Property(string key, object value, params object[] keyValues)
         {
-            return Property(GremlinKeyword.PropertyCardinality.single, key, value, keyValues);
+            return Property(GremlinKeyword.PropertyCardinality.Single, key, value, keyValues);
         }
 
         public GraphTraversal2 Property(GremlinKeyword.PropertyCardinality cardinality, string key, object value,
@@ -960,7 +960,7 @@ namespace GraphView
 
         public GraphTraversal2 Range(int low, int high)
         {
-            AddGremlinOperator(new GremlinRangeOp(low, high, GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinRangeOp(low, high, GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -985,7 +985,7 @@ namespace GraphView
 
         public GraphTraversal2 Sample(int amountToSample)
         {
-            AddGremlinOperator(new GremlinSampleOp(GremlinKeyword.Scope.global, amountToSample));
+            AddGremlinOperator(new GremlinSampleOp(GremlinKeyword.Scope.Global, amountToSample));
             return this;
         }
 
@@ -1009,7 +1009,7 @@ namespace GraphView
 
         public GraphTraversal2 Select(params string[] selectKeys)
         {
-            AddGremlinOperator(new GremlinSelectOp(GremlinKeyword.Pop.all, selectKeys));
+            AddGremlinOperator(new GremlinSelectOp(GremlinKeyword.Pop.All, selectKeys));
             return this;
         }
 
@@ -1033,7 +1033,7 @@ namespace GraphView
 
         public GraphTraversal2 Sum()
         {
-            AddGremlinOperator(new GremlinSumOp(GremlinKeyword.Scope.global));
+            AddGremlinOperator(new GremlinSumOp(GremlinKeyword.Scope.Global));
             return this;
         }
 
@@ -1045,13 +1045,13 @@ namespace GraphView
 
         public GraphTraversal2 Tail()
         {
-            AddGremlinOperator(new GremlinRangeOp(0, 1, GremlinKeyword.Scope.global, true));
+            AddGremlinOperator(new GremlinRangeOp(0, 1, GremlinKeyword.Scope.Global, true));
             return this;
         }
 
         public GraphTraversal2 Tail(int limit)
         {
-            AddGremlinOperator(new GremlinRangeOp(0, limit, GremlinKeyword.Scope.global, true));
+            AddGremlinOperator(new GremlinRangeOp(0, limit, GremlinKeyword.Scope.Global, true));
             return this;
         }
 

@@ -29,7 +29,7 @@ namespace GraphView
         internal override void Populate(string property)
         {
             if (ProjectedProperties.Contains(property)) return;
-            EdgeProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.single, property , null, null));
+            EdgeProperties.Add(new GremlinProperty(GremlinKeyword.PropertyCardinality.Single, property , null, null));
             base.Populate(property);
         }
 

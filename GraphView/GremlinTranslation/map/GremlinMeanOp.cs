@@ -22,7 +22,7 @@ namespace GraphView
                 throw new QueryCompilationException("The PivotVariable can't be null.");
             }
 
-            if (Scope == GremlinKeyword.Scope.global)
+            if (Scope == GremlinKeyword.Scope.Global)
             {
                 inputContext.PivotVariable.Mean(inputContext);
             }

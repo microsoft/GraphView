@@ -148,4 +148,37 @@ namespace GraphView
             };
         }
     }
+
+    public class IncrOrder : IComparer
+    {
+        public int Compare(object x, object y)
+        {
+            if (ReferenceEquals(x, y)) return 0;
+            if (x is string)
+                return ((IComparable)x).CompareTo((IComparable)y);
+            else
+                return ((IComparable)Convert.ToDouble(x)).CompareTo(Convert.ToDouble(y));
+        }
+    }
+
+    public class DecrOrder : IComparer
+    {
+        public int Compare(object x, object y)
+        {
+            if (ReferenceEquals(x, y)) return 0;
+            if (x is string)
+                return ((IComparable)y).CompareTo((IComparable)x);
+            else
+                return ((IComparable)Convert.ToDouble(y)).CompareTo(Convert.ToDouble(x));
+        }
+    }
+
+    public class ShuffleOrder : IComparer
+    {
+        private Random random = new Random();
+        public int Compare(object x, object y)
+        {
+            return random.NextDouble() > 0.5 ? 1 : -1;
+        }
+    }
 }

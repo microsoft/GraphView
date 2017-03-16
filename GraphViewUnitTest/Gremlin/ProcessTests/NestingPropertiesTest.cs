@@ -102,8 +102,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
                         ((JObject)result[1]).ToString()
                     });
 
-                command.g().V().Property(GremlinKeyword.PropertyCardinality.list, "name", "marko3").Next();
-                traversal = command.g().V().Property(GremlinKeyword.PropertyCardinality.list, "name", "marko4", "meta1", "metaStr1").Properties();
+                command.g().V().Property(GremlinKeyword.PropertyCardinality.List, "name", "marko3").Next();
+                traversal = command.g().V().Property(GremlinKeyword.PropertyCardinality.List, "name", "marko4", "meta1", "metaStr1").Properties();
                 result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
                 Assert.AreEqual(3, (int)result.Count);

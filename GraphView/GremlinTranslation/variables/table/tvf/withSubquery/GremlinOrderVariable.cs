@@ -25,10 +25,7 @@ namespace GraphView
             List<GremlinVariable> variableList = new List<GremlinVariable>();
             foreach (var by in ByModulatingList)
             {
-                if (by.Item1 != null)
-                {
-                    variableList.AddRange(by.Item1.FetchVarsFromCurrAndChildContext());
-                }
+                variableList.AddRange(by.Item1.FetchVarsFromCurrAndChildContext());
             }
             return variableList;
         }
@@ -37,7 +34,7 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
 
-            var tableRef = Scope == GremlinKeyword.Scope.global
+            var tableRef = Scope == GremlinKeyword.Scope.Global
               ? SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderGlobal, parameters, GetVariableName())
               : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.OrderLocal, parameters, GetVariableName());
 
@@ -45,25 +42,18 @@ namespace GraphView
             if (wOrderTableReference != null)
                 wOrderTableReference.OrderParameters = new List<Tuple<WScalarExpression, IComparer>>();
 
-            if (Scope == GremlinKeyword.Scope.local)
+            if (Scope == GremlinKeyword.Scope.Local)
             {
                 ((WOrderLocalTableReference)tableRef).Parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
             }
 
             foreach (var pair in ByModulatingList)
             {
-                WScalarExpression scalrExpr;
-                if (pair.Item1 == null)
-                {
-                    scalrExpr = SqlUtil.GetValueExpr(null);
-                }
-                else
-                {
-                    scalrExpr = SqlUtil.GetScalarSubquery(pair.Item1.ToSelectQueryBlock());
-                }
+                WScalarExpression scalarExpr = SqlUtil.GetScalarSubquery(pair.Item1.ToSelectQueryBlock());
+
                 var orderTableReference = tableRef as WOrderTableReference;
-                orderTableReference?.OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalrExpr, pair.Item2));
-                orderTableReference?.Parameters.Add(scalrExpr);
+                orderTableReference?.OrderParameters.Add(new Tuple<WScalarExpression, IComparer>(scalarExpr, pair.Item2));
+                orderTableReference?.Parameters.Add(scalarExpr);
             }
 
             return SqlUtil.GetCrossApplyTableReference(tableRef);

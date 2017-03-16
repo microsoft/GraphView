@@ -351,7 +351,7 @@ namespace GraphView
                     multiProperty = (JArray)vertexDocument[name];
                 }
 
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.single) {
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.Single) {
                     multiProperty.Clear();
                 }
                 multiProperty.Add(singleProperty);
@@ -376,7 +376,7 @@ namespace GraphView
             List<Tuple<WValueExpression, WValueExpression, int>> propertyList =
                 new List<Tuple<WValueExpression, WValueExpression, int>>();
             foreach (WPropertyExpression property in this.updateProperties) {
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.list ||
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||
                     property.MetaProperties.Count > 0) {
                     throw new Exception("Can't create meta property or duplicated property on edges");
                 }
@@ -400,7 +400,7 @@ namespace GraphView
             JObject meta = (JObject)singleProperty["_meta"];
 
             foreach (WPropertyExpression property in this.updateProperties) {
-                if (property.Cardinality == GremlinKeyword.PropertyCardinality.list ||
+                if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||
                     property.MetaProperties.Count > 0) {
                     throw new Exception("Can't create meta property or duplicated property on vertex-property's meta property");
                 }

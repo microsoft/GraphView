@@ -38,7 +38,7 @@ namespace GraphView
 
         public GremlinFromOp(string stepLabel)
         {
-            FromVertexTraversal = GraphTraversal2.__().Select(GremlinKeyword.Pop.last, stepLabel);
+            FromVertexTraversal = GraphTraversal2.__().Select(GremlinKeyword.Pop.Last, stepLabel);
         }
 
         public GremlinFromOp(GraphTraversal2 fromVertexTraversal)

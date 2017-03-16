@@ -27,10 +27,10 @@ namespace GraphView
             GremlinVariableType pivotType = inputContext.PivotVariable.GetVariableType();
             if (   pivotType != GremlinVariableType.Vertex
                 && pivotType != GremlinVariableType.Table
-                && (this.property.Cardinality == GremlinKeyword.PropertyCardinality.list
+                && (this.property.Cardinality == GremlinKeyword.PropertyCardinality.List
                     || this.property.MetaProperties.Count > 0))
             {
-                throw new QueryCompilationException("Only vertex can use PropertyCardinality.list and have meta properties");
+                throw new QueryCompilationException("Only vertex can use PropertyCardinality.List and have meta properties");
             }
             inputContext.PivotVariable.Property(inputContext, property);
 

@@ -80,21 +80,5 @@ namespace GraphView
                 throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
             }
         }
-
-        public override void ModulateBy(string key)
-        {
-            if (GroupBy == null)
-            {
-                GroupBy = GraphTraversal2.__().Values(key);
-            }
-            else if (ProjectBy == null)
-            {
-                ProjectBy = GraphTraversal2.__().Values(key);
-            }
-            else
-            {
-                throw new QueryCompilationException("The key and value traversals for group()-step have already been set");
-            }
-        }
     }
 }

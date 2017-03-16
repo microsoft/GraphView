@@ -823,10 +823,10 @@ namespace GraphView
             {
                 switch (pop)
                 {
-                    case GremlinKeyword.Pop.first:
+                    case GremlinKeyword.Pop.First:
                         selectedVariable = GetTheFirstVariable(taggedVariableList);
                         break;
-                    case GremlinKeyword.Pop.last:
+                    case GremlinKeyword.Pop.Last:
                         selectedVariable = GetTheLastVariable(taggedVariableList);
                         break;
                     default:

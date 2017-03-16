@@ -29,7 +29,7 @@ namespace GraphView
             {
                 switch (Pop)
                 {
-                    case GremlinKeyword.Pop.all:
+                    case GremlinKeyword.Pop.All:
                         inputContext.PivotVariable.Select(inputContext, SelectKeys.First());
                         break;
                     default:
@@ -39,15 +39,6 @@ namespace GraphView
             }
             else
             {
-                switch (Pop)
-                {
-                    case GremlinKeyword.Pop.all:
-                        inputContext.PivotVariable.Select(inputContext, SelectKeys);
-                        break;
-                    default:
-                        inputContext.PivotVariable.Select(inputContext, Pop, SelectKeys);
-                        break;
-                }
             }
 
             return inputContext;

@@ -33,7 +33,7 @@ namespace GraphView
             {
                 parameters.Add(SqlUtil.GetScalarSubquery(ProbabilityContext.ToSelectQueryBlock()));
             }
-            var tableRef = Scope == GremlinKeyword.Scope.global
+            var tableRef = Scope == GremlinKeyword.Scope.Global
                 ? SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SampleGlobal, parameters, GetVariableName())
                 : SqlUtil.GetFunctionTableReference(GremlinKeyword.func.SampleLocal, parameters, GetVariableName());
             return SqlUtil.GetCrossApplyTableReference(tableRef);
