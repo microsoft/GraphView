@@ -2145,7 +2145,8 @@ namespace GraphView
                 constantValues.Add(constantValue.CompileToFunction(context, dbConnection));
             }
 
-            ConstantOperator constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues, this.IsList);
+            ConstantOperator constantOp = new ConstantOperator(context.CurrentExecutionOperator, constantValues,
+                this.IsList, GremlinKeyword.TableDefaultColumnName);
             context.CurrentExecutionOperator = constantOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
@@ -2303,7 +2304,8 @@ namespace GraphView
             UnfoldOperator unfoldOp = new UnfoldOperator(
                 context.CurrentExecutionOperator,
                 Parameters[0].CompileToFunction(context, dbConnection), 
-                unfoldColumns);
+                unfoldColumns,
+                GremlinKeyword.TableDefaultColumnName);
             context.CurrentExecutionOperator = unfoldOp;
 
             for (int i = 1; i < this.Parameters.Count; i++)
@@ -2885,9 +2887,7 @@ namespace GraphView
             {
                 WScalarExpression byParameter = tuple.Item1;
 
-                ScalarFunction byFunction = this.IsByParameterNull(byParameter) 
-                                            ? null 
-                                            : byParameter.CompileToFunction(byInitContext, dbConnection);
+                ScalarFunction byFunction = byParameter.CompileToFunction(byInitContext, dbConnection);
                 IComparer comparer = tuple.Item2;
 
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
@@ -2996,7 +2996,7 @@ namespace GraphView
             }
 
             Decompose1Operator decompose1Op = new Decompose1Operator(context.CurrentExecutionOperator,
-                decomposeTargetIndex, populateColumns);
+                decomposeTargetIndex, populateColumns, GremlinKeyword.TableDefaultColumnName);
             context.CurrentExecutionOperator = decompose1Op;
 
             foreach (string populateColumn in populateColumns) {

@@ -1170,34 +1170,23 @@ namespace GraphView
                         foreach (Tuple<ScalarFunction, IComparer> tuple in this.orderByElements)
                         {
                             ScalarFunction byFunction = tuple.Item1;
-                            Object xObj, yObj;
-                            if (byFunction == null)
-                            {
-                                xObj = x.ToObject();
-                                yObj = y.ToObject();
+
+                            RawRecord initCompose1RecordOfX = new RawRecord();
+                            initCompose1RecordOfX.Append(x);
+                            FieldObject xKey = byFunction.Evaluate(initCompose1RecordOfX);
+                            if (xKey == null) {
+                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                             }
-                            else
-                            {
-                                RawRecord initCompose1RecordOfX = new RawRecord();
-                                initCompose1RecordOfX.Append(x);
-                                FieldObject xKey = byFunction.Evaluate(initCompose1RecordOfX);
-                                if (xKey == null) {
-                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
-                                }
 
-                                RawRecord initCompose1RecordOfY = new RawRecord();
-                                initCompose1RecordOfX.Append(y);
-                                FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
-                                if (yKey == null) {
-                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
-                                }
-
-                                xObj = xKey.ToObject();
-                                yObj = yKey.ToObject();
+                            RawRecord initCompose1RecordOfY = new RawRecord();
+                            initCompose1RecordOfX.Append(y);
+                            FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
+                            if (yKey == null) {
+                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
                             }
 
                             IComparer comparer = tuple.Item2;
-                            ret = comparer.Compare(xObj, yObj);
+                            ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
 
                             if (ret != 0) break;
                         }
@@ -1215,34 +1204,23 @@ namespace GraphView
                         foreach (Tuple<ScalarFunction, IComparer> tuple in this.orderByElements)
                         {
                             ScalarFunction byFunction = tuple.Item1;
-                            Object xObj, yObj;
-                            if (byFunction == null)
-                            {
-                                xObj = x.ToObject();
-                                yObj = y.ToObject();
-                            }
-                            else
-                            {
-                                RawRecord initKeyValuePairRecordOfX = new RawRecord();
-                                initKeyValuePairRecordOfX.Append(x);
-                                FieldObject xKey = byFunction.Evaluate(initKeyValuePairRecordOfX);
-                                if (xKey == null) {
-                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
-                                }
-                                
-                                RawRecord initKeyValuePairRecordOfY = new RawRecord();
-                                initKeyValuePairRecordOfY.Append(y);
-                                FieldObject yKey = byFunction.Evaluate(initKeyValuePairRecordOfY);
-                                if (yKey == null) {
-                                    throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
-                                }
-                                
-                                xObj = xKey.ToObject();
-                                yObj = yKey.ToObject();
-                            }
 
+                            RawRecord initKeyValuePairRecordOfX = new RawRecord();
+                            initKeyValuePairRecordOfX.Append(x);
+                            FieldObject xKey = byFunction.Evaluate(initKeyValuePairRecordOfX);
+                            if (xKey == null) {
+                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                            }
+                            
+                            RawRecord initKeyValuePairRecordOfY = new RawRecord();
+                            initKeyValuePairRecordOfY.Append(y);
+                            FieldObject yKey = byFunction.Evaluate(initKeyValuePairRecordOfY);
+                            if (yKey == null) {
+                                throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
+                            }
+                            
                             IComparer comparer = tuple.Item2;
-                            ret = comparer.Compare(xObj, yObj);
+                            ret = comparer.Compare(xKey.ToObject(), yKey.ToObject());
 
                             if (ret != 0) break;
                         }
@@ -3708,18 +3686,21 @@ namespace GraphView
 
     internal class Decompose1Operator : GraphViewExecutionOperator
     {
-        GraphViewExecutionOperator inputOp;
-        int decomposeTargetIndex;
-        List<string> populateColumns;
+        private readonly GraphViewExecutionOperator inputOp;
+        private readonly int decomposeTargetIndex;
+        private readonly List<string> populateColumns;
+        private readonly string tableDefaultColumnName;
 
         public Decompose1Operator(
             GraphViewExecutionOperator inputOp,
             int decomposeTargetIndex,
-            List<string> populateColumns)
+            List<string> populateColumns,
+            string tableDefaultColumnName)
         {
             this.inputOp = inputOp;
             this.decomposeTargetIndex = decomposeTargetIndex;
             this.populateColumns = populateColumns;
+            this.tableDefaultColumnName = tableDefaultColumnName;
 
             this.Open();
         }
@@ -3729,13 +3710,25 @@ namespace GraphView
             RawRecord inputRecord = null;
             while (this.inputOp.State() && (inputRecord = this.inputOp.Next()) != null)
             {
+                FieldObject inputObj = inputRecord[this.decomposeTargetIndex];
                 Compose1Field compose1Obj = inputRecord[this.decomposeTargetIndex] as Compose1Field;
-                Debug.Assert(compose1Obj != null, "compose1Obj != null");
 
                 RawRecord r = new RawRecord(inputRecord);
-
-                foreach (string populateColumn in this.populateColumns) {
-                    r.Append(compose1Obj[populateColumn]);
+                if (compose1Obj != null)
+                {
+                    foreach (string populateColumn in this.populateColumns) {
+                        r.Append(compose1Obj[populateColumn]);
+                    }
+                }
+                else {
+                    foreach (string columnName in this.populateColumns) {
+                        if (columnName.Equals(this.tableDefaultColumnName)) {
+                            r.Append(inputObj);
+                        }
+                        else {
+                            r.Append((FieldObject)null);
+                        }
+                    }
                 }
 
                 return r;

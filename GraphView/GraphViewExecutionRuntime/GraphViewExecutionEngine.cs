@@ -305,6 +305,50 @@ namespace GraphView
         }
     }
 
+    internal class PathStepField : FieldObject
+    {
+        private FieldObject step { get; set; }
+        private HashSet<string> labels { get; set; }
+
+        public PathStepField(FieldObject step)
+        {
+            this.step = step;
+            this.labels = new HashSet<string>();
+        }
+
+        public bool AddLabel(string label)
+        {
+            return this.labels.Add(label);
+        }
+
+        public override string ToString()
+        {
+            return this.step.ToString();
+        }
+
+        public override string ToGraphSON()
+        {
+            return this.step.ToGraphSON();
+        }
+
+        public override object ToObject()
+        {
+            return this.step.ToObject();
+        }
+
+        public override int GetHashCode()
+        {
+            return this.step.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return this.step.Equals(obj);
+        }
+
+        public override string ToValue => this.step.ToValue;
+    }
+
     internal class CollectionField : FieldObject
     {
         public List<FieldObject> Collection { get; set; }

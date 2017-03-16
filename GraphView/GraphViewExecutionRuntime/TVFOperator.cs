@@ -749,15 +749,18 @@ namespace GraphView
     {
         private List<ScalarFunction> constantValues;
         private bool isList;
+        private readonly string defaultProjectionKey;
 
         internal ConstantOperator(
             GraphViewExecutionOperator inputOp,
             List<ScalarFunction> constantValues,
-            bool isList)
+            bool isList,
+            string defaultProjectionKey)
             : base(inputOp)
         {
             this.constantValues = constantValues;
             this.isList = isList;
+            this.defaultProjectionKey = defaultProjectionKey;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
@@ -771,13 +774,19 @@ namespace GraphView
             if (isList)
             {
                 List<FieldObject> collection = new List<FieldObject>();
-                foreach (ScalarFunction constantValueFunc in this.constantValues) {
-                    collection.Add(constantValueFunc.Evaluate(null));
+                foreach (ScalarFunction constantValueFunc in this.constantValues)
+                {
+                    Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
+                    compositeFieldObjects.Add(defaultProjectionKey, constantValueFunc.Evaluate(null));
+                    collection.Add(new Compose1Field(compositeFieldObjects, defaultProjectionKey));
                 }
                 result.Append(new CollectionField(collection));
             }
-            else {
-                result.Append(this.constantValues[0].Evaluate(null));
+            else
+            {
+                Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
+                compositeFieldObjects.Add(defaultProjectionKey, this.constantValues[0].Evaluate(null));
+                result.Append(new Compose1Field(compositeFieldObjects, defaultProjectionKey));
             }
 
             return new List<RawRecord> { result };
@@ -917,16 +926,19 @@ namespace GraphView
     internal class UnfoldOperator : TableValuedFunction
     {
         private ScalarFunction getUnfoldTargetFunc;
-        private List<string> unfoldCompose1Columns; 
+        private List<string> unfoldCompose1Columns;
+        private readonly string tableDefaultColumnName;
 
         internal UnfoldOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction getUnfoldTargetFunc,
-            List<string> unfoldCompose1Columns)
+            List<string> unfoldCompose1Columns,
+            string tableDefaultColumnName)
             : base(inputOp)
         {
             this.getUnfoldTargetFunc = getUnfoldTargetFunc;
             this.unfoldCompose1Columns = unfoldCompose1Columns;
+            this.tableDefaultColumnName = tableDefaultColumnName;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
@@ -955,7 +967,7 @@ namespace GraphView
                     {
                         foreach (string columnName in this.unfoldCompose1Columns)
                         {
-                            if (columnName.Equals(GremlinKeyword.TableDefaultColumnName)) {
+                            if (columnName.Equals(this.tableDefaultColumnName)) {
                                 newRecord.Append(singleObj);
                             }
                             else {
