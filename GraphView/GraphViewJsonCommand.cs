@@ -119,6 +119,7 @@ namespace GraphView
                 string name = property.Name;
                 switch (name) {
                 // Reversed properties for meta-data
+                case GraphViewKeywords.EDGE_ID:
                 case "_offset":
                 case "_srcV":
                 case "_srcVLabel":

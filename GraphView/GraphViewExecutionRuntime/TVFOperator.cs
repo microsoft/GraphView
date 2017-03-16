@@ -712,6 +712,7 @@ namespace GraphView
                     switch (propertyName)
                     {
                         // Reserved properties for meta-data
+                        case "label":
                         case GraphViewKeywords.EDGE_ID:
                         case "_offset":
                         case "_srcV":

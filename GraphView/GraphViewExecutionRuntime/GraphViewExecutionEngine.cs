@@ -799,6 +799,9 @@ namespace GraphView
         {
             get
             {
+                if (metapropertyName.Equals(GraphViewKeywords.PROPERTY_ID))
+                    return new StringField(this.PropertyId);
+
                 ValuePropertyField propertyField;
                 this.MetaProperties.TryGetValue(metapropertyName, out propertyField);
                 return propertyField;
@@ -1242,13 +1245,13 @@ namespace GraphView
 
         public override string ToString()
         {
-            return String.Format("e[{0}]{1}({2})-{3}->{4}({5})", this.EdgeProperties["_offset"].ToValue, this.OutV, this.OutVLabel, this.Label, this.InV, this.InVLabel);
+            return String.Format("e[{0}]{1}({2})-{3}->{4}({5})", this.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue, this.OutV, this.OutVLabel, this.Label, this.InV, this.InVLabel);
         }
 
         public override string ToGraphSON()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{{\"id\": {0}", this.EdgeProperties["_offset"].ToValue);
+            sb.AppendFormat("{{\"id\": \"{0}\"", this.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue);
             if (this.Label != null) {
                 sb.AppendFormat(", \"label\": {0}", FieldObject.ToLiteral(this.Label));
             }
@@ -1662,8 +1665,8 @@ namespace GraphView
                         }
 
                         sb.Append("{");
-                        sb.AppendFormat("\"id\": {0}, ", 
-                            edgeField.EdgeProperties["_offset"].ToValue);
+                        sb.AppendFormat("\"id\": \"{0}\", ", 
+                            edgeField.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue);
                         sb.AppendFormat("\"outV\": \"{0}\"", edgeField.OutV);
 
                         bool firstInEProperty = true;
@@ -1671,6 +1674,7 @@ namespace GraphView
                         {
                             switch(propertyName)
                             {
+                            case GraphViewKeywords.EDGE_ID:
                             case "label":
                             case "_offset":
                             case "_srcV":
@@ -1755,8 +1759,8 @@ namespace GraphView
                         }
 
                         sb.Append("{");
-                        sb.AppendFormat("\"id\": {0}, ", 
-                            edgeField.EdgeProperties["_offset"].ToValue);
+                        sb.AppendFormat("\"id\": \"{0}\", ", 
+                            edgeField.EdgeProperties[GraphViewKeywords.EDGE_ID].ToValue);
                         sb.AppendFormat("\"inV\": \"{0}\"", edgeField.InV);
 
                         bool firstOutEProperty = true;
@@ -1764,6 +1768,7 @@ namespace GraphView
                         {
                             switch (propertyName)
                             {
+                            case GraphViewKeywords.EDGE_ID:
                             case "label":
                             case "_offset":
                             case "_srcV":
