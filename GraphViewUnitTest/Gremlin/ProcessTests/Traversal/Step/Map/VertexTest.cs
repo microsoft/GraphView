@@ -234,8 +234,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 var expectedId = this.ConvertToVertexId(graphCommand, "josh");
                 var traversal = graphCommand.g()
                     .V(expectedId)
-                    .BothE()
-                    .Label();
+                    .BothE("created");
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
                 foreach (dynamic edge in result)
