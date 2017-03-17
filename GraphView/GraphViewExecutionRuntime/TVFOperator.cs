@@ -795,46 +795,103 @@ namespace GraphView
         }
     }
 
-    internal class PathOperator : TableValuedFunction
+    internal class PathOperator : GraphViewExecutionOperator
     {
-        // <field index, whether this field is a path list needed to be unfolded>
-        private List<Tuple<int, bool>> _pathFieldList;
+        private GraphViewExecutionOperator inputOp;
+        //
+        // If the boolean value is true, then it's a subPath to be unfolded
+        //
+        private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
+        private List<ScalarFunction> byFuncList;
 
-        public PathOperator(GraphViewExecutionOperator pInputOperator,
-            List<Tuple<int, bool>> pStepFieldList) : base(pInputOperator)
+        public PathOperator(GraphViewExecutionOperator inputOp,
+            List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList,
+            List<ScalarFunction> byFuncList)
         {
-            this._pathFieldList = pStepFieldList;
+            this.inputOp = inputOp;
+            this.pathStepList = pathStepList;
+            this.byFuncList = byFuncList;
+
+            this.Open();
         }
 
-        internal override List<RawRecord> CrossApply(RawRecord record)
+        private FieldObject GetStepProjectionResult(FieldObject step, ref int activeByFuncIndex)
         {
-            List<FieldObject> pathCollection = new List<FieldObject>();
+            FieldObject stepProjectionResult;
 
-            foreach (var tuple in _pathFieldList)
+            if (this.byFuncList.Count == 0) {
+                stepProjectionResult = step;
+            }
+            else
             {
-                int index = tuple.Item1;
-                bool needsUnfold = tuple.Item2;
+                RawRecord initCompose1Record = new RawRecord();
+                initCompose1Record.Append(step);
+                stepProjectionResult = this.byFuncList[activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
 
-                if (record[index] == null) continue;
-                if (needsUnfold)
-                {
-                    CollectionField cf = record[index] as CollectionField;
-                    foreach (FieldObject fo in cf.Collection)
-                    {
-                        pathCollection.Add(fo);
-                    }
-                }
-                else
-                {
-                    pathCollection.Add(record[index]);
+                if (stepProjectionResult == null) {
+                    throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
                 }
             }
 
-            RawRecord newRecord = new RawRecord();
-            CollectionField pathResult = new CollectionField(pathCollection);
-            newRecord.Append(pathResult);
+            return stepProjectionResult;
+        }
 
-            return new List<RawRecord> {newRecord};
+        public override RawRecord Next()
+        {
+            RawRecord inputRec;
+            while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+            {
+                List<FieldObject> path = new List<FieldObject>();
+                int activeByFuncIndex = 0;
+
+                foreach (Tuple<ScalarFunction, bool, HashSet<string>> tuple in pathStepList)
+                {
+                    ScalarFunction accessPathStepFunc = tuple.Item1;
+                    bool needsUnfold = tuple.Item2;
+                    HashSet<string> stepLabels = tuple.Item3;
+
+                    FieldObject step = accessPathStepFunc.Evaluate(inputRec);
+                    if (step == null) continue;
+
+                    if (needsUnfold)
+                    {
+                        PathField subPath = step as PathField;
+                        Debug.Assert(subPath != null, "(subPath as PathField) != null");
+
+                        foreach (PathStepField subPathStep in subPath.Path.Cast<PathStepField>())
+                        {
+                            FieldObject pathStep = GetStepProjectionResult(subPathStep.StepFieldObject, ref activeByFuncIndex);
+                            PathStepField pathStepField = new PathStepField(pathStep);
+                            foreach (string label in subPathStep.Labels) {
+                                pathStepField.AddLabel(label);
+                            }
+                            path.Add(pathStepField);
+                        }
+                    }
+                    else
+                    {
+                        FieldObject pathStep = GetStepProjectionResult(step, ref activeByFuncIndex);
+                        PathStepField pathStepField = new PathStepField(pathStep);
+                        foreach (string label in stepLabels) {
+                            pathStepField.AddLabel(label);
+                        }
+                        path.Add(pathStepField);
+                    }
+                }
+
+                RawRecord r = new RawRecord(inputRec);
+                r.Append(new PathField(path));
+                return r;
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 

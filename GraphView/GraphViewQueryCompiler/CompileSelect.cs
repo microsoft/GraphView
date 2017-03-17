@@ -2187,21 +2187,50 @@ namespace GraphView
 
     partial class WPathTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
         {
-            //<field index, whether this field is a path list needed to be unfolded>
-            var pathFieldList = new List<Tuple<int, bool>>();
+            //
+            // If the boolean value is true, then it's a subPath to be unfolded
+            //
+            List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList = 
+                new List<Tuple<ScalarFunction, bool, HashSet<string>>>();
+            List<ScalarFunction> byFuncList = new List<ScalarFunction>();
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
-            foreach (var expression in Parameters)
+            foreach (WScalarExpression expression in Parameters)
             {
-                var columnReference = expression as WColumnReferenceExpression;
-                if (columnReference == null) throw new SyntaxErrorException("Parameters in Path function can only be WColumnReference");
+                WFunctionCall basicStep = expression as WFunctionCall;
+                WValueExpression stepLabel = expression as WValueExpression;
+                WColumnReferenceExpression subPath = expression as WColumnReferenceExpression;
+                WScalarSubquery byFunc = expression as WScalarSubquery;
 
-                pathFieldList.Add(new Tuple<int, bool>(context.LocateColumnReference(columnReference),
-                    columnReference.ColumnName.Equals("_path")));
+                if (basicStep != null)
+                {
+                    pathStepList.Add(
+                        new Tuple<ScalarFunction, bool, HashSet<string>>(
+                            basicStep.CompileToFunction(context, dbcConnection), false, new HashSet<string>()));
+                }
+                else if (stepLabel != null) {
+                    pathStepList.Last().Item3.Add(stepLabel.Value);
+                }
+                else if (subPath != null)
+                {
+                    pathStepList.Add(
+                        new Tuple<ScalarFunction, bool, HashSet<string>>(
+                            subPath.CompileToFunction(context, dbcConnection), true, new HashSet<string>()));
+                }
+                else if (byFunc != null) {
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbcConnection));
+                }
+                else {
+                    throw new QueryCompilationException(
+                        "The parameter of WPathTableReference can only be a WFunctionCall/WValueExpression/WColumnReferenceExpression/WScalarSubquery.");
+                }
             }
 
-            var pathOp = new PathOperator(context.CurrentExecutionOperator, pathFieldList);
+            PathOperator pathOp = new PathOperator(context.CurrentExecutionOperator, pathStepList, byFuncList);
             context.CurrentExecutionOperator = pathOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
