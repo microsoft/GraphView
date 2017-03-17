@@ -110,6 +110,7 @@
     <Compile Include="IoTUnitTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GraphViewMarvelTest.cs" />
+    <Compile Include="ShortestPathTest.cs" />
     <Compile Include="TinkPopJsonParser.cs" />
     <Compile Include="TestLarge.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\AddEdgeTest.cs" />

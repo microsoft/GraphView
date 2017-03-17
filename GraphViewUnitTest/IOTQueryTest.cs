@@ -18,11 +18,61 @@ namespace GraphViewUnitTest
     [TestClass]
     public class IOTQueryTest
     {
+        [TestMethod]
+        public void queryTest63()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            //connection.ResetCollection();
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            cmd.OutputFormat = OutputFormat.GraphSON;
+            // (1) the sub query
+            cmd.CommandText = "g.inject(0).flatMap(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').drop())";
+            var results = cmd.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+        /// <summary>
+        /// test and fix the query51 
+        /// </summary>
+        /// <remarks>
+        /// The reason is .
+        /// code case: __.union(__.select('#-v').unfold().as('#a').constant('').as('#p')).select('#a')
+        /// </remarks>
+        [TestMethod]
+        public void queryTest51()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            //connection.ResetCollection();
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            cmd.OutputFormat = OutputFormat.GraphSON;
+            // (1) the sub query
+            cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application')).constant('~0'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|deleted',true).constant('~3'),__.V(221416).in('mdl').constant('~4')),__.map(__.union(__.coalesce(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').has('/_id','parent-model').has('|v0',1).has('|v1',0).hasLabel('model').sideEffect(__.union(__.properties().drop(),__.repeat(__.out('_val')).emit().barrier().drop())),__.constant(''))).fold()).as('#-v').map(__.union(__.select('#-v').unfold().as('#a').constant('').as('#p')).select('#a')))";
+            // (2) sub query select('#p')
+            //cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application')).constant('~0'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|deleted',true).constant('~3'),__.V(221416).in('mdl').constant('~4')),__.map(__.union(__.coalesce(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').has('/_id','parent-model').has('|v0',1).has('|v1',0).hasLabel('model').sideEffect(__.union(__.properties().drop(),__.repeat(__.out('_val')).emit().barrier().drop())),__.constant(''))).fold()).as('#-v').map(__.union(__.select('#-v').unfold().as('#a').constant('').as('#p')).select('#p')))";
+            // (3) without constant operator, the reason is the #p override the previous #a mark
+            //cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application')).constant('~0'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|deleted',true).constant('~3'),__.V(221416).in('mdl').constant('~4')),__.map(__.union(__.coalesce(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').has('/_id','parent-model').has('|v0',1).has('|v1',0).hasLabel('model').sideEffect(__.union(__.properties().drop(),__.repeat(__.out('_val')).emit().barrier().drop())),__.constant(''))).fold()).as('#-v').map(__.union(__.select('#-v').unfold().as('#a').as('#p')).select('#p')))";
+            // (4) without constant the #P also can't find
+            //cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application')).constant('~0'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').hasLabel('application').has('|deleted',true).constant('~3'),__.V(221416).in('mdl').constant('~4')),__.map(__.union(__.coalesce(__.V().has('|app','ed011feb-0db1-40de-b633-9ec16b758259').has('/_id','parent-model').has('|v0',1).has('|v1',0).hasLabel('model').sideEffect(__.union(__.properties().drop(),__.repeat(__.out('_val')).emit().barrier().drop())),__.constant(''))).fold()).as('#-v').map(__.union(__.select('#-v').unfold().as('#a').as('#p')).select('#p')))";
+            var results = cmd.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
         /// <summary>
         /// test and fix the query 44 id() operator, invalid argumentsError
         /// </summary>
         /// <remarks>
         /// The reason is unfold op UnionContextList.Count == 2, not support now.
+        /// code case: __.union(__.union(__.select('#-e'),__.select('#e')).unfold()
         /// </remarks>
         [TestMethod]
         public void queryTest48()
@@ -213,7 +263,8 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void testSingleQuery()
         {
-            runQuery(48);
+            // 51, 53, 56, 57, 58 the same problem
+            runQuery(63);
         }
         [TestMethod]
         public void testAllQueries()

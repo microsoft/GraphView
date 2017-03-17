@@ -164,6 +164,7 @@ namespace GraphView
                     }
                 }
             }
+            
             return taggedVariableList;
         }
 
