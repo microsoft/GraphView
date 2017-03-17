@@ -26,8 +26,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 GraphTraversal2 traversal = graphCommand.g().V(vertexId1).Values("name").Path();
                 dynamic result = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault())[0];
 
-                Assert.AreEqual(vertexId1, (string)result[0].id);
-                Assert.AreEqual("marko", (string)result[1]);
+                Assert.AreEqual(vertexId1, (string)result["objects"][0].id);
+                Assert.AreEqual("marko", (string)result["objects"][1]);
             }
         }
 
@@ -51,7 +51,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 List<string> expected = new List<string>();
                 foreach (var result in results)
                 {
-                    expected.Add((string)result[1]);
+                    expected.Add((string)result["objects"][1]);
                 }
                 CheckUnOrderedResults(new List<string>() {"lop", "vadas", "josh"}, expected);
             }
@@ -75,14 +75,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 Assert.AreEqual(2, results.Count);
                 List<string> actualList = new List<string>();
-                foreach (var result in results[0])
+                foreach (var result in results[0]["objects"])
                 {
                     actualList.Add(result.ToString());
                 } 
                 CheckPathResults(new List<string> { vertex, "josh", "java"}, actualList);
 
                 actualList.Clear();
-                foreach (var result in results[1])
+                foreach (var result in results[1]["objects"])
                 {
                     actualList.Add(result.ToString());
                 }
@@ -109,15 +109,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 Assert.AreEqual(2, results.Count);
 
                 List<object> actualList = new List<object>();
-                actualList.Add((string)results[0][0]);
-                actualList.Add((int)results[0][1]);
-                actualList.Add((string)results[0][2]);
+                actualList.Add((string)results[0]["objects"][0]);
+                actualList.Add((int)results[0]["objects"][1]);
+                actualList.Add((string)results[0]["objects"][2]);
                 CheckPathResults(new List<object> { "marko", 32, "ripple" }, actualList);
 
                 actualList.Clear();
-                actualList.Add((string)results[1][0]);
-                actualList.Add((int)results[1][1]);
-                actualList.Add((string)results[1][2]);
+                actualList.Add((string)results[1]["objects"][0]);
+                actualList.Add((int)results[1]["objects"][1]);
+                actualList.Add((string)results[1]["objects"][2]);
                 CheckPathResults(new List<object> { "marko", 32, "lop" }, actualList);
 
             }
@@ -140,8 +140,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 dynamic results = JsonConvert.DeserializeObject<dynamic>(traversal.Next().FirstOrDefault());
 
-                Assert.AreEqual(1, results.Count);
-                Assert.AreEqual(vertex, results[0][0].ToString());
+                Assert.AreEqual(1, results[0]["objects"].Count);
+                Assert.AreEqual(vertex, results[0]["objects"][0].ToString());
             }
         }
 

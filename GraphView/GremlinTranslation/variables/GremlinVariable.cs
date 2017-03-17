@@ -470,9 +470,9 @@ namespace GraphView
             currentContext.SetPivotVariable(inEdgeTable);
         }
 
-        internal virtual void Inject(GremlinToSqlContext currentContext, List<object> values)
+        internal virtual void Inject(GremlinToSqlContext currentContext, object injection)
         {
-            GremlinInjectVariable injectVar = new GremlinInjectVariable(values);
+            GremlinInjectVariable injectVar = new GremlinInjectVariable(this, injection);
             currentContext.VariableList.Add(injectVar);
             currentContext.TableReferences.Add(injectVar);
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,42 +7,52 @@ using System.Threading.Tasks;
 
 namespace GraphView
 {
-    /// <summary>
-    /// Inject variable will be translated to a derived table reference
-    /// in the SQL FROM clause, concatenating results from priorContext and injected values. 
-    /// </summary>
     internal class GremlinInjectVariable : GremlinTableVariable
     {
-        List<object> rows;
+        public object Injection { get; set; }
+        public GremlinVariable InputVariable { get; set; }
 
-        public GremlinInjectVariable(List<object> values): base(GremlinVariableType.Table)
+        public GremlinInjectVariable(GremlinVariable inputVariable, object injection): base(GremlinVariableType.Table)
         {
-            rows = values;
+            InputVariable = inputVariable;
+            Injection = injection;
         }
 
         public override WTableReference ToTableReference()
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
-            foreach (var row in rows)
+
+            if (InputVariable == null)
             {
-                if (row is string || GremlinUtil.IsNumber(row) || row is bool)
+                //g.Inject(1)
+                parameters.Add(SqlUtil.GetValueExpr(null));
+            }
+            else
+            {
+                parameters.Add(InputVariable.DefaultProjection().ToScalarExpression());
+            }
+
+            bool isList = false;
+            if (GremlinUtil.IsList(Injection) || GremlinUtil.IsArray(Injection))
+            {
+                isList = true;  //1 It's a list
+                foreach (var value in (IEnumerable)Injection)
                 {
-                    var queryBlock = new WSelectQueryBlock();
-                    queryBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(SqlUtil.GetValueExpr(row), GremlinKeyword.TableDefaultColumnName));
-                    parameters.Add(SqlUtil.GetScalarSubquery(queryBlock));
-                }
-                else
-                {
-                    throw new NotImplementedException();
+                    parameters.Add(SqlUtil.GetValueExpr(value));
                 }
             }
-            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Inject, parameters, GetVariableName());
-            return SqlUtil.GetCrossApplyTableReference(tableRef);
-        }
+            else if (GremlinUtil.IsNumber(Injection) || Injection is string || Injection is bool)
+            {
+                parameters.Add(SqlUtil.GetValueExpr(Injection));
+            }
+            else
+            {
+                throw new ArgumentException();
+            }
 
-        internal override void Inject(GremlinToSqlContext currentContext, List<object> values)
-        {
-            rows.AddRange(values);
+            var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Inject, parameters, GetVariableName());
+            ((WInjectTableReference)tableRef).IsList = isList;
+            return SqlUtil.GetCrossApplyTableReference(tableRef);
         }
     }
 }

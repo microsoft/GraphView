@@ -467,7 +467,18 @@ namespace GraphView
 
         public GraphTraversal2 Constant(object value)
         {
-            AddGremlinOperator(new GremlinConstantOp(value));
+            if (GremlinUtil.IsList(value)
+                || GremlinUtil.IsArray(value)
+                || GremlinUtil.IsNumber(value)
+                || value is string
+                || value is bool)
+            {
+                AddGremlinOperator(new GremlinConstantOp(value));
+            }
+            else
+            {
+                throw new ArgumentException();
+            }
             return this;
         }
 
@@ -717,9 +728,29 @@ namespace GraphView
             return this;
         }
 
+        public GraphTraversal2 Inject()
+        {
+            //Do nothing
+            return this;
+        }
+
         public GraphTraversal2 Inject(params object[] injections)
         {
-            AddGremlinOperator(new GremlinInjectOp(injections));
+            foreach (var injection in injections)
+            {
+                if (GremlinUtil.IsList(injection)
+                    || GremlinUtil.IsArray(injection)
+                    || GremlinUtil.IsNumber(injection)
+                    || injection is string
+                    || injection is bool)
+                {
+                    AddGremlinOperator(new GremlinInjectOp(injection));
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
+            }
             return this;
         }
 

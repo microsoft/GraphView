@@ -429,7 +429,10 @@ namespace GraphView
 
     public partial class WPathTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WInjectTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WInjectTableReference : WSchemaObjectFunctionTableReference
+    {
+        public bool IsList { get; set; }
+    }
 
     public partial class WOrderTableReference : WSchemaObjectFunctionTableReference
     {

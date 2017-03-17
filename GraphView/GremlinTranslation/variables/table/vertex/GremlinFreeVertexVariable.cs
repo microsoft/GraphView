@@ -143,10 +143,10 @@ namespace GraphView
             base.Group(currentContext, sideEffectKey, groupByContext, projectByContext, isProjectByString);
         }
 
-        internal override void Inject(GremlinToSqlContext currentContext, List<object> values)
+        internal override void Inject(GremlinToSqlContext currentContext, object injection)
         {
             this.isTraversalToBound = true;
-            base.Inject(currentContext, values);
+            base.Inject(currentContext, injection);
         }
 
         internal override void Order(GremlinToSqlContext currentContext, List<Tuple<GremlinToSqlContext, IComparer>> byModulatingMap,
