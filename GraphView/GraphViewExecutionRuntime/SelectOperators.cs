@@ -2575,44 +2575,106 @@ namespace GraphView
 
     internal class InjectOperator : GraphViewExecutionOperator
     {
-        GraphViewExecutionOperator inputOp;
+        private GraphViewExecutionOperator inputOp;
 
-        // The number of columns returned by each subquery equals to inputIndexes.Count
-        List<GraphViewExecutionOperator> subqueries;
-        int subqueryProgress;
-       
+        private readonly int inputRecordColumnsCount;
+        private readonly int injectColumnIndex;
+
+        private readonly bool isList;
+        private readonly string defaultProjectionKey;
+
+        private readonly List<ScalarFunction> injectValues;
+
+        private bool hasInjected;
+
         public InjectOperator(
-            List<GraphViewExecutionOperator> subqueries, 
-            GraphViewExecutionOperator inputOp)
+            GraphViewExecutionOperator inputOp,
+            int inputRecordColumnsCount,
+            int injectColumnIndex,
+            List<ScalarFunction> injectValues,
+            bool isList,
+            string defalutProjectionKey
+            )
         {
-            this.subqueries = subqueries;
             this.inputOp = inputOp;
-            subqueryProgress = 0;
-            Open();
+            this.inputRecordColumnsCount = inputRecordColumnsCount;
+            this.injectColumnIndex = injectColumnIndex;
+            this.injectValues = injectValues;
+            this.isList = isList;
+            this.defaultProjectionKey = defalutProjectionKey;
+            this.hasInjected = false;
+
+            this.Open();
         }
 
         public override RawRecord Next()
         {
-            RawRecord r = null;
-
-            while (subqueryProgress < subqueries.Count)
+            if (!this.hasInjected)
             {
-                r = subqueries[subqueryProgress].Next();
-                if (r != null)
-                {
-                    return r;
-                }
+                this.hasInjected = true;
+                RawRecord result = new RawRecord();
 
-                subqueryProgress++;
+                if (isList)
+                {
+                    List<FieldObject> collection = new List<FieldObject>();
+                    foreach (ScalarFunction injectValueFunc in this.injectValues)
+                    {
+                        Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
+                        compositeFieldObjects.Add(defaultProjectionKey, injectValueFunc.Evaluate(null));
+                        collection.Add(new Compose1Field(compositeFieldObjects, defaultProjectionKey));
+                    }
+
+                    //
+                    // g.Inject()
+                    //
+                    if (this.inputRecordColumnsCount == 0) {
+                        result.Append(new CollectionField(collection));
+                    }
+                    else
+                    {
+                        for (int columnIndex = 0; columnIndex < this.inputRecordColumnsCount; columnIndex++) {
+                            if (columnIndex == this.injectColumnIndex)
+                                result.Append(new CollectionField(collection));
+                            else
+                                result.Append((FieldObject)null);
+                        }
+                    }
+
+                    return result;
+                }
+                else
+                {
+                    //
+                    // g.Inject()
+                    //
+                    if (this.inputRecordColumnsCount == 0) {
+                        result.Append(this.injectValues[0].Evaluate(null));
+                    }
+                    else
+                    {
+                        for (int columnIndex = 0; columnIndex < this.inputRecordColumnsCount; columnIndex++) {
+                            if (columnIndex == this.injectColumnIndex)
+                                result.Append(this.injectValues[0].Evaluate(null));
+                            else
+                                result.Append((FieldObject)null);
+                        }
+                    }
+
+                    return result;
+                }
             }
 
-            // For the g.Inject() case, Inject operator itself is the first operator, and its inputOp is null
-            if (inputOp != null)
-                r = inputOp.State() ? inputOp.Next() : null;
 
-            if (r == null)
-            {
-                Close();
+            RawRecord r = null;
+            //
+            // For the g.Inject() case, Inject operator itself is the first operator, and its inputOp is null
+            //
+            if (this.inputOp != null) {
+                r = this.inputOp.State() ? this.inputOp.Next() : null;
+            }
+
+            if (r == null) {
+                this.Close();
             }
 
             return r;
@@ -2620,13 +2682,8 @@ namespace GraphView
 
         public override void ResetState()
         {
-            foreach (GraphViewExecutionOperator subqueryOp in subqueries)
-            {
-                subqueryOp.ResetState();
-            }
-
-            subqueryProgress = 0;
-            Open();
+            this.hasInjected = false;
+            this.Open();
         }
     }
 

@@ -2287,24 +2287,29 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            List<GraphViewExecutionOperator> subQueriesOps = new List<GraphViewExecutionOperator>();
-            foreach (var expression in Parameters)
-            {
-                var subQuery = expression as WScalarSubquery;
-                if (subQuery == null) throw new SyntaxErrorException("Parameters in Inject function can only be WScalarSubquery");
+            WColumnReferenceExpression injectColumn = this.Parameters[0] as WColumnReferenceExpression;
+            //
+            // In g.Inject() case, this injectColumnIndex parameter is useless
+            //
+            int injectColumnIndex = injectColumn == null ? 0 : context.LocateColumnReference(injectColumn);
 
-                var subContext = new QueryCompilationContext(context);
-                // In g.Inject() case, the Inject operator itself is the first operator, so a not-null OuterContextOp is faked here
-                if (context.CurrentExecutionOperator == null)
-                    subContext.OuterContextOp.ConstantSource = new RawRecord();
-                var subQueryOp = subQuery.SubQueryExpr.Compile(subContext, dbConnection);
-                subQueriesOps.Add(subQueryOp);
+            List<ScalarFunction> injectValues = new List<ScalarFunction>();
+
+            for (int i = 1; i < this.Parameters.Count; i++)
+            {
+                WValueExpression injectValue = this.Parameters[i] as WValueExpression;
+                Debug.Assert(injectValue != null, "injectValue != null");
+                injectValues.Add(injectValue.CompileToFunction(context, dbConnection));
+
             }
 
-            InjectOperator injectOp = new InjectOperator(subQueriesOps, context.CurrentExecutionOperator);
+            InjectOperator injectOp = new InjectOperator(context.CurrentExecutionOperator, context.RawRecordLayout.Count, injectColumnIndex,
+                injectValues, this.IsList, GremlinKeyword.TableDefaultColumnName);
             context.CurrentExecutionOperator = injectOp;
 
+            //
             // In g.Inject() case, the inject() step creates a new column in RawRecord
+            //
             if (context.RawRecordLayout.Count == 0)
                 context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 

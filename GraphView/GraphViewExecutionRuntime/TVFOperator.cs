@@ -784,11 +784,8 @@ namespace GraphView
                 }
                 result.Append(new CollectionField(collection));
             }
-            else
-            {
-                Dictionary<string, FieldObject> compositeFieldObjects = new Dictionary<string, FieldObject>();
-                compositeFieldObjects.Add(defaultProjectionKey, this.constantValues[0].Evaluate(null));
-                result.Append(new Compose1Field(compositeFieldObjects, defaultProjectionKey));
+            else {
+                result.Append(this.constantValues[0].Evaluate(null));
             }
 
             return new List<RawRecord> { result };
