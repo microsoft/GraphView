@@ -66,6 +66,7 @@ namespace GraphViewUnitTest
         {
             Queue<String> vertexIdQ1 = new Queue<String>();
             Queue<String> vertexIdQ2 = new Queue<String>();
+            HashSet<String> historyVertex = new HashSet<string>();
             Boolean reachDes = false;
             int depth = 1;
             vertexIdQ1.Enqueue(src);
@@ -77,6 +78,13 @@ namespace GraphViewUnitTest
 
                 foreach (var vertexId in tempVertexIds)
                 {
+                    if(historyVertex.Contains(vertexId))
+                    {
+                        continue;
+                    } else
+                    {
+                        historyVertex.Add(vertexId);
+                    }
                     if(vertexId == des)
                     {
                         reachDes = true;
