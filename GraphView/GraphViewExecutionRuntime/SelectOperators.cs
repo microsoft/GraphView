@@ -2959,68 +2959,70 @@ namespace GraphView
 
     internal class CountLocalOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _objectIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int objectIndex;
 
         public CountLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
         {
-            _inputOp = inputOp;
-            _objectIndex = objectIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.objectIndex = objectIndex;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
                 RawRecord result = new RawRecord(currentRecord);
-                FieldObject obj = currentRecord[_objectIndex];
+                FieldObject obj = currentRecord[this.objectIndex];
                 Debug.Assert(obj != null, "The input of the CountLocalOperator should not be null.");
 
                 if (obj is CollectionField)
                     result.Append(new StringField(((CollectionField)obj).Collection.Count.ToString(), JsonDataType.Long));
+                else if (obj is PathField)
+                    result.Append(new StringField(((PathField)obj).Path.Count.ToString(), JsonDataType.Long));
                 else if (obj is MapField)
                     result.Append(new StringField(((MapField)obj).Count.ToString(), JsonDataType.Long));
                 else if (obj is TreeField)
                     result.Append(new StringField(((TreeField)obj).Children.Count.ToString(), JsonDataType.Long));
                 else
-                    result.Append(new StringField("1", JsonDataType.Int));
+                    result.Append(new StringField("1", JsonDataType.Long));
 
                 return result;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
     internal class SumLocalOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _objectIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int objectIndex;
 
         public SumLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
         {
-            _inputOp = inputOp;
-            _objectIndex = objectIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.objectIndex = objectIndex;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
-                FieldObject obj = currentRecord[_objectIndex];
+                FieldObject obj = currentRecord[this.objectIndex];
                 Debug.Assert(obj != null, "The input of the SumLocalOperator should not be null.");
 
                 double sum = 0.0;
@@ -3029,6 +3031,16 @@ namespace GraphView
                 if (obj is CollectionField)
                 {
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        sum += current;
+                    }
+                }
+                else if (obj is PathField)
+                {
+                    foreach (FieldObject fieldObject in ((PathField)obj).Path)
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
@@ -3046,36 +3058,36 @@ namespace GraphView
                 return result;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
     internal class MaxLocalOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _objectIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int objectIndex;
 
         public MaxLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
         {
-            _inputOp = inputOp;
-            _objectIndex = objectIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.objectIndex = objectIndex;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
-                FieldObject obj = currentRecord[_objectIndex];
+                FieldObject obj = currentRecord[this.objectIndex];
                 Debug.Assert(obj != null, "The input of the MaxLocalOperator should not be null.");
 
                 double max = double.MinValue;
@@ -3084,6 +3096,17 @@ namespace GraphView
                 if (obj is CollectionField)
                 {
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        if (max < current)
+                            max = current;
+                    }
+                }
+                else if (obj is PathField)
+                {
+                    foreach (PathStepField fieldObject in ((PathField)obj).Path.Cast<PathStepField>())
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
@@ -3102,36 +3125,36 @@ namespace GraphView
                 return result;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
     internal class MinLocalOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _objectIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int objectIndex;
 
         public MinLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
         {
-            _inputOp = inputOp;
-            _objectIndex = objectIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.objectIndex = objectIndex;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
-                FieldObject obj = currentRecord[_objectIndex];
+                FieldObject obj = currentRecord[this.objectIndex];
                 Debug.Assert(obj != null, "The input of the MinLocalOperator should not be null.");
 
                 double min = double.MaxValue;
@@ -3140,6 +3163,17 @@ namespace GraphView
                 if (obj is CollectionField)
                 {
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        if (current < min)
+                            min = current;
+                    }
+                }
+                else if (obj is PathField)
+                {
+                    foreach (PathStepField fieldObject in ((PathField)obj).Path.Cast<PathStepField>())
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
@@ -3158,36 +3192,36 @@ namespace GraphView
                 return result;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
     internal class MeanLocalOperator : GraphViewExecutionOperator
     {
-        private GraphViewExecutionOperator _inputOp;
-        private int _objectIndex;
+        private GraphViewExecutionOperator inputOp;
+        private int objectIndex;
 
         public MeanLocalOperator(GraphViewExecutionOperator inputOp, int objectIndex)
         {
-            _inputOp = inputOp;
-            _objectIndex = objectIndex;
-            Open();
+            this.inputOp = inputOp;
+            this.objectIndex = objectIndex;
+            this.Open();
         }
 
         public override RawRecord Next()
         {
             RawRecord currentRecord;
 
-            while (_inputOp.State() && (currentRecord = _inputOp.Next()) != null)
+            while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
-                FieldObject obj = currentRecord[_objectIndex];
+                FieldObject obj = currentRecord[this.objectIndex];
                 Debug.Assert(obj != null, "The input of the MeanLocalOperator should not be null.");
 
                 double sum = 0.0;
@@ -3197,6 +3231,17 @@ namespace GraphView
                 if (obj is CollectionField)
                 {
                     foreach (FieldObject fieldObject in ((CollectionField)obj).Collection)
+                    {
+                        if (!double.TryParse(fieldObject.ToValue, out current))
+                            throw new GraphViewException("The element of the local object cannot be cast to a number");
+
+                        sum += current;
+                        count++;
+                    }
+                }
+                else if (obj is PathField)
+                {
+                    foreach (PathStepField fieldObject in ((PathField)obj).Path.Cast<PathStepField>())
                     {
                         if (!double.TryParse(fieldObject.ToValue, out current))
                             throw new GraphViewException("The element of the local object cannot be cast to a number");
@@ -3217,14 +3262,14 @@ namespace GraphView
                 return result;
             }
 
-            Close();
+            this.Close();
             return null;
         }
 
         public override void ResetState()
         {
-            _inputOp.ResetState();
-            Open();
+            this.inputOp.ResetState();
+            this.Open();
         }
     }
 
@@ -3232,13 +3277,13 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOp;
         private int pathIndex;
-        private HashSet<FieldObject> intermediateStepSet;
+        private HashSet<Object> intermediateStepSet;
 
         public SimplePathOperator(GraphViewExecutionOperator inputOp, int pathIndex)
         {
             this.inputOp = inputOp;
             this.pathIndex = pathIndex;
-            this.intermediateStepSet = new HashSet<FieldObject>();
+            this.intermediateStepSet = new HashSet<Object>();
             this.Open();
         }
 
@@ -3249,20 +3294,21 @@ namespace GraphView
             while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
                 RawRecord result = new RawRecord(currentRecord);
-                CollectionField path = currentRecord[pathIndex] as CollectionField;
+                PathField path = currentRecord[pathIndex] as PathField;
 
-                Debug.Assert(path != null, "The input of the simplePath filter should be a CollectionField generated by path().");
+                Debug.Assert(path != null, "The input of the simplePath filter should be a PathField generated by path().");
 
                 bool isSimplePath = true;
-                foreach (FieldObject step in path.Collection)
+                foreach (PathStepField step in path.Path.Cast<PathStepField>())
                 {
-                    if (intermediateStepSet.Contains(step))
+                    Object stepObj = step.ToObject();
+                    if (intermediateStepSet.Contains(stepObj))
                     {
                         isSimplePath = false;
                         break;
                     }
                         
-                    intermediateStepSet.Add(step);
+                    intermediateStepSet.Add(stepObj);
                 }
 
                 if (isSimplePath) {
@@ -3286,13 +3332,13 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOp;
         private int pathIndex;
-        private HashSet<FieldObject> intermediateStepSet;
+        private HashSet<Object> intermediateStepSet;
 
         public CyclicPathOperator(GraphViewExecutionOperator inputOp, int pathIndex)
         {
             this.inputOp = inputOp;
             this.pathIndex = pathIndex;
-            this.intermediateStepSet = new HashSet<FieldObject>();
+            this.intermediateStepSet = new HashSet<Object>();
             this.Open();
         }
 
@@ -3303,20 +3349,21 @@ namespace GraphView
             while (this.inputOp.State() && (currentRecord = this.inputOp.Next()) != null)
             {
                 RawRecord result = new RawRecord(currentRecord);
-                CollectionField path = currentRecord[pathIndex] as CollectionField;
+                PathField path = currentRecord[pathIndex] as PathField;
 
                 Debug.Assert(path != null, "The input of the cyclicPath filter should be a CollectionField generated by path().");
 
                 bool isCyclicPath = false;
-                foreach (FieldObject step in path.Collection)
+                foreach (PathStepField step in path.Path.Cast<PathStepField>())
                 {
-                    if (intermediateStepSet.Contains(step))
+                    Object stepObj = step.ToObject();
+                    if (intermediateStepSet.Contains(stepObj))
                     {
                         isCyclicPath = true;
                         break;
                     }
 
-                    intermediateStepSet.Add(step);
+                    intermediateStepSet.Add(stepObj);
                 }
 
                 if (isCyclicPath) {
@@ -3795,13 +3842,28 @@ namespace GraphView
                     r.Append(this.isSelectKeys ? inputEntry.Key : inputEntry.Value);
                     return r;
                 }
-                //
-                // TODO: Deal with PathField
-                //
-                //else if (selectObj is PathField)
-                //{
-                    
-                //}
+                else if (selectObj is PathField)
+                {
+                    PathField inputPath = (PathField)selectObj;
+                    List<FieldObject> columns = new List<FieldObject>();
+
+                    foreach (PathStepField pathStep in inputPath.Path.Cast<PathStepField>())
+                    {
+                        if (this.isSelectKeys)
+                        {
+                            List<FieldObject> labels = new List<FieldObject>();
+                            foreach (string label in pathStep.Labels) {
+                                labels.Add(new StringField(label));
+                            }
+                            columns.Add(new CollectionField(labels));
+                        } else {
+                            columns.Add(pathStep.StepFieldObject);
+                        }
+                    }
+
+                    r.Append(new CollectionField(columns));
+                    return r;
+                }
                 throw new GraphViewException(string.Format("The provided object does not have acessible {0}.",
                     this.isSelectKeys ? "keys" : "values"));
             }

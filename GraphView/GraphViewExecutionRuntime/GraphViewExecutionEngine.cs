@@ -311,6 +311,14 @@ namespace GraphView
         private FieldObject step { get; set; }
         private HashSet<string> labels { get; set; }
 
+        public FieldObject StepFieldObject
+        {
+            get { return this.step; }
+            set { this.step = value; }
+        }
+
+        public HashSet<string> Labels => this.labels;
+
         public PathStepField(FieldObject step)
         {
             this.step = step;
@@ -344,10 +352,123 @@ namespace GraphView
 
         public override bool Equals(object obj)
         {
-            return this.step.Equals(obj);
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            PathStepField rhs = obj as PathStepField;
+            if (rhs == null || rhs.Labels.Count != this.labels.Count) {
+                return false;
+            }
+
+            foreach (string label in this.labels) {
+                if (!rhs.Labels.Contains(label)) {
+                    return false;
+                }
+            }
+
+            return this.step.Equals(rhs.StepFieldObject);
         }
 
         public override string ToValue => this.step.ToValue;
+    }
+
+    internal class PathField : FieldObject
+    {
+        public List<FieldObject> Path { get; set; }
+
+        public PathField(List<FieldObject> path)
+        {
+            this.Path = path;
+        }
+
+        public override string ToString()
+        {
+            if (Path.Count == 0) return "[]";
+
+            StringBuilder pathStringBuilder = new StringBuilder("[");
+            pathStringBuilder.Append(Path[0].ToString());
+
+            for (int i = 1; i < Path.Count; i++)
+                pathStringBuilder.Append(", ").Append(Path[i].ToString());
+
+            pathStringBuilder.Append(']');
+
+            return pathStringBuilder.ToString();
+        }
+
+        public override string ToGraphSON()
+        {
+            StringBuilder labelsStrBuilder = new StringBuilder();
+            StringBuilder objectsStrBuilder = new StringBuilder();
+
+            labelsStrBuilder.Append("\"labels\":[");
+            objectsStrBuilder.Append("\"objects\":[");
+
+            bool firstPathStep = true;
+
+            foreach (PathStepField pathStep in this.Path.Cast<PathStepField>())
+            {
+                HashSet<string> labels = pathStep.Labels;
+                FieldObject stepFieldObject = pathStep.StepFieldObject;
+
+                if (firstPathStep) {
+                    firstPathStep = false;
+                }
+                else
+                {
+                    labelsStrBuilder.Append(", ");
+                    objectsStrBuilder.Append(", ");
+                }
+
+                StringBuilder labelStringBuilder = new StringBuilder();
+                labelStringBuilder.Append("[");
+                bool firstLabel = true;
+                foreach (string label in labels)
+                {
+                    if (firstLabel) {
+                        firstLabel = false;
+                    }
+                    else {
+                        labelStringBuilder.Append(", ");
+                    }
+                    labelStringBuilder.Append(string.Format("\"{0}\"", label));
+                }
+                labelStringBuilder.Append("]");
+
+                labelsStrBuilder.Append(labelStringBuilder.ToString());
+                objectsStrBuilder.Append(stepFieldObject.ToGraphSON());
+            }
+
+            labelsStrBuilder.Append("], ");
+            objectsStrBuilder.Append("]");
+
+            StringBuilder result = new StringBuilder();
+            result.Append("{").Append(labelsStrBuilder.ToString()).Append(objectsStrBuilder.ToString()).Append("}");
+            return result.ToString();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            PathField pathField = obj as PathField;
+            if (pathField == null || Path.Count != pathField.Path.Count) {
+                return false;
+            }
+
+            for (int i = 0; i < Path.Count; i++)
+            {
+                if (!Path[i].Equals(pathField.Path[i])) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
+        }
     }
 
     internal class CollectionField : FieldObject

@@ -949,7 +949,41 @@ namespace GraphView
 
             FieldObject unfoldTarget = getUnfoldTargetFunc.Evaluate(record);
 
-            if (unfoldTarget is CollectionField)
+            if (unfoldTarget is PathField)
+            {
+                PathField path = unfoldTarget as PathField;
+                foreach (PathStepField pathStep in path.Path.Cast<PathStepField>())
+                {
+                    if (pathStep == null) continue;
+                    RawRecord newRecord = new RawRecord();
+
+                    //
+                    // Extract only needed columns from Compose1Field
+                    //
+                    if (pathStep.StepFieldObject is Compose1Field)
+                    {
+                        Compose1Field compose1Field = (Compose1Field)(pathStep.StepFieldObject);
+                        foreach (string unfoldColumn in unfoldCompose1Columns) {
+                            newRecord.Append(compose1Field.CompositeFieldObject[unfoldColumn]);
+                        }
+                    }
+                    else
+                    {
+                        foreach (string columnName in this.unfoldCompose1Columns)
+                        {
+                            if (columnName.Equals(this.tableDefaultColumnName)) {
+                                newRecord.Append(pathStep.StepFieldObject);
+                            }
+                            else {
+                                newRecord.Append((FieldObject)null);
+                            }
+                        }
+                    }
+
+                    results.Add(newRecord);
+                }
+            }
+            else if (unfoldTarget is CollectionField)
             {
                 CollectionField cf = unfoldTarget as CollectionField;
                 foreach (FieldObject singleObj in cf.Collection)
@@ -957,10 +991,12 @@ namespace GraphView
                     if (singleObj == null) continue;
                     RawRecord newRecord = new RawRecord();
 
+                    //
                     // Extract only needed columns from Compose1Field
+                    //
                     if (singleObj is Compose1Field)
                     {
-                        Compose1Field compose1Field = singleObj as Compose1Field;
+                        Compose1Field compose1Field = (Compose1Field)singleObj;
                         foreach (string unfoldColumn in unfoldCompose1Columns) {
                             newRecord.Append(compose1Field.CompositeFieldObject[unfoldColumn]);
                         }
