@@ -3124,5 +3124,55 @@ namespace GraphView
             return selectColumnOp;
         }
     }
+
+    partial class WSelectTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
+        {
+            List<ScalarFunction> byFuncList = new List<ScalarFunction>();
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");
+            int inputObjectIndex = context.LocateColumnReference(inputObjectParameter);
+
+            WColumnReferenceExpression pathParameter = this.Parameters[1] as WColumnReferenceExpression;
+            Debug.Assert(pathParameter != null, "pathParameter != null");
+            int pathIndex = context.LocateColumnReference(pathParameter);
+
+            List<string> selectLabels = new List<string>();
+
+            for (int i = 2; i < this.Parameters.Count; i++)
+            {
+                WValueExpression label = this.Parameters[i] as WValueExpression;
+                WScalarSubquery byFunc = this.Parameters[i] as WScalarSubquery;
+
+                if (label != null) {
+                    selectLabels.Add(label.Value);
+                }
+                else if (byFunc != null) {
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbcConnection));
+                }
+                else {
+                    throw new QueryCompilationException(
+                        "The parameter of WSelectTableReference can only be a WValueExpression or WScalarSubquery.");
+                }
+            }
+            
+            SelectOperator selectOp = new SelectOperator(
+                context.CurrentExecutionOperator,
+                context.SideEffectStates,
+                inputObjectIndex,
+                pathIndex,
+                selectLabels,
+                byFuncList);
+            context.CurrentExecutionOperator = selectOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            return selectOp;
+        }
+    }
 }
 

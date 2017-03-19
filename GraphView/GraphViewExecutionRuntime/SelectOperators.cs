@@ -3933,4 +3933,157 @@ namespace GraphView
             this.Open();
         }
     }
+
+    internal class SelectOperator : GraphViewExecutionOperator
+    {
+        private readonly GraphViewExecutionOperator inputOp;
+
+        private readonly Dictionary<string, IAggregateFunction> sideEffectStates;
+        private readonly int inputObjectIndex;
+        private readonly int pathIndex;
+
+        private readonly List<string> selectLabels;
+        private readonly List<ScalarFunction> byFuncList;
+
+        public SelectOperator(
+            GraphViewExecutionOperator inputOp,
+            Dictionary<string, IAggregateFunction> sideEffectStates,
+            int inputObjectIndex,
+            int pathIndex,
+            List<string> selectLabels,
+            List<ScalarFunction> byFuncList)
+        {
+            this.inputOp = inputOp;
+            this.sideEffectStates = sideEffectStates;
+            this.inputObjectIndex = inputObjectIndex;
+            this.pathIndex = pathIndex;
+            this.selectLabels = selectLabels;
+            this.byFuncList = byFuncList;
+
+            this.Open();
+        }
+
+        private FieldObject GetProjectionResult(FieldObject selectObject, ref int activeByFuncIndex)
+        {
+            FieldObject projectionResult;
+
+            if (this.byFuncList.Count == 0) {
+                projectionResult = selectObject;
+            }
+            else
+            {
+                RawRecord initCompose1Record = new RawRecord();
+                initCompose1Record.Append(selectObject);
+                projectionResult = this.byFuncList[activeByFuncIndex++ % this.byFuncList.Count].Evaluate(initCompose1Record);
+
+                if (projectionResult == null) {
+                    throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
+                }
+            }
+
+            return projectionResult;
+        }
+
+        private FieldObject GetSelectObject(RawRecord inputRec, string label)
+        {
+            MapField inputMap = inputRec[this.inputObjectIndex] as MapField;
+            PathField path = inputRec[this.pathIndex] as PathField;
+
+            StringField labelStringField = new StringField(label);
+
+            FieldObject selectObject = null;
+            IAggregateFunction globalSideEffectObject;
+            if (this.sideEffectStates.TryGetValue(label, out globalSideEffectObject))
+            {
+                //
+                // TODO: Sync with Jinjin
+                //
+                selectObject = globalSideEffectObject.Terminate();
+            }
+            else if (inputMap != null && inputMap.ContainsKey(labelStringField))  {
+                selectObject = inputMap[labelStringField];
+            }
+            else
+            {
+                Debug.Assert(path != null);
+                List<FieldObject> selectObjects = new List<FieldObject>();
+                foreach (PathStepField step in path.Path.Cast<PathStepField>()) {
+                    if (step.Labels.Contains(label)) {
+                        selectObjects.Add(step.StepFieldObject);
+                    }
+                }
+
+                if (selectObjects.Count == 1) {
+                    selectObject = selectObjects[0];
+                }
+                else if (selectObjects.Count > 1)
+                {
+                    //
+                    // TODO: Sync with Jinjin
+                    //
+                    selectObject = new CollectionField(selectObjects);
+                }
+            }
+
+            return selectObject;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord inputRec;
+            while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+            {
+                int activeByFuncIndex = 0;
+
+                if (this.selectLabels.Count == 1)
+                {
+                    FieldObject selectObject = this.GetSelectObject(inputRec, this.selectLabels[0]);
+
+                    if (selectObject == null) {
+                        continue;
+                    }
+
+                    FieldObject projectionResult = this.GetProjectionResult(selectObject, ref activeByFuncIndex);
+                    RawRecord r = new RawRecord(inputRec);
+                    r.Append(projectionResult);
+                    return r;
+                }
+                else
+                {
+                    MapField selectMap = new MapField();
+
+                    bool allLabelCanBeSelected = true;
+                    foreach (string label in this.selectLabels)
+                    {
+                        FieldObject selectObject = this.GetSelectObject(inputRec, label);
+
+                        if (selectObject == null)
+                        {
+                            allLabelCanBeSelected = false;
+                            break;
+                        }
+
+                        selectMap.Add(new StringField(label), this.GetProjectionResult(selectObject, ref activeByFuncIndex));
+                    }
+
+                    if (!allLabelCanBeSelected) {
+                        continue;
+                    }
+
+                    RawRecord r = new RawRecord(inputRec);
+                    r.Append(selectMap);
+                    return r;
+                }
+            }
+
+            this.Close();
+            return null;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
 }

@@ -581,6 +581,16 @@ namespace GraphView
             return isRemoved;
         }
 
+        public bool ContainsKey(FieldObject key)
+        {
+            return this.map.ContainsKey(key);
+        }
+
+        public bool ContainsValue(FieldObject value)
+        {
+            return this.map.ContainsValue(value);
+        }
+
         public List<EntryField> ToList()
         {
             return map.Select(kvp => new EntryField(kvp)).ToList();
