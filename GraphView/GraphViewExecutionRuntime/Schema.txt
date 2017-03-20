@@ -1,18 +1,20 @@
 ﻿
 VertexDocument (Small):
 {
-	"id": ...,
-	"_partition": ...,    // = id
-	"_edge": [
+	"id": ...,									// KW_DOC_ID
+	"_partition": ...,    // = id				// KW_DOC_PARTITION
+	"_edge": [									// KW_VERTEX_EDGE
 		<EdgeObject>, ...
 	],
-	"_reverse_edge": [
+	"_reverse_edge": [							// KW_VERTEX_REVEDGE
 		<RevEdgeObject>, ...
 	],
-	"_nextEdgeOffset": ...
+	"_nextEdgeOffset": ...						// KW_VERTEX_NEXTOFFSET
 
 	// vertex properties
-	"label": ...,  // optional
+	"label": ...,  // optional					// KW_VERTEX_LABLE
+
+	<VertexProperties>
 	...
 }
 
@@ -22,14 +24,14 @@ VertexDocument (Large):
 	"id": ...,
 	"_partition": ...,    // = id
 	"_edge": {
-		"_edges": [
+		"_edges": [								// TODO: "_edges" still hardcoded
 			{
 				"id": <edge-doucment-id>
 			}, ...
 		]
 	},
 	"_reverse_edge": {
-		"_edges": [
+		"_edges": [								// TODO: "_edges" still hardcoded
 			{
 				"id": <edge-doucment-id>
 			}, ...
@@ -39,16 +41,23 @@ VertexDocument (Large):
 
 	// vertex properties
 	"label": ...,  // optional
+
+	<VertexProperties>
 	...
 }
 
 EdgeDocument:
 {
 	"id": ...,
+												// KW_DOC_ID
 	"_vertex_id": ...,   // id of current VertexDocument
+												// KW_EDGEDOC_VERTEXID
 	"_partition": ...,   // = _partition of the vertex = _vertex_id (tricky!)
+												// KW_DOC_PARTITION
 	"_is_reverse": true/false,   // indicate whether this vertex is source(false) or sink (true)
-	"_edge": [
+												// KW_EDGEDOC_ISREVERSE
+
+	"_edge": [									// TODO: "_edges" still hardcoded
 		<EdgeObject/RevEdgeObject>, ...
 	]
 }
@@ -57,21 +66,52 @@ EdgeDocument:
 EdgeObject:
 {
 	"_offset": ...,	        // offset of current edge (relative to srcV)
+												// KW_EDGE_OFFSET
 	"_sinkV": ...,	        // id of sink vertex
+												// KW_EDGE_SINKV
 	"_sinkVLabel": ...,     // label of sink vertex, must exist, can be JValue-null
+												// KW_EDGE_SINKV_LABEL
 
 	// edge properties
 	"label": ...,  // optional
+												// KW_EDGE_LABEL
 	...
 }
 
 RevEdgeObject:
 {
 	"_offset": ...,	        // offset of current edge (relative to srcV)
+												// KW_EDGE_OFFSET
 	"_srcV": ...,	        // id of sink vertex
+												// KW_EDGE_SRCV
 	"_srcVLabel": ...,      // label of sink vertex, must exist, can be JValue-null
+												// KW_EDGE_SRC_LABEL
 
 	// edge properties
 	"label": ...,  // optional
+												// KW_EDGE_LABEL
 	...
 }
+
+VertexProperties:
+<PropertyName> : [
+	{
+		"id": <VertexSinglePropertyId_1>		// KW_PROPERTY_ID
+		"_value": ...,							// KW_PROPERTY_VALUE
+		"_meta": {								// KW_PROPERTY_META
+			<Meta11>: ...,
+			<Meta12>: ...,
+			...
+		}
+	},
+	{
+		"id": <VertexSinglePropertyId_2>
+		"_value": ...,
+		"_meta": {
+			<Meta21>: ...,
+			<Meta22>: ...,
+			...
+		}
+	},
+	...
+]

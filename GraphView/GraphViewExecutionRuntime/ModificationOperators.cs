@@ -200,9 +200,9 @@ namespace GraphView
             Debug.Assert(vertexObject[vertexSingleProperty.PropertyName] != null);
 
             JToken propertyJToken = ((JArray) vertexObject[vertexSingleProperty.PropertyName])
-                .First(singleProperty => (string) singleProperty[GraphViewKeywords.KW_PROPERTY_ID] == vertexSingleProperty.PropertyId);
+                .First(singleProperty => (string) singleProperty[KW_PROPERTY_ID] == vertexSingleProperty.PropertyId);
 
-            JObject metaPropertyJObject = (JObject) propertyJToken?["_meta"];
+            JObject metaPropertyJObject = (JObject) propertyJToken?[KW_PROPERTY_META];
 
             metaPropertyJObject?.Property(metaProperty.PropertyName)?.Remove();
 
@@ -337,9 +337,9 @@ namespace GraphView
                     meta[pair.Key.Value] = pair.Value.ToJValue();
                 }
                 JObject singleProperty = new JObject {
-                    ["_value"] = property.Value.ToJValue(),
-                    [GraphViewKeywords.KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                    ["_meta"] = meta,
+                    [KW_PROPERTY_VALUE] = property.Value.ToJValue(),
+                    [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
+                    [KW_PROPERTY_META] = meta,
                 };
 
                 // Set / Append to multiProperty
@@ -397,8 +397,8 @@ namespace GraphView
             string vertexId = vp.VertexProperty.Vertex.VertexId;
             JObject vertexDocument = this.Connection.RetrieveDocumentById(vertexId);
             JObject singleProperty = (JObject)((JArray)vertexDocument[vp.PropertyName])
-                .First(single => (string) single[GraphViewKeywords.KW_PROPERTY_ID] == vp.PropertyId);
-            JObject meta = (JObject)singleProperty["_meta"];
+                .First(single => (string) single[KW_PROPERTY_ID] == vp.PropertyId);
+            JObject meta = (JObject)singleProperty[KW_PROPERTY_META];
 
             foreach (WPropertyExpression property in this.updateProperties) {
                 if (property.Cardinality == GremlinKeyword.PropertyCardinality.List ||
@@ -647,7 +647,7 @@ namespace GraphView
         //    var srcJsonDocument = JObject.Parse(srcJsonDocumentString);
         //    var sinkJsonDocument = JObject.Parse(sinkJsonDocumentString);
         //    var edgeJsonDocument = JObject.Parse(edgeJsonDocumentString);
-        //    var edgeOffset = srcJsonDocument["_nextEdgeOffset"].ToObject<long>();
+        //    var edgeOffset = srcJsonDocument[KW_VERTEX_NEXTOFFSET].ToObject<long>();
         //    var reverseEdgeOffset = sinkJsonDocument["_nextReverseEdgeOffset"].ToObject<long>();
 
         //    // Construct the edge object for srcNode._edge
@@ -657,7 +657,7 @@ namespace GraphView
         //    // Insert the edge object in the srcNode._edge and update the _nextEdgeOffset
         //    var srcJsonEdgeArray = (JArray)srcJsonDocument["_edge"];
         //    srcJsonEdgeArray.Add(edgeJsonDocument);
-        //    srcJsonDocument["_nextEdgeOffset"] = edgeOffset + 1;
+        //    srcJsonDocument[KW_VERTEX_NEXTOFFSET] = edgeOffset + 1;
         //    documentsMap[srcId] = srcJsonDocument.ToString();
 
         //    edgeObject = JObject.FromObject(edgeJsonDocument);
@@ -905,9 +905,9 @@ namespace GraphView
     //                        JProperty multiProperty = new JProperty(name) {
     //                            Value = new JArray {
     //                                new JObject {
-    //                                    ["_value"] = value,
-    //                                    [GraphViewKeywords.KW_PROPERTY_ID] = propertyId,
-    //                                    ["_meta"] = new JObject(),
+    //                                    [KW_PROPERTY_VALUE] = value,
+    //                                    [KW_PROPERTY_ID] = propertyId,
+    //                                    [KW_PROPERTY_META] = new JObject(),
     //                                }
     //                            }
     //                        };

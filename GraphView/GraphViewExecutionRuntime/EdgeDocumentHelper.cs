@@ -41,7 +41,7 @@ namespace GraphView
         /// Try to upload one document. 
         /// If the operation fails because document is too large, nothing is changed and "tooLarge" is set true.
         /// If the operation fails due to other reasons, nothing is changed and an exception is thrown
-        /// If the operation succeeds, docObject["id"] is set if it doesn't have one
+        /// If the operation succeeds, docObject[KW_DOC_ID] is set if it doesn't have one
         /// </summary>
         /// <param name="connection"></param>
         /// <param name="docId"></param>
@@ -88,8 +88,8 @@ namespace GraphView
             out JObject outEdgeObject, out string outEdgeDocID,
             out JObject inEdgeObject, out string inEdgeDocID)
         {
-            long edgeOffset = (long)srcVertexObject["_nextEdgeOffset"];
-            srcVertexObject["_nextEdgeOffset"] = edgeOffset + 1;
+            long edgeOffset = (long)srcVertexObject[KW_VERTEX_NEXTOFFSET];
+            srcVertexObject[KW_VERTEX_NEXTOFFSET] = edgeOffset + 1;
 
             outEdgeObject = (JObject)edgeJsonObject.DeepClone();
             inEdgeObject = (JObject)edgeJsonObject.DeepClone();
@@ -144,9 +144,9 @@ namespace GraphView
 
                 string lastEdgeDocId = (string)edgeDocumentsArray.Last["id"];
                 JObject edgeDocument = connection.RetrieveDocumentById(lastEdgeDocId);
-                Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId), "((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId)");
-                Debug.Assert((bool)edgeDocument["_is_reverse"] == isReverse, "(bool)edgeDocument['_is_reverse'] == isReverse");
-                Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
+                Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(lastEdgeDocId), $"((string)edgeDocument[{KW_DOC_ID}]).Equals(lastEdgeDocId)");
+                Debug.Assert((bool)edgeDocument[KW_EDGEDOC_ISREVERSE] == isReverse, $"(bool)edgeDocument['{KW_EDGEDOC_ISREVERSE}'] == isReverse");
+                Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['id']");
 
                 JArray edgesArray = (JArray)edgeDocument["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
@@ -183,8 +183,8 @@ namespace GraphView
                     JObject edgeDocObject = new JObject {
                         [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                         [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
-                        ["_is_reverse"] = isReverse,
-                        ["_vertex_id"] = (string)vertexObject[KW_DOC_ID],
+                        [KW_EDGEDOC_ISREVERSE] = isReverse,
+                        [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                         ["_edge"] = new JArray(edgeObject)
                     };
                     lastEdgeDocId = connection.CreateDocumentAsync(edgeDocObject).Result;
@@ -286,9 +286,8 @@ namespace GraphView
             JObject newEdgeDocObject = new JObject {
                 [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                 [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
-                ["_is_reverse"] = targetEdgeIsReverse,
-                ["_is_reverse"] = targetEdgeIsReverse,
-                ["_vertex_id"] = (string)vertexObject["id"],
+                [KW_EDGEDOC_ISREVERSE] = targetEdgeIsReverse,
+                [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 ["_edge"] = new JArray(targetEdgeArray.Last),
             };
             newEdgeDocId = connection.CreateDocumentAsync(newEdgeDocObject).Result;
@@ -298,8 +297,8 @@ namespace GraphView
             JObject existEdgeDocObject = new JObject {
                 [KW_DOC_ID] = GraphViewConnection.GenerateDocumentId(),
                 [KW_DOC_PARTITION] = vertexObject[KW_DOC_PARTITION],
-                ["_is_reverse"] = targetEdgeIsReverse,
-                ["_vertex_id"] = (string)vertexObject[KW_DOC_ID],
+                [KW_EDGEDOC_ISREVERSE] = targetEdgeIsReverse,
+                [KW_EDGEDOC_VERTEXID] = (string)vertexObject[KW_DOC_ID],
                 ["_edge"] = targetEdgeArray,
             };
             existEdgeDocId = connection.CreateDocumentAsync(existEdgeDocObject).Result;
@@ -405,9 +404,9 @@ namespace GraphView
                 JObject edgeDocument = connection.RetrieveDocumentById(edgeDocId);
                 Debug.Assert(edgeDocument[KW_DOC_PARTITION] != null);
                 Debug.Assert(vertexObject[KW_DOC_PARTITION] != null);
-                Debug.Assert(((string)edgeDocument["id"]).Equals(edgeDocId), "((string)edgeDocument['id']).Equals(edgeDocId)");
-                Debug.Assert((bool)edgeDocument["_is_reverse"] == isReverse, "(bool)edgeDocument['_is_reverse'] == isReverse");
-                Debug.Assert((string)edgeDocument["_vertex_id"] == (string)vertexObject["id"], "(string)edgeDocument['_vertex_id'] == (string)vertexObject['id']");
+                Debug.Assert(((string)edgeDocument[KW_DOC_ID]).Equals(edgeDocId), $"((string)edgeDocument['{KW_DOC_ID}']).Equals(edgeDocId)");
+                Debug.Assert((bool)edgeDocument[KW_EDGEDOC_ISREVERSE] == isReverse, $"(bool)edgeDocument['{KW_EDGEDOC_ISREVERSE}'] == isReverse");
+                Debug.Assert((string)edgeDocument[KW_EDGEDOC_VERTEXID] == (string)vertexObject[KW_DOC_ID], $"(string)edgeDocument['{KW_EDGEDOC_VERTEXID}'] == (string)vertexObject['id']");
 
                 // The edge to be removed must exist! (garanteed by caller)
                 JArray edgesArray = (JArray)edgeDocument["_edge"];

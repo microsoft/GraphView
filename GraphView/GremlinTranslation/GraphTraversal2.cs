@@ -1262,30 +1262,37 @@ namespace GraphView
         {
             sCSCode = sCSCode.Replace("\'", "\"");
 
-            //repleace gremlin steps with uppercase
+            //replace gremlin steps with uppercase
             foreach (var item in GremlinKeyword.GremlinStepToGraphTraversalDict)
             {
                 string originStr = "." + item.Key + "(";
                 string targetStr = "." + item.Value + "(";
                 sCSCode = sCSCode.Replace(originStr, targetStr);
             }
-            //repleace with GraphTraversal FunctionName
+            //replace with GraphTraversal FunctionName
             foreach (var item in GremlinKeyword.GremlinMainStepToGraphTraversalDict)
             {
                 sCSCode = sCSCode.Replace(item.Key, item.Value);
             }
-            //repleace gremlin predicate with GraphTraversal predicate
+            //replace gremlin predicate with GraphTraversal predicate
             foreach (var item in GremlinKeyword.GremlinPredicateToGraphTraversalDict)
             {
-                Regex r = new Regex("[^a-zA-Z](" + item.Key + ")\\(");
-                if (r.IsMatch(sCSCode))
+                Regex r1 = new Regex("[^a-zA-Z](" + item.Key + ")\\(");
+                if (r1.IsMatch(sCSCode))
                 {
-                    var match = r.Match(sCSCode);
+                    var match = r1.Match(sCSCode);
                     sCSCode = sCSCode.Replace(match.Groups[0].Value, match.Groups[0].Value[0] + item.Value + "(");
+                }
+
+                Regex r2 = new Regex("[^a-zA-Z],(" + item.Key + ")\\(");
+                if (r2.IsMatch(sCSCode))
+                {
+                    var match = r2.Match(sCSCode);
+                    sCSCode = sCSCode.Replace(match.Groups[0].Value, "\"," + item.Value + "(");
                 }
             }
 
-            //repeleace gremlin keyword
+            //replace gremlin keyword
             foreach (var item in GremlinKeyword.GremlinKeywordToGraphTraversalDict)
             {
                 RegexOptions ops = RegexOptions.Multiline;
@@ -1298,7 +1305,7 @@ namespace GraphView
             }
 
             //replace gremlin array with C# array
-            Regex arrayRegex = new Regex("[\\[]((\\s*?[\\\"|']\\w+[\\\"|']\\s*?[,]*?\\s*?)*)[\\]]", RegexOptions.Multiline);
+            Regex arrayRegex = new Regex("[\\[]((\\s*?[\\\"|']\\S+?[\\\"|']\\s*?[,]*?\\s*?)*)[\\]]", RegexOptions.Multiline);
             var matchtest = arrayRegex.Match(sCSCode);
             if (arrayRegex.IsMatch(sCSCode))
             {

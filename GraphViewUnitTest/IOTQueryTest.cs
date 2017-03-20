@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphView;
 using Newtonsoft.Json;
-using System.Collections.Generic;
 using System.Configuration;
-using System.Linq;
 using System.Threading;
 using GraphViewUnitTest.Gremlin;
 
