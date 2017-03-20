@@ -96,9 +96,19 @@ namespace GraphView
             return null;
         }
 
-        internal virtual GremlinPathStepVariable GetAndPopulatePath()
+        internal virtual List<GremlinVariable> FetchAllVars()
         {
-            return new GremlinPathStepVariable(this);
+            return new List<GremlinVariable> { this };
+        }
+
+        internal virtual List<GremlinVariable> FetchAllTableVars()
+        {
+            return new List<GremlinVariable> { this };
+        }
+
+        internal virtual GremlinVariable GetAndPopulatePath()
+        {
+            return this;
         }
 
         internal virtual GremlinVariableProperty DefaultVariableProperty()
