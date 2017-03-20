@@ -127,6 +127,26 @@ namespace GraphView
             return variableList;
         }
 
+        internal List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            for (var i = 0; i < TableReferences.Count; i++)
+            {
+                variableList.AddRange(TableReferences[i].FetchAllTableVars());
+            }
+            return variableList;
+        }
+
+        internal List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>();
+            for (var i = 0; i < VariableList.Count; i++)
+            {
+                variableList.AddRange(VariableList[i].FetchAllVars());
+            }
+            return variableList;
+        }
+
         internal List<GremlinVariable> Select(string label, GremlinVariable stopVariable = null)
         {
             List<GremlinVariable> taggedVariableList = ParentContext?.Select(label, HomeVariable);
