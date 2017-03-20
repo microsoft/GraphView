@@ -153,10 +153,12 @@ namespace GraphView
 
     internal class TreeFunction : IAggregateFunction
     {
-        private static void ConstructTree(TreeField root, int index, CollectionField path)
+        private static void ConstructTree(TreeField root, int index, PathField pathField)
         {
-            if (index >= path.Collection.Count) return;
-            FieldObject nodeObject = path.Collection[index++];
+            if (index >= pathField.Path.Count) return;
+            PathStepField pathStepField = pathField.Path[index++] as PathStepField;
+            Debug.Assert(pathStepField != null, "pathStepField != null");
+            FieldObject nodeObject = pathStepField.StepFieldObject;
 
             TreeField child;
             if (!root.Children.TryGetValue(nodeObject, out child))
@@ -165,7 +167,7 @@ namespace GraphView
                 root.Children[nodeObject] = child;
             }
 
-            ConstructTree(child, index, path);
+            ConstructTree(child, index, pathField);
         }
 
         private TreeField _root;
@@ -182,7 +184,7 @@ namespace GraphView
                 return;
             }
 
-            ConstructTree(_root, 0, values[0] as CollectionField);
+            ConstructTree(_root, 0, values[0] as PathField);
         }
 
         public void Init()
@@ -454,7 +456,7 @@ namespace GraphView
                     return null;
                 }
 
-                CollectionField path = r[this.pathIndex] as CollectionField;
+                PathField path = r[this.pathIndex] as PathField;
 
                 Debug.Assert(path != null);
 
