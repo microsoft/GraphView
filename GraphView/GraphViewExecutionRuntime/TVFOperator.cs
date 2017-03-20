@@ -864,6 +864,13 @@ namespace GraphView
                             }
                             path.Add(pathStepField);
                         }
+
+                        PathStepField lastSubPathStep = subPath.Path.Any() ? path.Last() as PathStepField : null;
+                        if (lastSubPathStep != null) {
+                            foreach (string label in stepLabels) {
+                                lastSubPathStep.AddLabel(label);
+                            }
+                        }
                     }
                     else
                     {
