@@ -155,8 +155,8 @@ namespace GraphView
                 //
                 JObject edgeDocObject = edgeDocDict[edgeDocID];
                 Debug.Assert(edgeDocObject != null, "edgeDocObject != null");
-                Debug.Assert((bool)edgeDocObject["_is_reverse"] == false, "(bool)edgeDocObject['_is_reverse'] == false");
-                Debug.Assert(((string)edgeDocObject["_vertex_id"]).Equals(outVId), "((string)edgeDocObject['_vertex_id']).Equals(outVId)");
+                Debug.Assert((bool)edgeDocObject[KW_EDGEDOC_ISREVERSE] == false, $"(bool)edgeDocObject['{KW_EDGEDOC_ISREVERSE}'] == false");
+                Debug.Assert(((string)edgeDocObject[KW_EDGEDOC_VERTEXID]).Equals(outVId), $"((string)edgeDocObject['{KW_EDGEDOC_VERTEXID}']).Equals(outVId)");
 
                 JArray edgesArray = (JArray)edgeDocObject["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
@@ -202,8 +202,8 @@ namespace GraphView
                 //
                 JObject edgeDocObject = edgeDocDict[edgeDocID];
                 Debug.Assert(edgeDocObject != null, "edgeDocObject != null");
-                Debug.Assert((bool)edgeDocObject["_is_reverse"] == true, "(bool)edgeDocObject['_is_reverse'] == true");
-                Debug.Assert(((string)edgeDocObject["_vertex_id"]).Equals(inVId), "((string)edgeDocObject['_vertex_id']).Equals(outVId)");
+                Debug.Assert((bool)edgeDocObject[KW_EDGEDOC_ISREVERSE] == true, $"(bool)edgeDocObject['{KW_EDGEDOC_ISREVERSE}'] == true");
+                Debug.Assert(((string)edgeDocObject[KW_EDGEDOC_VERTEXID]).Equals(inVId), $"((string)edgeDocObject['{KW_EDGEDOC_VERTEXID}']).Equals(outVId)");
 
                 JArray edgesArray = (JArray)edgeDocObject["_edge"];
                 Debug.Assert(edgesArray != null, "edgesArray != null");
@@ -902,8 +902,8 @@ namespace GraphView
 
         public VertexSinglePropertyField(string propertyName, JObject vertexSinglePropertyObject, VertexPropertyField vertexPropertyField) 
             : base(propertyName, 
-                  vertexSinglePropertyObject["_value"].ToString(), 
-                  JsonDataTypeHelper.GetJsonDataType(vertexSinglePropertyObject["_value"].Type))
+                  vertexSinglePropertyObject[KW_PROPERTY_VALUE].ToString(), 
+                  JsonDataTypeHelper.GetJsonDataType(vertexSinglePropertyObject[KW_PROPERTY_VALUE].Type))
         {
             Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] != null);
 
@@ -944,9 +944,9 @@ namespace GraphView
         {
             /* Schema of vertexSinglePropertyObject: 
                 {
-                  "_value": ...,
-                  GraphViewKeywords.KW_PROPERTY_ID: <GUID>
-                  "_meta": { 
+                  KW_PROPERTY_VALUE: ...,
+                  KW_PROPERTY_ID: <GUID>
+                  KW_PROPERTY_META: { 
                     "K1": "V1", 
                     ...
                   }
@@ -955,12 +955,12 @@ namespace GraphView
             Debug.Assert(vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] != null);
             Debug.Assert((string)vertexSinglePropertyObject[GraphViewKeywords.KW_PROPERTY_ID] == this.PropertyId);
 
-            JValue value = (JValue) vertexSinglePropertyObject["_value"];
+            JValue value = (JValue) vertexSinglePropertyObject[KW_PROPERTY_VALUE];
             this.PropertyValue = value.ToString();
             this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
 
             HashSet<string> metaPropertyKeysToRemove = new HashSet<string>(this.MetaProperties.Keys);
-            foreach (JProperty metaProperty in vertexSinglePropertyObject["_meta"].Children<JProperty>()) {
+            foreach (JProperty metaProperty in vertexSinglePropertyObject[KW_PROPERTY_META].Children<JProperty>()) {
                 ValuePropertyField valueProp;
                 bool found = this.MetaProperties.TryGetValue(metaProperty.Name, out valueProp);
                 if (found) {
@@ -1296,9 +1296,9 @@ namespace GraphView
             /* multiProperty looks like: 
               <propName>: [
                 {
-                  "_value": "Property Value",
+                  KW_PROPERTY_VALUE: "Property Value",
                   KW_PROPERTY_ID: <GUID>
-                  "_meta": { ... }
+                  KW_PROPERTY_META: { ... }
                 }, 
                 ...
               ]
@@ -1311,11 +1311,11 @@ namespace GraphView
 
             HashSet<string> metaPropIdToRemove = new HashSet<string>(this.Multiples.Keys);
             foreach (JObject vertexPropertyObject in ((JArray)multiProperty.Value).Values<JObject>()) {
-                Debug.Assert(vertexPropertyObject["_value"] is JValue);
-                Debug.Assert(vertexPropertyObject[GraphViewKeywords.KW_PROPERTY_ID] is JValue);
-                Debug.Assert(vertexPropertyObject["_meta"] is JObject);
+                Debug.Assert(vertexPropertyObject[KW_PROPERTY_VALUE] is JValue);
+                Debug.Assert(vertexPropertyObject[KW_PROPERTY_ID] is JValue);
+                Debug.Assert(vertexPropertyObject[KW_PROPERTY_META] is JObject);
 
-                string propId = (string) vertexPropertyObject[GraphViewKeywords.KW_PROPERTY_ID];
+                string propId = (string) vertexPropertyObject[KW_PROPERTY_ID];
                 if (metaPropIdToRemove.Remove(propId)) {
                     // This single-property should be replaced
                     this.Multiples[propId].Replace(vertexPropertyObject);

@@ -208,13 +208,13 @@ namespace GraphView
                 string edgeDocumentsQuery =
                     $"SELECT *\n" +
                     $"FROM edgeDoc\n" +
-                    $"WHERE edgeDoc._vertex_id IN ({inClause})";
+                    $"WHERE edgeDoc.{KW_EDGEDOC_VERTEXID} IN ({inClause})";
                 IQueryable<dynamic> edgeDocuments = Connection.ExecuteQuery(edgeDocumentsQuery);
 
                 // Dictionary<vertexId, Dictionary<edgeDocumentId, edgeDocument>>
                 Dictionary<string, Dictionary<string, JObject>> edgeDict = new Dictionary<string, Dictionary<string, JObject>>();
                 foreach (JObject edgeDocument in edgeDocuments) {
-                    string vertexId = (string)edgeDocument["_vertex_id"];
+                    string vertexId = (string)edgeDocument[KW_EDGEDOC_VERTEXID];
                     Dictionary<string, JObject> edgeDocSet;
                     edgeDict.TryGetValue(vertexId, out edgeDocSet);
                     if (edgeDocSet == null) {

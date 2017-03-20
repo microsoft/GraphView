@@ -54,6 +54,10 @@ namespace GraphView
         public const string KW_EDGE_SINKV = "_sinkV";
         public const string KW_EDGE_SINKV_LABEL = "_sinkVLabel";
 
+        public const string KW_EDGEDOC_VERTEXID = "_vertex_id";
+        public const string KW_EDGEDOC_ISREVERSE = "_is_reverse";
+
+
         static GraphViewKeywords()
         {
 #if !DEBUG

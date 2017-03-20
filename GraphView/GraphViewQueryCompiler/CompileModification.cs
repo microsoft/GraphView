@@ -45,16 +45,16 @@ namespace GraphView
                 }
 
                 propArray.Add(new JObject {
-                    ["_value"] = vertexProperty.Value.ToJValue(),
+                    [KW_PROPERTY_VALUE] = vertexProperty.Value.ToJValue(),
                     [KW_PROPERTY_ID] = GraphViewConnection.GenerateDocumentId(),
-                    ["_meta"] = meta,
+                    [KW_PROPERTY_META] = meta,
                 });
                 //GraphViewJsonCommand.AppendVertexSinglePropertyToVertex(vertexObject);
             }
 
-            vertexObject["_edge"] = new JArray();
+            vertexObject[KW_VERTEX_EDGE] = new JArray();
             vertexObject[KW_VERTEX_REV_EDGE] = new JArray();
-            vertexObject["_nextEdgeOffset"] = 0;
+            vertexObject[KW_VERTEX_NEXTOFFSET] = 0;
 
             return vertexObject;
         }
