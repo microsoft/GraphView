@@ -482,6 +482,12 @@ namespace GraphView
                 case GremlinKeyword.func.SelectColumn:
                     funcTableRef = new WSelectColumnTableReference();
                     break;
+                case GremlinKeyword.func.GraphViewId:
+                    funcTableRef = new WIdTableReference();
+                    break;
+                case GremlinKeyword.func.GraphViewLabel:
+                    funcTableRef = new WLabelTableReference();
+                    break;
                 default:
                     throw new NotImplementedException();
             }

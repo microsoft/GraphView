@@ -102,6 +102,8 @@
     <Compile Include="GremlinTranslation\filter\GremlinWhereOp.cs" />
     <Compile Include="GremlinTranslation\GraphTraversal2.cs" />
     <Compile Include="GremlinTranslation\GremlinUtil.cs" />
+    <Compile Include="GremlinTranslation\map\GremlinIdOp.cs" />
+    <Compile Include="GremlinTranslation\map\GremlinLabelOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinMapOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPathOp.cs" />
     <Compile Include="GremlinTranslation\map\GremlinPropertyMapOp.cs" />
@@ -162,6 +164,8 @@
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinBarrierVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinIdVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinLabelVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinPropertyMapVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinSelectColumnVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withSubquery\GremlinChooseVariable.cs" />

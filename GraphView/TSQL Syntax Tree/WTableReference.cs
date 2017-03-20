@@ -663,6 +663,11 @@ namespace GraphView
 
     public partial class WSelectColumnTableReference : WSchemaObjectFunctionTableReference {}
 
+    public partial class WIdTableReference : WSchemaObjectFunctionTableReference {}
+
+    public partial class WLabelTableReference : WSchemaObjectFunctionTableReference {}
+
+
     public partial class WJoinParenthesisTableReference : WTableReference
     {
         internal WTableReference Join { get; set; }

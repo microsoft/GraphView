@@ -438,6 +438,14 @@ namespace GraphView
             currentContext.AddPredicate(SqlUtil.GetExistPredicate(existContext.ToSelectQueryBlock()));
         }
 
+        internal virtual void Id(GremlinToSqlContext currentContext)
+        {
+            GremlinIdVariable newVariable = new GremlinIdVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
         internal virtual void In(GremlinToSqlContext currentContext, List<string> edgeLabels)
         {
             GremlinVariableProperty sourceProperty = GetVariableProperty(GremlinKeyword.NodeID);
@@ -503,7 +511,15 @@ namespace GraphView
 
         internal virtual void Key(GremlinToSqlContext currentContext)
         {
-            GremlinKeyVariable newVariable = new GremlinKeyVariable(DefaultVariableProperty());
+            GremlinKeyVariable newVariable = new GremlinKeyVariable(this);
+            currentContext.VariableList.Add(newVariable);
+            currentContext.TableReferences.Add(newVariable);
+            currentContext.SetPivotVariable(newVariable);
+        }
+
+        internal virtual void Label(GremlinToSqlContext currentContext)
+        {
+            GremlinLabelVariable newVariable = new GremlinLabelVariable(this);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);
