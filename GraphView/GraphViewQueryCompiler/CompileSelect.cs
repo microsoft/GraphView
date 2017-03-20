@@ -3129,11 +3129,6 @@ namespace GraphView
     {
         internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
         {
-            List<ScalarFunction> byFuncList = new List<ScalarFunction>();
-            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
-            byInitContext.ClearField();
-            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-
             WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
             Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");
             int inputObjectIndex = context.LocateColumnReference(inputObjectParameter);
@@ -3142,9 +3137,20 @@ namespace GraphView
             Debug.Assert(pathParameter != null, "pathParameter != null");
             int pathIndex = context.LocateColumnReference(pathParameter);
 
+            WValueExpression popParameter = this.Parameters[2] as WValueExpression;
+            Debug.Assert(popParameter != null, "popParameter != null");
+            GraphViewKeywords.Pop popType;
+            if (!Enum.TryParse(popParameter.Value, true, out popType))
+                throw new QueryCompilationException("Unsupported pop type.");
+
+            List<ScalarFunction> byFuncList = new List<ScalarFunction>();
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
             List<string> selectLabels = new List<string>();
 
-            for (int i = 2; i < this.Parameters.Count; i++)
+            for (int i = 3; i < this.Parameters.Count; i++)
             {
                 WValueExpression label = this.Parameters[i] as WValueExpression;
                 WScalarSubquery byFunc = this.Parameters[i] as WScalarSubquery;
@@ -3166,12 +3172,76 @@ namespace GraphView
                 context.SideEffectStates,
                 inputObjectIndex,
                 pathIndex,
+                popType,
                 selectLabels,
-                byFuncList);
+                byFuncList,
+                GremlinKeyword.TableDefaultColumnName);
+
             context.CurrentExecutionOperator = selectOp;
             context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return selectOp;
+        }
+    }
+
+    partial class WSelectOneTableReference
+    {
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
+        {
+            WColumnReferenceExpression inputObjectParameter = this.Parameters[0] as WColumnReferenceExpression;
+            Debug.Assert(inputObjectParameter != null, "inputObjectParameter != null");
+            int inputObjectIndex = context.LocateColumnReference(inputObjectParameter);
+
+            WColumnReferenceExpression pathParameter = this.Parameters[1] as WColumnReferenceExpression;
+            Debug.Assert(pathParameter != null, "pathParameter != null");
+            int pathIndex = context.LocateColumnReference(pathParameter);
+
+            WValueExpression popParameter = this.Parameters[2] as WValueExpression;
+            Debug.Assert(popParameter != null, "popParameter != null");
+            GraphViewKeywords.Pop popType;
+            if (!Enum.TryParse(popParameter.Value, true, out popType))
+                throw new QueryCompilationException("Unsupported pop type.");
+
+
+            WValueExpression labelParameter = this.Parameters[3] as WValueExpression;
+            Debug.Assert(labelParameter != null, "labelParameter != null");
+            string selectLabel = labelParameter.Value;
+
+            WScalarSubquery byParameter = this.Parameters[4] as WScalarSubquery;
+            Debug.Assert(byParameter != null, "byParameter != null");
+
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+            ScalarFunction byFunc = byParameter.CompileToFunction(byInitContext, dbcConnection);
+            
+            List<string> populateColumns = new List<string>();
+            for (int i = 5; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateColumnParameter = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateColumnParameter != null, "populateColumnParameter != null");
+                
+                populateColumns.Add(populateColumnParameter.Value);
+            }
+
+            SelectOneOperator selectOneOp = new SelectOneOperator(
+                context.CurrentExecutionOperator,
+                context.SideEffectStates,
+                inputObjectIndex,
+                pathIndex,
+                popType,
+                selectLabel,
+                byFunc,
+                populateColumns,
+                GremlinKeyword.TableDefaultColumnName
+                );
+
+            context.CurrentExecutionOperator = selectOneOp;
+            foreach (string columnName in populateColumns) {
+                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+            }
+
+            return selectOneOp;
         }
     }
 }

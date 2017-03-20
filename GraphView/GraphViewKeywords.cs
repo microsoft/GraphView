@@ -57,6 +57,12 @@ namespace GraphView
         public const string KW_EDGEDOC_VERTEXID = "_vertex_id";
         public const string KW_EDGEDOC_ISREVERSE = "_is_reverse";
 
+        internal enum Pop
+        {
+            All,
+            First,
+            Last
+        }
 
         static GraphViewKeywords()
         {

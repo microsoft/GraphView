@@ -3934,14 +3934,109 @@ namespace GraphView
         }
     }
 
-    internal class SelectOperator : GraphViewExecutionOperator
+    internal abstract class SelectBaseOperator : GraphViewExecutionOperator
     {
-        private readonly GraphViewExecutionOperator inputOp;
+        protected readonly GraphViewExecutionOperator inputOp;
+        protected readonly Dictionary<string, IAggregateFunction> sideEffectStates;
+        protected readonly int inputObjectIndex;
+        protected readonly int pathIndex;
 
-        private readonly Dictionary<string, IAggregateFunction> sideEffectStates;
-        private readonly int inputObjectIndex;
-        private readonly int pathIndex;
+        protected readonly GraphViewKeywords.Pop pop;
+        protected readonly string tableDefaultColumnName;
 
+        protected SelectBaseOperator(
+            GraphViewExecutionOperator inputOp,
+            Dictionary<string, IAggregateFunction> sideEffectStates,
+            int inputObjectIndex,
+            int pathIndex,
+            GraphViewKeywords.Pop pop,
+            string tableDefaultColumnName)
+        {
+            this.inputOp = inputOp;
+            this.sideEffectStates = sideEffectStates;
+            this.inputObjectIndex = inputObjectIndex;
+            this.pathIndex = pathIndex;
+
+            this.pop = pop;
+            this.tableDefaultColumnName = tableDefaultColumnName;
+        }
+
+        protected FieldObject GetSelectObject(RawRecord inputRec, string label)
+        {
+            MapField inputMap = inputRec[this.inputObjectIndex] as MapField;
+            PathField path = inputRec[this.pathIndex] as PathField;
+
+            StringField labelStringField = new StringField(label);
+
+            IAggregateFunction globalSideEffectObject;
+            FieldObject selectObject = null;
+
+            if (this.sideEffectStates.TryGetValue(label, out globalSideEffectObject))
+            {
+                Dictionary<string, FieldObject> compositeFieldObject = new Dictionary<string, FieldObject>();
+                compositeFieldObject.Add(this.tableDefaultColumnName, globalSideEffectObject.Terminate());
+                selectObject = new Compose1Field(compositeFieldObject, this.tableDefaultColumnName);
+            }
+            else if (inputMap != null && inputMap.ContainsKey(labelStringField)) {
+                selectObject = inputMap[labelStringField];
+            }
+            else
+            {
+                Debug.Assert(path != null);
+                List<FieldObject> selectObjects = new List<FieldObject>();
+
+                if (this.pop == Pop.First) {
+                    foreach (PathStepField step in path.Path.Cast<PathStepField>()) {
+                        if (step.Labels.Contains(label)) {
+                            selectObjects.Add(step.StepFieldObject);
+                            break;
+                        }
+                    }
+                }
+                else if (this.pop == Pop.Last) {
+                    for (int reverseIndex = path.Path.Count - 1; reverseIndex >= 0; reverseIndex--) {
+                        PathStepField step = (PathStepField)path.Path[reverseIndex];
+                        if (step.Labels.Contains(label)) {
+                            selectObjects.Add(step.StepFieldObject);
+                            break;
+                        }
+                    }
+                }
+                //
+                // this.pop == Pop.All
+                //
+                else {
+                    foreach (PathStepField step in path.Path.Cast<PathStepField>()) {
+                        if (step.Labels.Contains(label)) {
+                            selectObjects.Add(step.StepFieldObject);
+                        }
+                    }
+                }
+
+                if (selectObjects.Count == 1) {
+                    selectObject = selectObjects[0];
+                }
+                else if (selectObjects.Count > 1)
+                {
+                    Dictionary<string, FieldObject> compositeFieldObject = new Dictionary<string, FieldObject>();
+                    compositeFieldObject.Add(this.tableDefaultColumnName, new CollectionField(selectObjects));
+                    selectObject = new Compose1Field(compositeFieldObject, this.tableDefaultColumnName);
+                }
+            }
+
+            return selectObject;
+        }
+
+        public override void ResetState()
+        {
+            this.inputOp.ResetState();
+            this.Open();
+        }
+    }
+
+
+    internal class SelectOperator : SelectBaseOperator
+    {
         private readonly List<string> selectLabels;
         private readonly List<ScalarFunction> byFuncList;
 
@@ -3950,13 +4045,12 @@ namespace GraphView
             Dictionary<string, IAggregateFunction> sideEffectStates,
             int inputObjectIndex,
             int pathIndex,
+            GraphViewKeywords.Pop pop,
             List<string> selectLabels,
-            List<ScalarFunction> byFuncList)
+            List<ScalarFunction> byFuncList,
+            string tableDefaultColumnName)
+            : base(inputOp, sideEffectStates, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
         {
-            this.inputOp = inputOp;
-            this.sideEffectStates = sideEffectStates;
-            this.inputObjectIndex = inputObjectIndex;
-            this.pathIndex = pathIndex;
             this.selectLabels = selectLabels;
             this.byFuncList = byFuncList;
 
@@ -3984,50 +4078,6 @@ namespace GraphView
             return projectionResult;
         }
 
-        private FieldObject GetSelectObject(RawRecord inputRec, string label)
-        {
-            MapField inputMap = inputRec[this.inputObjectIndex] as MapField;
-            PathField path = inputRec[this.pathIndex] as PathField;
-
-            StringField labelStringField = new StringField(label);
-
-            FieldObject selectObject = null;
-            IAggregateFunction globalSideEffectObject;
-            if (this.sideEffectStates.TryGetValue(label, out globalSideEffectObject))
-            {
-                //
-                // TODO: Sync with Jinjin
-                //
-                selectObject = globalSideEffectObject.Terminate();
-            }
-            else if (inputMap != null && inputMap.ContainsKey(labelStringField))  {
-                selectObject = inputMap[labelStringField];
-            }
-            else
-            {
-                Debug.Assert(path != null);
-                List<FieldObject> selectObjects = new List<FieldObject>();
-                foreach (PathStepField step in path.Path.Cast<PathStepField>()) {
-                    if (step.Labels.Contains(label)) {
-                        selectObjects.Add(step.StepFieldObject);
-                    }
-                }
-
-                if (selectObjects.Count == 1) {
-                    selectObject = selectObjects[0];
-                }
-                else if (selectObjects.Count > 1)
-                {
-                    //
-                    // TODO: Sync with Jinjin
-                    //
-                    selectObject = new CollectionField(selectObjects);
-                }
-            }
-
-            return selectObject;
-        }
-
         public override RawRecord Next()
         {
             RawRecord inputRec;
@@ -4035,55 +4085,101 @@ namespace GraphView
             {
                 int activeByFuncIndex = 0;
 
-                if (this.selectLabels.Count == 1)
+                MapField selectMap = new MapField();
+
+                bool allLabelCanBeSelected = true;
+                foreach (string label in this.selectLabels)
                 {
-                    FieldObject selectObject = this.GetSelectObject(inputRec, this.selectLabels[0]);
+                    FieldObject selectObject = this.GetSelectObject(inputRec, label);
 
-                    if (selectObject == null) {
-                        continue;
-                    }
-
-                    FieldObject projectionResult = this.GetProjectionResult(selectObject, ref activeByFuncIndex);
-                    RawRecord r = new RawRecord(inputRec);
-                    r.Append(projectionResult);
-                    return r;
-                }
-                else
-                {
-                    MapField selectMap = new MapField();
-
-                    bool allLabelCanBeSelected = true;
-                    foreach (string label in this.selectLabels)
+                    if (selectObject == null)
                     {
-                        FieldObject selectObject = this.GetSelectObject(inputRec, label);
-
-                        if (selectObject == null)
-                        {
-                            allLabelCanBeSelected = false;
-                            break;
-                        }
-
-                        selectMap.Add(new StringField(label), this.GetProjectionResult(selectObject, ref activeByFuncIndex));
+                        allLabelCanBeSelected = false;
+                        break;
                     }
 
-                    if (!allLabelCanBeSelected) {
-                        continue;
-                    }
-
-                    RawRecord r = new RawRecord(inputRec);
-                    r.Append(selectMap);
-                    return r;
+                    selectMap.Add(new StringField(label), this.GetProjectionResult(selectObject, ref activeByFuncIndex));
                 }
+
+                if (!allLabelCanBeSelected) {
+                    continue;
+                }
+
+                RawRecord r = new RawRecord(inputRec);
+                r.Append(selectMap);
+                return r;
             }
 
             this.Close();
             return null;
         }
+    }
 
-        public override void ResetState()
+    internal class SelectOneOperator : SelectBaseOperator
+    {
+        private readonly string selectLabel;
+        private readonly ScalarFunction byFunc;
+
+        private readonly List<string> populateColumns;
+
+        public SelectOneOperator(
+            GraphViewExecutionOperator inputOp,
+            Dictionary<string, IAggregateFunction> sideEffectStates,
+            int inputObjectIndex,
+            int pathIndex,
+            GraphViewKeywords.Pop pop,
+            string selectLabel,
+            ScalarFunction byFunc,
+            List<string> populateColumns,
+            string tableDefaultColumnName)
+            : base(inputOp, sideEffectStates, inputObjectIndex, pathIndex, pop, tableDefaultColumnName)
         {
-            this.inputOp.ResetState();
+            this.selectLabel = selectLabel;
+            this.byFunc = byFunc;
+            this.populateColumns = populateColumns;
+
             this.Open();
+        }
+
+        private FieldObject GetProjectionResult(FieldObject selectObject)
+        {
+            FieldObject projectionResult;
+
+            RawRecord initCompose1Record = new RawRecord();
+            initCompose1Record.Append(selectObject);
+            projectionResult = this.byFunc.Evaluate(initCompose1Record);
+
+            if (projectionResult == null) {
+                throw new GraphViewException("The provided traversal or property name of path() does not map to a value.");
+            }
+
+            return projectionResult;
+        }
+
+        public override RawRecord Next()
+        {
+            RawRecord inputRec;
+            while (this.inputOp.State() && (inputRec = this.inputOp.Next()) != null)
+            {
+                FieldObject selectObject = this.GetSelectObject(inputRec, this.selectLabel);
+
+                if (selectObject == null) {
+                    continue;
+                }
+
+                Compose1Field projectionResult = this.GetProjectionResult(selectObject) as Compose1Field;
+                Debug.Assert(projectionResult != null, "projectionResult is Compose1Field.");
+
+                RawRecord r = new RawRecord(inputRec);
+                foreach (string columnName in this.populateColumns) {
+                    r.Append(projectionResult[columnName]);
+                }
+
+                return r;
+            }
+
+            this.Close();
+            return null;
         }
     }
 }

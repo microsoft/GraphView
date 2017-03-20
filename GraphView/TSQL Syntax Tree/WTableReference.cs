@@ -661,7 +661,7 @@ namespace GraphView
 
     public partial class WSelectTableReference : WSchemaObjectFunctionTableReference {}
 
-    public partial class WSelectOneTableReference : WSchemaObjectFunctionTableReference { }
+    public partial class WSelectOneTableReference : WSchemaObjectFunctionTableReference {}
 
     public partial class WSelectColumnTableReference : WSchemaObjectFunctionTableReference {}
 

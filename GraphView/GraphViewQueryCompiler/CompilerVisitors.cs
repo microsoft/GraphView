@@ -201,8 +201,8 @@ namespace GraphView
             {
                 string originalColumnName = columnList[1].Value;
 
-                if (originalColumnName.Equals(GremlinKeyword.NodeID, StringComparison.InvariantCultureIgnoreCase) ||
-                    originalColumnName.Equals(GremlinKeyword.Label, StringComparison.InvariantCultureIgnoreCase))
+                if (originalColumnName.Equals(GremlinKeyword.NodeID) ||
+                    originalColumnName.Equals(GremlinKeyword.Label))
                 {
                     return;
                 }
