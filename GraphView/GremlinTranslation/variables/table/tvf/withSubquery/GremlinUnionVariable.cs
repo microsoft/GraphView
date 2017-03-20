@@ -42,7 +42,7 @@ namespace GraphView
             }
         }
 
-        internal override GremlinPathStepVariable GetAndPopulatePath()
+        internal override GremlinVariable GetAndPopulatePath()
         {
             List<GremlinVariable> pathStepVariableList = new List<GremlinVariable>();
             foreach (var context in UnionContextList)
@@ -50,7 +50,7 @@ namespace GraphView
                 GremlinPathVariable newVariable = context.PopulateGremlinPath();
                 pathStepVariableList.Add(newVariable);
             }
-            return new GremlinPathStepVariable(pathStepVariableList, this);
+            return new GremlinMultiStepVariable(pathStepVariableList, this);
         }
 
         internal override List<GremlinVariable> FetchVarsFromCurrAndChildContext()
@@ -59,6 +59,26 @@ namespace GraphView
             foreach (var context in UnionContextList)
             {
                 variableList.AddRange(context.FetchVarsFromCurrAndChildContext());
+            }
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            foreach (var context in UnionContextList)
+            {
+                variableList.AddRange(context.FetchAllVars());
+            }
+            return variableList;
+        }
+
+        internal override List<GremlinVariable> FetchAllTableVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            foreach (var context in UnionContextList)
+            {
+                variableList.AddRange(context.FetchAllTableVars());
             }
             return variableList;
         }

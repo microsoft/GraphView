@@ -189,12 +189,12 @@ namespace GraphView
             newPivotVariable.HomeContext = this;
         }
 
-        internal List<GremlinPathStepVariable> GetGremlinStepList(GremlinVariable stopVariable = null)
+        internal List<GremlinVariable> GetGremlinStepList(GremlinVariable stopVariable = null)
         {
-            List<GremlinPathStepVariable> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
+            List<GremlinVariable> gremlinStepList = ParentContext?.GetGremlinStepList(HomeVariable);
             if (gremlinStepList == null)
             {
-                gremlinStepList = new List<GremlinPathStepVariable>();
+                gremlinStepList = new List<GremlinVariable>();
             }
             foreach (var step in StepList)
             {
@@ -204,9 +204,9 @@ namespace GraphView
             return gremlinStepList;
         }
 
-        internal List<GremlinPathStepVariable> GetCurrAndChildGremlinStepList(GremlinVariable stopVariable = null)
+        internal List<GremlinVariable> GetCurrAndChildGremlinStepList(GremlinVariable stopVariable = null)
         {
-            List<GremlinPathStepVariable> gremlinStepList = new List<GremlinPathStepVariable>();
+            List<GremlinVariable> gremlinStepList = new List<GremlinVariable>();
             foreach (var step in StepList)
             {
                 if (step == stopVariable) break;

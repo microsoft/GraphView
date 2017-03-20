@@ -12,7 +12,7 @@ namespace GraphView
         public int High { get; set; }
         public bool IsReverse { get; set; }
         public bool IsLocal { get; set; }
-        public GremlinVariable InputVaribale;
+        public GremlinVariable InputVaribale { get; set; }
 
         public GremlinRangeVariable(GremlinVariable inputVariable, int low, int high, GremlinKeyword.Scope scope, bool isReverse): base(GremlinVariableType.Table)
         {
@@ -21,6 +21,13 @@ namespace GraphView
             High = high;
             IsLocal = scope != GremlinKeyword.Scope.Global;
             IsReverse = isReverse;
+        }
+
+        internal override List<GremlinVariable> FetchAllVars()
+        {
+            List<GremlinVariable> variableList = new List<GremlinVariable>() { this };
+            variableList.AddRange(InputVaribale.FetchAllVars());
+            return variableList;
         }
 
         public override WTableReference ToTableReference()

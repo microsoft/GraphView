@@ -60,11 +60,11 @@ namespace GraphView
             return false;
         }
 
-        internal override GremlinPathStepVariable GetAndPopulatePath()
+        internal override GremlinVariable GetAndPopulatePath()
         {
             GremlinPathVariable pathVariable = RepeatContext.PopulateGremlinPath();
             pathVariable.IsInRepeatContext = true;
-            return new GremlinPathStepVariable(pathVariable, this);
+            return new GremlinMultiStepVariable(pathVariable, this);
         }
 
         internal override List<GremlinVariable> PopulateAllTaggedVariable(string label)

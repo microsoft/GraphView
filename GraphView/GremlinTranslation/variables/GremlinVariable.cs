@@ -696,7 +696,7 @@ namespace GraphView
         private GremlinPathVariable generatePath(GremlinToSqlContext currentContext, List<GraphTraversal2> byList = null)
         {
             List<GremlinToSqlContext> byContexts = new List<GremlinToSqlContext>();
-            List<GremlinPathStepVariable> steps = currentContext.GetGremlinStepList();
+            List<GremlinVariable> steps = currentContext.GetGremlinStepList();
             if (byList == null)
             {
                 byList = new List<GraphTraversal2> {GraphTraversal2.__()};
@@ -705,7 +705,7 @@ namespace GraphView
             foreach (var by in byList)
             {
                 GremlinToSqlContext newContext = new GremlinToSqlContext();
-                GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(steps.Cast<GremlinVariable>().ToList());
+                GremlinDecompose1Variable decompose1 = new GremlinDecompose1Variable(steps.ToList());
                 newContext.VariableList.Add(decompose1);
                 newContext.TableReferences.Add(decompose1);
                 newContext.SetPivotVariable(decompose1);
@@ -988,7 +988,7 @@ namespace GraphView
 
         internal virtual void Value(GremlinToSqlContext currentContext)
         {
-            GremlinValueVariable newVariable = new GremlinValueVariable(DefaultVariableProperty());
+            GremlinValueVariable newVariable = new GremlinValueVariable(this);
             currentContext.VariableList.Add(newVariable);
             currentContext.TableReferences.Add(newVariable);
             currentContext.SetPivotVariable(newVariable);

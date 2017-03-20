@@ -8,11 +8,11 @@ namespace GraphView
 {
     internal class GremlinPathVariable : GremlinTableVariable
     {
-        public List<GremlinPathStepVariable> PathList { get; set; }
+        public List<GremlinVariable> PathList { get; set; }
         public bool IsInRepeatContext { get; set; }
         public List<GremlinToSqlContext> ByContexts { get; set; }
 
-        public GremlinPathVariable(List<GremlinPathStepVariable> pathList, List<GremlinToSqlContext> byContexts)
+        public GremlinPathVariable(List<GremlinVariable> pathList, List<GremlinToSqlContext> byContexts)
             :base(GremlinVariableType.Table)
         {
             this.PathList = pathList;
@@ -20,8 +20,8 @@ namespace GraphView
             ByContexts = byContexts;
         }
 
-        //automatic generated path will use this constructor
-        public GremlinPathVariable(List<GremlinPathStepVariable> pathList)
+        //automatically generated path will use this constructor
+        public GremlinPathVariable(List<GremlinVariable> pathList)
             : base(GremlinVariableType.Table)
         {
             this.PathList = pathList;
@@ -81,13 +81,19 @@ namespace GraphView
             }
             foreach (var path in PathList)
             {
-                if (path.AttachedVariable != null)
+                if (path is GremlinMultiStepVariable)
                 {
-                    parameters.Add(SqlUtil.GetColumnReferenceExpr(path.AttachedVariable.GetVariableName(), GremlinKeyword.Path));
+                    parameters.Add(path.DefaultProjection().ToScalarExpression());
                 }
                 else
                 {
-                    parameters.Add(path.StepVariable.First().ToCompose1());
+                    parameters.Add(path.ToCompose1());
+                    //var stepVar = path.StepVariable.First();
+                    //parameters.Add(stepVar.ToCompose1());
+                    //foreach (var label in stepVar.Labels)
+                    //{
+                    //    parameters.Add(SqlUtil.GetValueExpr(label));
+                    //}
                 }
             }
 

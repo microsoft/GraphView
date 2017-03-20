@@ -21,10 +21,10 @@ namespace GraphView
             OptionalContext.HomeVariable = this;
         }
 
-        internal override GremlinPathStepVariable GetAndPopulatePath()
+        internal override GremlinVariable GetAndPopulatePath()
         {
             GremlinPathVariable pathVariable = OptionalContext.PopulateGremlinPath();
-            return new GremlinPathStepVariable(pathVariable, this);
+            return new GremlinMultiStepVariable(pathVariable, this);
         }
 
         internal override void Populate(string property)

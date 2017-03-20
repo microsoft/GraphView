@@ -160,7 +160,7 @@
     <Compile Include="GremlinTranslation\variables\context\GremlinSelectedVariable.cs" />
     <Compile Include="GremlinTranslation\variables\context\GremlinListVariable.cs" />
     <Compile Include="GremlinTranslation\variables\context\GremlinRepeatSelectedVariable.cs" />
-    <Compile Include="GremlinTranslation\variables\GremlinPathStepVariable.cs" />
+    <Compile Include="GremlinTranslation\variables\GremlinMultiStepVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinBarrierVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinCyclicPathVariable.cs" />
     <Compile Include="GremlinTranslation\variables\table\tvf\withoutSubquery\GremlinDecompose1Variable.cs" />
