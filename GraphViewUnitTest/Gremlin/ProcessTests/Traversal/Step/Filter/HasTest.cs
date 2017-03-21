@@ -36,6 +36,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36514
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void OutCreatedHasNameLengthGT3()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -420,6 +421,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36527
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void HasLabelPersonHasAgeNotLTE10AndNotBetween11n20ANDLT29OrEQ35()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

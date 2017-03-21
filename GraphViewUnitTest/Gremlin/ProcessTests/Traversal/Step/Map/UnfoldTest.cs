@@ -72,7 +72,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_VX1X_repeatXboth_simplePathX_untilXhasIdX6XX_path_byXnameX_unfold UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/UnfoldTest.java.
         /// Equivalent gremlin: "g.V(v1Id).repeat(__.both.simplePath).until(hasId(v6Id)).path.by('name').unfold", "v1Id", v1Id, "v6Id", v6Id
         /// </summary>
-        [Ignore]
         [TestMethod]
         public void HasVIdRepeatBothSimplePathUntilHasIdVPathByNameUnfold()
         {
@@ -81,7 +80,9 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(graphCommand, "peter");
 
-                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
+                //var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
+
+                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2));
 
                 var result = traversal.Next();
 

@@ -54,6 +54,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36911
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void DedupLocalMultipleLabels()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -169,6 +170,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37143
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void DedupByWithCustomFunction()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))
@@ -361,27 +363,27 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
                 Assert.AreEqual(4, results.Count);
 
                 List<object> actualList = new List<object>();
-                actualList.Add((string)results[0][0]);
-                actualList.Add((string)results[0][1]);
-                actualList.Add((string)results[0][2]);
+                actualList.Add((string)results[0]["objects"][0]);
+                actualList.Add((string)results[0]["objects"][1]);
+                actualList.Add((string)results[0]["objects"][2]);
                 CheckPathResults(new [] {"marko", "lop", "marko"}, actualList);
 
                 actualList.Clear();
-                actualList.Add((string)results[1][0]);
-                actualList.Add((string)results[1][1]);
-                actualList.Add((string)results[1][2]);
+                actualList.Add((string)results[1]["objects"][0]);
+                actualList.Add((string)results[1]["objects"][1]);
+                actualList.Add((string)results[1]["objects"][2]);
                 CheckPathResults(new[] { "josh", "ripple", "josh" }, actualList);
 
                 actualList.Clear();
-                actualList.Add((string)results[2][0]);
-                actualList.Add((string)results[2][1]);
-                actualList.Add((string)results[2][2]);
+                actualList.Add((string)results[2]["objects"][0]);
+                actualList.Add((string)results[2]["objects"][1]);
+                actualList.Add((string)results[2]["objects"][2]);
                 CheckPathResults(new[] { "josh", "lop", "marko" }, actualList);
 
                 actualList.Clear();
-                actualList.Add((string)results[3][0]);
-                actualList.Add((string)results[3][1]);
-                actualList.Add((string)results[3][2]);
+                actualList.Add((string)results[3]["objects"][0]);
+                actualList.Add((string)results[3]["objects"][1]);
+                actualList.Add((string)results[3]["objects"][2]);
                 CheckPathResults(new[] { "peter", "lop", "marko" }, actualList);
             }
         }

@@ -144,6 +144,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38570
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void VerticesAsAOutCreatedWhereAsANameIsJoshInCreatedName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -350,6 +351,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/38578
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void HasVertexIdRepeatBothECreatedWhereWithoutEAggregateEOtherVEmitPath()
         {
             //==>[v[1], e[9][1 - created->3], v[3]]

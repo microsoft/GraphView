@@ -34,8 +34,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
                 foreach (dynamic path in results)
                 {
                     long count;
-                    pathLengths.TryGetValue(path.Count, out count);
-                    pathLengths[path.Count] = count + 1;
+                    pathLengths.TryGetValue(path["objects"].Count, out count);
+                    pathLengths[path["objects"].Count] = count + 1;
                 }
                 Assert.AreEqual(2, pathLengths.Count);
                 Assert.AreEqual(8, results.Count);
@@ -162,7 +162,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Branch
             int path1 = 0, path2 = 0, path3 = 0;
             foreach (dynamic path in results)
             {
-                switch ((int)path.Count)
+                switch ((int)path["objects"].Count)
                 {
                     case 1:
                         ++path1;
