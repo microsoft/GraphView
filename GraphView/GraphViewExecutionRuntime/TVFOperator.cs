@@ -848,7 +848,16 @@ namespace GraphView
                     HashSet<string> stepLabels = tuple.Item3;
 
                     FieldObject step = accessPathStepFunc.Evaluate(inputRec);
-                    if (step == null) continue;
+                    if (step == null)
+                    {
+                        PathStepField lastPathStep = path.Any() ? (PathStepField)path[path.Count - 1] : null;
+                        if (lastPathStep != null) {
+                            foreach (string label in stepLabels) {
+                                lastPathStep.AddLabel(label);
+                            }
+                        }
+                        continue;
+                    }
 
                     if (needsUnfold)
                     {
