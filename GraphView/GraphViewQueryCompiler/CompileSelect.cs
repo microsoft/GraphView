@@ -677,10 +677,15 @@ namespace GraphView
             List<Tuple<WBooleanExpression, HashSet<string>>> remainingPredicatesAndTheirTableReferences,
             List<GraphViewExecutionOperator> childrenProcessor)
         {
-            for (var i = remainingPredicatesAndTheirTableReferences.Count - 1; i >= 0; i--)
+            List<int> toBeRemovedIndexes = new List<int>();
+
+            //
+            // Predicates are appended in the order they are encountered in the WHERE clause
+            //
+            for (int i = 0; i < remainingPredicatesAndTheirTableReferences.Count; i++)
             {
-                var predicate = remainingPredicatesAndTheirTableReferences[i].Item1;
-                var tableRefs = remainingPredicatesAndTheirTableReferences[i].Item2;
+                WBooleanExpression predicate = remainingPredicatesAndTheirTableReferences[i].Item1;
+                HashSet<string> tableRefs = remainingPredicatesAndTheirTableReferences[i].Item2;
 
                 if (tableReferences.IsSupersetOf(tableRefs))
                 {
@@ -690,9 +695,15 @@ namespace GraphView
                             ? childrenProcessor.Last() 
                             : context.OuterContextOp,
                             predicate.CompileToFunction(context, connection)));
-                    remainingPredicatesAndTheirTableReferences.RemoveAt(i);
+                    toBeRemovedIndexes.Add(i);
                     context.CurrentExecutionOperator = childrenProcessor.Last();
                 }
+            }
+
+            for (int i = toBeRemovedIndexes.Count - 1; i >= 0; i--)
+            {
+                int toBeRemovedIndex = toBeRemovedIndexes[i];
+                remainingPredicatesAndTheirTableReferences.RemoveAt(toBeRemovedIndex);
             }
         }
 
