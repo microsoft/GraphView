@@ -77,5 +77,32 @@ namespace GraphView
                 }
             }
         }
+
+        internal override GremlinVariable SelectVariables(GremlinToSqlContext currentContext, string label)
+        {
+            int index = ProjectKeys.FindIndex(p => p == label);
+            if (index < 0)
+            {
+                return base.SelectVariables(currentContext, label);
+            }
+            else
+            {
+                if (ProjectContextList[index % ProjectContextList.Count].PivotVariable is GremlinGhostVariable)
+                {
+                    var ghostVar =
+                        ProjectContextList[index % ProjectContextList.Count].PivotVariable as GremlinGhostVariable;
+                    var newGhostVar = GremlinGhostVariable.Create(ghostVar.RealVariable, ghostVar.AttachedVariable,
+                        label);
+                    currentContext.VariableList.Add(newGhostVar);
+                    return newGhostVar;
+                }
+                else
+                {
+                    GremlinGhostVariable newVariable = GremlinGhostVariable.Create(ProjectContextList[index % ProjectContextList.Count].PivotVariable, this, label);
+                    currentContext.VariableList.Add(newVariable);
+                    return newVariable;
+                }
+            }
+        }
     }
 }

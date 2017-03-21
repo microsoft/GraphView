@@ -46,8 +46,17 @@ namespace GraphView
         {
             List<WScalarExpression> parameters = new List<WScalarExpression>();
             parameters.Add(SqlUtil.GetValueExpr(SideEffectKey));
-            parameters.Add(SqlUtil.GetScalarSubquery(GroupByContext.ToSelectQueryBlock()));
-            parameters.Add(SqlUtil.GetScalarSubquery(ProjectByContext.ToSelectQueryBlock()));
+
+            WSelectQueryBlock groupBlock = GroupByContext.ToSelectQueryBlock();
+            groupBlock.SelectElements.Clear();
+            groupBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(GroupByContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+            parameters.Add(SqlUtil.GetScalarSubquery(groupBlock));
+
+            WSelectQueryBlock projectBlock = ProjectByContext.ToSelectQueryBlock();
+            projectBlock.SelectElements.Clear();
+            projectBlock.SelectElements.Add(SqlUtil.GetSelectScalarExpr(ProjectByContext.PivotVariable.ToCompose1(), GremlinKeyword.TableDefaultColumnName));
+            parameters.Add(SqlUtil.GetScalarSubquery(projectBlock));
+
             var tableRef = SqlUtil.GetFunctionTableReference(GremlinKeyword.func.Group, parameters, GetVariableName());
             ((WGroupTableReference) tableRef).IsProjectingACollection = IsProjectingACollection;
             return SqlUtil.GetCrossApplyTableReference(tableRef);

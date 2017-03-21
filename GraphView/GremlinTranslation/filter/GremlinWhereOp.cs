@@ -46,7 +46,7 @@ namespace GraphView
             else if (WhereTraversal == null && StartKey != null)
             {
                 //where(StartKey, Predicate)
-                throw new NotImplementedException();
+                inputContext.PivotVariable.Where(inputContext, StartKey, Predicate);
             }
             else
             {

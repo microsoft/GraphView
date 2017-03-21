@@ -17,9 +17,9 @@ namespace GraphView {
             return RealVariable.GetVariableType();
         }
 
-        //internal override GremlinVariableType GetUnfoldVariableType()
-        //{
-        //    return RealVariable.GetUnfoldVariableType();
-        //}
+        internal override GremlinVariable SelectVariables(GremlinToSqlContext currentContext, string label)
+        {
+            return RealVariable.SelectVariables(currentContext, label);
+        }
     }
 }

@@ -1032,10 +1032,54 @@ namespace GraphView
             currentContext.AddPredicate(booleanExpr);
         }
 
+        internal virtual GremlinVariable SelectVariables(GremlinToSqlContext currentContext, string label)
+        {
+            List<GremlinVariable> taggedVariableList = currentContext.Select(label);
+
+            GremlinVariable selectedVariable = null;
+            if (taggedVariableList.Count == 0)
+            {
+                throw new QueryCompilationException(string.Format("The specified tag \"{0}\" is not defined.", label));
+            }
+            else if (taggedVariableList.Count == 1)
+            {
+                selectedVariable = taggedVariableList[0];
+                selectedVariable.HomeContext = currentContext;
+                currentContext.VariableList.Add(selectedVariable);
+
+                if (selectedVariable is GremlinSelectedVariable)
+                {
+                    (selectedVariable as GremlinSelectedVariable).IsFromSelect = true;
+                    (selectedVariable as GremlinSelectedVariable).SelectKey = label;
+                }
+
+                return selectedVariable;
+            }
+            else
+            {
+                selectedVariable = new GremlinListVariable(taggedVariableList);
+                selectedVariable.HomeContext = currentContext;
+                currentContext.VariableList.Add(selectedVariable);
+
+                if (selectedVariable is GremlinSelectedVariable)
+                {
+                    (selectedVariable as GremlinSelectedVariable).IsFromSelect = true;
+                    (selectedVariable as GremlinSelectedVariable).SelectKey = label;
+                }
+
+                return selectedVariable;
+            }
+        }
+
         internal virtual void Where(GremlinToSqlContext currentContext, string startKey, Predicate predicate)
         {
-            predicate.IsTag = true;
-            throw new NotImplementedException();
+            GremlinVariable firstVar = SelectVariables(currentContext, startKey);
+            GremlinVariable secondVar = SelectVariables(currentContext, predicate.Value as string);
+
+            var firstExpr = firstVar.DefaultProjection().ToScalarExpression();
+            var secondExpr = secondVar.DefaultProjection().ToScalarExpression();
+            var booleanExpr = SqlUtil.GetBooleanComparisonExpr(firstExpr, secondExpr, predicate);
+            currentContext.AddPredicate(booleanExpr);
         }
 
         internal virtual void Where(GremlinToSqlContext currentContext, GremlinToSqlContext whereContext)

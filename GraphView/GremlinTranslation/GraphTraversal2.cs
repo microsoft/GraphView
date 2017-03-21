@@ -117,7 +117,7 @@ namespace GraphView
         public IEnumerator<string> GetEnumerator()
         {
             var sqlScript = LastGremlinTranslationOp.ToSqlScript();
-            var str = sqlScript.ToString();
+            SqlScript = sqlScript.ToString();
             it = new GraphTraversalIterator(sqlScript.Batches[0].Compile(null, Connection), outputFormat);
             return it;
         }
@@ -1228,8 +1228,8 @@ namespace GraphView
 
         public GraphTraversal2 Where(string startKey, Predicate predicate)
         {
-            //AddGremlinOperator(new GremlinWhereOp(startKey, predicate));
-            AddGremlinOperator(new GremlinWhereOp(GraphTraversal2.__().V().Has(startKey, predicate)));
+            AddGremlinOperator(new GremlinWhereOp(startKey, predicate));
+            //AddGremlinOperator(new GremlinWhereOp(GraphTraversal2.__().Select(startKey).As()));
             return this;
         }
 
@@ -1277,7 +1277,7 @@ namespace GraphView
             //replace gremlin predicate with GraphTraversal predicate
             foreach (var item in GremlinKeyword.GremlinPredicateToGraphTraversalDict)
             {
-                Regex r1 = new Regex("[^a-zA-Z](" + item.Key + ")\\(");
+                Regex r1 = new Regex("\\((" + item.Key + ")\\(");
                 if (r1.IsMatch(sCSCode))
                 {
                     var match = r1.Match(sCSCode);
