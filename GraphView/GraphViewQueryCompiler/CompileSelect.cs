@@ -2335,11 +2335,14 @@ namespace GraphView
                 context.SideEffectStates.Add(storedName, sideEffectState);
             }
             else if (!(sideEffectState is CollectionFunction)) {
-                throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and an aggregate(string) step!");
+                if (sideEffectState is GroupFunction) {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and an aggregate(string) step!");
+                }
+                else {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a tree(string) step and an aggregate(string) step!");
+                }
             }
-            else {
-                throw new QueryCompilationException("It's illegal to use the same sideEffect key of a tree(string) step and an aggregate(string) step!");
-            }
+
 
             AggregateOperator aggregateOp = new AggregateOperator(context.CurrentExecutionOperator, getAggregateObjectFunction,
                 (CollectionFunction)sideEffectState);
@@ -2368,11 +2371,13 @@ namespace GraphView
                 sideEffectState = new CollectionFunction();
                 context.SideEffectStates.Add(storedName, sideEffectState);
             }
-            else if (sideEffectState is GroupFunction) {
-                throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and a store(string) step!");
-            }
-            else {
-                throw new QueryCompilationException("It's illegal to use the same sideEffect key of a tree(string) step and a store(string) step!");
+            else if (!(sideEffectState is CollectionFunction)) {
+                if (sideEffectState is GroupFunction) {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and an aggregate(string) step!");
+                }
+                else {
+                    throw new QueryCompilationException("It's illegal to use the same sideEffect key of a tree(string) step and an aggregate(string) step!");
+                }
             }
 
             StoreOperator storeOp = new StoreOperator(context.CurrentExecutionOperator, getStoreObjectFunction,
@@ -2572,7 +2577,7 @@ namespace GraphView
                     context.SideEffectStates.Add(groupParameter.Value, sideEffectState);
                 }
                 else if (sideEffectState is GroupFunction) {
-                    throw new QueryCompilationException("Multi group with same sideEffect key is an undefined behavior in Gremlin and hence not supported.");
+                    throw new QueryCompilationException("Multi group with a same sideEffect key is an undefined behavior in Gremlin and hence not supported.");
                 }
                 else if (sideEffectState is TreeFunction) {
                     throw new QueryCompilationException("It's illegal to use the same sideEffect key of a group(string) step and a tree(string) step!");
