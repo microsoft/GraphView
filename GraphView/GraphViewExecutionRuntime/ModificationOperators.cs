@@ -301,7 +301,7 @@ namespace GraphView
             //
             // Should not reach here
             //
-            throw new Exception("BUG: Should not get here");
+            throw new GraphViewException("The incoming object is not removable");
             return null;
         }
     }

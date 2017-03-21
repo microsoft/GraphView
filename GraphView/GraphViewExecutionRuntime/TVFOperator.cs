@@ -1012,106 +1012,109 @@ namespace GraphView
 
             if (unfoldTarget is PathField)
             {
-                PathField path = unfoldTarget as PathField;
+                PathField path = (PathField)unfoldTarget;
                 foreach (PathStepField pathStep in path.Path.Cast<PathStepField>())
                 {
                     if (pathStep == null) continue;
-                    RawRecord newRecord = new RawRecord();
+                    RawRecord flatRecord = new RawRecord();
 
+                    Compose1Field compose1StepField = pathStep.StepFieldObject as Compose1Field;
+                    Debug.Assert(compose1StepField != null, "compose1StepField != null");
                     //
                     // Extract only needed columns from Compose1Field
                     //
-                    if (pathStep.StepFieldObject is Compose1Field)
-                    {
-                        Compose1Field compose1Field = (Compose1Field)(pathStep.StepFieldObject);
-                        foreach (string unfoldColumn in unfoldCompose1Columns) {
-                            newRecord.Append(compose1Field.CompositeFieldObject[unfoldColumn]);
-                        }
-                    }
-                    else
-                    {
-                        foreach (string columnName in this.unfoldCompose1Columns)
-                        {
-                            if (columnName.Equals(this.tableDefaultColumnName)) {
-                                newRecord.Append(pathStep.StepFieldObject);
-                            }
-                            else {
-                                newRecord.Append((FieldObject)null);
-                            }
-                        }
+                    foreach (string unfoldColumn in unfoldCompose1Columns) {
+                        flatRecord.Append(compose1StepField.CompositeFieldObject[unfoldColumn]);
                     }
 
-                    results.Add(newRecord);
+                    results.Add(flatRecord);
                 }
             }
             else if (unfoldTarget is CollectionField)
             {
-                CollectionField cf = unfoldTarget as CollectionField;
-                foreach (FieldObject singleObj in cf.Collection)
+                CollectionField inputCollection = (CollectionField)unfoldTarget;
+                foreach (FieldObject singleObj in inputCollection.Collection)
                 {
                     if (singleObj == null) continue;
-                    RawRecord newRecord = new RawRecord();
+                    RawRecord flatRecord = new RawRecord();
 
+                    Compose1Field compose1ObjField = singleObj as Compose1Field;
+                    Debug.Assert(compose1ObjField != null, "compose1ObjField != null");
                     //
                     // Extract only needed columns from Compose1Field
                     //
-                    if (singleObj is Compose1Field)
-                    {
-                        Compose1Field compose1Field = (Compose1Field)singleObj;
-                        foreach (string unfoldColumn in unfoldCompose1Columns) {
-                            newRecord.Append(compose1Field.CompositeFieldObject[unfoldColumn]);
-                        }
-                    }
-                    else
-                    {
-                        foreach (string columnName in this.unfoldCompose1Columns)
-                        {
-                            if (columnName.Equals(this.tableDefaultColumnName)) {
-                                newRecord.Append(singleObj);
-                            }
-                            else {
-                                newRecord.Append((FieldObject)null);
-                            }     
-                        } 
+                    foreach (string unfoldColumn in unfoldCompose1Columns) {
+                        flatRecord.Append(compose1ObjField.CompositeFieldObject[unfoldColumn]);
                     }
 
-                    results.Add(newRecord);
+                    results.Add(flatRecord);
                 }
             }
             else if (unfoldTarget is MapField)
             {
-                MapField mf = unfoldTarget as MapField;
-                foreach (EntryField entry in mf)
+                MapField inputMap = (MapField)unfoldTarget;
+                foreach (EntryField entry in inputMap)
                 {
-                    RawRecord newRecord = new RawRecord();
-                    string key = entry.Key.ToString();
-                    string value = entry.Value.ToString();
+                    RawRecord entryRecord = new RawRecord();
 
-                    foreach (string columnName in this.unfoldCompose1Columns)
-                    {
-                        if (columnName.Equals(GremlinKeyword.TableDefaultColumnName)) {
-                            newRecord.Append(new StringField(key + "=" + value));
-                        }
-                        else {
-                            newRecord.Append((FieldObject)null);
-                        }
+                    foreach (string columnName in this.unfoldCompose1Columns) {
+                        entryRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
+                            ? entry
+                            : (FieldObject) null);
                     }
 
-                    results.Add(newRecord);
+                    results.Add(entryRecord);
                 }
+            }
+            else if (unfoldTarget is VertexField)
+            {
+                VertexField inputVertex = (VertexField) unfoldTarget;
+                RawRecord flatVertexRecord = new RawRecord();
+
+                foreach (string columnName in this.unfoldCompose1Columns) {
+                    flatVertexRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
+                        ? inputVertex
+                        : inputVertex[columnName]);
+                }
+
+                results.Add(flatVertexRecord);
+            }
+            else if (unfoldTarget is VertexSinglePropertyField)
+            {
+                VertexSinglePropertyField inputVsp = (VertexSinglePropertyField) unfoldTarget;
+                RawRecord flatVspRecord = new RawRecord();
+
+                foreach (string columnName in this.unfoldCompose1Columns) {
+                    flatVspRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
+                        ? inputVsp
+                        : inputVsp[columnName]);
+                }
+
+                results.Add(flatVspRecord);
+            }
+            else if (unfoldTarget is EdgeField)
+            {
+                EdgeField inputEdge = (EdgeField) unfoldTarget;
+                RawRecord newRecord = new RawRecord();
+
+                foreach (string columnName in this.unfoldCompose1Columns) {
+                    newRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
+                        ? inputEdge
+                        : inputEdge[columnName]);
+                }
+
+                results.Add(newRecord);
             }
             else
             {
                 RawRecord newRecord = new RawRecord();
-                foreach (string columnName in this.unfoldCompose1Columns)
-                {
-                    if (columnName.Equals(GremlinKeyword.TableDefaultColumnName)) {
-                        newRecord.Append(unfoldTarget);
-                    }
-                    else {
-                        newRecord.Append((FieldObject)null);
-                    }
+
+                foreach (string columnName in this.unfoldCompose1Columns) {
+                    newRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
+                        ? unfoldTarget
+                        : (FieldObject)null);
                 }
+
                 results.Add(newRecord);
             }
 

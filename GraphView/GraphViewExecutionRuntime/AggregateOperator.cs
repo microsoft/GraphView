@@ -158,7 +158,9 @@ namespace GraphView
             if (index >= pathField.Path.Count) return;
             PathStepField pathStepField = pathField.Path[index++] as PathStepField;
             Debug.Assert(pathStepField != null, "pathStepField != null");
-            FieldObject nodeObject = pathStepField.StepFieldObject;
+            Compose1Field compose1PathStep = pathStepField.StepFieldObject as Compose1Field;
+            Debug.Assert(compose1PathStep != null, "compose1PathStep != null");
+            FieldObject nodeObject = compose1PathStep[compose1PathStep.DefaultProjectionKey];
 
             TreeField child;
             if (!root.Children.TryGetValue(nodeObject, out child))

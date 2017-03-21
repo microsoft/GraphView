@@ -791,7 +791,7 @@ namespace GraphView
             record.fieldValues[1] = new StringField(edge.InV);
             record.fieldValues[2] = new StringField(otherValue);
             record.fieldValues[3] = new StringField(edge.Offset.ToString());
-            record.fieldValues[4] = edge;
+            record.fieldValues[4] = new EdgeField(edge, otherValue);
         }
 
         /// <summary>

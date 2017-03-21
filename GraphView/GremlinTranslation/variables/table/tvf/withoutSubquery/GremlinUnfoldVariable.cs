@@ -44,7 +44,7 @@ namespace GraphView
             }
             else
             {
-                parameters.Add(UnfoldVariable.DefaultVariableProperty().ToScalarExpression());
+                parameters.Add(UnfoldVariable.DefaultProjection().ToScalarExpression());
             }
             if (ProjectedProperties.Count == 0)
             {

@@ -737,6 +737,33 @@ namespace GraphView
 
         public FieldObject Key => entry.Key;
         public FieldObject Value => entry.Value;
+
+        public override string ToString()
+        {
+            return $"{this.entry.Key.ToString()} = {this.entry.Value.ToString()}";
+        }
+
+        public override string ToGraphSON()
+        {
+            return $"{{{FieldObject.ToLiteral(this.entry.Key.ToValue)}:{this.entry.Value.ToGraphSON()}}}";
+        }
+
+        public override int GetHashCode()
+        {
+            return this.ToString().GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (Object.ReferenceEquals(this, obj)) return true;
+
+            EntryField rhs = obj as EntryField;
+            if (rhs == null) {
+                return false;
+            }
+
+            return this.entry.Key.Equals(rhs.entry.Key) && this.entry.Value.Equals(rhs.entry.Value);
+        }
     }
 
     internal class Compose1Field : FieldObject
@@ -1346,9 +1373,30 @@ namespace GraphView
         public string EdgeDocID { get; set; }
         public long Offset { get; private set; }
 
+        //
+        // This property will only be assigned in the adjacency list decoder
+        // since OtherV is not a meta property of an edge.
+        // It can only be decided in the runtime.
+        //
+        public string OtherV { get; private set; }
+
         private EdgeField()
         {
             this.EdgeProperties = new Dictionary<string, EdgePropertyField>();
+        }
+
+        public EdgeField(EdgeField rhs, string otherV)
+        {
+            this.EdgeProperties = rhs.EdgeProperties;
+            this.Label = rhs.Label;
+            this.InVLabel = rhs.InVLabel;
+            this.OutVLabel = rhs.OutVLabel;
+            this.InV = rhs.InV;
+            this.OutV = rhs.OutV;
+            this.EdgeDocID = rhs.EdgeDocID;
+            this.Offset = rhs.Offset;
+
+            this.OtherV = otherV;
         }
 
         public FieldObject this[string propertyName]
@@ -1357,6 +1405,21 @@ namespace GraphView
             {
                 if (propertyName.Equals("*", StringComparison.OrdinalIgnoreCase))
                     return this;
+
+                switch (propertyName)
+                {
+                    case GremlinKeyword.EdgeSourceV:
+                        return new StringField(this.OutV);
+                    case GremlinKeyword.EdgeSinkV:
+                        return new StringField(this.InV);
+                    case GremlinKeyword.EdgeOtherV:
+                        return new StringField(this.OtherV);
+                    case GremlinKeyword.EdgeOffset:
+                        return new StringField(this.Offset.ToString(), JsonDataType.Long);
+                    default:
+                        break;
+                }
+
                 EdgePropertyField propertyField;
                 this.EdgeProperties.TryGetValue(propertyName, out propertyField);
                 return propertyField;
@@ -1452,19 +1515,17 @@ namespace GraphView
         {
             if (ReferenceEquals(this, obj)) return true;
 
-            EdgeField ef = obj as EdgeField;
-            if (ef == null)
-            {
+            EdgeField rhs = obj as EdgeField;
+            if (rhs == null) {
                 return false;
             }
 
-            // TODO: Refactor
-            return this.ToString().Equals(ef.ToString(), StringComparison.OrdinalIgnoreCase);
+            return this.EdgeProperties[KW_EDGE_ID].ToValue.Equals(rhs.EdgeProperties[KW_EDGE_ID].ToValue);
         }
 
         public override int GetHashCode()
         {
-            return ToString().GetHashCode();
+            return this.EdgeProperties[KW_EDGE_ID].ToValue.GetHashCode();
         }
 
         public static EdgeField ConstructForwardEdgeField(string outVId, string outVLabel, string edgeDocID, JObject edgeObject)
