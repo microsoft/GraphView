@@ -1180,7 +1180,7 @@ namespace GraphView
                             }
 
                             RawRecord initCompose1RecordOfY = new RawRecord();
-                            initCompose1RecordOfX.Append(y);
+                            initCompose1RecordOfY.Append(y);
                             FieldObject yKey = byFunction.Evaluate(initCompose1RecordOfY);
                             if (yKey == null) {
                                 throw new GraphViewException("The provided traversal or property name of Order(local) does not map to a value.");
