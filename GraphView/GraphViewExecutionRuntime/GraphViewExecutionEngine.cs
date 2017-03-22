@@ -768,18 +768,13 @@ namespace GraphView
 
     internal class Compose1Field : FieldObject
     {
-        public Dictionary<string, FieldObject> CompositeFieldObject { get; set; }
+        private Dictionary<string, FieldObject> compositeFieldObject { get; set; }
         public string DefaultProjectionKey { get; set; }
 
         public Compose1Field(Dictionary<string, FieldObject> compositeFieldObject, string defaultProjectionKey)
         {
-            CompositeFieldObject = compositeFieldObject;
+            this.compositeFieldObject = compositeFieldObject;
             DefaultProjectionKey = defaultProjectionKey;
-        }
-
-        public bool TryGetFieldObject(string key, out FieldObject fieldObject)
-        {
-            return CompositeFieldObject.TryGetValue(key, out fieldObject);
         }
 
         public FieldObject this[string key]
@@ -787,70 +782,42 @@ namespace GraphView
             get
             {
                 FieldObject value;
-                this.CompositeFieldObject.TryGetValue(key, out value);
+                this.compositeFieldObject.TryGetValue(key, out value);
                 return value;
             }
             set
             {
-                this.CompositeFieldObject[key] = value;
+                this.compositeFieldObject[key] = value;
             }
         }
 
         public override string ToString()
         {
-            return CompositeFieldObject[DefaultProjectionKey].ToString();
+            return this[this.DefaultProjectionKey].ToString();
         }
 
-        public override string ToValue => CompositeFieldObject[DefaultProjectionKey].ToValue;
+        public override string ToValue => this[DefaultProjectionKey].ToValue;
 
         public override string ToGraphSON()
         {
-            return CompositeFieldObject[DefaultProjectionKey].ToGraphSON();
+            return this[this.DefaultProjectionKey].ToGraphSON();
         }
 
         public override bool Equals(object obj)
         {
             if (Object.ReferenceEquals(this, obj)) return true;
 
-            Compose1Field compose1Field = obj as Compose1Field;
-            if (compose1Field == null || CompositeFieldObject.Count != compose1Field.CompositeFieldObject.Count)
-            {
+            Compose1Field rhs = obj as Compose1Field;
+            if (rhs == null) {
                 return false;
             }
 
-            foreach (KeyValuePair<string, FieldObject> kvp in CompositeFieldObject)
-            {
-                string key = kvp.Key;
-                FieldObject value2;
-                if (!compose1Field.CompositeFieldObject.TryGetValue(key, out value2))
-                    return false;
-                if (!kvp.Value.Equals(value2))
-                    return false;
-            }
-
-            return true;
+            return this[this.DefaultProjectionKey].Equals(rhs[rhs.DefaultProjectionKey]);
         }
 
         public override int GetHashCode()
         {
-            if (CompositeFieldObject.Count == 0) return "[]".GetHashCode();
-
-            StringBuilder mapStringBuilder = new StringBuilder("[");
-            int i = 0;
-
-            foreach (KeyValuePair<string, FieldObject> pair in CompositeFieldObject)
-            {
-                string key = pair.Key;
-                FieldObject value = pair.Value;
-
-                if (i++ > 0)
-                    mapStringBuilder.Append(", ");
-                mapStringBuilder.Append(key.ToString()).Append(":[").Append(value.ToString()).Append(']');
-            }
-
-            mapStringBuilder.Append(']');
-
-            return mapStringBuilder.ToString().GetHashCode();
+            return this[this.DefaultProjectionKey].GetHashCode();
         }
     }
 

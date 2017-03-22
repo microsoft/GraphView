@@ -2223,7 +2223,11 @@ namespace GraphView
                         new Tuple<ScalarFunction, bool, HashSet<string>>(
                             basicStep.CompileToFunction(context, dbcConnection), false, new HashSet<string>()));
                 }
-                else if (stepLabel != null) {
+                else if (stepLabel != null)
+                {
+                    if (!pathStepList.Any()) {
+                        pathStepList.Add(new Tuple<ScalarFunction, bool, HashSet<string>>(null, false, new HashSet<string>()));
+                    }
                     pathStepList.Last().Item3.Add(stepLabel.Value);
                 }
                 else if (subPath != null)

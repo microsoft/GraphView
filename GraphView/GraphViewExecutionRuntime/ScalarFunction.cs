@@ -480,7 +480,7 @@ namespace GraphView
                     if (fieldObject is Compose1Field)
                     {
                         Compose1Field compose1Field = fieldObject as Compose1Field;
-                        if (checkObject.Equals(compose1Field.CompositeFieldObject[compose1Field.DefaultProjectionKey]))
+                        if (checkObject.Equals(compose1Field[compose1Field.DefaultProjectionKey]))
                             return new StringField("false", JsonDataType.Boolean);
                     }
                     else if (checkObject.Equals(fieldObject))
@@ -527,7 +527,7 @@ namespace GraphView
                     if (fieldObject is Compose1Field)
                     {
                         Compose1Field compose1Field = fieldObject as Compose1Field;
-                        if (checkObject.Equals(compose1Field.CompositeFieldObject[compose1Field.DefaultProjectionKey]))
+                        if (checkObject.Equals(compose1Field[compose1Field.DefaultProjectionKey]))
                             return new StringField("true", JsonDataType.Boolean);
                     }
                     else if (checkObject.Equals(fieldObject))

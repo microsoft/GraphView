@@ -847,6 +847,17 @@ namespace GraphView
                     bool needsUnfold = tuple.Item2;
                     HashSet<string> stepLabels = tuple.Item3;
 
+                    if (accessPathStepFunc == null)
+                    {
+                        PathStepField lastPathStep = path.Any() ? (PathStepField)path[path.Count - 1] : null;
+                        if (lastPathStep != null) {
+                            foreach (string label in stepLabels) {
+                                lastPathStep.AddLabel(label);
+                            }
+                        }
+                        continue;
+                    }
+
                     FieldObject step = accessPathStepFunc.Evaluate(inputRec);
                     if (step == null)
                     {
@@ -1033,7 +1044,7 @@ namespace GraphView
                     // Extract only needed columns from Compose1Field
                     //
                     foreach (string unfoldColumn in unfoldCompose1Columns) {
-                        flatRecord.Append(compose1StepField.CompositeFieldObject[unfoldColumn]);
+                        flatRecord.Append(compose1StepField[unfoldColumn]);
                     }
 
                     results.Add(flatRecord);
@@ -1053,7 +1064,7 @@ namespace GraphView
                     // Extract only needed columns from Compose1Field
                     //
                     foreach (string unfoldColumn in unfoldCompose1Columns) {
-                        flatRecord.Append(compose1ObjField.CompositeFieldObject[unfoldColumn]);
+                        flatRecord.Append(compose1ObjField[unfoldColumn]);
                     }
 
                     results.Add(flatRecord);
