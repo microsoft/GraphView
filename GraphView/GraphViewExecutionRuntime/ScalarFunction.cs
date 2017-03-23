@@ -109,7 +109,7 @@ namespace GraphView
 
         public override FieldObject Evaluate(RawRecord record)
         {
-            //return value;
+            if (this.dataType == JsonDataType.Null) return null;
             return new StringField(value, dataType);
         }
 

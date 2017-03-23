@@ -981,11 +981,14 @@ namespace GraphView
         {
             StringBuilder vpGraphSonBuilder = new StringBuilder();
             if (this.JsonDataType == JsonDataType.String)
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", FieldObject.ToLiteral(this.PropertyValue), FieldObject.ToLiteral(this.PropertyName));
+                vpGraphSonBuilder.AppendFormat("{{\"id\": {0}, \"value\": {1}, \"label\": {2}", 
+                    FieldObject.ToLiteral(this.PropertyId), FieldObject.ToLiteral(this.PropertyValue), FieldObject.ToLiteral(this.PropertyName));
             else if (this.JsonDataType == JsonDataType.Boolean)
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyValue.ToLowerInvariant(), FieldObject.ToLiteral(this.PropertyName));
+                vpGraphSonBuilder.AppendFormat("{{\"id\": {0}, \"value\": {1}, \"label\": {2}",
+                    FieldObject.ToLiteral(this.PropertyId), this.PropertyValue.ToLowerInvariant(), FieldObject.ToLiteral(this.PropertyName));
             else
-                vpGraphSonBuilder.AppendFormat("{{\"value\": {0}, \"label\": {1}", this.PropertyValue, FieldObject.ToLiteral(this.PropertyName));
+                vpGraphSonBuilder.AppendFormat("{{\"id\": {0}, \"value\": {1}, \"label\": {2}",
+                    FieldObject.ToLiteral(this.PropertyId), this.PropertyValue, FieldObject.ToLiteral(this.PropertyName));
 
             bool isFirstMetaproperty = true;
 
@@ -1234,11 +1237,14 @@ namespace GraphView
                     vpGraphSonBuilder.Append(", ");
 
                 if (vsp.JsonDataType == JsonDataType.String)
-                    vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", FieldObject.ToLiteral(vsp.PropertyValue));
+                    vpGraphSonBuilder.AppendFormat("{{\"id\": {0}, \"value\": {1}",
+                        FieldObject.ToLiteral(vsp.PropertyId), FieldObject.ToLiteral(vsp.PropertyValue));
                 else if (vsp.JsonDataType == JsonDataType.Boolean)
-                    vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", vsp.PropertyValue.ToLowerInvariant());
+                    vpGraphSonBuilder.AppendFormat("{{\"id\": {0}, \"value\": {1}",
+                        FieldObject.ToLiteral(vsp.PropertyId), vsp.PropertyValue.ToLowerInvariant());
                 else
-                    vpGraphSonBuilder.AppendFormat("{{\"value\": {0}", vsp.PropertyValue);
+                    vpGraphSonBuilder.AppendFormat("{{\"id\": {0}, \"value\": {1}",
+                        FieldObject.ToLiteral(vsp.PropertyId), vsp.PropertyValue);
 
                 if (vsp.MetaProperties.Count > 0)
                 {
