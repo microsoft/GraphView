@@ -16,6 +16,24 @@ namespace GraphViewUnitTest
     public class IOTQueryTest
     {
         [TestMethod]
+        public void queryTest2_41()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+                "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+                "GroupMatch", "MarvelTest");
+            //connection.ResetCollection();
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            cmd.OutputFormat = OutputFormat.GraphSON;
+            // (1) the sub query, preprocess constant(["", ""]) should keep []
+            cmd.CommandText = "g.inject(0).coalesce(__.union(__.not(__.V().has('|app','96289b06-c417-4757-beb0-7ba28412c203').hasLabel('application')).constant('~0'),__.V().has('|app','96289b06-c417-4757-beb0-7ba28412c203').hasLabel('application').has('|provisioning',0).constant('~1'),__.V().has('|app','96289b06-c417-4757-beb0-7ba28412c203').hasLabel('application').has('|provisioning',2).constant('~2'),__.V().has('|app','96289b06-c417-4757-beb0-7ba28412c203').hasLabel('application').has('|deleted',true).constant('~3'),__.not(__.V(303136).has('/etag','0001489626889687')).constant('~4'),__.not(__.V(352280).has('/etag','0001489626889687')).constant('~5'),__.not(__.V(327840).has('/etag','0001489626901249')).constant('~6'),__.not(__.V(327856).has('/etag','0001489626896965')).constant('~7')),__.project('#v0','#v1').by(__.V(303136).sideEffect(__.union(__.sideEffect(__.outE('_val').has('_key','device-property').inV().sideEffect(__.union(__.properties().drop(),__.repeat(__.out('_val')).emit().barrier().drop())).drop()).property('device-property','device-property-value-updated')))).by(__.V(327840).sideEffect(__.union(__.sideEffect(__.outE('_val').has('_key','product-property').inV().sideEffect(__.union(__.properties().drop(),__.repeat(__.out('_val')).emit().barrier().drop())).drop()).property('product-property','product-property-value-updated')))).as('#v').union(__.select('#v').union(__.V(303136).as('#a').constant('device-property'),__.V(327840).as('#a').constant('product-property','reference-property')).as('#p')).select('#a').union(__.identity(),__.as('@v').flatMap(__.optional(__.out('mdl')).inE('ref').and(__.values('|ref:propertyId').where(within('#p')))).repeat(__.as('@e').flatMap(__.outV().as('mdl').select(last,'@v').both().dedup().and(__.optional(__.out('mdl')).where(eq('mdl')))).as('@v').optional(__.flatMap(__.select(last,'@e').values('/_id').as('key').select(last,'@v').optional(__.out('mdl')).inE('ref').and(__.values('|ref:propertyId').where(eq('key')))))).until(__.flatMap(__.as('res').select(last,'@v').where(eq('res')))).select('@v').unfold()).dedup().property('/etag','0001489626902274').project('label','/_id','|v0','|v1').by(__.label()).by(__.values('/_id')).by(__.values('|v0')).by(__.values('|v1')))";
+            var results = cmd.Execute();
+
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+        }
+        [TestMethod]
         public void queryTest63()
         {
             GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
@@ -240,7 +258,7 @@ namespace GraphViewUnitTest
             string line;
             // Read the file and display it line by line.
             System.IO.StreamReader file =
-               new System.IO.StreamReader("D:\\project\\GraphView_11_29\\DocDB-merge2\\query_processed\\" + queryNum + ".txt");
+               new System.IO.StreamReader("D:\\project\\GraphView_11_29\\DocDB-merge2\\query_processed_3_21\\" + queryNum + ".txt");
             line = file.ReadLine();
             file.Close();
 
@@ -261,18 +279,20 @@ namespace GraphViewUnitTest
         public void testSingleQuery()
         {
             // 51, 53, 56, 57, 58 the same problem
-            runQuery(63);
+            runQuery(70);
         }
         [TestMethod]
         public void testAllQueries()
         {
-            int count = 0;
+            int count = 1;
             try
             {
-                for (; count < 64; count++)
+                for (; count < 76; count++)
                 {
-                    runQuery(count);
-                    count++;
+                    //if (count != 57 && count != 70) {
+                        runQuery(count);
+                        count++;
+                    //}
                 }
             }
             catch (Exception e)
@@ -288,17 +308,17 @@ namespace GraphViewUnitTest
         [TestMethod]
         public void preProcessTheQueries()
         {
-            int counter = 0;
+            int counter = 1;
             string line;
             // Read the file and display it line by line.
             System.IO.StreamReader inFile =
-               new System.IO.StreamReader("D:\\project\\GraphView_11_29\\DocDB-merge2\\gremlin.tsv");
+               new System.IO.StreamReader("D:\\project\\GraphView_11_29\\DocDB-merge2\\topology-queries_2017-03-15.tsv");
             while ((line = inFile.ReadLine()) != null)
             {
                 Console.WriteLine(line);
                 var array = line.Split('\t');
                 var processedQuery = formatQueryStr(array[0]);
-                System.IO.StreamWriter outFile = new System.IO.StreamWriter(@"D:\\project\\GraphView_11_29\\DocDB-merge2\\query_processed\\" + counter + ".txt", false);
+                System.IO.StreamWriter outFile = new System.IO.StreamWriter(@"D:\\project\\GraphView_11_29\\DocDB-merge2\\query_processed_3_21\\" + counter + ".txt", false);
                 outFile.WriteLine(processedQuery);
                 outFile.Close();
                 counter++;

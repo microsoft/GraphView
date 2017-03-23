@@ -11,6 +11,25 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
     [TestClass]
     public class DropTest : AbstractGremlinTest
     {
+        /// <summary>
+        /// Port of the g_V_drop UT from org/apache/tinkerpop/gremlin/process/traversal/step/filter/DropTest.java.
+        /// Equivalent gremlin: "g.V.drop"
+        /// </summary>
+        [TestMethod]
+        public void VerticesAndEdgesDrop()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                var traversal = graphCommand.g().V().Drop();
+                var result = traversal.Next();
+
+                var vertexTraversalAfterDrop = graphCommand.g().V();
+                Assert.AreEqual(0, vertexTraversalAfterDrop.Next().Count);
+
+                var edgeTraversalAfterDrop = graphCommand.g().E();
+                Assert.AreEqual(0, edgeTraversalAfterDrop.Next().Count);
+            }
+        }
         [TestMethod]
         public void DropEdge()
         {
