@@ -849,12 +849,11 @@ namespace GraphView
 
                     if (accessPathStepFunc == null)
                     {
-                        PathStepField lastPathStep = path.Any() ? (PathStepField)path[path.Count - 1] : null;
-                        if (lastPathStep != null) {
-                            foreach (string label in stepLabels) {
-                                lastPathStep.AddLabel(label);
-                            }
+                        PathStepField pathStepField = new PathStepField(null);
+                        foreach (string label in stepLabels) {
+                            pathStepField.AddLabel(label);
                         }
+                        path.Add(pathStepField);
                         continue;
                     }
 
@@ -877,6 +876,18 @@ namespace GraphView
 
                         foreach (PathStepField subPathStep in subPath.Path.Cast<PathStepField>())
                         {
+                            if (subPathStep.StepFieldObject == null) {
+                                if (path.Any()) {
+                                    PathStepField lastPathStep = (PathStepField) path[path.Count - 1];
+                                    foreach (string label in subPathStep.Labels) {
+                                        lastPathStep.AddLabel(label);
+                                    }
+                                } else {
+                                    path.Add(subPathStep);
+                                }
+                                continue;
+                            }
+
                             FieldObject pathStep = GetStepProjectionResult(subPathStep.StepFieldObject, ref activeByFuncIndex);
                             PathStepField pathStepField = new PathStepField(pathStep);
                             foreach (string label in subPathStep.Labels) {
@@ -885,11 +896,9 @@ namespace GraphView
                             path.Add(pathStepField);
                         }
 
-                        PathStepField lastSubPathStep = subPath.Path.Any() ? path.Last() as PathStepField : null;
-                        if (lastSubPathStep != null) {
-                            foreach (string label in stepLabels) {
-                                lastSubPathStep.AddLabel(label);
-                            }
+                        PathStepField lastSubPathStep = (PathStepField)path.Last();
+                        foreach (string label in stepLabels) {
+                            lastSubPathStep.AddLabel(label);
                         }
                     }
                     else
