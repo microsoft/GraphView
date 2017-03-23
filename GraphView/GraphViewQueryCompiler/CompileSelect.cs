@@ -1386,19 +1386,19 @@ namespace GraphView
                 foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
                 {
                     WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                    if (selectScalar == null)
-                    {
+                    if (selectScalar == null) {
                         throw new SyntaxErrorException("The input subquery of an union table reference can only select scalar elements.");
                     }
+                    Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
+
                     WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                    if (columnRef == null)
-                    {
-                        throw new SyntaxErrorException("The input subquery of an union table reference can only select column epxressions.");
-                    }
-                    if (columnRef.ColumnType == ColumnType.Wildcard)
+                    //
+                    // TODO: Remove this case
+                    //
+                    if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
                         continue;
-                    string selectElementAlias = selectScalar.ColumnName;
-                    context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                    }
+                    context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
                 }
             }
             else
@@ -1449,17 +1449,19 @@ namespace GraphView
             foreach (WSelectElement selectElement in firstSelectQuery.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null)
-                {
+                if (selectScalar == null) {
                     throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select scalar elements.");
                 }
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
+
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef == null)
-                {
-                    throw new SyntaxErrorException("The input subquery of a coalesce table reference can only select column epxressions.");
+                //
+                // TODO: Remove this case
+                //
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                    continue;
                 }
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
             context.CurrentExecutionOperator = coalesceOp;
@@ -1568,17 +1570,19 @@ namespace GraphView
             foreach (WSelectElement selectElement in localSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null)
-                {
+                if (selectScalar == null) {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be select scalar elements.");
                 }
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
+
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef == null)
-                {
-                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a local table reference must be column references.");
+                //
+                // TODO: Remove this case
+                //
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                    continue;
                 }
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
             return localOp;
@@ -1613,13 +1617,16 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be select scalar elements.");
                 }
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
+
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef == null)
-                {
-                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a flatMap table reference must be column references.");
+                //
+                // TODO: Remove this case
+                //
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                    continue;
                 }
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
             return flatMapOp;
@@ -2445,13 +2452,16 @@ namespace GraphView
                 {
                     throw new SyntaxErrorException("The SELECT elements of the sub-query in a map table reference must be select scalar elements.");
                 }
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
+
                 WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef == null)
-                {
-                    throw new SyntaxErrorException("The SELECT elements of the sub-query in a map table reference must be column references.");
+                //
+                // TODO: Remove this case
+                //
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                    continue;
                 }
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
             return mapOp;
@@ -3057,11 +3067,16 @@ namespace GraphView
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
                 Debug.Assert(selectScalar != null, "selectScalar != null");
-                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                Debug.Assert(columnRef != null, "selectScalar != null");
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                //
+                // TODO: Remove this case
+                //
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                    continue;
+                }
+                context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
             return chooseOp;
@@ -3112,11 +3127,16 @@ namespace GraphView
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
                 Debug.Assert(selectScalar != null, "selectScalar != null");
-                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                Debug.Assert(columnRef != null, "selectScalar != null");
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
-                string selectElementAlias = selectScalar.ColumnName;
-                context.AddField(Alias.Value, selectElementAlias ?? columnRef.ColumnName, columnRef.ColumnGraphType);
+                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
+                //
+                // TODO: Remove this case
+                //
+                if (columnRef != null && columnRef.ColumnType == ColumnType.Wildcard) {
+                    continue;
+                }
+                context.AddField(Alias.Value, selectScalar.ColumnName, columnRef?.ColumnGraphType ?? ColumnGraphType.Value);
             }
 
             context.CurrentExecutionOperator = chooseWithOptionsOp;
