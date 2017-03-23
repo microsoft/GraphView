@@ -105,6 +105,8 @@
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\PropertiesTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\SelectTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\UnfoldTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\FlatMapTest.cs" />
+    <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\FoldTest.cs" />
     <Compile Include="Gremlin\ProcessTests\Traversal\Step\Map\VertexTest.cs" />
     <Compile Include="IOTQueryTest.cs" />
     <Compile Include="IoTUnitTest.cs" />
