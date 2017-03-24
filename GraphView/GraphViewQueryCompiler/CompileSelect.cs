@@ -2011,6 +2011,7 @@ namespace GraphView
             DeduplicateLocalOperator dedupLocalOp = new DeduplicateLocalOperator(context.CurrentExecutionOperator,
                 Parameters[0].CompileToFunction(context, dbConnection));
             context.CurrentExecutionOperator = dedupLocalOp;
+            context.AddField(Alias.Value, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
 
             return dedupLocalOp;
         }
@@ -2165,14 +2166,10 @@ namespace GraphView
             UnfoldOperator unfoldOp = new UnfoldOperator(
                 context.CurrentExecutionOperator,
                 Parameters[0].CompileToFunction(context, dbConnection), 
-                unfoldColumns,
-                GremlinKeyword.TableDefaultColumnName);
+                unfoldColumns);
             context.CurrentExecutionOperator = unfoldOp;
 
-            for (int i = 1; i < this.Parameters.Count; i++)
-            {
-                string columnName = (Parameters[i] as WValueExpression).Value;
-                // TODO: Change to correct ColumnGraphType
+            foreach (string columnName in unfoldColumns) {
                 context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
             }
 
@@ -2760,9 +2757,24 @@ namespace GraphView
                 orderByElements.Add(new Tuple<ScalarFunction, IComparer>(byFunction, comparer));
             }
 
+            List<string> populateColumns = new List<string> { GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
+            for (int i = this.OrderParameters.Count + 1; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateColumn != null, "populateColumn != null");
+
+                if (populateColumn.Value.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
+                    continue;
+                }
+                populateColumns.Add(populateColumn.Value);
+            }
+
             OrderLocalOperator orderLocalOp = new OrderLocalOperator(context.CurrentExecutionOperator, inputObjectIndex,
-                orderByElements);
+                orderByElements, populateColumns);
             context.CurrentExecutionOperator = orderLocalOp;
+            foreach (string columnName in populateColumns) {
+                context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+            }
 
             return orderLocalOp;
         }
@@ -2783,6 +2795,18 @@ namespace GraphView
             bool isLocal = localFlag > 0;
             bool isTail = tailFlag > 0;
 
+            List<string> populateColumns = new List<string> { GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME };
+            for (int i = 5; i < this.Parameters.Count; i++)
+            {
+                WValueExpression populateColumn = this.Parameters[i] as WValueExpression;
+                Debug.Assert(populateColumn != null, "populateColumn != null");
+
+                if (populateColumn.Value.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)) {
+                    continue;
+                }
+                populateColumns.Add(populateColumn.Value);
+            }
+
             //
             // Compilation of Tail op, which returns lastN elements
             //
@@ -2793,8 +2817,12 @@ namespace GraphView
                 if (isLocal)
                 {
                     TailLocalOperator tailLocalOp = new TailLocalOperator(context.CurrentExecutionOperator,
-                        context.LocateColumnReference(inputCollection), lastN);
+                        context.LocateColumnReference(inputCollection), lastN, populateColumns);
                     context.CurrentExecutionOperator = tailLocalOp;
+                    foreach (string columnName in populateColumns) {
+                        context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+                    }
+
                     return tailLocalOp;
                 }
                 else
@@ -2827,14 +2855,16 @@ namespace GraphView
                 if (isLocal)
                 {
                     RangeLocalOperator rangeLocalOp = new RangeLocalOperator(context.CurrentExecutionOperator,
-                        context.LocateColumnReference(inputCollection), startIndex, count);
+                        context.LocateColumnReference(inputCollection), startIndex, count, populateColumns);
                     context.CurrentExecutionOperator = rangeLocalOp;
+                    foreach (string columnName in populateColumns) {
+                        context.AddField(Alias.Value, columnName, ColumnGraphType.Value);
+                    }
 
                     return rangeLocalOp;;
                 }
                 else
                 {
-
                     RangeOperator rangeOp = new RangeOperator(context.CurrentExecutionOperator, startIndex, count);
                     context.CurrentExecutionOperator = rangeOp;
 

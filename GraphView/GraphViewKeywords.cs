@@ -57,6 +57,8 @@ namespace GraphView
         public const string KW_EDGEDOC_VERTEXID = "_vertex_id";
         public const string KW_EDGEDOC_ISREVERSE = "_is_reverse";
 
+        public static string KW_TABLE_DEFAULT_COLUMN_NAME = GremlinKeyword.TableDefaultColumnName;
+
         internal enum Pop
         {
             All,

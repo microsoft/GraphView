@@ -1147,12 +1147,20 @@ namespace GraphView
         private int inputObjectIndex;
         private List<Tuple<ScalarFunction, IComparer>> orderByElements;
 
-        public OrderLocalOperator(GraphViewExecutionOperator inputOp, int inputObjectIndex, List<Tuple<ScalarFunction, IComparer>> orderByElements)
+        private List<string> populateColumns;
+
+        public OrderLocalOperator(
+            GraphViewExecutionOperator inputOp, 
+            int inputObjectIndex, 
+            List<Tuple<ScalarFunction, IComparer>> orderByElements,
+            List<string> populateColumns)
         {
             this.inputOp = inputOp;
             this.inputObjectIndex = inputObjectIndex;
             this.orderByElements = orderByElements;
             this.Open();
+
+            this.populateColumns = populateColumns;
         }
 
         public override RawRecord Next()
@@ -1161,11 +1169,15 @@ namespace GraphView
 
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
+                RawRecord newRecord = new RawRecord(srcRecord);
+
                 FieldObject inputObject = srcRecord[this.inputObjectIndex];
+                FieldObject orderedObject;
                 if (inputObject is CollectionField)
                 {
                     CollectionField inputCollection = (CollectionField)inputObject;
-                    inputCollection.Collection.Sort((x, y) =>
+                    CollectionField orderedCollection = new CollectionField(inputCollection);
+                    orderedCollection.Collection.Sort((x, y) =>
                     {
                         int ret = 0;
                         foreach (Tuple<ScalarFunction, IComparer> tuple in this.orderByElements)
@@ -1193,6 +1205,7 @@ namespace GraphView
                         }
                         return ret;
                     });
+                    orderedObject = orderedCollection;
                 }
                 else if (inputObject is MapField)
                 {
@@ -1228,10 +1241,19 @@ namespace GraphView
                         return ret;
                     });
 
-                    inputMap.Order = entries.Select(entry => entry.Key).ToList();
+                    MapField orderedMapField = new MapField();
+                    foreach (EntryField entry in entries) {
+                        orderedMapField.Add(entry.Key, entry.Value);
+                    }
+                    orderedObject = orderedMapField;
+                }
+                else {
+                    orderedObject = inputObject;
                 }
 
-                return srcRecord;
+                RawRecord flatRawRecord = orderedObject.FlatToRawRecord(this.populateColumns);
+                newRecord.Append(flatRawRecord);
+                return newRecord;
             }
 
             this.Close();
@@ -2229,8 +2251,10 @@ namespace GraphView
     {
         private GraphViewExecutionOperator inputOp;
         private ScalarFunction getInputObjectionFunc;
-
-        internal DeduplicateLocalOperator(GraphViewExecutionOperator inputOperator, ScalarFunction getInputObjectionFunc)
+        
+        internal DeduplicateLocalOperator(
+            GraphViewExecutionOperator inputOperator, 
+            ScalarFunction getInputObjectionFunc)
         {
             this.inputOp = inputOperator;
             this.getInputObjectionFunc = getInputObjectionFunc;
@@ -2248,24 +2272,41 @@ namespace GraphView
                 FieldObject inputObject = this.getInputObjectionFunc.Evaluate(currentRecord);
 
                 HashSet<Object> localObjectsSet = new HashSet<Object>();
+                CollectionField uniqueCollection = new CollectionField();
 
-                if (!(inputObject is CollectionField))
-                    throw new GraphViewException("Dedup(local) can only be applied to a list.");
-
-                CollectionField inputCollection = (CollectionField) inputObject;
-
-                for (int localObjectIndex = inputCollection.Collection.Count - 1; localObjectIndex >= 0; localObjectIndex--)
+                if (inputObject is CollectionField)
                 {
-                    Object localObj = inputCollection.Collection[localObjectIndex].ToObject();
-                    if (localObjectsSet.Contains(localObj))
+                    CollectionField inputCollection = (CollectionField)inputObject;
+                    
+                    foreach (FieldObject localFieldObject in inputCollection.Collection)
                     {
-                        inputCollection.Collection.RemoveAt(localObjectIndex);
-                        continue;
+                        Object localObj = localFieldObject.ToObject();
+                        if (!localObjectsSet.Contains(localObj))
+                        {
+                            uniqueCollection.Collection.Add(localFieldObject);
+                            localObjectsSet.Add(localObj);
+                        }
                     }
+                }
+                else if (inputObject is PathField)
+                {
+                    PathField inputPath = (PathField)inputObject;
 
-                    localObjectsSet.Add(localObj);
+                    foreach (PathStepField pathStep in inputPath.Path.Cast<PathStepField>())
+                    {
+                        Object localObj = pathStep.ToObject();
+                        if (!localObjectsSet.Contains(localObj))
+                        {
+                            uniqueCollection.Collection.Add(pathStep.StepFieldObject);
+                            localObjectsSet.Add(localObj);
+                        }
+                    }
+                }
+                else {
+                    throw new GraphViewException("Dedup(local) can only be applied to a list.");
                 }
 
+                result.Append(uniqueCollection);
                 return result;
             }
 
@@ -2340,12 +2381,22 @@ namespace GraphView
         private int count;
         private int inputCollectionIndex;
 
-        internal RangeLocalOperator(GraphViewExecutionOperator inputOp, int inputCollectionIndex, int startIndex, int count)
+        private List<string> populateColumns;
+        private bool wantSingleObject;
+
+        internal RangeLocalOperator(
+            GraphViewExecutionOperator inputOp, 
+            int inputCollectionIndex, 
+            int startIndex, int count,
+            List<string> populateColumns)
         {
             this.inputOp = inputOp;
             this.startIndex = startIndex;
             this.count = count;
             this.inputCollectionIndex = inputCollectionIndex;
+            this.populateColumns = populateColumns;
+            this.wantSingleObject = this.count == 1;
+
             this.Open();
         }
 
@@ -2355,13 +2406,16 @@ namespace GraphView
 
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
+                RawRecord newRecord = new RawRecord(srcRecord);
                 //
                 // Return records in the [runtimeStartIndex, runtimeStartIndex + runtimeCount)
                 //
                 FieldObject inputObject = srcRecord[inputCollectionIndex];
+                FieldObject filteredObject;
                 if (inputObject is CollectionField)
                 {
-                    CollectionField inputCollection = inputObject as CollectionField;
+                    CollectionField inputCollection = (CollectionField)inputObject;
+                    CollectionField newCollectionField = new CollectionField();
 
                     int runtimeStartIndex = startIndex > inputCollection.Collection.Count ? inputCollection.Collection.Count : startIndex;
                     int runtimeCount = this.count == -1 ? inputCollection.Collection.Count - runtimeStartIndex : this.count;
@@ -2369,31 +2423,65 @@ namespace GraphView
                         runtimeCount = inputCollection.Collection.Count - runtimeStartIndex;
                     }
 
-                    inputCollection.Collection = inputCollection.Collection.GetRange(runtimeStartIndex, runtimeCount);
+                    newCollectionField.Collection = inputCollection.Collection.GetRange(runtimeStartIndex, runtimeCount);
+                    if (wantSingleObject) {
+                        filteredObject = newCollectionField.Collection.Any() ? newCollectionField.Collection[0] : null;
+                    }
+                    else {
+                        filteredObject = newCollectionField;
+                    }
+                }
+                else if (inputObject is PathField)
+                {
+                    PathField inputPath = (PathField)inputObject;
+                    CollectionField newCollectionField = new CollectionField();
+
+                    int runtimeStartIndex = startIndex > inputPath.Path.Count ? inputPath.Path.Count : startIndex;
+                    int runtimeCount = this.count == -1 ? inputPath.Path.Count - runtimeStartIndex : this.count;
+                    if (runtimeStartIndex + runtimeCount > inputPath.Path.Count) {
+                        runtimeCount = inputPath.Path.Count - runtimeStartIndex;
+                    }
+
+                    newCollectionField.Collection =
+                        inputPath.Path.GetRange(runtimeStartIndex, runtimeCount)
+                            .Cast<PathStepField>()
+                            .Select(p => p.StepFieldObject)
+                            .ToList();
+                    if (wantSingleObject) {
+                        filteredObject = newCollectionField.Collection.Any() ? newCollectionField.Collection[0] : null;
+                    }
+                    else {
+                        filteredObject = newCollectionField;
+                    }
                 }
                 //
                 // Return records in the [low, high)
                 //
                 else if (inputObject is MapField)
                 {
-                    MapField inputMap = inputObject as MapField;
-                    List<FieldObject> order = inputMap.Order;
-                    int low = startIndex;
-                    int high = this.count == -1 ? order.Count : low + this.count;
+                    MapField inputMap = (MapField)inputObject;
+                    MapField newMap = new MapField();
 
-                    int index = order.Count - 1;
-                    for (; index >= low; index--)
-                    {
-                        if (index >= high) {
-                            inputMap.RemoveAt(index);
-                        }
+                    int low = startIndex;
+                    int high = this.count == -1 ? inputMap.Count : low + this.count;
+
+                    int index = 0;
+                    foreach (EntryField entry in inputMap) {
+                        if (index >= low && index++ < high)
+                            newMap.Add(entry.Key, entry.Value);
                     }
-                    while (index >= 0) {
-                        inputMap.RemoveAt(index--);
-                    }
+                    filteredObject = newMap;
+                }
+                else {
+                    filteredObject = inputObject;
                 }
 
-                return srcRecord;
+                if (filteredObject == null) {
+                    continue;
+                }
+                RawRecord flatRawRecord = filteredObject.FlatToRawRecord(this.populateColumns);
+                newRecord.Append(flatRawRecord);
+                return newRecord;
             }
 
             this.Close();
@@ -2462,11 +2550,19 @@ namespace GraphView
         private int lastN;
         private int inputCollectionIndex;
 
-        internal TailLocalOperator(GraphViewExecutionOperator inputOp, int inputCollectionIndex, int lastN)
+        private List<string> populateColumns;
+        private bool wantSingleObject;
+
+        internal TailLocalOperator(
+            GraphViewExecutionOperator inputOp, 
+            int inputCollectionIndex, int lastN,
+            List<string> populateColumns)
         {
             this.inputOp = inputOp;
             this.inputCollectionIndex = inputCollectionIndex;
             this.lastN = lastN;
+            this.populateColumns = populateColumns;
+            this.wantSingleObject = this.lastN == 1;
 
             this.Open();
         }
@@ -2477,13 +2573,16 @@ namespace GraphView
 
             while (this.inputOp.State() && (srcRecord = this.inputOp.Next()) != null)
             {
+                RawRecord newRecord = new RawRecord(srcRecord);
                 //
                 // Return records in the [localCollection.Count - lastN, localCollection.Count)
                 //
                 FieldObject inputObject = srcRecord[inputCollectionIndex];
+                FieldObject filteredObject;
                 if (inputObject is CollectionField)
                 {
-                    CollectionField inputCollection = inputObject as CollectionField;
+                    CollectionField inputCollection = (CollectionField)inputObject;
+                    CollectionField newCollection = new CollectionField();
 
                     int startIndex = inputCollection.Collection.Count < lastN 
                                      ? 0 
@@ -2491,7 +2590,38 @@ namespace GraphView
                     int count = startIndex + lastN > inputCollection.Collection.Count
                                      ? inputCollection.Collection.Count - startIndex
                                      : lastN;
-                    inputCollection.Collection = inputCollection.Collection.GetRange(startIndex, count);
+
+                    newCollection.Collection = inputCollection.Collection.GetRange(startIndex, count);
+                    if (wantSingleObject) {
+                        filteredObject = newCollection.Collection.Any() ? newCollection.Collection[0] : null;
+                    }
+                    else {
+                        filteredObject = newCollection;
+                    }
+                }
+                else if (inputObject is PathField)
+                {
+                    PathField inputPath = (PathField)inputObject;
+                    CollectionField newCollection = new CollectionField();
+
+                    int startIndex = inputPath.Path.Count < lastN
+                                     ? 0
+                                     : inputPath.Path.Count - lastN;
+                    int count = startIndex + lastN > inputPath.Path.Count
+                                     ? inputPath.Path.Count - startIndex
+                                     : lastN;
+
+                    newCollection.Collection =
+                        inputPath.Path.GetRange(startIndex, count)
+                            .Cast<PathStepField>()
+                            .Select(p => p.StepFieldObject)
+                            .ToList();
+                    if (wantSingleObject) {
+                        filteredObject = newCollection.Collection.Any() ? newCollection.Collection[0] : null;
+                    }
+                    else {
+                        filteredObject = newCollection;
+                    }
                 }
                 //
                 // Return records in the [low, inputMap.Count)
@@ -2499,15 +2629,26 @@ namespace GraphView
                 else if (inputObject is MapField)
                 {
                     MapField inputMap = inputObject as MapField;
+                    MapField newMap = new MapField();
                     int low = inputMap.Count - lastN;
 
-                    int index = low - 1;
-                    while (index >= 0) {
-                        inputMap.RemoveAt(index--);
+                    int index = 0;
+                    foreach (EntryField entry in inputMap) {
+                        if (index++ >= low)
+                            newMap.Add(entry.Key, entry.Value);
                     }
+                    filteredObject = newMap;
+                }
+                else {
+                    filteredObject = inputObject;
                 }
 
-                return srcRecord;
+                if (filteredObject == null) {
+                    continue;
+                }
+                RawRecord flatRawRecord = filteredObject.FlatToRawRecord(this.populateColumns);
+                newRecord.Append(flatRawRecord);
+                return newRecord;
             }
 
             this.Close();

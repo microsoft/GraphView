@@ -1018,19 +1018,16 @@ namespace GraphView
     internal class UnfoldOperator : TableValuedFunction
     {
         private ScalarFunction getUnfoldTargetFunc;
-        private List<string> unfoldCompose1Columns;
-        private readonly string tableDefaultColumnName;
+        private List<string> populateColumns;
 
         internal UnfoldOperator(
             GraphViewExecutionOperator inputOp,
             ScalarFunction getUnfoldTargetFunc,
-            List<string> unfoldCompose1Columns,
-            string tableDefaultColumnName)
+            List<string> populateColumns)
             : base(inputOp)
         {
             this.getUnfoldTargetFunc = getUnfoldTargetFunc;
-            this.unfoldCompose1Columns = unfoldCompose1Columns;
-            this.tableDefaultColumnName = tableDefaultColumnName;
+            this.populateColumns = populateColumns;
         }
 
         internal override List<RawRecord> CrossApply(RawRecord record)
@@ -1052,7 +1049,7 @@ namespace GraphView
                     //
                     // Extract only needed columns from Compose1Field
                     //
-                    foreach (string unfoldColumn in unfoldCompose1Columns) {
+                    foreach (string unfoldColumn in populateColumns) {
                         flatRecord.Append(compose1StepField[unfoldColumn]);
                     }
 
@@ -1072,7 +1069,7 @@ namespace GraphView
                     //
                     // Extract only needed columns from Compose1Field
                     //
-                    foreach (string unfoldColumn in unfoldCompose1Columns) {
+                    foreach (string unfoldColumn in populateColumns) {
                         flatRecord.Append(compose1ObjField[unfoldColumn]);
                     }
 
@@ -1086,8 +1083,8 @@ namespace GraphView
                 {
                     RawRecord entryRecord = new RawRecord();
 
-                    foreach (string columnName in this.unfoldCompose1Columns) {
-                        entryRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
+                    foreach (string columnName in this.populateColumns) {
+                        entryRecord.Append(columnName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
                             ? entry
                             : (FieldObject) null);
                     }
@@ -1095,56 +1092,10 @@ namespace GraphView
                     results.Add(entryRecord);
                 }
             }
-            else if (unfoldTarget is VertexField)
-            {
-                VertexField inputVertex = (VertexField) unfoldTarget;
-                RawRecord flatVertexRecord = new RawRecord();
-
-                foreach (string columnName in this.unfoldCompose1Columns) {
-                    flatVertexRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
-                        ? inputVertex
-                        : inputVertex[columnName]);
-                }
-
-                results.Add(flatVertexRecord);
-            }
-            else if (unfoldTarget is VertexSinglePropertyField)
-            {
-                VertexSinglePropertyField inputVsp = (VertexSinglePropertyField) unfoldTarget;
-                RawRecord flatVspRecord = new RawRecord();
-
-                foreach (string columnName in this.unfoldCompose1Columns) {
-                    flatVspRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
-                        ? inputVsp
-                        : inputVsp[columnName]);
-                }
-
-                results.Add(flatVspRecord);
-            }
-            else if (unfoldTarget is EdgeField)
-            {
-                EdgeField inputEdge = (EdgeField) unfoldTarget;
-                RawRecord newRecord = new RawRecord();
-
-                foreach (string columnName in this.unfoldCompose1Columns) {
-                    newRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
-                        ? inputEdge
-                        : inputEdge[columnName]);
-                }
-
-                results.Add(newRecord);
-            }
             else
             {
-                RawRecord newRecord = new RawRecord();
-
-                foreach (string columnName in this.unfoldCompose1Columns) {
-                    newRecord.Append(columnName.Equals(GremlinKeyword.TableDefaultColumnName)
-                        ? unfoldTarget
-                        : (FieldObject)null);
-                }
-
-                results.Add(newRecord);
+                RawRecord flatRecord = unfoldTarget.FlatToRawRecord(this.populateColumns);
+                results.Add(flatRecord);
             }
 
             return results;

@@ -224,9 +224,28 @@ namespace GraphView
 
         public virtual Object ToObject() { return this; }
 
+        public virtual FieldObject this[string index]
+        {
+            get { return (FieldObject) null; }
+            set { }
+        }
+
         public static string ToLiteral(string inputString)
         {
             return JsonConvert.ToString(inputString);
+        }
+
+        public virtual RawRecord FlatToRawRecord(List<string> populateColumns)
+        {
+            RawRecord flatRecord = new RawRecord();
+
+            foreach (string columnName in populateColumns) {
+                flatRecord.Append(columnName.Equals(GraphViewKeywords.KW_TABLE_DEFAULT_COLUMN_NAME)
+                    ? this
+                    : this[columnName]);
+            }
+
+            return flatRecord;
         }
     }
 
@@ -478,6 +497,11 @@ namespace GraphView
         public CollectionField()
         {
             Collection = new List<FieldObject>();
+        }
+
+        public CollectionField(CollectionField rhs)
+        {
+            this.Collection = new List<FieldObject>(rhs.Collection);
         }
 
         public CollectionField(List<FieldObject> collection)
@@ -777,7 +801,7 @@ namespace GraphView
             DefaultProjectionKey = defaultProjectionKey;
         }
 
-        public FieldObject this[string key]
+        public override FieldObject this[string key]
         {
             get
             {
@@ -921,7 +945,7 @@ namespace GraphView
         //    this.JsonDataType = JsonDataTypeHelper.GetJsonDataType(value.Type);
         //}
 
-        public FieldObject this[string metapropertyName]
+        public override FieldObject this[string metapropertyName]
         {
             get
             {
@@ -1372,7 +1396,7 @@ namespace GraphView
             this.OtherV = otherV;
         }
 
-        public FieldObject this[string propertyName]
+        public override FieldObject this[string propertyName]
         {
             get
             {
@@ -1676,7 +1700,7 @@ namespace GraphView
 
         private GraphViewConnection connection;
 
-        public FieldObject this[string propertyName]
+        public override FieldObject this[string propertyName]
         {
             get
             {
