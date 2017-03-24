@@ -15,6 +15,27 @@ namespace GraphViewUnitTest
     [TestClass]
     public class IOTQueryTest
     {
+        /// <summary>
+        /// </summary>
+        /// <remarks>
+        /// </remarks>
+        [TestMethod]
+        public void WhereNeqTest()
+        {
+            GraphViewConnection connection = new GraphViewConnection("https://graphview.documents.azure.com:443/",
+             "MqQnw4xFu7zEiPSD+4lLKRBQEaQHZcKsjlHxXn2b96pE/XlJ8oePGhjnOofj1eLpUdsfYgEhzhejk2rjH/+EKA==",
+             "GroupMatch", "MarvelTest");
+            //connection.ResetCollection();
+            GraphViewCommand cmd = new GraphViewCommand(connection);
+            var traversal = cmd.g().V("11f09a6e-868c-44d5-86ba-7766d5b16d04").As("a").Out("appeared").In("appeared").Where(Predicate.neq("a"));
+            var results = traversal.Next();
+            var result2 = traversal.ToList();
+            foreach (var result in results)
+            {
+                Console.WriteLine(result);
+            }
+            Console.WriteLine("Result Count: " + results.Count);
+        }
         [TestMethod]
         public void queryTest2_41()
         {

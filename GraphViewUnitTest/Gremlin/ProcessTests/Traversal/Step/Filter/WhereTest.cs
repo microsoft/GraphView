@@ -5,6 +5,7 @@ using GraphView;
 using GraphViewUnitTest.Gremlin;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using System;
 
 //------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.  All rights reserved.
@@ -17,6 +18,21 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
     [TestClass]
     public class WhereTest : AbstractGremlinTest
     {
+        /// <summary>
+        /// </summary>
+        /// <remarks>
+        /// </remarks>
+        [TestMethod]
+        public void WhereNeqTest()
+        {
+            using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
+            {
+                graphCommand.OutputFormat = OutputFormat.GraphSON;
+                var traversal = graphCommand.g().V(1).As("a").Out("created").In("created").Where(Predicate.neq("a"));
+                var result = traversal.Next();
+                Console.WriteLine("Result Count: " + result.Count);
+            }
+        }
         /// <summary>
         /// Port of the g_V_hasXageX_asXaX_out_in_hasXageX_asXbX_selectXa_bX_whereXa_eqXbXX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/WhereTest.java.
         /// Equivalent gremlin: "g.V.has('age').as('a').out.in.has('age').as('b').select('a','b').where('a', eq('b'))"

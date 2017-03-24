@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 {
     [TestClass]
-    public class LocalTest : AbstractGremlinTest
+    public class MapTest : AbstractGremlinTest
     {
         /// <summary>
         /// Port of the g_V_localXoutE_countX UT from org/apache/tinkerpop/gremlin/process/traversal/step/branch/LocalTest.java.

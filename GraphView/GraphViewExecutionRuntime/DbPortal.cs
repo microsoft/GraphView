@@ -72,7 +72,6 @@ namespace GraphView
 
             string queryScript = vertexQuery.ToString(DatabaseType.DocumentDB);
             IQueryable<dynamic> items = this.Connection.ExecuteQuery(queryScript);
-
             List<string> properties = new List<string>(vertexQuery.Properties);
             List<ColumnGraphType> projectedColumnsType = vertexQuery.ProjectedColumnsType;
 
@@ -105,7 +104,6 @@ namespace GraphView
 
 
             HashSet<string> gotVertexIds = new HashSet<string>();
-
             foreach (dynamic dynamicItem in items) {
                 JObject vertexObject = (JObject)((JObject)dynamicItem)[nodeAlias];
                 string vertexId = (string)vertexObject[KW_DOC_ID];
