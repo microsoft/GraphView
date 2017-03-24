@@ -64,7 +64,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <remarks>
+        /// Add id of properties in ToGraphSon format
+        /// </remarks>
         [TestMethod]
+        [Ignore]
         public void DropMultiPropertiesAndMetaPropertiesTest()
         {
             using (GraphViewCommand command = new GraphViewCommand(graphConnection))

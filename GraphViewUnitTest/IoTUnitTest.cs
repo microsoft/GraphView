@@ -59,50 +59,99 @@ namespace GraphViewUnitTest
             return vertex.properties[property].First.value;
         }
 
+        public String formatQueryStr(String query)
+        {
+            String result = "";
+            query = query.Replace("\"", "\'");
+            result = query;
+            return result;
+        }
+
+        [TestMethod]
+        public void preProcessTheQueries()
+        {
+            int counter = 1;
+            string line;
+            // Read the file and display it line by line.
+            System.IO.StreamReader inFile =
+               new System.IO.StreamReader("D:\\gremlin.tsv");
+            while ((line = inFile.ReadLine()) != null)
+            {
+                Console.WriteLine(line);
+                var array = line.Split('\t');
+                var processedQuery = formatQueryStr(array[0]);
+                System.IO.StreamWriter outFile = new System.IO.StreamWriter(@"D:\\" + "HUB_queries_" + counter + ".txt", false);
+                outFile.WriteLine(processedQuery);
+                outFile.Close();
+                counter++;
+            }
+            inFile.Close();
+
+        }
+
         [TestMethod]
         public void testSingleQuery()
         {
-
-
-            runQuery(63);
-
-
-
+            //runQuery(9);
         }
 
         [TestMethod]
-        public void test_All_IOT_HUB_Queries()
+        public void test_IoT_topology_queries()
         {
             graph.OutputFormat = OutputFormat.Regular;
-            int count = 0;
-            for (; count < 64; count++)
+            int count = 1;
+            for (; count <= 75; count++)
             {
-                if (count == 45) continue;
-                if (count == 53) continue;
-                if (count == 56) continue;
-                Console.WriteLine($"------------------- Query : {count + 1} -------------------");
-                //try
-                //{
-                    runQuery(count);
-                //}
-                //catch (Exception e)
-                //{
-                //    Console.WriteLine("Query" + (count + 1) + " throw Exception");
-                    //Console.WriteLine(e.Message);
-                    //Console.WriteLine(e.StackTrace);
-                    //throw e;
-                //}
+                if (count == 57) continue;
+                if (count == 65) continue;
+                if (count == 68) continue;
+                Console.WriteLine($"------------------- Query : {count} -------------------");
+                try
+                {
+                    System.IO.StreamReader filePath = new System.IO.StreamReader("D:\\topology-queries_" + count + ".txt");
+
+                    runQuery(filePath);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Query" + (count) + " throw Exception");
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
+                    throw e;
+                }
             }
         }
 
-        public void runQuery(int queryNum)
+        [TestMethod]
+        public void test_IOT_HUB_queries()
         {
-            string line;
-            // Read the file and display it line by line.
-            System.IO.StreamReader file =
-               new System.IO.StreamReader("D:\\" + queryNum + ".txt");
-            line = file.ReadLine();
-            file.Close();
+            graph.OutputFormat = OutputFormat.Regular;
+            int count = 1;
+            for (; count <= 64; count++)
+            {
+                if (count == 46) continue;
+                if (count == 54) continue;
+                if (count == 57) continue;
+                Console.WriteLine($"------------------- Query : {count} -------------------");
+                try
+                {
+                    System.IO.StreamReader filePath = new System.IO.StreamReader("D:\\HUB_queries_" + count + ".txt");
+                    runQuery(filePath);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Query" + (count) + " throw Exception");
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
+                    throw e;
+                }
+            }
+        }
+
+        public void runQuery(System.IO.StreamReader filePath)
+        {
+            string line = filePath.ReadLine();
+            filePath.Close();
 
             graph.CommandText = line;
             graph.OutputFormat = OutputFormat.GraphSON;

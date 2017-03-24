@@ -25,6 +25,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Filter
         /// https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36911
         /// </remarks>
         [TestMethod]
+        [Ignore]
         public void DedupLocalScope()
         {
             using (GraphViewCommand GraphViewCommand = new GraphViewCommand(graphConnection))

@@ -3,6 +3,7 @@ using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 // //------------------------------------------------------------
 // // Copyright (c) Microsoft Corporation.  All rights reserved.
@@ -19,19 +20,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_VX1X_asXaX_outXknowsX_asXbX_selectXa_bX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('knows').as('b').select('a','b')", "v1Id", v1Id
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVertexIdAsAOutKnowsAsBSelectAB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-                ////string vadasVertexId = this.ConvertToVertexId(graphCommand, "vadas");
-                ////string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
+                string vadasVertexId = this.ConvertToVertexId(graphCommand, "vadas");
+                string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V()
@@ -40,14 +36,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                     .Select("a", "b");
 
                 var result = traversal.Next();
+
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
                 Assert.AreEqual(2, dynamicResult.Count);
                 foreach (var res in dynamicResult)
                 {
-                    Assert.AreEqual(2, res.Count);
-                    // Skipping this validation until we can fix the multi-key select.
-                    ////Assert.AreEqual(markoVertexId, res["a"]["id"].ToString());
-                    ////Assert.IsTrue(vadasVertexId.Equals(res["b"]["id"].ToString()) || joshVertexId.Equals(res["b"]["id"].ToString()));
+                    Assert.AreEqual(markoVertexId, res["a"]["id"].ToString());
+                    Assert.IsTrue(vadasVertexId.Equals(res["b"]["id"].ToString()) || joshVertexId.Equals(res["b"]["id"].ToString()));
                 }
             }
         }
@@ -56,19 +51,14 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_VX1X_asXaX_outXknowsX_asXbX_selectXa_bX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V(v1Id).as('a').out('knows').as('b').select('a','b').by('name')", "v1Id", v1Id
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVertexIdAsAOutKnowsAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
                 string markoVertexId = this.ConvertToVertexId(graphCommand, "marko");
-                ////string vadasVertexId = this.ConvertToVertexId(graphCommand, "vadas");
-                ////string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
+                string vadasVertexId = this.ConvertToVertexId(graphCommand, "vadas");
+                string joshVertexId = this.ConvertToVertexId(graphCommand, "josh");
 
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V()
@@ -82,10 +72,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 Assert.AreEqual(2, dynamicResult.Count);
                 foreach (var res in dynamicResult)
                 {
-                    Assert.AreEqual(2, res.Count);
-                    // Skipping this validation until we can fix the multi-key select.
-                    ////Assert.AreEqual("marko", res["a"]);
-                    ////Assert.IsTrue("vadas".Equals(res["b"]["name"].ToString()) || "josh".Equals(res["b"]["name"].ToString()));
+                    Assert.AreEqual("marko", res["a"].ToString());
+                    Assert.IsTrue("vadas".Equals(res["b"].ToString()) || "josh".Equals(res["b"].ToString()));
                 }
             }
         }
@@ -128,7 +116,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37417
         /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasVertexIdAsAOutKnowsAsBSelectAByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -147,7 +134,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 Assert.AreEqual(2, dynamicResult.Count);
                 foreach (var res in dynamicResult)
                 {
-                    Assert.AreEqual("marko", res["name"]);
+                    Assert.AreEqual("marko", res.ToString());
                 }
             }
         }
@@ -156,15 +143,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_asXaX_out_asXbX_selectXa_bX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.as('a').out.as('b').select('a','b').by('name')"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// This test fails because By Modulating for Select is currently not supported.
-        /// "Unable to cast object of type 'Microsoft.Azure.Graph.GremlinSelectOp' to type 'Microsoft.Azure.Graph.IGremlinByModulating'."
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37417
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -177,7 +156,12 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
-                AssertCommonA(dynamicResult);
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"].ToString() + ";b," + temp["b"].ToString());
+                }
+                AssertCommonA(ans);
             }
         }
 
@@ -185,15 +169,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_asXaX_out_aggregateXxX_asXbX_selectXa_bX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.as('a').out.aggregate('x').as('b').select('a','b').by('name')"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// This test fails because By Modulating for Select is currently not supported.
-        /// "Unable to cast object of type 'Microsoft.Azure.Graph.GremlinSelectOp' to type 'Microsoft.Azure.Graph.IGremlinByModulating'."
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37417
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutAggregateXAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -206,7 +182,13 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
-                AssertCommonA(dynamicResult);
+
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"].ToString() + ";b," + temp["b"].ToString());
+                }
+                AssertCommonA(ans);
             }
         }
 
@@ -214,15 +196,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_asXaX_name_order_asXbX_selectXa_bX_byXnameX_by_XitX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V().as('a').name.order().as('b').select('a','b').by('name').by"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// This test fails because By Modulating for Select is currently not supported.
-        /// "Unable to cast object of type 'Microsoft.Azure.Graph.GremlinSelectOp' to type 'Microsoft.Azure.Graph.IGremlinByModulating'."
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37417
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAValuesNameOrderAsBSelectABByNameBy()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -237,6 +211,11 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                List<string> ans = new List<string>();
+                foreach (var temp in dynamicResult)
+                {
+                    ans.Add("a," + temp["a"].ToString() + ";b," + temp["b"].ToString());
+                }
                 List<string> expected = new List<string>
                 {
                     "a,marko;b,marko",
@@ -247,7 +226,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                     "a,peter;b,peter"
                 };
 
-                CheckUnOrderedResults(expected, dynamicResult);
+                CheckUnOrderedResults(expected, ans);
             }
         }
 
@@ -257,14 +236,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_hasXname_isXmarkoXX_asXaX_selectXaX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.has('name',__.is('marko')).as('a').select('a')"
         /// </summary>
-        /// <remarks>
-        /// This test fails because Has Property Traversal doesn't seem to be supported yet.
-        /// \development\euler\product\microsoft.azure.graph\graphview\gremlintranslation2\filter\gremlinhasop.cs Line 118.
-        /// GremlinHasType.HasKeyTraversal is not implemented
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36516
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasNameIsMarkoAsASelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -276,8 +248,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
 
                 var result = traversal.Next();
                 dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
-                Assert.AreEqual(1, dynamicResult);
-                Assert.AreEqual("marko", dynamicResult.FirstOrDefault()["name"]);
+                Assert.AreEqual(1, dynamicResult.Count);
+                Assert.AreEqual(ConvertToVertexId(graphCommand, "marko"), (string)dynamicResult[0]["id"]);
             }
         }
 
@@ -307,12 +279,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_hasLabelXpersonX_asXpX_mapXbothE_label_groupCountX_asXrX_selectXp_rX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.hasLabel('person').as('p').map(__.bothE.label.groupCount()).as('r').select('p','r')"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void HasLabelPersonAsPMapBothELabelGroupCountAsRSelectPR()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -322,13 +289,35 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                     .HasLabel("person").As("p")
                     .Map(GraphTraversal2.__().BothE().Label().GroupCount()).As("r").Select("p", "r");
 
-                var result = traversal.Next();
-                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                var results = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
 
-                ////for (int i = 0; i < 4; i++)
-                ////{
-                //      Skipping asserts until we fix the above bug.
-                ////}
+                Assert.AreEqual(4, dynamicResult.Count);
+                foreach (var result in dynamicResult)
+                {
+                    if ((string) result.p.id == ConvertToVertexId(graphCommand, "marko"))
+                    {
+                        Assert.AreEqual(1, (int)result.r["created"]);
+                        Assert.AreEqual(2, (int)result.r["knows"]);
+                    }
+                    else if ((string)result.p.id == ConvertToVertexId(graphCommand, "vadas"))
+                    {
+                        Assert.AreEqual(1, (int)result.r["knows"]);
+                    }
+                    else if ((string)result.p.id == ConvertToVertexId(graphCommand, "josh"))
+                    {
+                        Assert.AreEqual(2, (int)result.r["created"]);
+                        Assert.AreEqual(1, (int)result.r["knows"]);
+                    }
+                    else if ((string) result.p.id == ConvertToVertexId(graphCommand, "peter"))
+                    {
+                        Assert.AreEqual(1, (int) result.r["created"]);
+                    }
+                    else
+                    {
+                        Assert.Fail("Unknown vertex result");
+                    }
+                }
             }
         }
 
@@ -336,11 +325,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_chooseXoutE_count_isX0X__asXaX__asXbXX_chooseXselectXaX__selectXaX__selectXbXX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.choose(__.outE().count().is(0L), __.as('a'), __.as('b')).choose(select('a'),select('a'),select('b'))"
         /// </summary>
-        /// This fails because Choose is not implemented.
-        /// \Development\Euler\Product\Microsoft.Azure.Graph\GraphView\GremlinTranslation2\branch\GremlinChooseOp.cs Line 45, in GetContext().
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/36531
         [TestMethod]
-        [Ignore]
         public void ChooseOutECountIs0AsAsBChooseSelectASelectASelectB()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -355,10 +340,31 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                                                         GraphTraversal2.__().Select("a"),
                                                         GraphTraversal2.__().Select("b"));
 
-                var result = traversal.Next();
-                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                var results = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
 
-                // Skipping asserts until we fix the above bug.
+                int counter = 0;
+                int xCounter = 0;
+                int yCounter = 0;
+
+                foreach (var result in dynamicResult)
+                {
+                    counter++;
+                    if ((string)result.id == ConvertToVertexId(graphCommand, "vadas")
+                        || (string)result.id == ConvertToVertexId(graphCommand, "lop")
+                        || (string)result.id == ConvertToVertexId(graphCommand, "ripple"))
+                        xCounter++;
+                    else if ((string)result.id == ConvertToVertexId(graphCommand, "marko")
+                        || (string)result.id == ConvertToVertexId(graphCommand, "josh")
+                        || (string)result.id == ConvertToVertexId(graphCommand, "peter"))
+                        yCounter++;
+                    else
+                        Assert.Fail("This state should not have occurred");
+                }
+
+                Assert.AreEqual(6, counter);
+                Assert.AreEqual(3, yCounter);
+                Assert.AreEqual(3, xCounter);
             }
         }
 
@@ -545,12 +551,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_asXaX_hasXname_markoX_asXbX_asXcX_selectXa_b_cX_by_byXnameX_byXageX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.as('a').has('name', 'marko').as('b').as('c').select('a','b','c').by().by('name').by('age')"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAHasNameMarkoAsBAsCSelectABCByByNameByAge()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -559,15 +560,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 var traversal = graphCommand.g().V().As("a").Has("name", "marko").As("b").As("c").Select("a", "b", "c").By().By("name").By("age");
 
                 var result = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
 
-                // TODO: Implement this once we support multi-key selects.
-
-                ////final Map< String, Object > map = traversal.next();
-                ////assertEquals(3, map.size());
-                ////assertEquals(g.V(convertToVertexId("marko")).next(), map.get("a"));
-                ////assertEquals("marko", map.get("b"));
-                ////assertEquals(29, map.get("c"));
-                ////assertFalse(traversal.hasNext());
+                Assert.AreEqual(1, dynamicResult.Count);
+                foreach (var res in dynamicResult)
+                {
+                    Assert.AreEqual(ConvertToVertexId(graphCommand, "marko"), res["a"]["id"].ToString());
+                    Assert.AreEqual("marko", res["b"].ToString());
+                    Assert.AreEqual(29, (int)res["c"]);
+                }
             }
         }
 
@@ -576,13 +577,6 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Equivalent gremlin: "g.V.hasLabel('software').as('name').as('language').as('creators').select('name','language','creators').by('name').by('lang').
         ///                         by(__.in('created').values('name').fold().order(local))"
         /// </summary>
-        /// <remarks>
-        /// Two issues with this test:
-        /// 1. This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// 2. Order with Scope isn't implemented.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37435
-        /// </remarks>
         [TestMethod]
         [Ignore]
         public void HasLabelSoftwareAsNameAsLanguageAsCreatorsSelectNameLanguageCreatorsByNameByLangByInCreatedValuesNameFoldOrderLocal()
@@ -591,22 +585,31 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
             {
                 graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V().HasLabel("software").As("name").As("language").As("creators").Select("name", "language", "creators").By("name").By("lang").
-                    By(GraphTraversal2.__().In("created").Values("name").Fold().Order(/*local*/));
+                    By(GraphTraversal2.__().In("created").Values("name").Fold().Order(GremlinKeyword.Scope.Local));
 
-                // TODO: Implement this once above bugs are fixed.
+                //var traversal = graphCommand.g().V().HasLabel("software").In("created").Values("name").Fold().Order(GremlinKeyword.Scope.Local);
 
-                ////for (int i = 0; i < 2; i++)
-                ////{
-                ////    assertTrue(traversal.hasNext());
-                ////    final Map< String, Object > map = traversal.next();
-                ////    assertEquals(3, map.size());
-                ////    final List< String > creators = (List<String>)map.get("creators");
-                ////    final boolean isLop = "lop".equals(map.get("name")) && "java".equals(map.get("language")) &&
-                ////            creators.size() == 3 && creators.get(0).equals("josh") && creators.get(1).equals("marko") && creators.get(2).equals("peter");
-                ////    final boolean isRipple = "ripple".equals(map.get("name")) && "java".equals(map.get("language")) &&
-                ////            creators.size() == 1 && creators.get(0).equals("josh");
-                ////    assertTrue(isLop ^ isRipple);
-                ////}
+                var results = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(results.FirstOrDefault());
+
+                Assert.AreEqual(2, dynamicResult.Count);
+                foreach (var result in dynamicResult)
+                {
+                    if ((string)result["name"] == "lop")
+                    {
+                        Assert.AreEqual("java", (string)result["language"]);
+                        CheckOrderedResults(new [] {"josh", "marko", "peter"}, ConvertToList(result["creators"]));
+                    }
+                    else if ((string)result["name"] == "ripple")
+                    {
+                        Assert.AreEqual("java", (string)result["language"]);
+                        CheckOrderedResults(new[] { "josh"}, ConvertToList(result["creators"]));
+                    }
+                    else
+                    {
+                        Assert.Fail("Unknown result");
+                    }
+                }
             }
         }
 
@@ -614,12 +617,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_selectXaX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V." + (null == pop ? "select('a')" : "select(${pop}, 'a')"
         /// </summary>
-        /// <remarks>
-        /// Test needs to be fixed because Select of an unknown key throws exception instead of returning an empty collection.
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37442
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesSelectA()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
@@ -631,6 +629,7 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                     var traversal = (!pop.HasValue) ? root.Select("a") : root.Select(pop.Value, "a");
 
                     var result = traversal.Next();
+                    Assert.AreEqual(0, result.Count);
                 }
             }
         }
@@ -654,36 +653,38 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                var traversal = graphCommand.g().V().Until(GraphTraversal2.__().Out().Out()).Repeat(GraphTraversal2.__().In().As("a")).Select("a").By(GraphTraversal2.__().Tail(/*local*/).Values("name"));
+                var traversal = graphCommand.g().V().Until(GraphTraversal2.__().Out().Out()).Repeat(GraphTraversal2.__().In().As("a")).Select("a").By(GraphTraversal2.__().Tail(GremlinKeyword.Scope.Local).Values("name"));
 
-                // TODO: Implement the Asserts once the above bugs are fixed.
+                var results = traversal.Next();
+                Assert.AreEqual(5, results.Count);
+                foreach (var result in results)
+                {
+                    Assert.AreEqual("marko", result);
+                }
             }
         }
 
         /// <summary>
         /// Port of the g_V_untilXout_outX_repeatXin_asXaX_in_asXbXX_selectXa_bX_byXnameX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.until(__.out.out).repeat(__.in.as('a').in.as('b')).select('a','b').by('name')"
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
         /// </summary>
         [TestMethod]
-        [Ignore]
         public void VerticesUntilOutOutRepeatInAsAInAsBSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
+                graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V().Until(GraphTraversal2.__().Out().Out()).Repeat(GraphTraversal2.__().In().As("a").In().As("b")).Select("a", "b").By("name");
 
-                // Skipping asserts until we fix the above bug.
-
-                ////Map<String, String> result = traversal.next();
-                ////assertEquals(2, result.size());
-                ////assertEquals("josh", result.get("a"));
-                ////assertEquals("marko", result.get("b"));
-                ////result = traversal.next();
-                ////assertEquals(2, result.size());
-                ////assertEquals("josh", result.get("a"));
-                ////assertEquals("marko", result.get("b"));
+                var result = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+                
+                Assert.AreEqual(2, dynamicResult.Count);
+                foreach (var temp in dynamicResult)
+                {
+                    Assert.AreEqual("josh", temp["a"].ToString());
+                    Assert.AreEqual("marko", temp["b"].ToString());
+                }
             }
         }
 
@@ -712,16 +713,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_outE_weight_groupCount_selectXkeysX_unfold UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.outE.weight.groupCount.select(keys).unfold"
         /// </summary>
-        /// <remarks>
-        /// Ignoring this test as it relies on a java implementation specific object: "key" of a "map".
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesOutEValuesWeightGroupCountSelectKeys()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                ////var traversal = graphCommand.g().V().OutE().Values("weight").GroupCount().Select(keys).Unfold();
+                var traversal = graphCommand.g().V().OutE().Values("weight").GroupCount().Select(GremlinKeyword.Column.Keys).Unfold();
+                var results = traversal.Next();
+
+                CheckUnOrderedResults(new[] { "0.5", "1", "0.4", "0.2" }, results);
             }
         }
 
@@ -731,16 +731,15 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_outE_weight_groupCount_selectXvaluesX_unfold UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.outE.weight.groupCount.select(values).unfold"
         /// </summary>
-        /// <remarks>
-        /// Ignoring this test as it relies on a java implementation specific object: "values" of a "map".
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesOutEValuesWeightGroupCountSelectValues()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
-                ////var traversal = graphCommand.g().V().OutE().Values("weight").GroupCount().Select(values).Unfold();
+                var traversal = graphCommand.g().V().OutE().Values("weight").GroupCount().Select(GremlinKeyword.Column.Values).Unfold();
+                var results = traversal.Next();
+
+                CheckUnOrderedResults(new[] { "1", "1", "2", "2" }, results);
             }
         }
 
@@ -751,22 +750,29 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
         /// Port of the g_V_asXaX_outXknowsX_asXbX_localXselectXa_bX_byXnameXX UT from org/apache/tinkerpop/gremlin/process/traversal/step/map/SelectTest.java.
         /// Equivalent gremlin: "g.V.as('a').out('knows').as('b').local(select('a', 'b').by('name'))"
         /// </summary>
-        /// <remarks>
-        /// This fails because Select for more than 1 key is not yet implemented.
-        /// WorkItem to track this: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37285
-        /// This test fails because By Modulating for Select is currently not supported.
-        /// "Unable to cast object of type 'Microsoft.Azure.Graph.GremlinSelectOp' to type 'Microsoft.Azure.Graph.IGremlinByModulating'."
-        /// WorkItem: https://msdata.visualstudio.com/DocumentDB/_workitems/edit/37417
-        /// </remarks>
         [TestMethod]
-        [Ignore]
         public void VerticesAsAOutKnowsAsBLocalSelectABByName()
         {
             using (GraphViewCommand graphCommand = new GraphViewCommand(graphConnection))
             {
+                graphCommand.OutputFormat = OutputFormat.GraphSON;
                 var traversal = graphCommand.g().V().As("a").Out("knows").As("b").Local(GraphTraversal2.__().Select("a", "b").By("name"));
 
-                // Skipping asserts until we fix the above bugs.
+                var result = traversal.Next();
+                dynamic dynamicResult = JsonConvert.DeserializeObject<dynamic>(result.FirstOrDefault());
+
+                Assert.AreEqual(2, dynamicResult.Count);
+                foreach (var temp in dynamicResult)
+                {
+                    if (temp["a"].ToString() == "marko")
+                    {
+                        Assert.IsTrue("vadas".Equals(temp["b"].ToString()) || "josh".Equals(temp["b"].ToString()));
+                    }
+                    else
+                    {
+                        Assert.Fail("Unknown result");
+                    }
+                }
             }
         }
 

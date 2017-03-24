@@ -6,6 +6,7 @@ using System.Linq;
 using GraphView;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace GraphViewUnitTest.Gremlin
 {
@@ -105,6 +106,11 @@ namespace GraphViewUnitTest.Gremlin
             {
                 Assert.AreEqual(expectedList[i], actualList[i]);
             }
+        }
+
+        public static List<string> ConvertToList(dynamic result)
+        {
+            return ((JArray) result).Select(p => p.ToString()).ToList();
         }
 
         public static void CheckOrderedResults<T>(IEnumerable<T> expected, IEnumerable<T> actual)

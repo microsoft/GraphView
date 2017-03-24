@@ -80,9 +80,8 @@ namespace GraphViewUnitTest.Gremlin.ProcessTests.Traversal.Step.Map
                 string vertexId1 = this.ConvertToVertexId(graphCommand, "marko");
                 string vertexId2 = this.ConvertToVertexId(graphCommand, "peter");
 
-                //var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
+                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2)).Path().By("name").Unfold();
 
-                var traversal = graphCommand.g().V().HasId(vertexId1).Repeat(GraphTraversal2.__().Both().SimplePath()).Until(GraphTraversal2.__().HasId(vertexId2));
 
                 var result = traversal.Next();
 
