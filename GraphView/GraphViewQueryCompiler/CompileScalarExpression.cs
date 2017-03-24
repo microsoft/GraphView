@@ -156,6 +156,12 @@ namespace GraphView
                     }
 
                     return new Compose2(inputOfCompose2);
+                case "path":
+                    List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
+                    List<ScalarFunction> byFuncList;
+                    WPathTableReference.GetPathStepListAndByFuncList(context, dbConnection, this.Parameters,
+                        out pathStepList, out byFuncList);
+                    return new Path(pathStepList);
                 default:
                     throw new NotImplementedException("Function " + funcName + " hasn't been implemented.");
             }

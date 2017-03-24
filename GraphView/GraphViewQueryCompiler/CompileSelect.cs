@@ -2205,52 +2205,12 @@ namespace GraphView
 
     partial class WPathTableReference
     {
-        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbcConnection)
+        internal override GraphViewExecutionOperator Compile(QueryCompilationContext context, GraphViewConnection dbConnection)
         {
-            //
-            // If the boolean value is true, then it's a subPath to be unfolded
-            //
-            List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList = 
-                new List<Tuple<ScalarFunction, bool, HashSet<string>>>();
-            List<ScalarFunction> byFuncList = new List<ScalarFunction>();
-            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
-            byInitContext.ClearField();
-            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
-
-            foreach (WScalarExpression expression in Parameters)
-            {
-                WFunctionCall basicStep = expression as WFunctionCall;
-                WValueExpression stepLabel = expression as WValueExpression;
-                WColumnReferenceExpression subPath = expression as WColumnReferenceExpression;
-                WScalarSubquery byFunc = expression as WScalarSubquery;
-
-                if (basicStep != null)
-                {
-                    pathStepList.Add(
-                        new Tuple<ScalarFunction, bool, HashSet<string>>(
-                            basicStep.CompileToFunction(context, dbcConnection), false, new HashSet<string>()));
-                }
-                else if (stepLabel != null)
-                {
-                    if (!pathStepList.Any()) {
-                        pathStepList.Add(new Tuple<ScalarFunction, bool, HashSet<string>>(null, false, new HashSet<string>()));
-                    }
-                    pathStepList.Last().Item3.Add(stepLabel.Value);
-                }
-                else if (subPath != null)
-                {
-                    pathStepList.Add(
-                        new Tuple<ScalarFunction, bool, HashSet<string>>(
-                            subPath.CompileToFunction(context, dbcConnection), true, new HashSet<string>()));
-                }
-                else if (byFunc != null) {
-                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbcConnection));
-                }
-                else {
-                    throw new QueryCompilationException(
-                        "The parameter of WPathTableReference can only be a WFunctionCall/WValueExpression/WColumnReferenceExpression/WScalarSubquery.");
-                }
-            }
+            List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
+            List<ScalarFunction> byFuncList;
+            WPathTableReference.GetPathStepListAndByFuncList(context, dbConnection, this.Parameters, 
+                out pathStepList, out byFuncList);
 
             PathOperator pathOp = new PathOperator(context.CurrentExecutionOperator, pathStepList, byFuncList);
             context.CurrentExecutionOperator = pathOp;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -593,6 +594,101 @@ namespace GraphView
         public override JsonDataType DataType()
         {
             return JsonDataType.Boolean;
+        }
+    }
+
+    internal class Path : ScalarFunction
+    {
+        //
+        // If the boolean value is true, then it's a subPath to be unfolded
+        //
+        private List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList;
+
+        public Path(List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList)
+        {
+            this.pathStepList = pathStepList;
+        }
+
+        public override FieldObject Evaluate(RawRecord record)
+        {
+            List<FieldObject> path = new List<FieldObject>();
+
+            foreach (Tuple<ScalarFunction, bool, HashSet<string>> tuple in pathStepList)
+            {
+                ScalarFunction accessPathStepFunc = tuple.Item1;
+                bool needsUnfold = tuple.Item2;
+                HashSet<string> stepLabels = tuple.Item3;
+
+                if (accessPathStepFunc == null) {
+                    PathStepField pathStepField = new PathStepField(null);
+                    foreach (string label in stepLabels) {
+                        pathStepField.AddLabel(label);
+                    }
+                    path.Add(pathStepField);
+                    continue;
+                }
+
+                FieldObject step = accessPathStepFunc.Evaluate(record);
+                if (step == null) {
+                    PathStepField lastPathStep = path.Any() ? (PathStepField) path[path.Count - 1] : null;
+                    if (lastPathStep != null) {
+                        foreach (string label in stepLabels) {
+                            lastPathStep.AddLabel(label);
+                        }
+                    }
+                    continue;
+                }
+
+                if (needsUnfold)
+                {
+                    PathField subPath = step as PathField;
+                    Debug.Assert(subPath != null, "(subPath as PathField) != null");
+
+                    foreach (PathStepField subPathStep in subPath.Path.Cast<PathStepField>())
+                    {
+                        if (subPathStep.StepFieldObject == null)
+                        {
+                            if (path.Any())
+                            {
+                                PathStepField lastPathStep = (PathStepField) path[path.Count - 1];
+                                foreach (string label in subPathStep.Labels) {
+                                    lastPathStep.AddLabel(label);
+                                }
+                            }
+                            else {
+                                path.Add(subPathStep);
+                            }
+                            continue;
+                        }
+
+                        PathStepField pathStepField = new PathStepField(subPathStep.StepFieldObject);
+                        foreach (string label in subPathStep.Labels) {
+                            pathStepField.AddLabel(label);
+                        }
+                        path.Add(pathStepField);
+                    }
+
+                    PathStepField lastSubPathStep = (PathStepField) path.Last();
+                    foreach (string label in stepLabels) {
+                        lastSubPathStep.AddLabel(label);
+                    }
+                }
+                else
+                {
+                    PathStepField pathStepField = new PathStepField(step);
+                    foreach (string label in stepLabels) {
+                        pathStepField.AddLabel(label);
+                    }
+                    path.Add(pathStepField);
+                }
+            }
+
+            return new PathField(path);
+        }
+
+        public override JsonDataType DataType()
+        {
+            return JsonDataType.Array;
         }
     }
 }

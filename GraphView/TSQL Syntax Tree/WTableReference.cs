@@ -28,6 +28,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
 
@@ -427,7 +428,61 @@ namespace GraphView
 
     public partial class WAllValuesTableReference : WSchemaObjectFunctionTableReference { }
 
-    public partial class WPathTableReference : WSchemaObjectFunctionTableReference {}
+    public partial class WPathTableReference : WSchemaObjectFunctionTableReference
+    {
+        internal static void GetPathStepListAndByFuncList(
+            QueryCompilationContext context, GraphViewConnection dbConnection,
+            IList<WScalarExpression> parameters,
+            out List<Tuple<ScalarFunction, bool, HashSet<string>>> pathStepList,
+            out List<ScalarFunction> byFuncList)
+        {
+            //
+            // If the boolean value is true, then it's a subPath to be unfolded
+            //
+            pathStepList = new List<Tuple<ScalarFunction, bool, HashSet<string>>>();
+            byFuncList = new List<ScalarFunction>();
+            QueryCompilationContext byInitContext = new QueryCompilationContext(context);
+            byInitContext.ClearField();
+            byInitContext.AddField(GremlinKeyword.Compose1TableDefaultName, GremlinKeyword.TableDefaultColumnName, ColumnGraphType.Value);
+
+            foreach (WScalarExpression expression in parameters)
+            {
+                WFunctionCall basicStep = expression as WFunctionCall;
+                WValueExpression stepLabel = expression as WValueExpression;
+                WColumnReferenceExpression subPath = expression as WColumnReferenceExpression;
+                WScalarSubquery byFunc = expression as WScalarSubquery;
+
+                if (basicStep != null)
+                {
+                    pathStepList.Add(
+                        new Tuple<ScalarFunction, bool, HashSet<string>>(
+                            basicStep.CompileToFunction(context, dbConnection), false, new HashSet<string>()));
+                }
+                else if (stepLabel != null)
+                {
+                    if (!pathStepList.Any())
+                    {
+                        pathStepList.Add(new Tuple<ScalarFunction, bool, HashSet<string>>(null, false, new HashSet<string>()));
+                    }
+                    pathStepList.Last().Item3.Add(stepLabel.Value);
+                }
+                else if (subPath != null)
+                {
+                    pathStepList.Add(
+                        new Tuple<ScalarFunction, bool, HashSet<string>>(
+                            subPath.CompileToFunction(context, dbConnection), true, new HashSet<string>()));
+                }
+                else if (byFunc != null)
+                {
+                    byFuncList.Add(byFunc.CompileToFunction(byInitContext, dbConnection));
+                }
+                else {
+                    throw new QueryCompilationException(
+                        "The parameter of WPathTableReference can only be a WFunctionCall/WValueExpression/WColumnReferenceExpression/WScalarSubquery.");
+                }
+            }
+        }
+    }
 
     public partial class WInjectTableReference : WSchemaObjectFunctionTableReference
     {
