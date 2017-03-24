@@ -2098,45 +2098,20 @@ namespace GraphView
             //    throw new QueryCompilationException("The parent of an aggregate function cannot be a repeat operator.");
             //}
 
-            List<int> inputIndexes = new List<int>();
             QueryCompilationContext rTableContext = new QueryCompilationContext(context);
             rTableContext.ClearField();
 
-            List<WColumnReferenceExpression> columnList = new List<WColumnReferenceExpression>();
+            QueryCompilationContext initalContext = new QueryCompilationContext(context);
+            GraphViewExecutionOperator getInitialRecordOp = contextSelect.Compile(initalContext, dbConnection);
+
             foreach (WSelectElement selectElement in contextSelect.SelectElements)
             {
                 WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
-                if (selectScalar == null)
-                {
-                    throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be select scalar elements.");
-                }
+                Debug.Assert(selectScalar != null,
+                    "The SELECT elements of the sub-queries in a repeat table reference must be select scalar elements.");
+                Debug.Assert(selectScalar.ColumnName != null, "selectScalar.ColumnName != null");
 
-                WColumnReferenceExpression columnRef = selectScalar.SelectExpr as WColumnReferenceExpression;
-                if (columnRef != null)
-                {
-                    int index;
-                    if (!context.TryLocateColumnReference(columnRef, out index))
-                        throw new SyntaxErrorException("Syntax Error!!!");
-                    inputIndexes.Add(index);
-
-                    string rColumnName = selectScalar.ColumnName ?? columnRef.ColumnName;
-                    rTableContext.AddField("R", rColumnName, columnRef.ColumnGraphType);
-
-                    columnList.Add(new WColumnReferenceExpression(Alias.Value, rColumnName, columnRef.ColumnGraphType));
-                }
-                else
-                {
-                    WValueExpression nullExpression = selectScalar.SelectExpr as WValueExpression;
-                    if (nullExpression == null)
-                        throw new SyntaxErrorException("The SELECT elements of the sub-queries in a repeat table reference must be column references or WValueExpression.");
-                    if (nullExpression.ToString().Equals("null", StringComparison.OrdinalIgnoreCase))
-                        inputIndexes.Add(-1);
-
-                    string rColumnName = selectScalar.ColumnName ?? columnRef.ColumnName;
-                    rTableContext.AddField("R", rColumnName, ColumnGraphType.Value);
-
-                    columnList.Add(new WColumnReferenceExpression(Alias.Value, rColumnName, ColumnGraphType.Value));
-                }
+                rTableContext.AddField("R", selectScalar.ColumnName, ColumnGraphType.Value);
             }
 
             WRepeatConditionExpression repeatCondition = Parameters[1] as WRepeatConditionExpression;
@@ -2153,20 +2128,22 @@ namespace GraphView
 
             RepeatOperator repeatOp;
             if (repeatTimes == -1)
-                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, inputIndexes, innerOp,
-                    rTableContext.OuterContextOp, terminationCondition, startFromContext, emitCondition, emitContext);
+                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, 
+                    innerOp, rTableContext.OuterContextOp, terminationCondition, startFromContext, emitCondition, emitContext);
             else
-                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, inputIndexes, innerOp,
+                repeatOp = new RepeatOperator(context.CurrentExecutionOperator, initalContext.OuterContextOp, getInitialRecordOp, innerOp,
                     rTableContext.OuterContextOp, repeatTimes, emitCondition, emitContext);
 
             context.CurrentExecutionOperator = repeatOp;
 
 
-            // Updates the raw record layout. The columns of this table-valued function 
-            // are specified by the select elements of the thrid parameter.
-            foreach (WColumnReferenceExpression columnRef in columnList)
+            //
+            // Updates the raw record layout
+            //
+            foreach (WSelectElement selectElement in contextSelect.SelectElements)
             {
-                context.AddField(columnRef.TableReference, columnRef.ColumnName, columnRef.ColumnGraphType);
+                WSelectScalarExpression selectScalar = selectElement as WSelectScalarExpression;
+                context.AddField(Alias.Value, selectScalar.ColumnName, ColumnGraphType.Value);
             }
 
             return repeatOp;

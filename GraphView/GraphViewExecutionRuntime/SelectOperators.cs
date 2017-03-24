@@ -1937,9 +1937,10 @@ namespace GraphView
         private bool emitContext;
 
         private GraphViewExecutionOperator inputOp;
-        // A list record fields (identified by field indexes) from the input 
-        // operator that are fed as the initial input into the inner operator.
-        private List<int> inputFieldIndexes;
+        // InitialOp recieves a record from the input 
+        // operator and generate a new record that are fed as the initial input into the inner operator.
+        private ConstantSourceOperator initalSourceOp;
+        private GraphViewExecutionOperator initialOp;
 
         private GraphViewExecutionOperator innerOp;
         private ConstantSourceOperator innerContextOp;
@@ -1949,7 +1950,8 @@ namespace GraphView
 
         public RepeatOperator(
             GraphViewExecutionOperator inputOp,
-            List<int> inputFieldIndexes,
+            ConstantSourceOperator initalSourceOp,
+            GraphViewExecutionOperator initialOp,
             GraphViewExecutionOperator innerOp,
             ConstantSourceOperator innerContextOp,
             int repeatTimes,
@@ -1957,7 +1959,8 @@ namespace GraphView
             bool emitContext)
         {
             this.inputOp = inputOp;
-            this.inputFieldIndexes = inputFieldIndexes;
+            this.initalSourceOp = initalSourceOp;
+            this.initialOp = initialOp;
             this.innerOp = innerOp;
             this.innerContextOp = innerContextOp;
             this.repeatTimes = repeatTimes;
@@ -1972,7 +1975,8 @@ namespace GraphView
 
         public RepeatOperator(
             GraphViewExecutionOperator inputOp,
-            List<int> inputFieldIndexes,
+            ConstantSourceOperator initalSourceOp,
+            GraphViewExecutionOperator initialOp,
             GraphViewExecutionOperator innerOp,
             ConstantSourceOperator innerContextOp,
             BooleanFunction terminationCondition,
@@ -1981,7 +1985,8 @@ namespace GraphView
             bool emitContext)
         {
             this.inputOp = inputOp;
-            this.inputFieldIndexes = inputFieldIndexes;
+            this.initalSourceOp = initalSourceOp;
+            this.initialOp = initialOp;
             this.innerOp = innerOp;
             this.innerContextOp = innerContextOp;
             this.terminationCondition = terminationCondition;
@@ -2005,11 +2010,9 @@ namespace GraphView
                     return null;
                 }
 
-                RawRecord initialRec = new RawRecord {fieldValues = new List<FieldObject>()};
-                foreach (int fieldIndex in inputFieldIndexes)
-                {
-                    initialRec.Append(fieldIndex != -1 ? currentRecord[fieldIndex] : null);
-                }
+                initialOp.ResetState();
+                initalSourceOp.ConstantSource = currentRecord;
+                RawRecord initialRec = this.initialOp.Next();
 
                 if (repeatTimes >= 0)
                 {
